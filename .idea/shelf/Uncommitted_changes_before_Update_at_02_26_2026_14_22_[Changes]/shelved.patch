@@ -1,0 +1,19 @@
+Index: package.json
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>{\r\n  \"name\": \"e-kassam-app\",\r\n  \"private\": true,\r\n  \"version\": \"1.0.0\",\r\n  \"type\": \"module\",\r\n  \"scripts\": {\r\n    \"dev\":     \"vite\",\r\n    \"build\":   \"vite build\",\r\n    \"preview\": \"vite preview\"\r\n  },\r\n  \"dependencies\": {\r\n    \"react\":     \"^18.3.1\",\r\n    \"react-dom\": \"^18.3.1\"\r\n  },\r\n  \"devDependencies\": {\r\n    \"@vitejs/plugin-react\": \"^4.3.4\",\r\n    \"vite\":                 \"^5.4.10\"\r\n  }\r\n}\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/package.json b/package.json
+--- a/package.json	(revision d45e41b9f0566656142bb43d1912f8ae5a8e0f58)
++++ b/package.json	(date 1772097658386)
+@@ -5,7 +5,7 @@
+   "type": "module",
+   "scripts": {
+     "dev":     "vite",
+-    "build":   "vite build",
++    "build":   "node node_modules/vite/bin/vite.js build",
+     "preview": "vite preview"
+   },
+   "dependencies": {
