@@ -1,8 +1,8 @@
 // ─── Barcha 3 loyiha bir xil kalitlarni ishlatadi ────────────
-export const API_BASE   = "http://localhost:8080/api";
-export const LOGIN_URL  = "http://localhost:5175";
-export const APP_URL    = "http://localhost:5173";
-export const ADMIN_URL  = "http://localhost:5174";
+export const API_BASE   = "https://api.e-kassam.uz/api";
+export const LOGIN_URL  = "https://auth.e-kassam.uz";
+export const APP_URL    = "https://app.e-kassam.uz";
+export const ADMIN_URL  = "https://admin.e-kassam.uz";
 
 // localStorage kalitlari
 export const K = {
