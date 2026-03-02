@@ -1,10 +1,18 @@
-// ─── Barcha 3 loyiha bir xil kalitlarni ishlatadi ────────────
-export const API_BASE   = "https://api.e-kassam.uz/api";
-export const LOGIN_URL  = "https://auth.e-kassam.uz";
-export const APP_URL    = "https://app.e-kassam.uz";
-export const ADMIN_URL  = "https://admin.e-kassam.uz";
+// ╔══════════════════════════════════════════════════════════════╗
+// ║           BARCHA URL VA SOZLAMALAR SHU YERDA               ║
+// ║   Deployment uchun faqat shu faylni o'zgartiring           ║
+// ╚══════════════════════════════════════════════════════════════╝
 
-// localStorage kalitlari
+// ── Server URL ─────────────────────────────────────────────────
+export const API_BASE  = "https://api.e-kassam.uz/api";
+
+// ── Frontend URL lar ───────────────────────────────────────────
+export const LOGIN_URL = "https://auth.e-kassam.uz";
+
+// ── Logo (public/ papkasiga logo.png qo'ying) ──────────────────
+export const LOGO_URL  = "/logo.png";
+
+// ── localStorage kalitlari ─────────────────────────────────────
 export const K = {
   token:    "ek_token",
   refresh:  "ek_refresh",
@@ -16,6 +24,7 @@ export const K = {
   deviceId: "ek_deviceId",
 };
 
+// ── Yordamchi funksiyalar ──────────────────────────────────────
 export function getDeviceId() {
   let id = localStorage.getItem(K.deviceId);
   if (!id) {
@@ -24,9 +33,6 @@ export function getDeviceId() {
   }
   return id;
 }
-
-export const LOGO_URL =
-  "https://raw.githubusercontent.com/shaxobiddindev/e-kassam-frontend/main/images/logo.png";
 
 export const money = (n) =>
   new Intl.NumberFormat("uz-UZ").format(Number(n) || 0) + " so'm";

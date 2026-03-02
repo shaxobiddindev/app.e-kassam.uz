@@ -1,3 +1,4 @@
+import { LOGIN_URL } from "../config";
 import { useState, useCallback } from "react";
 
 function ls(...keys) {
@@ -25,7 +26,7 @@ export function useAuth() {
     ["ek_token","ek_type","ek_username","ek_fullName","ek_role",
      "ek_user","ek_name","ek_shop","ek_shopCode","ek_refresh","ek_deviceId"
     ].forEach((k) => localStorage.removeItem(k));
-    window.location.replace("http://localhost:5175?logged_out=1");
+    window.location.replace(`${LOGIN_URL}?logged_out=1`);
   }, []);
 
   return { user, logout };

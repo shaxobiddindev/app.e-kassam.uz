@@ -1,6 +1,4 @@
-import { getDeviceId } from "../utils";
-
-const API_BASE = "http://localhost:8080/api";
+import { API_BASE, LOGIN_URL, getDeviceId } from "../config";
 
 // Refresh qilish jarayonida loop oldini olish
 let _isRefreshing = false;
@@ -70,7 +68,7 @@ async function request(path, options = {}, _retry = false) {
       } else {
         // Refresh ham ishlamadi — login ga
         localStorage.clear();
-        window.location.replace("http://localhost:5175?logged_out=1");
+        window.location.replace(`${LOGIN_URL}?logged_out=1`);
         return {};
       }
     }
@@ -79,7 +77,7 @@ async function request(path, options = {}, _retry = false) {
   // 2-urinishda ham 401 — login ga
   if (res.status === 401 && _retry) {
     localStorage.clear();
-    window.location.replace("http://localhost:5175?logged_out=1");
+    window.location.replace(`${LOGIN_URL}?logged_out=1`);
     return {};
   }
 

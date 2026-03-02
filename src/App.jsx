@@ -1,5 +1,6 @@
 import "./styles.css";
 import { useState } from "react";
+import { LOGIN_URL } from "./config";
 import { useAuth }  from "./hooks/useAuth";
 import { useLowStock } from "./hooks/useLowStock";
 import { useToast } from "./hooks/useToast";
@@ -67,7 +68,7 @@ const type  = localStorage.getItem("ek_type");
 console.log("[APP] token check → token:", token?.slice(0,20), "| type:", type);
 if (!token || type !== "user") {
   localStorage.clear();
-  window.location.replace("http://localhost:5175?logged_out=1");
+  window.location.replace(`${LOGIN_URL}?logged_out=1`);
 }
 
 export default function App() {
