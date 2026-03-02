@@ -4,7 +4,7 @@
 // ╚══════════════════════════════════════════════════════════════╝
 
 // ── Server URL ─────────────────────────────────────────────────
-export const API_BASE  = "https://api.e-kassam.uz/api";
+export const API_BASE  = "http://localhost:8080/api";
 
 // ── Frontend URL lar ───────────────────────────────────────────
 export const LOGIN_URL = "https://auth.e-kassam.uz";

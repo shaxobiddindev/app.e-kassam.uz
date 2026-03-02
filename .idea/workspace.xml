@@ -5,25 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="04fb854c-40bd-40a9-a6b1-62cd06e0405f" name="Changes" comment="update package.json">
-      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Update_at_02_26_2026_14_22_[Changes]/shelved.patch" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Update_at_02_26_2026_14_22__Changes_.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/index.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/node_modules/.package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.package-lock.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/node_modules/.vite/deps/_metadata.json" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.vite/deps/_metadata.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/node_modules/caniuse-lite/data/features/css-overflow-anchor.js" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/caniuse-lite/data/features/css-overflow-anchor.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/node_modules/caniuse-lite/data/features/customizable-select.js" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/caniuse-lite/data/features/customizable-select.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/node_modules/caniuse-lite/data/features/link-icon-svg.js" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/caniuse-lite/data/features/link-icon-svg.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/node_modules/caniuse-lite/data/features/webtransport.js" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/caniuse-lite/data/features/webtransport.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/node_modules/caniuse-lite/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/caniuse-lite/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/App.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/App.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/api/index.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/index.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/config.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/config.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/hooks/useAuth.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/hooks/useAuth.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/utils/index.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/index.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -112,7 +94,7 @@
       <workItem from="1772097592845" duration="1051000" />
       <workItem from="1772214997683" duration="249000" />
       <workItem from="1772279948406" duration="1088000" />
-      <workItem from="1772475958081" duration="1715000" />
+      <workItem from="1772475958081" duration="2660000" />
     </task>
     <task id="LOCAL-00001" summary="urls updated">
       <option name="closed" value="true" />
