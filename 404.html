@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>404 — Sahifa topilmadi | e-Kassam</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    :root {
+      --blue:   #017dca;
+      --blue-d: #01368d;
+      --accent: #00d4aa;
+      --dark:   #0a0f1e;
+      --font-h: 'Syne', sans-serif;
+      --font-b: 'DM Sans', sans-serif;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html, body { height:100%; }
+    body {
+      font-family: var(--font-b);
+      background: var(--dark);
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      overflow: hidden;
+      text-align: center;
+      padding: 24px;
+    }
+
+    /* Orqa fon */
+    .bg {
+      position: fixed; inset: 0; z-index: 0;
+      background:
+              radial-gradient(ellipse 60% 50% at 50% 50%, rgba(1,125,202,0.15) 0%, transparent 60%),
+              linear-gradient(160deg, #0a0f1e 0%, #0d1829 100%);
+    }
+    .orb {
+      position: fixed; border-radius: 50%;
+      filter: blur(80px); pointer-events: none;
+      animation: floatOrb 10s ease-in-out infinite;
+    }
+    .orb1 { width:500px; height:500px; background:rgba(1,125,202,0.1); top:-150px; right:-100px; }
+    .orb2 { width:300px; height:300px; background:rgba(0,212,170,0.07); bottom:-50px; left:-50px; animation-delay:4s; }
+    @keyframes floatOrb { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-20px);} }
+
+    /* Kontent */
+    .content { position: relative; z-index: 1; max-width: 520px; }
+
+    /* 404 raqami */
+    .err-num {
+      font-family: var(--font-h);
+      font-size: clamp(100px, 20vw, 160px);
+      font-weight: 800;
+      line-height: 1;
+      background: linear-gradient(135deg, var(--blue), var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 8px;
+      animation: popIn 0.6s cubic-bezier(0.34,1.56,0.64,1) both;
+      letter-spacing: -4px;
+    }
+    @keyframes popIn { from{opacity:0; transform:scale(0.6);} to{opacity:1; transform:scale(1);} }
+
+    /* Icon */
+    .err-icon {
+      font-size: 56px; margin-bottom: 24px;
+      animation: popIn 0.6s cubic-bezier(0.34,1.56,0.64,1) 0.1s both;
+    }
+
+    .err-title {
+      font-family: var(--font-h);
+      font-size: clamp(22px, 4vw, 32px);
+      font-weight: 800;
+      margin-bottom: 14px;
+      animation: fadeUp 0.5s ease 0.2s both;
+    }
+    .err-desc {
+      font-size: 16px;
+      color: rgba(255,255,255,0.5);
+      line-height: 1.7;
+      margin-bottom: 40px;
+      animation: fadeUp 0.5s ease 0.3s both;
+    }
+
+    /* Tugmalar */
+    .err-btns {
+      display: flex; gap: 14px; justify-content: center; flex-wrap: wrap;
+      animation: fadeUp 0.5s ease 0.4s both;
+    }
+    .btn-home {
+      display: inline-flex; align-items: center; gap: 10px;
+      background: linear-gradient(135deg, var(--blue), var(--blue-d));
+      color: white; padding: 13px 28px; border-radius: 10px;
+      font-size: 15px; font-weight: 700; text-decoration: none;
+      box-shadow: 0 6px 24px rgba(1,125,202,0.4);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .btn-home:hover { transform: translateY(-2px); box-shadow: 0 10px 32px rgba(1,125,202,0.5); }
+    .btn-back {
+      display: inline-flex; align-items: center; gap: 10px;
+      border: 1.5px solid rgba(255,255,255,0.2);
+      color: white; padding: 13px 28px; border-radius: 10px;
+      font-size: 15px; font-weight: 600; text-decoration: none;
+      transition: border-color 0.2s, background 0.2s;
+      cursor: pointer; background: none; font-family: var(--font-b);
+    }
+    .btn-back:hover { border-color: var(--blue); background: rgba(1,125,202,0.1); }
+
+    /* Qisqa havolalar */
+    .quick-links {
+      margin-top: 48px; padding-top: 32px;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      animation: fadeUp 0.5s ease 0.5s both;
+    }
+    .quick-links p { font-size: 12px; color: rgba(255,255,255,0.3); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 16px; }
+    .quick-list { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    .quick-link {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.6); padding: 8px 16px; border-radius: 8px;
+      font-size: 13px; text-decoration: none; transition: all 0.2s;
+    }
+    .quick-link:hover { border-color: var(--blue); color: white; background: rgba(1,125,202,0.1); }
+    .quick-link i { font-size: 12px; color: var(--accent); }
+
+    /* Logo */
+    .logo {
+      position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+      z-index: 10; display: flex; align-items: center; gap: 10px;
+      font-family: var(--font-h); font-size: 20px; font-weight: 800;
+      text-decoration: none; color: white;
+    }
+    .logo-icon { width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, var(--blue), var(--blue-d)); display: flex; align-items: center; justify-content: center; font-size: 14px; }
+    .logo span { color: var(--blue); }
+    .logo img  { height: 36px; width: auto; object-fit: contain; display: block; }
+
+    @keyframes fadeUp { from{opacity:0;transform:translateY(20px);} to{opacity:1;transform:translateY(0);} }
+
+    /* Countdown */
+    #countdown { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: rgba(255,255,255,0.35); margin-top: 24px; animation: fadeUp 0.5s ease 0.6s both; }
+    #countdown span { color: var(--accent); font-weight: 700; min-width: 18px; text-align: center; }
+  </style>
+</head>
+<body>
+
+<div class="bg"></div>
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+
+<!-- Logo -->
+<a href="/" class="logo">
+  <img src="/logo.png" alt="e-Kassam" class="logo-img">
+</a>
+
+<div class="content">
+  <div class="err-num">404</div>
+  <div class="err-icon">🔍</div>
+  <h1 class="err-title">Sahifa topilmadi</h1>
+  <p class="err-desc">
+    Siz qidirayotgan sahifa ko'chirilgan, o'chirilgan yoki hech qachon mavjud bo'lmagan.
+    Iltimos, URLni tekshiring yoki bosh sahifaga qayting.
+  </p>
+
+  <div class="err-btns">
+    <a href="/" class="btn-home">
+      <i class="fa-solid fa-house"></i> Bosh sahifa
+    </a>
+    <button class="btn-back" onclick="history.back()">
+      <i class="fa-solid fa-arrow-left"></i> Orqaga
+    </button>
+  </div>
+
+  <div id="countdown">
+    <i class="fa-solid fa-rotate-right"></i>
+    Avtomatik yo'naltirish: <span id="timer">10</span> soniyada
+  </div>
+
+  <div class="quick-links">
+    <p>Foydali havolalar</p>
+    <div class="quick-list">
+      <a href="/#xususiyatlar" class="quick-link"><i class="fa-solid fa-star"></i> Xususiyatlar</a>
+      <a href="/#narx"        class="quick-link"><i class="fa-solid fa-tag"></i> Narxlar</a>
+      <a href="/#aloqa"       class="quick-link"><i class="fa-solid fa-envelope"></i> Aloqa</a>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Countdown + avtomatik yo'naltirish
+  let seconds = 10;
+  const timerEl = document.getElementById('timer');
+  const interval = setInterval(() => {
+    seconds--;
+    timerEl.textContent = seconds;
+    if (seconds <= 0) {
+      clearInterval(interval);
+      window.location.href = '/';
+    }
+  }, 1000);
+
+  // Orqaga bosilsa countdown to'xtaydi
+  document.querySelector('.btn-back').addEventListener('click', () => {
+    clearInterval(interval);
+    document.getElementById('countdown').style.display = 'none';
+  });
+</script>
+</body>
+</html>

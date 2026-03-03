@@ -4,7 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="04fb854c-40bd-40a9-a6b1-62cd06e0405f" name="Changes" comment="update package.json" />
+    <list default="true" id="04fb854c-40bd-40a9-a6b1-62cd06e0405f" name="Changes" comment="update package.json">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -93,6 +95,7 @@
       <workItem from="1772214997683" duration="249000" />
       <workItem from="1772279948406" duration="1088000" />
       <workItem from="1772475958081" duration="3292000" />
+      <workItem from="1772522110054" duration="2169000" />
     </task>
     <task id="LOCAL-00001" summary="urls updated">
       <option name="closed" value="true" />
