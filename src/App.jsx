@@ -17,6 +17,7 @@ import SalesPage        from "./pages/SalesPage";
 import CategoriesPage   from "./pages/admin/CategoriesPage";
 import CustomReportPage from "./pages/admin/CustomReportPage";
 import ShopsPage        from "./pages/admin/ShopsPage";
+import NotFound from "./pages/NotFound";
 
 const PAGES = {
   dashboard:       DashboardPage,
@@ -29,6 +30,7 @@ const PAGES = {
   reports:         ReportsPage,
   "custom-report": CustomReportPage,
   shops:           ShopsPage,
+  "not-found":  NotFound,
 };
 
 // ── URL dan token olib localStorage ga yozish ────────────────
@@ -79,7 +81,7 @@ export default function App() {
 
   if (!user) return null;
 
-  const PageComponent = PAGES[page] || DashboardPage;
+  const PageComponent = PAGES[page] || NotFound;
 
   return (
     <>
