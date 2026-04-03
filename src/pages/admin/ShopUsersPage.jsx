@@ -163,7 +163,7 @@ export default function ShopUsersPage({ toast }) {
                       {(u.roles && u.roles.length > 0) ? (
                         u.roles.map((r) => (
                           <Badge key={r.id || r.name} color="blue">
-                            {ROLE_LABELS[r.name] || r.name}
+                            {ROLE_LABELS[r.type] || r.type || r.name || "Xodim"}
                           </Badge>
                         ))
                       ) : (
