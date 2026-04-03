@@ -44,7 +44,7 @@ if (authParam) {
       else role = rolesArray[0];
     } else { role = p.get("role") || ""; }
     const shopCode = p.get("shopCode") || "";
-    const refresh = p.get("refresh") || "";
+    const refresh = p.get("refresh") || p.get("refreshToken") || "";
     if (token && type) {
       localStorage.setItem("ek_token", token);
       localStorage.setItem("ek_refresh", refresh);

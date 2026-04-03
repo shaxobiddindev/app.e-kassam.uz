@@ -16,7 +16,8 @@ async function tryRefreshToken() {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Device-Id": deviceId,
+        "Accept":       "application/json",
+        "X-Device-Id":  deviceId,
       },
       body: JSON.stringify({ refreshToken: refresh }),
     });
@@ -26,10 +27,22 @@ async function tryRefreshToken() {
       return false;
     }
 
-    const json = await res.json();
+    const json = await res.json().catch(() => ({}));
+    if (!json.success) {
+      console.error("Refresh failed (Backend):", json.message);
+      _refreshFailed = true;
+      return false;
+    }
+
     const newToken   = json?.data?.accessToken;
     const newRefresh = json?.data?.refreshToken;
-    if (!newToken) { _refreshFailed = true; return false; }
+    if (!newToken) {
+      console.error("Refresh failed: No access token in response");
+      _refreshFailed = true;
+      return false;
+    }
+
+    _refreshFailed = false; // Reset on success
 
     localStorage.setItem("ek_token",   newToken);
     localStorage.setItem("ek_refresh", newRefresh || refresh);
@@ -60,6 +73,7 @@ async function request(path, options = {}, _retry = false) {
   // Token muddati o'tgan — refresh qilib qayta urinib ko'r
   if (res.status === 401 && !_retry) {
     if (path.includes("/auth/login")) {
+      _refreshFailed = false; // New login — reset refresh state
       const json = await res.json().catch(() => ({}));
       throw new Error(json.message || `Xatolik: ${res.status}`);
     }
