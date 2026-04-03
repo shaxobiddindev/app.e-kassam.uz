@@ -5,9 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="04fb854c-40bd-40a9-a6b1-62cd06e0405f" name="Changes" comment="update package.json">
-      <change afterPath="$PROJECT_DIR$/src/pages/NotFound.jsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/App.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/App.jsx" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -112,7 +110,7 @@
       <workItem from="1772533405823" duration="724000" />
       <workItem from="1772772047410" duration="63000" />
       <workItem from="1772775958168" duration="28000" />
-      <workItem from="1774508244449" duration="604000" />
+      <workItem from="1774508244449" duration="1425000" />
     </task>
     <task id="LOCAL-00001" summary="urls updated">
       <option name="closed" value="true" />

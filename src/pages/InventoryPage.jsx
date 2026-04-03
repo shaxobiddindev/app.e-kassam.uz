@@ -8,6 +8,7 @@ export default function InventoryPage({ toast }) {
   const [loading, setLoading] = useState(true);
   const [modal, setModal]     = useState(null); // null | inventoryItem
   const [qty, setQty]         = useState("");
+  const [expiryDate, setExpiryDate] = useState("");
   const [saving, setSaving]   = useState(false);
 
   const loadData = async () => {
@@ -27,6 +28,7 @@ export default function InventoryPage({ toast }) {
   const openModal = (item) => {
     setModal(item);
     setQty("");
+    setExpiryDate("");
   };
 
   const handleAddStock = async () => {
@@ -34,9 +36,13 @@ export default function InventoryPage({ toast }) {
       toast.error("Miqdorni kiriting");
       return;
     }
+    if (!expiryDate) {
+      toast.error("Yaroqlilik muddatini kiritish majburiy");
+      return;
+    }
     setSaving(true);
     try {
-      await inventoryApi.addStock(modal.productId, Number(qty));
+      await inventoryApi.addStock(modal.productId, Number(qty), expiryDate);
       toast.success(`${qty} dona kirim qilindi`);
       setModal(null);
       loadData();
@@ -168,9 +174,19 @@ export default function InventoryPage({ toast }) {
               min="1"
               value={qty}
               onChange={(e) => setQty(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleAddStock()}
               placeholder="masalan: 50"
               autoFocus
+            />
+          </div>
+
+          <div className="form-group" style={{ marginTop: 14 }}>
+            <label className="form-label">Yaroqlilik muddati *</label>
+            <input
+              className="form-input"
+              type="date"
+              value={expiryDate}
+              onChange={(e) => setExpiryDate(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleAddStock()}
             />
           </div>
         </Modal>

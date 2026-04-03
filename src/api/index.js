@@ -126,10 +126,10 @@ export const productApi = {
 export const inventoryApi = {
   getAll: () => request("/inventory"),
   getLow: () => request("/inventory/low-stock"),
-  addStock: (productId, qty) =>
+  addStock: (productId, qty, expiryDate) =>
     request(`/inventory/product/${productId}/add`, {
       method: "PATCH",
-      body: JSON.stringify({ quantity: Number(qty) }),
+      body: JSON.stringify({ quantity: Number(qty), expiryDate }),
     }),
   correct: (productId, qty) =>
     request(`/inventory/product/${productId}/correct`, {
