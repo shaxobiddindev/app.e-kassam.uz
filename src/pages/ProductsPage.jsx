@@ -3,12 +3,14 @@ import { productApi } from "../api";
 import { money } from "../utils";
 import Modal from "../components/Modal";
 import { Loader, Empty, SearchBar, FormGroup } from "../components/ui";
+import { useConfirm } from "../context/ConfirmProvider";
 
 const EMPTY_FORM = {
   name: "", barcode: "", salePrice: "", costPrice: "", categoryId: "",
 };
 
 export default function ProductsPage({ toast }) {
+  const confirm = useConfirm();
   const [products, setProducts]   = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading]     = useState(true);

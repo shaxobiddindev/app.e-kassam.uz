@@ -3,7 +3,7 @@ import { shopApi } from "../../api";
 import { Loader, Empty, FormGroup, Badge } from "../../components/ui";
 import Modal from "../../components/Modal";
 import { useAuth } from "../../hooks/useAuth";
-import { useConfirm } from "../../context/ConfirmContext";
+import { useConfirm } from "../../context/ConfirmProvider";
 
 const ROLE_OPTIONS = ["ADMIN", "STOREKEEPER", "CASHIER"];
 const ROLE_LABELS = { ADMIN: "Admin", STOREKEEPER: "Omborchi", CASHIER: "Kassir", OWNER: "Egasi" };

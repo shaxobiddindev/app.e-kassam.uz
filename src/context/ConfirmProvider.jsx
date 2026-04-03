@@ -9,7 +9,7 @@ export function ConfirmProvider({ children }) {
     title: "",
     message: "",
     resolve: null,
-    type: "info",
+    type: "info", // info, danger, warning
   });
 
   const confirm = useCallback(({ title, message, type = "info" }) => {

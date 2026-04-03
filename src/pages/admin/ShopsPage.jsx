@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { shopAdminApi } from "../../api";
 import Modal from "../../components/Modal";
 import { Loader, Empty, SearchBar, FormGroup, Badge } from "../../components/ui";
-import { useConfirm } from "../../context/ConfirmContext";
+import { useConfirm } from "../../context/ConfirmProvider";
 
 // ─── Status config ────────────────────────────────────────────
 const STATUS_MAP = {

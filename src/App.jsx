@@ -1,4 +1,5 @@
 import "./styles.css";
+/* BUILD_ID: EMERGENCY_FIX_V2_1934 */
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { LOGIN_URL } from "./config";
 import { useAuth }  from "./hooks/useAuth";
@@ -7,7 +8,7 @@ import { useToast } from "./hooks/useToast";
 
 import Toast            from "./components/Toast";
 import Layout           from "./components/Layout";
-import { ConfirmProvider } from "./context/ConfirmContext";
+import { ConfirmProvider } from "./context/ConfirmProvider";
 import DashboardPage    from "./pages/DashboardPage";
 import ProductsPage     from "./pages/ProductsPage";
 import InventoryPage    from "./pages/InventoryPage";
@@ -21,76 +22,61 @@ import ShopsPage        from "./pages/admin/ShopsPage";
 import ShopUsersPage    from "./pages/admin/ShopUsersPage";
 import NotFound from "./pages/NotFound";
 
-// ── URL dan token olib localStorage ga yozish ────────────────
+// ── Auth Handling ────────────────────────────────────────────
 const urlParams = new URLSearchParams(window.location.search);
 const authParam = urlParams.get("auth");
 if (authParam) {
   try {
     const p = new URLSearchParams(decodeURIComponent(authParam));
-    const parsedToken    = p.get("token")    || "";
-    const parsedType     = p.get("type")     || "";
-    const parsedUsername = p.get("username") || "";
-    const parsedFullName = p.get("fullName") || parsedUsername;
-    
-    // Agar backend bir nechta &role= qilib jo'natgan bo'lsa (masalan: ADMIN, OWNER, CASHIER)
+    const token = p.get("token") || "";
+    const type = p.get("type") || "";
+    const username = p.get("username") || "";
+    const fullName = p.get("fullName") || username;
     const rolesArray = p.getAll("role");
-    let parsedRole = "";
+    let role = "";
     if (rolesArray.length > 0) {
       const fullRolesStr = rolesArray.join(",").toUpperCase();
-      if (fullRolesStr.includes("SUPERADMIN")) parsedRole = "SUPERADMIN";
-      else if (fullRolesStr.includes("OWNER")) parsedRole = "OWNER";
-      else if (fullRolesStr.includes("SHOP_ADMIN")) parsedRole = "SHOP_ADMIN";
-      else if (fullRolesStr.includes("ADMIN")) parsedRole = "ADMIN";
-      else if (fullRolesStr.includes("STOREKEEPER")) parsedRole = "STOREKEEPER";
-      else if (fullRolesStr.includes("CASHIER")) parsedRole = "CASHIER";
-      else parsedRole = rolesArray[0];
-    } else {
-      parsedRole = p.get("role") || "";
+      if (fullRolesStr.includes("SUPERADMIN")) role = "SUPERADMIN";
+      else if (fullRolesStr.includes("OWNER")) role = "OWNER";
+      else if (fullRolesStr.includes("SHOP_ADMIN")) role = "SHOP_ADMIN";
+      else if (fullRolesStr.includes("ADMIN")) role = "ADMIN";
+      else if (fullRolesStr.includes("STOREKEEPER")) role = "STOREKEEPER";
+      else if (fullRolesStr.includes("CASHIER")) role = "CASHIER";
+      else role = rolesArray[0];
+    } else { role = p.get("role") || ""; }
+    const shopCode = p.get("shopCode") || "";
+    const refresh = p.get("refresh") || "";
+    if (token && type) {
+      localStorage.setItem("ek_token", token);
+      localStorage.setItem("ek_refresh", refresh);
+      localStorage.setItem("ek_type", type);
+      localStorage.setItem("ek_username", username);
+      localStorage.setItem("ek_fullName", fullName);
+      localStorage.setItem("ek_role", role);
+      localStorage.setItem("ek_shopCode", shopCode);
     }
-
-    const parsedShopCode = p.get("shopCode") || "";
-    const parsedRefresh  = p.get("refresh")  || "";
-
-    console.log("[APP] auth param parsed → type:", parsedType, "| roles:", rolesArray, "| finalRole:", parsedRole);
-
-    if (parsedToken && parsedType) {
-      localStorage.setItem("ek_token",    parsedToken);
-      localStorage.setItem("ek_refresh",  parsedRefresh);
-      localStorage.setItem("ek_type",     parsedType);
-      localStorage.setItem("ek_username", parsedUsername);
-      localStorage.setItem("ek_fullName", parsedFullName);
-      localStorage.setItem("ek_role",     parsedRole);
-      localStorage.setItem("ek_shopCode", parsedShopCode);
-    }
-  } catch(e) {
-    console.error("[APP] auth param parse xatosi:", e);
-  }
+  } catch(e) {}
   window.history.replaceState({}, "", window.location.pathname);
 }
 
-// ── Tekshiruv ────────────────────────────────────────────────
-const token = localStorage.getItem("ek_token");
-const type  = localStorage.getItem("ek_type");
-console.log("[APP] token check → token:", token?.slice(0,20), "| type:", type);
-if (!token || type !== "user") {
+const localToken = localStorage.getItem("ek_token");
+const localType = localStorage.getItem("ek_type");
+if (!localToken || localType !== "user") {
   localStorage.clear();
   window.location.replace(`${LOGIN_URL}?logged_out=1`);
 }
 
-// ── Ruxsatlarni himoyalovchi komponent (RBAC) ────────────────
 const ProtectedRoute = ({ user, roles, children }) => {
   if (!user) return <Navigate to={LOGIN_URL} replace />;
   if (roles && user.role && user.role !== "OWNER") {
-    if (!roles.includes(user.role)) {
-      return <Navigate to="/" replace />; // ruxsatsiz yo'llar dashboard ga qaytadi
-    }
+    if (!roles.includes(user.role)) return <Navigate to="/" replace />;
   }
   return children;
 };
 
 export default function App() {
-  const { user, logout }                               = useAuth();
-  const { toasts, toast, dismiss }                     = useToast();
+  const { user, logout }                                  = useAuth();
+  const { toasts, toast, dismiss }                        = useToast();
   const { lowStockItems, lowStockCount, refreshLowStock } = useLowStock();
 
   if (!user) return null;
@@ -107,61 +93,17 @@ export default function App() {
           lowStockCount={lowStockCount}
         >
           <Routes>
-            <Route path="/" element={
-              <ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "STOREKEEPER", "OWNER"]}>
-                <DashboardPage toast={toast} />
-              </ProtectedRoute>
-            } />
-            <Route path="/sale" element={
-              <ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"]}>
-                <KassaPage toast={toast} />
-              </ProtectedRoute>
-            } />
-            <Route path="/products" element={
-              <ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}>
-                <ProductsPage toast={toast} />
-              </ProtectedRoute>
-            } />
-            <Route path="/categories" element={
-              <ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}>
-                <CategoriesPage toast={toast} />
-              </ProtectedRoute>
-            } />
-            <Route path="/inventory" element={
-              <ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}>
-                <InventoryPage toast={toast} refreshLowStock={refreshLowStock} />
-              </ProtectedRoute>
-            } />
-            <Route path="/customers" element={
-              <ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"]}>
-                <CustomersPage toast={toast} />
-              </ProtectedRoute>
-            } />
-            <Route path="/sales" element={
-              <ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"]}>
-                <SalesPage toast={toast} />
-              </ProtectedRoute>
-            } />
-            <Route path="/reports" element={
-              <ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}>
-                <ReportsPage toast={toast} />
-              </ProtectedRoute>
-            } />
-            <Route path="/custom-report" element={
-              <ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}>
-                <CustomReportPage toast={toast} />
-              </ProtectedRoute>
-            } />
-            <Route path="/shop-users" element={
-              <ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}>
-                <ShopUsersPage toast={toast} />
-              </ProtectedRoute>
-            } />
-            <Route path="/shops" element={
-              <ProtectedRoute user={user} roles={["SUPERADMIN"]}>
-                <ShopsPage toast={toast} />
-              </ProtectedRoute>
-            } />
+            <Route path="/" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "STOREKEEPER", "OWNER"]}><DashboardPage toast={toast} /></ProtectedRoute>} />
+            <Route path="/sale" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"]}><KassaPage toast={toast} /></ProtectedRoute>} />
+            <Route path="/products" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><ProductsPage toast={toast} /></ProtectedRoute>} />
+            <Route path="/categories" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><CategoriesPage toast={toast} /></ProtectedRoute>} />
+            <Route path="/inventory" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><InventoryPage toast={toast} refreshLowStock={refreshLowStock} /></ProtectedRoute>} />
+            <Route path="/customers" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"]}><CustomersPage toast={toast} /></ProtectedRoute>} />
+            <Route path="/sales" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"]}><SalesPage toast={toast} /></ProtectedRoute>} />
+            <Route path="/reports" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><ReportsPage toast={toast} /></ProtectedRoute>} />
+            <Route path="/custom-report" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><CustomReportPage toast={toast} /></ProtectedRoute>} />
+            <Route path="/shop-users" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><ShopUsersPage toast={toast} /></ProtectedRoute>} />
+            <Route path="/shops" element={<ProtectedRoute user={user} roles={["SUPERADMIN"]}><ShopsPage toast={toast} /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Layout>

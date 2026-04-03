@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { productApi } from "../../api";
 import Modal from "../../components/Modal";
 import { Loader, Empty, FormGroup } from "../../components/ui";
-import { useConfirm } from "../../context/ConfirmContext";
+import { useConfirm } from "../../context/ConfirmProvider";
 
 const EMPTY_FORM = { name: "", description: "" };
 

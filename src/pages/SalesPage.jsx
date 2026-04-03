@@ -3,6 +3,7 @@ import { saleApi } from "../api";
 import { money } from "../utils";
 import Modal from "../components/Modal";
 import { Loader, Empty, SearchBar, Badge } from "../components/ui";
+import { useConfirm } from "../context/ConfirmProvider";
 
 const STATUS_MAP = {
   CREATED:   { label: "Yangi",       color: "blue"   },
@@ -12,6 +13,7 @@ const STATUS_MAP = {
 const PAYMENT_LABELS = { CASH: "💵 Naqd", CARD: "💳 Karta", MIXED: "🔀 Aralash" };
 
 export default function SalesPage({ toast }) {
+  const confirm                   = useConfirm();
   const [sales, setSales]         = useState([]);
   const [loading, setLoading]     = useState(true);
   const [search, setSearch]       = useState("");
@@ -33,7 +35,12 @@ export default function SalesPage({ toast }) {
   useEffect(() => { loadSales(); }, []);
 
   const handleCancel = async (sale) => {
-    if (!window.confirm(`#${sale.id} sotuvni bekor qilishni tasdiqlaysizmi?`)) return;
+    const ok = await confirm({
+      title: "Sotuvni bekor qilish",
+      message: `#${sale.id} raqamli sotuvni bekor qilishni tasdiqlaysizmi? Bu amalni ortga qaytarib bo'lmaydi.`,
+      type: "danger"
+    });
+    if (!ok) return;
     setCancelling(sale.id);
     try {
       await saleApi.cancel(sale.id);
