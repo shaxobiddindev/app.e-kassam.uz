@@ -59,18 +59,20 @@ async function request(path, options = {}, _retry = false) {
 
   // Token muddati o'tgan — refresh qilib qayta urinib ko'r
   if (res.status === 401 && !_retry) {
-    const tokenExpired = res.headers.get("X-Token-Expired") === "true";
-    if (tokenExpired) {
-      const refreshed = await tryRefreshToken();
-      if (refreshed) {
-        // Yangi token bilan qayta so'rov
-        return request(path, options, true);
-      } else {
-        // Refresh ham ishlamadi — login ga
-        localStorage.clear();
-        window.location.replace(`${LOGIN_URL}?logged_out=1`);
-        return {};
-      }
+    if (path.includes("/auth/login")) {
+      const json = await res.json().catch(() => ({}));
+      throw new Error(json.message || `Xatolik: ${res.status}`);
+    }
+    
+    const refreshed = await tryRefreshToken();
+    if (refreshed) {
+      // Yangi token bilan qayta so'rov
+      return request(path, options, true);
+    } else {
+      // Refresh ham ishlamadi — login ga
+      localStorage.clear();
+      window.location.replace(`${LOGIN_URL}?logged_out=1`);
+      return {};
     }
   }
 
