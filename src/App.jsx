@@ -1,5 +1,5 @@
 import "./styles.css";
-/* BUILD_ID: EMERGENCY_FIX_V2_1934 */
+/* BUILD_ID: EMERGENCY_FIX_V3_0116 */
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { LOGIN_URL } from "./config";
 import { useAuth }  from "./hooks/useAuth";
@@ -18,7 +18,6 @@ import ReportsPage      from "./pages/ReportsPage";
 import SalesPage        from "./pages/SalesPage";
 import CategoriesPage   from "./pages/admin/CategoriesPage";
 import CustomReportPage from "./pages/admin/CustomReportPage";
-import ShopsPage        from "./pages/admin/ShopsPage";
 import ShopUsersPage    from "./pages/admin/ShopUsersPage";
 import NotFound from "./pages/NotFound";
 
@@ -103,7 +102,6 @@ export default function App() {
             <Route path="/reports" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><ReportsPage toast={toast} /></ProtectedRoute>} />
             <Route path="/custom-report" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><CustomReportPage toast={toast} /></ProtectedRoute>} />
             <Route path="/shop-users" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><ShopUsersPage toast={toast} /></ProtectedRoute>} />
-            <Route path="/shops" element={<ProtectedRoute user={user} roles={["SUPERADMIN"]}><ShopsPage toast={toast} /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Layout>

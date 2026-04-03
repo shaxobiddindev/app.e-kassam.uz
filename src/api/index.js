@@ -157,17 +157,6 @@ export const saleApi = {
   cancel:  (id)          => request(`/sales/${id}/cancel`, { method: "PATCH" }),
 };
 
-// ─── Superadmin: Do'konlar ────────────────────────────────────
-export const shopAdminApi = {
-  getAll:      ()               => request("/superadmin/shops"),
-  getById:     (id)             => request(`/superadmin/shops/${id}`),
-  create:      (data)           => request("/superadmin/shops",       { method: "POST",   body: JSON.stringify(data) }),
-  update:      (id, data)       => request(`/superadmin/shops/${id}`, { method: "PUT",    body: JSON.stringify(data) }),
-  delete:      (id)             => request(`/superadmin/shops/${id}`, { method: "DELETE" }),
-  getUsers:    (shopId)         => request(`/superadmin/shops/${shopId}/users`),
-  createUser:  (shopId, data)   => request(`/superadmin/shops/${shopId}/users`, { method: "POST", body: JSON.stringify(data) }),
-  toggleBlock: (shopId, userId) => request(`/superadmin/shops/${shopId}/users/${userId}/toggle-block`, { method: "PATCH" }),
-};
 
 // ─── Do'kon profili va foydalanuvchilar (Shop admin) ───
 export const shopApi = {
