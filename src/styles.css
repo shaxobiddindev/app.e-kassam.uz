@@ -73,6 +73,7 @@ body {
   z-index: 200; transition: transform .3s, width .3s;
 }
 .sidebar.collapsed { width: var(--sw-c); }
+.sidebar.collapsed .sb-logo { padding: 10px 10px; }
 .sb-logo         { padding: 10px 16px; border-bottom: 1px solid rgba(255,255,255,.08); }
 /* Logo uchun oq fon — to'q ko'k sidebar da ko'rinsin */
 .sb-logo-inner   { background: white; border-radius: 12px; padding: 8px 12px; display: flex; align-items: center; justify-content: center; min-height: 48px; }
@@ -96,8 +97,8 @@ body {
 .sidebar.collapsed .sb-section,
 .sidebar.collapsed .sb-user-info { display: none; }
 .sidebar.collapsed .sb-item { justify-content: center; padding: 10px; }
-.sidebar.collapsed .sb-logo-inner { padding: 8px; border-radius: 8px; }
-.sidebar.collapsed .sb-logo img { width: 32px; height: 32px; object-fit: contain; }
+.sidebar.collapsed .sb-logo-inner { padding: 4px; border-radius: 8px; min-height: 40px; }
+.sidebar.collapsed .sb-logo img { width: 42px; height: 42px; object-fit: contain; }
 
 .sb-toggle {
   position: absolute; top: 72px; right: -12px;
