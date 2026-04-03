@@ -2,16 +2,18 @@ import { useCallback, useEffect, useState } from "react";
 import { shopApi } from "../../api";
 import { Loader, Empty, FormGroup, Badge, confirmDelete } from "../../components/ui";
 import Modal from "../../components/Modal";
+import { useAuth } from "../../hooks/useAuth";
 
-// Ro'yxatdan faqat do'konga kerakli rollar (Superadmin emas)
 const ROLE_OPTIONS = ["ADMIN", "STOREKEEPER", "CASHIER"];
-const ROLE_LABELS = { ADMIN: "Admin", STOREKEEPER: "Omborchi", CASHIER: "Kassir" };
+const ROLE_LABELS = { ADMIN: "Admin", STOREKEEPER: "Omborchi", CASHIER: "Kassir", OWNER: "Egasi" };
 const EMPTY_USER_FORM = { fullName: "", username: "", password: "", role: "CASHIER" };
 
 export default function ShopUsersPage({ toast }) {
+  const { user: currentUser }   = useAuth();
   const [users, setUsers]       = useState([]);
   const [loading, setLoading]   = useState(true);
-  const [addMode, setAddMode]   = useState(false);
+  const [modalMode, setModalMode] = useState(null); // 'add' | 'edit' | null
+  const [editingId, setEditingId] = useState(null);
   const [form, setForm]         = useState(EMPTY_USER_FORM);
   const [saving, setSaving]     = useState(false);
 
@@ -19,35 +21,66 @@ export default function ShopUsersPage({ toast }) {
     setLoading(true);
     try {
       const res = await shopApi.getUsers();
-      setUsers(res.data || []);
+      // Backend allaqachon filtrlaydi, lekin ishonch uchun frontend-da ham o'zini o'chirib tashlaymiz
+      const filtered = (res.data || []).filter(u => u.username !== currentUser?.username);
+      setUsers(filtered);
     } catch (err) {
-      toast.error("Xodimlar yuklanmadi. (API keyinroq ishlashi mumkin)");
-      console.error(err);
-      // Agar backend yuq bo'lsa bo'sh ro'yxat
+      toast.error("Xodimlar yuklanmadi");
       setUsers([]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [currentUser, toast]);
 
   useEffect(() => { loadUsers(); }, [loadUsers]);
 
-  const handleAdd = async () => {
-    if (!form.fullName || !form.username || !form.password) {
+  const handleSave = async () => {
+    if (!form.fullName || (!form.username && modalMode === "add") || (modalMode === "add" && !form.password)) {
       toast.error("Majburiy maydonlarni to'ldiring");
       return;
     }
     setSaving(true);
     try {
-      await shopApi.createUser(form);
-      toast.success("Xodim qo'shildi");
-      setAddMode(false);
+      if (modalMode === "add") {
+        await shopApi.createUser(form);
+        toast.success("Xodim qo'shildi");
+      } else {
+        await shopApi.updateUser(editingId, {
+          fullName: form.fullName,
+          role:     form.role,
+          password: form.password || undefined // Bo'sh bo'lsa parolni o'zgartirmaydi
+        });
+        toast.success("Ma'lumotlar saqlandi");
+      }
+      setModalMode(null);
       setForm(EMPTY_USER_FORM);
       loadUsers();
     } catch (err) {
-      toast.error(err.message || "Xatolik: Xodim qo'shish ishlamayapti");
+      toast.error(err.message || "Xatolik yuz berdi");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleEditClick = (u) => {
+    setEditingId(u.id);
+    setForm({
+      fullName: u.fullName,
+      username: u.username,
+      password: "", // Parol tahrirlanganda ixtiyoriy
+      role:     u.roles?.[0]?.name || u.role || "CASHIER"
+    });
+    setModalMode("edit");
+  };
+
+  const handleDelete = async (userId) => {
+    if (!await confirmDelete("Ushbu xodimni butunlay o'chirib tashlamoqchimisiz?")) return;
+    try {
+      await shopApi.deleteUser(userId);
+      toast.success("Xodim o'chirildi");
+      loadUsers();
+    } catch (err) {
+      toast.error(err.message);
     }
   };
 
@@ -69,9 +102,9 @@ export default function ShopUsersPage({ toast }) {
         <div className="card-header">
           <span className="card-title">
             <i className="fa-solid fa-users-gear text-blue" />
-            Xodimlar
+            Xodimlar boshqaruvi
           </span>
-          <button className="btn btn-primary btn-sm" onClick={() => setAddMode(true)}>
+          <button className="btn btn-primary btn-sm" onClick={() => { setForm(EMPTY_USER_FORM); setModalMode("add"); }}>
             <i className="fa-solid fa-plus" /> Xodim qo'shish
           </button>
         </div>
@@ -85,7 +118,7 @@ export default function ShopUsersPage({ toast }) {
                   <th>Username</th>
                   <th>Rol</th>
                   <th>Status</th>
-                  <th></th>
+                  <th style={{ textAlign: "right" }}>Amallar</th>
                 </tr>
               </thead>
               <tbody>
@@ -113,13 +146,21 @@ export default function ShopUsersPage({ toast }) {
                       </Badge>
                     </td>
                     <td>
-                      <button
-                        className={`btn btn-sm ${u.enabled !== false ? "btn-danger" : "btn-green"}`}
-                        onClick={() => handleToggleBlock(u.id)}
-                      >
-                        <i className={`fa-solid ${u.enabled !== false ? "fa-ban" : "fa-check"}`} />
-                        {u.enabled !== false ? "Bloklash" : "Faollashtirish"}
-                      </button>
+                      <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+                        <button className="btn btn-icon btn-sm" title="Tahrirlash" onClick={() => handleEditClick(u)}>
+                          <i className="fa-solid fa-pen-to-square text-blue" />
+                        </button>
+                        <button
+                          className="btn btn-icon btn-sm"
+                          title={u.enabled !== false ? "Bloklash" : "Faollashtirish"}
+                          onClick={() => handleToggleBlock(u.id)}
+                        >
+                          <i className={`fa-solid ${u.enabled !== false ? "fa-ban text-orange" : "fa-check text-green"}`} />
+                        </button>
+                        <button className="btn btn-icon btn-sm" title="O'chirish" onClick={() => handleDelete(u.id)}>
+                          <i className="fa-solid fa-trash-can text-red" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 )) : (
@@ -131,14 +172,14 @@ export default function ShopUsersPage({ toast }) {
         </div>
       </div>
 
-      {addMode && (
+      {modalMode && (
         <Modal
-          title="Yangi xodim qo'shish"
-          onClose={() => setAddMode(false)}
+          title={modalMode === "add" ? "Yangi xodim qo'shish" : "Xodim ma'lumotlarini tahrirlash"}
+          onClose={() => setModalMode(null)}
           footer={
             <>
-              <button className="btn btn-outline btn-sm" onClick={() => setAddMode(false)}>Bekor</button>
-              <button className="btn btn-primary btn-sm" onClick={handleAdd} disabled={saving}>
+              <button className="btn btn-outline btn-sm" onClick={() => setModalMode(null)}>Bekor</button>
+              <button className="btn btn-primary btn-sm" onClick={handleSave} disabled={saving}>
                 <i className={`fa-solid ${saving ? "fa-spinner fa-spin" : "fa-check"}`} />
                 {saving ? "Saqlanmoqda..." : "Saqlash"}
               </button>
@@ -150,10 +191,16 @@ export default function ShopUsersPage({ toast }) {
           </FormGroup>
           <div className="grid-2">
             <FormGroup label="Username *">
-              <input className="form-input mono" value={form.username} onChange={setField("username")} placeholder="ali" />
+              <input 
+                className="form-input mono" 
+                value={form.username} 
+                onChange={setField("username")} 
+                placeholder="ali" 
+                disabled={modalMode === "edit"} 
+              />
             </FormGroup>
-            <FormGroup label="Parol *">
-              <input className="form-input" type="password" value={form.password} onChange={setField("password")} placeholder="min 6 belgi" />
+            <FormGroup label={modalMode === "add" ? "Parol *" : "Yangi parol (ixtiyoriy)"}>
+              <input className="form-input" type="password" value={form.password} onChange={setField("password")} placeholder={modalMode === "add" ? "min 6 belgi" : "o'zgartirish uchun kiriting"} />
             </FormGroup>
           </div>
           <FormGroup label="Rol *">
@@ -168,3 +215,4 @@ export default function ShopUsersPage({ toast }) {
     </div>
   );
 }
+

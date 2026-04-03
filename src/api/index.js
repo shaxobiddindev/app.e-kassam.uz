@@ -174,5 +174,7 @@ export const shopApi = {
   getProfile: () => request("/shop/profile"),
   getUsers:   () => request("/shop/users"),
   createUser: (data) => request("/shop/users", { method: "POST", body: JSON.stringify(data) }),
+  updateUser: (userId, data) => request(`/shop/users/${userId}`, { method: "PUT", body: JSON.stringify(data) }),
+  deleteUser: (userId) => request(`/shop/users/${userId}`, { method: "DELETE" }),
   toggleBlockUser: (userId) => request(`/shop/users/${userId}/toggle-block`, { method: "PATCH" }),
 };
