@@ -7,6 +7,7 @@ import { useToast } from "./hooks/useToast";
 
 import Toast            from "./components/Toast";
 import Layout           from "./components/Layout";
+import { ConfirmProvider } from "./context/ConfirmContext";
 import DashboardPage    from "./pages/DashboardPage";
 import ProductsPage     from "./pages/ProductsPage";
 import InventoryPage    from "./pages/InventoryPage";
