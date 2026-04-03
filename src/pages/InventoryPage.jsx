@@ -76,6 +76,7 @@ export default function InventoryPage({ toast }) {
                   <th>Mahsulot</th>
                   <th>Miqdor</th>
                   <th>Min. miqdor</th>
+                  <th>Yaroqlilik muddati</th>
                   <th>Holat</th>
                   <th></th>
                 </tr>
@@ -94,7 +95,20 @@ export default function InventoryPage({ toast }) {
                         </td>
                         <td className="text-muted">{item.minQuantity}</td>
                         <td>
-                          {isLow ? (
+                          {item.expiryDate ? (
+                            <span className={`mono ${item.expired ? "text-red fw-700" : "text-muted"}`}>
+                              {item.expiryDate}
+                            </span>
+                          ) : (
+                            <span className="text-muted">—</span>
+                          )}
+                        </td>
+                        <td>
+                          {item.expired ? (
+                            <span className="badge badge-red">
+                              <i className="fa-solid fa-ban" /> Muddati o'tgan
+                            </span>
+                          ) : isLow ? (
                             <span className="badge badge-red">
                               <i className="fa-solid fa-triangle-exclamation" /> Kam
                             </span>
@@ -114,7 +128,7 @@ export default function InventoryPage({ toast }) {
                   })
                 ) : (
                   <tr>
-                    <td colSpan={5}>
+                    <td colSpan={6}>
                       <Empty icon="fa-boxes-stacked" text="Ombor bo'sh" />
                     </td>
                   </tr>
