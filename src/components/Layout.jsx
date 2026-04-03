@@ -4,25 +4,34 @@ import { LOGO_URL, initials } from "../utils";
 
 const NAV_ITEMS = [
   { section: "Asosiy", items: [
-    { id: "dashboard", path: "/",      label: "Dashboard",     icon: "fa-chart-pie",     roles: ["ADMIN", "CASHIER", "STOREKEEPER", "OWNER"] },
-    { id: "sale",      path: "/sale",  label: "Kassa",         icon: "fa-cash-register", roles: ["ADMIN", "CASHIER", "OWNER"] },
+    { id: "dashboard", path: "/",      label: "Dashboard",     icon: "fa-chart-pie",     roles: ["ADMIN", "SHOP_ADMIN", "CASHIER", "STOREKEEPER", "OWNER"] },
+    { id: "sale",      path: "/sale",  label: "Kassa",         icon: "fa-cash-register", roles: ["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"] },
   ]},
   { section: "Do'kon", items: [
-    { id: "products",   path: "/products",   label: "Mahsulotlar",  icon: "fa-box",       roles: ["ADMIN", "STOREKEEPER", "OWNER"] },
-    { id: "categories", path: "/categories", label: "Kategoriyalar",icon: "fa-tags",      roles: ["ADMIN", "STOREKEEPER", "OWNER"] },
-    { id: "inventory",  path: "/inventory",  label: "Ombor",        icon: "fa-warehouse", roles: ["ADMIN", "STOREKEEPER", "OWNER"] },
-    { id: "customers",  path: "/customers",  label: "Mijozlar",     icon: "fa-users",     roles: ["ADMIN", "CASHIER", "OWNER"] },
-    { id: "sales",      path: "/sales",      label: "Sotuvlar",     icon: "fa-receipt",   roles: ["ADMIN", "CASHIER", "OWNER"] },
+    { id: "products",   path: "/products",   label: "Mahsulotlar",  icon: "fa-box",       roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
+    { id: "categories", path: "/categories", label: "Kategoriyalar",icon: "fa-tags",      roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
+    { id: "inventory",  path: "/inventory",  label: "Ombor",        icon: "fa-warehouse", roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
+    { id: "customers",  path: "/customers",  label: "Mijozlar",     icon: "fa-users",     roles: ["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"] },
+    { id: "sales",      path: "/sales",      label: "Sotuvlar",     icon: "fa-receipt",   roles: ["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"] },
   ]},
   { section: "Hisobotlar", items: [
-    { id: "reports",        path: "/reports",       label: "Hisobotlar",    icon: "fa-chart-bar",     roles: ["ADMIN", "OWNER"] },
-    { id: "custom-report",  path: "/custom-report", label: "Maxsus hisobot",icon: "fa-calendar-days", roles: ["ADMIN", "OWNER"] },
+    { id: "reports",        path: "/reports",       label: "Hisobotlar",    icon: "fa-chart-bar",     roles: ["ADMIN", "SHOP_ADMIN", "OWNER"] },
+    { id: "custom-report",  path: "/custom-report", label: "Maxsus hisobot",icon: "fa-calendar-days", roles: ["ADMIN", "SHOP_ADMIN", "OWNER"] },
   ]},
   { section: "Sozlamalar", items: [
-    { id: "shop-users", path: "/shop-users", label: "Xodimlar", icon: "fa-users-gear", roles: ["ADMIN", "OWNER"] },
+    { id: "shop-users", path: "/shop-users", label: "Xodimlar", icon: "fa-users-gear", roles: ["ADMIN", "SHOP_ADMIN", "OWNER"] },
     { id: "shops", path: "/shops", label: "Do'konlar", icon: "fa-store", roles: ["SUPERADMIN"] },
   ]},
 ];
+
+const ROLE_LABELS_MAP = {
+  OWNER: "Do'kon egasi",
+  SHOP_ADMIN: "Admin",
+  ADMIN: "Admin",
+  STOREKEEPER: "Omborchi",
+  CASHIER: "Kassir",
+  SUPERADMIN: "Super Admin"
+};
 
 const PAGE_TITLES = {
   "/":               { label:"Dashboard",        icon:"fa-chart-pie"     },
@@ -202,7 +211,7 @@ function Sidebar({ page, setPage, user, onLogout, open, onClose, isAdmin, lowSto
           <div className="sb-user-info">
             <div className="sb-user-name">{user?.fullName || user?.username}</div>
             <div className="sb-user-role">
-              {user?.role || "Xodim"}
+              {ROLE_LABELS_MAP[user?.role] || user?.role || "Xodim"}
               <i className="fa-solid fa-right-from-bracket" style={{ marginLeft:5 }} />
             </div>
           </div>
