@@ -169,7 +169,10 @@ export const shopAdminApi = {
   toggleBlock: (shopId, userId) => request(`/superadmin/shops/${shopId}/users/${userId}/toggle-block`, { method: "PATCH" }),
 };
 
-// ─── Do'kon profili ───────────────────────────────────────────
+// ─── Do'kon profili va foydalanuvchilar (Shop admin) ───
 export const shopApi = {
   getProfile: () => request("/shop/profile"),
+  getUsers:   () => request("/shop/users"),
+  createUser: (data) => request("/shop/users", { method: "POST", body: JSON.stringify(data) }),
+  toggleBlockUser: (userId) => request(`/shop/users/${userId}/toggle-block`, { method: "PATCH" }),
 };

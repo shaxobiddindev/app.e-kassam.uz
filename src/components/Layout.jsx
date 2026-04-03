@@ -1,38 +1,41 @@
 import { useState } from "react";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { LOGO_URL, initials } from "../utils";
 
 const NAV_ITEMS = [
   { section: "Asosiy", items: [
-    { id: "dashboard", label: "Dashboard",     icon: "fa-chart-pie"    },
-    { id: "sale",      label: "Kassa",         icon: "fa-cash-register" },
+    { id: "dashboard", path: "/",      label: "Dashboard",     icon: "fa-chart-pie",     roles: ["ADMIN", "CASHIER", "STOREKEEPER", "OWNER"] },
+    { id: "sale",      path: "/sale",  label: "Kassa",         icon: "fa-cash-register", roles: ["ADMIN", "CASHIER", "OWNER"] },
   ]},
   { section: "Do'kon", items: [
-    { id: "products",   label: "Mahsulotlar",  icon: "fa-box"          },
-    { id: "categories", label: "Kategoriyalar",icon: "fa-tags"         },
-    { id: "inventory",  label: "Ombor",        icon: "fa-warehouse"    },
-    { id: "customers",  label: "Mijozlar",     icon: "fa-users"        },
-    { id: "sales",      label: "Sotuvlar",     icon: "fa-receipt"      },
+    { id: "products",   path: "/products",   label: "Mahsulotlar",  icon: "fa-box",       roles: ["ADMIN", "STOREKEEPER", "OWNER"] },
+    { id: "categories", path: "/categories", label: "Kategoriyalar",icon: "fa-tags",      roles: ["ADMIN", "STOREKEEPER", "OWNER"] },
+    { id: "inventory",  path: "/inventory",  label: "Ombor",        icon: "fa-warehouse", roles: ["ADMIN", "STOREKEEPER", "OWNER"] },
+    { id: "customers",  path: "/customers",  label: "Mijozlar",     icon: "fa-users",     roles: ["ADMIN", "CASHIER", "OWNER"] },
+    { id: "sales",      path: "/sales",      label: "Sotuvlar",     icon: "fa-receipt",   roles: ["ADMIN", "CASHIER", "OWNER"] },
   ]},
   { section: "Hisobotlar", items: [
-    { id: "reports",        label: "Hisobotlar",    icon: "fa-chart-bar"     },
-    { id: "custom-report",  label: "Maxsus hisobot",icon: "fa-calendar-days" },
+    { id: "reports",        path: "/reports",       label: "Hisobotlar",    icon: "fa-chart-bar",     roles: ["ADMIN", "OWNER"] },
+    { id: "custom-report",  path: "/custom-report", label: "Maxsus hisobot",icon: "fa-calendar-days", roles: ["ADMIN", "OWNER"] },
   ]},
-  { section: "Admin", adminOnly: true, items: [
-    { id: "shops", label: "Do'konlar", icon: "fa-store" },
+  { section: "Sozlamalar", items: [
+    { id: "shop-users", path: "/shop-users", label: "Xodimlar", icon: "fa-users-gear", roles: ["ADMIN", "OWNER"] },
+    { id: "shops", path: "/shops", label: "Do'konlar", icon: "fa-store", roles: ["SUPERADMIN"] },
   ]},
 ];
 
 const PAGE_TITLES = {
-  dashboard:       { label:"Dashboard",        icon:"fa-chart-pie"     },
-  sale:            { label:"Kassa",            icon:"fa-cash-register" },
-  products:        { label:"Mahsulotlar",      icon:"fa-box"           },
-  categories:      { label:"Kategoriyalar",    icon:"fa-tags"          },
-  inventory:       { label:"Ombor",            icon:"fa-warehouse"     },
-  customers:       { label:"Mijozlar",         icon:"fa-users"         },
-  sales:           { label:"Sotuvlar tarixi",  icon:"fa-receipt"       },
-  reports:         { label:"Hisobotlar",       icon:"fa-chart-bar"     },
-  "custom-report": { label:"Maxsus hisobot",   icon:"fa-calendar-days" },
-  shops:           { label:"Do'konlar",        icon:"fa-store"         },
+  "/":               { label:"Dashboard",        icon:"fa-chart-pie"     },
+  "/sale":           { label:"Kassa",            icon:"fa-cash-register" },
+  "/products":       { label:"Mahsulotlar",      icon:"fa-box"           },
+  "/categories":     { label:"Kategoriyalar",    icon:"fa-tags"          },
+  "/inventory":      { label:"Ombor",            icon:"fa-warehouse"     },
+  "/customers":      { label:"Mijozlar",         icon:"fa-users"         },
+  "/sales":          { label:"Sotuvlar tarixi",  icon:"fa-receipt"       },
+  "/reports":        { label:"Hisobotlar",       icon:"fa-chart-bar"     },
+  "/custom-report":  { label:"Maxsus hisobot",   icon:"fa-calendar-days" },
+  "/shop-users":     { label:"Xodimlar",         icon:"fa-users-gear"    },
+  "/shops":          { label:"Do'konlar",        icon:"fa-store"         },
 };
 
 // ── Low Stock Tooltip popup ─────────────────────────────────
@@ -154,19 +157,27 @@ function Sidebar({ page, setPage, user, onLogout, open, onClose, isAdmin, lowSto
 
       <nav className="sb-nav">
         {NAV_ITEMS.map((group) => {
-          if (group.adminOnly && !isAdmin) return null;
+          // Filter group items based on user role
+          const visibleItems = group.items.filter(item => {
+            if (!item.roles) return true;
+            return item.roles.includes(user?.role) || user?.role === "OWNER";
+          });
+
+          if (visibleItems.length === 0) return null;
+
           return (
             <div key={group.section}>
               <div className="sb-section">{group.section}</div>
-              {group.items.map((item) => (
-                <div key={item.id}
-                  className={`sb-item ${page === item.id ? "active" : ""}`}
-                  onClick={() => { setPage(item.id); onClose(); }}
-                  style={{ position: "relative" }}
+              {visibleItems.map((item) => (
+                <NavLink 
+                  key={item.id}
+                  to={item.path}
+                  onClick={() => onClose()}
+                  className={({ isActive }) => `sb-item ${isActive ? "active" : ""}`}
+                  style={{ position: "relative", display: "flex", alignItems: "center", textDecoration: "none" }}
                 >
                   <i className={`fa-solid ${item.icon}`} />
                   {item.label}
-                  {/* Ombor bo'limida badge */}
                   {item.id === "inventory" && lowStockCount > 0 && (
                     <span style={{
                       marginLeft: "auto", background: "#ef4444", color: "white",
@@ -176,7 +187,7 @@ function Sidebar({ page, setPage, user, onLogout, open, onClose, isAdmin, lowSto
                       {lowStockCount}
                     </span>
                   )}
-                </div>
+                </NavLink>
               ))}
             </div>
           );
@@ -202,9 +213,13 @@ function Sidebar({ page, setPage, user, onLogout, open, onClose, isAdmin, lowSto
 }
 
 // ── Layout ───────────────────────────────────────────────────
-export default function Layout({ page, setPage, user, onLogout, isAdmin, lowStockItems, lowStockCount, children }) {
+export default function Layout({ user, onLogout, isAdmin, lowStockItems, lowStockCount, children }) {
   const [open, setOpen] = useState(false);
-  const title = PAGE_TITLES[page] || PAGE_TITLES.dashboard;
+  const location = useLocation();
+  const navigate = useNavigate();
+  // We identify title by matching current pathname
+  const matchedTitle = Object.keys(PAGE_TITLES).find(k => location.pathname === k) || "/";
+  const title = PAGE_TITLES[matchedTitle] || PAGE_TITLES["/"];
 
   return (
     <div className="app-layout">
@@ -213,7 +228,7 @@ export default function Layout({ page, setPage, user, onLogout, isAdmin, lowStoc
           style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.45)", zIndex:199 }} />
       )}
 
-      <Sidebar page={page} setPage={setPage} user={user} onLogout={onLogout}
+      <Sidebar user={user} onLogout={onLogout}
         open={open} onClose={() => setOpen(false)} isAdmin={isAdmin}
         lowStockCount={lowStockCount} />
 
@@ -232,7 +247,7 @@ export default function Layout({ page, setPage, user, onLogout, isAdmin, lowStoc
           <LowStockBadge
             items={lowStockItems || []}
             count={lowStockCount || 0}
-            onGoInventory={() => setPage("inventory")}
+            onGoInventory={() => navigate("/inventory")}
           />
 
           {isAdmin && (
