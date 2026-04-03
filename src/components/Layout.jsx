@@ -148,6 +148,17 @@ function LowStockBadge({ items, count, onGoInventory }) {
 
 // ── Sidebar ──────────────────────────────────────────────────
 function Sidebar({ page, setPage, user, onLogout, open, onClose, isAdmin, lowStockCount }) {
+  const confirm = useConfirm();
+
+  const handleLogoutClick = async () => {
+    const ok = await confirm({
+      title: "Tizimdan chiqish",
+      message: "Chindan ham tizimdan chiqmoqchimisiz?",
+      type: "warning"
+    });
+    if (ok) onLogout();
+  };
+
   return (
     <aside className={`sidebar ${open ? "open" : ""}`}>
       <div className="sb-logo">
@@ -204,7 +215,7 @@ function Sidebar({ page, setPage, user, onLogout, open, onClose, isAdmin, lowSto
       </nav>
 
       <div className="sb-footer">
-        <div className="sb-user" onClick={onLogout} title="Chiqish">
+        <div className="sb-user" onClick={handleLogoutClick} title="Chiqish">
           <div className="av" style={{ width:34, height:34, borderRadius:9, fontSize:13 }}>
             {initials(user?.fullName || user?.username)}
           </div>

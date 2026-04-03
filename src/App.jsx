@@ -95,69 +95,76 @@ export default function App() {
   if (!user) return null;
 
   return (
-    <BrowserRouter>
-      <Toast toasts={toasts} onDismiss={dismiss} />
-      <Layout user={user} onLogout={logout} isAdmin={user?.role === "SUPERADMIN"}
-        lowStockItems={lowStockItems} lowStockCount={lowStockCount}>
-        <Routes>
-          <Route path="/" element={
-            <ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "STOREKEEPER", "OWNER"]}>
-              <DashboardPage toast={toast} />
-            </ProtectedRoute>
-          } />
-          <Route path="/sale" element={
-            <ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"]}>
-              <KassaPage toast={toast} />
-            </ProtectedRoute>
-          } />
-          <Route path="/products" element={
-            <ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}>
-              <ProductsPage toast={toast} />
-            </ProtectedRoute>
-          } />
-          <Route path="/categories" element={
-            <ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}>
-              <CategoriesPage toast={toast} />
-            </ProtectedRoute>
-          } />
-          <Route path="/inventory" element={
-            <ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}>
-              <InventoryPage toast={toast} refreshLowStock={refreshLowStock} />
-            </ProtectedRoute>
-          } />
-          <Route path="/customers" element={
-            <ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"]}>
-              <CustomersPage toast={toast} />
-            </ProtectedRoute>
-          } />
-          <Route path="/sales" element={
-            <ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"]}>
-              <SalesPage toast={toast} />
-            </ProtectedRoute>
-          } />
-          <Route path="/reports" element={
-            <ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}>
-              <ReportsPage toast={toast} />
-            </ProtectedRoute>
-          } />
-          <Route path="/custom-report" element={
-            <ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}>
-              <CustomReportPage toast={toast} />
-            </ProtectedRoute>
-          } />
-          <Route path="/shop-users" element={
-            <ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}>
-              <ShopUsersPage toast={toast} />
-            </ProtectedRoute>
-          } />
-          <Route path="/shops" element={
-            <ProtectedRoute user={user} roles={["SUPERADMIN"]}>
-              <ShopsPage toast={toast} />
-            </ProtectedRoute>
-          } />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </Layout>
-    </BrowserRouter>
+    <ConfirmProvider>
+      <BrowserRouter>
+        <Toast toasts={toasts} onDismiss={dismiss} />
+        <Layout 
+          user={user} 
+          onLogout={logout} 
+          isAdmin={user?.role === "SUPERADMIN"}
+          lowStockItems={lowStockItems} 
+          lowStockCount={lowStockCount}
+        >
+          <Routes>
+            <Route path="/" element={
+              <ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "STOREKEEPER", "OWNER"]}>
+                <DashboardPage toast={toast} />
+              </ProtectedRoute>
+            } />
+            <Route path="/sale" element={
+              <ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"]}>
+                <KassaPage toast={toast} />
+              </ProtectedRoute>
+            } />
+            <Route path="/products" element={
+              <ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}>
+                <ProductsPage toast={toast} />
+              </ProtectedRoute>
+            } />
+            <Route path="/categories" element={
+              <ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}>
+                <CategoriesPage toast={toast} />
+              </ProtectedRoute>
+            } />
+            <Route path="/inventory" element={
+              <ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}>
+                <InventoryPage toast={toast} refreshLowStock={refreshLowStock} />
+              </ProtectedRoute>
+            } />
+            <Route path="/customers" element={
+              <ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"]}>
+                <CustomersPage toast={toast} />
+              </ProtectedRoute>
+            } />
+            <Route path="/sales" element={
+              <ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"]}>
+                <SalesPage toast={toast} />
+              </ProtectedRoute>
+            } />
+            <Route path="/reports" element={
+              <ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}>
+                <ReportsPage toast={toast} />
+              </ProtectedRoute>
+            } />
+            <Route path="/custom-report" element={
+              <ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}>
+                <CustomReportPage toast={toast} />
+              </ProtectedRoute>
+            } />
+            <Route path="/shop-users" element={
+              <ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}>
+                <ShopUsersPage toast={toast} />
+              </ProtectedRoute>
+            } />
+            <Route path="/shops" element={
+              <ProtectedRoute user={user} roles={["SUPERADMIN"]}>
+                <ShopsPage toast={toast} />
+              </ProtectedRoute>
+            } />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Layout>
+      </BrowserRouter>
+    </ConfirmProvider>
   );
 }

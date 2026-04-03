@@ -87,7 +87,13 @@ export default function ProductsPage({ toast }) {
 
   // ── O'chirish ──────────────────────────────────────────────
   const handleDelete = async (product) => {
-    if (!confirmDelete(product.name)) return;
+    const ok = await confirm({
+      title: "Mahsulotni o'chirish",
+      message: `"${product.name}" mahsulotini o'chirishni tasdiqlaysizmi?`,
+      type: "danger"
+    });
+    if (!ok) return;
+
     try {
       await productApi.delete(product.id);
       toast.success("O'chirildi");

@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { productApi } from "../../api";
 import Modal from "../../components/Modal";
-import { Loader, Empty, FormGroup, confirmDelete } from "../../components/ui";
+import { Loader, Empty, FormGroup } from "../../components/ui";
+import { useConfirm } from "../../context/ConfirmContext";
 
 const EMPTY_FORM = { name: "", description: "" };
 
 export default function CategoriesPage({ toast }) {
+  const confirm = useConfirm();
   const [categories, setCategories] = useState([]);
   const [loading, setLoading]       = useState(true);
   const [modal, setModal]           = useState(null);
@@ -51,7 +53,13 @@ export default function CategoriesPage({ toast }) {
   };
 
   const handleDelete = async (cat) => {
-    if (!confirmDelete(`"${cat.name}"`)) return;
+    const ok = await confirm({
+      title: "Kategoriyani o'chirish",
+      message: `"${cat.name}" mahsulot kategoriyasini o'chirishni tasdiqlaysizmi? Bu mahsulotlarga ta'sir qilishi mumkin.`,
+      type: "danger"
+    });
+    if (!ok) return;
+
     try {
       await productApi.deleteCategory(cat.id);
       toast.success("O'chirildi");

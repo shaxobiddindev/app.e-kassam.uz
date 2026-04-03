@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { shopApi } from "../../api";
-import { Loader, Empty, FormGroup, Badge, confirmDelete } from "../../components/ui";
+import { Loader, Empty, FormGroup, Badge } from "../../components/ui";
 import Modal from "../../components/Modal";
 import { useAuth } from "../../hooks/useAuth";
+import { useConfirm } from "../../context/ConfirmContext";
 
 const ROLE_OPTIONS = ["ADMIN", "STOREKEEPER", "CASHIER"];
 const ROLE_LABELS = { ADMIN: "Admin", STOREKEEPER: "Omborchi", CASHIER: "Kassir", OWNER: "Egasi" };
@@ -10,6 +11,7 @@ const EMPTY_USER_FORM = { fullName: "", username: "", password: "", role: "CASHI
 
 export default function ShopUsersPage({ toast }) {
   const { user: currentUser }   = useAuth();
+  const confirm                 = useConfirm();
   const [users, setUsers]       = useState([]);
   const [loading, setLoading]   = useState(true);
   const [modalMode, setModalMode] = useState(null); // 'add' | 'edit' | null
@@ -153,7 +155,7 @@ export default function ShopUsersPage({ toast }) {
                         <button
                           className="btn btn-icon btn-sm"
                           title={u.enabled !== false ? "Bloklash" : "Faollashtirish"}
-                          onClick={() => handleToggleBlock(u.id)}
+                          onClick={() => handleToggleBlock(u)}
                         >
                           <i className={`fa-solid ${u.enabled !== false ? "fa-ban text-orange" : "fa-check text-green"}`} />
                         </button>

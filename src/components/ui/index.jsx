@@ -75,8 +75,3 @@ export function SearchBar({ value, onChange, placeholder = "Qidirish...", style 
     </div>
   );
 }
-
-// ─── Confirm dialog (oddiy) ──────────────────────────────────
-export function confirmDelete(name = "bu elementni") {
-  return window.confirm(`${name} o'chirishni tasdiqlaysizmi?`);
-}

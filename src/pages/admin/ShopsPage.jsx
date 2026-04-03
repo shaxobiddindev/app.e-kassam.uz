@@ -244,6 +244,7 @@ const ROLE_LABELS = { OWNER: "Egasi", SHOP_ADMIN: "Admin", STOREKEEPER: "Omborch
 const EMPTY_USER_FORM = { fullName: "", username: "", password: "", role: "CASHIER" };
 
 function ShopUsersModal({ shop, onClose, toast }) {
+  const confirm                 = useConfirm();
   const [users, setUsers]       = useState([]);
   const [loading, setLoading]   = useState(true);
   const [addMode, setAddMode]   = useState(false);
@@ -279,9 +280,19 @@ function ShopUsersModal({ shop, onClose, toast }) {
     }
   };
 
-  const handleToggleBlock = async (userId) => {
+  const handleToggleBlock = async (u) => {
+    const isActivating = u.enabled === false;
+    const ok = await confirm({
+      title: isActivating ? "Foydalanuvchini faollashtirish" : "Foydalanuvchini bloklash",
+      message: isActivating 
+        ? `${u.fullName} ni blokdan chiqarishni tasdiqlaysizmi?`
+        : `Chindan ham ${u.fullName} ni bloklamoqchimisiz?`,
+      type: isActivating ? "info" : "warning"
+    });
+    if (!ok) return;
+
     try {
-      await shopAdminApi.toggleBlock(shop.id, userId);
+      await shopAdminApi.toggleBlock(shop.id, u.id);
       toast.success("Holat o'zgartirildi");
       loadUsers();
     } catch (err) {
@@ -366,7 +377,7 @@ function ShopUsersModal({ shop, onClose, toast }) {
                 </Badge>
                 <button
                   className={`btn btn-sm ${u.enabled ? "btn-danger" : "btn-green"}`}
-                  onClick={() => handleToggleBlock(u.id)}
+                  onClick={() => handleToggleBlock(u)}
                   title={u.enabled ? "Bloklash" : "Blokdan chiqarish"}
                 >
                   <i className={`fa-solid ${u.enabled ? "fa-ban" : "fa-check"}`} />

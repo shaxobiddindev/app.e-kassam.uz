@@ -2,11 +2,13 @@ import { useEffect, useState } from "react";
 import { customerApi } from "../api";
 import { money } from "../utils";
 import Modal from "../components/Modal";
-import { Loader, Empty, SearchBar, Avatar, FormGroup, confirmDelete } from "../components/ui";
+import { Loader, Empty, SearchBar, Avatar, FormGroup } from "../components/ui";
+import { useConfirm } from "../context/ConfirmContext";
 
 const EMPTY_FORM = { fullName: "", phone: "" };
 
 export default function CustomersPage({ toast }) {
+  const confirm = useConfirm();
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading]     = useState(true);
   const [search, setSearch]       = useState("");
