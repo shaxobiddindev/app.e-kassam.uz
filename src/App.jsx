@@ -30,11 +30,27 @@ if (authParam) {
     const parsedType     = p.get("type")     || "";
     const parsedUsername = p.get("username") || "";
     const parsedFullName = p.get("fullName") || parsedUsername;
-    const parsedRole     = p.get("role")     || "";
+    
+    // Agar backend bir nechta &role= qilib jo'natgan bo'lsa (masalan: ADMIN, OWNER, CASHIER)
+    const rolesArray = p.getAll("role");
+    let parsedRole = "";
+    if (rolesArray.length > 0) {
+      const fullRolesStr = rolesArray.join(",").toUpperCase();
+      if (fullRolesStr.includes("SUPERADMIN")) parsedRole = "SUPERADMIN";
+      else if (fullRolesStr.includes("OWNER")) parsedRole = "OWNER";
+      else if (fullRolesStr.includes("SHOP_ADMIN")) parsedRole = "SHOP_ADMIN";
+      else if (fullRolesStr.includes("ADMIN")) parsedRole = "ADMIN";
+      else if (fullRolesStr.includes("STOREKEEPER")) parsedRole = "STOREKEEPER";
+      else if (fullRolesStr.includes("CASHIER")) parsedRole = "CASHIER";
+      else parsedRole = rolesArray[0];
+    } else {
+      parsedRole = p.get("role") || "";
+    }
+
     const parsedShopCode = p.get("shopCode") || "";
     const parsedRefresh  = p.get("refresh")  || "";
 
-    console.log("[APP] auth param parsed → type:", parsedType, "| token:", parsedToken.slice(0,20));
+    console.log("[APP] auth param parsed → type:", parsedType, "| roles:", rolesArray, "| finalRole:", parsedRole);
 
     if (parsedToken && parsedType) {
       localStorage.setItem("ek_token",    parsedToken);
