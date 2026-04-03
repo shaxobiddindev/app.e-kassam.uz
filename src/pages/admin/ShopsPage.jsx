@@ -247,7 +247,16 @@ export default function ShopsPage({ toast }) {
 
 // ─── Do'kon foydalanuvchilari modali ─────────────────────────
 const ROLE_OPTIONS = ["OWNER", "SHOP_ADMIN", "STOREKEEPER", "CASHIER"];
-const ROLE_LABELS = { OWNER: "Egasi", SHOP_ADMIN: "Admin", STOREKEEPER: "Omborchi", CASHIER: "Kassir" };
+const ROLE_LABELS = { 
+  OWNER: "Egasi", 
+  SHOP_ADMIN: "Admin", 
+  STOREKEEPER: "Omborchi", 
+  CASHIER: "Kassir",
+  ROLE_OWNER: "Egasi",
+  ROLE_SHOP_ADMIN: "Admin",
+  ROLE_STOREKEEPER: "Omborchi",
+  ROLE_CASHIER: "Kassir"
+};
 const EMPTY_USER_FORM = { fullName: "", username: "", password: "", role: "CASHIER" };
 
 function ShopUsersModal({ shop, onClose, toast }) {
@@ -374,11 +383,11 @@ function ShopUsersModal({ shop, onClose, toast }) {
                 <div className="text-muted mono" style={{ fontSize: 12 }}>@{u.username}</div>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                {u.roles?.map((r) => (
+                {(u.roles && u.roles.length > 0) ? u.roles.map((r) => (
                   <Badge key={r.id || r.name} color="blue">
                     {ROLE_LABELS[r.name] || r.name}
                   </Badge>
-                ))}
+                )) : <Badge color="blue">{ROLE_LABELS[u.role] || u.role || "Xodim"}</Badge>}
                 <Badge color={u.enabled ? "green" : "red"}>
                   {u.enabled ? "Aktiv" : "Bloklangan"}
                 </Badge>

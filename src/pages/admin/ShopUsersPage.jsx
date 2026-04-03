@@ -6,7 +6,16 @@ import { useAuth } from "../../hooks/useAuth";
 import { useConfirm } from "../../context/ConfirmProvider";
 
 const ROLE_OPTIONS = ["ADMIN", "STOREKEEPER", "CASHIER"];
-const ROLE_LABELS = { ADMIN: "Admin", STOREKEEPER: "Omborchi", CASHIER: "Kassir", OWNER: "Egasi" };
+const ROLE_LABELS = { 
+  ADMIN: "Admin", 
+  STOREKEEPER: "Omborchi", 
+  CASHIER: "Kassir", 
+  OWNER: "Egasi",
+  ROLE_ADMIN: "Admin",
+  ROLE_STOREKEEPER: "Omborchi",
+  ROLE_CASHIER: "Kassir",
+  ROLE_OWNER: "Egasi"
+};
 const EMPTY_USER_FORM = { fullName: "", username: "", password: "", role: "CASHIER" };
 
 export default function ShopUsersPage({ toast }) {
@@ -151,11 +160,17 @@ export default function ShopUsersPage({ toast }) {
                     </td>
                     <td><span className="mono text-muted">@{u.username}</span></td>
                     <td>
-                      {u.roles?.map((r) => (
-                        <Badge key={r.id || r.name} color="blue">
-                          {ROLE_LABELS[r.name] || r.name}
+                      {(u.roles && u.roles.length > 0) ? (
+                        u.roles.map((r) => (
+                          <Badge key={r.id || r.name} color="blue">
+                            {ROLE_LABELS[r.name] || r.name}
+                          </Badge>
+                        ))
+                      ) : (
+                        <Badge color="blue">
+                          {ROLE_LABELS[u.role] || u.role || "Xodim"}
                         </Badge>
-                      )) || <Badge color="blue">{ROLE_LABELS[u.role] || u.role}</Badge>}
+                      )}
                     </td>
                     <td>
                       <Badge color={u.enabled !== false ? "green" : "red"}>

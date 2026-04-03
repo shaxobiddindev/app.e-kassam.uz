@@ -83,6 +83,7 @@ body {
   font-size: 13.5px; font-weight: 700;
   color: rgba(255,255,255,.58);
   cursor: pointer; transition: .2s; margin-bottom: 2px;
+  text-decoration: none !important;
 }
 .sb-item:hover   { background: rgba(255,255,255,.09); color: white; }
 .sb-item.active  { background: var(--blue); color: white; box-shadow: 0 4px 12px rgba(1,125,202,.4); }

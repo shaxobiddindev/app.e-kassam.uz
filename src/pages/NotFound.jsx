@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { LOGIN_URL, APP_URL, LOGO_URL } from "../config";
+import { LOGIN_URL, LOGO_URL } from "../config";
 
 export default function NotFound() {
     const [seconds, setSeconds] = useState(10);
@@ -21,38 +21,33 @@ export default function NotFound() {
             <style>{`
         .nf-body {
           font-family: 'DM Sans', sans-serif;
-          background: #0a0f1e;
           color: white;
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          min-height: 100vh;
+          min-height: calc(100vh - 120px);
           text-align: center;
           padding: 24px;
+          border-radius: 18px;
           overflow: hidden;
           position: relative;
         }
         .nf-bg {
-          position: fixed; inset: 0; z-index: 0;
+          position: absolute; inset: 0; z-index: 0;
+          background: #0a0f1e;
           background:
             radial-gradient(ellipse 60% 50% at 50% 50%, rgba(1,125,202,0.15) 0%, transparent 60%),
             linear-gradient(160deg, #0a0f1e 0%, #0d1829 100%);
         }
         .nf-orb {
-          position: fixed; border-radius: 50%;
+          position: absolute; border-radius: 50%;
           filter: blur(80px); pointer-events: none;
           animation: nfFloat 10s ease-in-out infinite;
         }
         .nf-orb1 { width:500px; height:500px; background:rgba(1,125,202,0.1); top:-150px; right:-100px; }
         .nf-orb2 { width:300px; height:300px; background:rgba(0,212,170,0.07); bottom:-50px; left:-50px; animation-delay:4s; }
         @keyframes nfFloat { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-20px);} }
-
-        .nf-logo {
-          position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
-          z-index: 10; text-decoration: none;
-        }
-        .nf-logo img { height: 36px; width: auto; object-fit: contain; display: block; }
 
         .nf-content { position: relative; z-index: 1; max-width: 520px; }
 
@@ -127,52 +122,50 @@ export default function NotFound() {
         .nf-quick-link i { font-size: 12px; color: #00d4aa; }
       `}</style>
 
-            <div className="nf-bg" />
-            <div className="nf-orb nf-orb1" />
-            <div className="nf-orb nf-orb2" />
+            <div className="nf-body">
+                <div className="nf-bg" />
+                <div className="nf-orb nf-orb1" />
+                <div className="nf-orb nf-orb2" />
 
-            <a href="https://e-kassam.uz" className="nf-logo">
-                <img src={LOGO_URL} alt="e-Kassam" />
-            </a>
+                <div className="nf-content">
+                    <div className="nf-num">404</div>
+                    <div className="nf-icon">🔍</div>
+                    <h1 className="nf-title">Sahifa topilmadi</h1>
+                    <p className="nf-desc">
+                        Siz qidirayotgan sahifa ko'chirilgan, o'chirilgan yoki hech qachon mavjud bo'lmagan.
+                        Iltimos, URLni tekshiring yoki bosh sahifaga qayting.
+                    </p>
 
-            <div className="nf-content">
-                <div className="nf-num">404</div>
-                <div className="nf-icon">🔍</div>
-                <h1 className="nf-title">Sahifa topilmadi</h1>
-                <p className="nf-desc">
-                    Siz qidirayotgan sahifa ko'chirilgan, o'chirilgan yoki hech qachon mavjud bo'lmagan.
-                    Iltimos, URLni tekshiring yoki bosh sahifaga qayting.
-                </p>
+                    <div className="nf-btns">
+                        <button className="nf-btn-home" onClick={() => navigate("/")}>
+                            <i className="fa-solid fa-house" /> Bosh sahifa
+                        </button>
+                        <button className="nf-btn-back" onClick={() => window.history.back()}>
+                            <i className="fa-solid fa-arrow-left" /> Orqaga
+                        </button>
+                    </div>
 
-                <div className="nf-btns">
-                    <button className="nf-btn-home" onClick={() => navigate("/")}>
-                        <i className="fa-solid fa-house" /> Bosh sahifa
-                    </button>
-                    <button className="nf-btn-back" onClick={() => window.history.back()}>
-                        <i className="fa-solid fa-arrow-left" /> Orqaga
-                    </button>
-                </div>
+                    <div className="nf-countdown">
+                        <i className="fa-solid fa-rotate-right" />
+                        Avtomatik yo'naltirish: <span>{seconds}</span> soniyada
+                    </div>
 
-                <div className="nf-countdown">
-                    <i className="fa-solid fa-rotate-right" />
-                    Avtomatik yo'naltirish: <span>{seconds}</span> soniyada
-                </div>
-
-                <div className="nf-quick">
-                    <p>Foydali havolalar</p>
-                    <div className="nf-quick-list">
-                        <a href="https://e-kassam.uz/#xususiyatlar" className="nf-quick-link">
-                            <i className="fa-solid fa-star" /> Xususiyatlar
-                        </a>
-                        <a href="https://e-kassam.uz/#narx" className="nf-quick-link">
-                            <i className="fa-solid fa-tag" /> Narxlar
-                        </a>
-                        <a href="https://e-kassam.uz/#aloqa" className="nf-quick-link">
-                            <i className="fa-solid fa-envelope" /> Aloqa
-                        </a>
-                        <a href={LOGIN_URL} className="nf-quick-link">
-                            <i className="fa-solid fa-arrow-right-to-bracket" /> Kirish
-                        </a>
+                    <div className="nf-quick">
+                        <p>Foydali havolalar</p>
+                        <div className="nf-quick-list">
+                            <a href="https://e-kassam.uz/#xususiyatlar" className="nf-quick-link">
+                                <i className="fa-solid fa-star" /> Xususiyatlar
+                            </a>
+                            <a href="https://e-kassam.uz/#narx" className="nf-quick-link">
+                                <i className="fa-solid fa-tag" /> Narxlar
+                            </a>
+                            <a href="https://e-kassam.uz/#aloqa" className="nf-quick-link">
+                                <i className="fa-solid fa-envelope" /> Aloqa
+                            </a>
+                            <a href={LOGIN_URL} className="nf-quick-link">
+                                <i className="fa-solid fa-arrow-right-to-bracket" /> Kirish
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>
