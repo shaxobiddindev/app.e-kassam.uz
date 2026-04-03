@@ -88,7 +88,7 @@ function Sidebar({ user, onLogout, open, onClose, isCollapsed, onToggleCollapse,
     <aside className={`sidebar ${open ? "open" : ""} ${isCollapsed ? "collapsed" : ""}`}>
       <div className="sb-logo">
         <div className="sb-logo-inner">
-          <img src={LOGO_URL} alt="logo" style={{ width:"100%", height:"100%", objectFit:"contain" }} />
+          <img src={isCollapsed ? "/favicon.png" : LOGO_URL} alt="logo" style={{ width:"100%", height:"100%", objectFit:"contain" }} />
         </div>
       </div>
       <button className="sb-toggle" onClick={onToggleCollapse}>

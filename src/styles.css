@@ -73,9 +73,9 @@ body {
   z-index: 200; transition: transform .3s, width .3s;
 }
 .sidebar.collapsed { width: var(--sw-c); }
-.sb-logo         { padding: 14px 16px; border-bottom: 1px solid rgba(255,255,255,.08); }
+.sb-logo         { padding: 10px 16px; border-bottom: 1px solid rgba(255,255,255,.08); }
 /* Logo uchun oq fon — to'q ko'k sidebar da ko'rinsin */
-.sb-logo-inner   { background: white; border-radius: 12px; padding: 10px 14px; display: flex; align-items: center; justify-content: center; min-height: 54px; }
+.sb-logo-inner   { background: white; border-radius: 12px; padding: 8px 12px; display: flex; align-items: center; justify-content: center; min-height: 48px; }
 .sb-logo img     { width: 126px; object-fit: contain; display: block; }
 .sb-sub          { font-size: 11px; color: rgba(255,255,255,.35); font-weight: 600; margin-top: 6px; padding-left: 2px; }
 .sb-nav          { flex: 1; padding: 10px; overflow-y: auto; }
@@ -110,10 +110,10 @@ body {
 .sb-toggle:hover { transform: scale(1.1); background: var(--blue-d); }
 .sidebar.collapsed .sb-toggle { right: -12px; }
 
-.sb-footer       { padding: 12px 10px; border-top: 1px solid rgba(255,255,255,.08); }
+.sb-footer       { padding: 8px 10px; border-top: 1px solid rgba(255,255,255,.08); }
 .sb-user {
   display: flex; align-items: center; gap: 10px;
-  padding: 10px 12px; border-radius: 10px;
+  padding: 6px 12px; border-radius: 10px;
   cursor: pointer; transition: .2s;
 }
 .sb-user:hover   { background: rgba(255,255,255,.09); }
