@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { productApi } from "../api";
 import { money } from "../utils";
 import Modal from "../components/Modal";
-import { Loader, Empty, SearchBar, FormGroup, confirmDelete } from "../components/ui";
+import { Loader, Empty, SearchBar, FormGroup } from "../components/ui";
 
 const EMPTY_FORM = {
   name: "", barcode: "", salePrice: "", costPrice: "", categoryId: "",

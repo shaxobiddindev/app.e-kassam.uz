@@ -76,7 +76,12 @@ export default function ShopUsersPage({ toast }) {
   };
 
   const handleDelete = async (userId) => {
-    if (!await confirmDelete("Ushbu xodimni butunlay o'chirib tashlamoqchimisiz?")) return;
+    const ok = await confirm({
+      title: "Xodimni o'chirish",
+      message: "Ushbu xodimni butunlay o'chirib tashlamoqchimisiz? Bu amalni ortga qaytarib bo'lmaydi.",
+      type: "danger"
+    });
+    if (!ok) return;
     try {
       await shopApi.deleteUser(userId);
       toast.success("Xodim o'chirildi");
@@ -86,9 +91,19 @@ export default function ShopUsersPage({ toast }) {
     }
   };
 
-  const handleToggleBlock = async (userId) => {
+  const handleToggleBlock = async (u) => {
+    const isActivating = u.enabled === false;
+    const ok = await confirm({
+      title: isActivating ? "Xodimni faollashtirish" : "Xodimni bloklash",
+      message: isActivating 
+        ? `${u.fullName} ni tizimga kirishini tiklamoqchimisiz?`
+        : `Chindan ham ${u.fullName} ni bloklamoqchimisiz? U tizimga kira olmaydi.`,
+      type: isActivating ? "info" : "warning"
+    });
+    if (!ok) return;
+
     try {
-      await shopApi.toggleBlockUser(userId);
+      await shopApi.toggleBlockUser(u.id);
       toast.success("Holat o'zgartirildi");
       loadUsers();
     } catch (err) {

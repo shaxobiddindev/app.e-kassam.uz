@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { shopAdminApi } from "../../api";
 import Modal from "../../components/Modal";
-import { Loader, Empty, SearchBar, FormGroup, Badge, confirmDelete } from "../../components/ui";
+import { Loader, Empty, SearchBar, FormGroup, Badge } from "../../components/ui";
+import { useConfirm } from "../../context/ConfirmContext";
 
 // ─── Status config ────────────────────────────────────────────
 const STATUS_MAP = {
@@ -16,6 +17,7 @@ const EMPTY_UPDATE_FORM = { name: "", ownerName: "", phone: "", address: "", sta
 
 // ─── ShopsPage ────────────────────────────────────────────────
 export default function ShopsPage({ toast }) {
+  const confirm                   = useConfirm();
   const [shops, setShops]         = useState([]);
   const [loading, setLoading]     = useState(true);
   const [search, setSearch]       = useState("");
@@ -69,7 +71,12 @@ export default function ShopsPage({ toast }) {
 
   // ── O'chirish ────────────────────────────────────────────────
   const handleDelete = async (shop) => {
-    if (!confirmDelete(`"${shop.name}"`)) return;
+    const ok = await confirm({
+      title: "Do'konni o'chirish",
+      message: `"${shop.name}" do'konini butunlay o'chirib tashlamoqchimisiz? Barcha ma'lumotlar o'chib ketadi!`,
+      type: "danger"
+    });
+    if (!ok) return;
     try {
       await shopAdminApi.delete(shop.id);
       toast.success("Do'kon o'chirildi");

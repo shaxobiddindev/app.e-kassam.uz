@@ -66,7 +66,12 @@ export default function CustomersPage({ toast }) {
   };
 
   const handleDelete = async (customer) => {
-    if (!confirmDelete(customer.fullName)) return;
+    const ok = await confirm({
+      title: "Mijozni o'chirish",
+      message: `"${customer.fullName}" mijozini tizimdan o'chirib tashlamoqchimisiz?`,
+      type: "danger"
+    });
+    if (!ok) return;
     try {
       await customerApi.delete(customer.id);
       toast.success("Mijoz o'chirildi");
