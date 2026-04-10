@@ -5,13 +5,13 @@ import Modal from "../../components/Modal";
 import { useAuth } from "../../hooks/useAuth";
 import { useConfirm } from "../../context/ConfirmProvider";
 
-const ROLE_OPTIONS = ["ADMIN", "STOREKEEPER", "CASHIER"];
+const ROLE_OPTIONS = ["SHOP_ADMIN", "STOREKEEPER", "CASHIER"];
 const ROLE_LABELS = { 
-  ADMIN: "Admin", 
+  SHOP_ADMIN: "Admin", 
   STOREKEEPER: "Omborchi", 
   CASHIER: "Kassir", 
   OWNER: "Egasi",
-  ROLE_ADMIN: "Admin",
+  ROLE_SHOP_ADMIN: "Admin",
   ROLE_STOREKEEPER: "Omborchi",
   ROLE_CASHIER: "Kassir",
   ROLE_OWNER: "Egasi"
@@ -79,7 +79,7 @@ export default function ShopUsersPage({ toast }) {
       fullName: u.fullName,
       username: u.username,
       password: "", // Parol tahrirlanganda ixtiyoriy
-      role:     u.roles?.[0]?.name || u.role || "CASHIER"
+      role:     u.roles?.[0]?.type || u.role || "CASHIER"
     });
     setModalMode("edit");
   };
