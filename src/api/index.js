@@ -1,58 +1,47 @@
 import { API_BASE, LOGIN_URL, getDeviceId } from "../config";
 
-// Refresh qilish jarayonida loop oldini olish
-let _isRefreshing = false;
-let _refreshFailed = false;
+let refreshPromise = null;
 
 async function tryRefreshToken() {
-  if (_isRefreshing || _refreshFailed) return false;
-  _isRefreshing = true;
-  try {
-    const refresh = localStorage.getItem("ek_refresh");
-    const deviceId = getDeviceId();
-    if (!refresh) return false;
+  if (refreshPromise) return refreshPromise;
+  
+  refreshPromise = (async () => {
+    try {
+      const refresh = localStorage.getItem("ek_refresh");
+      const deviceId = getDeviceId();
+      if (!refresh) return false;
 
-    const res = await fetch(`${API_BASE}/auth/refresh`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Accept":       "application/json",
-        "X-Device-Id":  deviceId,
-      },
-      body: JSON.stringify({ refreshToken: refresh }),
-    });
+      const res = await fetch(`${API_BASE}/auth/refresh`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept":       "application/json",
+          "X-Device-Id":  deviceId,
+        },
+        body: JSON.stringify({ refreshToken: refresh }),
+      });
 
-    if (!res.ok) {
-      _refreshFailed = true;
+      if (!res.ok) return false;
+
+      const json = await res.json().catch(() => ({}));
+      if (!json.success || !json?.data?.accessToken) {
+        return false;
+      }
+
+      const newToken   = json.data.accessToken;
+      const newRefresh = json.data.refreshToken;
+
+      localStorage.setItem("ek_token",   newToken);
+      localStorage.setItem("ek_refresh", newRefresh || refresh);
+      return true;
+    } catch (_) {
       return false;
+    } finally {
+      refreshPromise = null;
     }
-
-    const json = await res.json().catch(() => ({}));
-    if (!json.success) {
-      console.error("Refresh failed (Backend):", json.message);
-      _refreshFailed = true;
-      return false;
-    }
-
-    const newToken   = json?.data?.accessToken;
-    const newRefresh = json?.data?.refreshToken;
-    if (!newToken) {
-      console.error("Refresh failed: No access token in response");
-      _refreshFailed = true;
-      return false;
-    }
-
-    _refreshFailed = false; // Reset on success
-
-    localStorage.setItem("ek_token",   newToken);
-    localStorage.setItem("ek_refresh", newRefresh || refresh);
-    return true;
-  } catch (_) {
-    _refreshFailed = true;
-    return false;
-  } finally {
-    _isRefreshing = false;
-  }
+  })();
+  
+  return refreshPromise;
 }
 
 async function request(path, options = {}, _retry = false) {
@@ -73,7 +62,6 @@ async function request(path, options = {}, _retry = false) {
   // Token muddati o'tgan — refresh qilib qayta urinib ko'r
   if (res.status === 401 && !_retry) {
     if (path.includes("/auth/login")) {
-      _refreshFailed = false; // New login — reset refresh state
       const json = await res.json().catch(() => ({}));
       throw new Error(json.message || `Xatolik: ${res.status}`);
     }
@@ -86,7 +74,7 @@ async function request(path, options = {}, _retry = false) {
       // Refresh ham ishlamadi — login ga
       localStorage.clear();
       window.location.replace(`${LOGIN_URL}?logged_out=1`);
-      return {};
+      throw new Error("AUTH_FAILED");
     }
   }
 
@@ -94,7 +82,7 @@ async function request(path, options = {}, _retry = false) {
   if (res.status === 401 && _retry) {
     localStorage.clear();
     window.location.replace(`${LOGIN_URL}?logged_out=1`);
-    return {};
+    throw new Error("AUTH_FAILED");
   }
 
   const json = await res.json().catch(() => ({}));
