@@ -92,7 +92,11 @@ export default function App() {
           lowStockCount={lowStockCount}
         >
           <Routes>
-            <Route path="/" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "STOREKEEPER", "OWNER"]}><DashboardPage toast={toast} /></ProtectedRoute>} />
+            <Route path="/" element={
+              user?.role === "CASHIER" 
+                ? <Navigate to="/sale" replace /> 
+                : <ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><DashboardPage toast={toast} /></ProtectedRoute>
+            } />
             <Route path="/sale" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"]}><KassaPage toast={toast} /></ProtectedRoute>} />
             <Route path="/products" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><ProductsPage toast={toast} /></ProtectedRoute>} />
             <Route path="/categories" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><CategoriesPage toast={toast} /></ProtectedRoute>} />

@@ -5,7 +5,7 @@ import { useConfirm } from "../context/ConfirmProvider";
 
 const NAV_ITEMS = [
   { section: "Asosiy", items: [
-    { id: "dashboard", path: "/",      label: "Dashboard",     icon: "fa-chart-pie",     roles: ["ADMIN", "SHOP_ADMIN", "CASHIER", "STOREKEEPER", "OWNER"] },
+    { id: "dashboard", path: "/",      label: "Dashboard",     icon: "fa-chart-pie",     roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
     { id: "sale",      path: "/sale",  label: "Kassa",         icon: "fa-cash-register", roles: ["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"] },
   ]},
   { section: "Do'kon", items: [

@@ -4,6 +4,7 @@ import { money } from "../utils";
 import Modal from "../components/Modal";
 import { Loader, Empty, SearchBar, Badge } from "../components/ui";
 import { useConfirm } from "../context/ConfirmProvider";
+import { useAuth } from "../hooks/useAuth";
 
 const STATUS_MAP = {
   CREATED:   { label: "Yangi",       color: "blue"   },
@@ -14,17 +15,25 @@ const PAYMENT_LABELS = { CASH: "💵 Naqd", CARD: "💳 Karta", MIXED: "🔀 Ara
 
 export default function SalesPage({ toast }) {
   const confirm                   = useConfirm();
+  const { user }                  = useAuth();
+  const isCashier                 = user?.role === "CASHIER";
   const [sales, setSales]         = useState([]);
   const [loading, setLoading]     = useState(true);
   const [search, setSearch]       = useState("");
-  const [detail, setDetail]       = useState(null); // sale detail modal
+  const [detail, setDetail]       = useState(null);
   const [cancelling, setCancelling] = useState(null);
 
   const loadSales = async () => {
     setLoading(true);
     try {
       const res = await saleApi.getAll();
-      setSales(res.data || []);
+      // Teskari tartib: yangi sotuvlar yuqorida
+      const sorted = (res.data || []).sort((a, b) => {
+        const da = new Date(a.createdAt || 0).getTime();
+        const db = new Date(b.createdAt || 0).getTime();
+        return db - da;
+      });
+      setSales(sorted);
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -33,6 +42,10 @@ export default function SalesPage({ toast }) {
   };
 
   useEffect(() => { loadSales(); }, []);
+
+  // CASHIER uchun faqat bugungi sotuvlar
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
 
   const handleCancel = async (sale) => {
     const ok = await confirm({
@@ -54,17 +67,34 @@ export default function SalesPage({ toast }) {
     }
   };
 
-  const filtered = sales.filter((s) =>
-    String(s.id).includes(search) ||
-    s.cashierName?.toLowerCase().includes(search.toLowerCase()) ||
-    s.customerName?.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = sales
+    .filter((s) => {
+      // CASHIER bo'lsa faqat bugungi
+      if (isCashier && s.createdAt) {
+        const saleDate = new Date(s.createdAt);
+        if (saleDate < todayStart) return false;
+      }
+      // Qidiruv
+      if (!search) return true;
+      const q = search.toLowerCase();
+      return String(s.id).includes(q) ||
+        s.cashierName?.toLowerCase().includes(q) ||
+        s.customerName?.toLowerCase().includes(q);
+    });
 
   return (
     <div>
       <div className="card">
         <div className="card-header">
-          <SearchBar value={search} onChange={setSearch} placeholder="ID, kassir yoki mijoz..." style={{ width: 280 }} />
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <SearchBar value={search} onChange={setSearch} placeholder="ID, kassir yoki mijoz..." style={{ width: 280 }} />
+            {isCashier && (
+              <span style={{ fontSize: 12, fontWeight: 700, color: "var(--blue)", background: "var(--blue-l)", padding: "5px 12px", borderRadius: 20 }}>
+                <i className="fa-solid fa-calendar-day" style={{ marginRight: 5 }} />
+                Bugungi sotuvlar ({filtered.length})
+              </span>
+            )}
+          </div>
           <button className="btn btn-outline btn-sm" onClick={loadSales}>
             <i className="fa-solid fa-rotate-right" /> Yangilash
           </button>
