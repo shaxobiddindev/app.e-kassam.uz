@@ -389,5 +389,6 @@ export default function KassaPage({ toast, refreshLowStock }) {
         </div>
       </div>
     </div>
-  );
+  </div>
+);
 }
