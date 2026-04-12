@@ -1,7 +1,4 @@
-import { useEffect, useState } from "react";
-import { reportApi } from "../api";
-import { money } from "../utils";
-import { Loader, Empty, StatCard } from "../components/ui";
+import { BranchSelector } from "../components";
 
 const STATS_CONFIG = [
   { key: "totalRevenue", label: "Bugungi savdo",  icon: "fa-sack-dollar",    bg: "rgba(1,125,202,0.09)", color: "#017dca" },
@@ -13,20 +10,30 @@ const STATS_CONFIG = [
 const PAYMENT_LABELS = { CASH: "💵 Naqd", CARD: "💳 Karta", MIXED: "🔀 Aralash" };
 
 export default function DashboardPage({ toast }) {
-  const [data, setData]     = useState(null);
+  const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(true);
+  const [branchId, setBranchId] = useState(null);
 
   useEffect(() => {
-    reportApi.daily()
+    setLoading(true);
+    reportApi.daily(branchId)
       .then((res) => setData(res.data))
       .catch((err) => toast.error(err.message))
       .finally(() => setLoading(false));
-  }, []);
+  }, [branchId]);
 
   if (loading) return <Loader />;
 
   return (
     <div>
+      <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
+        <div>
+          <h2 className="page-title">Dashboard</h2>
+          <p className="page-subtitle">Bugungi savdo holati</p>
+        </div>
+        <BranchSelector selectedId={branchId} onSelect={setBranchId} />
+      </div>
+
       {/* Stat kartochkalar */}
       <div className="stats-grid">
         {STATS_CONFIG.map((cfg) => (

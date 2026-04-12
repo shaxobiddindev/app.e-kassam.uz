@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
 import { productApi, customerApi, saleApi } from "../api";
+import { BranchSelector } from "../components";
 import { money } from "../utils";
 import { Empty } from "../components/ui";
 
@@ -57,26 +57,27 @@ export default function KassaPage({ toast, refreshLowStock }) {
   const [cardAmount, setCardAmount] = useState("");
   const [customer, setCustomer]     = useState(null);
   const [processing, setProcessing] = useState(false);
+  const [branchId, setBranchId]     = useState(null);
 
   // Barcode scanner uchun buffer
   const bcBuffer   = useRef("");
   const bcTimer    = useRef(null);
   const debounceRef = useRef(null);
 
-  // Mijozlarni bir marta yuklaymiz (kam sonli)
+  // Mijozlarni tanlangan shopga qarab yuklaymiz
   useEffect(() => {
-    customerApi.getAll().then((r) => setCustomers(r.data || [])).catch(() => {});
-  }, []);
+    customerApi.getAll(branchId).then((r) => setCustomers(r.data || [])).catch(() => {});
+  }, [branchId]);
 
   // Server search — debounce 350ms
   const doSearch = useCallback(async (q) => {
     setSearching(true);
     try {
-      const res = await productApi.search(q, 0, 40);
+      const res = await productApi.search(q, 0, 40, branchId);
       setProducts(res.data || []);
     } catch (_) {}
     finally { setSearching(false); }
-  }, []);
+  }, [branchId]);
 
   // Sahifa ochilganda va search bo'sh bo'lganda — birinchi 40 ta
   useEffect(() => {
@@ -185,11 +186,16 @@ export default function KassaPage({ toast, refreshLowStock }) {
     }
   };
 
-  // Server dan tayyor filtrlangan mahsulotlar
-  const filteredProducts = products;
-
   return (
-    <div className="kassa-layout">
+    <div className="kassa-layout" style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 100px)" }}>
+      <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexShrink: 0 }}>
+        <div>
+          <h2 className="page-title" style={{ fontSize: 18 }}>Savdo (Kassa)</h2>
+        </div>
+        <BranchSelector selectedId={branchId} onSelect={(id) => { setBranchId(id); setCart([]); }} />
+      </div>
+      
+      <div style={{ display: "flex", flex: 1, overflow: "hidden", gap: 16 }}>
 
       {/* ════ CHAP: Mahsulotlar ════ */}
       <div className="kassa-left">

@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
 import { customerApi } from "../api";
+import { BranchSelector } from "../components";
 import { money } from "../utils";
 import Modal from "../components/Modal";
 import { Loader, Empty, SearchBar, Avatar, FormGroup } from "../components/ui";
@@ -15,11 +15,12 @@ export default function CustomersPage({ toast }) {
   const [modal, setModal]         = useState(null); // null | "add" | { type:"edit", customer }
   const [form, setForm]           = useState(EMPTY_FORM);
   const [saving, setSaving]       = useState(false);
+  const [branchId, setBranchId]   = useState(null);
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const res = await customerApi.getAll();
+      const res = await customerApi.getAll(branchId);
       setCustomers(res.data || []);
     } catch (err) {
       toast.error(err.message);
@@ -28,7 +29,7 @@ export default function CustomersPage({ toast }) {
     }
   };
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { loadData(); }, [branchId]);
 
   const openAdd = () => {
     setForm(EMPTY_FORM);
@@ -90,6 +91,13 @@ export default function CustomersPage({ toast }) {
 
   return (
     <div>
+      <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
+        <div>
+          <h2 className="page-title">Mijozlar</h2>
+          <p className="page-subtitle">Doimiy mijozlar va sodiqlik tizimi</p>
+        </div>
+        <BranchSelector selectedId={branchId} onSelect={setBranchId} />
+      </div>
       <div className="card">
         <div className="card-header">
           <SearchBar

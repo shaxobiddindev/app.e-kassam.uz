@@ -112,18 +112,18 @@ export const reportApi = {
 // ─── Mahsulotlar ──────────────────────────────────────────────
 export const productApi = {
   getAll:       (shopId)   => request(`/products${shopId ? `?shopId=${shopId}` : ""}`),
-  search:       (q = "", page = 0, size = 30) =>
-                  request(`/products/search?q=${encodeURIComponent(q)}&page=${page}&size=${size}`),
+  search:       (q = "", page = 0, size = 30, shopId) =>
+                  request(`/products/search?q=${encodeURIComponent(q)}&page=${page}&size=${size}${shopId ? `&shopId=${shopId}` : ""}`),
   getById:      (id)       => request(`/products/${id}`),
   create:       (data)     => request("/products",     { method: "POST",   body: JSON.stringify(data) }),
   update:       (id, data) => request(`/products/${id}`, { method: "PUT",  body: JSON.stringify(data) }),
   delete:       (id)       => request(`/products/${id}`, { method: "DELETE" }),
   toggleActive: (id)       => request(`/products/${id}/toggle-active`, { method: "PATCH" }),
 
-  getCategories:  ()         => request("/products/categories"),
-  createCategory: (data)     => request(`/products/categories?name=${encodeURIComponent(data.name || data)}`, { method: "POST" }),
-  updateCategory: (id, data) => request(`/products/categories/${id}?name=${encodeURIComponent(data.name || data)}`, { method: "PUT" }),
-  deleteCategory: (id)       => request(`/products/categories/${id}`, { method: "DELETE" }),
+  getCategories:  (shopId)   => request(`/products/categories${shopId ? `?shopId=${shopId}` : ""}`),
+  createCategory: (data, shopId)     => request(`/products/categories?name=${encodeURIComponent(data.name || data)}${shopId ? `&shopId=${shopId}` : ""}`, { method: "POST" }),
+  updateCategory: (id, data, shopId) => request(`/products/categories/${id}?name=${encodeURIComponent(data.name || data)}${shopId ? `&shopId=${shopId}` : ""}`, { method: "PUT" }),
+  deleteCategory: (id, shopId)       => request(`/products/categories/${id}${shopId ? `?shopId=${shopId}` : ""}`, { method: "DELETE" }),
 };
 
 // ─── Ombor ────────────────────────────────────────────────────
@@ -144,7 +144,7 @@ export const inventoryApi = {
 
 // ─── Mijozlar ─────────────────────────────────────────────────
 export const customerApi = {
-  getAll:  ()          => request("/customers"),
+  getAll:  (shopId)    => request(`/customers${shopId ? `?shopId=${shopId}` : ""}`),
   getById: (id)        => request(`/customers/${id}`),
   create:  (data)      => request("/customers",      { method: "POST", body: JSON.stringify(data) }),
   update:  (id, data)  => request(`/customers/${id}`, { method: "PUT",  body: JSON.stringify(data) }),

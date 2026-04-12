@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
 import { productApi } from "../../api";
+import { BranchSelector } from "../../components";
 import Modal from "../../components/Modal";
 import { Loader, Empty, FormGroup } from "../../components/ui";
 import { useConfirm } from "../../context/ConfirmProvider";
@@ -13,18 +13,19 @@ export default function CategoriesPage({ toast }) {
   const [modal, setModal]           = useState(null);
   const [form, setForm]             = useState(EMPTY_FORM);
   const [saving, setSaving]         = useState(false);
+  const [branchId, setBranchId]     = useState(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await productApi.getCategories();
+      const res = await productApi.getCategories(branchId);
       setCategories(res.data || []);
     } catch (err) {
       toast.error(err.message);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [branchId]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -37,10 +38,10 @@ export default function CategoriesPage({ toast }) {
     setSaving(true);
     try {
       if (modal === "add") {
-        await productApi.createCategory(form);
+        await productApi.createCategory(form, branchId);
         toast.success("Kategoriya qo'shildi");
       } else {
-        await productApi.updateCategory(modal.cat.id, form);
+        await productApi.updateCategory(modal.cat.id, form, branchId);
         toast.success("Kategoriya yangilandi");
       }
       closeModal();
@@ -61,7 +62,7 @@ export default function CategoriesPage({ toast }) {
     if (!ok) return;
 
     try {
-      await productApi.deleteCategory(cat.id);
+      await productApi.deleteCategory(cat.id, branchId);
       toast.success("O'chirildi");
       loadData();
     } catch (err) {
@@ -77,6 +78,13 @@ export default function CategoriesPage({ toast }) {
 
   return (
     <div>
+      <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
+        <div>
+          <h2 className="page-title">Kategoriyalar</h2>
+          <p className="page-subtitle">Mahsulot guruhlarini boshqarish</p>
+        </div>
+        <BranchSelector selectedId={branchId} onSelect={setBranchId} />
+      </div>
       <div className="card">
         <div className="card-header">
           <span className="card-title">
