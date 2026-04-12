@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { reportApi } from "../api";
 import { BranchSelector } from "../components";
-import { Loader, Empty, StatCard, money } from "../components/ui";
+import { Loader, Empty, StatCard } from "../components/ui";
+import { money } from "../utils";
 
 const PERIODS = [
   { key: "daily",   label: "Bugun" },

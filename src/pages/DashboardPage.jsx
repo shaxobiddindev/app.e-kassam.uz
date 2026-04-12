@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { reportApi } from "../api";
 import { BranchSelector } from "../components";
-import { Loader, StatCard, money, Empty } from "../components/ui";
+import { Loader, StatCard, Empty } from "../components/ui";
+import { money } from "../utils";
 
 const STATS_CONFIG = [
   { key: "totalRevenue", label: "Bugungi savdo",  icon: "fa-sack-dollar",    bg: "rgba(1,125,202,0.09)", color: "#017dca" },
