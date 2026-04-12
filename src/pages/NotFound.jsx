@@ -129,7 +129,7 @@ export default function NotFound() {
 
                 <div className="nf-content">
                     <div className="nf-num">404</div>
-                    <div className="nf-icon">🔍</div>
+                    <div className="nf-icon"><i className="fa-solid fa-magnifying-glass" /></div>
                     <h1 className="nf-title">Sahifa topilmadi</h1>
                     <p className="nf-desc">
                         Siz qidirayotgan sahifa ko'chirilgan, o'chirilgan yoki hech qachon mavjud bo'lmagan.

@@ -1,4 +1,7 @@
+import { useState, useEffect } from "react";
+import { reportApi } from "../api";
 import { BranchSelector } from "../components";
+import { Loader, StatCard, money, Empty } from "../components/ui";
 
 const STATS_CONFIG = [
   { key: "totalRevenue", label: "Bugungi savdo",  icon: "fa-sack-dollar",    bg: "rgba(1,125,202,0.09)", color: "#017dca" },
@@ -7,7 +10,11 @@ const STATS_CONFIG = [
   { key: "totalCost",    label: "Tan narxi",       icon: "fa-coins",          bg: "#fdf4ff",              color: "#9333ea" },
 ];
 
-const PAYMENT_LABELS = { CASH: "💵 Naqd", CARD: "💳 Karta", MIXED: "🔀 Aralash" };
+const PAYMENT_LABELS = { 
+  CASH: <><i className="fa-solid fa-money-bill-1" /> Naqd</>, 
+  CARD: <><i className="fa-solid fa-credit-card" /> Karta</>, 
+  MIXED: <><i className="fa-solid fa-shuffle" /> Aralash</> 
+};
 
 export default function DashboardPage({ toast }) {
   const [data, setData]       = useState(null);

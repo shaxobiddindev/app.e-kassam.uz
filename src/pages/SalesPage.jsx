@@ -11,7 +11,11 @@ const STATUS_MAP = {
   PAID:      { label: "To'langan",   color: "green"  },
   CANCELLED: { label: "Bekor",       color: "red"    },
 };
-const PAYMENT_LABELS = { CASH: "💵 Naqd", CARD: "💳 Karta", MIXED: "🔀 Aralash" };
+const PAYMENT_LABELS = { 
+  CASH: <><i className="fa-solid fa-money-bill-1" /> Naqd</>, 
+  CARD: <><i className="fa-solid fa-credit-card" /> Karta</>, 
+  MIXED: <><i className="fa-solid fa-shuffle" /> Aralash</> 
+};
 
 export default function SalesPage({ toast }) {
   const confirm                   = useConfirm();

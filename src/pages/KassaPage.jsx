@@ -38,7 +38,7 @@ function printCheck({ saleId, cart, total, payType, customer }) {
       <div class="row"><span>To'lov:</span><span>${payLabel[payType] || payType}</span></div>
       ${customer ? `<div class="row"><span>Mijoz:</span><span>${customer.fullName}</span></div>` : ""}
       <div class="hr"></div>
-      <div class="c"><p>Xarid uchun rahmat! 🙏</p><small>e-kassam.uz</small></div>
+      <div class="c"><p>Xarid uchun rahmat!</p><small>e-kassam.uz</small></div>
     </body></html>
   `);
   win.document.close();
@@ -172,7 +172,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
                      payType === "MIXED" ? Number(cardAmount) || 0 : 0,
       });
 
-      toast.success(`${money(total)} sotuv bajarildi! 🎉`);
+      toast.success(`${money(total)} sotuv bajarildi!`);
       if (refreshLowStock) refreshLowStock(); // Ombor ogohlantirishini yangilash
       printCheck({ saleId: res?.data?.id, cart, total, payType, customer });
       clearCart();
@@ -297,7 +297,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
             value={customer?.id || ""}
             onChange={(e) => setCustomer(customers.find((c) => c.id === Number(e.target.value)) || null)}
           >
-            <option value="">👤 Mijoz (ixtiyoriy)</option>
+            <option value="">Mijoz tanlash (ixtiyoriy)</option>
             {customers.map((c) => (
               <option key={c.id} value={c.id}>{c.fullName} · {c.phone}</option>
             ))}
@@ -318,17 +318,17 @@ export default function KassaPage({ toast, refreshLowStock }) {
           {/* To'lov turlari */}
           <div className="payment-grid">
             {[
-              { key: "CASH",  label: "💵 Naqd" },
-              { key: "CARD",  label: "💳 Karta" },
-              { key: "MIXED", label: "🔀 Aralash", full: true },
-            ].map(({ key, label, full }) => (
+              { key: "CASH",  label: "Naqd",    icon: "fa-money-bill-1" },
+              { key: "CARD",  label: "Karta",   icon: "fa-credit-card" },
+              { key: "MIXED", label: "Aralash", icon: "fa-shuffle", full: true },
+            ].map(({ key, label, icon, full }) => (
               <button
                 key={key}
                 className={`payment-btn ${payType === key ? "active" : ""}`}
                 style={full ? { gridColumn: "1 / -1" } : {}}
                 onClick={() => handlePayTypeChange(key)}
               >
-                {label}
+                <i className={`fa-solid ${icon}`} /> {label}
               </button>
             ))}
           </div>
@@ -338,7 +338,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginTop:8 }}>
               <div>
                 <label style={{ fontSize:11, fontWeight:700, color:"#15803d", display:"block", marginBottom:4 }}>
-                  💵 Naqd (so'm)
+                  <i className="fa-solid fa-money-bill-1" /> Naqd (so'm)
                 </label>
                 <input
                   type="number" min="0"
@@ -354,7 +354,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
               </div>
               <div>
                 <label style={{ fontSize:11, fontWeight:700, color:"#1d4ed8", display:"block", marginBottom:4 }}>
-                  💳 Karta (so'm)
+                  <i className="fa-solid fa-credit-card" /> Karta (so'm)
                 </label>
                 <input
                   type="number" min="0"
@@ -370,7 +370,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
               </div>
               {(Number(cashAmount)||0) + (Number(cardAmount)||0) !== total && total > 0 && (
                 <div style={{ gridColumn:"1/-1", fontSize:12, color:"var(--red)", fontWeight:700, textAlign:"center" }}>
-                  ⚠️ Yig'indi: {((Number(cashAmount)||0)+(Number(cardAmount)||0)).toLocaleString()} — Jami: {total.toLocaleString()}
+                  <i className="fa-solid fa-triangle-exclamation" /> Yig'indi: {((Number(cashAmount)||0)+(Number(cardAmount)||0)).toLocaleString()} — Jami: {total.toLocaleString()}
                 </div>
               )}
             </div>

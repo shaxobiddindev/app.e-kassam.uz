@@ -1,4 +1,7 @@
+import { useState, useEffect } from "react";
+import { reportApi } from "../api";
 import { BranchSelector } from "../components";
+import { Loader, Empty, StatCard, money } from "../components/ui";
 
 const PERIODS = [
   { key: "daily",   label: "Bugun" },
@@ -13,7 +16,11 @@ const STATS_CONFIG = [
   { key: "totalCost",    label: "Tan narxi",      icon: "fa-coins",          bg: "#fdf4ff",              color: "#9333ea" },
 ];
 
-const PAYMENT_LABELS = { CASH: "💵 Naqd", CARD: "💳 Karta", MIXED: "🔀 Aralash" };
+const PAYMENT_LABELS = { 
+  CASH: <><i className="fa-solid fa-money-bill-1" /> Naqd</>, 
+  CARD: <><i className="fa-solid fa-credit-card" /> Karta</>, 
+  MIXED: <><i className="fa-solid fa-shuffle" /> Aralash</> 
+};
 
 export default function ReportsPage({ toast }) {
   const [period, setPeriod]   = useState("daily");

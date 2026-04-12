@@ -31,10 +31,10 @@ export default function BranchSelector({ selectedId, onSelect, style = {} }) {
         onChange={(e) => onSelect(e.target.value || null)}
         disabled={loading}
       >
-        <option value="">🏠 Asosiy do'kon</option>
+        <option value="">Asosiy do'kon</option>
         {branches.map(b => (
           <option key={b.id} value={b.id}>
-            📍 {b.name}
+            {b.name}
           </option>
         ))}
       </select>

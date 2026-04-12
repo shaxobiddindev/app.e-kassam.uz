@@ -2,6 +2,7 @@ import { useState } from "react";
 import { reportApi } from "../../api";
 import { money } from "../../utils";
 import { Loader, Empty, StatCard } from "../../components/ui";
+import { BranchSelector } from "../../components";
 
 const STATS_CONFIG = [
   { key: "totalRevenue", label: "Jami savdo",    icon: "fa-sack-dollar",    bg: "rgba(1,125,202,0.09)", color: "#017dca" },
@@ -10,7 +11,11 @@ const STATS_CONFIG = [
   { key: "totalCost",    label: "Tan narxi",      icon: "fa-coins",          bg: "#fdf4ff",              color: "#9333ea" },
 ];
 
-const PAYMENT_LABELS = { CASH: "💵 Naqd", CARD: "💳 Karta", MIXED: "🔀 Aralash" };
+const PAYMENT_LABELS = { 
+  CASH: <><i className="fa-solid fa-money-bill-1" /> Naqd</>, 
+  CARD: <><i className="fa-solid fa-credit-card" /> Karta</>, 
+  MIXED: <><i className="fa-solid fa-shuffle" /> Aralash</> 
+};
 
 export default function CustomReportPage({ toast }) {
   const today = new Date().toISOString().slice(0, 10);
@@ -19,6 +24,7 @@ export default function CustomReportPage({ toast }) {
   const [data, setData]     = useState(null);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [branchId, setBranchId] = useState(null);
 
   const handleSearch = async () => {
     if (!from || !to) { toast.error("Sanalarni kiriting"); return; }
@@ -28,7 +34,8 @@ export default function CustomReportPage({ toast }) {
     try {
       const res = await reportApi.custom(
         new Date(from).toISOString(),
-        new Date(to + "T23:59:59").toISOString()
+        new Date(to + "T23:59:59").toISOString(),
+        branchId
       );
       setData(res.data);
     } catch (err) {
@@ -47,6 +54,7 @@ export default function CustomReportPage({ toast }) {
             <i className="fa-solid fa-calendar-days text-blue" />
             Maxsus hisobot
           </span>
+          <BranchSelector selectedId={branchId} onSelect={setBranchId} />
         </div>
         <div className="card-body">
           <div style={{ display: "flex", gap: 12, alignItems: "flex-end", flexWrap: "wrap" }}>
