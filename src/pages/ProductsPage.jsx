@@ -1,15 +1,14 @@
-import { useCallback, useEffect, useState } from "react";
-import { productApi } from "../api";
-import { money } from "../utils";
-import Modal from "../components/Modal";
+import { BranchSelector, Modal } from "../components";
 import { Loader, Empty, SearchBar, FormGroup } from "../components/ui";
 import { useConfirm } from "../context/ConfirmProvider";
+import { useAuth } from "../hooks/useAuth";
 
 const EMPTY_FORM = {
   name: "", barcode: "", salePrice: "", costPrice: "", categoryId: "",
 };
 
 export default function ProductsPage({ toast }) {
+  const { user } = useAuth();
   const confirm = useConfirm();
   const [products, setProducts]   = useState([]);
   const [categories, setCategories] = useState([]);
@@ -18,13 +17,16 @@ export default function ProductsPage({ toast }) {
   const [modal, setModal]         = useState(null); // null | "add" | { type:"edit", product }
   const [form, setForm]           = useState(EMPTY_FORM);
   const [saving, setSaving]       = useState(false);
+  const [branchId, setBranchId]   = useState(null);
+
+  const isHeadUser = user?.role === "OWNER" || user?.role === "SHOP_ADMIN" || user?.role === "ADMIN";
 
   // ── Yuklash ────────────────────────────────────────────────
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const [prodRes, catRes] = await Promise.all([
-        productApi.getAll(),
+        productApi.getAll(branchId),
         productApi.getCategories(),
       ]);
       setProducts(prodRes.data || []);
@@ -34,7 +36,7 @@ export default function ProductsPage({ toast }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [branchId]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -116,17 +118,20 @@ export default function ProductsPage({ toast }) {
   return (
     <div>
       <div className="card">
-        <div className="card-header">
-          <SearchBar
-            value={search}
-            onChange={setSearch}
-            placeholder="Nom yoki barkod..."
-            style={{ width: 280 }}
-          />
-          <button className="btn btn-primary btn-sm" onClick={openAdd}>
-            <i className="fa-solid fa-plus" /> Qo'shish
-          </button>
+        <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div>
+          <h2 className="page-title">Mahsulotlar</h2>
+          <p className="page-subtitle">Barcha mahsulotlar ro'yxati</p>
         </div>
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <BranchSelector selectedId={branchId} onSelect={setBranchId} />
+          {!branchId && (
+            <button className="btn btn-primary" onClick={() => { setForm(EMPTY_FORM); setModal("add"); }}>
+              <i className="fa-solid fa-plus" /> Yangi mahsulot
+            </button>
+          )}
+        </div>
+      </div>
 
         <div className="table-wrap">
           {loading ? (

@@ -21,6 +21,7 @@ const NAV_ITEMS = [
   ]},
   { section: "Sozlamalar", items: [
     { id: "shop-users", path: "/shop-users", label: "Xodimlar", icon: "fa-users-gear", roles: ["ADMIN", "SHOP_ADMIN", "OWNER"] },
+    { id: "branches",   path: "/branches",   label: "Filiallar", icon: "fa-store",      roles: ["OWNER"] },
   ]},
 ];
 
@@ -44,6 +45,7 @@ const PAGE_TITLES = {
   "/reports":        { label:"Hisobotlar",       icon:"fa-chart-bar"     },
   "/custom-report":  { label:"Maxsus hisobot",   icon:"fa-calendar-days" },
   "/shop-users":     { label:"Xodimlar",         icon:"fa-users-gear"    },
+  "/branches":       { label:"Filiallar",        icon:"fa-store"         },
 };
 
 function LowStockBadge({ items, count, onGoInventory }) {

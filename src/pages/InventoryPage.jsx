@@ -1,29 +1,33 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { inventoryApi } from "../api";
-import Modal from "../components/Modal";
-import { Loader, Empty } from "../components/ui";
+import { BranchSelector, Modal } from "../components";
+import { Loader, Empty, SearchBar } from "../components/ui";
+import { useAuth } from "../hooks/useAuth";
 
 export default function InventoryPage({ toast }) {
+  const { user } = useAuth();
   const [items, setItems]     = useState([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch]   = useState("");
   const [modal, setModal]     = useState(null); // null | inventoryItem
   const [qty, setQty]         = useState("");
   const [expiryDate, setExpiryDate] = useState("");
   const [saving, setSaving]   = useState(false);
+  const [branchId, setBranchId] = useState(null);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await inventoryApi.getAll();
+      const res = await inventoryApi.getAll(branchId);
       setItems(res.data || []);
     } catch (err) {
       toast.error(err.message);
     } finally {
       setLoading(false);
     }
-  };
+  }, [branchId]);
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { loadData(); }, [loadData]);
 
   const openModal = (item) => {
     setModal(item);
@@ -55,68 +59,43 @@ export default function InventoryPage({ toast }) {
 
   return (
     <div>
+      <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div>
+          <h2 className="page-title">Ombor</h2>
+          <p className="page-subtitle">Mahsulotlar qoldig'i va monitoringi</p>
+        </div>
+        <BranchSelector selectedId={branchId} onSelect={setBranchId} />
+      </div>
+
       <div className="card">
         <div className="card-header">
-          <span className="card-title">
-            <i className="fa-solid fa-warehouse text-blue" />
-            Ombor holati
-          </span>
-          <button className="btn btn-outline btn-sm" onClick={loadData}>
-            <i className="fa-solid fa-rotate-right" /> Yangilash
-          </button>
+          <SearchBar
+            value={search}
+            onChange={setSearch}
+            placeholder="Nom yoki barkod bo'yicha qidirish..."
+            style={{ width: 320 }}
+          />
         </div>
 
         <div className="table-wrap">
           {loading ? (
             <Loader />
+          ) : filtered.length === 0 ? (
+            <Empty text="Omborda mahsulot topilmadi" />
           ) : (
-            <table>
+            <table className="table">
               <thead>
                 <tr>
                   <th>Mahsulot</th>
-                  <th>Miqdor</th>
-                  <th>Min. miqdor</th>
+                  <th>Barkod</th>
+                  <th>Qoldiq</th>
+                  <th>Tan narxi</th>
+                  <th>Sotuv narxi</th>
                   <th>Yaroqlilik muddati</th>
-                  <th>Holat</th>
-                  <th></th>
+                  {!branchId && <th className="text-end">Amallar</th>}
                 </tr>
               </thead>
               <tbody>
-                {items.length > 0 ? (
-                  items.map((item) => {
-                    const isLow = item.quantity <= item.minQuantity;
-                    return (
-                      <tr key={item.id}>
-                        <td className="fw-700">{item.productName}</td>
-                        <td>
-                          <span className="mono fw-800" style={{ fontSize: 15 }}>
-                            {item.quantity}
-                          </span>
-                        </td>
-                        <td className="text-muted">{item.minQuantity}</td>
-                        <td>
-                          {item.expiryDate ? (
-                            <span className={`mono ${item.expired ? "text-red fw-700" : "text-muted"}`}>
-                              {item.expiryDate}
-                            </span>
-                          ) : (
-                            <span className="text-muted">—</span>
-                          )}
-                        </td>
-                        <td>
-                          {item.expired ? (
-                            <span className="badge badge-red">
-                              <i className="fa-solid fa-ban" /> Muddati o'tgan
-                            </span>
-                          ) : isLow ? (
-                            <span className="badge badge-red">
-                              <i className="fa-solid fa-triangle-exclamation" /> Kam
-                            </span>
-                          ) : (
-                            <span className="badge badge-green">
-                              <i className="fa-solid fa-check" /> Yetarli
-                            </span>
-                          )}
                         </td>
                         <td>
                           <button className="btn btn-primary btn-sm" onClick={() => openModal(item)}>

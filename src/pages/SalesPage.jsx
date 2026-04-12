@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { saleApi } from "../api";
 import { money } from "../utils";
-import Modal from "../components/Modal";
+import { BranchSelector, Modal } from "../components";
 import { Loader, Empty, SearchBar, Badge } from "../components/ui";
 import { useConfirm } from "../context/ConfirmProvider";
 import { useAuth } from "../hooks/useAuth";
@@ -22,11 +22,12 @@ export default function SalesPage({ toast }) {
   const [search, setSearch]       = useState("");
   const [detail, setDetail]       = useState(null);
   const [cancelling, setCancelling] = useState(null);
+  const [branchId, setBranchId]   = useState(null);
 
-  const loadSales = async () => {
+  const loadSales = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await saleApi.getAll();
+      const res = await saleApi.getAll(branchId);
       // Teskari tartib: yangi sotuvlar yuqorida
       const sorted = (res.data || []).sort((a, b) => {
         const da = new Date(a.createdAt || 0).getTime();
@@ -39,9 +40,9 @@ export default function SalesPage({ toast }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [branchId]);
 
-  useEffect(() => { loadSales(); }, []);
+  useEffect(() => { loadSales(); }, [loadSales]);
 
   // CASHIER uchun faqat bugungi sotuvlar
   const todayStart = new Date();
@@ -83,7 +84,14 @@ export default function SalesPage({ toast }) {
     });
 
   return (
-    <div>
+      <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div>
+          <h2 className="page-title">Sotuvlar tarixi</h2>
+          <p className="page-subtitle">Barcha amalga oshirilgan savdolar</p>
+        </div>
+        <BranchSelector selectedId={branchId} onSelect={setBranchId} />
+      </div>
+
       <div className="card">
         <div className="card-header">
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>

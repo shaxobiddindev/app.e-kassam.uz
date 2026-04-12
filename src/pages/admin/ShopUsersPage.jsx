@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { shopApi } from "../../api";
 import { Loader, Empty, FormGroup, Badge } from "../../components/ui";
-import Modal from "../../components/Modal";
+import { BranchSelector, Modal } from "../../components";
 import { useAuth } from "../../hooks/useAuth";
 import { useConfirm } from "../../context/ConfirmProvider";
 
@@ -27,11 +27,12 @@ export default function ShopUsersPage({ toast }) {
   const [editingId, setEditingId] = useState(null);
   const [form, setForm]         = useState(EMPTY_USER_FORM);
   const [saving, setSaving]     = useState(false);
+  const [branchId, setBranchId] = useState(null);
 
   const loadUsers = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await shopApi.getUsers();
+      const res = await shopApi.getUsers(branchId);
       // Backend allaqachon filtrlaydi, lekin ishonch uchun frontend-da ham o'zini o'chirib tashlaymiz
       const filtered = (res.data || []).filter(u => u.username !== currentUser?.username);
       setUsers(filtered);
@@ -41,7 +42,7 @@ export default function ShopUsersPage({ toast }) {
     } finally {
       setLoading(false);
     }
-  }, [currentUser, toast]);
+  }, [currentUser, toast, branchId]);
 
   useEffect(() => { loadUsers(); }, [loadUsers]);
 
@@ -53,14 +54,14 @@ export default function ShopUsersPage({ toast }) {
     setSaving(true);
     try {
       if (modalMode === "add") {
-        await shopApi.createUser(form);
+        await shopApi.createUser(form, branchId);
         toast.success("Xodim qo'shildi");
       } else {
         await shopApi.updateUser(editingId, {
           fullName: form.fullName,
           role:     form.role,
           password: form.password || undefined // Bo'sh bo'lsa parolni o'zgartirmaydi
-        });
+        }, branchId);
         toast.success("Ma'lumotlar saqlandi");
       }
       setModalMode(null);
@@ -92,7 +93,7 @@ export default function ShopUsersPage({ toast }) {
     });
     if (!ok) return;
     try {
-      await shopApi.deleteUser(userId);
+      await shopApi.deleteUser(userId, branchId);
       toast.success("Xodim o'chirildi");
       loadUsers();
     } catch (err) {
@@ -112,7 +113,7 @@ export default function ShopUsersPage({ toast }) {
     if (!ok) return;
 
     try {
-      await shopApi.toggleBlockUser(u.id);
+      await shopApi.toggleBlockUser(u.id, branchId);
       toast.success("Holat o'zgartirildi");
       loadUsers();
     } catch (err) {
@@ -123,17 +124,18 @@ export default function ShopUsersPage({ toast }) {
   const setField = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
 
   return (
-    <div>
-      <div className="card">
-        <div className="card-header">
-          <span className="card-title">
-            <i className="fa-solid fa-users-gear text-blue" />
-            Xodimlar boshqaruvi
-          </span>
-          <button className="btn btn-primary btn-sm" onClick={() => { setForm(EMPTY_USER_FORM); setModalMode("add"); }}>
-            <i className="fa-solid fa-plus" /> Xodim qo'shish
+      <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div>
+          <h2 className="page-title">Xodimlar</h2>
+          <p className="page-subtitle">Xodimlar ro'yxati va ruxsatlar</p>
+        </div>
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <BranchSelector selectedId={branchId} onSelect={setBranchId} />
+           <button className="btn btn-primary" onClick={() => { setForm(EMPTY_USER_FORM); setModalMode("add"); }}>
+            <i className="fa-solid fa-plus" /> Qo'shish
           </button>
         </div>
+      </div>
 
         <div className="table-wrap">
           {loading ? <Loader /> : (

@@ -1,7 +1,4 @@
-import { useEffect, useState } from "react";
-import { reportApi } from "../api";
-import { money } from "../utils";
-import { Loader, Empty, StatCard } from "../components/ui";
+import { BranchSelector } from "../components";
 
 const PERIODS = [
   { key: "daily",   label: "Bugun" },
@@ -22,29 +19,33 @@ export default function ReportsPage({ toast }) {
   const [period, setPeriod]   = useState("daily");
   const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(false);
+  const [branchId, setBranchId] = useState(null);
 
   useEffect(() => {
     setLoading(true);
     const fetcher = { daily: reportApi.daily, weekly: reportApi.weekly, monthly: reportApi.monthly };
-    fetcher[period]()
+    fetcher[period](branchId)
       .then((res) => setData(res.data))
       .catch((err) => toast.error(err.message))
       .finally(() => setLoading(false));
-  }, [period]);
+  }, [period, branchId]);
 
   return (
     <div>
-      {/* Period tabs */}
-      <div style={{ display: "flex", gap: 6, marginBottom: 18 }}>
-        {PERIODS.map((p) => (
-          <button
-            key={p.key}
-            className={`btn btn-sm ${period === p.key ? "btn-primary" : "btn-outline"}`}
-            onClick={() => setPeriod(p.key)}
-          >
-            {p.label}
-          </button>
-        ))}
+      {/* Period tabs and Branch selector */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
+        <div style={{ display: "flex", gap: 6 }}>
+          {PERIODS.map((p) => (
+            <button
+              key={p.key}
+              className={`btn btn-sm ${period === p.key ? "btn-primary" : "btn-outline"}`}
+              onClick={() => setPeriod(p.key)}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+        <BranchSelector selectedId={branchId} onSelect={setBranchId} />
       </div>
 
       {loading ? (

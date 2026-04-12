@@ -103,15 +103,15 @@ export const authApi = {
 
 // ─── Hisobotlar ───────────────────────────────────────────────
 export const reportApi = {
-  daily:   () => request("/reports/daily"),
-  weekly:  () => request("/reports/weekly"),
-  monthly: () => request("/reports/monthly"),
-  custom:  (from, to) => request(`/reports/custom?from=${from}&to=${to}`),
+  daily:   (shopId)        => request(`/reports/daily${shopId ? `?shopId=${shopId}` : ""}`),
+  weekly:  (shopId)        => request(`/reports/weekly${shopId ? `?shopId=${shopId}` : ""}`),
+  monthly: (shopId)        => request(`/reports/monthly${shopId ? `?shopId=${shopId}` : ""}`),
+  custom:  (from, to, shopId) => request(`/reports/custom?from=${from}&to=${to}${shopId ? `&shopId=${shopId}` : ""}`),
 };
 
 // ─── Mahsulotlar ──────────────────────────────────────────────
 export const productApi = {
-  getAll:       ()         => request("/products"),
+  getAll:       (shopId)   => request(`/products${shopId ? `?shopId=${shopId}` : ""}`),
   search:       (q = "", page = 0, size = 30) =>
                   request(`/products/search?q=${encodeURIComponent(q)}&page=${page}&size=${size}`),
   getById:      (id)       => request(`/products/${id}`),
@@ -128,7 +128,7 @@ export const productApi = {
 
 // ─── Ombor ────────────────────────────────────────────────────
 export const inventoryApi = {
-  getAll: () => request("/inventory"),
+  getAll: (shopId) => request(`/inventory${shopId ? `?shopId=${shopId}` : ""}`),
   getLow: () => request("/inventory/low-stock"),
   addStock: (productId, qty, expiryDate) =>
     request(`/inventory/product/${productId}/add`, {
@@ -153,7 +153,7 @@ export const customerApi = {
 
 // ─── Sotuvlar ─────────────────────────────────────────────────
 export const saleApi = {
-  getAll:  (params = "") => request(`/sales?${params}`),
+  getAll:  (shopId) => request(`/sales${shopId ? `?shopId=${shopId}` : ""}`),
   getById: (id)          => request(`/sales/${id}`),
   create:  (data)        => request("/sales",       { method: "POST",  body: JSON.stringify(data) }),
   cancel:  (id)          => request(`/sales/${id}/cancel`, { method: "PATCH" }),
@@ -163,9 +163,12 @@ export const saleApi = {
 // ─── Do'kon profili va foydalanuvchilar (Shop admin) ───
 export const shopApi = {
   getProfile: () => request("/shop/profile"),
-  getUsers:   () => request("/shop/users"),
-  createUser: (data) => request("/shop/users", { method: "POST", body: JSON.stringify(data) }),
-  updateUser: (userId, data) => request(`/shop/users/${userId}`, { method: "PUT", body: JSON.stringify(data) }),
-  deleteUser: (userId) => request(`/shop/users/${userId}`, { method: "DELETE" }),
-  toggleBlockUser: (userId) => request(`/shop/users/${userId}/toggle-block`, { method: "PATCH" }),
+  getUsers:   (shopId) => request(`/shop/users${shopId ? `?shopId=${shopId}` : ""}`),
+  createUser: (data, shopId) => request(`/shop/users${shopId ? `?shopId=${shopId}` : ""}`, { method: "POST", body: JSON.stringify(data) }),
+  updateUser: (userId, data, shopId) => request(`/shop/users/${userId}${shopId ? `?shopId=${shopId}` : ""}`, { method: "PUT", body: JSON.stringify(data) }),
+  deleteUser: (userId, shopId) => request(`/shop/users/${userId}${shopId ? `?shopId=${shopId}` : ""}`, { method: "DELETE" }),
+  toggleBlockUser: (userId, shopId) => request(`/shop/users/${userId}/toggle-block${shopId ? `?shopId=${shopId}` : ""}`, { method: "PATCH" }),
+  
+  getBranches: () => request("/shop/branches"),
+  createBranch: (data) => request("/shop/branches", { method: "POST", body: JSON.stringify(data) }),
 };
