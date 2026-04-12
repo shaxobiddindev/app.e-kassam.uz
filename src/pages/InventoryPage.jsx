@@ -96,22 +96,29 @@ export default function InventoryPage({ toast }) {
                 </tr>
               </thead>
               <tbody>
-                        </td>
-                        <td>
-                          <button className="btn btn-primary btn-sm" onClick={() => openModal(item)}>
-                            <i className="fa-solid fa-plus" /> Kirim
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })
-                ) : (
-                  <tr>
-                    <td colSpan={6}>
-                      <Empty icon="fa-boxes-stacked" text="Ombor bo'sh" />
+                {filtered.map((item) => (
+                  <tr key={item.productId}>
+                    <td>
+                      <div className="fw-700">{item.productName}</div>
                     </td>
+                    <td><code className="mono">{item.barcode || "-"}</code></td>
+                    <td>
+                      <span className={`badge ${item.quantity <= 5 ? "badge-red" : "badge-green"}`}>
+                        {item.quantity}
+                      </span>
+                    </td>
+                    <td>{money(item.costPrice)}</td>
+                    <td>{money(item.salePrice)}</td>
+                    <td>{item.expiryDate || "-"}</td>
+                    {!branchId && (
+                      <td className="text-end">
+                        <button className="btn btn-primary btn-sm" onClick={() => openModal(item)}>
+                          <i className="fa-solid fa-plus" /> Kirim
+                        </button>
+                      </td>
+                    )}
                   </tr>
-                )}
+                ))}
               </tbody>
             </table>
           )}
