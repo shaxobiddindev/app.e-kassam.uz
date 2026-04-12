@@ -124,6 +124,7 @@ export default function ShopUsersPage({ toast }) {
   const setField = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
 
   return (
+    <div>
       <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
           <h2 className="page-title">Xodimlar</h2>
@@ -137,6 +138,7 @@ export default function ShopUsersPage({ toast }) {
         </div>
       </div>
 
+      <div className="card">
         <div className="table-wrap">
           {loading ? <Loader /> : (
             <table>
