@@ -84,6 +84,7 @@ export default function SalesPage({ toast }) {
     });
 
   return (
+    <div>
       <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
           <h2 className="page-title">Sotuvlar tarixi</h2>

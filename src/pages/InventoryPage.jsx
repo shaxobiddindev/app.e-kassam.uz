@@ -3,6 +3,7 @@ import { inventoryApi } from "../api";
 import { BranchSelector, Modal } from "../components";
 import { Loader, Empty, SearchBar } from "../components/ui";
 import { useAuth } from "../hooks/useAuth";
+import { money } from "../utils";
 
 export default function InventoryPage({ toast }) {
   const { user } = useAuth();
@@ -28,6 +29,11 @@ export default function InventoryPage({ toast }) {
   }, [branchId]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  const filtered = items.filter((item) =>
+    item.productName?.toLowerCase().includes(search.toLowerCase()) ||
+    (item.barcode || "").includes(search)
+  );
 
   const openModal = (item) => {
     setModal(item);
