@@ -98,7 +98,14 @@ function Sidebar({ user, onLogout, open, onClose, isCollapsed, onToggleCollapse,
       </button>
       <nav className="sb-nav">
         {NAV_ITEMS.map((group) => {
-          const visibleItems = group.items.filter(item => !item.roles || item.roles.includes(user?.role) || user?.role === "OWNER");
+          const userRole = (user?.role || "").toUpperCase().replace("ROLE_", "");
+          const isOwner = userRole === "OWNER";
+          
+          const visibleItems = group.items.filter(item => {
+            if (!item.roles) return true;
+            return item.roles.includes(userRole) || isOwner;
+          });
+          
           if (visibleItems.length === 0) return null;
           return (
             <div key={group.section}>

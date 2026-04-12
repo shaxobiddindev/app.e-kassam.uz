@@ -68,8 +68,9 @@ if (!localToken || localType !== "user") {
 
 const ProtectedRoute = ({ user, roles, children }) => {
   if (!user) return <Navigate to={LOGIN_URL} replace />;
-  if (roles && user.role && user.role !== "OWNER") {
-    if (!roles.includes(user.role)) return <Navigate to="/" replace />;
+  const userRole = (user.role || "").toUpperCase().replace("ROLE_", "");
+  if (roles && userRole !== "OWNER") {
+    if (!roles.includes(userRole)) return <Navigate to="/" replace />;
   }
   return children;
 };
