@@ -74,7 +74,6 @@ export default function ShopsPage({ toast }) {
       <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
           <h2 className="page-title">Filiallar</h2>
-          <p className="page-subtitle">Do'koningiz filiallarni boshqarish</p>
         </div>
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
           <button className="btn btn-outline btn-sm" onClick={loadBranches} title="Ma'lumotlarni yangilash">

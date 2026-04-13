@@ -128,7 +128,6 @@ export default function ShopUsersPage({ toast }) {
       <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
           <h2 className="page-title">Xodimlar</h2>
-          <p className="page-subtitle">Xodimlar ro'yxati va ruxsatlar</p>
         </div>
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
           <button className="btn btn-outline btn-sm" onClick={loadUsers} title="Ma'lumotlarni yangilash">

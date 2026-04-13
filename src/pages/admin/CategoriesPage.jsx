@@ -82,7 +82,6 @@ export default function CategoriesPage({ toast }) {
       <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
         <div>
           <h2 className="page-title">Kategoriyalar</h2>
-          <p className="page-subtitle">Mahsulot guruhlarini boshqarish</p>
         </div>
         <BranchSelector selectedId={branchId} onSelect={setBranchId} />
       </div>

@@ -68,7 +68,6 @@ export default function InventoryPage({ toast }) {
       <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
           <h2 className="page-title">Ombor</h2>
-          <p className="page-subtitle">Mahsulotlar qoldig'i va monitoringi</p>
         </div>
         <BranchSelector selectedId={branchId} onSelect={setBranchId} />
       </div>

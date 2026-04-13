@@ -37,7 +37,6 @@ export default function DashboardPage({ toast }) {
       <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
         <div>
           <h2 className="page-title">Dashboard</h2>
-          <p className="page-subtitle">Bugungi savdo holati</p>
         </div>
         <BranchSelector selectedId={branchId} onSelect={setBranchId} />
       </div>

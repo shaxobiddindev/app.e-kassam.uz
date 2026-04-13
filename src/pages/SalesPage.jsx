@@ -92,7 +92,6 @@ export default function SalesPage({ toast }) {
       <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
           <h2 className="page-title">Sotuvlar tarixi</h2>
-          <p className="page-subtitle">Barcha amalga oshirilgan savdolar</p>
         </div>
         <BranchSelector selectedId={branchId} onSelect={setBranchId} />
       </div>

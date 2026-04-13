@@ -123,7 +123,6 @@ export default function ProductsPage({ toast }) {
       <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
         <div>
           <h2 className="page-title">Mahsulotlar</h2>
-          <p className="page-subtitle">Barcha mahsulotlar ro'yxati</p>
         </div>
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
           <button className="btn btn-outline btn-sm" onClick={loadData} title="Ma'lumotlarni yangilash">
