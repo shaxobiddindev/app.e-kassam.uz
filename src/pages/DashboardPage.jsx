@@ -19,16 +19,15 @@ const PAYMENT_LABELS = {
 
 export default function DashboardPage({ toast }) {
   const [data, setData]       = useState(null);
-  const loadData = (silent = false) => {
-    if (!silent) setLoading(true);
+  const [loading, setLoading] = useState(true);
+  const [branchId, setBranchId] = useState(null);
+
+  useEffect(() => {
+    setLoading(true);
     reportApi.daily(branchId)
       .then((res) => setData(res.data))
       .catch((err) => toast.error(err.message))
       .finally(() => setLoading(false));
-  };
-
-  useEffect(() => {
-    loadData();
   }, [branchId]);
 
   if (loading) return <Loader />;
@@ -40,12 +39,7 @@ export default function DashboardPage({ toast }) {
           <h2 className="page-title">Dashboard</h2>
           <p className="page-subtitle">Bugungi savdo holati</p>
         </div>
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          <button className="btn btn-outline btn-sm" onClick={() => loadData()}>
-            <i className="fa-solid fa-rotate-right" /> Yangilash
-          </button>
-          <BranchSelector selectedId={branchId} onSelect={setBranchId} />
-        </div>
+        <BranchSelector selectedId={branchId} onSelect={setBranchId} />
       </div>
 
       {/* Stat kartochkalar */}

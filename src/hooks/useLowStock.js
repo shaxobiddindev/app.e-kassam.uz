@@ -20,10 +20,19 @@ export function useLowStock() {
     }
   }, []);
 
-  // Birinchi yuklash
+  // Birinchi yuklash + har 60 soniyada avtomatik
   useEffect(() => {
     fetch();
+    timerRef.current = setInterval(fetch, 60_000);
+    return () => clearInterval(timerRef.current);
   }, [fetch]);
 
-  return { lowStockItems: items, lowStockCount: items.length, refreshLowStock: fetch, loading };
+  // Sotuvdan keyin chaqirish uchun
+  const refresh = useCallback(() => {
+    clearInterval(timerRef.current);
+    fetch();
+    timerRef.current = setInterval(fetch, 60_000);
+  }, [fetch]);
+
+  return { lowStockItems: items, lowStockCount: items.length, refreshLowStock: refresh, loading };
 }

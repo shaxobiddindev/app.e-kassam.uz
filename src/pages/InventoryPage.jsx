@@ -74,16 +74,13 @@ export default function InventoryPage({ toast }) {
       </div>
 
       <div className="card">
-        <div className="card-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div className="card-header">
           <SearchBar
             value={search}
             onChange={setSearch}
             placeholder="Nom yoki barkod bo'yicha qidirish..."
             style={{ width: 320 }}
           />
-          <button className="btn btn-outline btn-sm" onClick={loadData}>
-            <i className="fa-solid fa-rotate-right" /> Yangilash
-          </button>
         </div>
 
         <div className="table-wrap">
