@@ -211,8 +211,8 @@ export default function KassaPage({ toast, refreshLowStock }) {
                 value={search}
                 onChange={(e) => handleSearchChange(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && filteredProducts.length === 1) {
-                    addToCart(filteredProducts[0]);
+                  if (e.key === "Enter" && products.length === 1) {
+                    addToCart(products[0]);
                   }
                 }}
               />
@@ -226,14 +226,14 @@ export default function KassaPage({ toast, refreshLowStock }) {
                 <i className="fa-solid fa-spinner fa-spin" /> Qidirilmoqda...
               </div>
             )}
-            {filteredProducts.map((p) => (
+            {products.map((p) => (
               <div className="product-card" key={p.id} onClick={() => addToCart(p)}>
                 <div className="product-name">{p.name}</div>
                 <div className="product-barcode">{p.barcode || "—"}</div>
                 <div className="product-price">{money(p.salePrice)}</div>
               </div>
             ))}
-            {filteredProducts.length === 0 && (
+            {products.length === 0 && (
               <div style={{ gridColumn: "1/-1" }}>
                 <Empty icon="fa-magnifying-glass" text="Mahsulot topilmadi" />
               </div>
