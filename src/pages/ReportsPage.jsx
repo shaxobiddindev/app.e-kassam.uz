@@ -29,7 +29,7 @@ export default function ReportsPage({ toast }) {
   const [loading, setLoading] = useState(false);
   const [branchId, setBranchId] = useState(null);
 
-  useEffect(() => {
+  const loadData = useCallback(() => {
     setLoading(true);
     const fetcher = { daily: reportApi.daily, weekly: reportApi.weekly, monthly: reportApi.monthly };
     fetcher[period](branchId)
@@ -38,20 +38,29 @@ export default function ReportsPage({ toast }) {
       .finally(() => setLoading(false));
   }, [period, branchId]);
 
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
   return (
     <div>
       {/* Period tabs and Branch selector */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
-        <div style={{ display: "flex", gap: 6 }}>
-          {PERIODS.map((p) => (
-            <button
-              key={p.key}
-              className={`btn btn-sm ${period === p.key ? "btn-primary" : "btn-outline"}`}
-              onClick={() => setPeriod(p.key)}
-            >
-              {p.label}
-            </button>
-          ))}
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <div style={{ display: "flex", gap: 6 }}>
+            {PERIODS.map((p) => (
+              <button
+                key={p.key}
+                className={`btn btn-sm ${period === p.key ? "btn-primary" : "btn-outline"}`}
+                onClick={() => setPeriod(p.key)}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+          <button className="btn btn-outline btn-sm" onClick={loadData}>
+            <i className="fa-solid fa-rotate-right" /> Yangilash
+          </button>
         </div>
         <BranchSelector selectedId={branchId} onSelect={setBranchId} />
       </div>
