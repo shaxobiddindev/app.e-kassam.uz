@@ -6,7 +6,7 @@ import Modal from "../components/Modal";
 import { Loader, Empty, SearchBar, Avatar, FormGroup } from "../components/ui";
 import { useConfirm } from "../context/ConfirmProvider";
 
-const EMPTY_FORM = { fullName: "", phone: "" };
+const EMPTY_FORM = { fullName: "", phone: "998" };
 
 export default function CustomersPage({ toast }) {
   const confirm = useConfirm();

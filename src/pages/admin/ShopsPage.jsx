@@ -4,7 +4,7 @@ import { maskPhone, cleanPhone } from "../../config";
 import { Loader, Empty, FormGroup, Badge } from "../../components/ui";
 import { Modal } from "../../components";
 
-const EMPTY_BRANCH_FORM = { name: "", code: "", phone: "", address: "" };
+const EMPTY_BRANCH_FORM = { name: "", code: "", phone: "998", address: "" };
 
 export default function ShopsPage({ toast }) {
   const [branches, setBranches] = useState([]);
