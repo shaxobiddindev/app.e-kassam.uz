@@ -188,15 +188,14 @@ export default function KassaPage({ toast, refreshLowStock }) {
   };
 
   return (
-    <div>
-      <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+    <div style={{ height: "calc(100vh - var(--sh) - 40px)", display: "flex", flexDirection: "column" }}>
+      <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexShrink: 0 }}>
         <div>
           <h2 className="page-title" style={{ fontSize: 18 }}>Savdo (Kassa)</h2>
         </div>
-        <BranchSelector selectedId={branchId} onSelect={(id) => { setBranchId(id); setCart([]); }} />
       </div>
 
-      <div className="kassa-layout">
+      <div className="kassa-layout" style={{ height: "auto", flex: 1 }}>
         {/* ════ CHAP: Mahsulotlar ════ */}
         <div className="kassa-left">
           <div className="card" style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
