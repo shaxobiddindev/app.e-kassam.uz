@@ -171,4 +171,5 @@ export const shopApi = {
   
   getBranches: () => request("/shop/branches"),
   createBranch: (data) => request("/shop/branches", { method: "POST", body: JSON.stringify(data) }),
+  updateBranch: (id, data) => request(`/shop/branches/${id}`, { method: "PUT", body: JSON.stringify(data) }),
 };

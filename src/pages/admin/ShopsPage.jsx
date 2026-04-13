@@ -9,7 +9,7 @@ const EMPTY_BRANCH_FORM = { name: "", code: "", phone: "", address: "" };
 export default function ShopsPage({ toast }) {
   const [branches, setBranches] = useState([]);
   const [loading, setLoading]   = useState(true);
-  const [showAdd, setShowAdd]   = useState(false);
+  const [modal, setModal]       = useState(null); // null | "add" | { type:"edit", branch }
   const [form, setForm]         = useState(EMPTY_BRANCH_FORM);
   const [saving, setSaving]     = useState(false);
 
@@ -27,16 +27,37 @@ export default function ShopsPage({ toast }) {
 
   useEffect(() => { loadBranches(); }, [loadBranches]);
 
-  const handleCreate = async () => {
-    if (!form.name || !form.code) {
-      toast.error("Nomi va kodini kiritish majburiy");
+  const openAdd = () => {
+    setForm(EMPTY_BRANCH_FORM);
+    setModal("add");
+  };
+
+  const openEdit = (branch) => {
+    setForm({ 
+      name: branch.name, 
+      code: branch.code, 
+      phone: branch.phone || "", 
+      address: branch.address || "",
+      status: branch.status 
+    });
+    setModal({ type: "edit", branch });
+  };
+
+  const handleSave = async () => {
+    if (!form.name || (!form.code && modal === "add")) {
+      toast.error("Majburiy maydonlarni kiritish zarur");
       return;
     }
     setSaving(true);
     try {
-      await shopApi.createBranch(form);
-      toast.success("Yangi filial muvaffaqiyatli qo'shildi");
-      setShowAdd(false);
+      if (modal === "add") {
+        await shopApi.createBranch(form);
+        toast.success("Yangi filial muvaffaqiyatli qo'shildi");
+      } else {
+        await shopApi.updateBranch(modal.branch.id, form);
+        toast.success("Filial ma'lumotlari yangilandi");
+      }
+      setModal(null);
       setForm(EMPTY_BRANCH_FORM);
       loadBranches();
     } catch (err) {
@@ -55,7 +76,7 @@ export default function ShopsPage({ toast }) {
           <h2 className="page-title">Filiallar</h2>
           <p className="page-subtitle">Do'koningiz filiallarni boshqarish</p>
         </div>
-        <button className="btn btn-primary" onClick={() => setShowAdd(true)}>
+        <button className="btn btn-primary" onClick={openAdd}>
           <i className="fa-solid fa-plus" /> Yangi filial qo'shish
         </button>
       </div>
@@ -72,6 +93,7 @@ export default function ShopsPage({ toast }) {
                   <th>Manzil</th>
                   <th>Status</th>
                   <th>Sana</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
@@ -83,16 +105,21 @@ export default function ShopsPage({ toast }) {
                     <td>{b.address || "—"}</td>
                     <td>
                       <Badge color={b.status === "ACTIVE" ? "green" : "red"}>
-                        {b.status === "ACTIVE" ? "Aktiv" : b.status}
+                        {b.status === "ACTIVE" ? "Aktiv" : b.status === "INACTIVE" ? "Noaktiv" : b.status}
                       </Badge>
                     </td>
                     <td className="text-muted" style={{ fontSize: 12 }}>
                       {b.createdAt ? new Date(b.createdAt).toLocaleDateString("uz-UZ") : "—"}
                     </td>
+                    <td>
+                      <button className="btn-icon" onClick={() => openEdit(b)} title="Tahrirlash">
+                        <i className="fa-solid fa-pen" />
+                      </button>
+                    </td>
                   </tr>
                 )) : (
                   <tr>
-                    <td colSpan={6}>
+                    <td colSpan={7}>
                       <Empty icon="fa-store-slash" text="Hozircha filiallar mavjud emas" />
                     </td>
                   </tr>
@@ -103,15 +130,15 @@ export default function ShopsPage({ toast }) {
         </div>
       </div>
 
-      {showAdd && (
+      {modal && (
         <Modal
-          title="Yangi filial qo'shish"
-          onClose={() => setShowAdd(false)}
+          title={modal === "add" ? "Yangi filial qo'shish" : "Filialni tahrirlash"}
+          onClose={() => setModal(null)}
           footer={
             <>
-              <button className="btn btn-outline btn-sm" onClick={() => setShowAdd(false)}>Bekor qilish</button>
-              <button className="btn btn-primary btn-sm" onClick={handleCreate} disabled={saving}>
-                {saving ? "Saqlanmoqda..." : "Yaratish"}
+              <button className="btn btn-outline btn-sm" onClick={() => setModal(null)}>Bekor qilish</button>
+              <button className="btn btn-primary btn-sm" onClick={handleSave} disabled={saving}>
+                {saving ? "Saqlanmoqda..." : "Saqlash"}
               </button>
             </>
           }
@@ -121,7 +148,7 @@ export default function ShopsPage({ toast }) {
               <input className="form-input" value={form.name} onChange={setField("name")} placeholder="Masalan: Filial №1" />
             </FormGroup>
             <FormGroup label="Shop kodi *">
-              <input className="form-input mono" value={form.code} onChange={setField("code")} placeholder="branch-1" />
+              <input className="form-input mono" value={form.code} onChange={setField("code")} placeholder="branch-1" disabled={modal?.type === "edit"} />
               <small className="text-muted">Faqat kichik lotin harflari va raqamlar</small>
             </FormGroup>
           </div>
@@ -138,6 +165,14 @@ export default function ShopsPage({ toast }) {
               <input className="form-input" value={form.address} onChange={setField("address")} placeholder="Toshkent sh., Chilonzor" />
             </FormGroup>
           </div>
+          {modal?.type === "edit" && (
+            <FormGroup label="Status">
+              <select className="form-input" value={form.status} onChange={setField("status")}>
+                <option value="ACTIVE">Aktiv</option>
+                <option value="INACTIVE">Noaktiv</option>
+              </select>
+            </FormGroup>
+          )}
         </Modal>
       )}
     </div>
