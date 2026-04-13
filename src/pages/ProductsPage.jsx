@@ -118,23 +118,34 @@ export default function ProductsPage({ toast }) {
 
   const setField = (key) => (e) => setForm((prev) => ({ ...prev, [key]: e.target.value }));
 
-  return (
     <div>
-      <div className="card">
-        <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
         <div>
           <h2 className="page-title">Mahsulotlar</h2>
           <p className="page-subtitle">Barcha mahsulotlar ro'yxati</p>
         </div>
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <button className="btn btn-outline btn-sm" onClick={loadData} title="Ma'lumotlarni yangilash">
+            <i className="fa-solid fa-rotate-right" /> Yangilash
+          </button>
           <BranchSelector selectedId={branchId} onSelect={setBranchId} />
-          {!branchId && (
-            <button className="btn btn-primary" onClick={() => { setForm(EMPTY_FORM); setModal("add"); }}>
+          {!branchId && isHeadUser && (
+            <button className="btn btn-primary" onClick={openAdd}>
               <i className="fa-solid fa-plus" /> Yangi mahsulot
             </button>
           )}
         </div>
       </div>
+
+      <div className="card">
+        <div className="card-header">
+           <SearchBar
+            value={search}
+            onChange={setSearch}
+            placeholder="Nom yoki barkod bo'yicha qidirish..."
+            style={{ width: 320 }}
+          />
+        </div>
 
         <div className="table-wrap">
           {loading ? (
