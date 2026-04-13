@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { customerApi } from "../api";
 import { BranchSelector } from "../components";
-import { money } from "../utils";
+import { maskPhone, cleanPhone, money } from "../config";
 import Modal from "../components/Modal";
 import { Loader, Empty, SearchBar, Avatar, FormGroup } from "../components/ui";
 import { useConfirm } from "../context/ConfirmProvider";
@@ -135,7 +135,7 @@ export default function CustomersPage({ toast }) {
                           <span className="fw-700">{c.fullName}</span>
                         </div>
                       </td>
-                      <td className="mono" style={{ fontSize: 13 }}>{c.phone}</td>
+                      <td className="mono" style={{ fontSize: 13 }}>{maskPhone(c.phone)}</td>
                       <td>
                         <span className="mono fw-700 text-blue">{money(c.totalSpent)}</span>
                       </td>
@@ -193,9 +193,9 @@ export default function CustomersPage({ toast }) {
           <FormGroup label="Telefon *">
             <input
               className="form-input mono"
-              value={form.phone}
-              onChange={setField("phone")}
-              placeholder="+998901234567"
+              value={maskPhone(form.phone)}
+              onChange={(e) => setForm(prev => ({ ...prev, phone: cleanPhone(e.target.value) }))}
+              placeholder="+998 (__) ___-__-__"
             />
           </FormGroup>
         </Modal>

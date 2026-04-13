@@ -45,3 +45,15 @@ export const fmtDateTime = (iso) =>
 
 export const initials = (s = "") =>
   (s || "").split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2) || "?";
+
+export const maskPhone = (val) => {
+  if (!val) return "";
+  const v = val.replace(/\D/g, "").slice(0, 12);
+  if (v.length <= 3) return "+" + v;
+  if (v.length <= 5) return "+" + v.slice(0, 3) + " (" + v.slice(3);
+  if (v.length <= 8) return "+" + v.slice(0, 3) + " (" + v.slice(3, 5) + ") " + v.slice(5);
+  if (v.length <= 10) return "+" + v.slice(0, 3) + " (" + v.slice(3, 5) + ") " + v.slice(5, 8) + "-" + v.slice(8);
+  return "+" + v.slice(0, 3) + " (" + v.slice(3, 5) + ") " + v.slice(5, 8) + "-" + v.slice(8, 10) + "-" + v.slice(10);
+};
+
+export const cleanPhone = (val) => (val || "").replace(/\D/g, "").slice(0, 12);

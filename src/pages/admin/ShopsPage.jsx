@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { shopApi } from "../../api";
+import { maskPhone, cleanPhone } from "../../config";
 import { Loader, Empty, FormGroup, Badge } from "../../components/ui";
 import { Modal } from "../../components";
 
@@ -78,7 +79,7 @@ export default function ShopsPage({ toast }) {
                   <tr key={b.id}>
                     <td><span className="fw-700">{b.name}</span></td>
                     <td><Badge color="blue">{b.code}</Badge></td>
-                    <td>{b.phone || "—"}</td>
+                    <td>{maskPhone(b.phone) || "—"}</td>
                     <td>{b.address || "—"}</td>
                     <td>
                       <Badge color={b.status === "ACTIVE" ? "green" : "red"}>
@@ -126,7 +127,12 @@ export default function ShopsPage({ toast }) {
           </div>
           <div className="grid-2">
             <FormGroup label="Telefon raqami">
-              <input className="form-input" value={form.phone} onChange={setField("phone")} placeholder="+998901234567" />
+              <input 
+                className="form-input mono" 
+                value={maskPhone(form.phone)} 
+                onChange={(e) => setForm(p => ({ ...p, phone: cleanPhone(e.target.value) }))} 
+                placeholder="+998 (__) ___-__-__" 
+              />
             </FormGroup>
             <FormGroup label="Manzil">
               <input className="form-input" value={form.address} onChange={setField("address")} placeholder="Toshkent sh., Chilonzor" />
