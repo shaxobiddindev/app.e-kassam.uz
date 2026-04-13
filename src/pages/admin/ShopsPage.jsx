@@ -76,9 +76,14 @@ export default function ShopsPage({ toast }) {
           <h2 className="page-title">Filiallar</h2>
           <p className="page-subtitle">Do'koningiz filiallarni boshqarish</p>
         </div>
-        <button className="btn btn-primary" onClick={openAdd}>
-          <i className="fa-solid fa-plus" /> Yangi filial qo'shish
-        </button>
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <button className="btn btn-outline btn-sm" onClick={loadBranches} title="Ma'lumotlarni yangilash">
+            <i className="fa-solid fa-rotate-right" /> Yangilash
+          </button>
+          <button className="btn btn-primary" onClick={openAdd}>
+            <i className="fa-solid fa-plus" /> Yangi filial qo'shish
+          </button>
+        </div>
       </div>
 
       <div className="card">

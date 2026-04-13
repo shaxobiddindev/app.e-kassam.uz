@@ -131,6 +131,9 @@ export default function ShopUsersPage({ toast }) {
           <p className="page-subtitle">Xodimlar ro'yxati va ruxsatlar</p>
         </div>
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <button className="btn btn-outline btn-sm" onClick={loadUsers} title="Ma'lumotlarni yangilash">
+            <i className="fa-solid fa-rotate-right" /> Yangilash
+          </button>
           <BranchSelector selectedId={branchId} onSelect={setBranchId} />
            <button className="btn btn-primary" onClick={() => { setForm(EMPTY_USER_FORM); setModalMode("add"); }}>
             <i className="fa-solid fa-plus" /> Qo'shish
