@@ -137,6 +137,7 @@ function Sidebar({ user, onLogout, open, onClose, isCollapsed, onToggleCollapse,
 export default function Layout({ user, onLogout, isAdmin, lowStockItems, lowStockCount, children }) {
   const [open, setOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(() => localStorage.getItem("sb_collapsed") === "1");
+  const [kassaFullscreen, setKassaFullscreen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   
@@ -148,11 +149,24 @@ export default function Layout({ user, onLogout, isAdmin, lowStockItems, lowStoc
     });
   };
 
+  const isKassaPage = location.pathname === "/sale";
+  const toggleKassaFullscreen = () => setKassaFullscreen(v => !v);
+
+  // Boshqa sahifaga o'tganda fullscreen dan chiqish
+  if (!isKassaPage && kassaFullscreen) setKassaFullscreen(false);
+
   const matchedTitle = Object.keys(PAGE_TITLES).find(k => location.pathname === k) || "/";
   const title = PAGE_TITLES[matchedTitle] || PAGE_TITLES["/"];
 
+  // Children ga kassaFullscreen props ni uzatish
+  const enhancedChildren = isKassaPage
+    ? (typeof children?.type === 'function' || children?.type?.$$typeof)
+      ? children
+      : children
+    : children;
+
   return (
-    <div className={`app-layout ${isCollapsed ? "collapsed" : ""}`}>
+    <div className={`app-layout ${isCollapsed ? "collapsed" : ""} ${kassaFullscreen ? "kassa-fullscreen" : ""}`}>
       {open && <div onClick={() => setOpen(false)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.45)", zIndex:199 }} />}
       <Sidebar 
         user={user} 
@@ -167,11 +181,25 @@ export default function Layout({ user, onLogout, isAdmin, lowStockItems, lowStoc
         <div className="topbar">
           <button className="btn-icon ham-btn" onClick={() => setOpen(v => !v)}><i className={`fa-solid ${open ? "fa-xmark" : "fa-bars"}`} /></button>
           <span className="topbar-title"><i className={`fa-solid ${title.icon}`} /> {title.label}</span>
+          {isKassaPage && (
+            <button className="btn btn-sm kassa-fs-topbar-btn" onClick={toggleKassaFullscreen} title="To'liq ekran">
+              <i className="fa-solid fa-expand" /> To'liq ekran
+            </button>
+          )}
           <LowStockBadge items={lowStockItems || []} count={lowStockCount || 0} onGoInventory={() => navigate("/inventory")} />
           <span className="topbar-date"><i className="fa-regular fa-clock" /> {new Date().toLocaleDateString("uz-UZ", { weekday:"short", year:"numeric", month:"short", day:"numeric" })}</span>
         </div>
-        <div className="page-content">{children}</div>
+        <div className="page-content">
+          {children}
+        </div>
       </main>
+
+      {/* Kassa fullscreen exit button */}
+      {kassaFullscreen && (
+        <button className="kassa-fs-exit" onClick={toggleKassaFullscreen} title="To'liq ekrandan chiqish">
+          <i className="fa-solid fa-compress" />
+        </button>
+      )}
     </div>
   );
 }

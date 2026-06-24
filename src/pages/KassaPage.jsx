@@ -9,7 +9,7 @@ function printCheck({ saleId, cart, total, payType, customer }) {
   const win = window.open("", "_blank", "width=320,height=600,toolbar=no,menubar=no");
   if (!win) return;
 
-  const payLabel = { CASH: "Naqd", CARD: "Karta", MIXED: "Aralash" };
+  const payLabel = { CASH: "Naqd", CARD: "Karta", MIXED: "Aralash", CLICK: "Click", PAYME: "Payme" };
   const rows = cart
     .map((i) => `<div class="row"><span>${i.name} ×${i.qty}</span><span>${(i.salePrice * i.qty).toLocaleString("uz-UZ")} so'm</span></div>`)
     .join("");
@@ -59,6 +59,8 @@ export default function KassaPage({ toast, refreshLowStock }) {
   const [customer, setCustomer]     = useState(null);
   const [processing, setProcessing] = useState(false);
   const [branchId, setBranchId]     = useState(null);
+  const [showPayModal, setShowPayModal] = useState(false);
+  const [mixedSecondType, setMixedSecondType] = useState("CARD");
 
   // Barcode scanner uchun buffer
   const bcBuffer   = useRef("");
@@ -152,10 +154,29 @@ export default function KassaPage({ toast, refreshLowStock }) {
       const half = Math.round(total / 2);
       setCashAmount(String(half));
       setCardAmount(String(total - half));
+      setMixedSecondType("CARD");
     } else {
       setCashAmount("");
       setCardAmount("");
     }
+  };
+
+  // Aralash to'lovda ikkinchi turni o'zgartirish
+  const handleMixedSecondChange = (type) => {
+    setMixedSecondType(type);
+  };
+
+  // Modal ochilganda payType reset
+  const openPayModal = () => {
+    setPayType("CASH");
+    setCashAmount("");
+    setCardAmount("");
+    setMixedSecondType("CARD");
+    setShowPayModal(true);
+  };
+
+  const closePayModal = () => {
+    setShowPayModal(false);
   };
 
   // ── Sotish ──────────────────────────────────────────────────
@@ -167,9 +188,12 @@ export default function KassaPage({ toast, refreshLowStock }) {
         customerId:  customer?.id || null,
         items:       cart.map((i) => ({ productId: i.id, quantity: i.qty })),
         paymentType: payType,
+        mixedSecondType: payType === "MIXED" ? mixedSecondType : undefined,
         cashAmount:  payType === "CASH"  ? total :
                      payType === "MIXED" ? Number(cashAmount) || 0 : 0,
         cardAmount:  payType === "CARD"  ? total :
+                     payType === "CLICK" ? total :
+                     payType === "PAYME" ? total :
                      payType === "MIXED" ? Number(cardAmount) || 0 : 0,
       });
 
@@ -180,6 +204,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
       setCustomer(null);
       setCashAmount(""); setCardAmount("");
       setPayType("CASH");
+      setShowPayModal(false);
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -303,7 +328,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
             </select>
           </div>
 
-          {/* Jami va to'lov */}
+          {/* Jami summa va To'lovga o'tish tugmasi */}
           <div className="total-card">
             <div className="total-row">
               <span>Mahsulotlar</span>
@@ -314,80 +339,161 @@ export default function KassaPage({ toast, refreshLowStock }) {
               <span className="mono">{money(total)}</span>
             </div>
 
-            {/* To'lov turlari */}
-            <div className="payment-grid">
-              {[
-                { key: "CASH", label: "Naqd", icon: "fa-money-bill-1" },
-                { key: "CARD", label: "Karta", icon: "fa-credit-card" },
-                { key: "MIXED", label: "Aralash", icon: "fa-shuffle", full: true },
-              ].map(({ key, label, icon, full }) => (
-                <button
-                  key={key}
-                  className={`payment-btn ${payType === key ? "active" : ""}`}
-                  style={full ? { gridColumn: "1 / -1" } : {}}
-                  onClick={() => handlePayTypeChange(key)}
-                >
-                  <i className={`fa-solid ${icon}`} /> {label}
-                </button>
-              ))}
-            </div>
-
-            {/* MIXED: naqd va karta miqdori */}
-            {payType === "MIXED" && (
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 8 }}>
-                <div>
-                  <label style={{ fontSize: 11, fontWeight: 700, color: "#15803d", display: "block", marginBottom: 4 }}>
-                    <i className="fa-solid fa-money-bill-1" /> Naqd (so'm)
-                  </label>
-                  <input
-                    type="number" min="0"
-                    className="form-input"
-                    style={{ textAlign: "right", fontWeight: 700, color: "#15803d", borderColor: "#86efac" }}
-                    value={cashAmount}
-                    onChange={(e) => {
-                      setCashAmount(e.target.value);
-                      const v = Number(e.target.value) || 0;
-                      setCardAmount(String(Math.max(0, total - v)));
-                    }}
-                  />
-                </div>
-                <div>
-                  <label style={{ fontSize: 11, fontWeight: 700, color: "#1d4ed8", display: "block", marginBottom: 4 }}>
-                    <i className="fa-solid fa-credit-card" /> Karta (so'm)
-                  </label>
-                  <input
-                    type="number" min="0"
-                    className="form-input"
-                    style={{ textAlign: "right", fontWeight: 700, color: "#1d4ed8", borderColor: "#93c5fd" }}
-                    value={cardAmount}
-                    onChange={(e) => {
-                      setCardAmount(e.target.value);
-                      const v = Number(e.target.value) || 0;
-                      setCashAmount(String(Math.max(0, total - v)));
-                    }}
-                  />
-                </div>
-                {(Number(cashAmount) || 0) + (Number(cardAmount) || 0) !== total && total > 0 && (
-                  <div style={{ gridColumn: "1/-1", fontSize: 12, color: "var(--red)", fontWeight: 700, textAlign: "center" }}>
-                    <i className="fa-solid fa-triangle-exclamation" /> Yig'indi: {((Number(cashAmount) || 0) + (Number(cardAmount) || 0)).toLocaleString()} — Jami: {total.toLocaleString()}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Sotish tugmasi */}
             <button
               className="btn btn-green btn-full"
-              style={{ marginTop: 12 }}
-              onClick={handleSubmit}
-              disabled={!cart.length || processing}
+              style={{ marginTop: 14 }}
+              onClick={openPayModal}
+              disabled={!cart.length}
             >
-              <i className={`fa-solid ${processing ? "fa-spinner fa-spin" : "fa-receipt"}`} />
-              {processing ? "Bajarilmoqda..." : "Sotish va Chek Chiqarish"}
+              <i className="fa-solid fa-wallet" />
+              To'lovga o'tish
             </button>
           </div>
         </div>
       </div>
+
+      {/* ════ TO'LOV MODALI ════ */}
+      {showPayModal && (
+        <div className="pay-modal-overlay">
+          <div className="pay-modal-box">
+            {/* Modal header */}
+            <div className="pay-modal-header">
+              <div className="pay-modal-title">
+                <i className="fa-solid fa-cash-register" />
+                To'lov qilish
+              </div>
+              <button className="pay-modal-close" onClick={closePayModal}>
+                <i className="fa-solid fa-xmark" />
+              </button>
+            </div>
+
+            {/* Modal body */}
+            <div className="pay-modal-body">
+
+              {/* Jami summa ko'rsatish */}
+              <div className="pay-modal-total">
+                <div className="pay-modal-total-label">Umumiy summa</div>
+                <div className="pay-modal-total-value">{money(total)}</div>
+                <div className="pay-modal-total-qty">{totalQty} ta mahsulot · {cart.length} xil</div>
+              </div>
+
+              {/* To'lov turlari */}
+              <div className="pay-modal-section-label">
+                <i className="fa-solid fa-credit-card" /> To'lov turini tanlang
+              </div>
+              <div className="pay-modal-types">
+                {[
+                  { key: "CASH",  label: "Naqd",    icon: "fa-money-bill-1", color: "#16a34a" },
+                  { key: "CARD",  label: "Karta",   icon: "fa-credit-card",  color: "#2563eb" },
+                  { key: "CLICK", label: "Click",   icon: "fa-mobile-screen", color: "#7c3aed" },
+                  { key: "PAYME", label: "Payme",   icon: "fa-mobile-screen-button", color: "#06b6d4" },
+                  { key: "MIXED", label: "Aralash",  icon: "fa-shuffle",      color: "#ea580c" },
+                ].map(({ key, label, icon, color }) => (
+                  <button
+                    key={key}
+                    className={`pay-type-btn ${payType === key ? "active" : ""}`}
+                    onClick={() => handlePayTypeChange(key)}
+                    style={{ "--pay-color": color }}
+                  >
+                    <div className="pay-type-icon">
+                      <i className={`fa-solid ${icon}`} />
+                    </div>
+                    <div className="pay-type-label">{label}</div>
+                  </button>
+                ))}
+              </div>
+
+              {/* MIXED: ikkinchi to'lov turini tanlash + miqdorlar */}
+              {payType === "MIXED" && (
+                <div className="pay-mixed-section">
+                  {/* Ikkinchi to'lov turini tanlash */}
+                  <div className="pay-mixed-label" style={{ color: "var(--text2)", marginBottom: 10 }}>
+                    <i className="fa-solid fa-shuffle" /> Naqd + qolgan qismi:
+                  </div>
+                  <div className="pay-mixed-second-types">
+                    {[
+                      { key: "CARD",  label: "Karta",  icon: "fa-credit-card",          color: "#2563eb" },
+                      { key: "CLICK", label: "Click",  icon: "fa-mobile-screen",        color: "#7c3aed" },
+                      { key: "PAYME", label: "Payme",  icon: "fa-mobile-screen-button", color: "#06b6d4" },
+                    ].map(({ key, label, icon, color }) => (
+                      <button
+                        key={key}
+                        className={`pay-mixed-second-btn ${mixedSecondType === key ? "active" : ""}`}
+                        onClick={() => handleMixedSecondChange(key)}
+                        style={{ "--pay-color": color }}
+                      >
+                        <i className={`fa-solid ${icon}`} />
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Miqdor inputlari */}
+                  <div className="pay-mixed-row" style={{ marginTop: 14 }}>
+                    <div className="pay-mixed-field">
+                      <label className="pay-mixed-label" style={{ color: "#15803d" }}>
+                        <i className="fa-solid fa-money-bill-1" /> Naqd (so'm)
+                      </label>
+                      <input
+                        type="number" min="0"
+                        className="form-input pay-mixed-input"
+                        style={{ borderColor: "#86efac", color: "#15803d" }}
+                        value={cashAmount}
+                        onChange={(e) => {
+                          setCashAmount(e.target.value);
+                          const v = Number(e.target.value) || 0;
+                          setCardAmount(String(Math.max(0, total - v)));
+                        }}
+                      />
+                    </div>
+                    <div className="pay-mixed-field">
+                      <label className="pay-mixed-label" style={{ color: mixedSecondType === "CARD" ? "#1d4ed8" : mixedSecondType === "CLICK" ? "#7c3aed" : "#06b6d4" }}>
+                        <i className={`fa-solid ${mixedSecondType === "CARD" ? "fa-credit-card" : mixedSecondType === "CLICK" ? "fa-mobile-screen" : "fa-mobile-screen-button"}`} />
+                        {mixedSecondType === "CARD" ? "Karta" : mixedSecondType === "CLICK" ? "Click" : "Payme"} (so'm)
+                      </label>
+                      <input
+                        type="number" min="0"
+                        className="form-input pay-mixed-input"
+                        style={{ borderColor: mixedSecondType === "CARD" ? "#93c5fd" : mixedSecondType === "CLICK" ? "#c4b5fd" : "#a5f3fc", color: mixedSecondType === "CARD" ? "#1d4ed8" : mixedSecondType === "CLICK" ? "#7c3aed" : "#06b6d4" }}
+                        value={cardAmount}
+                        onChange={(e) => {
+                          setCardAmount(e.target.value);
+                          const v = Number(e.target.value) || 0;
+                          setCashAmount(String(Math.max(0, total - v)));
+                        }}
+                      />
+                    </div>
+                  </div>
+                  {(Number(cashAmount) || 0) + (Number(cardAmount) || 0) !== total && total > 0 && (
+                    <div className="pay-mixed-warn">
+                      <i className="fa-solid fa-triangle-exclamation" /> Yig'indi: {((Number(cashAmount) || 0) + (Number(cardAmount) || 0)).toLocaleString()} — Jami: {total.toLocaleString()}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Modal footer */}
+            <div className="pay-modal-footer">
+              <button
+                className="btn btn-outline"
+                onClick={closePayModal}
+                disabled={processing}
+              >
+                <i className="fa-solid fa-arrow-left" /> Orqaga
+              </button>
+              <button
+                className="btn btn-green pay-modal-submit"
+                onClick={handleSubmit}
+                disabled={!cart.length || processing}
+              >
+                <i className={`fa-solid ${processing ? "fa-spinner fa-spin" : "fa-receipt"}`} />
+                {processing ? "Bajarilmoqda..." : "Sotish va Chek"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
-);
+  );
 }

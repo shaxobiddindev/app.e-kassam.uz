@@ -323,3 +323,471 @@ select.form-input { cursor: pointer; }
   0%, 100% { box-shadow: 0 0 0 0 rgba(245,158,11,.4); }
   50%       { box-shadow: 0 0 0 6px rgba(245,158,11,0); }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   TO'LOV MODALI
+   ══════════════════════════════════════════════════════════════ */
+.pay-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 600;
+  padding: 20px;
+  animation: fadeIn .25s ease;
+}
+
+.pay-modal-box {
+  background: white;
+  border-radius: 22px;
+  width: 100%;
+  max-width: 720px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow:
+    0 8px 40px rgba(1, 54, 141, 0.12),
+    0 2px 12px rgba(1, 54, 141, 0.08);
+  border: 1px solid rgba(226, 236, 245, 0.8);
+  animation: payModalIn .35s cubic-bezier(.16,1,.3,1);
+}
+
+@keyframes payModalIn {
+  from { opacity: 0; transform: translateY(30px) scale(0.97); }
+  to   { opacity: 1; transform: none; }
+}
+
+.pay-modal-header {
+  padding: 22px 26px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pay-modal-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pay-modal-title i {
+  color: var(--blue);
+  font-size: 20px;
+}
+
+.pay-modal-close {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1.5px solid var(--border);
+  background: var(--bg);
+  color: var(--text2);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  transition: .2s;
+}
+
+.pay-modal-close:hover {
+  background: var(--red-l);
+  color: var(--red);
+  border-color: #fca5a5;
+  transform: scale(1.05);
+}
+
+.pay-modal-body {
+  padding: 20px 26px;
+}
+
+/* ── Umumiy summa ── */
+.pay-modal-total {
+  background: linear-gradient(135deg, var(--blue-d) 0%, var(--blue) 100%);
+  border-radius: 16px;
+  padding: 22px 24px;
+  text-align: center;
+  margin-bottom: 22px;
+  position: relative;
+  overflow: hidden;
+}
+
+.pay-modal-total::before {
+  content: '';
+  position: absolute;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.06);
+  top: -50px;
+  right: -30px;
+}
+
+.pay-modal-total::after {
+  content: '';
+  position: absolute;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.04);
+  bottom: -20px;
+  left: -15px;
+}
+
+.pay-modal-total-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.6);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: 6px;
+}
+
+.pay-modal-total-value {
+  font-size: 30px;
+  font-weight: 900;
+  color: white;
+  font-family: var(--mono);
+  line-height: 1.2;
+}
+
+.pay-modal-total-qty {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.5);
+  margin-top: 6px;
+}
+
+/* ── Section label ── */
+.pay-modal-section-label {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.pay-modal-section-label i {
+  color: var(--blue);
+  font-size: 13px;
+}
+
+/* ── To'lov turlari grid ── */
+.pay-modal-types {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.pay-type-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 16px 10px 12px;
+  border-radius: 14px;
+  border: 2px solid var(--border);
+  background: white;
+  cursor: pointer;
+  transition: all .25s ease;
+  font-family: var(--font);
+  position: relative;
+  overflow: hidden;
+}
+
+.pay-type-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--pay-color);
+  opacity: 0;
+  transition: opacity .25s;
+}
+
+.pay-type-btn:hover {
+  border-color: var(--pay-color);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+}
+
+.pay-type-btn.active {
+  border-color: var(--pay-color);
+  background: var(--pay-color);
+  color: white;
+  box-shadow: 0 4px 18px color-mix(in srgb, var(--pay-color) 40%, transparent);
+}
+
+.pay-type-btn.active .pay-type-icon {
+  background: rgba(255,255,255,0.22);
+  color: white;
+}
+
+.pay-type-btn.active .pay-type-label {
+  color: white;
+}
+
+.pay-type-btn.active .pay-type-sub {
+  color: rgba(255,255,255,0.75);
+}
+
+.pay-type-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--pay-color) 10%, transparent);
+  color: var(--pay-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  transition: .25s;
+  position: relative;
+  z-index: 1;
+}
+
+.pay-type-label {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text);
+  position: relative;
+  z-index: 1;
+  transition: .25s;
+}
+
+.pay-type-sub {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text3);
+  position: relative;
+  z-index: 1;
+  transition: .25s;
+}
+
+/* ── Aralash to'lov inputlari ── */
+.pay-mixed-section {
+  margin-top: 16px;
+  padding: 18px;
+  background: #f8fafc;
+  border-radius: 14px;
+  border: 1.5px solid var(--border);
+  animation: slideUp .3s ease;
+}
+
+/* Aralash ikkinchi to'lov turi tanlash */
+.pay-mixed-second-types {
+  display: flex;
+  gap: 8px;
+}
+
+.pay-mixed-second-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 2px solid var(--border);
+  background: white;
+  cursor: pointer;
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  transition: all .2s ease;
+}
+
+.pay-mixed-second-btn i {
+  font-size: 14px;
+  color: var(--pay-color);
+  transition: .2s;
+}
+
+.pay-mixed-second-btn:hover {
+  border-color: var(--pay-color);
+  background: color-mix(in srgb, var(--pay-color) 6%, transparent);
+}
+
+.pay-mixed-second-btn.active {
+  border-color: var(--pay-color);
+  background: var(--pay-color);
+  color: white;
+  box-shadow: 0 3px 12px color-mix(in srgb, var(--pay-color) 35%, transparent);
+}
+
+.pay-mixed-second-btn.active i {
+  color: white;
+}
+
+.pay-mixed-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.pay-mixed-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pay-mixed-label {
+  font-size: 11px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.pay-mixed-label i {
+  font-size: 12px;
+}
+
+.pay-mixed-input {
+  text-align: right;
+  font-weight: 700 !important;
+  font-family: var(--mono) !important;
+  font-size: 15px !important;
+}
+
+.pay-mixed-warn {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--red);
+  font-weight: 700;
+  text-align: center;
+  padding: 8px;
+  background: var(--red-l);
+  border-radius: 8px;
+  border: 1px solid #fca5a5;
+}
+
+/* ── Modal footer ── */
+.pay-modal-footer {
+  padding: 0 26px 24px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.pay-modal-submit {
+  padding: 13px 28px !important;
+  font-size: 15px !important;
+  flex: 1;
+}
+
+/* ══════════════════════════════════════════════════════
+   KASSA FULLSCREEN MODE
+   ══════════════════════════════════════════════════════ */
+
+/* Topbar dagi "To'liq ekran" tugmasi */
+.kassa-fs-topbar-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  background: var(--blue-l) !important;
+  color: var(--blue) !important;
+  border: 1.5px solid rgba(1, 125, 202, 0.2) !important;
+  border-radius: 8px !important;
+  cursor: pointer;
+  transition: all .25s ease;
+}
+
+.kassa-fs-topbar-btn:hover {
+  background: var(--blue) !important;
+  color: white !important;
+  border-color: var(--blue) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 12px rgba(1, 125, 202, 0.25);
+}
+
+.kassa-fs-topbar-btn i {
+  font-size: 12px;
+}
+
+/* Fullscreen rejimida sidebar va topbar yashirish */
+.app-layout.kassa-fullscreen .sidebar {
+  transform: translateX(-100%);
+  opacity: 0;
+  pointer-events: none;
+  width: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.app-layout.kassa-fullscreen .topbar {
+  display: none;
+}
+
+.app-layout.kassa-fullscreen .main-content {
+  margin-left: 0 !important;
+  width: 100vw;
+}
+
+.app-layout.kassa-fullscreen .page-content {
+  padding: 20px;
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
+}
+
+/* Kassa sahifasining wrapper div (inline height ni override) */
+.app-layout.kassa-fullscreen .page-content > div {
+  height: calc(100vh - 40px) !important;
+  max-height: calc(100vh - 40px) !important;
+}
+
+.app-layout.kassa-fullscreen .kassa-layout {
+  height: calc(100vh - 40px - 40px) !important; /* 40px padding + header height */
+  max-height: calc(100vh - 40px - 40px) !important;
+}
+
+/* Fullscreen dan chiqish tugmasi */
+.kassa-fs-exit {
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  z-index: 9999;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  border: 1.5px solid rgba(255,255,255,0.15);
+  background: rgba(1, 54, 141, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  transition: all .25s ease;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+  animation: kfsExitIn .3s cubic-bezier(.16,1,.3,1);
+}
+
+.kassa-fs-exit:hover {
+  background: var(--red);
+  border-color: rgba(255,255,255,0.3);
+  transform: scale(1.08);
+  box-shadow: 0 4px 20px rgba(239,68,68,0.4);
+}
+
+@keyframes kfsExitIn {
+  from { opacity: 0; transform: scale(0.7) translateY(-10px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}

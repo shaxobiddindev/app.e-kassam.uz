@@ -1,3 +1,8 @@
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
 [[headers]]
   for = "/*"
   [headers.values]
@@ -6,11 +11,6 @@
     Referrer-Policy = "strict-origin-when-cross-origin"
 
 [[headers]]
-  for = "/style.css"
-  [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
-
-[[headers]]
-  for = "/script.js"
+  for = "/assets/*"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
