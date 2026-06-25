@@ -131,6 +131,8 @@ export default function KassaPage({ toast, refreshLowStock }) {
       return [...prev, { ...product, qty: 1 }];
     });
     setSearch("");
+    clearTimeout(debounceRef.current);
+    doSearch("");
   };
 
   const updateQty = (id, delta) => {

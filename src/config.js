@@ -1,13 +1,16 @@
 // ╔══════════════════════════════════════════════════════════════╗
 // ║           BARCHA URL VA SOZLAMALAR SHU YERDA               ║
-// ║   Deployment uchun faqat shu faylni o'zgartiring           ║
+// ║   Deployment uchun faqat DOMAIN ni o'zgartiring            ║
 // ╚══════════════════════════════════════════════════════════════╝
 
-// ── Server URL ─────────────────────────────────────────────────
-export const API_BASE  = "https://api.e-kassam.uz/api";
+// ┌──────────────────────────────────────────────────────────────┐
+// │  🔧 YAGONA SOZLAMA — faqat shu qatorni o'zgartiring        │
+// │  Masalan: "e-kassam.uz" → "test.e-kassam.uz"               │
+// │  Qolgan barcha URL lar avtomatik o'zgaradi                 │
+// └──────────────────────────────────────────────────────────────┘
 
-// ── Frontend URL lar ───────────────────────────────────────────
-export const LOGIN_URL = "https://auth.e-kassam.uz";
+export const API_BASE  = `https://api.e-kassam.uz/api`;
+export const LOGIN_URL = `https://auth.e-kassam.uz`;
 
 // ── Logo (public/ papkasiga logo.png qo'ying) ──────────────────
 export const LOGO_URL  = "/logo.png";
