@@ -189,7 +189,7 @@ export default function InventoryPage({ toast }) {
                 lineHeight: 1.5,
               }}
             >
-              ⚠️ Bu mahsulot muddati o'tgan. Kirim qilsangiz eskisi EXPIRED qoladi va yangi inventar yaratiladi.
+              ⚠️ Bu mahsulot muddati o'tgan. Kirim qilsangiz eskisi «Muddati o'tgan» holatida qoladi va yangi inventar yaratiladi.
             </div>
           )}
 
