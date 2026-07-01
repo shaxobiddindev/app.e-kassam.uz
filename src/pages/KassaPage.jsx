@@ -123,6 +123,16 @@ export default function KassaPage({ toast, refreshLowStock }) {
 
   // ── Savatcha ────────────────────────────────────────────────
   const addToCart = (product) => {
+    // Muddati o'tgan mahsulotni qo'shishni taqiqlash
+    if (product.expired) {
+      toast.error(`${product.name} — muddati o'tgan, sotib bo'lmaydi!`);
+      return;
+    }
+    // Qoldiq tekshiruvi
+    if (product.stockQuantity !== undefined && product.stockQuantity !== null && product.stockQuantity <= 0) {
+      toast.error(`${product.name} — omborda qolmagan!`);
+      return;
+    }
     setCart((prev) => {
       const exists = prev.find((i) => i.id === product.id);
       if (exists) {

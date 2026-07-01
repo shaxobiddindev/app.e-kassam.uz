@@ -3,14 +3,13 @@
 // ║   Deployment uchun faqat DOMAIN ni o'zgartiring            ║
 // ╚══════════════════════════════════════════════════════════════╝
 
-// ┌──────────────────────────────────────────────────────────────┐
-// │  🔧 YAGONA SOZLAMA — faqat shu qatorni o'zgartiring        │
-// │  Masalan: "e-kassam.uz" → "test.e-kassam.uz"               │
-// │  Qolgan barcha URL lar avtomatik o'zgaradi                 │
-// └──────────────────────────────────────────────────────────────┘
-
+// *** PRODUCTION
 export const API_BASE  = `https://api.e-kassam.uz/api`;
 export const LOGIN_URL = `https://auth.e-kassam.uz`;
+
+// *** LOCALHOST
+// export const API_BASE  = `http://localhost:8080/api`;
+// export const LOGIN_URL = `http://localhost:5175`;
 
 // ── Logo (public/ papkasiga logo.png qo'ying) ──────────────────
 export const LOGO_URL  = "/logo.png";

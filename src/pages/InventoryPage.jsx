@@ -100,12 +100,20 @@ export default function InventoryPage({ toast }) {
                   <th>Tan narxi</th>
                   <th>Sotuv narxi</th>
                   <th>Yaroqlilik muddati</th>
+                  <th>Holat</th>
                   {!branchId && <th className="text-end">Amallar</th>}
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((item) => (
-                  <tr key={item.productId}>
+                  <tr
+                    key={item.inventoryId}
+                    style={
+                      item.status === "EXPIRED" || item.expired
+                        ? { opacity: 0.6, background: "rgba(239,68,68,0.05)" }
+                        : undefined
+                    }
+                  >
                     <td>
                       <div className="fw-700">{item.productName}</div>
                     </td>
@@ -118,6 +126,19 @@ export default function InventoryPage({ toast }) {
                     <td>{money(item.costPrice)}</td>
                     <td>{money(item.salePrice)}</td>
                     <td>{item.expiryDate || "-"}</td>
+                    <td>
+                      <span
+                        className={`badge ${
+                          item.status === "EXPIRED" || item.expired
+                            ? "badge-red"
+                            : "badge-green"
+                        }`}
+                      >
+                        {item.status === "EXPIRED" || item.expired
+                          ? "Muddati o'tgan"
+                          : "Faol"}
+                      </span>
+                    </td>
                     {!branchId && (
                       <td className="text-end">
                         <button className="btn btn-primary btn-sm" onClick={() => openModal(item)}>
@@ -154,6 +175,24 @@ export default function InventoryPage({ toast }) {
             </>
           }
         >
+          {/* Muddati o'tgan ogohlantirish */}
+          {(modal.status === "EXPIRED" || modal.expired) && (
+            <div
+              style={{
+                background: "#fef3c7",
+                border: "1px solid #f59e0b",
+                borderRadius: 10,
+                padding: "10px 14px",
+                marginBottom: 14,
+                fontSize: 13,
+                color: "#92400e",
+                lineHeight: 1.5,
+              }}
+            >
+              ⚠️ Bu mahsulot muddati o'tgan. Kirim qilsangiz eskisi EXPIRED qoladi va yangi inventar yaratiladi.
+            </div>
+          )}
+
           {/* Hozirgi miqdor */}
           <div
             style={{
