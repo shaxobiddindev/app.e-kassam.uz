@@ -46,9 +46,13 @@ if (authParam) {
     } else { role = p.get("role") || ""; }
     const shopCode = p.get("shopCode") || "";
     const refresh = p.get("refresh") || p.get("refreshToken") || "";
+    // Refresh token login domenidagi deviceId ga bog'langan — o'shani
+    // saqlaymiz, aks holda bu yerda yangi id yaralib refresh rad etiladi.
+    const deviceId = p.get("deviceId") || "";
     if (token && type) {
       localStorage.setItem("ek_token", token);
       localStorage.setItem("ek_refresh", refresh);
+      if (deviceId) localStorage.setItem("ek_deviceId", deviceId);
       localStorage.setItem("ek_type", type);
       localStorage.setItem("ek_username", username);
       localStorage.setItem("ek_fullName", fullName);
