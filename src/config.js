@@ -3,13 +3,14 @@
 // ║   Deployment uchun faqat DOMAIN ni o'zgartiring            ║
 // ╚══════════════════════════════════════════════════════════════╝
 
-// *** PRODUCTION
-export const API_BASE  = `https://api.e-kassam.uz/api`;
-export const LOGIN_URL = `https://auth.e-kassam.uz`;
+// `npm run dev` → LOCALHOST, `npm run build` → PRODUCTION (avtomatik).
+// Boshqa qiymat kerak bo'lsa .env faylida VITE_* ni bering.
+const PROD = import.meta.env.PROD;
 
-// *** LOCALHOST
-// export const API_BASE  = `http://localhost:8080/api`;
-// export const LOGIN_URL = `http://localhost:5175`;
+export const API_BASE  = import.meta.env.VITE_API_BASE
+  ?? (PROD ? `https://api.e-kassam.uz/api` : `http://localhost:8080/api`);
+export const LOGIN_URL = import.meta.env.VITE_LOGIN_URL
+  ?? (PROD ? `https://auth.e-kassam.uz`    : `http://localhost:5175`);
 
 // ── Logo (public/ papkasiga logo.png qo'ying) ──────────────────
 export const LOGO_URL  = "/logo.png";
