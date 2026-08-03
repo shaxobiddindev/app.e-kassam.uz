@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { t } from "../../lib/ek-i18n";
 import { shopApi } from "../../api";
 import { Empty, FormGroup, Badge } from "../../components/ui";
 import { BranchSelector, Modal } from "../../components";
@@ -37,7 +38,7 @@ export default function ShopUsersPage({ toast }) {
       const filtered = (res.data || []).filter(u => u.username !== currentUser?.username);
       setUsers(filtered);
     } catch (err) {
-      toast.error("Xodimlar yuklanmadi");
+      toast.error(t("staff.loadFailed"));
       setUsers([]);
     } finally {
       setLoading(false);
@@ -48,27 +49,27 @@ export default function ShopUsersPage({ toast }) {
 
   const handleSave = async () => {
     if (!form.fullName || (!form.username && modalMode === "add") || (modalMode === "add" && !form.password)) {
-      toast.error("Majburiy maydonlarni to'ldiring");
+      toast.error(t("products.requiredFields"));
       return;
     }
     setSaving(true);
     try {
       if (modalMode === "add") {
         await shopApi.createUser(form, branchId);
-        toast.success("Xodim qo'shildi");
+        toast.success(t("staff.added"));
       } else {
         await shopApi.updateUser(editingId, {
           fullName: form.fullName,
           role:     form.role,
           password: form.password || undefined // Bo'sh bo'lsa parolni o'zgartirmaydi
         }, branchId);
-        toast.success("Ma'lumotlar saqlandi");
+        toast.success(t("staff.saved"));
       }
       setModalMode(null);
       setForm(EMPTY_USER_FORM);
       loadUsers();
     } catch (err) {
-      toast.error(err.message || "Xatolik yuz berdi");
+      toast.error(err.message || t("common.unknownError"));
     } finally {
       setSaving(false);
     }
@@ -87,14 +88,14 @@ export default function ShopUsersPage({ toast }) {
 
   const handleDelete = async (userId) => {
     const ok = await confirm({
-      title: "Xodimni o'chirish",
-      message: "Ushbu xodimni butunlay o'chirib tashlamoqchimisiz? Bu amalni ortga qaytarib bo'lmaydi.",
+      title: t("staff.deleteTitle"),
+      message: t("staff.deleteMsg"),
       type: "danger"
     });
     if (!ok) return;
     try {
       await shopApi.deleteUser(userId, branchId);
-      toast.success("Xodim o'chirildi");
+      toast.success(t("staff.deleted"));
       loadUsers();
     } catch (err) {
       toast.error(err.message);
@@ -104,7 +105,7 @@ export default function ShopUsersPage({ toast }) {
   const handleToggleBlock = async (u) => {
     const isActivating = u.enabled === false;
     const ok = await confirm({
-      title: isActivating ? "Xodimni faollashtirish" : "Xodimni bloklash",
+      title: isActivating ? t("adm.users.unblockTitle") : t("adm.users.blockTitle"),
       message: isActivating 
         ? `${u.fullName} ni tizimga kirishini tiklamoqchimisiz?`
         : `Chindan ham ${u.fullName} ni bloklamoqchimisiz? U tizimga kira olmaydi.`,
@@ -114,7 +115,7 @@ export default function ShopUsersPage({ toast }) {
 
     try {
       await shopApi.toggleBlockUser(u.id, branchId);
-      toast.success("Holat o'zgartirildi");
+      toast.success(t("staff.statusChanged"));
       loadUsers();
     } catch (err) {
       toast.error(err.message);
@@ -127,15 +128,15 @@ export default function ShopUsersPage({ toast }) {
     <div>
       <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
-          <h2 className="page-title">Xodimlar</h2>
+          <h2 className="page-title">{t("staff.title")}</h2>
         </div>
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          <button className="btn btn-outline btn-sm" onClick={loadUsers} title="Ma'lumotlarni yangilash">
-            <i className="fa-solid fa-rotate-right" /> Yangilash
+          <button className="btn btn-outline btn-sm" onClick={loadUsers} title={t("products.refreshTitle")}>
+            <i className="fa-solid fa-rotate-right" /> {t("common.refresh")}
           </button>
           <BranchSelector selectedId={branchId} onSelect={setBranchId} />
            <button className="btn btn-primary" onClick={() => { setForm(EMPTY_USER_FORM); setModalMode("add"); }}>
-            <i className="fa-solid fa-plus" /> Qo'shish
+            <i className="fa-solid fa-plus" /> {t("common.add")}
           </button>
         </div>
       </div>
@@ -146,11 +147,11 @@ export default function ShopUsersPage({ toast }) {
             <table>
               <thead>
                 <tr>
-                  <th>Xodim</th>
-                  <th>Username</th>
-                  <th>Rol</th>
-                  <th>Status</th>
-                  <th style={{ textAlign: "right" }}>Amallar</th>
+                  <th>{t("staff.col")}</th>
+                  <th>{t("common.username")}</th>
+                  <th>{t("common.role")}</th>
+                  <th>{t("common.status")}</th>
+                  <th style={{ textAlign: "right" }}>{t("common.actions")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -180,29 +181,29 @@ export default function ShopUsersPage({ toast }) {
                     </td>
                     <td>
                       <Badge color={u.enabled !== false ? "green" : "red"}>
-                        {u.enabled !== false ? "Aktiv" : "Bloklangan"}
+                        {u.enabled !== false ? t("common.active") : t("common.blocked")}
                       </Badge>
                     </td>
                     <td>
                       <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-                        <button className="btn btn-icon btn-sm" title="Tahrirlash" onClick={() => handleEditClick(u)}>
+                        <button className="btn btn-icon btn-sm" title={t("common.edit")} onClick={() => handleEditClick(u)}>
                           <i className="fa-solid fa-pen-to-square text-blue" />
                         </button>
                         <button
                           className="btn btn-icon btn-sm"
-                          title={u.enabled !== false ? "Bloklash" : "Faollashtirish"}
+                          title={u.enabled !== false ? t("adm.shops.block") : t("adm.shops.activate")}
                           onClick={() => handleToggleBlock(u)}
                         >
                           <i className={`fa-solid ${u.enabled !== false ? "fa-ban text-orange" : "fa-check text-green"}`} />
                         </button>
-                        <button className="btn btn-icon btn-sm" title="O'chirish" onClick={() => handleDelete(u.id)}>
+                        <button className="btn btn-icon btn-sm" title={t("common.delete")} onClick={() => handleDelete(u.id)}>
                           <i className="fa-solid fa-trash-can text-red" />
                         </button>
                       </div>
                     </td>
                   </tr>
                 )) : (
-                  <tr><td colSpan={5}><Empty icon="fa-user-slash" text="Xodimlar ro'yxati bo'sh" /></td></tr>
+                  <tr><td colSpan={5}><Empty icon="fa-user-slash" text={t("staff.none")} /></td></tr>
                 )}
               </tbody>
             </table>
@@ -212,23 +213,23 @@ export default function ShopUsersPage({ toast }) {
 
       {modalMode && (
         <Modal
-          title={modalMode === "add" ? "Yangi xodim qo'shish" : "Xodim ma'lumotlarini tahrirlash"}
+          title={modalMode === "add" ? t("staff.new") : t("staff.edit")}
           onClose={() => setModalMode(null)}
           footer={
             <>
-              <button className="btn btn-outline btn-sm" onClick={() => setModalMode(null)}>Bekor</button>
+              <button className="btn btn-outline btn-sm" onClick={() => setModalMode(null)}>{t("common.cancel")}</button>
               <button className="btn btn-primary btn-sm" onClick={handleSave} disabled={saving}>
                 {saving ? <Spinner /> : <i className="fa-solid fa-check" />}
-                {saving ? "Saqlanmoqda..." : "Saqlash"}
+                {saving ? t("common.saving") : t("common.save")}
               </button>
             </>
           }
         >
-          <FormGroup label="Ism Familiya *">
+          <FormGroup label={`${t("common.fullName")} *`}>
             <input className="form-input" value={form.fullName} onChange={setField("fullName")} placeholder="Ali Valiyev" autoFocus />
           </FormGroup>
           <div className="grid-2">
-            <FormGroup label="Username *">
+            <FormGroup label={`${t("common.username")} *`}>
               <input 
                 className="form-input mono" 
                 value={form.username} 
@@ -237,13 +238,13 @@ export default function ShopUsersPage({ toast }) {
                 disabled={modalMode === "edit"} 
               />
             </FormGroup>
-            <FormGroup label={modalMode === "add" ? "Parol *" : "Yangi parol (ixtiyoriy)"}>
-              <input className="form-input" type="password" value={form.password} onChange={setField("password")} placeholder={modalMode === "add" ? "min 6 belgi" : "o'zgartirish uchun kiriting"} />
+            <FormGroup label={modalMode === "add" ? `${t("common.password")} *` : t("adm.users.passwordOptional")}>
+              <input className="form-input" type="password" value={form.password} onChange={setField("password")} placeholder={modalMode === "add" ? "min 6 belgi" : t("staff.passwordChangeHint")} />
             </FormGroup>
           </div>
-          <FormGroup label="Rol *">
+          <FormGroup label={`${t("common.role")} *`}>
             <Select
-              block variant="field" ariaLabel="Xodim roli"
+              block variant="field" ariaLabel={t("common.role")}
               value={form.role}
               onChange={(v) => setField("role")({ target: { value: v } })}
               options={ROLE_OPTIONS.map((r) => ({ value: r, label: roleLabel(r), icon: "fa-user-tag" }))}

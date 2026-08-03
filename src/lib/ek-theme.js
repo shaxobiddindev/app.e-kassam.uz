@@ -17,11 +17,16 @@ const KEY = "ek_theme";
 const root = document.documentElement;
 const mq = () => window.matchMedia?.("(prefers-color-scheme: dark)");
 
-/** Uchta variant. Ilova UI si shu ro'yxatdan quriladi. */
-export const THEME_OPTIONS = [
-  { value: "system", label: "Tizim",     icon: "fa-circle-half-stroke" },
-  { value: "light",  label: "Yorug'",    icon: "fa-sun" },
-  { value: "dark",   label: "Qorong'i",  icon: "fa-moon" },
+/**
+ * Uchta variant — qiymat va ikonka. YORLIQ BU YERDA YO'Q: u tilga bog'liq
+ * (`theme.system` / `theme.light` / `theme.dark` kalitlari) va `ThemeSelect`
+ * uni `useT` orqali oladi. Ilgari yorliq shu massivda edi va modul bir marta
+ * yuklangani uchun til almashtirilganda o'zbekchaligicha qolardi.
+ */
+export const THEME_VALUES = [
+  { value: "system", icon: "fa-circle-half-stroke" },
+  { value: "light",  icon: "fa-sun" },
+  { value: "dark",   icon: "fa-moon" },
 ];
 
 function systemTheme() {

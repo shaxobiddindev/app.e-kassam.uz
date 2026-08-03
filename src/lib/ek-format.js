@@ -13,11 +13,13 @@
    (docs/09-CHETLANISHLAR.md ga qarang).
    ========================================================================== */
 
+import { t, getLang } from "./ek-i18n";
+
 const NNBSP = " ";           // tor bo'shliq — razryad ajratgichi
-const MONTHS = [
-  "yanvar", "fevral", "mart", "aprel", "may", "iyun",
-  "iyul", "avgust", "sentabr", "oktabr", "noyabr", "dekabr",
-];
+/* Oy va hafta nomlari — TILGA BOG'LIQ (`ek-locales.js` dagi `fmt.*`).
+   Massiv sifatida modul darajasida saqlanmaydi: til o'zgarganda eskirardi. */
+const months   = () => t("fmt.months").split(",");
+const weekdays = () => t("fmt.weekdays").split(",");
 
 const pad = (n) => String(n).padStart(2, "0");
 
@@ -42,7 +44,7 @@ export function groupDigits(n) {
  */
 export function money(n, { withUnit = false } = {}) {
   const s = groupDigits(n);
-  return withUnit ? `${s}${NNBSP}so'm` : s;
+  return withUnit ? `${s}${NNBSP}${t("fmt.currency")}` : s;
 }
 
 /** Miqdor: butun yoki 3 xonagacha (24 · 1.250) */
@@ -60,12 +62,25 @@ export function percent(n) {
   return `${num.toFixed(1)}%`;
 }
 
-/** Sana: 2-avgust 2026 */
+/**
+ * Sana — tilga qarab:
+ *   uz  2-avgust 2026      (o'zbekchada kun va oy defis bilan bog'lanadi)
+ *   ru  2 августа 2026     (oy nomi qaratqich kelishigida — lug'atda shunday)
+ *   en  2 August 2026
+ */
 export function date(iso) {
   if (!iso) return "—";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "—";
-  return `${d.getDate()}-${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+  const sep = getLang() === "uz" ? "-" : " ";
+  return `${d.getDate()}${sep}${months()[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+/** Topbar uchun: "Yak, 2-avgust 2026" · "Вс, 2 августа 2026" · "Sun, 2 August 2026" */
+export function weekdayDate(iso) {
+  const d = iso ? new Date(iso) : new Date();
+  if (Number.isNaN(d.getTime())) return "—";
+  return `${weekdays()[d.getDay()]}, ${date(d.toISOString())}`;
 }
 
 /** Jadval uchun sana+vaqt: 02.08.2026 14:32 */

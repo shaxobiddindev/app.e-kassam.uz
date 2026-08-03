@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { t } from "../lib/ek-i18n";
 import { useNavigate } from "react-router-dom";
 import { reportApi, inventoryApi } from "../api";
 import { BranchSelector } from "../components";
@@ -65,24 +66,24 @@ export default function DashboardPage({ toast }) {
   const attention = [
     outOfStock.length && {
       id: "out", icon: "fa-box-open", tone: "danger",
-      text: "Tugagan tovar", count: outOfStock.length,
+      text: t("dash.attOutOfStock"), count: outOfStock.length,
       onClick: () => navigate("/inventory"),
     },
     belowMin.length && {
       id: "low", icon: "fa-triangle-exclamation", tone: "warning",
-      text: "Minimal qoldiqdan past", count: belowMin.length,
+      text: t("dash.attLowStock"), count: belowMin.length,
       onClick: () => navigate("/inventory"),
     },
     !data?.totalSales && {
       id: "nosale", icon: "fa-cash-register", tone: "info",
-      text: "Bugun hali sotuv bo'lmadi", onClick: () => navigate("/sale"),
+      text: t("dash.noSales"), onClick: () => navigate("/sale"),
     },
   ].filter(Boolean);
 
   return (
     <div>
       <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18, gap: 12 }}>
-        <h2 className="page-title">Bugun ishlar qanday?</h2>
+        <h2 className="page-title">{t("dash.title")}</h2>
         <BranchSelector selectedId={branchId} onSelect={setBranchId} />
       </div>
 
@@ -90,10 +91,10 @@ export default function DashboardPage({ toast }) {
           Raqamlar 0 dan sanaladi, monoshriftda — kenglik sakramaydi. */}
       {loading ? <KpiSkeleton /> : (
         <div className="kpi-row">
-          <Kpi label="Bugungi tushum"  value={data?.totalRevenue || 0} format={money} />
-          <Kpi label="Sotuvlar soni"   value={data?.totalSales   || 0} />
-          <Kpi label="Sof foyda"       value={data?.totalProfit  || 0} format={money} />
-          <Kpi label="Tan narxi"       value={data?.totalCost    || 0} format={money} />
+          <Kpi label={t("dash.revenue")}  value={data?.totalRevenue || 0} format={money} />
+          <Kpi label={t("dash.salesCount")}   value={data?.totalSales   || 0} />
+          <Kpi label={t("dash.netProfit")}       value={data?.totalProfit  || 0} format={money} />
+          <Kpi label={t("dash.costPrice")}       value={data?.totalCost    || 0} format={money} />
         </div>
       )}
 
@@ -108,7 +109,7 @@ export default function DashboardPage({ toast }) {
           <div className="card-header">
             <span className="card-title">
               <i className="fa-solid fa-credit-card text-blue" aria-hidden="true" />
-              To'lov turlari
+              {t("dash.paymentTypes")}
             </span>
           </div>
           <div className="card-body">
@@ -129,7 +130,7 @@ export default function DashboardPage({ toast }) {
                 </div>
               ))
             ) : (
-              <Empty text="Bugun hali to'lov qayd etilmagan" />
+              <Empty text={t("dash.noPayments")} />
             )}
           </div>
         </div>
@@ -139,7 +140,7 @@ export default function DashboardPage({ toast }) {
           <div className="card-header">
             <span className="card-title">
               <i className="fa-solid fa-trophy" style={{ color: "var(--fg-warning)" }} aria-hidden="true" />
-              Top mahsulotlar
+              {t("dash.topProducts")}
             </span>
           </div>
           <div className="table-wrap">
@@ -147,9 +148,9 @@ export default function DashboardPage({ toast }) {
               <thead>
                 <tr>
                   <th style={{ width: 40 }}>#</th>
-                  <th>Mahsulot</th>
-                  <th className="num">Soni</th>
-                  <th className="num">Summa, so'm</th>
+                  <th>{t("products.col")}</th>
+                  <th className="num">{t("common.count")}</th>
+                  <th className="num">{t("common.sum")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -163,7 +164,7 @@ export default function DashboardPage({ toast }) {
                     </tr>
                   ))
                 ) : (
-                  <tr><td colSpan={4}><Empty text="Bugun hali sotuv bo'lmadi" /></td></tr>
+                  <tr><td colSpan={4}><Empty text={t("dash.noSales")} /></td></tr>
                 )}
               </tbody>
             </table>

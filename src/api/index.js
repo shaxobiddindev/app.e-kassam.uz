@@ -1,4 +1,5 @@
 import { API_BASE, LOGIN_URL, getDeviceId } from "../config";
+import { getLang, withLang } from "../lib/ek-i18n";
 
 let refreshPromise = null;
 
@@ -57,7 +58,8 @@ async function request(path, options = {}, _retry = false) {
     credentials: "include",
     headers: {
       "Content-Type":    "application/json",
-      "Accept-Language": "uz",
+      // Backend xato xabarlari foydalanuvchi tilida kelsin
+      "Accept-Language": getLang(),
       "X-Device-Id":     getDeviceId(),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(extraHeaders || {}),
@@ -78,7 +80,7 @@ async function request(path, options = {}, _retry = false) {
     } else {
       // Refresh ham ishlamadi — login ga
       localStorage.clear();
-      window.location.replace(`${LOGIN_URL}?logged_out=1`);
+      window.location.replace(withLang(`${LOGIN_URL}?logged_out=1`));
       throw new Error("AUTH_FAILED");
     }
   }
@@ -86,7 +88,7 @@ async function request(path, options = {}, _retry = false) {
   // 2-urinishda ham 401 — login ga
   if (res.status === 401 && _retry) {
     localStorage.clear();
-    window.location.replace(`${LOGIN_URL}?logged_out=1`);
+    window.location.replace(withLang(`${LOGIN_URL}?logged_out=1`));
     throw new Error("AUTH_FAILED");
   }
 

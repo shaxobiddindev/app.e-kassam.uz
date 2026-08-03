@@ -7,16 +7,19 @@
    MANBA FAYL — packages/ui/components/ da tahrirlanadi, sync-tokens.ps1 tarqatadi.
    ========================================================================== */
 
+import { useT } from "../../lib/ek-i18n";
+
 /**
  * @param items  [{ id, icon, tone: 'danger'|'warning'|'info', text, count, onClick }]
  *               `count === 0` bo'lgan satrlar chaqiruvchi tomonida filtrlanadi.
  */
 export default function AttentionList({ items = [] }) {
+  const { t } = useT();
   return (
     <div className="card">
       <div className="card-header c-head">
         <span className="card-title c-title">
-          <i className="fa-solid fa-bell" aria-hidden="true" /> E'tibor talab qiladi
+          <i className="fa-solid fa-bell" aria-hidden="true" /> {t("attention.title")}
         </span>
         {items.length > 0 && (
           <span className="badge badge-red ek-num">{items.length}</span>
@@ -26,7 +29,7 @@ export default function AttentionList({ items = [] }) {
       {items.length === 0 ? (
         <div className="attn__empty">
           <i className="fa-solid fa-circle-check" aria-hidden="true" />
-          Hammasi joyida. Bugun aralashuv talab qiladigan narsa yo'q.
+          {t("attention.empty")}
         </div>
       ) : (
         <div>

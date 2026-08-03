@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { t } from "../lib/ek-i18n";
 import { inventoryApi } from "../api";
 import { BranchSelector, Modal } from "../components";
 import { Empty, SearchBar } from "../components/ui";
@@ -48,11 +49,11 @@ export default function InventoryPage({ toast }) {
 
   const handleAddStock = async () => {
     if (!qty || Number(qty) <= 0) {
-      toast.error("Miqdorni kiriting");
+      toast.error(t("inv.needQty"));
       return;
     }
     if (!expiryDate) {
-      toast.error("Yaroqlilik muddatini kiritish majburiy");
+      toast.error(t("inv.needExpiry"));
       return;
     }
     setSaving(true);
@@ -72,7 +73,7 @@ export default function InventoryPage({ toast }) {
     <div>
       <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
-          <h2 className="page-title">Ombor</h2>
+          <h2 className="page-title">{t("inv.title")}</h2>
         </div>
         <BranchSelector selectedId={branchId} onSelect={setBranchId} />
       </div>
@@ -82,11 +83,11 @@ export default function InventoryPage({ toast }) {
           <SearchBar
             value={search}
             onChange={setSearch}
-            placeholder="Nom yoki barkod bo'yicha qidirish..."
+            placeholder={t("products.search")}
             style={{ width: 320 }}
           />
-          <button className="btn btn-outline btn-sm" onClick={loadData} title="Ma'lumotlarni yangilash">
-            <i className="fa-solid fa-rotate-right" /> Yangilash
+          <button className="btn btn-outline btn-sm" onClick={loadData} title={t("products.refreshTitle")}>
+            <i className="fa-solid fa-rotate-right" /> {t("common.refresh")}
           </button>
         </div>
 
@@ -94,19 +95,19 @@ export default function InventoryPage({ toast }) {
           {busy ? (
             <SkeletonTable rows={8} cols={["wide", "num", "num", "text"]} />
           ) : filtered.length === 0 ? (
-            <Empty text="Omborda mahsulot topilmadi" />
+            <Empty text={t("inv.notFound")} />
           ) : (
             <table className="table">
               <thead>
                 <tr>
-                  <th>Mahsulot</th>
-                  <th>Barkod</th>
-                  <th>Qoldiq</th>
-                  <th>Tan narxi</th>
-                  <th>Sotuv narxi</th>
-                  <th>Yaroqlilik muddati</th>
-                  <th>Holat</th>
-                  {!branchId && <th className="text-end">Amallar</th>}
+                  <th>{t("products.col")}</th>
+                  <th>{t("products.barcode")}</th>
+                  <th>{t("inv.stock")}</th>
+                  <th>{t("products.costPrice")}</th>
+                  <th>{t("products.salePrice")}</th>
+                  <th>{t("inv.expiry")}</th>
+                  <th>{t("common.status")}</th>
+                  {!branchId && <th className="text-end">{t("common.actions")}</th>}
                 </tr>
               </thead>
               <tbody>
@@ -140,8 +141,8 @@ export default function InventoryPage({ toast }) {
                         }`}
                       >
                         {item.status === "EXPIRED" || item.expired
-                          ? "Muddati o'tgan"
-                          : "Faol"}
+                          ? t("enum.inventory.EXPIRED")
+                          : t("enum.shopStatus.ACTIVE")}
                       </span>
                     </td>
                     {!branchId && (
@@ -167,7 +168,7 @@ export default function InventoryPage({ toast }) {
           footer={
             <>
               <button className="btn btn-outline btn-sm" onClick={() => setModal(null)}>
-                Bekor
+                {t("common.cancel")}
               </button>
               <button
                 className="btn btn-green btn-sm"
@@ -175,7 +176,7 @@ export default function InventoryPage({ toast }) {
                 disabled={saving || !qty}
               >
                 {saving ? <Spinner /> : <i className="fa-solid fa-check" />}
-                {saving ? "Saqlanmoqda..." : "Kirim qilish"}
+                {saving ? t("common.saving") : t("inv.receiveAction")}
               </button>
             </>
           }
@@ -211,7 +212,7 @@ export default function InventoryPage({ toast }) {
             }}
           >
             <span className="text-muted" style={{ fontSize: 13, fontWeight: 600 }}>
-              Hozirgi miqdor
+              {t("inv.currentQty")}
             </span>
             <span className="mono fw-800" style={{ fontSize: 16 }}>
               {modal.quantity} dona
@@ -219,7 +220,7 @@ export default function InventoryPage({ toast }) {
           </div>
 
           <div className="form-group">
-            <label className="form-label">Kirim miqdori *</label>
+            <label className="form-label">{`${t("inv.receiveQty")} *`}</label>
             <input
               className="form-input"
               type="number"
@@ -232,7 +233,7 @@ export default function InventoryPage({ toast }) {
           </div>
 
           <div className="form-group" style={{ marginTop: 14 }}>
-            <label className="form-label">Yaroqlilik muddati *</label>
+            <label className="form-label">{`${t("inv.expiry")} *`}</label>
             <input
               className="form-input"
               type="date"

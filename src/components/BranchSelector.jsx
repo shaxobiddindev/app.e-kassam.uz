@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { shopApi } from "../api";
 import { useAuth } from "../hooks/useAuth";
 import Select from "./ek/Select";
+import { t } from "../lib/ek-i18n";
 
 export default function BranchSelector({ selectedId, onSelect, style = {} }) {
   const { user } = useAuth();
@@ -33,7 +34,7 @@ export default function BranchSelector({ selectedId, onSelect, style = {} }) {
         onChange={(v) => onSelect(v || null)}
         options={options}
         disabled={loading}
-        ariaLabel="Filial"
+        ariaLabel={t("branch.label")}
         className="branch-select"
       />
     </div>

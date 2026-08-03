@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { t } from "../lib/ek-i18n";
 import { useNavigate } from "react-router-dom";
 import { LOGIN_URL, LOGO_URL } from "../config";
 
@@ -130,7 +131,7 @@ export default function NotFound() {
                 <div className="nf-content">
                     <div className="nf-num">404</div>
                     <div className="nf-icon"><i className="fa-solid fa-magnifying-glass" /></div>
-                    <h1 className="nf-title">Sahifa topilmadi</h1>
+                    <h1 className="nf-title">{t("notFound.title")}</h1>
                     <p className="nf-desc">
                         Siz qidirayotgan sahifa ko'chirilgan, o'chirilgan yoki hech qachon mavjud bo'lmagan.
                         Iltimos, URLni tekshiring yoki bosh sahifaga qayting.
@@ -151,7 +152,7 @@ export default function NotFound() {
                     </div>
 
                     <div className="nf-quick">
-                        <p>Foydali havolalar</p>
+                        <p>{t("notFound.usefulLinks")}</p>
                         <div className="nf-quick-list">
                             <a href="https://e-kassam.uz/#xususiyatlar" className="nf-quick-link">
                                 <i className="fa-solid fa-star" /> Xususiyatlar

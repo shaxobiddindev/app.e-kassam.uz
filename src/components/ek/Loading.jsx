@@ -14,6 +14,8 @@
    MANBA FAYL — packages/ui/components/ da tahrirlanadi, sync-tokens.ps1 tarqatadi.
    ========================================================================== */
 
+import { t } from "../../lib/ek-i18n";
+
 /* ── Asos ─────────────────────────────────────────────────────────────────
    Barcha skeletonlar shu bitta elementdan quriladi. `w`/`h` berilmasa
    CSS dagi standart qiymat ishlaydi. */
@@ -28,7 +30,7 @@ export function Sk({ w, h, variant = "text", className = "", style }) {
 }
 
 /** Yuklanish maydonini ekran o'quvchiga tushuntiradi. */
-function Region({ label = "Yuklanmoqda", children, className = "", style }) {
+function Region({ label = t("loading.default"), children, className = "", style }) {
   return (
     <div className={className} style={style} role="status" aria-busy="true" aria-live="polite">
       <span className="ek-loading-label">{label}</span>
@@ -45,7 +47,7 @@ function Region({ label = "Yuklanmoqda", children, className = "", style }) {
  *              Haqiqiy jadvalning ustun tartibini takrorlang — shundagina
  *              ma'lumot kelganda sahifa sakramaydi.
  */
-export function SkeletonTable({ rows = 6, cols = ["wide", "text", "num"], label = "Jadval yuklanmoqda" }) {
+export function SkeletonTable({ rows = 6, cols = ["wide", "text", "num"], label = t("loading.table") }) {
   return (
     <Region label={label} className="ek-sk-table ek-sk-group">
       {Array.from({ length: rows }, (_, r) => (
@@ -64,7 +66,7 @@ export function SkeletonTable({ rows = 6, cols = ["wide", "text", "num"], label 
 /* ══════════════════════════════════════════════════════════════════════════
    KARTOCHKALAR — KPI qatori va shunga o'xshash panellar
    ══════════════════════════════════════════════════════════════════════════ */
-export function SkeletonCards({ count = 4, className = "kpi-row", label = "Ko'rsatkichlar yuklanmoqda" }) {
+export function SkeletonCards({ count = 4, className = "kpi-row", label = t("loading.cards") }) {
   return (
     <Region label={label} className={`${className} ek-sk-group`}>
       {Array.from({ length: count }, (_, i) => (
@@ -81,7 +83,7 @@ export function SkeletonCards({ count = 4, className = "kpi-row", label = "Ko'rs
 /* ══════════════════════════════════════════════════════════════════════════
    RO'YXAT — avatar + ikki qator matn (mijozlar, xodimlar)
    ══════════════════════════════════════════════════════════════════════════ */
-export function SkeletonList({ rows = 5, avatar = true, label = "Ro'yxat yuklanmoqda" }) {
+export function SkeletonList({ rows = 5, avatar = true, label = t("loading.list") }) {
   return (
     <Region label={label} className="ek-sk-group">
       {Array.from({ length: rows }, (_, i) => (
@@ -101,7 +103,7 @@ export function SkeletonList({ rows = 5, avatar = true, label = "Ro'yxat yuklanm
 /* ══════════════════════════════════════════════════════════════════════════
    KASSIR KATAKCHALARI — mahsulot to'ri
    ══════════════════════════════════════════════════════════════════════════ */
-export function SkeletonTiles({ count = 12, label = "Mahsulotlar yuklanmoqda" }) {
+export function SkeletonTiles({ count = 12, label = t("loading.tiles") }) {
   return (
     <Region label={label} className="ek-sk-tiles ek-sk-group">
       {Array.from({ length: count }, (_, i) => (
@@ -118,7 +120,7 @@ export function SkeletonTiles({ count = 12, label = "Mahsulotlar yuklanmoqda" })
 /* ══════════════════════════════════════════════════════════════════════════
    FORMA — modal ichidagi maydonlar
    ══════════════════════════════════════════════════════════════════════════ */
-export function SkeletonForm({ fields = 4, label = "Forma yuklanmoqda" }) {
+export function SkeletonForm({ fields = 4, label = t("loading.form") }) {
   return (
     <Region label={label} className="ek-sk-form ek-sk-group">
       {Array.from({ length: fields }, (_, i) => (
@@ -135,7 +137,7 @@ export function SkeletonForm({ fields = 4, label = "Forma yuklanmoqda" }) {
    PROGRESS — ekranda kontent bor, u yangilanmoqda
    Layoutni surmaydi, hech narsani qoplamaydi.
    ══════════════════════════════════════════════════════════════════════════ */
-export function Progress({ inset = false, label = "Yangilanmoqda" }) {
+export function Progress({ inset = false, label = t("loading.progress") }) {
   return (
     <div className={`ek-progress ${inset ? "ek-progress--inset" : ""}`} role="status" aria-live="polite">
       <span className="ek-loading-label">{label}</span>
@@ -176,7 +178,7 @@ export function CheckDraw({ size = 56 }) {
 /* ══════════════════════════════════════════════════════════════════════════
    BREND BELGISI — ilova birinchi ko'tarilishi
    ══════════════════════════════════════════════════════════════════════════ */
-export function BootLoader({ text = "Yuklanmoqda" }) {
+export function BootLoader({ text = t("loading.boot") }) {
   return (
     <div className="ek-boot" role="status" aria-live="polite">
       <svg className="ek-boot__mark" viewBox="0 0 48 48" fill="none" aria-hidden="true">
@@ -213,18 +215,18 @@ export function FinishOverlay({ phase, total, receiptNo, onClose }) {
         {phase === "printing" ? (
           <>
             <Printing />
-            <div className="ek-finish__title">Chek tayyorlanmoqda</div>
-            <div className="ek-finish__sub">Bir soniya…</div>
+            <div className="ek-finish__title">{t("finish.printing")}</div>
+            <div className="ek-finish__sub">{t("finish.wait")}</div>
           </>
         ) : (
           <>
             <CheckDraw />
-            <div className="ek-finish__title">Sotuv yakunlandi</div>
+            <div className="ek-finish__title">{t("finish.done")}</div>
             <div className="ek-finish__amount">{total}</div>
-            {receiptNo && <div className="ek-finish__sub">Chek №{receiptNo}</div>}
+            {receiptNo && <div className="ek-finish__sub">{t("finish.receiptNo", { n: receiptNo })}</div>}
             {onClose && (
               <button className="btn btn-outline" onClick={onClose} autoFocus>
-                Yopish <span className="kbd">Esc</span>
+                {t("common.close")} <span className="kbd">Esc</span>
               </button>
             )}
           </>

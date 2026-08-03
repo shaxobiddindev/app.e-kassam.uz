@@ -2,6 +2,8 @@
    oddiy xabar `aria-live="polite"`, xato `aria-live="assertive"`.
    Rang yolg'iz signal emas — har turda ikonka ham bor (CLAUDE.md #6). */
 
+import { t } from "../lib/ek-i18n";
+
 const ICONS = {
   success: "fa-circle-check",
   error:   "fa-circle-xmark",
@@ -25,14 +27,14 @@ export default function Toast({ toasts, onDismiss }) {
         maxWidth: 380, width: "calc(100vw - 40px)", pointerEvents: "none",
       }}
     >
-      {toasts.map((t) => {
-        const c = TONES[t.type] || TONES.info;
+      {toasts.map((item) => {
+        const c = TONES[item.type] || TONES.info;
         return (
           <div
-            key={t.id}
+            key={item.id}
             className="ek-toast-in"
-            role={t.type === "error" ? "alert" : "status"}
-            aria-live={t.type === "error" ? "assertive" : "polite"}
+            role={item.type === "error" ? "alert" : "status"}
+            aria-live={item.type === "error" ? "assertive" : "polite"}
             style={{
               background: c.bg, border: `1px solid ${c.border}`,
               borderRadius: "var(--r-lg)", padding: "13px 14px",
@@ -41,17 +43,17 @@ export default function Toast({ toasts, onDismiss }) {
             }}
           >
             <i
-              className={`fa-solid ${ICONS[t.type] || ICONS.info}`}
+              className={`fa-solid ${ICONS[item.type] || ICONS.info}`}
               style={{ color: c.text, fontSize: 16, marginTop: 1, flexShrink: 0 }}
               aria-hidden="true"
             />
             <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: c.text, lineHeight: 1.45 }}>
-              {t.msg}
+              {item.msg}
             </span>
             {onDismiss && (
               <button
-                onClick={() => onDismiss(t.id)}
-                aria-label="Yopish"
+                onClick={() => onDismiss(item.id)}
+                aria-label={t("common.close")}
                 style={{
                   border: "none", background: "none", cursor: "pointer",
                   color: c.text, opacity: .6, fontSize: 14, padding: 0,

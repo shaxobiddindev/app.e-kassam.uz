@@ -1,5 +1,7 @@
+import { useT } from "../lib/ek-i18n";
 import { useEffect, useState } from "react";
 import * as queue from "../lib/ek-offline";
+import { money, time } from "../lib/ek-format";
 
 /**
  * Oflayn / sinxronizatsiya tasmasi.
@@ -13,6 +15,7 @@ import * as queue from "../lib/ek-offline";
  * Rang yolg'iz signal emas (CLAUDE.md #6) — har holatda matn va ikonka bor.
  */
 export default function OfflineBar() {
+  const { t } = useT();
   const [state, setState] = useState({ online: true, pending: 0, failed: 0, items: [] });
   const [justSynced, setJustSynced] = useState(0);
   const [open, setOpen] = useState(false);
@@ -34,19 +37,22 @@ export default function OfflineBar() {
   const visible = !online || pending > 0 || failed > 0 || justSynced > 0;
   if (!visible) return null;
 
-  let tone, icon, text, n;
+  // ⚠ Matn BO'LAKLARDAN yig'ilmaydi. Ilgari "{n} ta " + "sotuv navbatda"
+  // ko'rinishida edi — bu tuzilma o'zbekchaga bog'langan va rus/ingliz
+  // tilida so'z tartibi boshqacha. Endi har bir holat TO'LIQ jumla.
+  let tone, icon, text;
   if (failed > 0) {
     tone = "offline"; icon = "fa-circle-exclamation";
-    text = "sotuv yuborilmadi — qayta urinib ko'ring"; n = failed;
+    text = t("offline.failed", { n: failed });
   } else if (!online) {
     tone = "offline"; icon = "fa-wifi";
-    text = pending ? "sotuv navbatda" : "Oflayn rejim — sotuv davom etadi"; n = pending;
+    text = pending ? t("offline.queued", { n: pending }) : t("offline.mode");
   } else if (pending > 0) {
     tone = "syncing"; icon = "fa-arrow-up-from-bracket";
-    text = "sotuv yuborilmoqda…"; n = pending;
+    text = t("offline.sending", { n: pending });
   } else {
     tone = "synced"; icon = "fa-check";
-    text = "sotuv yuborildi"; n = justSynced;
+    text = t("offline.synced", { n: justSynced });
   }
 
   return (
@@ -60,9 +66,7 @@ export default function OfflineBar() {
         onClick={() => setOpen((o) => !o)}
       >
         <i className={`fa-solid ${icon}`} aria-hidden="true" />
-        <span>
-          {!online && !pending ? text : <>{n > 0 && <b className="ek-num">{n} ta </b>}{text}</>}
-        </span>
+        <span>{text}</span>
         {items.length > 0 && (
           <span className="ek-status-bar__count">
             <i className={`fa-solid fa-chevron-${open ? "up" : "down"}`} aria-hidden="true" />
@@ -76,24 +80,26 @@ export default function OfflineBar() {
             <div className="ek-queue-row" key={it.key}>
               <i
                 className={`fa-solid ${it.status === "failed" ? "fa-circle-exclamation" : "fa-clock"}`}
-                style={{ color: it.status === "failed" ? "var(--fg-danger)" : "var(--fg-tertiary)" }}
+                style={{ color: it.status === "failed" ? "var(--fg-danger)" : "var(--fg-secondary)" }}
                 aria-hidden="true"
               />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 600 }}>
-                  {it.meta?.itemCount ?? it.payload?.items?.length ?? 0} ta tovar
+                  {t("offline.items", { n: it.meta?.itemCount ?? it.payload?.items?.length ?? 0 })}
                   {it.meta?.total != null && (
-                    <> · <span className="ek-num">{it.meta.total.toLocaleString("uz-UZ")}</span></>
+                    /* `toLocaleString("uz-UZ")` brauzerga qarab vergul ham,
+                       nuqta ham qaytaradi — `ek-format` yagona ajratgich beradi. */
+                    <> · <span className="ek-num">{money(it.meta.total)}</span></>
                   )}
                 </div>
                 <div className="ek-queue-row__key">
-                  {new Date(it.createdAt).toLocaleTimeString("uz-UZ")} · {it.key.slice(0, 8)}
+                  {time(it.createdAt)} · {it.key.slice(0, 8)}
                   {it.lastError && ` · ${it.lastError}`}
                 </div>
               </div>
               {it.status === "failed" && (
                 <button className="btn btn-sm btn-outline" onClick={() => queue.retry(it.key)}>
-                  Qayta urinish
+                  {t("common.retry")}
                 </button>
               )}
             </div>

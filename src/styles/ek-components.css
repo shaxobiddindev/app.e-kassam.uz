@@ -119,3 +119,170 @@ td.num, th.num { text-align: right; font-family: var(--font-mono); font-variant-
    variantlarga aniq rang beramiz (qorong'i menyuda oq matn qora ro'yxatda
    ko'rinmay qolardi). */
 .ek-theme-select option { background: var(--bg-surface); color: var(--fg-primary); }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SOZLAMALAR SAHIFASI
+
+   Barcha sozlamalar (tema, til, interfeys) shu bitta ekranda. Ilgari tema
+   yon menyu tagida turardi va uni topish uchun menyuni ochish kerak edi.
+
+   Qatorlar bir ustunda: chapda nom + izoh, o'ngda boshqaruv. 640px dan
+   torda ustma-ust tushadi — boshqaruv siqilib ketmasin.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.set-page {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 760px;
+}
+
+.set-card__hint {
+  margin: 0;
+  padding: 0 18px 4px;
+  font-size: 12.5px;
+  color: var(--fg-secondary);
+  line-height: 1.5;
+}
+
+.set-list { padding: 4px 18px 16px; }
+
+.set-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: var(--hit-min);
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.set-row:last-child { border-bottom: none; }
+
+.set-row__text { min-width: 0; }
+
+.set-row__label {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--fg-primary);
+}
+
+/* Izoh `--fg-secondary` — `--fg-tertiary` oq fonda 2.65:1 beradi va
+   o'qiladigan matnga yaramaydi (09-CHETLANISHLAR.md §1k). */
+.set-row__hint {
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--fg-secondary);
+  line-height: 1.45;
+}
+
+.set-row__control { flex-shrink: 0; }
+
+.set-value {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--fg-primary);
+}
+
+@media (max-width: 640px) {
+  .set-row { flex-direction: column; align-items: stretch; }
+  .set-row__control { width: 100%; }
+}
+
+/* ── Ikki holatli tugma (switch) ────────────────────────────────────────
+   Faqat HOLAT IKKITA bo'lganda. Uch holatli narsa (tema) uchun `Select`
+   ishlatiladi — tugma "Tizim" ni ifodalay olmaydi. */
+.ek-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: var(--hit-min);
+  padding: 6px 12px 6px 6px;
+  border: 1.5px solid var(--border-default);
+  border-radius: 999px;
+  background: var(--bg-surface);
+  color: var(--fg-secondary);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out),
+              border-color var(--dur-fast) var(--ease-out),
+              color var(--dur-fast) var(--ease-out);
+}
+
+.ek-switch__knob {
+  width: 34px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--bg-sunken);
+  position: relative;
+  flex-shrink: 0;
+  transition: background var(--dur-fast) var(--ease-out);
+}
+.ek-switch__knob::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--bg-surface);
+  box-shadow: var(--sh-sm);
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+
+.ek-switch.on {
+  border-color: var(--border-brand);
+  color: var(--fg-brand);
+}
+.ek-switch.on .ek-switch__knob { background: var(--bg-brand); }
+.ek-switch.on .ek-switch__knob::after { transform: translateX(14px); }
+
+.ek-switch:focus-visible {
+  outline: 2px solid var(--border-brand);
+  outline-offset: 2px;
+}
+
+/* Harakat kamaytirilgan bo'lsa — siljish yo'q, faqat rang (CLAUDE.md #4) */
+@media (prefers-reduced-motion: reduce) {
+  .ek-switch,
+  .ek-switch__knob,
+  .ek-switch__knob::after { transition: none; }
+}
+
+/* ── Ogohlantirish/ma'lumot bloki ───────────────────────────────────────
+   Ilgari har sahifada inline `#fffbeb` / `#fcd34d` / `#92400e` yozilardi.
+   Ular qorong'i rejimda o'qib bo'lmas darajada och sariq bo'lib chiqardi
+   (CLAUDE.md #1: kodda rang yozilmaydi). */
+.ek-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 10px 14px;
+  border-radius: var(--r-md);
+  border: 1.5px solid var(--border-default);
+  background: var(--bg-sunken);
+  color: var(--fg-secondary);
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1.5;
+  margin-bottom: 14px;
+}
+.ek-note i { margin-top: 2px; flex-shrink: 0; }
+
+.ek-note--warning {
+  background: var(--bg-warning-subtle);
+  border-color: var(--border-warning);
+  color: var(--fg-warning);
+}
+.ek-note--info {
+  background: var(--bg-brand-subtle);
+  border-color: var(--border-brand);
+  color: var(--fg-brand);
+}
+.ek-note--danger {
+  background: var(--bg-danger-subtle);
+  border-color: var(--border-danger);
+  color: var(--fg-danger);
+}

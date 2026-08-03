@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { t } from "../lib/ek-i18n";
 import { saleApi } from "../api";
 import { money } from "../utils";
 import { BranchSelector, Modal } from "../components";
@@ -63,7 +64,7 @@ export default function SalesPage({ toast }) {
 
   const handleCancel = async (sale) => {
     const ok = await confirm({
-      title: "Sotuvni bekor qilish",
+      title: t("sales.cancelTitle"),
       message: `#${sale.id} raqamli sotuvni bekor qilishni tasdiqlaysizmi? Bu amalni ortga qaytarib bo'lmaydi.`,
       type: "danger"
     });
@@ -71,7 +72,7 @@ export default function SalesPage({ toast }) {
     setCancelling(sale.id);
     try {
       await saleApi.cancel(sale.id);
-      toast.success("Sotuv bekor qilindi");
+      toast.success(t("sales.cancelled"));
       loadSales();
       setDetail(null);
     } catch (err) {
@@ -100,7 +101,7 @@ export default function SalesPage({ toast }) {
     <div>
       <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
-          <h2 className="page-title">Sotuvlar tarixi</h2>
+          <h2 className="page-title">{t("sales.title")}</h2>
         </div>
         <BranchSelector selectedId={branchId} onSelect={setBranchId} />
       </div>
@@ -108,7 +109,7 @@ export default function SalesPage({ toast }) {
       <div className="card">
         <div className="card-header">
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <SearchBar value={search} onChange={setSearch} placeholder="ID, kassir yoki mijoz..." style={{ width: 280 }} />
+            <SearchBar value={search} onChange={setSearch} placeholder={t("sales.search")} style={{ width: 280 }} />
             {isCashier && (
               <span style={{ fontSize: 12, fontWeight: 700, color: "var(--blue)", background: "var(--blue-l)", padding: "5px 12px", borderRadius: 20 }}>
                 <i className="fa-solid fa-calendar-day" style={{ marginRight: 5 }} />
@@ -117,7 +118,7 @@ export default function SalesPage({ toast }) {
             )}
           </div>
           <button className="btn btn-outline btn-sm" onClick={loadSales}>
-            <i className="fa-solid fa-rotate-right" /> Yangilash
+            <i className="fa-solid fa-rotate-right" /> {t("common.refresh")}
           </button>
         </div>
 
@@ -127,12 +128,12 @@ export default function SalesPage({ toast }) {
               <thead>
                 <tr>
                   <th>#</th>
-                  <th>Kassir</th>
-                  <th>Mijoz</th>
-                  <th>Summa</th>
-                  <th>To'lov</th>
-                  <th>Status</th>
-                  <th>Sana</th>
+                  <th>{t("sales.colCashier")}</th>
+                  <th>{t("cust.col")}</th>
+                  <th>{t("common.sum")}</th>
+                  <th>{t("sales.colPayment")}</th>
+                  <th>{t("common.status")}</th>
+                  <th>{t("common.date")}</th>
                   <th></th>
                 </tr>
               </thead>
@@ -152,13 +153,13 @@ export default function SalesPage({ toast }) {
                       </td>
                       <td>
                         <div style={{ display: "flex", gap: 5 }}>
-                          <button className="btn-icon" title="Batafsil" onClick={() => setDetail(sale)}>
+                          <button className="btn-icon" title={t("sales.details")} onClick={() => setDetail(sale)}>
                             <i className="fa-solid fa-eye" />
                           </button>
                           {sale.status !== "CANCELLED" && (
                             <button
                               className="btn-icon danger"
-                              title="Bekor qilish"
+                              title={t("common.cancel")}
                               onClick={() => handleCancel(sale)}
                               disabled={cancelling === sale.id}
                             >
@@ -170,7 +171,7 @@ export default function SalesPage({ toast }) {
                     </tr>
                   );
                 }) : (
-                  <tr><td colSpan={8}><Empty icon="fa-receipt" text="Sotuv topilmadi" /></td></tr>
+                  <tr><td colSpan={8}><Empty icon="fa-receipt" text={t("sales.notFound")} /></td></tr>
                 )}
               </tbody>
             </table>
@@ -192,22 +193,22 @@ export default function SalesPage({ toast }) {
                   disabled={cancelling === detail.id}
                 >
                   {cancelling === detail.id ? <Spinner small /> : <i className="fa-solid fa-ban" />}
-                  Bekor qilish
+                  {t("common.cancel")}
                 </button>
               )}
-              <button className="btn btn-outline btn-sm" onClick={() => setDetail(null)}>Yopish</button>
+              <button className="btn btn-outline btn-sm" onClick={() => setDetail(null)}>{t("common.close")}</button>
             </>
           }
         >
           {/* Asosiy info */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
             {[
-              { label: "Kassir",    value: detail.cashierName || "—" },
-              { label: "Mijoz",     value: detail.customerName || "—" },
-              { label: "To'lov",    value: <PayLabel type={detail.paymentType} /> },
-              { label: "Status",    value: <Badge color={statusBadge(detail.status).color}>{statusBadge(detail.status).label}</Badge> },
-              { label: "Sana",      value: detail.createdAt ? new Date(detail.createdAt).toLocaleString("uz-UZ") : "—" },
-              { label: "Jami",      value: <span className="mono fw-700 text-blue">{money(detail.totalAmount)}</span> },
+              { label: t("sales.colCashier"),    value: detail.cashierName || "—" },
+              { label: t("cust.col"),     value: detail.customerName || "—" },
+              { label: t("sales.colPayment"),    value: <PayLabel type={detail.paymentType} /> },
+              { label: t("common.status"),    value: <Badge color={statusBadge(detail.status).color}>{statusBadge(detail.status).label}</Badge> },
+              { label: t("common.date"),      value: detail.createdAt ? new Date(detail.createdAt).toLocaleString("uz-UZ") : "—" },
+              { label: t("common.total"),      value: <span className="mono fw-700 text-blue">{money(detail.totalAmount)}</span> },
             ].map((item, i) => (
               <div key={i} style={{ background: "var(--bg)", borderRadius: 8, padding: "9px 12px" }}>
                 <div style={{ fontSize: 10, fontWeight: 800, color: "var(--text3)", textTransform: "uppercase", letterSpacing: ".5px", marginBottom: 4 }}>{item.label}</div>
@@ -223,7 +224,7 @@ export default function SalesPage({ toast }) {
           <div className="table-wrap">
             <table>
               <thead>
-                <tr><th>Mahsulot</th><th>Soni</th><th>Narxi</th><th>Jami</th></tr>
+                <tr><th>{t("products.col")}</th><th>{t("common.count")}</th><th>{t("sales.colPrice")}</th><th>{t("common.total")}</th></tr>
               </thead>
               <tbody>
                 {(detail.items || []).map((item, i) => (

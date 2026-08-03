@@ -3,49 +3,60 @@ import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { LOGO_URL, LOGO_DARK_URL, MARK_URL, initials } from "../utils";
 import { useConfirm } from "../context/ConfirmProvider";
 import { roleLabel } from "../lib/ek-labels";
-import ThemeSelect from "./ek/ThemeSelect";
+import { useT } from "../lib/ek-i18n";
+import { weekdayDate } from "../lib/ek-format";
 
+/* Menyu tuzilishi — YORLIQ EMAS, KALIT saqlanadi. Yorliq har render'da
+   `t()` dan olinadi, aks holda til almashtirilganda menyu eski tilda qolardi. */
 const NAV_ITEMS = [
-  { section: "Asosiy", items: [
-    { id: "dashboard", path: "/",      label: "Dashboard",     icon: "fa-chart-pie",     roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
-    { id: "sale",      path: "/sale",  label: "Kassa",         icon: "fa-cash-register", roles: ["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"] },
+  { section: "nav.section.main", items: [
+    { id: "dashboard", path: "/",      key: "nav.dashboard", icon: "fa-chart-pie",     roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
+    { id: "sale",      path: "/sale",  key: "nav.kassa",     icon: "fa-cash-register", roles: ["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"] },
   ]},
-  { section: "Do'kon", items: [
-    { id: "products",   path: "/products",   label: "Mahsulotlar",  icon: "fa-box",       roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
-    { id: "categories", path: "/categories", label: "Kategoriyalar",icon: "fa-tags",      roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
-    { id: "inventory",  path: "/inventory",  label: "Ombor",        icon: "fa-warehouse", roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
-    { id: "customers",  path: "/customers",  label: "Mijozlar",     icon: "fa-users",     roles: ["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"] },
-    { id: "sales",      path: "/sales",      label: "Sotuvlar tarixi", icon: "fa-receipt",   roles: ["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"] },
+  { section: "nav.section.shop", items: [
+    { id: "products",   path: "/products",   key: "nav.products",   icon: "fa-box",       roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
+    { id: "categories", path: "/categories", key: "nav.categories", icon: "fa-tags",      roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
+    { id: "inventory",  path: "/inventory",  key: "nav.inventory",  icon: "fa-warehouse", roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
+    { id: "customers",  path: "/customers",  key: "nav.customers",  icon: "fa-users",     roles: ["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"] },
+    { id: "sales",      path: "/sales",      key: "nav.sales",      icon: "fa-receipt",   roles: ["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"] },
   ]},
-  { section: "Hisobotlar", items: [
-    { id: "reports",        path: "/reports",       label: "Hisobotlar",    icon: "fa-chart-bar",     roles: ["ADMIN", "SHOP_ADMIN", "OWNER"] },
-    { id: "custom-report",  path: "/custom-report", label: "Maxsus hisobot",icon: "fa-calendar-days", roles: ["ADMIN", "SHOP_ADMIN", "OWNER"] },
+  { section: "nav.section.reports", items: [
+    { id: "reports",        path: "/reports",       key: "nav.reports",      icon: "fa-chart-bar",     roles: ["ADMIN", "SHOP_ADMIN", "OWNER"] },
+    { id: "custom-report",  path: "/custom-report", key: "nav.customReport", icon: "fa-calendar-days", roles: ["ADMIN", "SHOP_ADMIN", "OWNER"] },
   ]},
-  { section: "Sozlamalar", items: [
-    { id: "shop-users", path: "/shop-users", label: "Xodimlar", icon: "fa-users-gear", roles: ["ADMIN", "SHOP_ADMIN", "OWNER"] },
-    { id: "branches",   path: "/branches",   label: "Filiallar", icon: "fa-store",      roles: ["OWNER"] },
+  { section: "nav.section.settings", items: [
+    { id: "shop-users", path: "/shop-users", key: "nav.staff",    icon: "fa-users-gear", roles: ["ADMIN", "SHOP_ADMIN", "OWNER"] },
+    { id: "branches",   path: "/branches",   key: "nav.branches", icon: "fa-store",      roles: ["OWNER"] },
+    /* Sozlamalar — HAMMA rolga ochiq: til va tema shu yerda va ular
+       xodimning shaxsiy tanlovi, do'kon sozlamasi emas. */
+    { id: "settings",   path: "/settings",   key: "nav.settings", icon: "fa-gear" },
   ]},
 ];
 
-/* Rol nomi — lug'atdan. SUPERADMIN do'kon roli emas, shuning uchun alohida. */
-const EXTRA_ROLES = { SUPERADMIN: "Super admin", ADMIN: "Do'kon admini" };
-const roleName = (r) => EXTRA_ROLES[String(r || "").toUpperCase()] || roleLabel(r);
+/* Rol nomi — lug'atdan. SUPERADMIN va ADMIN do'kon roli emas: birinchisi
+   tizim admini, ikkinchisi eski nom. Shuning uchun alohida kalitlar. */
+const EXTRA_ROLE_KEYS = {
+  SUPERADMIN: "enum.adminRole.SUPER_ADMIN",
+  ADMIN:      "enum.role.SHOP_ADMIN",
+};
 
 const PAGE_TITLES = {
-  "/":               { label:"Dashboard",        icon:"fa-chart-pie"     },
-  "/sale":           { label:"Kassa",            icon:"fa-cash-register" },
-  "/products":       { label:"Mahsulotlar",      icon:"fa-box"           },
-  "/categories":     { label:"Kategoriyalar",    icon:"fa-tags"          },
-  "/inventory":      { label:"Ombor",            icon:"fa-warehouse"     },
-  "/customers":      { label:"Mijozlar",         icon:"fa-users"         },
-  "/sales":          { label:"Sotuvlar tarixi",  icon:"fa-receipt"       },
-  "/reports":        { label:"Hisobotlar",       icon:"fa-chart-bar"     },
-  "/custom-report":  { label:"Maxsus hisobot",   icon:"fa-calendar-days" },
-  "/shop-users":     { label:"Xodimlar",         icon:"fa-users-gear"    },
-  "/branches":       { label:"Filiallar",        icon:"fa-store"         },
+  "/":               { key:"nav.dashboard",    icon:"fa-chart-pie"     },
+  "/sale":           { key:"nav.kassa",        icon:"fa-cash-register" },
+  "/products":       { key:"nav.products",     icon:"fa-box"           },
+  "/categories":     { key:"nav.categories",   icon:"fa-tags"          },
+  "/inventory":      { key:"nav.inventory",    icon:"fa-warehouse"     },
+  "/customers":      { key:"nav.customers",    icon:"fa-users"         },
+  "/sales":          { key:"nav.sales",        icon:"fa-receipt"       },
+  "/reports":        { key:"nav.reports",      icon:"fa-chart-bar"     },
+  "/custom-report":  { key:"nav.customReport", icon:"fa-calendar-days" },
+  "/shop-users":     { key:"nav.staff",        icon:"fa-users-gear"    },
+  "/branches":       { key:"nav.branches",     icon:"fa-store"         },
+  "/settings":       { key:"nav.settings",     icon:"fa-gear"          },
 };
 
 function LowStockBadge({ items, count, onGoInventory }) {
+  const { t } = useT();
   const [open, setOpen] = useState(false);
   const [pulse, setPulse] = useState(false);
 
@@ -68,24 +79,24 @@ function LowStockBadge({ items, count, onGoInventory }) {
       >
         <i className="fa-solid fa-triangle-exclamation" style={{ color: "var(--fg-warning)", fontSize: 13 }} aria-hidden="true" />
         <span style={{ fontSize: 12, fontWeight: 700, color: "var(--fg-warning)" }}>
-          <span className="ek-num">{count}</span> mahsulot kam
+          {t("layout.lowStockBadge", { n: count })}
         </span>
       </button>
       {open && (
         <>
           <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 299 }} />
           <div className="ek-dialog" style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, background: "var(--bg-surface)", borderRadius: "var(--r-xl)", minWidth: 300, boxShadow: "var(--sh-lg)", border: "1px solid var(--border-warning)", zIndex: 300, overflow: "hidden" }}>
-            <div style={{ padding: "12px 16px", background: "var(--bg-warning-subtle)", borderBottom: "1px solid var(--border-warning)", fontWeight: 700, fontSize: 13, color: "var(--fg-warning)" }}>Ombor ogohlantirishi</div>
+            <div style={{ padding: "12px 16px", background: "var(--bg-warning-subtle)", borderBottom: "1px solid var(--border-warning)", fontWeight: 700, fontSize: 13, color: "var(--fg-warning)" }}>{t("layout.lowStockTitle")}</div>
             <div style={{ maxHeight: 240, overflowY: "auto" }}>
               {items.map((item) => (
                 <div key={item.productId} style={{ display: "flex", justifyContent: "space-between", gap: 12, padding: "10px 16px", borderBottom: "1px solid var(--border-subtle)" }}>
                   <span style={{ fontWeight: 600, fontSize: 13 }}>{item.productName}</span>
-                  <span className="ek-num" style={{ fontWeight: 700, color: "var(--fg-warning)" }}>{item.quantity} dona</span>
+                  <span className="ek-num" style={{ fontWeight: 700, color: "var(--fg-warning)" }}>{item.quantity} {t("layout.pieces")}</span>
                 </div>
               ))}
             </div>
             <div style={{ padding: 10 }}>
-              <button className="btn btn-full" onClick={() => { onGoInventory(); setOpen(false); }} style={{ background: "var(--bg-warning)", color: "var(--ek-ink-950)" }}>Omborga o'tish</button>
+              <button className="btn btn-full" onClick={() => { onGoInventory(); setOpen(false); }} style={{ background: "var(--bg-warning)", color: "var(--ek-ink-950)" }}>{t("layout.lowStockGo")}</button>
             </div>
           </div>
         </>
@@ -95,9 +106,20 @@ function LowStockBadge({ items, count, onGoInventory }) {
 }
 
 function Sidebar({ user, onLogout, open, onClose, isCollapsed, onToggleCollapse, lowStockCount }) {
+  const { t } = useT();
   const confirm = useConfirm();
+  const roleName = (r) => {
+    const key = EXTRA_ROLE_KEYS[String(r || "").toUpperCase()];
+    return key ? t(key) : roleLabel(r);
+  };
   const handleLogoutClick = async () => {
-    const ok = await confirm({ title: "Tizimdan chiqish", message: "Chindan ham tizimdan chiqmoqchimisiz?", type: "warning" });
+    const ok = await confirm({
+      title: t("layout.logout"),
+      message: t("layout.logoutConfirm"),
+      type: "warning",
+      confirmText: t("layout.logout"),
+      cancelText: t("common.cancel"),
+    });
     if (ok) onLogout();
   };
   return (
@@ -133,11 +155,11 @@ function Sidebar({ user, onLogout, open, onClose, isCollapsed, onToggleCollapse,
           if (visibleItems.length === 0) return null;
           return (
             <div key={group.section}>
-              <div className="sb-section">{group.section}</div>
+              <div className="sb-section">{t(group.section)}</div>
               {visibleItems.map((item) => (
-                <NavLink key={item.id} to={item.path} title={isCollapsed ? item.label : ""} onClick={() => onClose()} className={({ isActive }) => `sb-item ${isActive ? "active" : ""}`}>
-                  <i className={`fa-solid ${item.icon}`} /> 
-                  <span className="sb-label">{item.label}</span>
+                <NavLink key={item.id} to={item.path} title={isCollapsed ? t(item.key) : ""} onClick={() => onClose()} className={({ isActive }) => `sb-item ${isActive ? "active" : ""}`}>
+                  <i className={`fa-solid ${item.icon}`} aria-hidden="true" />
+                  <span className="sb-label">{t(item.key)}</span>
                   {item.id === "inventory" && lowStockCount > 0 && <span className="badge badge-red" style={{ marginLeft: "auto" }}>{lowStockCount}</span>}
                 </NavLink>
               ))}
@@ -145,9 +167,12 @@ function Sidebar({ user, onLogout, open, onClose, isCollapsed, onToggleCollapse,
           );
         })}
       </nav>
+      {/* Tema tanlagichi bu yerdan OLIB TASHLANDI: barcha sozlamalar endi
+          «Sozlamalar» sahifasida — bitta joy, bitta qidiruv. */}
       <div className="sb-footer">
-        <ThemeSelect compact={isCollapsed} />
-        <div className="sb-user" onClick={handleLogoutClick} title={isCollapsed ? "Tizimdan chiqish" : ""}>
+        <div className="sb-user" onClick={handleLogoutClick} title={isCollapsed ? t("layout.logout") : ""}
+             role="button" tabIndex={0}
+             onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleLogoutClick(); } }}>
           <div className="av" style={{ width: isCollapsed ? 28 : 34, height: isCollapsed ? 28 : 34 }}>{initials(user?.fullName || user?.username)}</div>
           <div className="sb-user-info">
             <div className="sb-user-name">{user?.fullName || user?.username}</div>
@@ -160,6 +185,7 @@ function Sidebar({ user, onLogout, open, onClose, isCollapsed, onToggleCollapse,
 }
 
 export default function Layout({ user, onLogout, isAdmin, lowStockItems, lowStockCount, children }) {
+  const { t } = useT();
   const [open, setOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(() => localStorage.getItem("sb_collapsed") === "1");
   const [kassaFullscreen, setKassaFullscreen] = useState(false);
@@ -204,15 +230,18 @@ export default function Layout({ user, onLogout, isAdmin, lowStockItems, lowStoc
       />
       <main className="main-content">
         <div className="topbar">
-          <button className="btn-icon ham-btn" onClick={() => setOpen(v => !v)}><i className={`fa-solid ${open ? "fa-xmark" : "fa-bars"}`} /></button>
-          <span className="topbar-title"><i className={`fa-solid ${title.icon}`} /> {title.label}</span>
+          <button className="btn-icon ham-btn" onClick={() => setOpen(v => !v)}
+                  aria-label={t("layout.menu")} aria-expanded={open}><i className={`fa-solid ${open ? "fa-xmark" : "fa-bars"}`} aria-hidden="true" /></button>
+          <span className="topbar-title"><i className={`fa-solid ${title.icon}`} aria-hidden="true" /> {t(title.key)}</span>
           {isKassaPage && (
-            <button className="btn btn-sm kassa-fs-topbar-btn" onClick={toggleKassaFullscreen} title="To'liq ekran">
-              <i className="fa-solid fa-expand" /> To'liq ekran
+            <button className="btn btn-sm kassa-fs-topbar-btn" onClick={toggleKassaFullscreen} title={t("layout.fullscreen")}>
+              <i className="fa-solid fa-expand" aria-hidden="true" /> {t("layout.fullscreen")}
             </button>
           )}
           <LowStockBadge items={lowStockItems || []} count={lowStockCount || 0} onGoInventory={() => navigate("/inventory")} />
-          <span className="topbar-date"><i className="fa-regular fa-clock" /> {new Date().toLocaleDateString("uz-UZ", { weekday:"short", year:"numeric", month:"short", day:"numeric" })}</span>
+          {/* Sana `ek-format` dan — `toLocaleDateString("uz-UZ")` brauzerga qarab
+              turlicha chiqadi va tilga ergashmaydi (02-DESIGN-SYSTEM.md). */}
+          <span className="topbar-date ek-num"><i className="fa-regular fa-clock" aria-hidden="true" /> {weekdayDate()}</span>
         </div>
         {/* Sahifa o'tishi — FAQAT opacity, 140ms. Siljish yo'q: POS'da chalg'itadi. */}
         <div className="page-content ek-page-in" key={location.pathname}>
@@ -222,7 +251,7 @@ export default function Layout({ user, onLogout, isAdmin, lowStockItems, lowStoc
 
       {/* Kassa fullscreen exit button */}
       {kassaFullscreen && (
-        <button className="kassa-fs-exit" onClick={toggleKassaFullscreen} title="To'liq ekrandan chiqish">
+        <button className="kassa-fs-exit" onClick={toggleKassaFullscreen} title={t("layout.fullscreenExit")} aria-label={t("layout.fullscreenExit")}>
           <i className="fa-solid fa-compress" />
         </button>
       )}

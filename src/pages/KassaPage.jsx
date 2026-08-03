@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { t } from "../lib/ek-i18n";
 import { productApi, customerApi, saleApi } from "../api";
 import { money } from "../utils";
 import { Empty } from "../components/ui";
@@ -66,19 +67,19 @@ function printCheck({ saleId, cart, total, payType, customer, offline }) {
     <body>
       <div class="c">
         <div class="logo">E-KASSAM<span class="dot">.UZ</span></div>
-        <small>CRM Tizimi</small>
+        <small>{t("kassa.receiptSystem")}</small>
       </div>
       <div class="hr"></div>
       <div class="row"><span>Chek ${saleId}</span><span>${new Date().toLocaleString("uz-UZ")}</span></div>
       <div class="hr"></div>
       ${rows}
       <div class="hr"></div>
-      <div class="row"><b>JAMI:</b><b>${total.toLocaleString("uz-UZ")} so'm</b></div>
-      <div class="row"><span>To'lov:</span><span>${paymentLabel(payType)}</span></div>
-      ${customer ? `<div class="row"><span>Mijoz:</span><span>${customer.fullName}</span></div>` : ""}
-      ${offline ? `<div class="off">Oflayn rejimda qayd etildi.<br>Ulanish tiklanganda serverga yuboriladi.</div>` : ""}
+      <div class="row"><b>{t("kassa.receiptTotal")}</b><b>${total.toLocaleString("uz-UZ")} so'm</b></div>
+      <div class="row"><span>{t("kassa.receiptPayment")}</span><span>${paymentLabel(payType)}</span></div>
+      ${customer ? `<div class="row"><span>{t("kassa.receiptCustomer")}</span><span>${customer.fullName}</span></div>` : ""}
+      ${offline ? `<div class="off">{t("kassa.receiptOffline")}<br>{t("kassa.receiptOfflineSub")}</div>` : ""}
       <div class="hr"></div>
-      <div class="c"><p>Xarid uchun rahmat!</p><small>e-kassam.uz</small></div>
+      <div class="c"><p>{t("kassa.receiptThanks")}</p><small>e-kassam.uz</small></div>
     </body></html>
   `);
   win.document.close();
@@ -188,7 +189,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
       if (found) { addToCart(found); return; }
     } catch (_) { /* oflayn */ }
     // Xato ovozi emas, taklif (06-APP-KASSIR.md)
-    toast.info(`Bu barkod bazada yo'q: ${code}. Tovarni "Mahsulotlar" bo'limidan qo'shing.`);
+    toast.info(`Bu barkod bazada yo'q: ${code}. Tovarni t("products.title") bo'limidan qo'shing.`);
   };
 
   /* ── Savat ────────────────────────────────────────────────── */
@@ -330,7 +331,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
   };
 
   const reprint = () => {
-    if (!lastSale.current) { toast.info("Qayta chop etish uchun chek yo'q"); return; }
+    if (!lastSale.current) { toast.info(t("kassa.noReceipt")); return; }
     printCheck(lastSale.current);
   };
 
@@ -348,7 +349,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
       if (e.key === "Escape") {
         if (finish)       { setFinish(null); focusBarcode(); return; }
         if (showPayModal) { closePayModal(); return; }
-        if (cart.length && window.confirm("Savatni tozalaymizmi?")) clearCart();
+        if (cart.length && window.confirm(t("kassa.clearConfirm"))) clearCart();
         return;
       }
 
@@ -372,10 +373,10 @@ export default function KassaPage({ toast, refreshLowStock }) {
   return (
     <div style={{ height: "calc(100vh - var(--sh) - 40px)", display: "flex", flexDirection: "column" }}>
       <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexShrink: 0, gap: 12 }}>
-        <h2 className="page-title" style={{ fontSize: 18 }}>Savdo (Kassa)</h2>
+        <h2 className="page-title" style={{ fontSize: 18 }}>{t("kassa.title")}</h2>
         <div className="ek-shift" data-open="true">
           <span className="ek-shift__dot" aria-hidden="true" />
-          Smena ochiq
+          {t("kassa.shiftOpen")}
         </div>
       </div>
 
@@ -387,14 +388,14 @@ export default function KassaPage({ toast, refreshLowStock }) {
           {/* Barkod maydoni — doim fokusda, monoshriftda (bu raqam) */}
           <div className="bc-field" data-unfocused={bcWarn}>
             <i className="fa-solid fa-barcode" aria-hidden="true" />
-            <label htmlFor="bc" className="ek-sr-only">Barkod skanerlash</label>
+            <label htmlFor="bc" className="ek-sr-only">{t("kassa.scanTitle")}</label>
             <input
               id="bc"
               ref={barcodeRef}
               data-scanner="true"
               inputMode="numeric"
               autoComplete="off"
-              placeholder="Barkodni skanerlang yoki kiriting…"
+              placeholder={t("kassa.scanHint")}
               onKeyDown={(e) => {
                 if (e.key !== "Enter") return;
                 e.preventDefault();
@@ -403,7 +404,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
                 if (code.length > 2) addByBarcode(code);
               }}
             />
-            <span className="kbd" title="Barkod maydoniga qaytish">Ctrl+B</span>
+            <span className="kbd" title={t("kassa.backToBarcode")}>Ctrl+B</span>
           </div>
 
           <div className="card" style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
@@ -412,7 +413,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
                 <i className="fa-solid fa-magnifying-glass" aria-hidden="true" />
                 <input
                   ref={searchRef}
-                  placeholder="Mahsulot nomi bo'yicha qidirish…"
+                  placeholder={t("kassa.searchByName")}
                   value={search}
                   onChange={(e) => handleSearchChange(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter" && products.length === 1) addToCart(products[0]); }}
@@ -443,7 +444,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
               ))}
               {products.length === 0 && !searching && (
                 <div style={{ gridColumn: "1/-1" }}>
-                  <Empty icon="fa-magnifying-glass" text="Mahsulot topilmadi" />
+                  <Empty icon="fa-magnifying-glass" text={t("products.notFound")} />
                 </div>
               )}
             </div>
@@ -461,14 +462,14 @@ export default function KassaPage({ toast, refreshLowStock }) {
               </span>
               {cart.length > 0 && (
                 <button className="btn btn-sm" style={{ background: "var(--bg-danger-subtle)", color: "var(--fg-danger)" }} onClick={clearCart}>
-                  <i className="fa-solid fa-trash" aria-hidden="true" /> Tozalash <span className="kbd">Esc</span>
+                  <i className="fa-solid fa-trash" aria-hidden="true" /> {t("common.reset")} <span className="kbd">Esc</span>
                 </button>
               )}
             </div>
 
             <div className="cart-items">
               {cart.length === 0 ? (
-                <Empty icon="fa-barcode" text="Barkodni skanerlang" />
+                <Empty icon="fa-barcode" text={t("kassa.scanPrompt")} />
               ) : (
                 cart.map((item) => (
                   <div
@@ -480,9 +481,9 @@ export default function KassaPage({ toast, refreshLowStock }) {
                       <div className="cart-item-price ek-num">{money(item.salePrice)}</div>
                     </div>
                     <div className="qty-ctrl">
-                      <button className="qty-btn" aria-label="Kamaytirish" onClick={() => updateQty(item.id, -1)}>−</button>
+                      <button className="qty-btn" aria-label={t("kassa.decrease")} onClick={() => updateQty(item.id, -1)}>−</button>
                       <span className="qty-num">{item.qty}</span>
-                      <button className="qty-btn" aria-label="Ko'paytirish" onClick={() => updateQty(item.id, +1)}>+</button>
+                      <button className="qty-btn" aria-label={t("kassa.increase")} onClick={() => updateQty(item.id, +1)}>+</button>
                     </div>
                     <button className="btn-icon danger" aria-label={`${item.name} — o'chirish`} onClick={() => removeFromCart(item.id)}>
                       <i className="fa-solid fa-xmark" aria-hidden="true" />
@@ -496,8 +497,8 @@ export default function KassaPage({ toast, refreshLowStock }) {
           <div className="card" style={{ padding: "10px 14px" }}>
             <Select
               block
-              ariaLabel="Mijoz"
-              placeholder="Mijoz tanlash (ixtiyoriy)"
+              ariaLabel={t("kassa.customer")}
+              placeholder={t("kassa.pickCustomer")}
               value={customer?.id ? String(customer.id) : ""}
               onChange={(v) => setCustomer(customers.find((c) => String(c.id) === v) || null)}
               options={[
@@ -513,7 +514,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
 
           <div className="total-card">
             <div className="total-row">
-              <span>Mahsulotlar</span>
+              <span>{t("products.title")}</span>
               <span className="ek-num">{totalQty} dona</span>
             </div>
             <div className="total-big">
@@ -533,27 +534,27 @@ export default function KassaPage({ toast, refreshLowStock }) {
       {undo && (
         <div className="ek-undo ek-toast-in" role="status" aria-live="polite">
           <span>{undo.item.name} o'chirildi</span>
-          <button onClick={restoreUndo}>Qaytarish</button>
+          <button onClick={restoreUndo}>{t("kassa.undo")}</button>
         </div>
       )}
 
       {/* ════ TO'LOV MODALI ════ */}
       {showPayModal && (
-        <div className="pay-modal-overlay ek-overlay" role="dialog" aria-modal="true" aria-label="To'lov qilish">
+        <div className="pay-modal-overlay ek-overlay" role="dialog" aria-modal="true" aria-label={t("kassa.pay")}>
           <div className="pay-modal-box ek-dialog">
             <div className="pay-modal-header">
               <div className="pay-modal-title">
                 <i className="fa-solid fa-cash-register" aria-hidden="true" />
-                To'lov qilish
+                {t("kassa.pay")}
               </div>
-              <button className="pay-modal-close" onClick={closePayModal} aria-label="Yopish">
+              <button className="pay-modal-close" onClick={closePayModal} aria-label={t("common.close")}>
                 <i className="fa-solid fa-xmark" aria-hidden="true" />
               </button>
             </div>
 
             <div className="pay-modal-body">
               <div className="pay-modal-total">
-                <div className="pay-modal-total-label">Umumiy summa</div>
+                <div className="pay-modal-total-label">{t("kassa.grandTotal")}</div>
                 <div className="pay-modal-total-value ek-num">{money(total)}</div>
                 <div className="pay-modal-total-qty">
                   <span className="ek-num">{totalQty}</span> ta mahsulot · <span className="ek-num">{cart.length}</span> xil
@@ -582,7 +583,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
               {/* ── NAQD: olingan summa → qaytim avtomatik ── */}
               {payType === "CASH" && (
                 <div style={{ marginTop: 18 }}>
-                  <label className="form-label" htmlFor="given">Olingan summa</label>
+                  <label className="form-label" htmlFor="given">{t("kassa.received")}</label>
                   <input
                     id="given"
                     type="number" min="0" inputMode="numeric"
@@ -598,11 +599,11 @@ export default function KassaPage({ toast, refreshLowStock }) {
                         {v.toLocaleString("uz-UZ")}
                       </button>
                     ))}
-                    <button type="button" onClick={() => setCashGiven(String(total))}>Aniq summa</button>
+                    <button type="button" onClick={() => setCashGiven(String(total))}>{t("kassa.exactAmount")}</button>
                   </div>
                   {Number(cashGiven) > 0 && (
                     <div className="ek-change">
-                      <span className="ek-change__label">Qaytim</span>
+                      <span className="ek-change__label">{t("kassa.change")}</span>
                       <span className="ek-change__value">{money(change)}</span>
                     </div>
                   )}
@@ -618,7 +619,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
               {payType === "CARD" && (
                 <div style={{ marginTop: 18, display: "flex", alignItems: "center", gap: 12, padding: "14px 18px", background: "var(--bg-brand-subtle)", border: "1px solid var(--border-brand)", borderRadius: "var(--r-lg)", color: "var(--fg-brand)", fontWeight: 600, fontSize: 13 }}>
                   <Spinner />
-                  Terminal tasdig'ini kuting, so'ng "Sotish va Chek" ni bosing
+                  Terminal tasdig'ini kuting, so'ng t("kassa.sellAndPrint") ni bosing
                 </div>
               )}
 

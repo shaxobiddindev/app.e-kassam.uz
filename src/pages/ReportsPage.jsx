@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { t } from "../lib/ek-i18n";
 import { reportApi } from "../api";
 import { BranchSelector } from "../components";
 import { Empty, StatCard } from "../components/ui";
@@ -8,16 +9,16 @@ import { SkeletonCards } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
 
 const PERIODS = [
-  { key: "daily",   label: "Bugun" },
-  { key: "weekly",  label: "Hafta" },
-  { key: "monthly", label: "Oy" },
+  { key: "daily",   label: t("rep.today") },
+  { key: "weekly",  label: t("rep.week") },
+  { key: "monthly", label: t("rep.month") },
 ];
 
 const STATS_CONFIG = [
-  { key: "totalRevenue", label: "Jami savdo",    icon: "fa-sack-dollar",    bg: "rgba(1,125,202,0.09)", color: "#017dca" },
-  { key: "totalProfit",  label: "Sof foyda",     icon: "fa-arrow-trend-up", bg: "#ecfdf5",              color: "#22c55e" },
-  { key: "totalSales",   label: "Sotuvlar soni", icon: "fa-cart-shopping",  bg: "#fffbeb",              color: "#f59e0b" },
-  { key: "totalCost",    label: "Tan narxi",      icon: "fa-coins",          bg: "#fdf4ff",              color: "#9333ea" },
+  { key: "totalRevenue", label: t("rep.totalSales"),    icon: "fa-sack-dollar",    bg: "rgba(1,125,202,0.09)", color: "#017dca" },
+  { key: "totalProfit",  label: t("dash.netProfit"),     icon: "fa-arrow-trend-up", bg: "#ecfdf5",              color: "#22c55e" },
+  { key: "totalSales",   label: t("dash.salesCount"), icon: "fa-cart-shopping",  bg: "#fffbeb",              color: "#f59e0b" },
+  { key: "totalCost",    label: t("dash.costPrice"),      icon: "fa-coins",          bg: "#fdf4ff",              color: "#9333ea" },
 ];
 
 /* To'lov turi yorlig'i — CLICK va PAYME ham qamrab olinadi.
@@ -88,7 +89,7 @@ export default function ReportsPage({ toast }) {
               <div className="card-header">
                 <span className="card-title">
                   <i className="fa-solid fa-credit-card text-blue" />
-                  To'lov turlari
+                  {t("dash.paymentTypes")}
                 </span>
               </div>
               <div className="card-body">
@@ -110,7 +111,7 @@ export default function ReportsPage({ toast }) {
                     </div>
                   ))
                 ) : (
-                  <Empty text="Ma'lumot yo'q" />
+                  <Empty text={t("rep.noData")} />
                 )}
               </div>
             </div>
@@ -120,7 +121,7 @@ export default function ReportsPage({ toast }) {
               <div className="card-header">
                 <span className="card-title">
                   <i className="fa-solid fa-trophy" style={{ color: "var(--yellow)" }} />
-                  Top 10 mahsulot
+                  {t("rep.top10")}
                 </span>
               </div>
               <div className="table-wrap">
@@ -128,9 +129,9 @@ export default function ReportsPage({ toast }) {
                   <thead>
                     <tr>
                       <th>#</th>
-                      <th>Mahsulot</th>
-                      <th>Soni</th>
-                      <th>Summa</th>
+                      <th>{t("products.col")}</th>
+                      <th>{t("common.count")}</th>
+                      <th>{t("common.sum")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -146,7 +147,7 @@ export default function ReportsPage({ toast }) {
                     ) : (
                       <tr>
                         <td colSpan={4}>
-                          <Empty text="Ma'lumot yo'q" />
+                          <Empty text={t("rep.noData")} />
                         </td>
                       </tr>
                     )}

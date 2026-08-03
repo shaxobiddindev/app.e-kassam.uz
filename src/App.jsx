@@ -2,6 +2,7 @@ import "./styles.css";
 /* BUILD_ID: EMERGENCY_FIX_V3_0116 */
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { LOGIN_URL } from "./config";
+import { initLang, withLang, useT } from "./lib/ek-i18n";
 import { useAuth }  from "./hooks/useAuth";
 import { useLowStock } from "./hooks/useLowStock";
 import { useToast } from "./hooks/useToast";
@@ -20,7 +21,14 @@ import CategoriesPage   from "./pages/admin/CategoriesPage";
 import CustomReportPage from "./pages/admin/CustomReportPage";
 import ShopUsersPage    from "./pages/admin/ShopUsersPage";
 import ShopsPage        from "./pages/admin/ShopsPage";
+import SettingsPage    from "./pages/SettingsPage";
 import NotFound from "./pages/NotFound";
+
+// ⚠ Tilni URL dan olish MODUL TANASIDA, `replaceState` dan OLDIN bo'lishi
+// shart. Bu fayl `main.jsx` dan import qilinadi va ES modul tartibiga ko'ra
+// shu tana `main.jsx` dagi `initLang()` dan OLDIN ishlaydi. Agar avval URL
+// tozalansa, `?lang=` yo'qoladi va login'da tanlangan til yetib kelmaydi.
+initLang();
 
 // ── Auth Handling ────────────────────────────────────────────
 const urlParams = new URLSearchParams(window.location.search);
@@ -66,8 +74,13 @@ if (authParam) {
 const localToken = localStorage.getItem("ek_token");
 const localType = localStorage.getItem("ek_type");
 if (!localToken || localType !== "user") {
+  // Til tanlovi sessiyaga emas, BRAUZERGA tegishli — `clear()` dan omon
+  // qolsin, aks holda chiqarilgan foydalanuvchi kirish ekranini yana
+  // boshqa tilda ko'radi.
+  const _lang = localStorage.getItem("ek_lang");
   localStorage.clear();
-  window.location.replace(`${LOGIN_URL}?logged_out=1`);
+  if (_lang) localStorage.setItem("ek_lang", _lang);
+  window.location.replace(withLang(`${LOGIN_URL}?logged_out=1`));
 }
 
 const ProtectedRoute = ({ user, roles, children }) => {
@@ -80,6 +93,10 @@ const ProtectedRoute = ({ user, roles, children }) => {
 };
 
 export default function App() {
+  // Yagona til obunasi: til o'zgarganda BUTUN daraxt qayta chiziladi va
+  // ichkaridagi barcha `t()` chaqiruvlari yangi tilni oladi. Shu sababli
+  // har bir sahifada alohida obuna kerak emas.
+  useT();
   const { user, logout }                                  = useAuth();
   const { toasts, toast, dismiss }                        = useToast();
   const { lowStockItems, lowStockCount, refreshLowStock } = useLowStock();
@@ -113,6 +130,9 @@ export default function App() {
             <Route path="/custom-report" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><CustomReportPage toast={toast} /></ProtectedRoute>} />
             <Route path="/shop-users" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><ShopUsersPage toast={toast} /></ProtectedRoute>} />
             <Route path="/branches" element={<ProtectedRoute user={user} roles={["OWNER"]}><ShopsPage toast={toast} /></ProtectedRoute>} />
+            {/* Sozlamalar — hamma rolga ochiq: mavzu va til xodimning
+                shaxsiy tanlovi, do'kon sozlamasi emas. */}
+            <Route path="/settings" element={<SettingsPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Layout>

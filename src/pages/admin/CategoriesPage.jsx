@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { t } from "../../lib/ek-i18n";
 import { productApi } from "../../api";
 import { BranchSelector } from "../../components";
 import Modal from "../../components/Modal";
@@ -40,15 +41,15 @@ export default function CategoriesPage({ toast }) {
   const closeModal = () => setModal(null);
 
   const handleSave = async () => {
-    if (!form.name.trim()) { toast.error("Kategoriya nomini kiriting"); return; }
+    if (!form.name.trim()) { toast.error(t("cat.needName")); return; }
     setSaving(true);
     try {
       if (modal === "add") {
         await productApi.createCategory(form, branchId);
-        toast.success("Kategoriya qo'shildi");
+        toast.success(t("cat.added"));
       } else {
         await productApi.updateCategory(modal.cat.id, form, branchId);
-        toast.success("Kategoriya yangilandi");
+        toast.success(t("cat.updated"));
       }
       closeModal();
       loadData();
@@ -61,7 +62,7 @@ export default function CategoriesPage({ toast }) {
 
   const handleDelete = async (cat) => {
     const ok = await confirm({
-      title: "Kategoriyani o'chirish",
+      title: t("cat.deleteTitle"),
       message: `"${cat.name}" mahsulot kategoriyasini o'chirishni tasdiqlaysizmi? Bu mahsulotlarga ta'sir qilishi mumkin.`,
       type: "danger"
     });
@@ -69,7 +70,7 @@ export default function CategoriesPage({ toast }) {
 
     try {
       await productApi.deleteCategory(cat.id, branchId);
-      toast.success("O'chirildi");
+      toast.success(t("common.deleted"));
       loadData();
     } catch (err) {
       toast.error(err.message);
@@ -86,7 +87,7 @@ export default function CategoriesPage({ toast }) {
     <div>
       <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
         <div>
-          <h2 className="page-title">Kategoriyalar</h2>
+          <h2 className="page-title">{t("cat.title")}</h2>
         </div>
         <BranchSelector selectedId={branchId} onSelect={setBranchId} />
       </div>
@@ -97,7 +98,7 @@ export default function CategoriesPage({ toast }) {
             Kategoriyalar ({categories.length})
           </span>
           <button className="btn btn-primary btn-sm" onClick={openAdd}>
-            <i className="fa-solid fa-plus" /> Qo'shish
+            <i className="fa-solid fa-plus" /> {t("common.add")}
           </button>
         </div>
 
@@ -129,7 +130,7 @@ export default function CategoriesPage({ toast }) {
                   </div>
                   <div style={{ display: "flex", gap: 6 }}>
                     <button className="btn btn-outline btn-sm" style={{ flex: 1, justifyContent: "center" }} onClick={() => openEdit(cat)}>
-                      <i className="fa-solid fa-pen" /> Tahrirlash
+                      <i className="fa-solid fa-pen" /> {t("common.edit")}
                     </button>
                     <button className="btn-icon danger" onClick={() => handleDelete(cat)}>
                       <i className="fa-solid fa-trash" />
@@ -140,29 +141,29 @@ export default function CategoriesPage({ toast }) {
             })}
           </div>
         ) : (
-          <Empty icon="fa-tags" text="Kategoriya yo'q" />
+          <Empty icon="fa-tags" text={t("cat.none")} />
         )}
       </div>
 
       {modal && (
         <Modal
-          title={modal === "add" ? "Yangi kategoriya" : "Kategoriyani tahrirlash"}
+          title={modal === "add" ? t("cat.new") : t("cat.edit")}
           onClose={closeModal}
           footer={
             <>
-              <button className="btn btn-outline btn-sm" onClick={closeModal}>Bekor</button>
+              <button className="btn btn-outline btn-sm" onClick={closeModal}>{t("common.cancel")}</button>
               <button className="btn btn-primary btn-sm" onClick={handleSave} disabled={saving}>
                 {saving ? <Spinner /> : <i className="fa-solid fa-check" />}
-                {saving ? "..." : "Saqlash"}
+                {saving ? "..." : t("common.save")}
               </button>
             </>
           }
         >
-          <FormGroup label="Nomi *">
-            <input className="form-input" value={form.name} onChange={setField("name")} placeholder="Kategoriya nomi" autoFocus />
+          <FormGroup label={`${t("common.name")} *`}>
+            <input className="form-input" value={form.name} onChange={setField("name")} placeholder={t("cat.name")} autoFocus />
           </FormGroup>
-          <FormGroup label="Tavsif">
-            <input className="form-input" value={form.description} onChange={setField("description")} placeholder="Qisqacha tavsif (ixtiyoriy)" />
+          <FormGroup label={t("cat.description")}>
+            <input className="form-input" value={form.description} onChange={setField("description")} placeholder={t("cat.descriptionHint")} />
           </FormGroup>
         </Modal>
       )}

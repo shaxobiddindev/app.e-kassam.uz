@@ -1,4 +1,5 @@
 import Modal from "./Modal";
+import { t } from "../lib/ek-i18n";
 
 export default function ConfirmModal({ title, message, type = "info", onConfirm, onCancel }) {
   const iconMap = {
@@ -17,14 +18,14 @@ export default function ConfirmModal({ title, message, type = "info", onConfirm,
       footer={
         <div style={{ display: "flex", gap: 12, justifyContent: "flex-end", width: "100%" }}>
           <button className="btn btn-outline btn-sm" onClick={onCancel}>
-            Bekor qilish
+            {t("common.cancel")}
           </button>
           <button 
             className={`btn btn-sm ${type === "danger" ? "btn-danger" : "btn-primary"}`} 
             onClick={onConfirm}
             autoFocus
           >
-            Tasdiqlash
+            {t("common.confirm")}
           </button>
         </div>
       }

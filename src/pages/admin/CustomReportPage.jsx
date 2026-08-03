@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { t } from "../../lib/ek-i18n";
 import { reportApi } from "../../api";
 import { money } from "../../utils";
 import { Empty, StatCard } from "../../components/ui";
@@ -8,10 +9,10 @@ import { SkeletonCards, Spinner } from "../../components/ek/Loading";
 import { useLoading } from "../../lib/use-loading";
 
 const STATS_CONFIG = [
-  { key: "totalRevenue", label: "Jami savdo",    icon: "fa-sack-dollar",    bg: "rgba(1,125,202,0.09)", color: "#017dca" },
-  { key: "totalProfit",  label: "Sof foyda",     icon: "fa-arrow-trend-up", bg: "#ecfdf5",              color: "#22c55e" },
-  { key: "totalSales",   label: "Sotuvlar soni", icon: "fa-cart-shopping",  bg: "#fffbeb",              color: "#f59e0b" },
-  { key: "totalCost",    label: "Tan narxi",      icon: "fa-coins",          bg: "#fdf4ff",              color: "#9333ea" },
+  { key: "totalRevenue", label: t("rep.totalSales"),    icon: "fa-sack-dollar",    bg: "rgba(1,125,202,0.09)", color: "#017dca" },
+  { key: "totalProfit",  label: t("dash.netProfit"),     icon: "fa-arrow-trend-up", bg: "#ecfdf5",              color: "#22c55e" },
+  { key: "totalSales",   label: t("dash.salesCount"), icon: "fa-cart-shopping",  bg: "#fffbeb",              color: "#f59e0b" },
+  { key: "totalCost",    label: t("dash.costPrice"),      icon: "fa-coins",          bg: "#fdf4ff",              color: "#9333ea" },
 ];
 
 /* To'lov turi yorlig'i — CLICK va PAYME ham qamrab olinadi.
@@ -35,8 +36,8 @@ export default function CustomReportPage({ toast }) {
   const [branchId, setBranchId] = useState(null);
 
   const handleSearch = async () => {
-    if (!from || !to) { toast.error("Sanalarni kiriting"); return; }
-    if (new Date(from) > new Date(to)) { toast.error("Boshlanish sanasi oxirgidan katta bo'lmasligi kerak"); return; }
+    if (!from || !to) { toast.error(t("rep.needDates")); return; }
+    if (new Date(from) > new Date(to)) { toast.error(t("rep.badRange")); return; }
     setLoading(true);
     setSearched(true);
     try {
@@ -60,27 +61,27 @@ export default function CustomReportPage({ toast }) {
         <div className="card-header">
           <span className="card-title">
             <i className="fa-solid fa-calendar-days text-blue" />
-            Maxsus hisobot
+            {t("nav.customReport")}
           </span>
           <BranchSelector selectedId={branchId} onSelect={setBranchId} />
         </div>
         <div className="card-body">
           <div style={{ display: "flex", gap: 12, alignItems: "flex-end", flexWrap: "wrap" }}>
             <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label">Boshlanish sanasi</label>
+              <label className="form-label">{t("rep.dateFrom")}</label>
               <input className="form-input" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
             </div>
             <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label">Tugash sanasi</label>
+              <label className="form-label">{t("rep.dateTo")}</label>
               <input className="form-input" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
             </div>
             <button className="btn btn-primary" onClick={handleSearch} disabled={loading}>
               {loading ? <Spinner /> : <i className="fa-solid fa-search" />}
-              {loading ? "Yuklanmoqda..." : "Hisobot olish"}
+              {loading ? t("common.loading") : t("rep.run")}
             </button>
             {data && (
               <button className="btn btn-outline btn-sm" onClick={() => { setData(null); setSearched(false); }}>
-                <i className="fa-solid fa-times" /> Tozalash
+                <i className="fa-solid fa-times" /> {t("common.reset")}
               </button>
             )}
           </div>
@@ -106,7 +107,7 @@ export default function CustomReportPage({ toast }) {
           <div className="grid-2c">
             <div className="card">
               <div className="card-header">
-                <span className="card-title"><i className="fa-solid fa-credit-card text-blue" />To'lov turlari</span>
+                <span className="card-title"><i className="fa-solid fa-credit-card text-blue" />{t("dash.paymentTypes")}</span>
               </div>
               <div className="card-body">
                 {data.paymentSummary?.length ? data.paymentSummary.map((p, i, arr) => (
@@ -114,17 +115,17 @@ export default function CustomReportPage({ toast }) {
                     <span className="fw-700" style={{ fontSize: 13 }}><PayLabel type={p.paymentType} /></span>
                     <span className="mono fw-700">{money(p.amount)}</span>
                   </div>
-                )) : <Empty text="Ma'lumot yo'q" />}
+                )) : <Empty text={t("rep.noData")} />}
               </div>
             </div>
 
             <div className="card">
               <div className="card-header">
-                <span className="card-title"><i className="fa-solid fa-trophy" style={{ color: "var(--yellow)" }} />Top mahsulotlar</span>
+                <span className="card-title"><i className="fa-solid fa-trophy" style={{ color: "var(--yellow)" }} />{t("dash.topProducts")}</span>
               </div>
               <div className="table-wrap">
                 <table>
-                  <thead><tr><th>#</th><th>Mahsulot</th><th>Soni</th><th>Summa</th></tr></thead>
+                  <thead><tr><th>#</th><th>{t("products.col")}</th><th>{t("common.count")}</th><th>{t("common.sum")}</th></tr></thead>
                   <tbody>
                     {data.topProducts?.length ? data.topProducts.map((p, i) => (
                       <tr key={i}>
@@ -133,7 +134,7 @@ export default function CustomReportPage({ toast }) {
                         <td><span className="badge badge-blue">{p.totalQuantity}</span></td>
                         <td className="mono fw-700">{money(p.totalRevenue)}</td>
                       </tr>
-                    )) : <tr><td colSpan={4}><Empty text="Ma'lumot yo'q" /></td></tr>}
+                    )) : <tr><td colSpan={4}><Empty text={t("rep.noData")} /></td></tr>}
                   </tbody>
                 </table>
               </div>
@@ -141,7 +142,7 @@ export default function CustomReportPage({ toast }) {
           </div>
         </>
       ) : searched && !loading ? (
-        <div className="card"><div className="card-body"><Empty icon="fa-chart-bar" text="Bu davr uchun ma'lumot topilmadi" /></div></div>
+        <div className="card"><div className="card-body"><Empty icon="fa-chart-bar" text={t("rep.noPeriodData")} /></div></div>
       ) : null}
     </div>
   );

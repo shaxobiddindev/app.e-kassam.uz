@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { t } from "../lib/ek-i18n";
 import { customerApi } from "../api";
 import { BranchSelector } from "../components";
 import { maskPhone, cleanPhone, money } from "../config";
@@ -51,17 +52,17 @@ export default function CustomersPage({ toast }) {
 
   const handleSave = async () => {
     if (!form.fullName || !form.phone) {
-      toast.error("Majburiy maydonlarni to'ldiring");
+      toast.error(t("products.requiredFields"));
       return;
     }
     setSaving(true);
     try {
       if (modal === "add") {
         await customerApi.create(form);
-        toast.success("Mijoz qo'shildi");
+        toast.success(t("cust.added"));
       } else {
         await customerApi.update(modal.customer.id, form);
-        toast.success("Mijoz yangilandi");
+        toast.success(t("cust.updated"));
       }
       closeModal();
       loadData();
@@ -74,14 +75,14 @@ export default function CustomersPage({ toast }) {
 
   const handleDelete = async (customer) => {
     const ok = await confirm({
-      title: "Mijozni o'chirish",
+      title: t("cust.deleteTitle"),
       message: `"${customer.fullName}" mijozini tizimdan o'chirib tashlamoqchimisiz?`,
       type: "danger"
     });
     if (!ok) return;
     try {
       await customerApi.delete(customer.id);
-      toast.success("Mijoz o'chirildi");
+      toast.success(t("cust.deleted"));
       loadData();
     } catch (err) {
       toast.error(err.message);
@@ -99,7 +100,7 @@ export default function CustomersPage({ toast }) {
     <div>
       <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
         <div>
-          <h2 className="page-title">Mijozlar</h2>
+          <h2 className="page-title">{t("cust.title")}</h2>
         </div>
         <BranchSelector selectedId={branchId} onSelect={setBranchId} />
       </div>
@@ -108,7 +109,7 @@ export default function CustomersPage({ toast }) {
           <SearchBar
             value={search}
             onChange={setSearch}
-            placeholder="Ism yoki telefon..."
+            placeholder={t("cust.search")}
             style={{ width: 280 }}
           />
           <button className="btn btn-primary btn-sm" onClick={openAdd}>
@@ -123,9 +124,9 @@ export default function CustomersPage({ toast }) {
             <table>
               <thead>
                 <tr>
-                  <th>Mijoz</th>
-                  <th>Telefon</th>
-                  <th>Jami xarid</th>
+                  <th>{t("cust.col")}</th>
+                  <th>{t("common.phone")}</th>
+                  <th>{t("cust.totalSpent")}</th>
                   <th></th>
                 </tr>
               </thead>
@@ -158,7 +159,7 @@ export default function CustomersPage({ toast }) {
                 ) : (
                   <tr>
                     <td colSpan={4}>
-                      <Empty icon="fa-users" text="Mijoz topilmadi" />
+                      <Empty icon="fa-users" text={t("cust.notFound")} />
                     </td>
                   </tr>
                 )}
@@ -171,21 +172,21 @@ export default function CustomersPage({ toast }) {
       {/* ── Modal ── */}
       {modal && (
         <Modal
-          title={modal === "add" ? "Yangi mijoz" : "Mijozni tahrirlash"}
+          title={modal === "add" ? t("cust.new") : t("cust.edit")}
           onClose={closeModal}
           footer={
             <>
               <button className="btn btn-outline btn-sm" onClick={closeModal}>
-                Bekor
+                {t("common.cancel")}
               </button>
               <button className="btn btn-primary btn-sm" onClick={handleSave} disabled={saving}>
                 {saving ? <Spinner /> : <i className="fa-solid fa-check" />}
-                {saving ? "Saqlanmoqda..." : "Saqlash"}
+                {saving ? t("common.saving") : t("common.save")}
               </button>
             </>
           }
         >
-          <FormGroup label="Ism Familiya *">
+          <FormGroup label={`${t("common.fullName")} *`}>
             <input
               className="form-input"
               value={form.fullName}
@@ -194,7 +195,7 @@ export default function CustomersPage({ toast }) {
               autoFocus
             />
           </FormGroup>
-          <FormGroup label="Telefon *">
+          <FormGroup label={`${t("common.phone")} *`}>
             <input
               className="form-input mono"
               value={maskPhone(form.phone)}

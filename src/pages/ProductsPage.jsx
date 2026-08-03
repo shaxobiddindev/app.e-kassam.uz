@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { t } from "../lib/ek-i18n";
 import { productApi } from "../api";
 import { BranchSelector, Modal } from "../components";
 import { Empty, SearchBar, FormGroup } from "../components/ui";
@@ -71,7 +72,7 @@ export default function ProductsPage({ toast }) {
   // ── Saqlash ────────────────────────────────────────────────
   const handleSave = async () => {
     if (!form.name || !form.salePrice || !form.costPrice) {
-      toast.error("Majburiy maydonlarni to'ldiring");
+      toast.error(t("products.requiredFields"));
       return;
     }
     setSaving(true);
@@ -84,10 +85,10 @@ export default function ProductsPage({ toast }) {
       };
       if (modal === "add") {
         await productApi.create(body);
-        toast.success("Mahsulot qo'shildi");
+        toast.success(t("products.added"));
       } else {
         await productApi.update(modal.product.id, body);
-        toast.success("Mahsulot yangilandi");
+        toast.success(t("products.updated"));
       }
       closeModal();
       loadData();
@@ -101,7 +102,7 @@ export default function ProductsPage({ toast }) {
   // ── O'chirish ──────────────────────────────────────────────
   const handleDelete = async (product) => {
     const ok = await confirm({
-      title: "Mahsulotni o'chirish",
+      title: t("products.deleteTitle"),
       message: `"${product.name}" mahsulotini o'chirishni tasdiqlaysizmi?`,
       type: "danger"
     });
@@ -109,7 +110,7 @@ export default function ProductsPage({ toast }) {
 
     try {
       await productApi.delete(product.id);
-      toast.success("O'chirildi");
+      toast.success(t("common.deleted"));
       loadData();
     } catch (err) {
       toast.error(err.message);
@@ -128,11 +129,11 @@ export default function ProductsPage({ toast }) {
     <div>
       <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
         <div>
-          <h2 className="page-title">Mahsulotlar</h2>
+          <h2 className="page-title">{t("products.title")}</h2>
         </div>
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          <button className="btn btn-outline btn-sm" onClick={loadData} title="Ma'lumotlarni yangilash">
-            <i className="fa-solid fa-rotate-right" /> Yangilash
+          <button className="btn btn-outline btn-sm" onClick={loadData} title={t("products.refreshTitle")}>
+            <i className="fa-solid fa-rotate-right" /> {t("common.refresh")}
           </button>
           <BranchSelector selectedId={branchId} onSelect={setBranchId} />
           {!branchId && isHeadUser && (
@@ -148,7 +149,7 @@ export default function ProductsPage({ toast }) {
            <SearchBar
             value={search}
             onChange={setSearch}
-            placeholder="Nom yoki barkod bo'yicha qidirish..."
+            placeholder={t("products.search")}
             style={{ width: 320 }}
           />
         </div>
@@ -163,12 +164,12 @@ export default function ProductsPage({ toast }) {
             <table>
               <thead>
                 <tr>
-                  <th>Mahsulot</th>
-                  <th>Barkod</th>
-                  <th>Kategoriya</th>
-                  <th>Sotuv narxi</th>
-                  <th>Tan narxi</th>
-                  <th>Holat</th>
+                  <th>{t("products.col")}</th>
+                  <th>{t("products.barcode")}</th>
+                  <th>{t("products.category")}</th>
+                  <th>{t("products.salePrice")}</th>
+                  <th>{t("products.costPrice")}</th>
+                  <th>{t("common.status")}</th>
                   <th></th>
                 </tr>
               </thead>
@@ -191,7 +192,7 @@ export default function ProductsPage({ toast }) {
                       </td>
                       <td>
                         <span className={`badge ${p.active ? "badge-green" : "badge-red"}`}>
-                          {p.active ? "Aktiv" : "Nofaol"}
+                          {p.active ? t("common.active") : t("products.inactive")}
                         </span>
                       </td>
                       <td>
@@ -209,7 +210,7 @@ export default function ProductsPage({ toast }) {
                 ) : (
                   <tr>
                     <td colSpan={7}>
-                      <Empty icon="fa-box-open" text="Mahsulot topilmadi" />
+                      <Empty icon="fa-box-open" text={t("products.notFound")} />
                     </td>
                   </tr>
                 )}
@@ -222,40 +223,40 @@ export default function ProductsPage({ toast }) {
       {/* ── Modal ── */}
       {modal && (
         <Modal
-          title={modal === "add" ? "Yangi mahsulot" : "Mahsulotni tahrirlash"}
+          title={modal === "add" ? t("products.new") : t("products.edit")}
           onClose={closeModal}
           footer={
             <>
               <button className="btn btn-outline btn-sm" onClick={closeModal}>
-                Bekor
+                {t("common.cancel")}
               </button>
               <button className="btn btn-primary btn-sm" onClick={handleSave} disabled={saving}>
                 {saving ? <Spinner /> : <i className="fa-solid fa-check" />}
-                {saving ? "Saqlanmoqda..." : "Saqlash"}
+                {saving ? t("common.saving") : t("common.save")}
               </button>
             </>
           }
         >
-          <FormGroup label="Nomi *">
-            <input className="form-input" value={form.name} onChange={setField("name")} placeholder="Mahsulot nomi" />
+          <FormGroup label={`${t("common.name")} *`}>
+            <input className="form-input" value={form.name} onChange={setField("name")} placeholder={t("products.name")} />
           </FormGroup>
 
-          <FormGroup label="Barkod">
+          <FormGroup label={t("products.barcode")}>
             <input className="form-input mono" value={form.barcode} onChange={setField("barcode")} placeholder="1234567890" />
           </FormGroup>
 
           <div className="grid-2">
-            <FormGroup label="Sotuv narxi *">
+            <FormGroup label={`${t("products.salePrice")} *`}>
               <input className="form-input" type="number" min="0" value={form.salePrice} onChange={setField("salePrice")} placeholder="0" />
             </FormGroup>
-            <FormGroup label="Tan narxi *">
+            <FormGroup label={`${t("products.costPrice")} *`}>
               <input className="form-input" type="number" min="0" value={form.costPrice} onChange={setField("costPrice")} placeholder="0" />
             </FormGroup>
           </div>
 
-          <FormGroup label="Kategoriya">
+          <FormGroup label={t("products.category")}>
             <Select
-              block variant="field" ariaLabel="Kategoriya" placeholder="Kategoriya tanlanmagan"
+              block variant="field" ariaLabel={t("products.category")} placeholder={t("products.noCategory")}
               value={form.categoryId ? String(form.categoryId) : ""}
               onChange={(v) => setField("categoryId")({ target: { value: v } })}
               options={[

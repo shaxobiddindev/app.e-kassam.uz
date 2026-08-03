@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { t } from "../../lib/ek-i18n";
 import { shopApi } from "../../api";
 import { maskPhone, cleanPhone } from "../../config";
 import { Empty, FormGroup, Badge } from "../../components/ui";
@@ -26,7 +27,7 @@ export default function ShopsPage({ toast }) {
       const res = await shopApi.getBranches();
       setBranches(res.data || []);
     } catch (err) {
-      toast.error("Filiallar yuklanmadi");
+      toast.error(t("branch.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -52,23 +53,23 @@ export default function ShopsPage({ toast }) {
 
   const handleSave = async () => {
     if (!form.name || (!form.code && modal === "add")) {
-      toast.error("Majburiy maydonlarni kiritish zarur");
+      toast.error(t("branch.required"));
       return;
     }
     setSaving(true);
     try {
       if (modal === "add") {
         await shopApi.createBranch(form);
-        toast.success("Yangi filial muvaffaqiyatli qo'shildi");
+        toast.success(t("branch.added"));
       } else {
         await shopApi.updateBranch(modal.branch.id, form);
-        toast.success("Filial ma'lumotlari yangilandi");
+        toast.success(t("branch.updated"));
       }
       setModal(null);
       setForm(EMPTY_BRANCH_FORM);
       loadBranches();
     } catch (err) {
-      toast.error(err.message || "Xatolik yuz berdi");
+      toast.error(err.message || t("common.unknownError"));
     } finally {
       setSaving(false);
     }
@@ -80,14 +81,14 @@ export default function ShopsPage({ toast }) {
     <div>
       <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
-          <h2 className="page-title">Filiallar</h2>
+          <h2 className="page-title">{t("branch.title")}</h2>
         </div>
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          <button className="btn btn-outline btn-sm" onClick={loadBranches} title="Ma'lumotlarni yangilash">
-            <i className="fa-solid fa-rotate-right" /> Yangilash
+          <button className="btn btn-outline btn-sm" onClick={loadBranches} title={t("products.refreshTitle")}>
+            <i className="fa-solid fa-rotate-right" /> {t("common.refresh")}
           </button>
           <button className="btn btn-primary" onClick={openAdd}>
-            <i className="fa-solid fa-plus" /> Yangi filial qo'shish
+            <i className="fa-solid fa-plus" /> {t("branch.new")}
           </button>
         </div>
       </div>
@@ -98,12 +99,12 @@ export default function ShopsPage({ toast }) {
             <table className="table">
               <thead>
                 <tr>
-                  <th>Filial nomi</th>
-                  <th>Shop Code</th>
-                  <th>Telefon</th>
-                  <th>Manzil</th>
-                  <th>Status</th>
-                  <th>Sana</th>
+                  <th>{t("branch.name")}</th>
+                  <th>{t("branch.code")}</th>
+                  <th>{t("common.phone")}</th>
+                  <th>{t("common.address")}</th>
+                  <th>{t("common.status")}</th>
+                  <th>{t("common.date")}</th>
                   <th></th>
                 </tr>
               </thead>
@@ -116,14 +117,14 @@ export default function ShopsPage({ toast }) {
                     <td>{b.address || "—"}</td>
                     <td>
                       <Badge color={b.status === "ACTIVE" ? "green" : "red"}>
-                        {b.status === "ACTIVE" ? "Aktiv" : b.status === "INACTIVE" ? "Noaktiv" : b.status}
+                        {b.status === "ACTIVE" ? t("common.active") : b.status === "INACTIVE" ? t("branch.inactive") : b.status}
                       </Badge>
                     </td>
                     <td className="text-muted" style={{ fontSize: 12 }}>
                       {b.createdAt ? new Date(b.createdAt).toLocaleDateString("uz-UZ") : "—"}
                     </td>
                     <td>
-                      <button className="btn-icon" onClick={() => openEdit(b)} title="Tahrirlash">
+                      <button className="btn-icon" onClick={() => openEdit(b)} title={t("common.edit")}>
                         <i className="fa-solid fa-pen" />
                       </button>
                     </td>
@@ -131,7 +132,7 @@ export default function ShopsPage({ toast }) {
                 )) : (
                   <tr>
                     <td colSpan={7}>
-                      <Empty icon="fa-store-slash" text="Hozircha filiallar mavjud emas" />
+                      <Empty icon="fa-store-slash" text={t("branch.none")} />
                     </td>
                   </tr>
                 )}
@@ -143,28 +144,28 @@ export default function ShopsPage({ toast }) {
 
       {modal && (
         <Modal
-          title={modal === "add" ? "Yangi filial qo'shish" : "Filialni tahrirlash"}
+          title={modal === "add" ? t("branch.new") : t("branch.edit")}
           onClose={() => setModal(null)}
           footer={
             <>
-              <button className="btn btn-outline btn-sm" onClick={() => setModal(null)}>Bekor qilish</button>
+              <button className="btn btn-outline btn-sm" onClick={() => setModal(null)}>{t("common.cancel")}</button>
               <button className="btn btn-primary btn-sm" onClick={handleSave} disabled={saving}>
-                {saving ? "Saqlanmoqda..." : "Saqlash"}
+                {saving ? t("common.saving") : t("common.save")}
               </button>
             </>
           }
         >
           <div className="grid-2">
-            <FormGroup label="Filial nomi *">
-              <input className="form-input" value={form.name} onChange={setField("name")} placeholder="Masalan: Filial №1" />
+            <FormGroup label={`${t("branch.name")} *`}>
+              <input className="form-input" value={form.name} onChange={setField("name")} placeholder={t("branch.namePlaceholder")} />
             </FormGroup>
-            <FormGroup label="Shop kodi *">
+            <FormGroup label={`${t("branch.code")} *`}>
               <input className="form-input mono" value={form.code} onChange={setField("code")} placeholder="branch-1" disabled={modal?.type === "edit"} />
-              <small className="text-muted">Faqat kichik lotin harflari va raqamlar</small>
+              <small className="text-muted">{t("branch.codeHint")}</small>
             </FormGroup>
           </div>
           <div className="grid-2">
-            <FormGroup label="Telefon raqami">
+            <FormGroup label={t("common.phone")}>
               <input 
                 className="form-input mono" 
                 value={maskPhone(form.phone)} 
@@ -172,16 +173,16 @@ export default function ShopsPage({ toast }) {
                 placeholder="+998 (__) ___-__-__" 
               />
             </FormGroup>
-            <FormGroup label="Manzil">
+            <FormGroup label={t("common.address")}>
               <input className="form-input" value={form.address} onChange={setField("address")} placeholder="Toshkent sh., Chilonzor" />
             </FormGroup>
           </div>
           {modal?.type === "edit" && (
-            <FormGroup label="Status">
+            <FormGroup label={t("common.status")}>
               {/* ShopStatus enum'idagi BARCHA qiymatlar (ilgari faqat ikkitasi
                   bor edi va BLOCKED/SUSPENDED xom ko'rinardi) */}
               <Select
-                block variant="field" ariaLabel="Do'kon holati"
+                block variant="field" ariaLabel={t("adm.shops.statusLabel")}
                 value={form.status}
                 onChange={(v) => setField("status")({ target: { value: v } })}
                 options={["ACTIVE", "BLOCKED", "SUSPENDED", "INACTIVE"].map((k) => ({
