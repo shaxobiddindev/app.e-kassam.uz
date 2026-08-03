@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { shopApi } from "../../api";
-import { Loader, Empty, FormGroup, Badge } from "../../components/ui";
+import { Empty, FormGroup, Badge } from "../../components/ui";
 import { BranchSelector, Modal } from "../../components";
 import { useAuth } from "../../hooks/useAuth";
 import { useConfirm } from "../../context/ConfirmProvider";
 import { roleLabel } from "../../lib/ek-labels";
+import Select from "../../components/ek/Select";
+import { SkeletonList, Spinner } from "../../components/ek/Loading";
+import { useLoading } from "../../lib/use-loading";
 
 /* Rollar yagona lug'atdan (src/lib/ek-labels.js). `roleLabel` Spring'ning
    `ROLE_` prefiksini ham, katta-kichik harf farqini ham o'zi hal qiladi —
@@ -17,6 +20,9 @@ export default function ShopUsersPage({ toast }) {
   const confirm                 = useConfirm();
   const [users, setUsers]       = useState([]);
   const [loading, setLoading]   = useState(true);
+  // Ekranda ko'rsatiladigan holat: tez javobda skeleton UMUMAN chizilmaydi
+  // (180ms kechikish), chizilgan bo'lsa esa kamida 400ms turadi — miltillamaydi.
+  const busy = useLoading(loading);
   const [modalMode, setModalMode] = useState(null); // 'add' | 'edit' | null
   const [editingId, setEditingId] = useState(null);
   const [form, setForm]         = useState(EMPTY_USER_FORM);
@@ -136,7 +142,7 @@ export default function ShopUsersPage({ toast }) {
 
       <div className="card">
         <div className="table-wrap">
-          {loading ? <Loader /> : (
+          {busy ? <SkeletonList rows={5} /> : (
             <table>
               <thead>
                 <tr>
@@ -212,7 +218,7 @@ export default function ShopUsersPage({ toast }) {
             <>
               <button className="btn btn-outline btn-sm" onClick={() => setModalMode(null)}>Bekor</button>
               <button className="btn btn-primary btn-sm" onClick={handleSave} disabled={saving}>
-                <i className={`fa-solid ${saving ? "fa-spinner fa-spin" : "fa-check"}`} />
+                {saving ? <Spinner /> : <i className="fa-solid fa-check" />}
                 {saving ? "Saqlanmoqda..." : "Saqlash"}
               </button>
             </>
@@ -236,11 +242,12 @@ export default function ShopUsersPage({ toast }) {
             </FormGroup>
           </div>
           <FormGroup label="Rol *">
-            <select className="form-input" value={form.role} onChange={setField("role")}>
-              {ROLE_OPTIONS.map((r) => (
-                <option key={r} value={r}>{roleLabel(r)}</option>
-              ))}
-            </select>
+            <Select
+              block variant="field" ariaLabel="Xodim roli"
+              value={form.role}
+              onChange={(v) => setField("role")({ target: { value: v } })}
+              options={ROLE_OPTIONS.map((r) => ({ value: r, label: roleLabel(r), icon: "fa-user-tag" }))}
+            />
           </FormGroup>
         </Modal>
       )}

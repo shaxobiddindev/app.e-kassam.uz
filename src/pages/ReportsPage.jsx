@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import { reportApi } from "../api";
 import { BranchSelector } from "../components";
-import { Loader, Empty, StatCard } from "../components/ui";
+import { Empty, StatCard } from "../components/ui";
 import { money } from "../utils";
 import { paymentEntry } from "../lib/ek-labels";
+import { SkeletonCards } from "../components/ek/Loading";
+import { useLoading } from "../lib/use-loading";
 
 const PERIODS = [
   { key: "daily",   label: "Bugun" },
@@ -30,6 +32,8 @@ export default function ReportsPage({ toast }) {
   const [period, setPeriod]   = useState("daily");
   const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(false);
+  // Tez javobda skeleton umuman chizilmaydi; chizilsa kamida 400ms turadi.
+  const busy = useLoading(loading);
   const [branchId, setBranchId] = useState(null);
 
   useEffect(() => {
@@ -59,8 +63,9 @@ export default function ReportsPage({ toast }) {
         <BranchSelector selectedId={branchId} onSelect={setBranchId} />
       </div>
 
-      {loading ? (
-        <Loader />
+      {busy ? (
+        /* Hisobot KPI kartochkalari shaklida — kelayotgan kontent shu shaklda */
+        <SkeletonCards count={4} className="stats-grid" />
       ) : data ? (
         <>
           {/* Stat kartochkalar */}

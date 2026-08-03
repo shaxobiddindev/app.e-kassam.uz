@@ -1,0 +1,121 @@
+/* ==========================================================================
+   e-Kassam — SELECT
+
+   Nega o'zimizniki: brauzerning `<select>` ro'yxati OS tomonidan chiziladi.
+   Uni CSS bilan boshqarib bo'lmaydi — na fon, na shrift, na tanlangan
+   bandning rangi. Natijada qorong'i rejimda oq tizim oynasi ochilardi va
+   variantlar deyarli ko'rinmasdi.
+
+   Shuning uchun: tugma + o'z ro'yxatimiz (`role="listbox"`). Klaviatura,
+   ekran o'quvchi va teginish — hammasi qo'lda qilingan, quyida.
+
+   MANBA FAYL — packages/ui/ da tahrirlanadi, sync-tokens.ps1 tarqatadi.
+   ========================================================================== */
+
+.ek-select { position: relative; display: inline-block; }
+.ek-select--block { display: block; width: 100%; }
+
+/* ── Yopiq holat (tugma) ─────────────────────────────────────────────────── */
+.ek-select__btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  width: 100%; min-height: var(--hit-md);
+  padding: 0 10px 0 12px;
+  border: 1.5px solid var(--border-subtle); border-radius: var(--r-md);
+  background: var(--bg-surface); color: var(--fg-primary);
+  font-family: var(--font-sans); font-size: var(--fs-md); font-weight: 500;
+  text-align: left; cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease-out),
+              box-shadow var(--dur-fast) var(--ease-out);
+}
+.ek-select__btn:hover { border-color: var(--border-strong); }
+.ek-select__btn:focus-visible,
+.ek-select[data-open="true"] .ek-select__btn {
+  outline: none;
+  border-color: var(--border-brand); box-shadow: var(--focus-ring);
+}
+.ek-select__btn[disabled] { opacity: .55; cursor: not-allowed; }
+
+.ek-select__icon  { flex-shrink: 0; font-size: 13px; color: var(--fg-secondary); }
+.ek-select__value { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ek-select__value[data-placeholder="true"] { color: var(--fg-tertiary); }
+
+/* Ochilish o'qi — 180° buriladi */
+.ek-select__caret {
+  flex-shrink: 0; width: 16px; height: 16px;
+  display: grid; place-items: center;
+  color: var(--fg-tertiary); font-size: 11px;
+  transition: transform var(--dur-base) var(--ease-out);
+}
+.ek-select[data-open="true"] .ek-select__caret { transform: rotate(180deg); }
+
+/* ── Ochiq ro'yxat ───────────────────────────────────────────────────────── */
+.ek-select__list {
+  position: absolute; z-index: var(--z-modal);
+  left: 0; right: 0; top: calc(100% + 6px);
+  max-height: 264px; overflow-y: auto;
+  padding: 5px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle); border-radius: var(--r-lg);
+  box-shadow: var(--sh-lg);
+  animation: ek-select-in var(--dur-base) var(--ease-out) both;
+}
+/* Pastda joy bo'lmasa yuqoriga ochiladi (JS `data-drop` qo'yadi) */
+.ek-select[data-drop="up"] .ek-select__list { top: auto; bottom: calc(100% + 6px); }
+@keyframes ek-select-in {
+  from { opacity: 0; transform: translateY(-4px) scale(.985) }
+  to   { opacity: 1; transform: none }
+}
+.ek-select[data-drop="up"] .ek-select__list { animation-name: ek-select-in-up }
+@keyframes ek-select-in-up {
+  from { opacity: 0; transform: translateY(4px) scale(.985) }
+  to   { opacity: 1; transform: none }
+}
+
+.ek-select__opt {
+  display: flex; align-items: center; gap: 9px;
+  width: 100%; min-height: var(--hit-min);
+  padding: 8px 10px;
+  border: 0; border-radius: var(--r-md);
+  background: none; color: var(--fg-primary);
+  font-family: var(--font-sans); font-size: var(--fs-md); font-weight: 500;
+  text-align: left; cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out);
+}
+/* Klaviatura bilan yurilgan band — sichqoncha hover'i bilan bir xil ko'rinadi */
+.ek-select__opt[data-active="true"] { background: var(--bg-sunken); }
+.ek-select__opt[aria-selected="true"] { color: var(--fg-brand); font-weight: 600; }
+.ek-select__opt-icon { width: 16px; flex-shrink: 0; text-align: center; font-size: 13px; }
+.ek-select__opt-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Tanlangan bandda ✓ — rang yolg'iz signal bo'lmaydi (CLAUDE.md #6) */
+.ek-select__opt-check { flex-shrink: 0; font-size: 11px; color: var(--fg-brand); opacity: 0; }
+.ek-select__opt[aria-selected="true"] .ek-select__opt-check { opacity: 1; }
+
+.ek-select__empty { padding: 14px 10px; text-align: center; color: var(--fg-tertiary); font-size: var(--fs-sm); }
+
+/* ── Variantlar ──────────────────────────────────────────────────────────── */
+/* Forma maydoni sifatida — `.form-input` / `.fi` bilan bir xil balandlik */
+.ek-select--field .ek-select__btn { min-height: var(--hit-lg); font-size: var(--fs-md); }
+.ek-select--field .ek-select__btn[aria-invalid="true"] { border-color: var(--border-danger); }
+
+/* Ixcham — yon menyu yig'ilganda, faqat ikonka */
+.ek-select--compact .ek-select__btn { width: var(--hit-md); padding: 0; justify-content: center; }
+.ek-select--compact .ek-select__value,
+.ek-select--compact .ek-select__caret { display: none; }
+.ek-select--compact .ek-select__list { left: auto; right: 0; min-width: 172px; }
+
+/* Yon menyu ichida — chegarasiz, menyu bandiga o'xshaydi */
+.sb-footer .ek-select__btn,
+.sb-foot   .ek-select__btn {
+  border-color: transparent; background: transparent; color: var(--fg-secondary);
+}
+.sb-footer .ek-select__btn:hover,
+.sb-foot   .ek-select__btn:hover { background: var(--bg-sunken); border-color: transparent; }
+
+/* Mobil: ro'yxat ekran bo'ylab, barmoq uchun kattaroq */
+@media (max-width: 520px) {
+  .ek-select__list { max-height: 50vh; }
+  .ek-select__opt  { min-height: var(--hit-lg); }
+}
+
+/* ── Landing sarlavhasidagi ixcham variant ──────────────────────────────── */
+.hdr .ek-select__btn { min-height: 40px; font-size: var(--fs-sm); }

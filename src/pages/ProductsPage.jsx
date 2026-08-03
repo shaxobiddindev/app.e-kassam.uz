@@ -1,10 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
 import { productApi } from "../api";
 import { BranchSelector, Modal } from "../components";
-import { Loader, Empty, SearchBar, FormGroup } from "../components/ui";
+import { Empty, SearchBar, FormGroup } from "../components/ui";
 import { useConfirm } from "../context/ConfirmProvider";
 import { useAuth } from "../hooks/useAuth";
 import { money } from "../utils";
+import Select from "../components/ek/Select";
+import { SkeletonTable, Spinner } from "../components/ek/Loading";
+import { useLoading } from "../lib/use-loading";
 
 const EMPTY_FORM = {
   name: "", barcode: "", salePrice: "", costPrice: "", categoryId: "",
@@ -16,6 +19,9 @@ export default function ProductsPage({ toast }) {
   const [products, setProducts]   = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading]     = useState(true);
+  // Ekranda ko'rsatiladigan holat: tez javobda skeleton UMUMAN chizilmaydi
+  // (180ms kechikish), chizilgan bo'lsa esa kamida 400ms turadi — miltillamaydi.
+  const busy = useLoading(loading);
   const [search, setSearch]       = useState("");
   const [modal, setModal]         = useState(null); // null | "add" | { type:"edit", product }
   const [form, setForm]           = useState(EMPTY_FORM);
@@ -148,8 +154,11 @@ export default function ProductsPage({ toast }) {
         </div>
 
         <div className="table-wrap">
-          {loading ? (
-            <Loader />
+          {busy ? (
+            /* Jadval shaklidagi skeleton — spinner emas: ustunlar soni va
+               qator balandligi haqiqiy jadvalniki bilan bir xil, shuning uchun
+               ma'lumot kelganda sahifa sakramaydi. */
+            <SkeletonTable rows={8} cols={["wide", "text", "num", "num", "narrow"]} />
           ) : (
             <table>
               <thead>
@@ -221,7 +230,7 @@ export default function ProductsPage({ toast }) {
                 Bekor
               </button>
               <button className="btn btn-primary btn-sm" onClick={handleSave} disabled={saving}>
-                <i className={`fa-solid ${saving ? "fa-spinner fa-spin" : "fa-check"}`} />
+                {saving ? <Spinner /> : <i className="fa-solid fa-check" />}
                 {saving ? "Saqlanmoqda..." : "Saqlash"}
               </button>
             </>
@@ -245,12 +254,15 @@ export default function ProductsPage({ toast }) {
           </div>
 
           <FormGroup label="Kategoriya">
-            <select className="form-input" value={form.categoryId} onChange={setField("categoryId")}>
-              <option value="">— Tanlang —</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
+            <Select
+              block variant="field" ariaLabel="Kategoriya" placeholder="Kategoriya tanlanmagan"
+              value={form.categoryId ? String(form.categoryId) : ""}
+              onChange={(v) => setField("categoryId")({ target: { value: v } })}
+              options={[
+                { value: "", label: "Kategoriyasiz", icon: "fa-tag" },
+                ...categories.map((c) => ({ value: String(c.id), label: c.name, icon: "fa-tags" })),
+              ]}
+            />
           </FormGroup>
         </Modal>
       )}

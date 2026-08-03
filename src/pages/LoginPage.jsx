@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { authApi } from "../api";
 import { LOGO_URL, DEVICE_ID } from "../utils";
+import { Spinner } from "../components/ek/Loading";
 
 export default function LoginPage({ onLogin, toast }) {
   const [tab, setTab]         = useState("admin");
@@ -69,7 +70,7 @@ export default function LoginPage({ onLogin, toast }) {
             <input className="form-input" type="password" placeholder="••••••••" value={form.password} onChange={setField("password")} required />
           </div>
           <button className="btn btn-primary btn-full" type="submit" disabled={loading}>
-            <i className={`fa-solid ${loading ? "fa-spinner fa-spin" : "fa-right-to-bracket"}`} />
+            {loading ? <Spinner /> : <i className="fa-solid fa-right-to-bracket" />}
             {loading ? "Kirish..." : "Kirish"}
           </button>
         </form>

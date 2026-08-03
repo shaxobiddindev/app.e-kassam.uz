@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { reportApi } from "../../api";
 import { money } from "../../utils";
-import { Loader, Empty, StatCard } from "../../components/ui";
+import { Empty, StatCard } from "../../components/ui";
 import { BranchSelector } from "../../components";
 import { paymentEntry } from "../../lib/ek-labels";
+import { SkeletonCards, Spinner } from "../../components/ek/Loading";
+import { useLoading } from "../../lib/use-loading";
 
 const STATS_CONFIG = [
   { key: "totalRevenue", label: "Jami savdo",    icon: "fa-sack-dollar",    bg: "rgba(1,125,202,0.09)", color: "#017dca" },
@@ -26,6 +28,9 @@ export default function CustomReportPage({ toast }) {
   const [to, setTo]         = useState(today);
   const [data, setData]     = useState(null);
   const [loading, setLoading] = useState(false);
+  // Ekranda ko'rsatiladigan holat: tez javobda skeleton UMUMAN chizilmaydi
+  // (180ms kechikish), chizilgan bo'lsa esa kamida 400ms turadi — miltillamaydi.
+  const busy = useLoading(loading);
   const [searched, setSearched] = useState(false);
   const [branchId, setBranchId] = useState(null);
 
@@ -70,7 +75,7 @@ export default function CustomReportPage({ toast }) {
               <input className="form-input" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
             </div>
             <button className="btn btn-primary" onClick={handleSearch} disabled={loading}>
-              <i className={`fa-solid ${loading ? "fa-spinner fa-spin" : "fa-search"}`} />
+              {loading ? <Spinner /> : <i className="fa-solid fa-search" />}
               {loading ? "Yuklanmoqda..." : "Hisobot olish"}
             </button>
             {data && (
@@ -83,7 +88,7 @@ export default function CustomReportPage({ toast }) {
       </div>
 
       {/* Natijalar */}
-      {loading ? <Loader /> : searched && data ? (
+      {busy ? <SkeletonCards count={4} className="stats-grid" /> : searched && data ? (
         <>
           <div className="stats-grid" style={{ marginBottom: 18 }}>
             {STATS_CONFIG.map((cfg) => (

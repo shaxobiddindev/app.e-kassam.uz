@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { shopApi } from "../api";
 import { useAuth } from "../hooks/useAuth";
+import Select from "./ek/Select";
 
 export default function BranchSelector({ selectedId, onSelect, style = {} }) {
   const { user } = useAuth();
@@ -10,34 +11,31 @@ export default function BranchSelector({ selectedId, onSelect, style = {} }) {
   const isOwnerOrAdmin = user?.role === "OWNER" || user?.role === "SHOP_ADMIN" || user?.role === "ADMIN";
 
   useEffect(() => {
-    if (isOwnerOrAdmin) {
-      setLoading(true);
-      shopApi.getBranches()
-        .then(res => setBranches(res.data || []))
-        .catch(() => {})
-        .finally(() => setLoading(false));
-    }
+    if (!isOwnerOrAdmin) return;
+    setLoading(true);
+    shopApi.getBranches()
+      .then((res) => setBranches(res.data || []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, [isOwnerOrAdmin]);
 
   if (!isOwnerOrAdmin) return null;
 
+  const options = [
+    { value: "", label: "Asosiy do'kon", icon: "fa-store" },
+    ...branches.map((b) => ({ value: String(b.id), label: b.name, icon: "fa-code-branch" })),
+  ];
+
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, ...style }}>
-      <i className="fa-solid fa-store text-muted" style={{ fontSize: 14 }} title="Filial" />
-      <select 
-        className="form-input" 
-        style={{ width: "auto", minWidth: 180, height: 32, fontSize: 13, padding: "0 10px" }}
-        value={selectedId || ""}
-        onChange={(e) => onSelect(e.target.value || null)}
+    <div style={{ display: "flex", alignItems: "center", ...style }}>
+      <Select
+        value={selectedId ? String(selectedId) : ""}
+        onChange={(v) => onSelect(v || null)}
+        options={options}
         disabled={loading}
-      >
-        <option value="">Asosiy do'kon</option>
-        {branches.map(b => (
-          <option key={b.id} value={b.id}>
-            {b.name}
-          </option>
-        ))}
-      </select>
+        ariaLabel="Filial"
+        className="branch-select"
+      />
     </div>
   );
 }

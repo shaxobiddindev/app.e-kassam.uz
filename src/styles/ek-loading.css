@@ -1,0 +1,280 @@
+/* ==========================================================================
+   e-Kassam — YUKLANISH TIZIMI
+   03-MOTION.md #2 (chek chop etish), #3 (skeleton), "Nima qilinmaydi"
+
+   Beshta a'zo, har biri ANIQ bir vazifa uchun. Tanlash qoidasi:
+
+   ┌ Nima kutilmoqda?                    → Qaysi a'zo
+   │ Shakli MA'LUM kontent (jadval,      → SKELETON — kelajakdagi shaklda
+   │   ro'yxat, kartochka, forma)
+   │ Ekranda kontent BOR, yangilanmoqda  → PROGRESS — yuqorida ingichka chiziq
+   │ Mahsulotga xos uzun amal (sotuv,    → CHEK — brendning o'z tili
+   │   hisobot, eksport)
+   │ Ilova birinchi ko'tarilishi         → BREND BELGISI
+   │ Tugma ichida                        → SPINNER (faqat inline, 16px)
+   └
+
+   Umumiy spinner bilan butun sahifani qoplash TAQIQLANADI: u hech narsa
+   aytmaydi, kontent kelganda esa layout sakraydi.
+
+   MANBA FAYL — packages/ui/ da tahrirlanadi, sync-tokens.ps1 tarqatadi.
+   ========================================================================== */
+
+/* ══════════════════════════════════════════════════════════════════════════
+   1. SKELETON — kelajakdagi kontentning ANIQ shaklida
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.ek-sk {
+  position: relative;
+  overflow: hidden;
+  display: block;
+  background: var(--bg-sunken);
+  border-radius: var(--r-sm);
+  /* Kontent kelganda o'lcham o'zgarmasligi uchun balandlik doim beriladi */
+  height: 12px;
+}
+.ek-sk::after {
+  content: "";
+  position: absolute; inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg,
+    transparent,
+    color-mix(in srgb, var(--bg-surface) 70%, transparent),
+    transparent);
+  animation: ek-sk-shimmer 1.4s linear infinite;
+}
+[data-theme="dark"] .ek-sk::after {
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.06), transparent);
+}
+@keyframes ek-sk-shimmer { to { transform: translateX(100%) } }
+
+/* Yorug'lik to'lqini harakat — reduced-motion da u o'chadi va statik tus qoladi.
+   Skeletonning O'ZI qolishi shart: u kontent shaklini bildiradi, bezak emas. */
+@media (prefers-reduced-motion: reduce) {
+  .ek-sk::after { animation: none; opacity: .5; }
+}
+
+/* Variantlar — balandlik va shakl */
+.ek-sk--text   { height: 12px; }
+.ek-sk--title  { height: 18px; }
+.ek-sk--num    { height: 24px; }
+.ek-sk--line   { height: 10px; }
+.ek-sk--circle { border-radius: 50%; }
+.ek-sk--pill   { border-radius: var(--r-full); height: 22px; }
+.ek-sk--block  { border-radius: var(--r-md); }
+
+/* Guruhda to'lqin ketma-ket ketadi — bir vaqtda yonib-o'chish g'alati ko'rinadi */
+.ek-sk-group > *:nth-child(2) .ek-sk::after,
+.ek-sk-group > *:nth-child(2) > .ek-sk::after { animation-delay: .12s; }
+.ek-sk-group > *:nth-child(3) .ek-sk::after,
+.ek-sk-group > *:nth-child(3) > .ek-sk::after { animation-delay: .24s; }
+.ek-sk-group > *:nth-child(4) .ek-sk::after,
+.ek-sk-group > *:nth-child(4) > .ek-sk::after { animation-delay: .36s; }
+.ek-sk-group > *:nth-child(n+5) .ek-sk::after { animation-delay: .48s; }
+
+/* ── Jadval skeleti ────────────────────────────────────────────────────────
+   Qator balandligi haqiqiy jadvalniki bilan BIR XIL (44px) — aks holda
+   ma'lumot kelganda sahifa sakraydi. */
+.ek-sk-table { width: 100%; }
+.ek-sk-tr {
+  display: flex; align-items: center; gap: 14px;
+  height: var(--hit-min); padding: 0 14px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.ek-sk-tr:last-child { border-bottom: 0; }
+.ek-sk-tr > * { flex: 1 1 0; min-width: 0; }
+.ek-sk-tr > .is-narrow { flex: 0 0 44px; }
+.ek-sk-tr > .is-wide   { flex: 2 1 0; }
+/* Summalar ustuni o'ngga tekislangan — haqiqiy jadvaldagidek */
+.ek-sk-tr > .is-num .ek-sk { margin-left: auto; width: 62%; }
+
+/* ── Kartochka skeleti ─────────────────────────────────────────────────── */
+.ek-sk-card {
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 16px 18px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-xl);
+}
+
+/* ── Ro'yxat satri (avatar + ikki qator matn) ──────────────────────────── */
+.ek-sk-row {
+  display: flex; align-items: center; gap: 12px;
+  min-height: 56px; padding: 10px 14px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.ek-sk-row:last-child { border-bottom: 0; }
+.ek-sk-row__body { flex: 1; display: grid; gap: 7px; }
+
+/* ── Kassir katakchalari ───────────────────────────────────────────────── */
+.ek-sk-tiles {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  gap: 10px; padding: 12px;
+}
+.ek-sk-tile {
+  display: flex; flex-direction: column; gap: 7px;
+  min-height: var(--hit-pos); padding: 12px;
+  border: 1.5px solid var(--border-subtle); border-radius: 10px;
+  background: var(--bg-surface);
+}
+
+/* ── Forma maydonlari ──────────────────────────────────────────────────── */
+.ek-sk-form { display: grid; gap: 14px; }
+.ek-sk-field { display: grid; gap: 6px; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   2. PROGRESS — ekranda kontent BOR, u yangilanmoqda
+   Sahifani qoplamaydi, layoutni surmaydi: `position: fixed`, 2px.
+   ══════════════════════════════════════════════════════════════════════════ */
+.ek-progress {
+  position: fixed; top: 0; left: 0; right: 0;
+  height: 2px; z-index: var(--z-toast);
+  background: var(--bg-brand-soft);
+  overflow: hidden;
+  pointer-events: none;
+}
+.ek-progress__bar {
+  position: absolute; inset: 0;
+  background: var(--bg-brand);
+  transform-origin: 0 50%;
+  animation: ek-progress 1.15s var(--ease-out) infinite;
+}
+/* Ikkita bosqich: tez chiqadi, so'ng sekin cho'ziladi — "ish ketyapti" hissi
+   beradi, lekin yolg'on foiz ko'rsatmaydi. */
+@keyframes ek-progress {
+  0%   { transform: translateX(-100%) scaleX(.35); }
+  55%  { transform: translateX(20%)   scaleX(.55); }
+  100% { transform: translateX(110%)  scaleX(.35); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ek-progress__bar { animation: none; transform: none; opacity: .7; }
+}
+
+/* Panel ichida (yon menyu hisobga olingan holda) */
+.ek-progress--inset { left: var(--current-sw, 0); }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   3. CHEK CHOP ETISH — mahsulotning o'z tili
+   Sotuv yakunlash, hisobot generatsiyasi, eksport.
+   ══════════════════════════════════════════════════════════════════════════ */
+.ek-printing { --w: 96px; width: var(--w); }
+.ek-printing__slot {
+  height: 8px; border-radius: 4px;
+  background: var(--fg-tertiary); opacity: .35;
+}
+.ek-printing__paper {
+  overflow: hidden;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle); border-top: 0;
+  border-radius: 0 0 var(--r-sm) var(--r-sm);
+  animation: ek-paper 2.2s var(--ease-out) infinite;
+}
+@keyframes ek-paper {
+  0%       { max-height: 0;    opacity: 0 }
+  12%      { opacity: 1 }
+  55%, 80% { max-height: 96px; opacity: 1 }
+  100%     { max-height: 96px; opacity: 0 }
+}
+.ek-printing__line {
+  height: 5px; border-radius: 3px; margin: 7px 8px 0;
+  background: var(--border-subtle);
+  animation: ek-line 2.2s var(--ease-out) infinite;
+  opacity: 0;
+}
+.ek-printing__line:nth-child(1) { animation-delay: .22s; width: 72% }
+.ek-printing__line:nth-child(2) { animation-delay: .40s; width: 54% }
+.ek-printing__line:nth-child(3) { animation-delay: .58s; width: 82% }
+.ek-printing__line:nth-child(4) { animation-delay: .76s; width: 40%;
+  background: var(--ek-green-400); height: 7px }
+@keyframes ek-line {
+  0%,8%   { opacity: 0; transform: translateY(-4px) }
+  20%,88% { opacity: 1; transform: none }
+  100%    { opacity: 0 }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ek-printing__paper, .ek-printing__line { animation: none; opacity: 1; max-height: none; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   4. BREND BELGISI — ilova birinchi ko'tarilishi
+   Belgi chizmasi bir tekis "nafas oladi", ✓ esa qayta-qayta chiziladi.
+   Bu yerda spinner bo'lishi mumkin edi, lekin birinchi ekran — brend bilan
+   birinchi uchrashuv.
+   ══════════════════════════════════════════════════════════════════════════ */
+.ek-boot {
+  position: fixed; inset: 0; z-index: var(--z-modal);
+  display: grid; place-items: center; gap: 18px;
+  align-content: center;
+  background: var(--bg-canvas);
+}
+.ek-boot__mark { width: 72px; height: 72px; overflow: visible; }
+.ek-boot__mark .paper {
+  transform-origin: 50% 60%;
+  animation: ek-boot-breathe 1.8s var(--ease-out) infinite;
+}
+@keyframes ek-boot-breathe {
+  0%, 100% { transform: scale(1);    opacity: .9 }
+  50%      { transform: scale(1.04); opacity: 1 }
+}
+.ek-boot__mark .check {
+  stroke-dasharray: 22; stroke-dashoffset: 22;
+  animation: ek-boot-draw 1.8s var(--ease-out) infinite;
+}
+@keyframes ek-boot-draw {
+  0%       { stroke-dashoffset: 22 }
+  45%, 75% { stroke-dashoffset: 0 }
+  100%     { stroke-dashoffset: 0; opacity: 0 }
+}
+.ek-boot__text {
+  font-size: var(--fs-sm); color: var(--fg-secondary);
+  letter-spacing: .04em;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ek-boot__mark .paper { animation: none; }
+  .ek-boot__mark .check { animation: none; stroke-dashoffset: 0; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   5. INLINE SPINNER — FAQAT tugma yoki matn ichida
+   ══════════════════════════════════════════════════════════════════════════ */
+.ek-spinner {
+  display: inline-block; flex-shrink: 0;
+  width: 16px; height: 16px; border-radius: 50%;
+  border: 2px solid currentColor; border-top-color: transparent;
+  animation: ek-spin .7s linear infinite;
+  vertical-align: -3px;
+}
+.ek-spinner--sm { width: 13px; height: 13px; border-width: 1.5px; }
+@keyframes ek-spin { to { transform: rotate(360deg) } }
+/* reduced-motion da aylanish sekinlashadi, lekin QOLADI: u yagona
+   "ish ketyapti" signali va uni yo'qotish holatni yashiradi. */
+@media (prefers-reduced-motion: reduce) {
+  .ek-spinner { animation-duration: 2.4s; }
+}
+
+/* ── Tugma yuklanish holati ────────────────────────────────────────────────
+   Kenglik O'ZGARMAYDI: matn o'rnini spinner egallaydi (02-DESIGN-SYSTEM.md).
+   `[data-loading]` bo'lgan tugma bosilmaydi va o'quvchiga `aria-busy` beradi. */
+[data-loading="true"] {
+  pointer-events: none;
+  position: relative;
+}
+[data-loading="true"] > * { visibility: hidden; }
+[data-loading="true"]::after {
+  content: "";
+  position: absolute; top: 50%; left: 50%;
+  width: 16px; height: 16px; margin: -8px 0 0 -8px;
+  border: 2px solid currentColor; border-top-color: transparent;
+  border-radius: 50%;
+  animation: ek-spin .7s linear infinite;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Umumiy: yuklanish maydoni
+   ══════════════════════════════════════════════════════════════════════════ */
+/* Ekran o'quvchi uchun holat matni — ko'z bilan ko'rinmaydi */
+.ek-loading-label {
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}

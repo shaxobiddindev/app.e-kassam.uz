@@ -1,11 +1,9 @@
-// ─── Loader ──────────────────────────────────────────────────
-export function Loader() {
-  return (
-    <div className="loader">
-      <div className="spinner" />
-    </div>
-  );
-}
+// ─── Loader — OLIB TASHLANDI ─────────────────────────────────
+// Butun sahifani qoplaydigan umumiy spinner endi ishlatilmaydi: u nima
+// yuklanayotganini aytmaydi va kontent kelganda layout sakraydi.
+// O'rniga components/ek/Loading dan shaklga mos a'zo tanlanadi:
+//   jadval → <SkeletonTable>   ro'yxat → <SkeletonList>
+//   kartochka → <SkeletonCards> tugma → <Spinner>
 
 // ─── Empty state ─────────────────────────────────────────────
 export function Empty({ icon = "fa-inbox", text = "Ma'lumot yo'q" }) {

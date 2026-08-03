@@ -2,8 +2,10 @@ import { useState, useEffect, useCallback } from "react";
 import { productApi } from "../../api";
 import { BranchSelector } from "../../components";
 import Modal from "../../components/Modal";
-import { Loader, Empty, FormGroup } from "../../components/ui";
+import { Empty, FormGroup } from "../../components/ui";
 import { useConfirm } from "../../context/ConfirmProvider";
+import { SkeletonList, Spinner } from "../../components/ek/Loading";
+import { useLoading } from "../../lib/use-loading";
 
 const EMPTY_FORM = { name: "", description: "" };
 
@@ -11,6 +13,9 @@ export default function CategoriesPage({ toast }) {
   const confirm = useConfirm();
   const [categories, setCategories] = useState([]);
   const [loading, setLoading]       = useState(true);
+  // Ekranda ko'rsatiladigan holat: tez javobda skeleton UMUMAN chizilmaydi
+  // (180ms kechikish), chizilgan bo'lsa esa kamida 400ms turadi — miltillamaydi.
+  const busy = useLoading(loading);
   const [modal, setModal]           = useState(null);
   const [form, setForm]             = useState(EMPTY_FORM);
   const [saving, setSaving]         = useState(false);
@@ -96,7 +101,7 @@ export default function CategoriesPage({ toast }) {
           </button>
         </div>
 
-        {loading ? <Loader /> : categories.length > 0 ? (
+        {busy ? <SkeletonList rows={6} avatar={false} /> : categories.length > 0 ? (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 12, padding: 16 }}>
             {categories.map((cat) => {
               const color = colorFor(cat.name);
@@ -147,7 +152,7 @@ export default function CategoriesPage({ toast }) {
             <>
               <button className="btn btn-outline btn-sm" onClick={closeModal}>Bekor</button>
               <button className="btn btn-primary btn-sm" onClick={handleSave} disabled={saving}>
-                <i className={`fa-solid ${saving ? "fa-spinner fa-spin" : "fa-check"}`} />
+                {saving ? <Spinner /> : <i className="fa-solid fa-check" />}
                 {saving ? "..." : "Saqlash"}
               </button>
             </>

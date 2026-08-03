@@ -3,8 +3,10 @@ import { customerApi } from "../api";
 import { BranchSelector } from "../components";
 import { maskPhone, cleanPhone, money } from "../config";
 import Modal from "../components/Modal";
-import { Loader, Empty, SearchBar, Avatar, FormGroup } from "../components/ui";
+import { Empty, SearchBar, Avatar, FormGroup } from "../components/ui";
 import { useConfirm } from "../context/ConfirmProvider";
+import { SkeletonTable, Spinner } from "../components/ek/Loading";
+import { useLoading } from "../lib/use-loading";
 
 const EMPTY_FORM = { fullName: "", phone: "998" };
 
@@ -12,6 +14,9 @@ export default function CustomersPage({ toast }) {
   const confirm = useConfirm();
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading]     = useState(true);
+  // Ekranda ko'rsatiladigan holat: tez javobda skeleton UMUMAN chizilmaydi
+  // (180ms kechikish), chizilgan bo'lsa esa kamida 400ms turadi — miltillamaydi.
+  const busy = useLoading(loading);
   const [search, setSearch]       = useState("");
   const [modal, setModal]         = useState(null); // null | "add" | { type:"edit", customer }
   const [form, setForm]           = useState(EMPTY_FORM);
@@ -112,8 +117,8 @@ export default function CustomersPage({ toast }) {
         </div>
 
         <div className="table-wrap">
-          {loading ? (
-            <Loader />
+          {busy ? (
+            <SkeletonTable rows={7} cols={["wide", "text", "num", "narrow"]} />
           ) : (
             <table>
               <thead>
@@ -174,7 +179,7 @@ export default function CustomersPage({ toast }) {
                 Bekor
               </button>
               <button className="btn btn-primary btn-sm" onClick={handleSave} disabled={saving}>
-                <i className={`fa-solid ${saving ? "fa-spinner fa-spin" : "fa-check"}`} />
+                {saving ? <Spinner /> : <i className="fa-solid fa-check" />}
                 {saving ? "Saqlanmoqda..." : "Saqlash"}
               </button>
             </>

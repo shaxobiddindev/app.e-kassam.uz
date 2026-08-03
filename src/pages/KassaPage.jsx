@@ -2,10 +2,12 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { productApi, customerApi, saleApi } from "../api";
 import { money } from "../utils";
 import { Empty } from "../components/ui";
-import FinishOverlay from "../components/PrintingLoader";
+import { FinishOverlay, SkeletonTiles, Spinner } from "../components/ek/Loading";
 import OfflineBar from "../components/OfflineBar";
 import * as queue from "../lib/ek-offline";
 import { PAYMENT_TYPE, paymentLabel } from "../lib/ek-labels";
+import { useLoading } from "../lib/use-loading";
+import Select from "../components/ek/Select";
 
 /* ══════════════════════════════════════════════════════════════════════════
    Kassir paneli — 06-APP-KASSIR.md
@@ -96,7 +98,8 @@ export default function KassaPage({ toast, refreshLowStock }) {
   const [customers, setCustomers]   = useState([]);
   const [cart, setCart]             = useState([]);
   const [search, setSearch]         = useState("");
-  const [searching, setSearching]   = useState(false);
+  const [searching, setSearching]   = useState(true);   // birinchi yuklash
+  const tilesBusy = useLoading(searching);
   const [payType, setPayType]       = useState("CASH");
   const [cashGiven, setCashGiven]   = useState("");     // naqdda berilgan summa
   const [cashAmount, setCashAmount] = useState("");     // aralash: naqd qismi
@@ -418,10 +421,17 @@ export default function KassaPage({ toast, refreshLowStock }) {
               </div>
             </div>
 
+            {/* Birinchi yuklanishda katakcha shaklidagi skeleton — kelayotgan
+                to'r aynan shu shaklda, shuning uchun sakrash bo'lmaydi.
+                Keyingi qidiruvlarda esa mavjud natijalar joyida qoladi va
+                yuqorida faqat kichik holat ko'rsatiladi. */}
+            {tilesBusy && products.length === 0 ? (
+              <SkeletonTiles count={12} />
+            ) : (
             <div className="product-grid" style={{ position: "relative" }}>
-              {searching && (
-                <div style={{ position: "absolute", top: 8, right: 8, zIndex: 10, fontSize: 11, color: "var(--fg-brand)", fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}>
-                  <span className="ek-spinner" /> Qidirilmoqda…
+              {searching && products.length > 0 && (
+                <div style={{ position: "absolute", top: 8, right: 8, zIndex: 10, fontSize: 11, color: "var(--fg-brand)", fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
+                  <Spinner small /> Qidirilmoqda…
                 </div>
               )}
               {products.map((p) => (
@@ -437,6 +447,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
                 </div>
               )}
             </div>
+            )}
           </div>
         </div>
 
@@ -483,19 +494,21 @@ export default function KassaPage({ toast, refreshLowStock }) {
           </div>
 
           <div className="card" style={{ padding: "10px 14px" }}>
-            <label htmlFor="cust" className="ek-sr-only">Mijoz</label>
-            <select
-              id="cust"
-              className="form-input"
-              style={{ fontSize: 13 }}
-              value={customer?.id || ""}
-              onChange={(e) => setCustomer(customers.find((c) => c.id === Number(e.target.value)) || null)}
-            >
-              <option value="">Mijoz tanlash (ixtiyoriy)</option>
-              {customers.map((c) => (
-                <option key={c.id} value={c.id}>{c.fullName} · {c.phone}</option>
-              ))}
-            </select>
+            <Select
+              block
+              ariaLabel="Mijoz"
+              placeholder="Mijoz tanlash (ixtiyoriy)"
+              value={customer?.id ? String(customer.id) : ""}
+              onChange={(v) => setCustomer(customers.find((c) => String(c.id) === v) || null)}
+              options={[
+                { value: "", label: "Mijoz tanlanmagan", icon: "fa-user-slash" },
+                ...customers.map((c) => ({
+                  value: String(c.id),
+                  label: `${c.fullName} · ${c.phone}`,
+                  icon: "fa-user",
+                })),
+              ]}
+            />
           </div>
 
           <div className="total-card">
@@ -604,7 +617,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
               {/* ── KARTA: terminal tasdig'ini kutish ── */}
               {payType === "CARD" && (
                 <div style={{ marginTop: 18, display: "flex", alignItems: "center", gap: 12, padding: "14px 18px", background: "var(--bg-brand-subtle)", border: "1px solid var(--border-brand)", borderRadius: "var(--r-lg)", color: "var(--fg-brand)", fontWeight: 600, fontSize: 13 }}>
-                  <span className="ek-spinner" aria-hidden="true" />
+                  <Spinner />
                   Terminal tasdig'ini kuting, so'ng "Sotish va Chek" ni bosing
                 </div>
               )}
@@ -685,7 +698,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
                 data-loading={processing || undefined}
               >
                 {processing
-                  ? <><span className="ek-spinner" aria-hidden="true" /> Bajarilmoqda…</>
+                  ? <><Spinner /> Bajarilmoqda…</>
                   : <><i className="fa-solid fa-receipt" aria-hidden="true" /> Sotish va Chek <span className="kbd">F9</span></>}
               </button>
             </div>

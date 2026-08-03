@@ -2,10 +2,12 @@ import { useCallback, useEffect, useState } from "react";
 import { saleApi } from "../api";
 import { money } from "../utils";
 import { BranchSelector, Modal } from "../components";
-import { Loader, Empty, SearchBar, Badge } from "../components/ui";
+import { Empty, SearchBar, Badge } from "../components/ui";
 import { useConfirm } from "../context/ConfirmProvider";
 import { useAuth } from "../hooks/useAuth";
 import { paymentEntry, saleStatus } from "../lib/ek-labels";
+import { SkeletonTable } from "../components/ek/Loading";
+import { useLoading } from "../lib/use-loading";
 
 /* Sotuv holati — lug'atdan. `tone` Badge rang nomiga o'giriladi. */
 const TONE_COLOR = { success: "green", danger: "red", warning: "yellow", info: "blue", neutral: "gray" };
@@ -27,6 +29,9 @@ export default function SalesPage({ toast }) {
   const isCashier                 = user?.role === "CASHIER";
   const [sales, setSales]         = useState([]);
   const [loading, setLoading]     = useState(true);
+  // Ekranda ko'rsatiladigan holat: tez javobda skeleton UMUMAN chizilmaydi
+  // (180ms kechikish), chizilgan bo'lsa esa kamida 400ms turadi — miltillamaydi.
+  const busy = useLoading(loading);
   const [search, setSearch]       = useState("");
   const [detail, setDetail]       = useState(null);
   const [cancelling, setCancelling] = useState(null);
@@ -117,7 +122,7 @@ export default function SalesPage({ toast }) {
         </div>
 
         <div className="table-wrap">
-          {loading ? <Loader /> : (
+          {busy ? <SkeletonTable rows={8} cols={["narrow", "text", "text", "num", "text", "text", "text"]} /> : (
             <table>
               <thead>
                 <tr>
@@ -157,7 +162,7 @@ export default function SalesPage({ toast }) {
                               onClick={() => handleCancel(sale)}
                               disabled={cancelling === sale.id}
                             >
-                              <i className={`fa-solid ${cancelling === sale.id ? "fa-spinner fa-spin" : "fa-ban"}`} />
+                              {cancelling === sale.id ? <Spinner small /> : <i className="fa-solid fa-ban" />}
                             </button>
                           )}
                         </div>
@@ -186,7 +191,7 @@ export default function SalesPage({ toast }) {
                   onClick={() => handleCancel(detail)}
                   disabled={cancelling === detail.id}
                 >
-                  <i className={`fa-solid ${cancelling === detail.id ? "fa-spinner fa-spin" : "fa-ban"}`} />
+                  {cancelling === detail.id ? <Spinner small /> : <i className="fa-solid fa-ban" />}
                   Bekor qilish
                 </button>
               )}

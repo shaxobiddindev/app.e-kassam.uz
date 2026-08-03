@@ -1,15 +1,21 @@
 import { useCallback, useEffect, useState } from "react";
 import { shopApi } from "../../api";
 import { maskPhone, cleanPhone } from "../../config";
-import { Loader, Empty, FormGroup, Badge } from "../../components/ui";
+import { Empty, FormGroup, Badge } from "../../components/ui";
 import { Modal } from "../../components";
 import { SHOP_STATUS, options } from "../../lib/ek-labels";
+import Select from "../../components/ek/Select";
+import { SkeletonList } from "../../components/ek/Loading";
+import { useLoading } from "../../lib/use-loading";
 
 const EMPTY_BRANCH_FORM = { name: "", code: "", phone: "998", address: "" };
 
 export default function ShopsPage({ toast }) {
   const [branches, setBranches] = useState([]);
   const [loading, setLoading]   = useState(true);
+  // Ekranda ko'rsatiladigan holat: tez javobda skeleton UMUMAN chizilmaydi
+  // (180ms kechikish), chizilgan bo'lsa esa kamida 400ms turadi — miltillamaydi.
+  const busy = useLoading(loading);
   const [modal, setModal]       = useState(null); // null | "add" | { type:"edit", branch }
   const [form, setForm]         = useState(EMPTY_BRANCH_FORM);
   const [saving, setSaving]     = useState(false);
@@ -88,7 +94,7 @@ export default function ShopsPage({ toast }) {
 
       <div className="card">
         <div className="table-wrap">
-          {loading ? <Loader /> : (
+          {busy ? <SkeletonList rows={5} /> : (
             <table className="table">
               <thead>
                 <tr>
@@ -172,12 +178,16 @@ export default function ShopsPage({ toast }) {
           </div>
           {modal?.type === "edit" && (
             <FormGroup label="Status">
-              <select className="form-input" value={form.status} onChange={setField("status")}>
-                {/* ShopStatus enum'idagi BARCHA qiymatlar — ilgari faqat
-                    ikkitasi bor edi va BLOCKED/SUSPENDED xom ko'rinardi. */}
-                {options(SHOP_STATUS, ["ACTIVE", "BLOCKED", "SUSPENDED", "INACTIVE"])
-                  .map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
+              {/* ShopStatus enum'idagi BARCHA qiymatlar (ilgari faqat ikkitasi
+                  bor edi va BLOCKED/SUSPENDED xom ko'rinardi) */}
+              <Select
+                block variant="field" ariaLabel="Do'kon holati"
+                value={form.status}
+                onChange={(v) => setField("status")({ target: { value: v } })}
+                options={["ACTIVE", "BLOCKED", "SUSPENDED", "INACTIVE"].map((k) => ({
+                  value: k, label: SHOP_STATUS[k].label, icon: SHOP_STATUS[k].icon,
+                }))}
+              />
             </FormGroup>
           )}
         </Modal>

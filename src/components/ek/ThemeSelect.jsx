@@ -1,33 +1,33 @@
 import { useState } from "react";
 import { THEME_OPTIONS, getMode, setMode } from "../../lib/ek-theme";
+import Select from "./Select";
 
 /* ==========================================================================
    Tema tanlagichi — Tizim / Yorug' / Qorong'i
 
-   Nega tugma emas: holat UCHTA. "Tizim" — bu alohida qiymat, "yorug'" ham,
-   "qorong'i" ham emas: u OS sozlamasiga ergashadi. Ikki holatli tugma buni
-   ifodalay olmaydi va "Qorong'i rejim" yozuvi yon menyuda juda uzun edi.
+   Nega tugma emas: holat UCHTA. "Tizim" — alohida qiymat, u OS sozlamasiga
+   ergashadi; ikki holatli tugma buni ifodalay olmaydi.
+
+   Nega native `<select>` emas: uning ochilgan ro'yxatini OS chizadi va
+   qorong'i rejimda oq tizim oynasi paydo bo'lardi. `Select` — o'zimizniki.
 
    MANBA FAYL — packages/ui/components/ da tahrirlanadi, sync-tokens.ps1 tarqatadi.
    ========================================================================== */
 
-export default function ThemeSelect({ compact = false, className = "" }) {
+export default function ThemeSelect({ compact = false, block = false, className = "" }) {
   const [mode, setLocal] = useState(getMode);
   const active = THEME_OPTIONS.find((o) => o.value === mode) || THEME_OPTIONS[0];
 
   return (
-    <label className={`ek-theme-select ${compact ? "is-compact" : ""} ${className}`}
-           title={compact ? `Ko'rinish: ${active.label}` : undefined}>
-      <i className={`fa-solid ${active.icon}`} aria-hidden="true" />
-      <select
-        value={mode}
-        aria-label="Ko'rinish rejimi"
-        onChange={(e) => setLocal(setMode(e.target.value))}
-      >
-        {THEME_OPTIONS.map((o) => (
-          <option key={o.value} value={o.value}>{o.label}</option>
-        ))}
-      </select>
-    </label>
+    <Select
+      value={mode}
+      onChange={(v) => setLocal(setMode(v))}
+      options={THEME_OPTIONS}
+      icon={active.icon}
+      ariaLabel="Ko'rinish rejimi"
+      variant={compact ? "compact" : ""}
+      block={block}
+      className={className}
+    />
   );
 }

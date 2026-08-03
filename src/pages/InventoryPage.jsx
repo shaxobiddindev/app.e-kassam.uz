@@ -1,14 +1,19 @@
 import { useEffect, useState, useCallback } from "react";
 import { inventoryApi } from "../api";
 import { BranchSelector, Modal } from "../components";
-import { Loader, Empty, SearchBar } from "../components/ui";
+import { Empty, SearchBar } from "../components/ui";
 import { useAuth } from "../hooks/useAuth";
 import { money } from "../utils";
+import { SkeletonTable, Spinner } from "../components/ek/Loading";
+import { useLoading } from "../lib/use-loading";
 
 export default function InventoryPage({ toast }) {
   const { user } = useAuth();
   const [items, setItems]     = useState([]);
   const [loading, setLoading] = useState(true);
+  // Ekranda ko'rsatiladigan holat: tez javobda skeleton UMUMAN chizilmaydi
+  // (180ms kechikish), chizilgan bo'lsa esa kamida 400ms turadi — miltillamaydi.
+  const busy = useLoading(loading);
   const [search, setSearch]   = useState("");
   const [modal, setModal]     = useState(null); // null | inventoryItem
   const [qty, setQty]         = useState("");
@@ -86,8 +91,8 @@ export default function InventoryPage({ toast }) {
         </div>
 
         <div className="table-wrap">
-          {loading ? (
-            <Loader />
+          {busy ? (
+            <SkeletonTable rows={8} cols={["wide", "num", "num", "text"]} />
           ) : filtered.length === 0 ? (
             <Empty text="Omborda mahsulot topilmadi" />
           ) : (
@@ -169,7 +174,7 @@ export default function InventoryPage({ toast }) {
                 onClick={handleAddStock}
                 disabled={saving || !qty}
               >
-                <i className={`fa-solid ${saving ? "fa-spinner fa-spin" : "fa-check"}`} />
+                {saving ? <Spinner /> : <i className="fa-solid fa-check" />}
                 {saving ? "Saqlanmoqda..." : "Kirim qilish"}
               </button>
             </>
