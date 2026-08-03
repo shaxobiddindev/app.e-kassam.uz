@@ -11,8 +11,12 @@ async function tryRefreshToken() {
       const deviceId = getDeviceId();
       if (!refresh) return false;
 
+      // `credentials: include` — refresh token httpOnly cookie'da keladi
+      // (05-AUTH.md). Server avval cookie'ni oladi; tanadagi token esa hozircha
+      // zaxira sifatida yuboriladi, chunki eski sessiyalar localStorage'da.
       const res = await fetch(`${API_BASE}/auth/refresh`, {
         method: "POST",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
           "Accept":       "application/json",
@@ -50,6 +54,7 @@ async function request(path, options = {}, _retry = false) {
 
   const res = await fetch(`${API_BASE}${path}`, {
     ...restOptions,
+    credentials: "include",
     headers: {
       "Content-Type":    "application/json",
       "Accept-Language": "uz",

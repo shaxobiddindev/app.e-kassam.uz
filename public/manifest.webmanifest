@@ -1,0 +1,21 @@
+{
+  "name": "e-Kassam — Kassa",
+  "short_name": "e-Kassam",
+  "description": "Kassir va omborchi paneli. Internet uzilsa ham ishlaydi.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#F6F8FB",
+  "theme_color": "#1663D8",
+  "lang": "uz",
+  "icons": [
+    { "src": "/logo.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/logo.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/logo.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Kassa", "url": "/sale" },
+    { "name": "Sotuvlar", "url": "/sales" }
+  ]
+}

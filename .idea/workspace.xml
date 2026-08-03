@@ -7,8 +7,6 @@
     <list default="true" id="04fb854c-40bd-40a9-a6b1-62cd06e0405f" name="Changes" comment="update package.json">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/config.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/config.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/pages/InventoryPage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/pages/InventoryPage.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/pages/KassaPage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/pages/KassaPage.jsx" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -119,7 +117,13 @@
       <workItem from="1782306355454" duration="28000" />
       <workItem from="1782306414429" duration="1563000" />
       <workItem from="1782412839735" duration="2595000" />
-      <workItem from="1782923315456" duration="623000" />
+      <workItem from="1782923315456" duration="1430000" />
+      <workItem from="1782928574754" duration="25000" />
+      <workItem from="1782928620731" duration="5000" />
+      <workItem from="1782932237442" duration="322000" />
+      <workItem from="1783243025471" duration="5000" />
+      <workItem from="1783243502913" duration="3000" />
+      <workItem from="1785339040830" duration="4000" />
     </task>
     <task id="LOCAL-00001" summary="urls updated">
       <option name="closed" value="true" />

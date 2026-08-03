@@ -37,17 +37,19 @@ export function getDeviceId() {
   return id;
 }
 
-export const money = (n) =>
-  new Intl.NumberFormat("uz-UZ").format(Number(n) || 0) + " so'm";
+// ── Formatlash ────────────────────────────────────────────────
+// 02-DESIGN-SYSTEM.md: komponentda `toLocaleString` chaqirilmaydi.
+// Yagona manba — src/lib/ek-format.js (packages/ui dan sinxronlanadi).
+export {
+  groupDigits, money as fmtMoney, qty, percent,
+  date as fmtDate, dateTime as fmtDateTime, time as fmtTime,
+  phone as fmtPhone, initials,
+} from "./lib/ek-format";
 
-export const fmtDate = (iso) =>
-  iso ? new Date(iso).toLocaleDateString("uz-UZ") : "—";
+import { money as _money } from "./lib/ek-format";
 
-export const fmtDateTime = (iso) =>
-  iso ? new Date(iso).toLocaleString("uz-UZ") : "—";
-
-export const initials = (s = "") =>
-  (s || "").split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2) || "?";
+/** Pul + "so'm". Jadval ustunida birlik sarlavhada bo'lsa `fmtMoney` ishlating. */
+export const money = (n) => _money(n, { withUnit: true });
 
 export const maskPhone = (val) => {
   let v = (val || "").replace(/\D/g, "");

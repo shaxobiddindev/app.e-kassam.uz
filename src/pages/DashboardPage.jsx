@@ -1,59 +1,103 @@
 import { useState, useEffect } from "react";
-import { reportApi } from "../api";
+import { useNavigate } from "react-router-dom";
+import { reportApi, inventoryApi } from "../api";
 import { BranchSelector } from "../components";
-import { Loader, StatCard, Empty } from "../components/ui";
+import { Empty } from "../components/ui";
 import { money } from "../utils";
+import Kpi from "../components/ek/Kpi";
+import AttentionList from "../components/ek/AttentionList";
 
-const STATS_CONFIG = [
-  { key: "totalRevenue", label: "Bugungi savdo",  icon: "fa-sack-dollar",    bg: "rgba(1,125,202,0.09)", color: "#017dca" },
-  { key: "totalProfit",  label: "Sof foyda",      icon: "fa-arrow-trend-up", bg: "#ecfdf5",              color: "#22c55e" },
-  { key: "totalSales",   label: "Sotuvlar soni",  icon: "fa-cart-shopping",  bg: "#fffbeb",              color: "#f59e0b" },
-  { key: "totalCost",    label: "Tan narxi",       icon: "fa-coins",          bg: "#fdf4ff",              color: "#9333ea" },
-];
+/* ══════════════════════════════════════════════════════════════════════════
+   Egasi/admin bosh sahifasi — 07-ADMIN.md
 
-const PAYMENT_LABELS = { 
-  CASH: <><i className="fa-solid fa-money-bill-1" /> Naqd</>, 
-  CARD: <><i className="fa-solid fa-credit-card" /> Karta</>, 
-  MIXED: <><i className="fa-solid fa-shuffle" /> Aralash</> 
+   Ekran bitta savolga javob beradi: "bugun ishlar qanday?"
+   1) KPI qatori — raqamlar sanaladi
+   2) "E'tibor talab qiladi" — panelning yuragi
+   3) To'lov turlari va top mahsulotlar
+   ══════════════════════════════════════════════════════════════════════════ */
+
+const PAYMENT_LABELS = {
+  CASH:  <><i className="fa-solid fa-money-bill-1" aria-hidden="true" /> Naqd</>,
+  CARD:  <><i className="fa-solid fa-credit-card" aria-hidden="true" /> Karta</>,
+  CLICK: <><i className="fa-solid fa-mobile-screen" aria-hidden="true" /> Click</>,
+  PAYME: <><i className="fa-solid fa-mobile-screen-button" aria-hidden="true" /> Payme</>,
+  MIXED: <><i className="fa-solid fa-shuffle" aria-hidden="true" /> Aralash</>,
 };
 
+/** Kartochka shaklidagi skeleton — yuklanish tugagach layout sakramaydi. */
+function KpiSkeleton() {
+  return (
+    <div className="kpi-row">
+      {Array.from({ length: 4 }, (_, i) => (
+        <div className="kpi" key={i}>
+          <span className="ek-skeleton" style={{ height: 11, width: "55%" }} />
+          <span className="ek-skeleton" style={{ height: 26, width: "75%" }} />
+          <span className="ek-skeleton" style={{ height: 11, width: "35%" }} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function DashboardPage({ toast }) {
-  const [data, setData]       = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [data, setData]         = useState(null);
+  const [lowStock, setLowStock] = useState([]);
+  const [loading, setLoading]   = useState(true);
   const [branchId, setBranchId] = useState(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     setLoading(true);
-    reportApi.daily(branchId)
-      .then((res) => setData(res.data))
-      .catch((err) => toast.error(err.message))
+    Promise.all([
+      reportApi.daily(branchId).then((r) => r.data).catch((err) => { toast.error(err.message); return null; }),
+      inventoryApi.getLow().then((r) => r.data || []).catch(() => []),
+    ])
+      .then(([daily, low]) => { setData(daily); setLowStock(low); })
       .finally(() => setLoading(false));
   }, [branchId]);
 
-  if (loading) return <Loader />;
+  /* ── E'tibor talab qiladi ─────────────────────────────────────────────── */
+  const outOfStock = lowStock.filter((i) => (i.quantity ?? 0) <= 0);
+  const belowMin   = lowStock.filter((i) => (i.quantity ?? 0) > 0);
+
+  const attention = [
+    outOfStock.length && {
+      id: "out", icon: "fa-box-open", tone: "danger",
+      text: "Tugagan tovar", count: outOfStock.length,
+      onClick: () => navigate("/inventory"),
+    },
+    belowMin.length && {
+      id: "low", icon: "fa-triangle-exclamation", tone: "warning",
+      text: "Minimal qoldiqdan past", count: belowMin.length,
+      onClick: () => navigate("/inventory"),
+    },
+    !data?.totalSales && {
+      id: "nosale", icon: "fa-cash-register", tone: "info",
+      text: "Bugun hali sotuv bo'lmadi", onClick: () => navigate("/sale"),
+    },
+  ].filter(Boolean);
 
   return (
     <div>
-      <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
-        <div>
-          <h2 className="page-title">Dashboard</h2>
-        </div>
+      <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18, gap: 12 }}>
+        <h2 className="page-title">Bugun ishlar qanday?</h2>
         <BranchSelector selectedId={branchId} onSelect={setBranchId} />
       </div>
 
-      {/* Stat kartochkalar */}
-      <div className="stats-grid">
-        {STATS_CONFIG.map((cfg) => (
-          <StatCard
-            key={cfg.key}
-            label={cfg.label}
-            value={cfg.key === "totalSales" ? (data?.[cfg.key] || 0) : money(data?.[cfg.key])}
-            icon={cfg.icon}
-            bg={cfg.bg}
-            color={cfg.color}
-            change="Bugun"
-          />
-        ))}
+      {/* ── KPI qatori ────────────────────────────────────────────────────
+          Raqamlar 0 dan sanaladi, monoshriftda — kenglik sakramaydi. */}
+      {loading ? <KpiSkeleton /> : (
+        <div className="kpi-row">
+          <Kpi label="Bugungi tushum"  value={data?.totalRevenue || 0} format={money} />
+          <Kpi label="Sotuvlar soni"   value={data?.totalSales   || 0} />
+          <Kpi label="Sof foyda"       value={data?.totalProfit  || 0} format={money} />
+          <Kpi label="Tan narxi"       value={data?.totalCost    || 0} format={money} />
+        </div>
+      )}
+
+      {/* ── E'tibor talab qiladi ──────────────────────────────────────────── */}
+      <div style={{ marginBottom: 18 }}>
+        <AttentionList items={loading ? [] : attention} />
       </div>
 
       <div className="grid-2c">
@@ -61,7 +105,7 @@ export default function DashboardPage({ toast }) {
         <div className="card">
           <div className="card-header">
             <span className="card-title">
-              <i className="fa-solid fa-credit-card text-blue" />
+              <i className="fa-solid fa-credit-card text-blue" aria-hidden="true" />
               To'lov turlari
             </span>
           </div>
@@ -71,29 +115,28 @@ export default function DashboardPage({ toast }) {
                 <div
                   key={i}
                   style={{
-                    display: "flex",
-                    justifyContent: "space-between",
+                    display: "flex", justifyContent: "space-between", gap: 12,
                     padding: "10px 0",
-                    borderBottom: i < arr.length - 1 ? "1px solid var(--border)" : "none",
+                    borderBottom: i < arr.length - 1 ? "1px solid var(--border-subtle)" : "none",
                   }}
                 >
-                  <span className="fw-700" style={{ fontSize: 13 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600 }}>
                     {PAYMENT_LABELS[p.paymentType] || p.paymentType}
                   </span>
-                  <span className="mono fw-700">{money(p.amount)}</span>
+                  <span className="ek-num" style={{ fontWeight: 700 }}>{money(p.amount)}</span>
                 </div>
               ))
             ) : (
-              <Empty text="Ma'lumot yo'q" />
+              <Empty text="Bugun hali to'lov qayd etilmagan" />
             )}
           </div>
         </div>
 
-        {/* Top mahsulotlar */}
+        {/* Top mahsulotlar — summalar o'ngga tekislangan, monoshriftda */}
         <div className="card">
           <div className="card-header">
             <span className="card-title">
-              <i className="fa-solid fa-trophy" style={{ color: "var(--yellow)" }} />
+              <i className="fa-solid fa-trophy" style={{ color: "var(--fg-warning)" }} aria-hidden="true" />
               Top mahsulotlar
             </span>
           </div>
@@ -101,28 +144,24 @@ export default function DashboardPage({ toast }) {
             <table>
               <thead>
                 <tr>
-                  <th>#</th>
+                  <th style={{ width: 40 }}>#</th>
                   <th>Mahsulot</th>
-                  <th>Soni</th>
-                  <th>Summa</th>
+                  <th className="num">Soni</th>
+                  <th className="num">Summa, so'm</th>
                 </tr>
               </thead>
               <tbody>
                 {data?.topProducts?.length ? (
                   data.topProducts.slice(0, 5).map((p, i) => (
                     <tr key={i}>
-                      <td className="text-muted fw-800">{i + 1}</td>
-                      <td className="fw-700">{p.productName}</td>
-                      <td><span className="badge badge-blue">{p.totalQuantity}</span></td>
-                      <td className="mono fw-700">{money(p.totalRevenue)}</td>
+                      <td className="ek-num text-muted">{i + 1}</td>
+                      <td style={{ fontWeight: 600 }}>{p.productName}</td>
+                      <td className="num">{p.totalQuantity}</td>
+                      <td className="num" style={{ fontWeight: 700 }}>{money(p.totalRevenue)}</td>
                     </tr>
                   ))
                 ) : (
-                  <tr>
-                    <td colSpan={4}>
-                      <Empty text="Ma'lumot yo'q" />
-                    </td>
-                  </tr>
+                  <tr><td colSpan={4}><Empty text="Bugun hali sotuv bo'lmadi" /></td></tr>
                 )}
               </tbody>
             </table>

@@ -1,0 +1,226 @@
+/* ==========================================================================
+   e-Kassam Motion v1.0
+   Import: @import "ek-motion.css";  (tokens fayldan KEYIN)
+   Qoida: faqat transform va opacity animatsiya qilinadi.
+
+   MANBA FAYL — `sync-tokens.ps1` bilan ilovalarga ko'chiriladi.
+   1–12 bo'limlar redesign to'plamidan o'zgarishsiz olingan.
+   13+ bo'limlar shu loyihaga qo'shilgan (chek qirrasi, countup, tugma bosilishi).
+   ========================================================================== */
+
+:root {
+  --dur-instant: 90ms;
+  --dur-fast:    140ms;
+  --dur-base:    200ms;
+  --dur-slow:    320ms;
+  --dur-story:   520ms;
+
+  --ease-out:    cubic-bezier(.2,.8,.2,1);
+  --ease-in:     cubic-bezier(.4,0,1,1);
+  --ease-spring: cubic-bezier(.34,1.56,.64,1);
+  --ease-linear: linear;
+
+  --stagger: 60ms;
+}
+
+/* --- 0. BARCHA ANIMATSIYALAR USTIDAN — birinchi qoida --------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .ek-carousel { --autoplay: none; }
+}
+
+/* --- 1. SCROLL OCHILISHI -------------------------------------------------- */
+.ek-reveal {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity var(--dur-story) var(--ease-out),
+              transform var(--dur-story) var(--ease-out);
+  transition-delay: var(--d, 0ms);
+}
+.ek-reveal.is-in { opacity: 1; transform: none; }
+
+/* guruh ichida ketma-ketlik */
+.ek-stagger > * { transition-delay: calc(var(--stagger) * var(--i, 0)); }
+
+/* --- 2. KIRISH ANIMATSIYALARI --------------------------------------------- */
+@keyframes ek-fade-up   { from { opacity:0; transform:translateY(14px) } to { opacity:1; transform:none } }
+@keyframes ek-fade-in   { from { opacity:0 } to { opacity:1 } }
+@keyframes ek-scale-in  { from { opacity:0; transform:scale(.96) } to { opacity:1; transform:none } }
+@keyframes ek-slide-down{ from { opacity:0; transform:translateY(-100%) } to { opacity:1; transform:none } }
+@keyframes ek-slide-left{ from { opacity:0; transform:translateX(18px) } to { opacity:1; transform:none } }
+
+.ek-in-up    { animation: ek-fade-up  var(--dur-story) var(--ease-out) both; }
+.ek-in-fade  { animation: ek-fade-in  var(--dur-base)  var(--ease-out) both; }
+.ek-in-scale { animation: ek-scale-in var(--dur-base)  var(--ease-out) both; }
+.ek-in-down  { animation: ek-slide-down var(--dur-slow) var(--ease-out) both; }
+
+/* --- 3. CHEK CHOP ETISH YUKLOVCHISI --------------------------------------- */
+.ek-printing { --w: 96px; width: var(--w); }
+.ek-printing__slot {
+  height: 8px; border-radius: 4px;
+  background: var(--fg-tertiary, #93A0B5); opacity: .35;
+}
+.ek-printing__paper {
+  overflow: hidden;
+  animation: ek-paper 2.2s var(--ease-out) infinite;
+}
+@keyframes ek-paper {
+  0%       { max-height: 0;    opacity: 0 }
+  12%      { opacity: 1 }
+  55%, 80% { max-height: 96px; opacity: 1 }
+  100%     { max-height: 96px; opacity: 0 }
+}
+.ek-printing__line {
+  height: 5px; border-radius: 3px; margin: 7px 8px 0;
+  background: var(--border-subtle, #DDE2EB);
+  animation: ek-line 2.2s var(--ease-out) infinite;
+  opacity: 0;
+}
+.ek-printing__line:nth-child(1) { animation-delay: .22s; width: 72% }
+.ek-printing__line:nth-child(2) { animation-delay: .40s; width: 54% }
+.ek-printing__line:nth-child(3) { animation-delay: .58s; width: 82% }
+.ek-printing__line:nth-child(4) { animation-delay: .76s; width: 40%;
+  background: var(--ek-green-400, #35C863); height: 7px }
+@keyframes ek-line { 0%,8% {opacity:0; transform:translateY(-4px)} 20%,88% {opacity:1;transform:none} 100%{opacity:0} }
+
+/* --- 4. SKELETON ---------------------------------------------------------- */
+.ek-skeleton {
+  position: relative; overflow: hidden;
+  background: var(--bg-sunken, #EDF0F5);
+  border-radius: var(--r-sm, 6px);
+}
+.ek-skeleton::after {
+  content: ""; position: absolute; inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.62), transparent);
+  animation: ek-shimmer 1.4s var(--ease-linear) infinite;
+}
+[data-theme="dark"] .ek-skeleton::after {
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.07), transparent);
+}
+@keyframes ek-shimmer { to { transform: translateX(100%) } }
+
+/* --- 5. SPINNER (faqat kichik, inline) ------------------------------------ */
+.ek-spinner {
+  width: 16px; height: 16px; border-radius: 50%;
+  border: 2px solid currentColor; border-top-color: transparent;
+  animation: ek-spin .7s var(--ease-linear) infinite;
+  display: inline-block;
+}
+@keyframes ek-spin { to { transform: rotate(360deg) } }
+
+/* --- 6. MIKRO-O'ZARO TA'SIRLAR -------------------------------------------- */
+.ek-press { transition: transform var(--dur-instant) var(--ease-out) }
+.ek-press:active { transform: scale(.97) }
+
+@keyframes ek-pop { 0%{transform:scale(1)} 45%{transform:scale(1.045)} 100%{transform:scale(1)} }
+.ek-pop { animation: ek-pop 320ms var(--ease-spring) }
+
+@keyframes ek-shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-6px)}
+  40%{transform:translateX(5px)} 60%{transform:translateX(-3px)} 80%{transform:translateX(2px)} }
+.ek-shake { animation: ek-shake 320ms var(--ease-out) }   /* bir marta, takrorlanmaydi */
+
+@keyframes ek-row-in { from { opacity:0; transform:translateY(-10px) } to { opacity:1; transform:none } }
+.ek-row-in { animation: ek-row-in 240ms var(--ease-out) both }
+
+/* --- 7. TASDIQ BELGISI CHIZILISHI ----------------------------------------- */
+.ek-check-draw {
+  stroke-dasharray: 20; stroke-dashoffset: 20;
+  animation: ek-draw 420ms var(--ease-out) forwards;
+}
+@keyframes ek-draw { to { stroke-dashoffset: 0 } }
+
+/* --- 8. MODAL / DRAWER ---------------------------------------------------- */
+.ek-overlay { animation: ek-fade-in var(--dur-base) var(--ease-out) both }
+.ek-dialog  { animation: ek-dialog var(--dur-base) var(--ease-out) both }
+@keyframes ek-dialog { from { opacity:0; transform:scale(.96) translateY(8px) } to { opacity:1; transform:none } }
+
+.ek-drawer-right { animation: ek-drawer-r var(--dur-slow) var(--ease-out) both }
+@keyframes ek-drawer-r { from { transform: translateX(100%) } to { transform: none } }
+.ek-drawer-bottom { animation: ek-drawer-b var(--dur-slow) var(--ease-out) both }
+@keyframes ek-drawer-b { from { transform: translateY(100%) } to { transform: none } }
+
+/* --- 9. TOAST ------------------------------------------------------------- */
+.ek-toast-in  { animation: ek-toast-in 280ms var(--ease-spring) both }
+.ek-toast-out { animation: ek-toast-out 180ms var(--ease-in) both }
+@keyframes ek-toast-in  { from { opacity:0; transform:translateY(16px) scale(.96) } to { opacity:1; transform:none } }
+@keyframes ek-toast-out { to { opacity:0; transform:translateY(8px) scale(.98) } }
+
+/* --- 10. KARUSEL ---------------------------------------------------------- */
+.ek-carousel { position: relative; overflow: hidden }
+.ek-carousel__track {
+  display: flex;
+  transition: transform 420ms var(--ease-out);
+  will-change: transform;
+}
+.ek-carousel__slide { flex: 0 0 100%; min-width: 0 }
+.ek-carousel__dots { display: flex; gap: 6px; justify-content: center }
+.ek-carousel__dot {
+  width: 7px; height: 7px; border-radius: 999px; border: 0; padding: 0; cursor: pointer;
+  background: var(--border-strong, #C3CBD9);
+  transition: width var(--dur-base) var(--ease-out), background var(--dur-base) var(--ease-out);
+}
+.ek-carousel__dot[aria-selected="true"] { width: 22px; background: var(--bg-brand, #1663D8) }
+
+/* --- 11. OFLAYN TASMASI --------------------------------------------------- */
+.ek-offline-bar { animation: ek-slide-down var(--dur-slow) var(--ease-out) both }
+
+/* --- 12. BREND INTROSI — vaqtlar JS bilan boshqariladi -------------------- */
+.ek-intro__back  { animation: ek-slide-left 460ms var(--ease-out) both; animation-delay: 0ms }
+.ek-intro__front { animation: ek-scale-in 460ms var(--ease-spring) both; animation-delay: 140ms }
+.ek-intro__ln    { animation: ek-wipe 300ms var(--ease-out) both }
+.ek-intro__ln:nth-of-type(1) { animation-delay: 380ms }
+.ek-intro__ln:nth-of-type(2) { animation-delay: 460ms }
+@keyframes ek-wipe { from { clip-path: inset(0 100% 0 0) } to { clip-path: inset(0 0 0 0) } }
+.ek-intro__chk   { stroke-dasharray: 20; stroke-dashoffset: 20;
+  animation: ek-draw 420ms var(--ease-out) 620ms forwards }
+.ek-intro__char  { animation: ek-fade-up 360ms var(--ease-out) both }
+
+/* ==========================================================================
+   13+ — LOYIHAGA QO'SHILGANLAR
+   ========================================================================== */
+
+/* --- 13. CHEK QIRRASI (brend imzosi) -------------------------------------- */
+/* Yirtilgan qog'oz qirrasi. Landing yakuniy CTA, login o'ng panel, chek bloki. */
+.ek-tear {
+  --tear: 9px;
+  position: relative;
+}
+.ek-tear::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: calc(var(--tear) * -1);
+  height: var(--tear);
+  background: inherit;
+  -webkit-mask-image: radial-gradient(var(--tear) at var(--tear) 0, transparent 99%, #000 100%);
+          mask-image: radial-gradient(var(--tear) at var(--tear) 0, transparent 99%, #000 100%);
+  -webkit-mask-size: calc(var(--tear) * 2) 100%;
+          mask-size: calc(var(--tear) * 2) 100%;
+  -webkit-mask-repeat: repeat-x;
+          mask-repeat: repeat-x;
+}
+
+/* --- 14. TAB INDIKATORI --------------------------------------------------- */
+/* 03-MOTION.md: ostidagi indikator siljiydi (transform), kontent opacity bilan. */
+.ek-tab-indicator {
+  position: absolute; bottom: 0; left: 0; height: 2px;
+  background: var(--bg-brand);
+  transition: transform var(--dur-base) var(--ease-out),
+              width var(--dur-base) var(--ease-out);
+}
+
+/* --- 15. SAHIFA O'TISHI --------------------------------------------------- */
+/* Faqat opacity, 140ms. Siljish YO'Q — POS'da chalg'itadi. */
+.ek-page-in { animation: ek-fade-in var(--dur-fast) var(--ease-out) both }
+
+/* --- 16. KAM QOLDIQ PULSATSIYASI ----------------------------------------- */
+/* Bir marta, miltillash yo'q. */
+@keyframes ek-pulse-once { 0%,100%{transform:scale(1)} 50%{transform:scale(1.06)} }
+.ek-pulse-once { animation: ek-pulse-once 420ms var(--ease-spring) }
+
+/* --- 17. RAQAM SANASH ----------------------------------------------------- */
+/* JS qiymatni yangilaydi; CSS faqat kenglik sakramasligini kafolatlaydi. */
+.ek-countup { font-variant-numeric: tabular-nums }

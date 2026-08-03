@@ -1,0 +1,234 @@
+/* ==========================================================================
+   e-Kassam Design Tokens v1.0
+   MANBA FAYL — bu yerda tahrirlanadi, keyin `sync-tokens.ps1` bilan
+   barcha ilovalarga ko'chiriladi. Ilova ichidagi nusxani tahrirlamang.
+
+   Qoida (CLAUDE.md #1): komponent kodida FAQAT semantik alias ishlatiladi.
+   Xom qiymat (--ek-*) faqat shu faylda uchraydi.
+   Sabab: qorong'i rejim aliaslarni almashtiradi, xomni emas.
+   ========================================================================== */
+
+/* --- Shriftlar ------------------------------------------------------------ */
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+:root {
+  /* ======================================================================
+     1. XOM QIYMATLAR (raw) — komponentda ISHLATILMAYDI
+     ====================================================================== */
+
+  /* Brend ko'ki */
+  --ek-blue-50:   #EAF2FE;
+  --ek-blue-100:  #D3E4FD;
+  --ek-blue-200:  #A9C9FA;
+  --ek-blue-400:  #4187EB;
+  --ek-blue-500:  #1F6FE0;
+  --ek-blue-600:  #1663D8;
+  --ek-blue-700:  #0F4EB3;
+  --ek-blue-800:  #0E3F92;
+  --ek-blue-900:  #0A2E6B;
+
+  /* Yashil — pul, muvaffaqiyat, tasdiq */
+  --ek-green-50:  #E9F9EF;
+  --ek-green-100: #D0F2DE;
+  --ek-green-200: #9EE3B8;
+  --ek-green-400: #35C863;
+  --ek-green-600: #1FAE4C;
+  --ek-green-700: #16883A;
+
+  /* Neytral (ink) */
+  --ek-ink-50:    #F6F8FB;
+  --ek-ink-100:   #EDF0F5;
+  --ek-ink-200:   #DDE2EB;
+  --ek-ink-300:   #C3CBD9;
+  --ek-ink-400:   #93A0B5;
+  --ek-ink-500:   #6A788F;
+  --ek-ink-600:   #4E5B71;
+  --ek-ink-700:   #38445A;
+  --ek-ink-800:   #24314A;
+  --ek-ink-900:   #16233A;
+  --ek-ink-950:   #0B1524;
+
+  /* Ogohlantirish / xato */
+  --ek-amber-50:  #FFF8EB;
+  --ek-amber-200: #FCE0A2;
+  --ek-amber-500: #F5A524;
+  --ek-amber-700: #A16207;
+  --ek-red-50:    #FEF1F0;
+  --ek-red-200:   #FBC9C4;
+  --ek-red-500:   #EF4B3E;
+  --ek-red-600:   #D92D20;
+  --ek-red-700:   #B42318;
+
+  /* To'lov turlari — brend tashqarisidagi yagona ruxsat etilgan ranglar */
+  --ek-violet-500: #7C3AED;   /* Click  */
+  --ek-cyan-500:   #06B6D4;   /* Payme  */
+
+  /* ======================================================================
+     2. SEMANTIK ALIASLAR — komponentda SHULAR ishlatiladi
+     ====================================================================== */
+
+  /* Fon */
+  --bg-canvas:        var(--ek-ink-50);
+  --bg-surface:       #FFFFFF;
+  --bg-elevated:      #FFFFFF;
+  --bg-sunken:        var(--ek-ink-100);
+  --bg-brand:         var(--ek-blue-600);
+  --bg-brand-hover:   var(--ek-blue-700);
+  --bg-brand-subtle:  var(--ek-blue-50);
+  --bg-inverse:       var(--ek-ink-950);
+  --bg-success:       var(--ek-green-600);
+  --bg-success-subtle:var(--ek-green-50);
+  --bg-warning:       var(--ek-amber-500);
+  --bg-warning-subtle:var(--ek-amber-50);
+  --bg-danger:        var(--ek-red-600);
+  --bg-danger-subtle: var(--ek-red-50);
+
+  /* Matn */
+  --fg-primary:       var(--ek-ink-950);
+  --fg-secondary:     var(--ek-ink-600);
+  --fg-tertiary:      var(--ek-ink-400);
+  --fg-on-brand:      #FFFFFF;
+  --fg-on-inverse:    var(--ek-ink-50);
+  --fg-brand:         var(--ek-blue-600);
+  --fg-success:       var(--ek-green-700);
+  --fg-warning:       var(--ek-amber-700);
+  --fg-danger:        var(--ek-red-600);
+
+  /* Chegara */
+  --border-subtle:    var(--ek-ink-200);
+  --border-strong:    var(--ek-ink-300);
+  --border-brand:     var(--ek-blue-600);
+  --border-danger:    var(--ek-red-200);
+  --border-warning:   var(--ek-amber-200);
+  --border-success:   var(--ek-green-200);
+
+  /* Fokus halqasi — a11y talabi, hech qachon `outline:none` yolg'iz emas */
+  --ring-brand:       0 0 0 3px rgba(22, 99, 216, .28);
+  --ring-danger:      0 0 0 3px rgba(217, 45, 32, .24);
+
+  /* Modal/drawer ortidagi qorayish */
+  --scrim:            rgba(11, 21, 36, .42);
+
+  /* ======================================================================
+     3. TIPOGRAFIKA
+     ====================================================================== */
+  --font-display: 'Manrope', system-ui, sans-serif;
+  --font-sans:    'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono:    'JetBrains Mono', ui-monospace, monospace;
+
+  --fs-2xs:  .6875rem;   /* 11 */
+  --fs-xs:   .75rem;     /* 12 */
+  --fs-sm:   .8125rem;   /* 13 */
+  --fs-md:   .875rem;    /* 14 — asosiy */
+  --fs-lg:   1rem;       /* 16 */
+  --fs-xl:   1.25rem;    /* 20 */
+  --fs-2xl:  1.5rem;     /* 24 */
+  --fs-3xl:  2rem;       /* 32 */
+
+  /* ======================================================================
+     4. GEOMETRIYA
+     ====================================================================== */
+  --r-sm: 6px;
+  --r-md: 8px;
+  --r-lg: 12px;
+  --r-xl: 16px;
+  --r-2xl: 22px;
+  --r-full: 999px;
+
+  --sp-1: 4px;  --sp-2: 8px;  --sp-3: 12px; --sp-4: 16px;
+  --sp-5: 20px; --sp-6: 24px; --sp-8: 32px; --sp-10: 40px;
+
+  /* Bosiladigan element o'lchamlari (CLAUDE.md #3) */
+  --hit-sm:  32px;
+  --hit-md:  40px;
+  --hit-min: 44px;   /* minimal — hech qachon bundan kichik emas */
+  --hit-lg:  48px;
+  --hit-pos: 56px;   /* faqat kassir ekrani */
+
+  /* ======================================================================
+     5. SOYA
+     ====================================================================== */
+  --sh-sm:    0 1px 2px rgba(11, 21, 36, .06);
+  --sh-md:    0 4px 12px rgba(11, 21, 36, .08);
+  --sh-lg:    0 12px 28px rgba(11, 21, 36, .12);
+  --sh-xl:    0 24px 56px rgba(11, 21, 36, .18);
+  --sh-brand: 0 6px 18px rgba(22, 99, 216, .30);
+
+  /* ======================================================================
+     6. QATLAMLAR
+     ====================================================================== */
+  --z-sticky:  100;
+  --z-sidebar: 200;
+  --z-overlay: 900;
+  --z-modal:   1000;
+  --z-toast:   1100;
+}
+
+/* ==========================================================================
+   QORONG'I REJIM
+   Toza qora (#000) ishlatilmaydi — #08111D (02-DESIGN-SYSTEM.md).
+   Faqat aliaslar almashadi, xom qiymatlar tegilmaydi.
+   ========================================================================== */
+[data-theme="dark"] {
+  --bg-canvas:        #08111D;
+  --bg-surface:       #0F1B2B;
+  --bg-elevated:      #142339;
+  --bg-sunken:        #142339;
+  --bg-brand:         var(--ek-blue-500);
+  --bg-brand-hover:   var(--ek-blue-400);
+  --bg-brand-subtle:  rgba(31, 111, 224, .14);
+  --bg-inverse:       #EDF1F7;
+  --bg-success-subtle:rgba(53, 200, 99, .12);
+  --bg-warning-subtle:rgba(245, 165, 36, .12);
+  --bg-danger-subtle: rgba(239, 75, 62, .12);
+
+  --fg-primary:       #EDF1F7;
+  --fg-secondary:     #9CAABF;
+  --fg-tertiary:      #64748B;
+  --fg-on-inverse:    var(--ek-ink-950);
+  --fg-brand:         var(--ek-blue-400);
+  --fg-success:       var(--ek-green-400);
+  --fg-warning:       var(--ek-amber-500);
+  --fg-danger:        var(--ek-red-500);
+
+  --border-subtle:    #1E2E44;
+  --border-strong:    #2C4059;
+  --scrim:            rgba(2, 8, 16, .68);
+  --border-danger:    rgba(239, 75, 62, .38);
+  --border-warning:   rgba(245, 165, 36, .38);
+  --border-success:   rgba(53, 200, 99, .34);
+
+  --sh-sm:    0 1px 2px rgba(0, 0, 0, .40);
+  --sh-md:    0 4px 12px rgba(0, 0, 0, .46);
+  --sh-lg:    0 12px 28px rgba(0, 0, 0, .55);
+  --sh-xl:    0 24px 56px rgba(0, 0, 0, .62);
+  --sh-brand: 0 6px 18px rgba(22, 99, 216, .42);
+
+  color-scheme: dark;
+}
+
+/* ==========================================================================
+   MAJBURIY UTILITALAR
+   ========================================================================== */
+
+/* CLAUDE.md #2 — pul, miqdor, barkod, vaqt HAR DOIM shu klass bilan.
+   Bu estetika emas: tabular-nums raqam o'zgarganda kenglik sakramasligini
+   kafolatlaydi va 1/l/7 farqi aniq ko'rinadi. */
+.ek-num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.01em;
+}
+
+/* Faqat ekran o'quvchi uchun */
+.ek-sr-only {
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* Klaviatura fokusi — ko'rinishi majburiy (02-DESIGN-SYSTEM.md a11y) */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--border-brand);
+  outline-offset: 2px;
+}

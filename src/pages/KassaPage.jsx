@@ -1,11 +1,33 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { productApi, customerApi, saleApi } from "../api";
-import { BranchSelector } from "../components";
 import { money } from "../utils";
 import { Empty } from "../components/ui";
+import FinishOverlay from "../components/PrintingLoader";
+import OfflineBar from "../components/OfflineBar";
+import * as queue from "../lib/ek-offline";
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Kassir paneli — 06-APP-KASSIR.md
+
+   Asosiy stsenariy 3 ta harakat:  skaner → to'lov turi → yakunlash (F9).
+   Sichqoncha ixtiyoriy; hamma narsa klaviatura bilan ishlaydi.
+
+   Klaviatura yorliqlari (hujjatdagi jadval; F2 ikki joyda ko'rsatilgan edi —
+   bu yerda F1/F2/F3 to'lov turlari uchun, yangi sotuv esa Esc bilan savatni
+   tozalash orqali boshlanadi):
+     F1 / F2 / F3   Naqd / Karta / Aralash
+     F9             To'lovni qabul qilish
+     Esc            Savatni tozalash (tasdiq so'raydi) / modalni yopish
+     /              Tovar qidiruvi
+     Ctrl+B         Barkod maydoniga qaytish
+     Ctrl+P         Oxirgi chekni qayta chop etish
+   ══════════════════════════════════════════════════════════════════════════ */
+
+const REFOCUS_MS = 3000;   // fokus yo'qolsa shuncha vaqtdan keyin qaytadi
+const UNDO_MS    = 5000;   // o'chirishni bekor qilish oynasi
 
 // ─── Chek chiqarish ──────────────────────────────────────────
-function printCheck({ saleId, cart, total, payType, customer }) {
+function printCheck({ saleId, cart, total, payType, customer, offline }) {
   const win = window.open("", "_blank", "width=320,height=600,toolbar=no,menubar=no");
   if (!win) return;
 
@@ -15,15 +37,17 @@ function printCheck({ saleId, cart, total, payType, customer }) {
     .join("");
 
   win.document.write(`
-    <!DOCTYPE html><html><head><title>Chek #${saleId}</title>
+    <!DOCTYPE html><html><head><title>Chek ${saleId}</title>
     <style>
       * { margin:0; padding:0; box-sizing:border-box; }
-      body { font-family: monospace; font-size: 12px; padding: 12px; width: 280px; }
+      body { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums;
+             font-size: 12px; padding: 12px; width: 280px; color:#0B1524; }
       .c { text-align: center; }
-      .hr { border: none; border-top: 1px dashed #000; margin: 8px 0; }
-      .row { display: flex; justify-content: space-between; padding: 3px 0; }
-      .logo { font-size: 18px; font-weight: 900; color: #017dca; }
-      .dot { color: #22c55e; }
+      .hr { border: none; border-top: 1px dashed #0B1524; margin: 8px 0; }
+      .row { display: flex; justify-content: space-between; padding: 3px 0; gap: 8px; }
+      .logo { font-family: Manrope, sans-serif; font-size: 18px; font-weight: 800; color: #1663D8; }
+      .dot { color: #1FAE4C; }
+      .off { margin-top:6px; padding:4px; border:1px dashed #A16207; color:#A16207; font-size:10px; text-align:center; }
     </style></head>
     <body>
       <div class="c">
@@ -31,19 +55,27 @@ function printCheck({ saleId, cart, total, payType, customer }) {
         <small>CRM Tizimi</small>
       </div>
       <div class="hr"></div>
-      <div class="row"><span>Chek #${saleId || "—"}</span><span>${new Date().toLocaleString("uz-UZ")}</span></div>
+      <div class="row"><span>Chek ${saleId}</span><span>${new Date().toLocaleString("uz-UZ")}</span></div>
       <div class="hr"></div>
       ${rows}
       <div class="hr"></div>
       <div class="row"><b>JAMI:</b><b>${total.toLocaleString("uz-UZ")} so'm</b></div>
       <div class="row"><span>To'lov:</span><span>${payLabel[payType] || payType}</span></div>
       ${customer ? `<div class="row"><span>Mijoz:</span><span>${customer.fullName}</span></div>` : ""}
+      ${offline ? `<div class="off">Oflayn rejimda qayd etildi.<br>Ulanish tiklanganda serverga yuboriladi.</div>` : ""}
       <div class="hr"></div>
       <div class="c"><p>Xarid uchun rahmat!</p><small>e-kassam.uz</small></div>
     </body></html>
   `);
   win.document.close();
   setTimeout(() => win.print(), 400);
+}
+
+/** Oflayn chek raqami — server raqami bilan chalkashmasligi uchun OFF- prefiksli. */
+function nextOfflineNo() {
+  const n = (Number(localStorage.getItem("ek_offline_seq")) || 0) + 1;
+  localStorage.setItem("ek_offline_seq", String(n));
+  return `OFF-${String(n).padStart(4, "0")}`;
 }
 
 // ─── KassaPage ───────────────────────────────────────────────
@@ -54,38 +86,41 @@ export default function KassaPage({ toast, refreshLowStock }) {
   const [search, setSearch]         = useState("");
   const [searching, setSearching]   = useState(false);
   const [payType, setPayType]       = useState("CASH");
-  const [cashAmount, setCashAmount] = useState("");
-  const [cardAmount, setCardAmount] = useState("");
+  const [cashGiven, setCashGiven]   = useState("");     // naqdda berilgan summa
+  const [cashAmount, setCashAmount] = useState("");     // aralash: naqd qismi
+  const [cardAmount, setCardAmount] = useState("");     // aralash: ikkinchi qism
   const [customer, setCustomer]     = useState(null);
   const [processing, setProcessing] = useState(false);
-  const [branchId, setBranchId]     = useState(null);
+  const [branchId]                  = useState(null);
   const [showPayModal, setShowPayModal] = useState(false);
   const [mixedSecondType, setMixedSecondType] = useState("CARD");
+  const [finish, setFinish]         = useState(null);   // { phase, total, receiptNo }
+  const [undo, setUndo]             = useState(null);   // { item, index }
+  const [bcWarn, setBcWarn]         = useState(false);  // fokus yo'qolgani
 
-  // Barcode scanner uchun buffer
-  const bcBuffer   = useRef("");
-  const bcTimer    = useRef(null);
+  const barcodeRef  = useRef(null);
+  const searchRef   = useRef(null);
   const debounceRef = useRef(null);
+  const refocusRef  = useRef(null);
+  const undoRef     = useRef(null);
+  const lastSale    = useRef(null);   // Ctrl+P uchun
 
-  // Mijozlarni tanlangan shopga qarab yuklaymiz
+  /* ── Mijozlar ─────────────────────────────────────────────── */
   useEffect(() => {
     customerApi.getAll(branchId).then((r) => setCustomers(r.data || [])).catch(() => {});
   }, [branchId]);
 
-  // Server search — debounce 350ms
+  /* ── Server qidiruvi (debounce 350ms) ─────────────────────── */
   const doSearch = useCallback(async (q) => {
     setSearching(true);
     try {
       const res = await productApi.search(q, 0, 40, branchId);
       setProducts(res.data || []);
-    } catch (_) {}
+    } catch (_) { /* oflaynda katalog eskicha qoladi */ }
     finally { setSearching(false); }
   }, [branchId]);
 
-  // Sahifa ochilganda va search bo'sh bo'lganda — birinchi 40 ta
-  useEffect(() => {
-    doSearch("");
-  }, [doSearch]);
+  useEffect(() => { doSearch(""); }, [doSearch]);
 
   const handleSearchChange = (val) => {
     setSearch(val);
@@ -93,73 +128,106 @@ export default function KassaPage({ toast, refreshLowStock }) {
     debounceRef.current = setTimeout(() => doSearch(val), 350);
   };
 
-  // ── USB Barcode Scanner listener ────────────────────────────
+  /* ── Oflayn navbat: yuborish funksiyasini ulaymiz ─────────── */
   useEffect(() => {
-    const handleKey = (e) => {
-      // Search input yoki boshqa inputlarda ishlamasin
-      if (e.target.tagName === "INPUT" && !e.target.dataset.scanner) return;
+    queue.setSender((payload) => saleApi.create(payload));
+    queue.startSync();
+  }, []);
 
-      if (e.key === "Enter") {
-        if (bcBuffer.current.length > 2) {
-          const found = products.find((p) => p.barcode === bcBuffer.current);
-          if (found) {
-            addToCart(found);
-            toast.info(`${found.name} qo'shildi`);
-          } else {
-            toast.error(`Barkod topilmadi: ${bcBuffer.current}`);
-          }
-          bcBuffer.current = "";
-        }
-      } else if (e.key.length === 1) {
-        bcBuffer.current += e.key;
-        clearTimeout(bcTimer.current);
-        bcTimer.current = setTimeout(() => { bcBuffer.current = ""; }, 200);
-      }
+  /* ══ BARKOD MAYDONI — ekranning eng muhim detali ═══════════
+     Sahifa ochilganda va har sotuvdan keyin avtomatik fokusda.
+     Boshqa joyni bosganda 3 soniyadan keyin fokus qaytadi —
+     lekin modal ochiq bo'lsa yoki foydalanuvchi boshqa maydonga
+     yozayotgan bo'lsa TEGILMAYDI (aks holda yozib bo'lmaydi). */
+  const focusBarcode = useCallback(() => {
+    barcodeRef.current?.focus();
+    setBcWarn(false);
+  }, []);
+
+  useEffect(() => {
+    if (showPayModal || finish) return;
+    focusBarcode();
+  }, [showPayModal, finish, focusBarcode]);
+
+  useEffect(() => {
+    const onFocusOut = () => {
+      clearTimeout(refocusRef.current);
+      refocusRef.current = setTimeout(() => {
+        const el = document.activeElement;
+        const typing = el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT");
+        if (showPayModal || finish || typing) { setBcWarn(!typing); return; }
+        focusBarcode();
+      }, REFOCUS_MS);
     };
+    document.addEventListener("focusout", onFocusOut);
+    return () => { document.removeEventListener("focusout", onFocusOut); clearTimeout(refocusRef.current); };
+  }, [showPayModal, finish, focusBarcode]);
 
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-  }, [products]);
+  /* ── Barkod bo'yicha qo'shish ──────────────────────────────── */
+  const addByBarcode = async (code) => {
+    const local = products.find((p) => p.barcode === code);
+    if (local) { addToCart(local); return; }
+    try {
+      const res = await productApi.search(code, 0, 5, branchId);
+      const found = (res.data || []).find((p) => p.barcode === code);
+      if (found) { addToCart(found); return; }
+    } catch (_) { /* oflayn */ }
+    // Xato ovozi emas, taklif (06-APP-KASSIR.md)
+    toast.info(`Bu barkod bazada yo'q: ${code}. Tovarni "Mahsulotlar" bo'limidan qo'shing.`);
+  };
 
-  // ── Savatcha ────────────────────────────────────────────────
+  /* ── Savat ────────────────────────────────────────────────── */
   const addToCart = (product) => {
-    // Muddati o'tgan mahsulotni qo'shishni taqiqlash
-    if (product.expired) {
-      toast.error(`${product.name} — muddati o'tgan, sotib bo'lmaydi!`);
-      return;
-    }
-    // Qoldiq tekshiruvi
-    if (product.stockQuantity !== undefined && product.stockQuantity !== null && product.stockQuantity <= 0) {
-      toast.error(`${product.name} — omborda qolmagan!`);
-      return;
+    if (product.expired) { toast.error(`${product.name} — muddati o'tgan, sotib bo'lmaydi!`); return; }
+    if (product.stockQuantity != null && product.stockQuantity <= 0) {
+      toast.error(`${product.name} — omborda qolmagan!`); return;
     }
     setCart((prev) => {
       const exists = prev.find((i) => i.id === product.id);
-      if (exists) {
-        return prev.map((i) => i.id === product.id ? { ...i, qty: i.qty + 1 } : i);
-      }
-      return [...prev, { ...product, qty: 1 }];
+      // Bir xil tovar ikkinchi marta → miqdor oshadi, yangi satr yaratilmaydi
+      if (exists) return prev.map((i) => (i.id === product.id ? { ...i, qty: i.qty + 1, _pulse: Date.now() } : i));
+      return [...prev, { ...product, qty: 1, _added: Date.now() }];
     });
     setSearch("");
     clearTimeout(debounceRef.current);
     doSearch("");
   };
 
-  const updateQty = (id, delta) => {
-    setCart((prev) =>
-      prev
-        .map((i) => i.id === id ? { ...i, qty: i.qty + delta } : i)
-        .filter((i) => i.qty > 0)
-    );
+  const updateQty = (id, delta) =>
+    setCart((prev) => prev.map((i) => (i.id === id ? { ...i, qty: i.qty + delta } : i)).filter((i) => i.qty > 0));
+
+  /* O'chirishda tasdiq SO'RALMAYDI — 5 soniyalik undo tezroq (06-APP-KASSIR.md).
+     Nusxa `setCart` yangilagichidan TASHQARIDA olinadi: React yangilagichni
+     ikki marta chaqirishi mumkin, yon ta'sir esa bir marta bo'lishi kerak. */
+  const removeFromCart = (id) => {
+    const index = cart.findIndex((i) => i.id === id);
+    if (index < 0) return;
+    const item = cart[index];
+
+    setCart((prev) => prev.filter((i) => i.id !== id));
+
+    clearTimeout(undoRef.current);
+    setUndo({ item, index });
+    undoRef.current = setTimeout(() => setUndo(null), UNDO_MS);
   };
 
-  const removeFromCart = (id) => setCart((prev) => prev.filter((i) => i.id !== id));
+  const restoreUndo = () => {
+    if (!undo) return;
+    setCart((prev) => {
+      const next = [...prev];
+      next.splice(Math.min(undo.index, next.length), 0, { ...undo.item, _added: Date.now() });
+      return next;
+    });
+    clearTimeout(undoRef.current);
+    setUndo(null);
+  };
+
   const clearCart = () => setCart([]);
 
-  const total = cart.reduce((sum, i) => sum + i.salePrice * i.qty, 0);
+  const total    = cart.reduce((sum, i) => sum + i.salePrice * i.qty, 0);
   const totalQty = cart.reduce((sum, i) => sum + i.qty, 0);
 
-  // payType o'zgarganda default miqdorlar
+  /* ── To'lov ───────────────────────────────────────────────── */
   const handlePayTypeChange = (type) => {
     setPayType(type);
     if (type === "MIXED") {
@@ -168,108 +236,190 @@ export default function KassaPage({ toast, refreshLowStock }) {
       setCardAmount(String(total - half));
       setMixedSecondType("CARD");
     } else {
-      setCashAmount("");
-      setCardAmount("");
+      setCashAmount(""); setCardAmount("");
     }
   };
 
-  // Aralash to'lovda ikkinchi turni o'zgartirish
-  const handleMixedSecondChange = (type) => {
-    setMixedSecondType(type);
-  };
-
-  // Modal ochilganda payType reset
   const openPayModal = () => {
+    if (!cart.length) return;
     setPayType("CASH");
-    setCashAmount("");
-    setCardAmount("");
+    setCashGiven(""); setCashAmount(""); setCardAmount("");
     setMixedSecondType("CARD");
     setShowPayModal(true);
   };
+  const closePayModal = () => setShowPayModal(false);
 
-  const closePayModal = () => {
-    setShowPayModal(false);
-  };
+  const change      = Math.max(0, (Number(cashGiven) || 0) - total);
+  const mixedSum    = (Number(cashAmount) || 0) + (Number(cardAmount) || 0);
+  const mixedOk     = payType !== "MIXED" || mixedSum === total;
+  const cashOk      = payType !== "CASH"  || !cashGiven || Number(cashGiven) >= total;
+  const canSubmit   = cart.length > 0 && !processing && mixedOk && cashOk;
 
-  // ── Sotish ──────────────────────────────────────────────────
+  /* ── Sotuvni yakunlash ────────────────────────────────────── */
   const handleSubmit = async () => {
-    if (!cart.length) return;
+    if (!canSubmit) return;
     setProcessing(true);
-    try {
-      const res = await saleApi.create({
-        customerId:  customer?.id || null,
-        items:       cart.map((i) => ({ productId: i.id, quantity: i.qty })),
-        paymentType: payType,
-        mixedSecondType: payType === "MIXED" ? mixedSecondType : undefined,
-        cashAmount:  payType === "CASH"  ? total :
-                     payType === "MIXED" ? Number(cashAmount) || 0 : 0,
-        cardAmount:  payType === "CARD"  ? total :
-                     payType === "CLICK" ? total :
-                     payType === "PAYME" ? total :
-                     payType === "MIXED" ? Number(cardAmount) || 0 : 0,
-      });
 
-      toast.success(`${money(total)} sotuv bajarildi!`);
-      if (refreshLowStock) refreshLowStock(); // Ombor ogohlantirishini yangilash
-      printCheck({ saleId: res?.data?.id, cart, total, payType, customer });
-      clearCart();
-      setCustomer(null);
-      setCashAmount(""); setCardAmount("");
-      setPayType("CASH");
-      setShowPayModal(false);
+    const payload = {
+      idempotencyKey: queue.newIdempotencyKey(),
+      customerId: customer?.id || null,
+      items: cart.map((i) => ({ productId: i.id, quantity: i.qty })),
+      paymentType: payType,
+      mixedSecondType: payType === "MIXED" ? mixedSecondType : undefined,
+      cashAmount: payType === "CASH" ? total : payType === "MIXED" ? Number(cashAmount) || 0 : 0,
+      cardAmount: ["CARD", "CLICK", "PAYME"].includes(payType) ? total
+                : payType === "MIXED" ? Number(cardAmount) || 0 : 0,
+    };
+    const snapshot = { cart: [...cart], total, payType, customer };
+
+    setShowPayModal(false);
+    setFinish({ phase: "printing", total: money(total) });
+
+    let receiptNo = null;
+    let offline   = false;
+
+    try {
+      if (!navigator.onLine) throw new Error("OFFLINE");
+      const res = await saleApi.create(payload);
+      receiptNo = res?.data?.id != null ? `A-${res.data.id}` : null;
     } catch (err) {
-      toast.error(err.message);
-    } finally {
-      setProcessing(false);
+      // Tarmoq xatosi yoki oflayn → navbatga. Boshqa xato (masalan qoldiq
+      // yetmasligi) esa haqiqiy xato: sotuv qayd etilmaydi.
+      const networkish = err?.message === "OFFLINE" || !navigator.onLine ||
+                         /Failed to fetch|NetworkError|ulanib/i.test(err?.message || "");
+      if (!networkish) {
+        setFinish(null);
+        setProcessing(false);
+        setShowPayModal(true);
+        toast.error(err.message);
+        return;
+      }
+      await queue.enqueue(payload, { itemCount: cart.length, total });
+      receiptNo = nextOfflineNo();
+      offline = true;
     }
+
+    lastSale.current = { ...snapshot, saleId: receiptNo, offline };
+    printCheck({ saleId: receiptNo, ...snapshot, offline });
+
+    setFinish({ phase: "done", total: money(snapshot.total), receiptNo });
+    if (refreshLowStock) refreshLowStock();
+
+    clearCart();
+    setCustomer(null);
+    setCashGiven(""); setCashAmount(""); setCardAmount("");
+    setPayType("CASH");
+    setProcessing(false);
+
+    setTimeout(() => { setFinish(null); focusBarcode(); }, 2200);
   };
 
+  const reprint = () => {
+    if (!lastSale.current) { toast.info("Qayta chop etish uchun chek yo'q"); return; }
+    printCheck(lastSale.current);
+  };
+
+  /* ══ KLAVIATURA YORLIQLARI ════════════════════════════════ */
+  useEffect(() => {
+    const onKey = (e) => {
+      const el = e.target;
+      const typing = el?.tagName === "INPUT" || el?.tagName === "TEXTAREA" || el?.tagName === "SELECT";
+
+      if (e.ctrlKey && (e.key === "b" || e.key === "B")) { e.preventDefault(); focusBarcode(); return; }
+      if (e.ctrlKey && (e.key === "p" || e.key === "P")) { e.preventDefault(); reprint(); return; }
+
+      if (e.key === "/" && !typing) { e.preventDefault(); searchRef.current?.focus(); return; }
+
+      if (e.key === "Escape") {
+        if (finish)       { setFinish(null); focusBarcode(); return; }
+        if (showPayModal) { closePayModal(); return; }
+        if (cart.length && window.confirm("Savatni tozalaymizmi?")) clearCart();
+        return;
+      }
+
+      if (e.key === "F9") {
+        e.preventDefault();
+        if (showPayModal) handleSubmit(); else openPayModal();
+        return;
+      }
+
+      if (showPayModal) {
+        if (e.key === "F1") { e.preventDefault(); handlePayTypeChange("CASH");  return; }
+        if (e.key === "F2") { e.preventDefault(); handlePayTypeChange("CARD");  return; }
+        if (e.key === "F3") { e.preventDefault(); handlePayTypeChange("MIXED"); return; }
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });   // har renderda yangilanadi — yopilmalar (cart, total) yangi bo'lishi shart
+
+  /* ═══════════════════════════════════════════════════════════ */
   return (
     <div style={{ height: "calc(100vh - var(--sh) - 40px)", display: "flex", flexDirection: "column" }}>
-      <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexShrink: 0 }}>
-        <div>
-          <h2 className="page-title" style={{ fontSize: 18 }}>Savdo (Kassa)</h2>
+      <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexShrink: 0, gap: 12 }}>
+        <h2 className="page-title" style={{ fontSize: 18 }}>Savdo (Kassa)</h2>
+        <div className="ek-shift" data-open="true">
+          <span className="ek-shift__dot" aria-hidden="true" />
+          Smena ochiq
         </div>
       </div>
 
-      <div className="kassa-layout" style={{ height: "auto", flex: 1 }}>
-        {/* ════ CHAP: Mahsulotlar ════ */}
-        <div className="kassa-left">
-          <div className="card" style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
+      <OfflineBar />
 
-            {/* Search / Barcode input */}
-            <div style={{ padding: "11px 14px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
+      <div className="kassa-layout" style={{ height: "auto", flex: 1 }}>
+        {/* ════ CHAP: Barkod + Mahsulotlar ════ */}
+        <div className="kassa-left">
+          {/* Barkod maydoni — doim fokusda, monoshriftda (bu raqam) */}
+          <div className="bc-field" data-unfocused={bcWarn}>
+            <i className="fa-solid fa-barcode" aria-hidden="true" />
+            <label htmlFor="bc" className="ek-sr-only">Barkod skanerlash</label>
+            <input
+              id="bc"
+              ref={barcodeRef}
+              data-scanner="true"
+              inputMode="numeric"
+              autoComplete="off"
+              placeholder="Barkodni skanerlang yoki kiriting…"
+              onKeyDown={(e) => {
+                if (e.key !== "Enter") return;
+                e.preventDefault();
+                const code = e.currentTarget.value.trim();
+                e.currentTarget.value = "";       // skanerdan keyin maydon tozalanadi
+                if (code.length > 2) addByBarcode(code);
+              }}
+            />
+            <span className="kbd" title="Barkod maydoniga qaytish">Ctrl+B</span>
+          </div>
+
+          <div className="card" style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
+            <div style={{ padding: "11px 14px", borderBottom: "1px solid var(--border-subtle)", flexShrink: 0 }}>
               <div className="search-bar">
-                <i className="fa-solid fa-barcode" />
+                <i className="fa-solid fa-magnifying-glass" aria-hidden="true" />
                 <input
-                  data-scanner="true"
-                  placeholder="Mahsulot nomi yoki barkod skanerlang..."
+                  ref={searchRef}
+                  placeholder="Mahsulot nomi bo'yicha qidirish…"
                   value={search}
                   onChange={(e) => handleSearchChange(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && products.length === 1) {
-                      addToCart(products[0]);
-                    }
-                  }}
+                  onKeyDown={(e) => { if (e.key === "Enter" && products.length === 1) addToCart(products[0]); }}
                 />
+                <span className="kbd">/</span>
               </div>
             </div>
 
-            {/* Product grid */}
             <div className="product-grid" style={{ position: "relative" }}>
               {searching && (
-                <div style={{ position: "absolute", top: 8, right: 8, zIndex: 10, fontSize: 11, color: "var(--blue)", fontWeight: 700, display: "flex", alignItems: "center", gap: 5 }}>
-                  <i className="fa-solid fa-spinner fa-spin" /> Qidirilmoqda...
+                <div style={{ position: "absolute", top: 8, right: 8, zIndex: 10, fontSize: 11, color: "var(--fg-brand)", fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}>
+                  <span className="ek-spinner" /> Qidirilmoqda…
                 </div>
               )}
               {products.map((p) => (
-                <div className="product-card" key={p.id} onClick={() => addToCart(p)}>
+                <button type="button" className="product-card" key={p.id} onClick={() => addToCart(p)}>
                   <div className="product-name">{p.name}</div>
-                  <div className="product-barcode">{p.barcode || "—"}</div>
-                  <div className="product-price">{money(p.salePrice)}</div>
-                </div>
+                  <div className="product-barcode ek-num">{p.barcode || "—"}</div>
+                  <div className="product-price ek-num">{money(p.salePrice)}</div>
+                </button>
               ))}
-              {products.length === 0 && (
+              {products.length === 0 && !searching && (
                 <div style={{ gridColumn: "1/-1" }}>
                   <Empty icon="fa-magnifying-glass" text="Mahsulot topilmadi" />
                 </div>
@@ -278,46 +428,41 @@ export default function KassaPage({ toast, refreshLowStock }) {
           </div>
         </div>
 
-        {/* ════ O'NG: Savatcha + To'lov ════ */}
+        {/* ════ O'NG: Savat + To'lov ════ */}
         <div className="kassa-right">
-
-          {/* Savatcha */}
           <div className="card" style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
             <div className="card-header">
               <span className="card-title">
-                <i className="fa-solid fa-cart-shopping text-blue" />
-                Savatcha ({cart.length})
+                <i className="fa-solid fa-cart-shopping text-blue" aria-hidden="true" />
+                Savat (<span className="ek-num">{cart.length}</span>)
               </span>
               {cart.length > 0 && (
-                <button
-                  className="btn btn-sm"
-                  style={{ background: "var(--red-l)", color: "var(--red)", border: "none" }}
-                  onClick={clearCart}
-                >
-                  <i className="fa-solid fa-trash" /> Tozalash
+                <button className="btn btn-sm" style={{ background: "var(--bg-danger-subtle)", color: "var(--fg-danger)" }} onClick={clearCart}>
+                  <i className="fa-solid fa-trash" aria-hidden="true" /> Tozalash <span className="kbd">Esc</span>
                 </button>
               )}
             </div>
 
             <div className="cart-items">
               {cart.length === 0 ? (
-                <Empty icon="fa-cart-shopping" text="Mahsulot qo'shing" />
+                <Empty icon="fa-barcode" text="Barkodni skanerlang" />
               ) : (
                 cart.map((item) => (
-                  <div className="cart-item" key={item.id}>
+                  <div
+                    className={`cart-item ${item._added ? "ek-row-in" : ""} ${item._pulse ? "ek-pop" : ""}`}
+                    key={`${item.id}-${item._pulse || item._added || 0}`}
+                  >
                     <div className="cart-item-info">
                       <div className="cart-item-name">{item.name}</div>
-                      <div className="cart-item-price">{money(item.salePrice)}</div>
+                      <div className="cart-item-price ek-num">{money(item.salePrice)}</div>
                     </div>
-
                     <div className="qty-ctrl">
-                      <button className="qty-btn" onClick={() => updateQty(item.id, -1)}>−</button>
+                      <button className="qty-btn" aria-label="Kamaytirish" onClick={() => updateQty(item.id, -1)}>−</button>
                       <span className="qty-num">{item.qty}</span>
-                      <button className="qty-btn" onClick={() => updateQty(item.id, +1)}>+</button>
+                      <button className="qty-btn" aria-label="Ko'paytirish" onClick={() => updateQty(item.id, +1)}>+</button>
                     </div>
-
-                    <button className="btn-icon danger" onClick={() => removeFromCart(item.id)}>
-                      <i className="fa-solid fa-xmark" />
+                    <button className="btn-icon danger" aria-label={`${item.name} — o'chirish`} onClick={() => removeFromCart(item.id)}>
+                      <i className="fa-solid fa-xmark" aria-hidden="true" />
                     </button>
                   </div>
                 ))
@@ -325,9 +470,10 @@ export default function KassaPage({ toast, refreshLowStock }) {
             </div>
           </div>
 
-          {/* Mijoz tanlash */}
           <div className="card" style={{ padding: "10px 14px" }}>
+            <label htmlFor="cust" className="ek-sr-only">Mijoz</label>
             <select
+              id="cust"
               className="form-input"
               style={{ fontSize: 13 }}
               value={customer?.id || ""}
@@ -340,171 +486,219 @@ export default function KassaPage({ toast, refreshLowStock }) {
             </select>
           </div>
 
-          {/* Jami summa va To'lovga o'tish tugmasi */}
           <div className="total-card">
             <div className="total-row">
               <span>Mahsulotlar</span>
-              <span>{totalQty} dona</span>
+              <span className="ek-num">{totalQty} dona</span>
             </div>
             <div className="total-big">
               <span>JAMI</span>
-              <span className="mono">{money(total)}</span>
+              <span className="ek-num">{money(total)}</span>
             </div>
 
-            <button
-              className="btn btn-green btn-full"
-              style={{ marginTop: 14 }}
-              onClick={openPayModal}
-              disabled={!cart.length}
-            >
-              <i className="fa-solid fa-wallet" />
-              To'lovga o'tish
+            <button className="btn btn-green btn-full btn-pos" style={{ marginTop: 14 }} onClick={openPayModal} disabled={!cart.length}>
+              <i className="fa-solid fa-wallet" aria-hidden="true" />
+              To'lovga o'tish <span className="kbd">F9</span>
             </button>
           </div>
         </div>
       </div>
 
+      {/* ════ Bekor qilish (undo) ════ */}
+      {undo && (
+        <div className="ek-undo ek-toast-in" role="status" aria-live="polite">
+          <span>{undo.item.name} o'chirildi</span>
+          <button onClick={restoreUndo}>Qaytarish</button>
+        </div>
+      )}
+
       {/* ════ TO'LOV MODALI ════ */}
       {showPayModal && (
-        <div className="pay-modal-overlay">
-          <div className="pay-modal-box">
-            {/* Modal header */}
+        <div className="pay-modal-overlay ek-overlay" role="dialog" aria-modal="true" aria-label="To'lov qilish">
+          <div className="pay-modal-box ek-dialog">
             <div className="pay-modal-header">
               <div className="pay-modal-title">
-                <i className="fa-solid fa-cash-register" />
+                <i className="fa-solid fa-cash-register" aria-hidden="true" />
                 To'lov qilish
               </div>
-              <button className="pay-modal-close" onClick={closePayModal}>
-                <i className="fa-solid fa-xmark" />
+              <button className="pay-modal-close" onClick={closePayModal} aria-label="Yopish">
+                <i className="fa-solid fa-xmark" aria-hidden="true" />
               </button>
             </div>
 
-            {/* Modal body */}
             <div className="pay-modal-body">
-
-              {/* Jami summa ko'rsatish */}
               <div className="pay-modal-total">
                 <div className="pay-modal-total-label">Umumiy summa</div>
-                <div className="pay-modal-total-value">{money(total)}</div>
-                <div className="pay-modal-total-qty">{totalQty} ta mahsulot · {cart.length} xil</div>
+                <div className="pay-modal-total-value ek-num">{money(total)}</div>
+                <div className="pay-modal-total-qty">
+                  <span className="ek-num">{totalQty}</span> ta mahsulot · <span className="ek-num">{cart.length}</span> xil
+                </div>
               </div>
 
-              {/* To'lov turlari */}
               <div className="pay-modal-section-label">
-                <i className="fa-solid fa-credit-card" /> To'lov turini tanlang
+                <i className="fa-solid fa-credit-card" aria-hidden="true" /> To'lov turini tanlang
               </div>
               <div className="pay-modal-types">
                 {[
-                  { key: "CASH",  label: "Naqd",    icon: "fa-money-bill-1", color: "#16a34a" },
-                  { key: "CARD",  label: "Karta",   icon: "fa-credit-card",  color: "#2563eb" },
-                  { key: "CLICK", label: "Click",   icon: "fa-mobile-screen", color: "#7c3aed" },
-                  { key: "PAYME", label: "Payme",   icon: "fa-mobile-screen-button", color: "#06b6d4" },
-                  { key: "MIXED", label: "Aralash",  icon: "fa-shuffle",      color: "#ea580c" },
-                ].map(({ key, label, icon, color }) => (
+                  { key: "CASH",  label: "Naqd",    icon: "fa-money-bill-1",          color: "var(--ek-green-600)", kbd: "F1" },
+                  { key: "CARD",  label: "Karta",   icon: "fa-credit-card",           color: "var(--ek-blue-600)",  kbd: "F2" },
+                  { key: "CLICK", label: "Click",   icon: "fa-mobile-screen",         color: "var(--ek-violet-500)" },
+                  { key: "PAYME", label: "Payme",   icon: "fa-mobile-screen-button",  color: "var(--ek-cyan-500)" },
+                  { key: "MIXED", label: "Aralash", icon: "fa-shuffle",               color: "var(--ek-amber-500)", kbd: "F3" },
+                ].map(({ key, label, icon, color, kbd }) => (
                   <button
                     key={key}
                     className={`pay-type-btn ${payType === key ? "active" : ""}`}
                     onClick={() => handlePayTypeChange(key)}
+                    aria-pressed={payType === key}
                     style={{ "--pay-color": color }}
                   >
-                    <div className="pay-type-icon">
-                      <i className={`fa-solid ${icon}`} />
-                    </div>
+                    <div className="pay-type-icon"><i className={`fa-solid ${icon}`} aria-hidden="true" /></div>
                     <div className="pay-type-label">{label}</div>
+                    {kbd && <span className="kbd">{kbd}</span>}
                   </button>
                 ))}
               </div>
 
-              {/* MIXED: ikkinchi to'lov turini tanlash + miqdorlar */}
+              {/* ── NAQD: olingan summa → qaytim avtomatik ── */}
+              {payType === "CASH" && (
+                <div style={{ marginTop: 18 }}>
+                  <label className="form-label" htmlFor="given">Olingan summa</label>
+                  <input
+                    id="given"
+                    type="number" min="0" inputMode="numeric"
+                    className="form-input pay-mixed-input"
+                    value={cashGiven}
+                    autoFocus
+                    onChange={(e) => setCashGiven(e.target.value)}
+                    placeholder={String(total)}
+                  />
+                  <div className="ek-quick-cash">
+                    {[50000, 100000, 200000].map((v) => (
+                      <button key={v} type="button" onClick={() => setCashGiven(String(v))}>
+                        {v.toLocaleString("uz-UZ")}
+                      </button>
+                    ))}
+                    <button type="button" onClick={() => setCashGiven(String(total))}>Aniq summa</button>
+                  </div>
+                  {Number(cashGiven) > 0 && (
+                    <div className="ek-change">
+                      <span className="ek-change__label">Qaytim</span>
+                      <span className="ek-change__value">{money(change)}</span>
+                    </div>
+                  )}
+                  {!cashOk && (
+                    <div className="pay-mixed-warn ek-shake">
+                      <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" /> Olingan summa jamidan kam
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ── KARTA: terminal tasdig'ini kutish ── */}
+              {payType === "CARD" && (
+                <div style={{ marginTop: 18, display: "flex", alignItems: "center", gap: 12, padding: "14px 18px", background: "var(--bg-brand-subtle)", border: "1px solid var(--border-brand)", borderRadius: "var(--r-lg)", color: "var(--fg-brand)", fontWeight: 600, fontSize: 13 }}>
+                  <span className="ek-spinner" aria-hidden="true" />
+                  Terminal tasdig'ini kuting, so'ng "Sotish va Chek" ni bosing
+                </div>
+              )}
+
+              {/* ── ARALASH ── */}
               {payType === "MIXED" && (
                 <div className="pay-mixed-section">
-                  {/* Ikkinchi to'lov turini tanlash */}
-                  <div className="pay-mixed-label" style={{ color: "var(--text2)", marginBottom: 10 }}>
-                    <i className="fa-solid fa-shuffle" /> Naqd + qolgan qismi:
+                  <div className="pay-mixed-label" style={{ color: "var(--fg-secondary)", marginBottom: 10 }}>
+                    <i className="fa-solid fa-shuffle" aria-hidden="true" /> Naqd + qolgan qismi:
                   </div>
                   <div className="pay-mixed-second-types">
                     {[
-                      { key: "CARD",  label: "Karta",  icon: "fa-credit-card",          color: "#2563eb" },
-                      { key: "CLICK", label: "Click",  icon: "fa-mobile-screen",        color: "#7c3aed" },
-                      { key: "PAYME", label: "Payme",  icon: "fa-mobile-screen-button", color: "#06b6d4" },
+                      { key: "CARD",  label: "Karta",  icon: "fa-credit-card",          color: "var(--ek-blue-600)" },
+                      { key: "CLICK", label: "Click",  icon: "fa-mobile-screen",        color: "var(--ek-violet-500)" },
+                      { key: "PAYME", label: "Payme",  icon: "fa-mobile-screen-button", color: "var(--ek-cyan-500)" },
                     ].map(({ key, label, icon, color }) => (
                       <button
                         key={key}
                         className={`pay-mixed-second-btn ${mixedSecondType === key ? "active" : ""}`}
-                        onClick={() => handleMixedSecondChange(key)}
+                        onClick={() => setMixedSecondType(key)}
+                        aria-pressed={mixedSecondType === key}
                         style={{ "--pay-color": color }}
                       >
-                        <i className={`fa-solid ${icon}`} />
-                        {label}
+                        <i className={`fa-solid ${icon}`} aria-hidden="true" />{label}
                       </button>
                     ))}
                   </div>
 
-                  {/* Miqdor inputlari */}
                   <div className="pay-mixed-row" style={{ marginTop: 14 }}>
                     <div className="pay-mixed-field">
-                      <label className="pay-mixed-label" style={{ color: "#15803d" }}>
-                        <i className="fa-solid fa-money-bill-1" /> Naqd (so'm)
+                      <label className="pay-mixed-label" htmlFor="mx-cash" style={{ color: "var(--fg-success)" }}>
+                        <i className="fa-solid fa-money-bill-1" aria-hidden="true" /> Naqd (so'm)
                       </label>
                       <input
-                        type="number" min="0"
+                        id="mx-cash" type="number" min="0" inputMode="numeric"
                         className="form-input pay-mixed-input"
-                        style={{ borderColor: "#86efac", color: "#15803d" }}
+                        style={{ borderColor: "var(--border-success)", color: "var(--fg-success)" }}
                         value={cashAmount}
                         onChange={(e) => {
                           setCashAmount(e.target.value);
-                          const v = Number(e.target.value) || 0;
-                          setCardAmount(String(Math.max(0, total - v)));
+                          setCardAmount(String(Math.max(0, total - (Number(e.target.value) || 0))));
                         }}
                       />
                     </div>
                     <div className="pay-mixed-field">
-                      <label className="pay-mixed-label" style={{ color: mixedSecondType === "CARD" ? "#1d4ed8" : mixedSecondType === "CLICK" ? "#7c3aed" : "#06b6d4" }}>
-                        <i className={`fa-solid ${mixedSecondType === "CARD" ? "fa-credit-card" : mixedSecondType === "CLICK" ? "fa-mobile-screen" : "fa-mobile-screen-button"}`} />
+                      <label className="pay-mixed-label" htmlFor="mx-card" style={{ color: "var(--fg-brand)" }}>
+                        <i className="fa-solid fa-credit-card" aria-hidden="true" />
                         {mixedSecondType === "CARD" ? "Karta" : mixedSecondType === "CLICK" ? "Click" : "Payme"} (so'm)
                       </label>
                       <input
-                        type="number" min="0"
+                        id="mx-card" type="number" min="0" inputMode="numeric"
                         className="form-input pay-mixed-input"
-                        style={{ borderColor: mixedSecondType === "CARD" ? "#93c5fd" : mixedSecondType === "CLICK" ? "#c4b5fd" : "#a5f3fc", color: mixedSecondType === "CARD" ? "#1d4ed8" : mixedSecondType === "CLICK" ? "#7c3aed" : "#06b6d4" }}
+                        style={{ borderColor: "var(--border-brand)", color: "var(--fg-brand)" }}
                         value={cardAmount}
                         onChange={(e) => {
                           setCardAmount(e.target.value);
-                          const v = Number(e.target.value) || 0;
-                          setCashAmount(String(Math.max(0, total - v)));
+                          setCashAmount(String(Math.max(0, total - (Number(e.target.value) || 0))));
                         }}
                       />
                     </div>
                   </div>
-                  {(Number(cashAmount) || 0) + (Number(cardAmount) || 0) !== total && total > 0 && (
+                  {!mixedOk && total > 0 && (
                     <div className="pay-mixed-warn">
-                      <i className="fa-solid fa-triangle-exclamation" /> Yig'indi: {((Number(cashAmount) || 0) + (Number(cardAmount) || 0)).toLocaleString()} — Jami: {total.toLocaleString()}
+                      <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />{" "}
+                      Yig'indi <span className="ek-num">{mixedSum.toLocaleString("uz-UZ")}</span> —
+                      jami <span className="ek-num">{total.toLocaleString("uz-UZ")}</span> bilan teng bo'lishi kerak
                     </div>
                   )}
                 </div>
               )}
             </div>
 
-            {/* Modal footer */}
             <div className="pay-modal-footer">
-              <button
-                className="btn btn-outline"
-                onClick={closePayModal}
-                disabled={processing}
-              >
-                <i className="fa-solid fa-arrow-left" /> Orqaga
+              <button className="btn btn-outline" onClick={closePayModal} disabled={processing}>
+                <i className="fa-solid fa-arrow-left" aria-hidden="true" /> Orqaga
               </button>
+              {/* Yuklanayotganda kenglik o'zgarmaydi — matn o'rnini spinner egallaydi */}
               <button
-                className="btn btn-green pay-modal-submit"
+                className="btn btn-green btn-pos pay-modal-submit"
                 onClick={handleSubmit}
-                disabled={!cart.length || processing}
+                disabled={!canSubmit}
+                data-loading={processing || undefined}
               >
-                <i className={`fa-solid ${processing ? "fa-spinner fa-spin" : "fa-receipt"}`} />
-                {processing ? "Bajarilmoqda..." : "Sotish va Chek"}
+                {processing
+                  ? <><span className="ek-spinner" aria-hidden="true" /> Bajarilmoqda…</>
+                  : <><i className="fa-solid fa-receipt" aria-hidden="true" /> Sotish va Chek <span className="kbd">F9</span></>}
               </button>
             </div>
           </div>
         </div>
+      )}
+
+      {/* ════ YAKUNLASH: chek chiqmoqda → ✓ ════ */}
+      {finish && (
+        <FinishOverlay
+          phase={finish.phase}
+          total={finish.total}
+          receiptNo={finish.receiptNo}
+          onClose={finish.phase === "done" ? () => { setFinish(null); focusBarcode(); } : undefined}
+        />
       )}
     </div>
   );

@@ -1,43 +1,72 @@
-@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
+/* Dizayn tizimi — tartib muhim: avval tokenlar, keyin motion, keyin ilova.
+   Bu ikki fayl packages/ dan sync-tokens.ps1 orqali keladi, qo'lda tahrirlanmaydi. */
+@import url('./styles/ekassam-tokens.css');
+@import url('./styles/ek-motion.css');
+@import url('./styles/ek-components.css');
 @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css');
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
+/* ── ESKI O'ZGARUVCHILAR → SEMANTIK ALIASLAR ────────────────────────────────
+   Loyihada 50 KB dan ortiq ishlaydigan CSS bor. Uni bir zumda qayta yozish
+   o'rniga eski nomlar semantik aliaslarga bog'landi: bitta joyda o'zgartirish
+   butun ilovani yangi palitraga va qorong'i rejimga o'tkazadi.
+   YANGI kod eski nomlarni ISHLATMAYDI — to'g'ridan-to'g'ri semantik alias. */
 :root {
-  --blue:     #017dca;
-  --blue-d:   #01368d;
-  --blue-l:   rgba(1, 125, 202, 0.09);
-  --green:    #22c55e;
-  --green-d:  #16a34a;
-  --green-l:  #ecfdf5;
-  --red:      #ef4444;
-  --red-l:    #fef2f2;
-  --yellow:   #f59e0b;
-  --yellow-l: #fffbeb;
-  --purple-l: #fdf4ff;
-  --purple:   #9333ea;
-  --bg:       #f0f6fb;
-  --surface:  #ffffff;
-  --border:   #e2ecf5;
-  --text:     #0f172a;
-  --text2:    #475569;
-  --text3:    #94a3b8;
-  --radius:   12px;
+  --blue:     var(--bg-brand);
+  --blue-d:   var(--ek-blue-800);
+  --blue-l:   var(--bg-brand-subtle);
+  --green:    var(--ek-green-600);
+  --green-d:  var(--ek-green-700);
+  --green-l:  var(--bg-success-subtle);
+  --red:      var(--fg-danger);
+  --red-l:    var(--bg-danger-subtle);
+  --yellow:   var(--bg-warning);
+  --yellow-l: var(--bg-warning-subtle);
+  --purple:   var(--ek-violet-500);
+  --purple-l: rgba(124, 58, 237, .10);
+  --bg:       var(--bg-canvas);
+  --surface:  var(--bg-surface);
+  --border:   var(--border-subtle);
+  --text:     var(--fg-primary);
+  --text2:    var(--fg-secondary);
+  --text3:    var(--fg-tertiary);
+  --radius:   var(--r-lg);
   --sw:       248px;
   --sw-c:     70px;
   --sh:       62px;
-  --font:     'Nunito', sans-serif;
-  --mono:     'JetBrains Mono', monospace;
-  --sh1:      0 1px 4px rgba(1, 54, 141, 0.08);
-  --sh2:      0 4px 16px rgba(1, 54, 141, 0.11);
-  --sh3:      0 12px 32px rgba(1, 54, 141, 0.15);
+  --font:     var(--font-sans);
+  --mono:     var(--font-mono);
+  --sh1:      var(--sh-sm);
+  --sh2:      var(--sh-md);
+  --sh3:      var(--sh-lg);
 }
 
+/* Qorong'i rejimda yon menyu fonini alohida ushlaymiz: to'q ko'k → sirt rangi,
+   aks holda u qora fonda "suzib" ketadi. */
+[data-theme="dark"] { --blue-d: var(--bg-surface); }
+
 body {
-  font-family: var(--font);
-  background: var(--bg);
-  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: var(--fs-md);
+  background: var(--bg-canvas);
+  color: var(--fg-primary);
   -webkit-tap-highlight-color: transparent;
+  transition: background var(--dur-base) var(--ease-out),
+              color var(--dur-base) var(--ease-out);
+}
+
+h1, h2, h3, .page-title, .card-title, .modal-title {
+  font-family: var(--font-display);
+  letter-spacing: -.02em;
+}
+
+/* CLAUDE.md #2 — `.mono` eski nomi, `.ek-num` yangi. Ikkalasi bir xil ishlaydi:
+   tabular-nums bo'lmasa raqam o'zgarganda ustun kengligi sakraydi. */
+.mono, .ek-num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.01em;
 }
 
 /* ── LAYOUT ── */
@@ -49,7 +78,7 @@ body {
 /* ── TOPBAR ── */
 .topbar {
   height: var(--sh);
-  background: white;
+  background: var(--bg-surface);
   border-bottom: 1px solid var(--border);
   display: flex; align-items: center; gap: 14px;
   padding: 0 22px;
@@ -76,7 +105,7 @@ body {
 .sidebar.collapsed .sb-logo { padding: 10px 10px; }
 .sb-logo         { padding: 10px 16px; border-bottom: 1px solid rgba(255,255,255,.08); }
 /* Logo uchun oq fon — to'q ko'k sidebar da ko'rinsin */
-.sb-logo-inner   { background: white; border-radius: 12px; padding: 8px 12px; display: flex; align-items: center; justify-content: center; min-height: 48px; }
+.sb-logo-inner   { background: #FFFFFF; border-radius: 12px; padding: 8px 12px; display: flex; align-items: center; justify-content: center; min-height: 48px; }
 .sb-logo img     { width: 126px; object-fit: contain; display: block; }
 .sb-sub          { font-size: 11px; color: rgba(255,255,255,.35); font-weight: 600; margin-top: 6px; padding-left: 2px; }
 .sb-nav          { flex: 1; padding: 10px; overflow-y: auto; }
@@ -89,8 +118,8 @@ body {
   cursor: pointer; transition: .2s; margin-bottom: 2px;
   text-decoration: none !important;
 }
-.sb-item:hover   { background: rgba(255,255,255,.09); color: white; }
-.sb-item.active  { background: var(--blue); color: white; box-shadow: 0 4px 12px rgba(1,125,202,.4); }
+.sb-item:hover   { background: rgba(255,255,255,.09); color: var(--fg-on-brand); }
+.sb-item.active  { background: var(--blue); color: var(--fg-on-brand); box-shadow: var(--sh-brand); }
 .sb-item i       { width: 18px; text-align: center; font-size: 14px; flex-shrink: 0; }
 .sb-label        { white-space: nowrap; transition: opacity .2s; }
 .sidebar.collapsed .sb-label,
@@ -103,9 +132,9 @@ body {
 .sb-toggle {
   position: absolute; top: 72px; right: -12px;
   width: 24px; height: 24px; border-radius: 50%;
-  background: var(--blue); color: white;
+  background: var(--blue); color: var(--fg-on-brand);
   display: flex; align-items: center; justify-content: center;
-  border: 2px solid white; cursor: pointer; z-index: 210;
+  border: 2px solid var(--bg-canvas); cursor: pointer; z-index: 210;
   box-shadow: var(--sh1); font-size: 10px; transition: .2s;
 }
 .sb-toggle:hover { transform: scale(1.1); background: var(--blue-d); }
@@ -119,20 +148,20 @@ body {
 }
 .sb-user:hover   { background: rgba(255,255,255,.09); }
 .sb-user-info    { flex: 1; overflow: hidden; }
-.sb-user-name    { font-size: 13px; font-weight: 700; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sb-user-name    { font-size: 13px; font-weight: 700; color: var(--fg-on-brand); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sb-user-role    { font-size: 11px; color: rgba(255,255,255,.38); }
 
 /* ── AVATAR ── */
 .avatar, .av {
   width: 34px; height: 34px; border-radius: 10px;
-  background: linear-gradient(135deg, #f59e0b, #ef4444);
+  background: linear-gradient(135deg, var(--ek-amber-500), var(--ek-red-500));
   display: flex; align-items: center; justify-content: center;
-  font-size: 13px; font-weight: 900; color: white; flex-shrink: 0;
+  font-size: 13px; font-weight: 900; color: var(--fg-on-brand); flex-shrink: 0;
   box-shadow: 0 2px 8px rgba(245,158,11,.45);
 }
 
 /* ── CARDS ── */
-.card            { background: white; border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--sh1); }
+.card            { background: var(--bg-surface); border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--sh1); }
 .card-header     { padding: 13px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .card-title      { font-size: 14px; font-weight: 800; }
 .card-title i    { margin-right: 7px; }
@@ -141,7 +170,7 @@ body {
 /* ── STAT CARDS ── */
 .stats-grid      { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; margin-bottom: 18px; }
 .stat-card {
-  background: white; border-radius: var(--radius);
+  background: var(--bg-surface); border-radius: var(--radius);
   border: 1px solid var(--border);
   padding: 18px; display: flex; align-items: flex-start; gap: 14px;
   box-shadow: var(--sh1); transition: .2s;
@@ -155,39 +184,63 @@ body {
 /* ── TABLE ── */
 .table-wrap      { overflow-x: auto; }
 table            { width: 100%; border-collapse: collapse; }
-th               { padding: 9px 14px; text-align: left; font-size: 11px; font-weight: 800; color: var(--text2); text-transform: uppercase; letter-spacing: .5px; background: #f8fafc; border-bottom: 1px solid var(--border); }
+th               { padding: 9px 14px; text-align: left; font-size: 11px; font-weight: 800; color: var(--text2); text-transform: uppercase; letter-spacing: .5px; background: var(--bg-sunken); border-bottom: 1px solid var(--border); }
 td               { padding: 11px 14px; font-size: 13px; color: var(--text); border-bottom: 1px solid var(--border); }
 tr:last-child td { border-bottom: none; }
-tbody tr:hover td { background: #fafcff; }
+tbody tr:hover td { background: var(--bg-sunken); }
 
 /* ── BADGES ── */
 .badge           { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
 .badge-blue      { background: var(--blue-l); color: var(--blue-d); }
 .badge-green     { background: var(--green-l); color: var(--green-d); }
 .badge-red       { background: var(--red-l); color: var(--red); }
-.badge-yellow    { background: var(--yellow-l); color: #92400e; }
+.badge-yellow    { background: var(--yellow-l); color: var(--fg-warning); }
 
-/* ── BUTTONS ── */
+/* ── BUTTONS ──
+   O'lchamlar CLAUDE.md #3 dan: minimal 44px. Sichqoncha bilan ishlanadigan
+   zich jadvallarda 36–40px, teginish qurilmasida esa hammasi 44px ga ko'tariladi
+   (pastdagi `pointer: coarse` bloki). Kassir ekranida 56px — .btn-pos. */
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  min-height: var(--hit-md);
   padding: 10px 20px; border-radius: 10px;
   font-size: 13px; font-weight: 700; font-family: var(--font);
-  cursor: pointer; border: none; transition: .2s; text-decoration: none;
+  cursor: pointer; border: none; text-decoration: none;
+  transition: background var(--dur-fast) var(--ease-out),
+              border-color var(--dur-fast) var(--ease-out),
+              color var(--dur-fast) var(--ease-out),
+              box-shadow var(--dur-fast) var(--ease-out),
+              transform var(--dur-instant) var(--ease-out);
 }
+/* 03-MOTION.md — tugma bosildi: scale(.97), 90ms */
+.btn:active:not(:disabled) { transform: scale(.97); }
 .btn:disabled    { opacity: .55; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
-.btn-primary     { background: linear-gradient(135deg, var(--blue), var(--blue-d)); color: white; }
-.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(1,125,202,.4); }
-.btn-green       { background: linear-gradient(135deg, var(--green), var(--green-d)); color: white; }
-.btn-green:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(34,197,94,.4); }
+
+/* `loading` holatida kenglik o'zgarmasligi shart (02-DESIGN-SYSTEM.md) —
+   shuning uchun matn o'rnini spinner egallaydi, tugma o'lchami saqlanadi. */
+.btn[data-loading="true"] { pointer-events: none; }
+.btn-primary     { background: linear-gradient(135deg, var(--blue), var(--blue-d)); color: var(--fg-on-brand); }
+.btn-primary:hover { transform: translateY(-1px); box-shadow: var(--sh-brand); }
+.btn-green       { background: linear-gradient(135deg, var(--green), var(--green-d)); color: var(--fg-on-brand); }
+.btn-green:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(31,174,76,.34); }
 .btn-outline     { background: transparent; border: 1.5px solid var(--border); color: var(--text2); }
 .btn-outline:hover { border-color: var(--blue); color: var(--blue); background: var(--blue-l); }
-.btn-danger      { background: var(--red); color: white; }
-.btn-danger:hover { background: #dc2626; }
-.btn-sm          { padding: 7px 13px; font-size: 12px; border-radius: 8px; }
+.btn-danger      { background: var(--red); color: var(--fg-on-brand); }
+.btn-danger:hover { background: var(--ek-red-700); }
+.btn-sm          { min-height: 36px; padding: 7px 13px; font-size: 12px; border-radius: 8px; }
 .btn-full        { width: 100%; padding: 13px; font-size: 15px; }
-.btn-icon        { width: 32px; height: 32px; padding: 0; border-radius: 8px; background: var(--bg); border: 1.5px solid var(--border); color: var(--text2); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: .2s; font-size: 13px; }
+/* Kassir ekrani uchun — 06-APP-KASSIR.md: to'lov tugmalari 56px */
+.btn-pos         { min-height: var(--hit-pos); font-size: 15px; border-radius: var(--r-lg); }
+.btn-icon        { width: 36px; height: 36px; padding: 0; border-radius: 8px; background: var(--bg); border: 1.5px solid var(--border); color: var(--text2); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), transform var(--dur-instant) var(--ease-out); font-size: 13px; }
 .btn-icon:hover  { background: var(--border); }
-.btn-icon.danger:hover { background: var(--red-l); color: var(--red); border-color: #fca5a5; }
+.btn-icon:active { transform: scale(.94); }
+.btn-icon.danger:hover { background: var(--red-l); color: var(--red); border-color: var(--border-danger); }
+
+/* Teginish qurilmasi — barmoq uchun hech narsa 44px dan kichik bo'lmaydi */
+@media (pointer: coarse) {
+  .btn, .btn-sm { min-height: var(--hit-min); }
+  .btn-icon, .qty-btn { width: var(--hit-min); height: var(--hit-min); }
+}
 
 /* ── FORM ── */
 .form-group      { margin-bottom: 14px; }
@@ -196,24 +249,24 @@ tbody tr:hover td { background: #fafcff; }
   width: 100%; padding: 11px 14px;
   border: 1.5px solid var(--border); border-radius: 10px;
   font-size: 14px; font-family: var(--font); color: var(--text);
-  background: #f8fafc; outline: none; transition: .2s;
+  background: var(--bg-sunken); outline: none; transition: .2s;
 }
-.form-input:focus { border-color: var(--blue); background: white; box-shadow: 0 0 0 3px rgba(1,125,202,.1); }
+.form-input:focus { border-color: var(--blue); background: var(--bg-surface); box-shadow: var(--ring-brand); }
 select.form-input { cursor: pointer; }
 
 /* ── SEARCH BAR ── */
 .search-bar {
   display: flex; align-items: center; gap: 8px;
-  background: #f8fafc; border: 1.5px solid var(--border);
+  background: var(--bg-sunken); border: 1.5px solid var(--border);
   border-radius: 10px; padding: 8px 12px; transition: .2s;
 }
-.search-bar:focus-within { border-color: var(--blue); background: white; box-shadow: 0 0 0 3px rgba(1,125,202,.1); }
+.search-bar:focus-within { border-color: var(--blue); background: var(--bg-surface); box-shadow: var(--ring-brand); }
 .search-bar input { border: none; background: none; outline: none; font-size: 13px; font-family: var(--font); color: var(--text); flex: 1; min-width: 0; }
 .search-bar i    { color: var(--text3); font-size: 14px; }
 
 /* ── MODAL ── */
-.modal-overlay   { position: fixed; inset: 0; background: rgba(1,54,141,.35); display: flex; align-items: center; justify-content: center; z-index: 500; padding: 20px; animation: fadeIn .2s ease; }
-.modal-box       { background: white; border-radius: 18px; width: 100%; max-width: 460px; max-height: 90vh; overflow-y: auto; box-shadow: var(--sh3); animation: slideUp .3s ease; }
+.modal-overlay   { position: fixed; inset: 0; background: var(--scrim); display: flex; align-items: center; justify-content: center; z-index: 500; padding: 20px; animation: fadeIn .2s ease; }
+.modal-box       { background: var(--bg-surface); border-radius: 18px; width: 100%; max-width: 460px; max-height: 90vh; overflow-y: auto; box-shadow: var(--sh3); animation: slideUp .3s ease; }
 .modal-header    { padding: 20px 22px 0; display: flex; align-items: center; justify-content: space-between; }
 .modal-title     { font-size: 16px; font-weight: 800; }
 .modal-body      { padding: 18px 22px; }
@@ -222,25 +275,25 @@ select.form-input { cursor: pointer; }
 /* ── TOAST ── */
 .toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
 .toast           { min-width: 260px; max-width: 340px; padding: 13px 18px; border-radius: 12px; font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 10px; box-shadow: var(--sh2); animation: slideIn .3s ease; pointer-events: all; }
-.toast-success   { background: var(--green-l); color: #15803d; border: 1.5px solid #86efac; }
-.toast-error     { background: var(--red-l); color: var(--red); border: 1.5px solid #fca5a5; }
-.toast-info      { background: var(--blue-l); color: var(--blue-d); border: 1.5px solid #93c5fd; }
+.toast-success   { background: var(--green-l); color: var(--fg-success); border: 1.5px solid var(--border-success); }
+.toast-error     { background: var(--red-l); color: var(--red); border: 1.5px solid var(--border-danger); }
+.toast-info      { background: var(--blue-l); color: var(--blue-d); border: 1.5px solid var(--border-brand); }
 
 /* ── LOGIN ── */
 .login-page {
   min-height: 100vh;
-  background: linear-gradient(145deg, var(--blue-d) 0%, var(--blue) 55%, #38bdf8 100%);
+  background: linear-gradient(145deg, var(--blue-d) 0%, var(--blue) 55%, var(--ek-blue-400) 100%);
   display: flex; align-items: center; justify-content: center;
   position: relative; overflow: hidden;
 }
 .login-page::before { content: ''; position: absolute; width: 500px; height: 500px; border-radius: 50%; background: rgba(255,255,255,0.05); top: -180px; right: -180px; }
 .login-page::after  { content: ''; position: absolute; width: 350px; height: 350px; border-radius: 50%; background: rgba(255,255,255,0.05); bottom: -130px; left: -130px; }
-.login-card  { background: white; border-radius: 22px; padding: 40px 38px; width: 100%; max-width: 420px; box-shadow: 0 28px 60px rgba(1,54,141,.28); position: relative; z-index: 1; animation: slideUp .4s ease; }
+.login-card  { background: var(--bg-surface); border-radius: 22px; padding: 40px 38px; width: 100%; max-width: 420px; box-shadow: 0 28px 60px rgba(1,54,141,.28); position: relative; z-index: 1; animation: slideUp .4s ease; }
 .login-logo  { text-align: center; margin-bottom: 26px; }
 .login-logo img { height: 64px; object-fit: contain; }
-.login-tabs  { display: flex; gap: 6px; margin-bottom: 20px; background: #f1f5f9; border-radius: 10px; padding: 4px; }
+.login-tabs  { display: flex; gap: 6px; margin-bottom: 20px; background: var(--bg-sunken); border-radius: 10px; padding: 4px; }
 .login-tab   { flex: 1; padding: 9px; border: none; border-radius: 8px; cursor: pointer; font-family: var(--font); font-weight: 700; font-size: 13px; transition: .2s; }
-.login-tab.active { background: white; color: var(--blue-d); box-shadow: var(--sh1); }
+.login-tab.active { background: var(--bg-surface); color: var(--blue-d); box-shadow: var(--sh1); }
 .login-tab:not(.active) { background: transparent; color: var(--text2); }
 .login-copy  { text-align: center; font-size: 11px; color: var(--text3); font-weight: 700; margin-top: 20px; letter-spacing: .5px; }
 
@@ -249,27 +302,33 @@ select.form-input { cursor: pointer; }
 .kassa-left      { display: flex; flex-direction: column; gap: 12px; overflow: hidden; }
 .kassa-right     { display: flex; flex-direction: column; gap: 11px; overflow: hidden; }
 .product-grid    { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 10px; overflow-y: auto; padding: 12px; }
-.product-card    { border: 1.5px solid var(--border); border-radius: 10px; padding: 12px; cursor: pointer; transition: .2s; background: white; }
+/* Kassir katakchasi — 06-APP-KASSIR.md: kassir ekranida hech narsa 56px dan past emas */
+.product-card    { min-height: var(--hit-pos); border: 1.5px solid var(--border); border-radius: 10px; padding: 12px; cursor: pointer; background: var(--bg-surface);
+                   transition: border-color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out), transform var(--dur-instant) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out); }
 .product-card:hover { border-color: var(--blue); background: var(--blue-l); transform: translateY(-2px); box-shadow: var(--sh1); }
+.product-card:active { transform: scale(.97); }
 .product-name    { font-size: 12.5px; font-weight: 700; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .product-barcode { font-size: 11px; color: var(--text3); font-family: var(--mono); margin-bottom: 6px; }
 .product-price   { font-size: 14px; font-weight: 900; color: var(--blue); font-family: var(--mono); }
 .cart-items      { flex: 1; overflow-y: auto; }
 .cart-item       { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--border); transition: .15s; }
-.cart-item:hover { background: #fafcff; }
+.cart-item:hover { background: var(--bg-sunken); }
 .cart-item-info  { flex: 1; min-width: 0; }
 .cart-item-name  { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cart-item-price { font-size: 12px; color: var(--text2); font-family: var(--mono); }
 .qty-ctrl        { display: flex; align-items: center; gap: 7px; }
-.qty-btn         { width: 26px; height: 26px; border-radius: 7px; border: 1.5px solid var(--border); background: white; font-size: 15px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: .2s; color: var(--text); line-height: 1; }
+/* 06-APP-KASSIR.md — miqdor tugmalari 40px */
+.qty-btn         { width: var(--hit-md); height: var(--hit-md); border-radius: 9px; border: 1.5px solid var(--border); background: var(--bg-surface); font-size: 17px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--text); line-height: 1;
+                   transition: border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), transform var(--dur-instant) var(--ease-out); }
 .qty-btn:hover   { border-color: var(--blue); color: var(--blue); }
-.qty-num         { font-size: 14px; font-weight: 800; min-width: 22px; text-align: center; }
-.total-card      { background: var(--blue-d); color: white; border-radius: var(--radius); padding: 18px; }
+.qty-btn:active  { transform: scale(.92); }
+.qty-num         { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 14px; font-weight: 700; min-width: 26px; text-align: center; }
+.total-card      { background: var(--blue-d); color: var(--fg-on-brand); border-radius: var(--radius); padding: 18px; }
 .total-row       { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: rgba(255,255,255,.6); margin-bottom: 6px; }
-.total-big       { font-size: 21px; font-weight: 900; color: white; display: flex; justify-content: space-between; padding-top: 12px; margin-top: 6px; border-top: 1px solid rgba(255,255,255,.12); }
+.total-big       { font-size: 21px; font-weight: 900; color: var(--fg-on-brand); display: flex; justify-content: space-between; padding-top: 12px; margin-top: 6px; border-top: 1px solid rgba(255,255,255,.12); }
 .payment-grid    { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
-.payment-btn        { padding: 11px; border-radius: 10px; border: 2px solid var(--border); background: white; font-size: 13px; font-weight: 700; cursor: pointer; transition: .2s; font-family: var(--font); color: var(--text); }
-.payment-btn.active { border-color: var(--blue); background: var(--blue); color: #ffffff; box-shadow: 0 4px 12px rgba(1,125,202,.35); }
+.payment-btn        { min-height: var(--hit-pos); padding: 11px; border-radius: var(--r-lg); border: 2px solid var(--border); background: var(--bg-surface); font-size: 14px; font-weight: 700; cursor: pointer; transition: .2s; font-family: var(--font); color: var(--text); }
+.payment-btn.active { border-color: var(--blue); background: var(--blue); color: var(--fg-on-brand); box-shadow: var(--sh-brand); }
 .payment-btn:hover  { border-color: var(--blue); background: var(--blue-l); }
 
 /* ── GRIDS ── */
@@ -330,7 +389,7 @@ select.form-input { cursor: pointer; }
 .pay-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(255, 255, 255, 0.65);
+  background: var(--scrim);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   display: flex;
@@ -342,7 +401,7 @@ select.form-input { cursor: pointer; }
 }
 
 .pay-modal-box {
-  background: white;
+  background: var(--bg-surface);
   border-radius: 22px;
   width: 100%;
   max-width: 720px;
@@ -351,7 +410,7 @@ select.form-input { cursor: pointer; }
   box-shadow:
     0 8px 40px rgba(1, 54, 141, 0.12),
     0 2px 12px rgba(1, 54, 141, 0.08);
-  border: 1px solid rgba(226, 236, 245, 0.8);
+  border: 1px solid var(--border-subtle);
   animation: payModalIn .35s cubic-bezier(.16,1,.3,1);
 }
 
@@ -399,7 +458,7 @@ select.form-input { cursor: pointer; }
 .pay-modal-close:hover {
   background: var(--red-l);
   color: var(--red);
-  border-color: #fca5a5;
+  border-color: var(--border-danger);
   transform: scale(1.05);
 }
 
@@ -452,7 +511,7 @@ select.form-input { cursor: pointer; }
 .pay-modal-total-value {
   font-size: 30px;
   font-weight: 900;
-  color: white;
+  color: var(--fg-on-brand);
   font-family: var(--mono);
   line-height: 1.2;
 }
@@ -498,7 +557,7 @@ select.form-input { cursor: pointer; }
   padding: 16px 10px 12px;
   border-radius: 14px;
   border: 2px solid var(--border);
-  background: white;
+  background: var(--bg-surface);
   cursor: pointer;
   transition: all .25s ease;
   font-family: var(--font);
@@ -524,17 +583,17 @@ select.form-input { cursor: pointer; }
 .pay-type-btn.active {
   border-color: var(--pay-color);
   background: var(--pay-color);
-  color: white;
+  color: var(--fg-on-brand);
   box-shadow: 0 4px 18px color-mix(in srgb, var(--pay-color) 40%, transparent);
 }
 
 .pay-type-btn.active .pay-type-icon {
   background: rgba(255,255,255,0.22);
-  color: white;
+  color: var(--fg-on-brand);
 }
 
 .pay-type-btn.active .pay-type-label {
-  color: white;
+  color: var(--fg-on-brand);
 }
 
 .pay-type-btn.active .pay-type-sub {
@@ -578,7 +637,7 @@ select.form-input { cursor: pointer; }
 .pay-mixed-section {
   margin-top: 16px;
   padding: 18px;
-  background: #f8fafc;
+  background: var(--bg-sunken);
   border-radius: 14px;
   border: 1.5px solid var(--border);
   animation: slideUp .3s ease;
@@ -599,7 +658,7 @@ select.form-input { cursor: pointer; }
   padding: 10px 14px;
   border-radius: 10px;
   border: 2px solid var(--border);
-  background: white;
+  background: var(--bg-surface);
   cursor: pointer;
   font-family: var(--font);
   font-size: 13px;
@@ -622,12 +681,12 @@ select.form-input { cursor: pointer; }
 .pay-mixed-second-btn.active {
   border-color: var(--pay-color);
   background: var(--pay-color);
-  color: white;
+  color: var(--fg-on-brand);
   box-shadow: 0 3px 12px color-mix(in srgb, var(--pay-color) 35%, transparent);
 }
 
 .pay-mixed-second-btn.active i {
-  color: white;
+  color: var(--fg-on-brand);
 }
 
 .pay-mixed-row {
@@ -670,7 +729,7 @@ select.form-input { cursor: pointer; }
   padding: 8px;
   background: var(--red-l);
   border-radius: 8px;
-  border: 1px solid #fca5a5;
+  border: 1px solid var(--border-danger);
 }
 
 /* ── Modal footer ── */
@@ -709,7 +768,7 @@ select.form-input { cursor: pointer; }
 
 .kassa-fs-topbar-btn:hover {
   background: var(--blue) !important;
-  color: white !important;
+  color: var(--fg-on-brand) !important;
   border-color: var(--blue) !important;
   transform: translateY(-1px);
   box-shadow: 0 3px 12px rgba(1, 125, 202, 0.25);
@@ -769,7 +828,7 @@ select.form-input { cursor: pointer; }
   background: rgba(1, 54, 141, 0.75);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  color: white;
+  color: var(--fg-on-brand);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -791,3 +850,137 @@ select.form-input { cursor: pointer; }
   from { opacity: 0; transform: scale(0.7) translateY(-10px); }
   to   { opacity: 1; transform: scale(1) translateY(0); }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   06-APP-KASSIR.md — KASSIR EKRANI KOMPONENTLARI
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Barkod maydoni — ekranning eng muhim detali ──────────────────────────
+   Doim fokusda turadi, monoshriftda yoziladi (bu raqam, matn emas). */
+.bc-field {
+  display: flex; align-items: center; gap: 10px;
+  min-height: var(--hit-pos);
+  padding: 0 14px;
+  background: var(--bg-surface);
+  border: 2px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  transition: border-color var(--dur-fast) var(--ease-out),
+              box-shadow var(--dur-fast) var(--ease-out);
+}
+.bc-field:focus-within { border-color: var(--border-brand); box-shadow: var(--ring-brand); }
+.bc-field > i { font-size: 18px; color: var(--fg-tertiary); flex-shrink: 0; }
+.bc-field input {
+  flex: 1; min-width: 0;
+  border: 0; background: none; outline: none;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 16px; font-weight: 500;
+  color: var(--fg-primary);
+}
+.bc-field input::placeholder { font-family: var(--font-sans); font-weight: 500; color: var(--fg-tertiary); }
+/* Fokus yo'qolganda ogohlantirish — kassir buni darhol ko'rishi kerak */
+.bc-field[data-unfocused="true"] { border-color: var(--border-warning); background: var(--bg-warning-subtle); }
+
+/* Klaviatura yorlig'i chipi — tugmada ko'rsatiladi, alohida o'rgatish kerak emas */
+.kbd {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 22px; height: 20px; padding: 0 5px;
+  border: 1px solid var(--border-strong); border-bottom-width: 2px;
+  border-radius: var(--r-sm);
+  background: var(--bg-sunken); color: var(--fg-secondary);
+  font-family: var(--font-mono); font-size: var(--fs-2xs); font-weight: 500;
+  line-height: 1;
+}
+.btn .kbd, .payment-btn .kbd { border-color: currentColor; background: transparent; color: inherit; opacity: .7; }
+
+/* ── Holat tasmasi (oflayn / sinxronizatsiya) ─────────────────────────────
+   Yashiringan holat bo'lmaydi — navbat doim ko'rinadi (01-ARCHITECTURE.md). */
+.ek-status-bar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 16px;
+  font-size: var(--fs-sm); font-weight: 600;
+  border-radius: var(--r-md);
+  cursor: pointer; border: 1px solid transparent; width: 100%;
+  font-family: var(--font-sans); text-align: left;
+}
+.ek-status-bar[data-tone="offline"] { background: var(--bg-warning-subtle); color: var(--fg-warning); border-color: var(--border-warning); }
+.ek-status-bar[data-tone="syncing"] { background: var(--bg-brand-subtle);   color: var(--fg-brand);   border-color: var(--border-brand); }
+.ek-status-bar[data-tone="synced"]  { background: var(--bg-success-subtle); color: var(--fg-success); border-color: var(--border-success); }
+.ek-status-bar__count { margin-left: auto; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+/* ── Navbat ro'yxati ─────────────────────────────────────────────────────── */
+.ek-queue-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 14px; border-bottom: 1px solid var(--border-subtle);
+  font-size: var(--fs-sm);
+}
+.ek-queue-row:last-child { border-bottom: 0; }
+.ek-queue-row__key { font-family: var(--font-mono); font-size: var(--fs-2xs); color: var(--fg-tertiary); }
+
+/* ── Sotuv yakunlash: chek chop etish holati ──────────────────────────────
+   Umumiy spinner o'rniga mahsulotning o'z tili (03-MOTION.md #2). */
+.ek-finish {
+  position: fixed; inset: 0; z-index: var(--z-modal);
+  display: grid; place-items: center;
+  background: var(--scrim);
+}
+.ek-finish__box {
+  background: var(--bg-surface); border-radius: var(--r-2xl);
+  padding: 34px 40px; min-width: 300px;
+  display: grid; justify-items: center; gap: 16px;
+  box-shadow: var(--sh-xl);
+}
+.ek-finish__title { font-family: var(--font-display); font-size: var(--fs-lg); font-weight: 700; }
+.ek-finish__sub   { font-size: var(--fs-sm); color: var(--fg-secondary); text-align: center; }
+.ek-finish__amount { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: var(--fs-3xl); font-weight: 700; color: var(--fg-success); }
+
+/* ── Qaytim — katta ko'rsatiladi (06-APP-KASSIR.md, "Naqd") ───────────────── */
+.ek-change {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  padding: 14px 18px; margin-top: 12px;
+  background: var(--bg-success-subtle); border: 1px solid var(--border-success);
+  border-radius: var(--r-lg);
+}
+.ek-change__label { font-size: var(--fs-sm); font-weight: 700; color: var(--fg-success); text-transform: uppercase; letter-spacing: .06em; }
+.ek-change__value { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: var(--fs-2xl); font-weight: 700; color: var(--fg-success); }
+
+/* Tez summa tugmalari: 50 000 / 100 000 / Aniq summa */
+.ek-quick-cash { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.ek-quick-cash button {
+  min-height: var(--hit-min); padding: 0 16px;
+  border: 1.5px solid var(--border-strong); border-radius: var(--r-md);
+  background: var(--bg-surface); color: var(--fg-primary);
+  font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+  font-size: var(--fs-md); font-weight: 500; cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease-out), transform var(--dur-instant) var(--ease-out);
+}
+.ek-quick-cash button:hover  { border-color: var(--border-brand); color: var(--fg-brand); }
+.ek-quick-cash button:active { transform: scale(.97); }
+
+/* ── Bekor qilish (undo) toasti ───────────────────────────────────────────
+   Satr o'chirilganda tasdiq SO'RALMAYDI — 5 soniyalik undo tezroq. */
+.ek-undo {
+  position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+  z-index: var(--z-toast);
+  display: flex; align-items: center; gap: 14px;
+  padding: 12px 16px;
+  background: var(--bg-inverse); color: var(--fg-on-inverse);
+  border-radius: var(--r-lg); box-shadow: var(--sh-lg);
+  font-size: var(--fs-sm);
+}
+.ek-undo button {
+  border: 0; background: none; cursor: pointer;
+  color: var(--ek-blue-200); font-weight: 700; font-size: var(--fs-sm);
+  font-family: var(--font-sans); padding: 4px 2px;
+}
+
+/* ── Smena tasmasi ────────────────────────────────────────────────────────── */
+.ek-shift {
+  display: flex; align-items: center; gap: 8px;
+  font-size: var(--fs-xs); font-weight: 600; color: var(--fg-secondary);
+}
+.ek-shift__dot { width: 8px; height: 8px; border-radius: 50%; background: var(--bg-success); flex-shrink: 0; }
+.ek-shift[data-open="false"] .ek-shift__dot { background: var(--fg-tertiary); }
+
+/* Jadval standarti, KPI va "E'tibor talab qiladi" uslublari
+   packages/ui/ek-components.css da — admin paneli bilan bir manba. */

@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { LOGO_URL, initials } from "../utils";
 import { useConfirm } from "../context/ConfirmProvider";
+import { getTheme, toggleTheme } from "../lib/ek-theme";
 
 const NAV_ITEMS = [
   { section: "Asosiy", items: [
@@ -48,30 +49,66 @@ const PAGE_TITLES = {
   "/branches":       { label:"Filiallar",        icon:"fa-store"         },
 };
 
+/** Qorong'i rejim almashtirgichi — 02-DESIGN-SYSTEM.md: yon menyuda, ko'rinadigan
+ *  joyda. Smena kechqurun boshlanadi va yorug' ekran charchatadi. */
+function ThemeToggle({ collapsed }) {
+  const [theme, setTheme] = useState(getTheme);
+  const dark = theme === "dark";
+  return (
+    <button
+      className="sb-item"
+      style={{ width: "100%", background: "none", border: 0, cursor: "pointer", fontFamily: "inherit" }}
+      onClick={() => setTheme(toggleTheme())}
+      title={collapsed ? (dark ? "Yorug' rejim" : "Qorong'i rejim") : ""}
+      aria-pressed={dark}
+    >
+      <i className={`fa-solid ${dark ? "fa-sun" : "fa-moon"}`} aria-hidden="true" />
+      <span className="sb-label">{dark ? "Yorug' rejim" : "Qorong'i rejim"}</span>
+    </button>
+  );
+}
+
 function LowStockBadge({ items, count, onGoInventory }) {
   const [open, setOpen] = useState(false);
+  const [pulse, setPulse] = useState(false);
+
+  // Kam qoldiq — yorliq BIR MARTA pulsatsiya qiladi. Miltillash yo'q (03-MOTION.md).
+  useEffect(() => {
+    if (!count) return;
+    setPulse(true);
+    const t = setTimeout(() => setPulse(false), 460);
+    return () => clearTimeout(t);
+  }, [count]);
+
   if (!count) return null;
   return (
     <div style={{ position: "relative" }}>
-      <button onClick={() => setOpen(v => !v)} style={{ display: "flex", alignItems: "center", gap: 6, background: "#fef3c7", border: "1.5px solid #f59e0b", borderRadius: 20, padding: "5px 12px 5px 9px", cursor: "pointer", fontFamily: "inherit" }}>
-        <i className="fa-solid fa-triangle-exclamation" style={{ color: "#d97706", fontSize: 13 }} />
-        <span style={{ fontSize: 12, fontWeight: 800, color: "#92400e" }}>{count} mahsulot kam</span>
+      <button
+        className={pulse ? "ek-pulse-once" : ""}
+        onClick={() => setOpen(v => !v)}
+        aria-expanded={open}
+        style={{ display: "flex", alignItems: "center", gap: 6, minHeight: 34, background: "var(--bg-warning-subtle)", border: "1.5px solid var(--border-warning)", borderRadius: 20, padding: "5px 12px 5px 9px", cursor: "pointer", fontFamily: "inherit" }}
+      >
+        <i className="fa-solid fa-triangle-exclamation" style={{ color: "var(--fg-warning)", fontSize: 13 }} aria-hidden="true" />
+        <span style={{ fontSize: 12, fontWeight: 700, color: "var(--fg-warning)" }}>
+          <span className="ek-num">{count}</span> mahsulot kam
+        </span>
       </button>
       {open && (
         <>
           <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 299 }} />
-          <div style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, background: "white", borderRadius: 14, minWidth: 300, boxShadow: "0 8px 32px rgba(0,0,0,.15)", border: "1.5px solid #fde68a", zIndex: 300 }}>
-            <div style={{ padding: "12px 16px", background: "#fffbeb", borderBottom: "1px solid #fde68a", fontWeight: 800, fontSize: 13, color: "#92400e" }}>Ombor ogohlantirishi</div>
+          <div className="ek-dialog" style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, background: "var(--bg-surface)", borderRadius: "var(--r-xl)", minWidth: 300, boxShadow: "var(--sh-lg)", border: "1px solid var(--border-warning)", zIndex: 300, overflow: "hidden" }}>
+            <div style={{ padding: "12px 16px", background: "var(--bg-warning-subtle)", borderBottom: "1px solid var(--border-warning)", fontWeight: 700, fontSize: 13, color: "var(--fg-warning)" }}>Ombor ogohlantirishi</div>
             <div style={{ maxHeight: 240, overflowY: "auto" }}>
               {items.map((item) => (
-                <div key={item.productId} style={{ display: "flex", justifyContent: "space-between", padding: "10px 16px", borderBottom: "1px solid #f1f5f9" }}>
-                  <span style={{ fontWeight: 700, fontSize: 13 }}>{item.productName}</span>
-                  <span style={{ fontWeight: 900, color: "#d97706" }}>{item.quantity} dona</span>
+                <div key={item.productId} style={{ display: "flex", justifyContent: "space-between", gap: 12, padding: "10px 16px", borderBottom: "1px solid var(--border-subtle)" }}>
+                  <span style={{ fontWeight: 600, fontSize: 13 }}>{item.productName}</span>
+                  <span className="ek-num" style={{ fontWeight: 700, color: "var(--fg-warning)" }}>{item.quantity} dona</span>
                 </div>
               ))}
             </div>
-            <div style={{ padding: "10px" }}>
-              <button onClick={() => { onGoInventory(); setOpen(false); }} style={{ width: "100%", padding: "8px", background: "#f59e0b", color: "white", border: "none", borderRadius: 8, fontWeight: 800, cursor: "pointer" }}>Omborga o'tish</button>
+            <div style={{ padding: 10 }}>
+              <button className="btn btn-full" onClick={() => { onGoInventory(); setOpen(false); }} style={{ background: "var(--bg-warning)", color: "var(--ek-ink-950)" }}>Omborga o'tish</button>
             </div>
           </div>
         </>
@@ -122,6 +159,7 @@ function Sidebar({ user, onLogout, open, onClose, isCollapsed, onToggleCollapse,
         })}
       </nav>
       <div className="sb-footer">
+        <ThemeToggle collapsed={isCollapsed} />
         <div className="sb-user" onClick={handleLogoutClick} title={isCollapsed ? "Tizimdan chiqish" : ""}>
           <div className="av" style={{ width: isCollapsed ? 28 : 34, height: isCollapsed ? 28 : 34 }}>{initials(user?.fullName || user?.username)}</div>
           <div className="sb-user-info">
@@ -189,7 +227,8 @@ export default function Layout({ user, onLogout, isAdmin, lowStockItems, lowStoc
           <LowStockBadge items={lowStockItems || []} count={lowStockCount || 0} onGoInventory={() => navigate("/inventory")} />
           <span className="topbar-date"><i className="fa-regular fa-clock" /> {new Date().toLocaleDateString("uz-UZ", { weekday:"short", year:"numeric", month:"short", day:"numeric" })}</span>
         </div>
-        <div className="page-content">
+        {/* Sahifa o'tishi — FAQAT opacity, 140ms. Siljish yo'q: POS'da chalg'itadi. */}
+        <div className="page-content ek-page-in" key={location.pathname}>
           {children}
         </div>
       </main>
