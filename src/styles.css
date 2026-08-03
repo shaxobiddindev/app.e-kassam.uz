@@ -42,9 +42,8 @@
   --sh3:      var(--sh-lg);
 }
 
-/* Qorong'i rejimda yon menyu fonini alohida ushlaymiz: to'q ko'k → sirt rangi,
-   aks holda u qora fonda "suzib" ketadi. */
-[data-theme="dark"] { --blue-d: var(--bg-surface); }
+/* Yon menyu endi `--bg-surface` dan foydalanadi, shuning uchun temaga qarab
+   alohida tuzatish kerak emas. `--blue-d` faqat eski qoidalarda qolgan. */
 
 body {
   font-family: var(--font-sans);
@@ -93,63 +92,90 @@ h1, h2, h3, .page-title, .card-title, .modal-title {
 .topbar-date     { font-size: 12px; color: var(--text2); font-weight: 600; }
 .topbar-date i   { margin-right: 5px; }
 
-/* ── SIDEBAR ── */
+/* ── SIDEBAR ──────────────────────────────────────────────────────────────
+   Yon menyu ilgari HAR IKKALA temada ham to'q ko'k edi: yorug' rejimda ekranning
+   chap chorak qismi qora bo'lib turardi. Endi u boshqa har qanday sirt kabi
+   temaga bo'ysunadi — quyidagi o'zgaruvchilar semantik aliaslardan olinadi,
+   shuning uchun ikkala rejimda ham o'z-o'zidan to'g'ri chiqadi.
+   `rgba(255,255,255,.x)` qiymatlari ataylab olib tashlandi: ular faqat qora
+   fonda ishlaydi. */
 .sidebar {
+  --sb-fg:        var(--fg-secondary);
+  --sb-fg-dim:    var(--fg-tertiary);
+  --sb-hover-bg:  var(--bg-sunken);
+  --sb-hover-fg:  var(--fg-primary);
+  --sb-border:    var(--border-subtle);
+  --sb-active-bg: var(--bg-brand);
+  --sb-active-fg: var(--fg-on-brand);
+  /* ThemeSelect yon menyuda shu qiymatlarni oladi */
+  --sb-hover:        var(--bg-sunken);
+  --sb-control-fg:   var(--fg-secondary);
+  --sb-control-border: var(--border-subtle);
+
   width: var(--current-sw);
-  background: var(--blue-d);
+  background: var(--bg-surface);
+  border-right: 1px solid var(--sb-border);
   position: fixed; top: 0; left: 0; bottom: 0;
   display: flex; flex-direction: column;
   z-index: 200; transition: transform .3s, width .3s;
 }
 .sidebar.collapsed { width: var(--sw-c); }
 .sidebar.collapsed .sb-logo { padding: 10px 10px; }
-.sb-logo         { padding: 10px 16px; border-bottom: 1px solid rgba(255,255,255,.08); }
-/* Logo uchun oq fon — to'q ko'k sidebar da ko'rinsin */
-.sb-logo-inner   { background: #FFFFFF; border-radius: 12px; padding: 8px 12px; display: flex; align-items: center; justify-content: center; min-height: 48px; }
-.sb-logo img     { width: 126px; object-fit: contain; display: block; }
-.sb-sub          { font-size: 11px; color: rgba(255,255,255,.35); font-weight: 600; margin-top: 6px; padding-left: 2px; }
+.sb-logo         { padding: 12px 16px; border-bottom: 1px solid var(--sb-border); }
+/* Logotip endi oq plastinka talab qilmaydi — yon menyu fonining o'zi to'g'ri */
+.sb-logo-inner   { display: flex; align-items: center; justify-content: center; min-height: 40px; }
+.sb-logo img     { max-width: 100%; height: 32px; width: auto; object-fit: contain; display: block; }
+.sidebar.collapsed .sb-logo img { height: 30px; width: 30px; }
+
+/* Logotip temaga qarab almashadi (so'z belgisi to'q siyoh rangida) */
+.logo--dark { display: none; }
+[data-theme="dark"] .logo--light { display: none; }
+[data-theme="dark"] .logo--dark  { display: block; }
+
+.sb-sub          { font-size: 11px; color: var(--sb-fg-dim); font-weight: 600; margin-top: 6px; padding-left: 2px; }
 .sb-nav          { flex: 1; padding: 10px; overflow-y: auto; }
-.sb-section      { font-size: 10px; font-weight: 800; color: rgba(255,255,255,.28); text-transform: uppercase; letter-spacing: 1.2px; padding: 12px 8px 5px; }
+.sb-section      { font-size: 10px; font-weight: 700; color: var(--sb-fg-dim); text-transform: uppercase; letter-spacing: 1.2px; padding: 12px 8px 5px; }
 .sb-item {
   display: flex; align-items: center; gap: 10px;
+  min-height: var(--hit-min);
   padding: 10px 12px; border-radius: 10px;
-  font-size: 13.5px; font-weight: 700;
-  color: rgba(255,255,255,.58);
-  cursor: pointer; transition: .2s; margin-bottom: 2px;
+  font-size: 13.5px; font-weight: 600;
+  color: var(--sb-fg);
+  cursor: pointer; margin-bottom: 2px;
   text-decoration: none !important;
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
 }
-.sb-item:hover   { background: rgba(255,255,255,.09); color: var(--fg-on-brand); }
-.sb-item.active  { background: var(--blue); color: var(--fg-on-brand); box-shadow: var(--sh-brand); }
+.sb-item:hover   { background: var(--sb-hover-bg); color: var(--sb-hover-fg); }
+.sb-item.active  { background: var(--sb-active-bg); color: var(--sb-active-fg); box-shadow: var(--sh-brand); }
 .sb-item i       { width: 18px; text-align: center; font-size: 14px; flex-shrink: 0; }
 .sb-label        { white-space: nowrap; transition: opacity .2s; }
 .sidebar.collapsed .sb-label,
 .sidebar.collapsed .sb-section,
 .sidebar.collapsed .sb-user-info { display: none; }
 .sidebar.collapsed .sb-item { justify-content: center; padding: 10px; }
-.sidebar.collapsed .sb-logo-inner { padding: 4px; border-radius: 8px; min-height: 40px; }
-.sidebar.collapsed .sb-logo img { width: 42px; height: 42px; object-fit: contain; }
 
 .sb-toggle {
   position: absolute; top: 72px; right: -12px;
   width: 24px; height: 24px; border-radius: 50%;
-  background: var(--blue); color: var(--fg-on-brand);
+  background: var(--bg-brand); color: var(--fg-on-brand);
   display: flex; align-items: center; justify-content: center;
   border: 2px solid var(--bg-canvas); cursor: pointer; z-index: 210;
   box-shadow: var(--sh1); font-size: 10px; transition: .2s;
 }
-.sb-toggle:hover { transform: scale(1.1); background: var(--blue-d); }
+.sb-toggle:hover { transform: scale(1.1); background: var(--bg-brand-hover); }
 .sidebar.collapsed .sb-toggle { right: -12px; }
 
-.sb-footer       { padding: 8px 10px; border-top: 1px solid rgba(255,255,255,.08); }
+.sb-footer       { padding: 8px 10px; border-top: 1px solid var(--sb-border); display: grid; gap: 4px; }
 .sb-user {
   display: flex; align-items: center; gap: 10px;
+  min-height: var(--hit-min);
   padding: 6px 12px; border-radius: 10px;
-  cursor: pointer; transition: .2s;
+  cursor: pointer; transition: background var(--dur-fast) var(--ease-out);
 }
-.sb-user:hover   { background: rgba(255,255,255,.09); }
+.sb-user:hover   { background: var(--sb-hover-bg); }
 .sb-user-info    { flex: 1; overflow: hidden; }
-.sb-user-name    { font-size: 13px; font-weight: 700; color: var(--fg-on-brand); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sb-user-role    { font-size: 11px; color: rgba(255,255,255,.38); }
+.sb-user-name    { font-size: 13px; font-weight: 600; color: var(--fg-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sb-user-role    { font-size: 11px; color: var(--sb-fg-dim); }
 
 /* ── AVATAR ── */
 .avatar, .av {
@@ -323,7 +349,7 @@ select.form-input { cursor: pointer; }
 .qty-btn:hover   { border-color: var(--blue); color: var(--blue); }
 .qty-btn:active  { transform: scale(.92); }
 .qty-num         { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 14px; font-weight: 700; min-width: 26px; text-align: center; }
-.total-card      { background: var(--blue-d); color: var(--fg-on-brand); border-radius: var(--radius); padding: 18px; }
+.total-card      { background: var(--bg-brand); color: var(--fg-on-brand); border-radius: var(--radius); padding: 18px; }
 .total-row       { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: rgba(255,255,255,.6); margin-bottom: 6px; }
 .total-big       { font-size: 21px; font-weight: 900; color: var(--fg-on-brand); display: flex; justify-content: space-between; padding-top: 12px; margin-top: 6px; border-top: 1px solid rgba(255,255,255,.12); }
 .payment-grid    { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }

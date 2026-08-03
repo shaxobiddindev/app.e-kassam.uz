@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
-import { LOGO_URL, MARK_URL, initials } from "../utils";
+import { LOGO_URL, LOGO_DARK_URL, MARK_URL, initials } from "../utils";
 import { useConfirm } from "../context/ConfirmProvider";
-import { getTheme, toggleTheme } from "../lib/ek-theme";
 import { roleLabel } from "../lib/ek-labels";
+import ThemeSelect from "./ek/ThemeSelect";
 
 const NAV_ITEMS = [
   { section: "Asosiy", items: [
@@ -44,25 +44,6 @@ const PAGE_TITLES = {
   "/shop-users":     { label:"Xodimlar",         icon:"fa-users-gear"    },
   "/branches":       { label:"Filiallar",        icon:"fa-store"         },
 };
-
-/** Qorong'i rejim almashtirgichi — 02-DESIGN-SYSTEM.md: yon menyuda, ko'rinadigan
- *  joyda. Smena kechqurun boshlanadi va yorug' ekran charchatadi. */
-function ThemeToggle({ collapsed }) {
-  const [theme, setTheme] = useState(getTheme);
-  const dark = theme === "dark";
-  return (
-    <button
-      className="sb-item"
-      style={{ width: "100%", background: "none", border: 0, cursor: "pointer", fontFamily: "inherit" }}
-      onClick={() => setTheme(toggleTheme())}
-      title={collapsed ? (dark ? "Yorug' rejim" : "Qorong'i rejim") : ""}
-      aria-pressed={dark}
-    >
-      <i className={`fa-solid ${dark ? "fa-sun" : "fa-moon"}`} aria-hidden="true" />
-      <span className="sb-label">{dark ? "Yorug' rejim" : "Qorong'i rejim"}</span>
-    </button>
-  );
-}
 
 function LowStockBadge({ items, count, onGoInventory }) {
   const [open, setOpen] = useState(false);
@@ -123,7 +104,17 @@ function Sidebar({ user, onLogout, open, onClose, isCollapsed, onToggleCollapse,
     <aside className={`sidebar ${open ? "open" : ""} ${isCollapsed ? "collapsed" : ""}`}>
       <div className="sb-logo">
         <div className="sb-logo-inner">
-          <img src={isCollapsed ? MARK_URL : LOGO_URL} alt="e-Kassam" />
+          {isCollapsed ? (
+            <img src={MARK_URL} alt="e-Kassam" />
+          ) : (
+            <>
+              {/* Ikkala variant ham turadi, CSS keraksizini yashiradi —
+                  lockup so'z belgisi to'q siyoh rangida va qorong'i fonda
+                  ko'rinmay qolardi. */}
+              <img className="logo--light" src={LOGO_URL} alt="e-Kassam" />
+              <img className="logo--dark" src={LOGO_DARK_URL} alt="" aria-hidden="true" />
+            </>
+          )}
         </div>
       </div>
       <button className="sb-toggle" onClick={onToggleCollapse}>
@@ -155,7 +146,7 @@ function Sidebar({ user, onLogout, open, onClose, isCollapsed, onToggleCollapse,
         })}
       </nav>
       <div className="sb-footer">
-        <ThemeToggle collapsed={isCollapsed} />
+        <ThemeSelect compact={isCollapsed} />
         <div className="sb-user" onClick={handleLogoutClick} title={isCollapsed ? "Tizimdan chiqish" : ""}>
           <div className="av" style={{ width: isCollapsed ? 28 : 34, height: isCollapsed ? 28 : 34 }}>{initials(user?.fullName || user?.username)}</div>
           <div className="sb-user-info">

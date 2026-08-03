@@ -77,3 +77,45 @@
 th { position: sticky; top: 0; z-index: 2; }
 tbody td { height: var(--hit-min); }
 td.num, th.num { text-align: right; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   TEMA TANLAGICHI
+   ══════════════════════════════════════════════════════════════════════════ */
+.ek-theme-select {
+  display: inline-flex; align-items: center; gap: 7px;
+  min-height: var(--hit-md); padding: 0 10px;
+  border: 1px solid var(--border-subtle); border-radius: var(--r-md);
+  background: var(--bg-surface); color: var(--fg-secondary);
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease-out);
+}
+.ek-theme-select:hover { border-color: var(--border-strong); }
+.ek-theme-select:focus-within { border-color: var(--border-brand); box-shadow: var(--focus-ring); }
+.ek-theme-select > i { font-size: 13px; flex-shrink: 0; }
+.ek-theme-select select {
+  border: 0; background: none; outline: none; cursor: pointer;
+  font-family: var(--font-sans); font-size: var(--fs-sm); font-weight: 500;
+  color: inherit; min-width: 0;
+}
+/* Yig'ilgan yon menyuda faqat ikonka ko'rinadi */
+.ek-theme-select.is-compact { padding: 0; width: var(--hit-md); justify-content: center; }
+.ek-theme-select.is-compact select {
+  position: absolute; opacity: 0; width: var(--hit-md); height: var(--hit-md); cursor: pointer;
+}
+
+/* Yon menyu ichida — u o'z fon va matn rangiga ega */
+.sb-foot .ek-theme-select,
+.sb-footer .ek-theme-select {
+  width: 100%;
+  background: var(--sb-control-bg, transparent);
+  border-color: var(--sb-control-border, transparent);
+  color: var(--sb-control-fg, inherit);
+}
+.sb-foot .ek-theme-select:hover,
+.sb-footer .ek-theme-select:hover { background: var(--sb-hover, rgba(255,255,255,.09)); }
+.sb-foot .ek-theme-select select,
+.sb-footer .ek-theme-select select { flex: 1; }
+/* Ochilgan ro'yxat OS chizadi — u har doim o'qiladigan bo'lishi uchun
+   variantlarga aniq rang beramiz (qorong'i menyuda oq matn qora ro'yxatda
+   ko'rinmay qolardi). */
+.ek-theme-select option { background: var(--bg-surface); color: var(--fg-primary); }
