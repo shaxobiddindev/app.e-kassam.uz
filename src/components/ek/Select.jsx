@@ -40,6 +40,7 @@ export default function Select({
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);   // klaviatura bilan yurilgan band
   const [drop, setDrop] = useState("down");
+  const [align, setAlign] = useState("left");
 
   const rootRef = useRef(null);
   const btnRef = useRef(null);
@@ -59,7 +60,10 @@ export default function Select({
 
     // Pastda joy yetmasa yuqoriga ochamiz — ro'yxat ekrandan chiqib ketmasin
     const r = btnRef.current?.getBoundingClientRect();
-    if (r) setDrop(window.innerHeight - r.bottom < 280 && r.top > 300 ? "up" : "down");
+    if (!r) return;
+    setDrop(window.innerHeight - r.bottom < 280 && r.top > 300 ? "up" : "down");
+    // Ro'yxat tugmadan kengroq bo'lishi mumkin — o'ng chetdan chiqib ketmasin
+    setAlign(window.innerWidth - r.left < 240 ? "right" : "left");
   }, [open, selectedIndex]);
 
   useEffect(() => {
@@ -136,7 +140,7 @@ export default function Select({
   ].filter(Boolean).join(" ");
 
   return (
-    <div className={cls} ref={rootRef} data-open={open || undefined} data-drop={drop}>
+    <div className={cls} ref={rootRef} data-open={open || undefined} data-drop={drop} data-align={align}>
       <button
         type="button"
         ref={btnRef}
