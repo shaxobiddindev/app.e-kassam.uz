@@ -1,234 +1,322 @@
 /* ==========================================================================
-   e-Kassam Design Tokens v1.0
-   MANBA FAYL — bu yerda tahrirlanadi, keyin `sync-tokens.ps1` bilan
-   barcha ilovalarga ko'chiriladi. Ilova ichidagi nusxani tahrirlamang.
-
-   Qoida (CLAUDE.md #1): komponent kodida FAQAT semantik alias ishlatiladi.
-   Xom qiymat (--ek-*) faqat shu faylda uchraydi.
-   Sabab: qorong'i rejim aliaslarni almashtiradi, xomni emas.
+   ⚠ 1–215 QATORLAR — BREND TO'PLAMIDAN O'ZGARISHSIZ OLINGAN.
+   Brend to'plami yangilanganda shu qism butunlay almashtiriladi, shuning
+   uchun bu yerga hech narsa qo'shilmaydi. Loyihaga kerak bo'lgan qo'shimcha
+   aliaslar fayl OXIRIDAGI "LOYIHA KENGAYTMASI" bo'limida.
    ========================================================================== */
 
-/* --- Shriftlar ------------------------------------------------------------ */
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+/* ==========================================================================
+   e-Kassam Design System — Tokens v1.0
+   Yagona manba (single source of truth): web, mobil va desktop uchun.
+   Import: @import url("ekassam-tokens.css");
+   ========================================================================== */
+
+/* --- 1. FONTLAR ----------------------------------------------------------
+   Manrope   → sarlavhalar, brend (Lotin + Kirill + Lotin Ext = oʻzbekcha OK)
+   Inter     → interfeys matni (eng zich maʼlumot uchun eng oʻqiluvchan)
+   JetBrains Mono → PUL, MIQDOR, BARKOD, CHEK, VAQT (tabular figures)
+   -------------------------------------------------------------------------- */
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
 
 :root {
-  /* ======================================================================
-     1. XOM QIYMATLAR (raw) — komponentda ISHLATILMAYDI
-     ====================================================================== */
+  /* ===== BRAND: E-Kassam Blue (asosiy) ===== */
+  --ek-blue-50:  #EAF2FE;
+  --ek-blue-100: #D3E4FD;
+  --ek-blue-200: #A9C9FA;
+  --ek-blue-300: #77A9F5;
+  --ek-blue-400: #4187EB;
+  --ek-blue-500: #1F6FE0;
+  --ek-blue-600: #1663D8;   /* BRAND PRIMARY — #1663D8 */
+  --ek-blue-700: #0F4EB3;
+  --ek-blue-800: #0E3F92;
+  --ek-blue-900: #103676;
+  --ek-blue-950: #0A2049;
 
-  /* Brend ko'ki */
-  --ek-blue-50:   #EAF2FE;
-  --ek-blue-100:  #D3E4FD;
-  --ek-blue-200:  #A9C9FA;
-  --ek-blue-400:  #4187EB;
-  --ek-blue-500:  #1F6FE0;
-  --ek-blue-600:  #1663D8;
-  --ek-blue-700:  #0F4EB3;
-  --ek-blue-800:  #0E3F92;
-  --ek-blue-900:  #0A2E6B;
-
-  /* Yashil — pul, muvaffaqiyat, tasdiq */
+  /* ===== ACCENT: Som Gold (pul, jami, muhim urgʻu) ===== */
   --ek-green-50:  #E9F9EF;
-  --ek-green-100: #D0F2DE;
+  --ek-green-100: #CDF1DA;
   --ek-green-200: #9EE3B8;
-  --ek-green-400: #35C863;
+  --ek-green-300: #63D08F;
+  --ek-green-400: #35C863;   /* ACCENT */
+  --ek-green-500: #23B851;
   --ek-green-600: #1FAE4C;
   --ek-green-700: #16883A;
 
-  /* Neytral (ink) */
-  --ek-ink-50:    #F6F8FB;
-  --ek-ink-100:   #EDF0F5;
-  --ek-ink-200:   #DDE2EB;
-  --ek-ink-300:   #C3CBD9;
-  --ek-ink-400:   #93A0B5;
-  --ek-ink-500:   #6A788F;
-  --ek-ink-600:   #4E5B71;
-  --ek-ink-700:   #38445A;
-  --ek-ink-800:   #24314A;
-  --ek-ink-900:   #16233A;
-  --ek-ink-950:   #0B1524;
+  /* ===== NEUTRAL: Ink (sovuq kulrang — maʼlumot zich UI uchun) ===== */
+  --ek-ink-0:   #FFFFFF;
+  --ek-ink-25:  #FBFCFE;
+  --ek-ink-50:  #F6F8FB;
+  --ek-ink-100: #EDF0F5;
+  --ek-ink-200: #DDE2EB;
+  --ek-ink-300: #C3CBD9;
+  --ek-ink-400: #93A0B5;
+  --ek-ink-500: #6A788F;
+  --ek-ink-600: #4E5B71;
+  --ek-ink-700: #3A4557;
+  --ek-ink-800: #212C3D;
+  --ek-ink-900: #131D2C;
+  --ek-ink-950: #0B1524;   /* INK — brendning qora rangi */
 
-  /* Ogohlantirish / xato */
-  --ek-amber-50:  #FFF8EB;
-  --ek-amber-200: #FCE0A2;
-  --ek-amber-500: #F5A524;
-  --ek-amber-700: #A16207;
-  --ek-red-50:    #FEF1F0;
-  --ek-red-200:   #FBC9C4;
-  --ek-red-500:   #EF4B3E;
-  --ek-red-600:   #D92D20;
-  --ek-red-700:   #B42318;
+  /* ===== SEMANTIC ===== */
+  --ek-success-50:  #E9F9EF;  --ek-success-500: #23B851;  --ek-success-600: #1FAE4C;  --ek-success-700: #16883A;
+  --ek-danger-50:   #FEF3F2;  --ek-danger-500:  #F04438;  --ek-danger-600:  #D92D20;  --ek-danger-700:  #B42318;
+  --ek-warning-50:  #FFF4ED;  --ek-warning-500: #FB7A2A;  --ek-warning-600: #F76B15;  --ek-warning-700: #C4500A;
+  --ek-info-50:     #EAF6FE;  --ek-info-500:    #17A0E8;  --ek-info-600:    #0B84D6;  --ek-info-700:    #0764A8;
 
-  /* To'lov turlari — brend tashqarisidagi yagona ruxsat etilgan ranglar */
-  --ek-violet-500: #7C3AED;   /* Click  */
-  --ek-cyan-500:   #06B6D4;   /* Payme  */
+  /* ===== ROL RANGLARI (Egasi / Admin / Kassir / Omborchi / Superadmin) ===== */
+  --ek-role-owner:      #B44F06;  --ek-role-owner-bg:      #FFF8EB;
+  --ek-role-admin:      #0F4EB3;  --ek-role-admin-bg:      #EEF1FF;
+  --ek-role-cashier:    #0E6F86;  --ek-role-cashier-bg:    #E6F7F8;
+  --ek-role-stock:      #6E3FC4;  --ek-role-stock-bg:      #F2ECFD;
+  --ek-role-superadmin: #B42318;  --ek-role-superadmin-bg: #FEF3F2;
 
-  /* ======================================================================
-     2. SEMANTIK ALIASLAR — komponentda SHULAR ishlatiladi
-     ====================================================================== */
+  /* ===== TOʻLOV USULI RANGLARI ===== */
+  --ek-pay-cash:  #16883A;   /* Naqd  */
+  --ek-pay-card:  #1663D8;   /* Karta */
+  --ek-pay-mixed: #F5A524;   /* Aralash */
+  --ek-pay-debt:  #D92D20;   /* Qarz  */
 
-  /* Fon */
-  --bg-canvas:        var(--ek-ink-50);
-  --bg-surface:       #FFFFFF;
-  --bg-elevated:      #FFFFFF;
-  --bg-sunken:        var(--ek-ink-100);
-  --bg-brand:         var(--ek-blue-600);
-  --bg-brand-hover:   var(--ek-blue-700);
-  --bg-brand-subtle:  var(--ek-blue-50);
-  --bg-inverse:       var(--ek-ink-950);
-  --bg-success:       var(--ek-green-600);
-  --bg-success-subtle:var(--ek-green-50);
-  --bg-warning:       var(--ek-amber-500);
-  --bg-warning-subtle:var(--ek-amber-50);
-  --bg-danger:        var(--ek-red-600);
-  --bg-danger-subtle: var(--ek-red-50);
+  /* ===== SEMANTIC ALIASES — LIGHT (default) ===== */
+  --bg-canvas:      var(--ek-ink-50);
+  --bg-surface:     var(--ek-ink-0);
+  --bg-surface-alt: var(--ek-ink-25);
+  --bg-sunken:      var(--ek-ink-100);
+  --bg-inverse:     var(--ek-ink-950);
+  --bg-brand:       var(--ek-blue-600);
+  --bg-brand-soft:  var(--ek-blue-50);
 
-  /* Matn */
-  --fg-primary:       var(--ek-ink-950);
-  --fg-secondary:     var(--ek-ink-600);
-  --fg-tertiary:      var(--ek-ink-400);
-  --fg-on-brand:      #FFFFFF;
-  --fg-on-inverse:    var(--ek-ink-50);
-  --fg-brand:         var(--ek-blue-600);
-  --fg-success:       var(--ek-green-700);
-  --fg-warning:       var(--ek-amber-700);
-  --fg-danger:        var(--ek-red-600);
+  --fg-primary:   var(--ek-ink-950);
+  --fg-secondary: var(--ek-ink-600);
+  --fg-tertiary:  var(--ek-ink-400);
+  --fg-inverse:   var(--ek-ink-0);
+  --fg-brand:     var(--ek-blue-600);
+  --fg-on-brand:  #FFFFFF;
 
-  /* Chegara */
-  --border-subtle:    var(--ek-ink-200);
-  --border-strong:    var(--ek-ink-300);
-  --border-brand:     var(--ek-blue-600);
-  --border-danger:    var(--ek-red-200);
-  --border-warning:   var(--ek-amber-200);
-  --border-success:   var(--ek-green-200);
+  --border-subtle: var(--ek-ink-200);
+  --border-strong: var(--ek-ink-300);
+  --border-brand:  var(--ek-blue-600);
 
-  /* Fokus halqasi — a11y talabi, hech qachon `outline:none` yolg'iz emas */
-  --ring-brand:       0 0 0 3px rgba(22, 99, 216, .28);
-  --ring-danger:      0 0 0 3px rgba(217, 45, 32, .24);
+  --focus-ring: 0 0 0 3px rgba(22, 99, 216, .30);
 
-  /* Modal/drawer ortidagi qorayish */
-  --scrim:            rgba(11, 21, 36, .42);
+  /* ===== TIPOGRAFIYA ===== */
+  --font-display: 'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-sans:    'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono:    'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
 
-  /* ======================================================================
-     3. TIPOGRAFIKA
-     ====================================================================== */
-  --font-display: 'Manrope', system-ui, sans-serif;
-  --font-sans:    'Inter', system-ui, -apple-system, sans-serif;
-  --font-mono:    'JetBrains Mono', ui-monospace, monospace;
+  --text-display-2xl: 700 3rem/1.06 var(--font-display);
+  --text-display-xl:  700 2.25rem/1.15 var(--font-display);
+  --text-display-lg:  700 1.75rem/1.25 var(--font-display);
+  --text-display-md:  700 1.375rem/1.3 var(--font-display);
+  --text-title-lg:    600 1.125rem/1.45 var(--font-sans);
+  --text-title-md:    600 1rem/1.5 var(--font-sans);
+  --text-body-lg:     400 1rem/1.55 var(--font-sans);
+  --text-body-md:     400 .875rem/1.5 var(--font-sans);
+  --text-body-sm:     400 .8125rem/1.45 var(--font-sans);
+  --text-label:       600 .6875rem/1.2 var(--font-sans);
 
-  --fs-2xs:  .6875rem;   /* 11 */
-  --fs-xs:   .75rem;     /* 12 */
-  --fs-sm:   .8125rem;   /* 13 */
-  --fs-md:   .875rem;    /* 14 — asosiy */
-  --fs-lg:   1rem;       /* 16 */
-  --fs-xl:   1.25rem;    /* 20 */
-  --fs-2xl:  1.5rem;     /* 24 */
-  --fs-3xl:  2rem;       /* 32 */
+  --tracking-display: -.028em;
+  --tracking-label:   .06em;
 
-  /* ======================================================================
-     4. GEOMETRIYA
-     ====================================================================== */
-  --r-sm: 6px;
-  --r-md: 8px;
-  --r-lg: 12px;
-  --r-xl: 16px;
-  --r-2xl: 22px;
-  --r-full: 999px;
+  /* ===== FAZO (4px baza) ===== */
+  --sp-1: 4px;  --sp-2: 8px;  --sp-3: 12px; --sp-4: 16px; --sp-5: 20px;
+  --sp-6: 24px; --sp-8: 32px; --sp-10: 40px; --sp-12: 48px; --sp-16: 64px;
 
-  --sp-1: 4px;  --sp-2: 8px;  --sp-3: 12px; --sp-4: 16px;
-  --sp-5: 20px; --sp-6: 24px; --sp-8: 32px; --sp-10: 40px;
+  /* ===== RADIUS ===== */
+  --r-xs: 4px; --r-sm: 6px; --r-md: 8px; --r-lg: 12px;
+  --r-xl: 16px; --r-2xl: 20px; --r-full: 999px;
 
-  /* Bosiladigan element o'lchamlari (CLAUDE.md #3) */
-  --hit-sm:  32px;
-  --hit-md:  40px;
-  --hit-min: 44px;   /* minimal — hech qachon bundan kichik emas */
-  --hit-lg:  48px;
-  --hit-pos: 56px;   /* faqat kassir ekrani */
+  /* ===== SOYA (ink tusli, neytral kulrang emas) ===== */
+  --sh-xs: 0 1px 2px rgba(11,21,36,.06);
+  --sh-sm: 0 1px 3px rgba(11,21,36,.08), 0 1px 2px rgba(11,21,36,.04);
+  --sh-md: 0 4px 12px rgba(11,21,36,.08), 0 1px 3px rgba(11,21,36,.05);
+  --sh-lg: 0 12px 28px rgba(11,21,36,.10), 0 2px 6px rgba(11,21,36,.05);
+  --sh-xl: 0 24px 56px rgba(11,21,36,.14);
+  --sh-brand: 0 6px 18px rgba(22,99,216,.30);
 
-  /* ======================================================================
-     5. SOYA
-     ====================================================================== */
-  --sh-sm:    0 1px 2px rgba(11, 21, 36, .06);
-  --sh-md:    0 4px 12px rgba(11, 21, 36, .08);
-  --sh-lg:    0 12px 28px rgba(11, 21, 36, .12);
-  --sh-xl:    0 24px 56px rgba(11, 21, 36, .18);
-  --sh-brand: 0 6px 18px rgba(22, 99, 216, .30);
+  /* ===== TEGISH NISHONLARI (POS terminal / mobil) ===== */
+  --touch-min: 44px;      /* WCAG minimal */
+  --touch-pos: 56px;      /* kassir tugmalari */
+  --touch-keypad: 64px;   /* raqamli klaviatura */
 
-  /* ======================================================================
-     6. QATLAMLAR
-     ====================================================================== */
-  --z-sticky:  100;
-  --z-sidebar: 200;
-  --z-overlay: 900;
-  --z-modal:   1000;
-  --z-toast:   1100;
+  /* ===== HARAKAT ===== */
+  --ease: cubic-bezier(.2,.8,.2,1);
+  --dur-fast: 120ms; --dur-base: 180ms; --dur-slow: 260ms;
+
+  /* ===== Z-QATLAM ===== */
+  --z-sticky: 100; --z-drawer: 200; --z-modal: 300; --z-toast: 400;
 }
 
-/* ==========================================================================
-   QORONG'I REJIM
-   Toza qora (#000) ishlatilmaydi — #08111D (02-DESIGN-SYSTEM.md).
-   Faqat aliaslar almashadi, xom qiymatlar tegilmaydi.
-   ========================================================================== */
+/* --- QORONGʻI REJIM ------------------------------------------------------
+   Kassir smenasi 8–12 soat davom etadi. Qorongʻi rejim — hashamat emas,
+   ergonomika. Toza qora ishlatilmaydi: ko'z toliqishini oshiradi.
+   -------------------------------------------------------------------------- */
 [data-theme="dark"] {
-  --bg-canvas:        #08111D;
-  --bg-surface:       #0F1B2B;
-  --bg-elevated:      #142339;
-  --bg-sunken:        #142339;
-  --bg-brand:         var(--ek-blue-500);
-  --bg-brand-hover:   var(--ek-blue-400);
-  --bg-brand-subtle:  rgba(31, 111, 224, .14);
-  --bg-inverse:       #EDF1F7;
-  --bg-success-subtle:rgba(53, 200, 99, .12);
-  --bg-warning-subtle:rgba(245, 165, 36, .12);
-  --bg-danger-subtle: rgba(239, 75, 62, .12);
+  --bg-canvas:      #08111D;
+  --bg-surface:     #0F1B2B;
+  --bg-surface-alt: #142339;
+  --bg-sunken:      #0A1523;
+  --bg-inverse:     var(--ek-ink-0);
+  --bg-brand:       var(--ek-blue-500);
+  --bg-brand-soft:  rgba(22,99,216,.18);
 
-  --fg-primary:       #EDF1F7;
-  --fg-secondary:     #9CAABF;
-  --fg-tertiary:      #64748B;
-  --fg-on-inverse:    var(--ek-ink-950);
-  --fg-brand:         var(--ek-blue-400);
-  --fg-success:       var(--ek-green-400);
-  --fg-warning:       var(--ek-amber-500);
-  --fg-danger:        var(--ek-red-500);
+  --fg-primary:   #EDF1F7;
+  --fg-secondary: #9CAABF;
+  --fg-tertiary:  #64748B;
+  --fg-inverse:   var(--ek-ink-950);
+  --fg-brand:     #77A9F5;
+  --fg-on-brand:  #FFFFFF;
 
-  --border-subtle:    #1E2E44;
-  --border-strong:    #2C4059;
-  --scrim:            rgba(2, 8, 16, .68);
-  --border-danger:    rgba(239, 75, 62, .38);
-  --border-warning:   rgba(245, 165, 36, .38);
-  --border-success:   rgba(53, 200, 99, .34);
+  --border-subtle: #1E2E44;
+  --border-strong: #2C4059;
+  --focus-ring: 0 0 0 3px rgba(119,169,245,.38);
 
-  --sh-sm:    0 1px 2px rgba(0, 0, 0, .40);
-  --sh-md:    0 4px 12px rgba(0, 0, 0, .46);
-  --sh-lg:    0 12px 28px rgba(0, 0, 0, .55);
-  --sh-xl:    0 24px 56px rgba(0, 0, 0, .62);
-  --sh-brand: 0 6px 18px rgba(22, 99, 216, .42);
+  --ek-role-owner-bg:      rgba(31,174,76,.16);
+  --ek-role-admin-bg:      rgba(22,99,216,.18);
+  --ek-role-cashier-bg:    rgba(14,124,134,.20);
+  --ek-role-stock-bg:      rgba(110,63,196,.20);
+  --ek-role-superadmin-bg: rgba(217,45,32,.16);
+  --ek-role-owner: #FFC94A; --ek-role-admin: #77A9F5;
+  --ek-role-cashier: #4CD4DE; --ek-role-stock: #B79BF5; --ek-role-superadmin: #FF8A80;
 
-  color-scheme: dark;
+  --sh-sm: 0 1px 3px rgba(0,0,0,.5);
+  --sh-md: 0 4px 14px rgba(0,0,0,.45);
+  --sh-lg: 0 14px 32px rgba(0,0,0,.5);
+  --sh-xl: 0 28px 64px rgba(0,0,0,.6);
 }
 
-/* ==========================================================================
-   MAJBURIY UTILITALAR
-   ========================================================================== */
+/* --- YUQORI KONTRAST (yorugʻ do'kon, quyosh tushadigan peshtaxta) --------- */
+[data-contrast="high"] {
+  --border-subtle: var(--ek-ink-400);
+  --fg-secondary:  var(--ek-ink-800);
+}
 
-/* CLAUDE.md #2 — pul, miqdor, barkod, vaqt HAR DOIM shu klass bilan.
-   Bu estetika emas: tabular-nums raqam o'zgarganda kenglik sakramasligini
-   kafolatlaydi va 1/l/7 farqi aniq ko'rinadi. */
-.ek-num {
+/* --- ASOSIY QOIDALAR ------------------------------------------------------ */
+html { -webkit-text-size-adjust: 100%; }
+body {
+  font: var(--text-body-md);
+  color: var(--fg-primary);
+  background: var(--bg-canvas);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* PUL VA RAQAM — har doim mono + tabular. Ustunlar chekdek tekislanadi. */
+.ek-num, .ek-money, td[data-num], input[inputmode="numeric"] {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "zero" 1;
   letter-spacing: -.01em;
 }
 
-/* Faqat ekran o'quvchi uchun */
+/* Fokus — klaviatura bilan ishlaydigan kassir uchun majburiy */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--r-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    transition-duration: .01ms !important;
+  }
+}
+
+
+/* ==========================================================================
+   LOYIHA KENGAYTMASI — brend to'plamida yo'q, lekin kodda kerak bo'lgan
+   aliaslar. Hammasi yuqoridagi XOM qiymatlardan olinadi; yangi rang
+   O'YLAB TOPILMAYDI.
+
+   Bu bo'lim ikki ishni bajaradi:
+     1. Brend nomlariga sinonim beradi (--focus-ring → --ring-brand va h.k.),
+        shunda ikkala nom bilan yozilgan kod ham ishlaydi;
+     2. Brendda ko'rsatilmagan holat ranglarini (muvaffaqiyat/xato/ogohlantirish
+        foni va chegarasi) semantik qiymatlarga bog'laydi.
+   ========================================================================== */
+
+:root {
+  /* ── Brend nomlariga sinonimlar ─────────────────────────────────────── */
+  --bg-brand-subtle:  var(--bg-brand-soft);
+  --bg-elevated:      var(--bg-surface);
+  --fg-on-inverse:    var(--fg-inverse);
+  --ring-brand:       var(--focus-ring);
+  --hit-sm:           32px;
+  --hit-md:           40px;
+  --hit-min:          var(--touch-min);
+  --hit-lg:           48px;
+  --hit-pos:          var(--touch-pos);
+  --hit-keypad:       var(--touch-keypad);
+
+  /* ── Holat ranglari (brenddagi semantic shkalalardan) ───────────────── */
+  --bg-success:        var(--ek-success-600);
+  --bg-success-subtle: var(--ek-success-50);
+  --fg-success:        var(--ek-success-700);
+  --border-success:    var(--ek-green-200);
+
+  --bg-danger:         var(--ek-danger-600);
+  --bg-danger-subtle:  var(--ek-danger-50);
+  --fg-danger:         var(--ek-danger-600);
+  --border-danger:     #FDA29B;
+  --ring-danger:       0 0 0 3px rgba(217, 45, 32, .24);
+
+  --bg-warning:        var(--ek-warning-500);
+  --bg-warning-subtle: var(--ek-warning-50);
+  --fg-warning:        var(--ek-warning-700);
+  --border-warning:    #FDBE8C;
+
+  --bg-brand-hover:    var(--ek-blue-700);
+
+  /* Modal/drawer ortidagi qorayish */
+  --scrim:             rgba(11, 21, 36, .42);
+
+  /* ── Eski nomlar (kodda hali uchraydi) ──────────────────────────────── */
+  /* Brendda ogohlantirish — to'q sariq (#FB7A2A). Oldingi amber shkalasi
+     "aralash to'lov" belgisida qolgan, shuning uchun saqlanadi. */
+  --ek-amber-500:  var(--ek-pay-mixed);
+  --ek-amber-50:   var(--ek-warning-50);
+  --ek-amber-200:  #FDBE8C;
+  --ek-amber-700:  var(--ek-warning-700);
+  --ek-red-50:     var(--ek-danger-50);
+  --ek-red-200:    #FDA29B;
+  --ek-red-500:    var(--ek-danger-500);
+  --ek-red-600:    var(--ek-danger-600);
+  --ek-red-700:    var(--ek-danger-700);
+  --ek-violet-500: var(--ek-role-stock);
+  --ek-cyan-500:   var(--ek-role-cashier);
+
+  /* ── Shrift o'lchamlari ─────────────────────────────────────────────── */
+  --fs-2xs: .6875rem;   /* 11 */
+  --fs-xs:  .75rem;     /* 12 */
+  --fs-sm:  .8125rem;   /* 13 */
+  --fs-md:  .875rem;    /* 14 — asosiy */
+  --fs-lg:  1rem;       /* 16 */
+  --fs-xl:  1.25rem;    /* 20 */
+  --fs-2xl: 1.5rem;     /* 24 */
+  --fs-3xl: 2rem;       /* 32 */
+
+  /* ── Qatlamlar (brendda yo'q ikkitasi) ──────────────────────────────── */
+  --z-sidebar: var(--z-drawer);
+  --z-overlay: 250;
+}
+
+[data-theme="dark"] {
+  --bg-success-subtle: rgba(53, 200, 99, .12);
+  --bg-danger-subtle:  rgba(240, 68, 56, .12);
+  --bg-warning-subtle: rgba(251, 122, 42, .12);
+  --fg-success:        var(--ek-green-400);
+  --fg-danger:         #FF8A80;
+  --fg-warning:        var(--ek-warning-500);
+  --border-success:    rgba(53, 200, 99, .34);
+  --border-danger:     rgba(240, 68, 56, .38);
+  --border-warning:    rgba(251, 122, 42, .38);
+  --bg-brand-hover:    var(--ek-blue-400);
+  --scrim:             rgba(2, 8, 16, .68);
+  color-scheme: dark;
+}
+
+/* ── Faqat ekran o'quvchi uchun ──────────────────────────────────────── */
 .ek-sr-only {
   position: absolute; width: 1px; height: 1px;
   padding: 0; margin: -1px; overflow: hidden;
   clip: rect(0 0 0 0); white-space: nowrap; border: 0;
-}
-
-/* Klaviatura fokusi — ko'rinishi majburiy (02-DESIGN-SYSTEM.md a11y) */
-:where(a, button, input, select, textarea, [tabindex]):focus-visible {
-  outline: 2px solid var(--border-brand);
-  outline-offset: 2px;
 }

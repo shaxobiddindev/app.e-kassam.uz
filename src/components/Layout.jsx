@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
-import { LOGO_URL, initials } from "../utils";
+import { LOGO_URL, MARK_URL, initials } from "../utils";
 import { useConfirm } from "../context/ConfirmProvider";
 import { getTheme, toggleTheme } from "../lib/ek-theme";
+import { roleLabel } from "../lib/ek-labels";
 
 const NAV_ITEMS = [
   { section: "Asosiy", items: [
@@ -26,14 +27,9 @@ const NAV_ITEMS = [
   ]},
 ];
 
-const ROLE_LABELS_MAP = {
-  OWNER: "Do'kon egasi",
-  SHOP_ADMIN: "Admin",
-  ADMIN: "Admin",
-  STOREKEEPER: "Omborchi",
-  CASHIER: "Kassir",
-  SUPERADMIN: "Super Admin"
-};
+/* Rol nomi — lug'atdan. SUPERADMIN do'kon roli emas, shuning uchun alohida. */
+const EXTRA_ROLES = { SUPERADMIN: "Super admin", ADMIN: "Do'kon admini" };
+const roleName = (r) => EXTRA_ROLES[String(r || "").toUpperCase()] || roleLabel(r);
 
 const PAGE_TITLES = {
   "/":               { label:"Dashboard",        icon:"fa-chart-pie"     },
@@ -127,7 +123,7 @@ function Sidebar({ user, onLogout, open, onClose, isCollapsed, onToggleCollapse,
     <aside className={`sidebar ${open ? "open" : ""} ${isCollapsed ? "collapsed" : ""}`}>
       <div className="sb-logo">
         <div className="sb-logo-inner">
-          <img src={isCollapsed ? "/favicon.png" : LOGO_URL} alt="logo" />
+          <img src={isCollapsed ? MARK_URL : LOGO_URL} alt="e-Kassam" />
         </div>
       </div>
       <button className="sb-toggle" onClick={onToggleCollapse}>
@@ -164,7 +160,7 @@ function Sidebar({ user, onLogout, open, onClose, isCollapsed, onToggleCollapse,
           <div className="av" style={{ width: isCollapsed ? 28 : 34, height: isCollapsed ? 28 : 34 }}>{initials(user?.fullName || user?.username)}</div>
           <div className="sb-user-info">
             <div className="sb-user-name">{user?.fullName || user?.username}</div>
-            <div className="sb-user-role">{ROLE_LABELS_MAP[user?.role] || user?.role} <i className="fa-solid fa-right-from-bracket" /></div>
+            <div className="sb-user-role">{roleName(user?.role)} <i className="fa-solid fa-right-from-bracket" /></div>
           </div>
         </div>
       </div>

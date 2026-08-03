@@ -8,6 +8,11 @@
    13+ bo'limlar shu loyihaga qo'shilgan (chek qirrasi, countup, tugma bosilishi).
    ========================================================================== */
 
+/* ⚠ Brend to'plamidagi tokens fayli ham --dur-fast/base/slow ni belgilaydi
+   (120/180/260ms). Bu fayl tokenlardan KEYIN ulangani uchun quyidagi qiymatlar
+   ustun keladi. Ular 03-MOTION.md dagi jadvaldan olingan va animatsiya
+   katalogi shu vaqtlarga qurilgan (masalan drawer 320ms, stagger 60ms).
+   Brend qiymatlariga qaytish kerak bo'lsa, hujjat ham yangilanishi shart. */
 :root {
   --dur-instant: 90ms;
   --dur-fast:    140ms;

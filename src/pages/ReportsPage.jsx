@@ -3,6 +3,7 @@ import { reportApi } from "../api";
 import { BranchSelector } from "../components";
 import { Loader, Empty, StatCard } from "../components/ui";
 import { money } from "../utils";
+import { paymentEntry } from "../lib/ek-labels";
 
 const PERIODS = [
   { key: "daily",   label: "Bugun" },
@@ -17,11 +18,13 @@ const STATS_CONFIG = [
   { key: "totalCost",    label: "Tan narxi",      icon: "fa-coins",          bg: "#fdf4ff",              color: "#9333ea" },
 ];
 
-const PAYMENT_LABELS = { 
-  CASH: <><i className="fa-solid fa-money-bill-1" /> Naqd</>, 
-  CARD: <><i className="fa-solid fa-credit-card" /> Karta</>, 
-  MIXED: <><i className="fa-solid fa-shuffle" /> Aralash</> 
-};
+/* To'lov turi yorlig'i — CLICK va PAYME ham qamrab olinadi.
+   Ilgari bu yerda uchta qiymatli mahalliy jadval bor edi va Click/Payme
+   sotuvlarida xom `CLICK` matni chiqardi. */
+function PayLabel({ type }) {
+  const p = paymentEntry(type);
+  return <><i className={`fa-solid ${p.icon || "fa-wallet"}`} style={{ color: p.color }} aria-hidden="true" /> {p.label}</>;
+}
 
 export default function ReportsPage({ toast }) {
   const [period, setPeriod]   = useState("daily");
@@ -96,7 +99,7 @@ export default function ReportsPage({ toast }) {
                       }}
                     >
                       <span className="fw-700" style={{ fontSize: 13 }}>
-                        {PAYMENT_LABELS[p.paymentType] || p.paymentType}
+                        <PayLabel type={p.paymentType} />
                       </span>
                       <span className="mono fw-700">{money(p.amount)}</span>
                     </div>

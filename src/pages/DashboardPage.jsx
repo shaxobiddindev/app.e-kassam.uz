@@ -6,6 +6,7 @@ import { Empty } from "../components/ui";
 import { money } from "../utils";
 import Kpi from "../components/ek/Kpi";
 import AttentionList from "../components/ek/AttentionList";
+import { paymentEntry } from "../lib/ek-labels";
 
 /* ══════════════════════════════════════════════════════════════════════════
    Egasi/admin bosh sahifasi — 07-ADMIN.md
@@ -16,13 +17,14 @@ import AttentionList from "../components/ek/AttentionList";
    3) To'lov turlari va top mahsulotlar
    ══════════════════════════════════════════════════════════════════════════ */
 
-const PAYMENT_LABELS = {
-  CASH:  <><i className="fa-solid fa-money-bill-1" aria-hidden="true" /> Naqd</>,
-  CARD:  <><i className="fa-solid fa-credit-card" aria-hidden="true" /> Karta</>,
-  CLICK: <><i className="fa-solid fa-mobile-screen" aria-hidden="true" /> Click</>,
-  PAYME: <><i className="fa-solid fa-mobile-screen-button" aria-hidden="true" /> Payme</>,
-  MIXED: <><i className="fa-solid fa-shuffle" aria-hidden="true" /> Aralash</>,
-};
+/* To'lov turi yorlig'i — yagona lug'atdan (src/lib/ek-labels.js).
+   ⚠ Ilgari bu sahifa `PAYMENT_LABELS` ni `../utils` dan import qilardi, lekin
+   u yerda bunday eksport YO'Q edi: qiymat `undefined` bo'lib, birinchi sotuv
+   satrida sahifa yiqilardi. */
+function PayLabel({ type }) {
+  const p = paymentEntry(type);
+  return <><i className={`fa-solid ${p.icon || "fa-wallet"}`} style={{ color: p.color }} aria-hidden="true" /> {p.label}</>;
+}
 
 /** Kartochka shaklidagi skeleton — yuklanish tugagach layout sakramaydi. */
 function KpiSkeleton() {
@@ -121,7 +123,7 @@ export default function DashboardPage({ toast }) {
                   }}
                 >
                   <span style={{ fontSize: 13, fontWeight: 600 }}>
-                    {PAYMENT_LABELS[p.paymentType] || p.paymentType}
+                    <PayLabel type={p.paymentType} />
                   </span>
                   <span className="ek-num" style={{ fontWeight: 700 }}>{money(p.amount)}</span>
                 </div>

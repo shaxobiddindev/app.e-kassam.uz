@@ -5,17 +5,21 @@ import { BranchSelector, Modal } from "../components";
 import { Loader, Empty, SearchBar, Badge } from "../components/ui";
 import { useConfirm } from "../context/ConfirmProvider";
 import { useAuth } from "../hooks/useAuth";
+import { paymentEntry, saleStatus } from "../lib/ek-labels";
 
-const STATUS_MAP = {
-  CREATED:   { label: "Yangi",       color: "blue"   },
-  PAID:      { label: "To'langan",   color: "green"  },
-  CANCELLED: { label: "Bekor",       color: "red"    },
+/* Sotuv holati — lug'atdan. `tone` Badge rang nomiga o'giriladi. */
+const TONE_COLOR = { success: "green", danger: "red", warning: "yellow", info: "blue", neutral: "gray" };
+const statusBadge = (v) => {
+  const e = saleStatus(v);
+  return { label: e.label, color: TONE_COLOR[e.tone] || "blue" };
 };
-const PAYMENT_LABELS = { 
-  CASH: <><i className="fa-solid fa-money-bill-1" /> Naqd</>, 
-  CARD: <><i className="fa-solid fa-credit-card" /> Karta</>, 
-  MIXED: <><i className="fa-solid fa-shuffle" /> Aralash</> 
-};
+/* To'lov turi yorlig'i — CLICK va PAYME ham qamrab olinadi.
+   Ilgari bu yerda uchta qiymatli mahalliy jadval bor edi va Click/Payme
+   sotuvlarida xom `CLICK` matni chiqardi. */
+function PayLabel({ type }) {
+  const p = paymentEntry(type);
+  return <><i className={`fa-solid ${p.icon || "fa-wallet"}`} style={{ color: p.color }} aria-hidden="true" /> {p.label}</>;
+}
 
 export default function SalesPage({ toast }) {
   const confirm                   = useConfirm();
@@ -129,14 +133,14 @@ export default function SalesPage({ toast }) {
               </thead>
               <tbody>
                 {filtered.length > 0 ? filtered.map((sale) => {
-                  const st = STATUS_MAP[sale.status] || { label: sale.status, color: "blue" };
+                  const st = statusBadge(sale.status);
                   return (
                     <tr key={sale.id}>
                       <td className="mono fw-800 text-muted">#{sale.id}</td>
                       <td className="fw-700">{sale.cashierName || "—"}</td>
                       <td>{sale.customerName || <span className="text-muted">—</span>}</td>
                       <td><span className="mono fw-700 text-blue">{money(sale.totalAmount)}</span></td>
-                      <td><span style={{ fontSize: 13 }}>{PAYMENT_LABELS[sale.paymentType] || sale.paymentType}</span></td>
+                      <td><span style={{ fontSize: 13 }}><PayLabel type={sale.paymentType} /></span></td>
                       <td><Badge color={st.color}>{st.label}</Badge></td>
                       <td className="text-muted" style={{ fontSize: 12 }}>
                         {sale.createdAt ? new Date(sale.createdAt).toLocaleString("uz-UZ") : "—"}
@@ -195,8 +199,8 @@ export default function SalesPage({ toast }) {
             {[
               { label: "Kassir",    value: detail.cashierName || "—" },
               { label: "Mijoz",     value: detail.customerName || "—" },
-              { label: "To'lov",    value: PAYMENT_LABELS[detail.paymentType] || detail.paymentType },
-              { label: "Status",    value: <Badge color={STATUS_MAP[detail.status]?.color || "blue"}>{STATUS_MAP[detail.status]?.label || detail.status}</Badge> },
+              { label: "To'lov",    value: <PayLabel type={detail.paymentType} /> },
+              { label: "Status",    value: <Badge color={statusBadge(detail.status).color}>{statusBadge(detail.status).label}</Badge> },
               { label: "Sana",      value: detail.createdAt ? new Date(detail.createdAt).toLocaleString("uz-UZ") : "—" },
               { label: "Jami",      value: <span className="mono fw-700 text-blue">{money(detail.totalAmount)}</span> },
             ].map((item, i) => (

@@ -3,6 +3,7 @@ import { shopApi } from "../../api";
 import { maskPhone, cleanPhone } from "../../config";
 import { Loader, Empty, FormGroup, Badge } from "../../components/ui";
 import { Modal } from "../../components";
+import { SHOP_STATUS, options } from "../../lib/ek-labels";
 
 const EMPTY_BRANCH_FORM = { name: "", code: "", phone: "998", address: "" };
 
@@ -172,8 +173,10 @@ export default function ShopsPage({ toast }) {
           {modal?.type === "edit" && (
             <FormGroup label="Status">
               <select className="form-input" value={form.status} onChange={setField("status")}>
-                <option value="ACTIVE">Aktiv</option>
-                <option value="INACTIVE">Noaktiv</option>
+                {/* ShopStatus enum'idagi BARCHA qiymatlar — ilgari faqat
+                    ikkitasi bor edi va BLOCKED/SUSPENDED xom ko'rinardi. */}
+                {options(SHOP_STATUS, ["ACTIVE", "BLOCKED", "SUSPENDED", "INACTIVE"])
+                  .map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             </FormGroup>
           )}

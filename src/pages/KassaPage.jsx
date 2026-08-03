@@ -5,6 +5,7 @@ import { Empty } from "../components/ui";
 import FinishOverlay from "../components/PrintingLoader";
 import OfflineBar from "../components/OfflineBar";
 import * as queue from "../lib/ek-offline";
+import { PAYMENT_TYPE, paymentLabel } from "../lib/ek-labels";
 
 /* ══════════════════════════════════════════════════════════════════════════
    Kassir paneli — 06-APP-KASSIR.md
@@ -23,6 +24,18 @@ import * as queue from "../lib/ek-offline";
      Ctrl+P         Oxirgi chekni qayta chop etish
    ══════════════════════════════════════════════════════════════════════════ */
 
+/* To'lov usullari — nom, ikonka va rang YAGONA lug'atdan (ek-labels.js).
+   Ilgari ular shu faylda qo'lda yozilgan edi va sotuvlar tarixida Click/Payme
+   tarjimasiz chiqardi. Klaviatura yorliqlari faqat shu ekranga tegishli,
+   shuning uchun ular bu yerda qo'shiladi. */
+const PAY_KBD = { CASH: "F1", CARD: "F2", MIXED: "F3" };
+const payItem = (key) => {
+  const p = PAYMENT_TYPE[key];
+  return { key, label: p.label, icon: p.icon, color: p.color, kbd: PAY_KBD[key] };
+};
+const PAY_METHODS  = ["CASH", "CARD", "CLICK", "PAYME", "MIXED"].map(payItem);
+const MIXED_SECOND = ["CARD", "CLICK", "PAYME"].map(payItem);
+
 const REFOCUS_MS = 3000;   // fokus yo'qolsa shuncha vaqtdan keyin qaytadi
 const UNDO_MS    = 5000;   // o'chirishni bekor qilish oynasi
 
@@ -31,7 +44,6 @@ function printCheck({ saleId, cart, total, payType, customer, offline }) {
   const win = window.open("", "_blank", "width=320,height=600,toolbar=no,menubar=no");
   if (!win) return;
 
-  const payLabel = { CASH: "Naqd", CARD: "Karta", MIXED: "Aralash", CLICK: "Click", PAYME: "Payme" };
   const rows = cart
     .map((i) => `<div class="row"><span>${i.name} ×${i.qty}</span><span>${(i.salePrice * i.qty).toLocaleString("uz-UZ")} so'm</span></div>`)
     .join("");
@@ -60,7 +72,7 @@ function printCheck({ saleId, cart, total, payType, customer, offline }) {
       ${rows}
       <div class="hr"></div>
       <div class="row"><b>JAMI:</b><b>${total.toLocaleString("uz-UZ")} so'm</b></div>
-      <div class="row"><span>To'lov:</span><span>${payLabel[payType] || payType}</span></div>
+      <div class="row"><span>To'lov:</span><span>${paymentLabel(payType)}</span></div>
       ${customer ? `<div class="row"><span>Mijoz:</span><span>${customer.fullName}</span></div>` : ""}
       ${offline ? `<div class="off">Oflayn rejimda qayd etildi.<br>Ulanish tiklanganda serverga yuboriladi.</div>` : ""}
       <div class="hr"></div>
@@ -539,13 +551,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
                 <i className="fa-solid fa-credit-card" aria-hidden="true" /> To'lov turini tanlang
               </div>
               <div className="pay-modal-types">
-                {[
-                  { key: "CASH",  label: "Naqd",    icon: "fa-money-bill-1",          color: "var(--ek-green-600)", kbd: "F1" },
-                  { key: "CARD",  label: "Karta",   icon: "fa-credit-card",           color: "var(--ek-blue-600)",  kbd: "F2" },
-                  { key: "CLICK", label: "Click",   icon: "fa-mobile-screen",         color: "var(--ek-violet-500)" },
-                  { key: "PAYME", label: "Payme",   icon: "fa-mobile-screen-button",  color: "var(--ek-cyan-500)" },
-                  { key: "MIXED", label: "Aralash", icon: "fa-shuffle",               color: "var(--ek-amber-500)", kbd: "F3" },
-                ].map(({ key, label, icon, color, kbd }) => (
+                {PAY_METHODS.map(({ key, label, icon, color, kbd }) => (
                   <button
                     key={key}
                     className={`pay-type-btn ${payType === key ? "active" : ""}`}
@@ -610,11 +616,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
                     <i className="fa-solid fa-shuffle" aria-hidden="true" /> Naqd + qolgan qismi:
                   </div>
                   <div className="pay-mixed-second-types">
-                    {[
-                      { key: "CARD",  label: "Karta",  icon: "fa-credit-card",          color: "var(--ek-blue-600)" },
-                      { key: "CLICK", label: "Click",  icon: "fa-mobile-screen",        color: "var(--ek-violet-500)" },
-                      { key: "PAYME", label: "Payme",  icon: "fa-mobile-screen-button", color: "var(--ek-cyan-500)" },
-                    ].map(({ key, label, icon, color }) => (
+                    {MIXED_SECOND.map(({ key, label, icon, color }) => (
                       <button
                         key={key}
                         className={`pay-mixed-second-btn ${mixedSecondType === key ? "active" : ""}`}
@@ -646,7 +648,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
                     <div className="pay-mixed-field">
                       <label className="pay-mixed-label" htmlFor="mx-card" style={{ color: "var(--fg-brand)" }}>
                         <i className="fa-solid fa-credit-card" aria-hidden="true" />
-                        {mixedSecondType === "CARD" ? "Karta" : mixedSecondType === "CLICK" ? "Click" : "Payme"} (so'm)
+                        {paymentLabel(mixedSecondType)} (so'm)
                       </label>
                       <input
                         id="mx-card" type="number" min="0" inputMode="numeric"

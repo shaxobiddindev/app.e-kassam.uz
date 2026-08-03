@@ -4,18 +4,12 @@ import { Loader, Empty, FormGroup, Badge } from "../../components/ui";
 import { BranchSelector, Modal } from "../../components";
 import { useAuth } from "../../hooks/useAuth";
 import { useConfirm } from "../../context/ConfirmProvider";
+import { roleLabel } from "../../lib/ek-labels";
 
+/* Rollar yagona lug'atdan (src/lib/ek-labels.js). `roleLabel` Spring'ning
+   `ROLE_` prefiksini ham, katta-kichik harf farqini ham o'zi hal qiladi —
+   shuning uchun bu yerda har bir variantni qo'lda sanab chiqish kerak emas. */
 const ROLE_OPTIONS = ["SHOP_ADMIN", "STOREKEEPER", "CASHIER"];
-const ROLE_LABELS = { 
-  SHOP_ADMIN: "Admin", 
-  STOREKEEPER: "Omborchi", 
-  CASHIER: "Kassir", 
-  OWNER: "Egasi",
-  ROLE_SHOP_ADMIN: "Admin",
-  ROLE_STOREKEEPER: "Omborchi",
-  ROLE_CASHIER: "Kassir",
-  ROLE_OWNER: "Egasi"
-};
 const EMPTY_USER_FORM = { fullName: "", username: "", password: "", role: "CASHIER" };
 
 export default function ShopUsersPage({ toast }) {
@@ -169,12 +163,12 @@ export default function ShopUsersPage({ toast }) {
                       {(u.roles && u.roles.length > 0) ? (
                         u.roles.map((r) => (
                           <Badge key={r.id || r.name} color="blue">
-                            {ROLE_LABELS[r.type] || r.type || r.name || "Xodim"}
+                            {roleLabel(r)}
                           </Badge>
                         ))
                       ) : (
                         <Badge color="blue">
-                          {ROLE_LABELS[u.role] || u.role || "Xodim"}
+                          {roleLabel(u.role)}
                         </Badge>
                       )}
                     </td>
@@ -244,7 +238,7 @@ export default function ShopUsersPage({ toast }) {
           <FormGroup label="Rol *">
             <select className="form-input" value={form.role} onChange={setField("role")}>
               {ROLE_OPTIONS.map((r) => (
-                <option key={r} value={r}>{ROLE_LABELS[r]}</option>
+                <option key={r} value={r}>{roleLabel(r)}</option>
               ))}
             </select>
           </FormGroup>
