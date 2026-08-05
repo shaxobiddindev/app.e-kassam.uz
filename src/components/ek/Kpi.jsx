@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { groupDigits } from "../../lib/ek-format";
 
 /* ==========================================================================
    KPI kartochkasi + raqam sanash + sparkline
@@ -16,7 +17,12 @@ const REDUCED = () =>
  * Faqat BIRINCHI ko'rinishda ishlaydi (IntersectionObserver) — har scroll'da
  * qayta sanash asabiylashtiradi. `prefers-reduced-motion` da darhol yakuniy qiymat.
  */
-export function CountUp({ value, format = (n) => n.toLocaleString("uz-UZ"), duration = 900 }) {
+// ⚠ Standart formatlash `ek-format` dan. Ilgari bu yerda
+// `n.toLocaleString("uz-UZ")` turardi: u 02-DESIGN-SYSTEM.md ning
+// "komponentda toLocaleString chaqirilmaydi" qoidasini buzardi va
+// razryad ajratgichini brauzerga qoldirardi — bir xil son turli
+// mashinada turlicha ko'rinardi.
+export function CountUp({ value, format = groupDigits, duration = 900 }) {
   const [shown, setShown] = useState(REDUCED() ? value : 0);
   const ref = useRef(null);
   const done = useRef(false);
@@ -76,14 +82,18 @@ export function Sparkline({ data = [], width = 84, height = 26 }) {
  * @param format  ko'rsatish funksiyasi (packages/ui/ek-format.js dan)
  * @param delta   o'zgarish foizi, ixtiyoriy
  * @param trend   sparkline uchun raqamlar massivi
+ * @param hint    yorliq ostidagi izoh — ko'rsatkich nimani anglatishini
+ *                aytadi ("30 kunda kamida bitta sotuv"). Raqamning o'zi
+ *                tushuntirmaydigan hollarda kerak.
  */
-export default function Kpi({ label, value, format, delta, trend }) {
+export default function Kpi({ label, value, format, delta, trend, hint }) {
   const dir = delta == null ? "flat" : delta > 0 ? "up" : delta < 0 ? "down" : "flat";
   const arrow = dir === "up" ? "fa-arrow-trend-up" : dir === "down" ? "fa-arrow-trend-down" : "fa-minus";
   return (
     <div className="kpi">
       <span className="kpi__label">{label}</span>
       <span className="kpi__value"><CountUp value={value} format={format} /></span>
+      {hint && <span className="kpi__hint">{hint}</span>}
       <div className="kpi__foot">
         {delta != null ? (
           <span className="kpi__delta" data-dir={dir}>
