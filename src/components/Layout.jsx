@@ -24,9 +24,20 @@ const NAV_ITEMS = [
     { id: "reports",        path: "/reports",       key: "nav.reports",      icon: "fa-chart-bar",     roles: ["ADMIN", "SHOP_ADMIN", "OWNER"] },
     { id: "custom-report",  path: "/custom-report", key: "nav.customReport", icon: "fa-calendar-days", roles: ["ADMIN", "SHOP_ADMIN", "OWNER"] },
   ]},
-  { section: "nav.section.settings", items: [
+  /* ── BOSHQARUV ────────────────────────────────────────────────────────────
+     DO'KONNI boshqarish — egasi va do'kon admini uchun. Ilgari bu bandlar
+     "Sozlamalar" bo'limida, xodimning shaxsiy sozlamalari bilan bir qatorda
+     turardi: kassir "Sozlamalar" ni ochib xodimlar ro'yxatini kutardi,
+     egasi esa do'konni boshqaradigan joyni topolmasdi. 07-ADMIN.md aytadigan
+     "egasi/admin paneli" — aynan shu bo'lim, alohida sayt emas.
+
+     ⚠ Bu FAQAT ko'rinish tartibi. Haqiqiy ruxsat serverda: `SecurityConfig`
+     `/shop/users/**` va `/shop/branches/**` ni alohida tekshiradi. */
+  { section: "nav.section.management", items: [
     { id: "shop-users", path: "/shop-users", key: "nav.staff",    icon: "fa-users-gear", roles: ["ADMIN", "SHOP_ADMIN", "OWNER"] },
     { id: "branches",   path: "/branches",   key: "nav.branches", icon: "fa-store",      roles: ["OWNER"] },
+  ]},
+  { section: "nav.section.settings", items: [
     /* Sozlamalar — HAMMA rolga ochiq: til va tema shu yerda va ular
        xodimning shaxsiy tanlovi, do'kon sozlamasi emas. */
     { id: "settings",   path: "/settings",   key: "nav.settings", icon: "fa-gear" },
