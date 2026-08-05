@@ -1,0 +1,53 @@
+name: Desktop ilova (.exe)
+
+# Nega CI da quriladi:
+#
+# Ishlab chiqish mashinasida Windows "Smart App Control" yoqilgan va u
+# `cargo` yangi kompilyatsiya qilgan build-skriptlarni ishga tushirishni
+# bloklaydi (os error 4551). Uni o'chirish MUMKIN, lekin qaytarib yoqib
+# bo'lmaydi — faqat Windows'ni qayta o'rnatish orqali. Shu sababli
+# `.exe` toza runner'da yig'iladi.
+#
+# Bu baribir to'g'riroq: relizni bir odamning kompyuteri emas, takrorlanadigan
+# muhit ishlab chiqaradi.
+
+on:
+  push:
+    tags: ["desktop-v*"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      # Rust bog'liqliklari kesh'lanadi — birinchi qurishdan keyin
+      # keyingilari ~10 daqiqadan ~2 daqiqaga tushadi.
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Bog'liqliklar
+        run: npm ci
+
+      - name: Qurish
+        run: npm run desktop:build
+
+      # Ikkalasi ham yuklanadi: o'rnatuvchi oddiy foydalanuvchi uchun,
+      # yalang'och `.exe` esa tez sinash uchun.
+      - name: O'rnatuvchini yuklash
+        uses: actions/upload-artifact@v4
+        with:
+          name: e-Kassam-setup
+          path: |
+            src-tauri/target/release/bundle/nsis/*.exe
+            src-tauri/target/release/e-kassam.exe
+          if-no-files-found: error

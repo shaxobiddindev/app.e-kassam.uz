@@ -1,0 +1,9 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Kassir oynasi uchun ruxsatlar. Ataylab TOR: ilova faqat o'z API'siga va chek printeriga murojaat qiladi, fayl tizimi va shell kerak emas.",
+  "windows": ["main"],
+  "permissions": [
+    "core:default"
+  ]
+}

@@ -1,0 +1,5 @@
+# Rust qurish natijasi — yuzlab megabayt, har qurishda qayta yaraladi.
+/target/
+
+# Tauri o'zi generatsiya qiladigan sxema va ruxsat fayllari.
+/gen/

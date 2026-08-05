@@ -5,6 +5,7 @@ import ThemeSelect from "../components/ek/ThemeSelect";
 import LangSelect from "../components/ek/LangSelect";
 import { useConfirm } from "../context/ConfirmProvider";
 import { useAuth } from "../hooks/useAuth";
+import HardwareSettings from "../components/HardwareSettings";
 
 /* ══════════════════════════════════════════════════════════════════════════
    Sozlamalar — BARCHA sozlamalar uchun YAGONA joy.
@@ -45,7 +46,7 @@ function Section({ icon, title, hint, children }) {
   );
 }
 
-export default function SettingsPage() {
+export default function SettingsPage({ toast }) {
   const { t } = useT();
   const confirm = useConfirm();
   const { user, logout } = useAuth();
@@ -107,6 +108,10 @@ export default function SettingsPage() {
           </button>
         </Row>
       </Section>
+
+      {/* Apparatlar — hisobdan OLDIN: kassir bu ekranga aynan printer
+          ishlamay qolganda keladi, "hisob" bo'limiga esa deyarli hech qachon. */}
+      <HardwareSettings toast={toast} />
 
       <Section
         icon="fa-user"

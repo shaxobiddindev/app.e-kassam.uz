@@ -1,5 +1,23 @@
 import { API_BASE, LOGIN_URL, getDeviceId } from "../config";
 import { getLang, withLang } from "../lib/ek-i18n";
+import { isDesktop } from "../lib/ek-desktop";
+
+/**
+ * Sessiya tiklab bo'lmadi — foydalanuvchini kirish ekraniga qaytaramiz.
+ *
+ * ⚠ Desktop'da `auth.e-kassam.uz` ga YO'NALTIRILMAYDI: `.exe` oynasi tashqi
+ * sahifaga o'tsa kassir ilovadan chiqib qoladi va orqaga yo'l topolmaydi.
+ * O'rniga sessiya tozalanadi va oyna qayta yuklanadi — `App.jsx` kirish
+ * ekranini shu oynada chizadi.
+ */
+function forceLogout() {
+  const lang = localStorage.getItem("ek_lang");
+  localStorage.clear();
+  if (lang) localStorage.setItem("ek_lang", lang);
+
+  if (isDesktop()) window.location.reload();
+  else window.location.replace(withLang(`${LOGIN_URL}?logged_out=1`));
+}
 
 let refreshPromise = null;
 
@@ -79,16 +97,14 @@ async function request(path, options = {}, _retry = false) {
       return request(path, options, true);
     } else {
       // Refresh ham ishlamadi — login ga
-      localStorage.clear();
-      window.location.replace(withLang(`${LOGIN_URL}?logged_out=1`));
+      forceLogout();
       throw new Error("AUTH_FAILED");
     }
   }
 
   // 2-urinishda ham 401 — login ga
   if (res.status === 401 && _retry) {
-    localStorage.clear();
-    window.location.replace(withLang(`${LOGIN_URL}?logged_out=1`));
+    forceLogout();
     throw new Error("AUTH_FAILED");
   }
 

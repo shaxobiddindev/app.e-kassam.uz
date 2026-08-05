@@ -1020,3 +1020,221 @@ select.form-input { cursor: pointer; }
 
 /* Jadval standarti, KPI va "E'tibor talab qiladi" uslublari
    packages/ui/ek-components.css da — admin paneli bilan bir manba. */
+
+/* ══════════════════════════════════════════════════════════════════════════
+   KIRISH EKRANI — desktop (Tauri) uchun
+
+   ⚠ Bu blok `ekassam-login/src/index.css` dan AYNAN ko'chirildi va shunday
+   qolishi kerak. Sabab: kassir uchun `.exe` dagi kirish `auth.e-kassam.uz`
+   dagi bilan bir xil ko'rinishi shart — ilova almashgani sezilmasin.
+
+   Brauzer versiyasida bu sinflar ISHLATILMAYDI (u yerda kirish alohida
+   originda). Ular bir necha KB va faqat desktop'da chiziladi.
+   Uslub o'zgarsa — IKKALA faylda ham o'zgartiring.
+   ══════════════════════════════════════════════════════════════════════════ */
+.auth {
+  position: relative;
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 900px) {
+  .auth { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+}
+
+/* ── Chap: forma ──────────────────────────────────────────────────────────── */
+.auth__form-side {
+  display: flex; align-items: center; justify-content: center;
+  padding: 32px 24px;
+  background: var(--bg-surface);
+}
+.auth__form { width: 100%; max-width: 380px; }
+
+.auth__logo { height: 40px; width: auto; object-fit: contain; display: block; margin-bottom: 28px; }
+img.logo--dark { display: none; }
+[data-theme="dark"] img.logo--light { display: none; }
+[data-theme="dark"] img.logo--dark  { display: block; }
+
+.auth__title {
+  font-family: var(--font-display);
+  font-size: 1.65rem; font-weight: 800; letter-spacing: -.03em;
+  margin-bottom: 4px;
+}
+.auth__sub { font-size: var(--fs-md); color: var(--fg-secondary); margin-bottom: 26px; }
+
+/* Segmented — do'kon xodimi / admin */
+.auth__seg {
+  display: flex; gap: 4px; padding: 4px; margin-bottom: 20px;
+  background: var(--bg-sunken); border-radius: var(--r-lg);
+}
+.auth__seg button {
+  flex: 1; min-height: var(--hit-md);
+  border: 0; border-radius: var(--r-md);
+  background: transparent; color: var(--fg-secondary);
+  font-family: var(--font-sans); font-size: var(--fs-sm); font-weight: 600;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.auth__seg button[aria-selected="true"] {
+  background: var(--bg-surface); color: var(--fg-primary); box-shadow: var(--sh-sm);
+}
+
+.auth__field { margin-bottom: 16px; }
+.auth__label {
+  display: block; margin-bottom: 6px;
+  font-size: var(--fs-xs); font-weight: 600; color: var(--fg-secondary);
+}
+.auth__input-wrap { position: relative; }
+.auth__input {
+  width: 100%; min-height: var(--hit-lg);
+  padding: 12px 14px;
+  border: 1.5px solid var(--border-subtle); border-radius: var(--r-md);
+  background: var(--bg-sunken); color: var(--fg-primary);
+  font-family: var(--font-sans); font-size: var(--fs-lg);
+  outline: none;
+  transition: border-color var(--dur-fast) var(--ease-out),
+              background var(--dur-fast) var(--ease-out),
+              box-shadow var(--dur-fast) var(--ease-out);
+}
+.auth__input:focus { border-color: var(--border-brand); background: var(--bg-surface); box-shadow: var(--ring-brand); }
+.auth__input[aria-invalid="true"] { border-color: var(--border-danger); }
+.auth__input--pass { padding-right: 48px; font-family: var(--font-mono); letter-spacing: .04em; }
+
+.auth__eye {
+  position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+  width: var(--hit-min); height: var(--hit-min);
+  display: grid; place-items: center;
+  border: 0; background: none; cursor: pointer;
+  color: var(--fg-tertiary); font-size: 15px;
+  border-radius: var(--r-md);
+}
+.auth__eye:hover { color: var(--fg-primary); }
+
+/* Xato: aniq matn, uzr so'ramaydi, noaniq emas. 6px silkinish — BIR MARTA. */
+.auth__error {
+  display: flex; align-items: flex-start; gap: 9px;
+  padding: 11px 13px; margin-bottom: 14px;
+  background: var(--bg-danger-subtle); border: 1px solid var(--border-danger);
+  border-radius: var(--r-md);
+  font-size: var(--fs-sm); font-weight: 500; color: var(--fg-danger);
+}
+
+/* Yuborilayotganda tugma o'lchami O'ZGARMAYDI (aks holda layout sakraydi) */
+.auth__submit {
+  width: 100%; min-height: var(--hit-lg);
+  display: inline-flex; align-items: center; justify-content: center; gap: 9px;
+  border: 0; border-radius: var(--r-md);
+  background: var(--bg-brand); color: var(--fg-on-brand);
+  box-shadow: var(--sh-brand);
+  font-family: var(--font-sans); font-size: var(--fs-lg); font-weight: 600;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out), transform var(--dur-instant) var(--ease-out);
+}
+.auth__submit:hover:not(:disabled) { background: var(--bg-brand-hover); }
+.auth__submit:active:not(:disabled) { transform: scale(.98); }
+.auth__submit:disabled { opacity: .72; cursor: progress; }
+/* Admin kirishi boshqacha ko'rinadi — lekin QORA emas: yorug' rejimda qora
+   tugma "qorong'i rejim qoldig'i" bo'lib ko'rinardi. Endi u superadmin
+   urg'usini (qizil) oladi — 07-ADMIN.md dagi bilan bir xil signal. */
+.auth__submit--admin {
+  background: var(--ek-role-superadmin);
+  box-shadow: 0 6px 18px rgba(180, 35, 24, .28);
+}
+.auth__submit--admin:hover:not(:disabled) { background: var(--ek-danger-700); }
+
+.auth__note {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 13px; margin-bottom: 16px;
+  background: var(--bg-warning-subtle); border: 1px solid var(--border-warning);
+  border-radius: var(--r-md);
+  font-size: var(--fs-xs); font-weight: 500; color: var(--fg-warning);
+}
+
+.auth__foot {
+  margin-top: 22px; padding-top: 16px;
+  border-top: 1px solid var(--border-subtle);
+  font-size: var(--fs-xs); color: var(--fg-secondary); text-align: center;
+}
+
+/* ── O'ng: brend paneli ───────────────────────────────────────────────────
+   ⚠ Ilgari bu panel HAR IKKALA temada ham to'q ko'k gradient edi — yorug'
+   rejimda ekranning yarmi qora blok bo'lib turardi.
+
+   Endi panel temaga bo'ysunadi:
+     yorug'   → yumshoq brend tusidagi sirt, siyoh rangli matn
+     qorong'i → chuqur ko'k gradient
+
+   Brend hissi yo'qolmaydi: chek bloki, yashil summa va ko'k urg'u ikkala
+   rejimda ham joyida qoladi. */
+.auth__brand-side {
+  display: none;
+  position: relative; overflow: hidden;
+  padding: 48px;
+  background: var(--bg-brand-soft);
+  color: var(--fg-primary);
+  border-left: 1px solid var(--border-subtle);
+  align-items: center; justify-content: center;
+}
+[data-theme="dark"] .auth__brand-side {
+  background: linear-gradient(160deg, var(--ek-blue-950), var(--ek-blue-800) 70%);
+  color: #FFFFFF;
+  border-left-color: transparent;
+}
+@media (min-width: 900px) { .auth__brand-side { display: flex; } }
+
+.auth__brand-inner { position: relative; z-index: 1; width: 100%; max-width: 380px; }
+.auth__brand-eyebrow {
+  font-size: var(--fs-2xs); font-weight: 600; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--fg-brand); margin-bottom: 12px;
+}
+[data-theme="dark"] .auth__brand-eyebrow { color: var(--ek-blue-200); }
+.auth__brand-title {
+  font-family: var(--font-display);
+  font-size: 1.6rem; font-weight: 800; line-height: 1.25; letter-spacing: -.025em;
+  margin-bottom: 28px;
+}
+
+/* Chek bloki — pastida yirtilgan qirra (brend imzosi) */
+.auth__receipt {
+  background: var(--bg-surface); color: var(--fg-primary);
+  border: 1px solid var(--border-subtle); border-bottom: 0;
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
+  padding: 18px 20px 20px;
+  box-shadow: var(--sh-lg);
+  --tear: 9px;
+}
+[data-theme="dark"] .auth__receipt { border-color: transparent; }
+.auth__receipt-head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding-bottom: 10px; margin-bottom: 10px;
+  border-bottom: 1px dashed var(--border-strong);
+  font-size: var(--fs-2xs); color: var(--fg-secondary);
+}
+.auth__receipt-label {
+  font-size: var(--fs-2xs); font-weight: 600; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--fg-secondary);
+}
+.auth__receipt-total {
+  font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+  font-size: 1.9rem; font-weight: 700; color: var(--fg-success);
+  line-height: 1.15; margin-bottom: 12px;
+}
+.auth__receipt-row {
+  display: flex; justify-content: space-between; gap: 10px;
+  font-size: var(--fs-xs); padding: 4px 0; color: var(--fg-secondary);
+}
+.auth__receipt-row b { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--fg-primary); }
+
+.auth__points { list-style: none; margin-top: 40px; display: grid; gap: 14px; }
+.auth__points li { display: flex; align-items: flex-start; gap: 11px; font-size: var(--fs-sm); color: var(--fg-secondary); }
+[data-theme="dark"] .auth__points li { color: rgba(255,255,255,.86); }
+.auth__points i { margin-top: 2px; color: var(--fg-brand); }
+[data-theme="dark"] .auth__points i { color: var(--ek-blue-200); }
+
+/* ── Tema tanlagichi — chap yuqori burchakda ────────────────────────────── */
+/* Til + tema yonma-yon. `flex-wrap` — 360px ekranda ikkinchisi pastga tushadi
+   va gorizontal toshish bo'lmaydi. */
+.auth__theme {
+  position: absolute; top: 16px; right: 16px; z-index: 2;
+  display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end;
+}

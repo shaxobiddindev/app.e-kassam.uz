@@ -9,6 +9,9 @@ import * as queue from "../lib/ek-offline";
 import { PAYMENT_TYPE, paymentLabel } from "../lib/ek-labels";
 import { useLoading } from "../lib/use-loading";
 import Select from "../components/ek/Select";
+import { printReceipt, openDrawer } from "../lib/ek-hardware";
+import { useScanner } from "../hooks/useScanner";
+import { isDesktop } from "../lib/ek-desktop";
 
 /* ══════════════════════════════════════════════════════════════════════════
    Kassir paneli — 06-APP-KASSIR.md
@@ -42,49 +45,18 @@ const MIXED_SECOND = ["CARD", "CLICK", "PAYME"].map(payItem);
 const REFOCUS_MS = 3000;   // fokus yo'qolsa shuncha vaqtdan keyin qaytadi
 const UNDO_MS    = 5000;   // o'chirishni bekor qilish oynasi
 
-// ─── Chek chiqarish ──────────────────────────────────────────
-function printCheck({ saleId, cart, total, payType, customer, offline }) {
-  const win = window.open("", "_blank", "width=320,height=600,toolbar=no,menubar=no");
-  if (!win) return;
+/* ⚠ CHEK CHIQARISH BU YERDAN OLIB TASHLANDI → `lib/ek-hardware.js`.
+   Ikki sabab:
 
-  const rows = cart
-    .map((i) => `<div class="row"><span>${i.name} ×${i.qty}</span><span>${(i.salePrice * i.qty).toLocaleString("uz-UZ")} so'm</span></div>`)
-    .join("");
+   1. Bu yerdagi shablon BUZUQ edi. U oddiy satr bo'la turib ichida
+      `{t("kassa.receiptTotal")}` yozilgan edi — JSX emas, ya'ni tarjima
+      hech qachon chaqirilmagan va MIJOZNING CHEKIGA aynan shu matn
+      bosilib chiqqan. Prod'da ishlab turgan xato edi.
 
-  win.document.write(`
-    <!DOCTYPE html><html><head><title>Chek ${saleId}</title>
-    <style>
-      * { margin:0; padding:0; box-sizing:border-box; }
-      body { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums;
-             font-size: 12px; padding: 12px; width: 280px; color:#0B1524; }
-      .c { text-align: center; }
-      .hr { border: none; border-top: 1px dashed #0B1524; margin: 8px 0; }
-      .row { display: flex; justify-content: space-between; padding: 3px 0; gap: 8px; }
-      .logo { font-family: Manrope, sans-serif; font-size: 18px; font-weight: 800; color: #1663D8; }
-      .dot { color: #1FAE4C; }
-      .off { margin-top:6px; padding:4px; border:1px dashed #A16207; color:#A16207; font-size:10px; text-align:center; }
-    </style></head>
-    <body>
-      <div class="c">
-        <div class="logo">E-KASSAM<span class="dot">.UZ</span></div>
-        <small>{t("kassa.receiptSystem")}</small>
-      </div>
-      <div class="hr"></div>
-      <div class="row"><span>Chek ${saleId}</span><span>${new Date().toLocaleString("uz-UZ")}</span></div>
-      <div class="hr"></div>
-      ${rows}
-      <div class="hr"></div>
-      <div class="row"><b>{t("kassa.receiptTotal")}</b><b>${total.toLocaleString("uz-UZ")} so'm</b></div>
-      <div class="row"><span>{t("kassa.receiptPayment")}</span><span>${paymentLabel(payType)}</span></div>
-      ${customer ? `<div class="row"><span>{t("kassa.receiptCustomer")}</span><span>${customer.fullName}</span></div>` : ""}
-      ${offline ? `<div class="off">{t("kassa.receiptOffline")}<br>{t("kassa.receiptOfflineSub")}</div>` : ""}
-      <div class="hr"></div>
-      <div class="c"><p>{t("kassa.receiptThanks")}</p><small>e-kassam.uz</small></div>
-    </body></html>
-  `);
-  win.document.close();
-  setTimeout(() => win.print(), 400);
-}
+   2. Desktop'da chek `window.print()` bilan emas, printerga TO'G'RIDAN-
+      TO'G'RI ESC/POS baytlari sifatida yuboriladi: dialogsiz, qog'ozni
+      kesib, naqd to'lovda pul yashigini ochib. Ikkala yo'l bitta joyda
+      turishi kerak, aks holda ular ajralib ketardi. */
 
 /** Oflayn chek raqami — server raqami bilan chalkashmasligi uchun OFF- prefiksli. */
 function nextOfflineNo() {
@@ -120,6 +92,11 @@ export default function KassaPage({ toast, refreshLowStock }) {
   const refocusRef  = useRef(null);
   const undoRef     = useRef(null);
   const lastSale    = useRef(null);   // Ctrl+P uchun
+
+  // Chek sarlavhasi va imzosi. Sessiyadan olinadi — chek uchun alohida
+  // so'rov yubormaymiz: kassa ekrani oflaynda ham ishlashi kerak.
+  const shopName = localStorage.getItem("ek_shopName") || localStorage.getItem("ek_shopCode") || "";
+  const cashier  = localStorage.getItem("ek_fullName") || localStorage.getItem("ek_username") || "";
 
   /* ── Mijozlar ─────────────────────────────────────────────── */
   useEffect(() => {
@@ -188,9 +165,21 @@ export default function KassaPage({ toast, refreshLowStock }) {
       const found = (res.data || []).find((p) => p.barcode === code);
       if (found) { addToCart(found); return; }
     } catch (_) { /* oflayn */ }
-    // Xato ovozi emas, taklif (06-APP-KASSIR.md)
-    toast.info(`Bu barkod bazada yo'q: ${code}. Tovarni t("products.title") bo'limidan qo'shing.`);
+    // Xato ovozi emas, taklif (06-APP-KASSIR.md).
+    // ⚠ Ilgari bu satrda `t("products.title")` AYNAN shu ko'rinishda chiqardi:
+    // u shablon satr ichida edi va hech qachon chaqirilmagan.
+    toast.info(t("kassa.barcodeNotFound", { code, section: t("products.title") }));
   };
+
+  /* ── Skaner: butun oyna bo'ylab ────────────────────────────────
+     Ilgari barkod FAQAT o'z maydoni fokusda bo'lganda o'qilardi. Amalda
+     kassir mijoz oynasini ochib qo'yadi yoki sichqoncha bilan boshqa joyni
+     bosadi — va skanerlangan kod yo'qoladi yoki tovar nomi maydoniga
+     yozilib qoladi. Endi u qayerda bo'lishidan qat'i nazar savatga tushadi.
+
+     To'lov oynasi ochiq bo'lganda O'CHADI: u yerda summa kiritiladi va
+     tasodifiy skanerlash summani buzib yuborardi. */
+  useScanner(addByBarcode, { enabled: !showPayModal && !finish });
 
   /* ── Savat ────────────────────────────────────────────────── */
   const addToCart = (product) => {
@@ -316,7 +305,12 @@ export default function KassaPage({ toast, refreshLowStock }) {
     }
 
     lastSale.current = { ...snapshot, saleId: receiptNo, offline };
-    printCheck({ saleId: receiptNo, ...snapshot, offline });
+    // Chek va pul yashigi — BITTA amalda, kassirdan qo'shimcha bosish
+    // talab qilmasdan. Xatosi yutilmaydi, lekin SOTUVNI to'xtatmaydi:
+    // sotuv allaqachon qayd etilgan va printer nosozligi uni bekor
+    // qilmasligi kerak — kassir chekni Ctrl+P bilan qayta chiqaradi.
+    printReceipt({ saleId: receiptNo, ...snapshot, offline, shopName, cashier })
+      .catch((err) => toast.error(`${t("hw.printFailed")}: ${err.message}`));
 
     setFinish({ phase: "done", total: money(snapshot.total), receiptNo });
     if (refreshLowStock) refreshLowStock();
@@ -332,7 +326,13 @@ export default function KassaPage({ toast, refreshLowStock }) {
 
   const reprint = () => {
     if (!lastSale.current) { toast.info(t("kassa.noReceipt")); return; }
-    printCheck(lastSale.current);
+    printReceipt({ ...lastSale.current, shopName, cashier })
+      .catch((err) => toast.error(`${t("hw.printFailed")}: ${err.message}`));
+  };
+
+  /** Pul yashigi — sotuvsiz ham ochiladi: qaytim berish, smena boshi. */
+  const kickDrawer = () => {
+    openDrawer().catch((err) => toast.error(`${t("hw.drawerFailed")}: ${err.message}`));
   };
 
   /* ══ KLAVIATURA YORLIQLARI ════════════════════════════════ */
@@ -374,9 +374,28 @@ export default function KassaPage({ toast, refreshLowStock }) {
     <div style={{ height: "calc(100vh - var(--sh) - 40px)", display: "flex", flexDirection: "column" }}>
       <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexShrink: 0, gap: 12 }}>
         <h2 className="page-title" style={{ fontSize: 18 }}>{t("kassa.title")}</h2>
-        <div className="ek-shift" data-open="true">
-          <span className="ek-shift__dot" aria-hidden="true" />
-          {t("kassa.shiftOpen")}
+
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: "auto" }}>
+          {/* Apparat tugmalari FAQAT desktop'da. Brauzerda ular bosilganda
+              hech nima qilmasdi va kassirni chalg'itardi. */}
+          {isDesktop() && (
+            <>
+              <button type="button" className="btn btn-outline btn-sm" onClick={kickDrawer}
+                      title={t("hw.openDrawerHint")}>
+                <i className="fa-solid fa-cash-register" aria-hidden="true" /> {t("hw.openDrawer")}
+              </button>
+              <button type="button" className="btn btn-outline btn-sm" onClick={reprint}
+                      title={t("kassa.reprintHint")}>
+                <i className="fa-solid fa-print" aria-hidden="true" /> {t("kassa.reprint")}
+                <span className="kbd" style={{ marginLeft: 6 }}>Ctrl+P</span>
+              </button>
+            </>
+          )}
+
+          <div className="ek-shift" data-open="true">
+            <span className="ek-shift__dot" aria-hidden="true" />
+            {t("kassa.shiftOpen")}
+          </div>
         </div>
       </div>
 

@@ -22,7 +22,9 @@ import CustomReportPage from "./pages/admin/CustomReportPage";
 import ShopUsersPage    from "./pages/admin/ShopUsersPage";
 import ShopsPage        from "./pages/admin/ShopsPage";
 import SettingsPage    from "./pages/SettingsPage";
+import LoginPage       from "./pages/LoginPage";
 import NotFound from "./pages/NotFound";
+import { isDesktop } from "./lib/ek-desktop";
 
 // ⚠ Tilni URL dan olish MODUL TANASIDA, `replaceState` dan OLDIN bo'lishi
 // shart. Bu fayl `main.jsx` dan import qilinadi va ES modul tartibiga ko'ra
@@ -80,7 +82,11 @@ if (!localToken || localType !== "user") {
   const _lang = localStorage.getItem("ek_lang");
   localStorage.clear();
   if (_lang) localStorage.setItem("ek_lang", _lang);
-  window.location.replace(withLang(`${LOGIN_URL}?logged_out=1`));
+
+  // ⚠ DESKTOP'DA YO'NALTIRISH YO'Q. `.exe` ichida `auth.e-kassam.uz` ga
+  // o'tish oynani bo'sh sahifaga aylantirardi va kassir uchun ilova
+  // "yiqilgandek" ko'rinardi. Bu yerda `LoginPage` chiziladi (pastda).
+  if (!isDesktop()) window.location.replace(withLang(`${LOGIN_URL}?logged_out=1`));
 }
 
 const ProtectedRoute = ({ user, roles, children }) => {
@@ -97,11 +103,14 @@ export default function App() {
   // ichkaridagi barcha `t()` chaqiruvlari yangi tilni oladi. Shu sababli
   // har bir sahifada alohida obuna kerak emas.
   useT();
-  const { user, logout }                                  = useAuth();
+  const { user, login, logout }                           = useAuth();
   const { toasts, toast, dismiss }                        = useToast();
   const { lowStockItems, lowStockCount, refreshLowStock } = useLowStock();
 
-  if (!user) return null;
+  // Desktop'da kirish SHU YERDA — alohida origin ham, yo'naltirish ham yo'q.
+  // Brauzerda bu holatga umuman kelinmaydi: modul tanasi allaqachon
+  // `auth.e-kassam.uz` ga jo'natgan.
+  if (!user) return isDesktop() ? <LoginPage onLogin={login} /> : null;
 
   return (
     <ConfirmProvider>
@@ -132,7 +141,7 @@ export default function App() {
             <Route path="/branches" element={<ProtectedRoute user={user} roles={["OWNER"]}><ShopsPage toast={toast} /></ProtectedRoute>} />
             {/* Sozlamalar — hamma rolga ochiq: mavzu va til xodimning
                 shaxsiy tanlovi, do'kon sozlamasi emas. */}
-            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/settings" element={<SettingsPage toast={toast} />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Layout>
