@@ -64,9 +64,17 @@ export const SHOP_STATUS = dict("enum.shopStatus", {
 
 /* ── Tarif — ShopPlan ────────────────────────────────────────────────────── */
 export const SHOP_PLAN = dict("enum.plan", {
-  FREE:    { tone: "neutral" },
-  BASIC:   { tone: "info" },
-  PREMIUM: { tone: "success" },
+  FREE:       { tone: "neutral", icon: "fa-hourglass-half" },
+  BASIC:      { tone: "info",    icon: "fa-store" },
+  PREMIUM:    { tone: "success", icon: "fa-crown" },
+  ENTERPRISE: { tone: "success", icon: "fa-building" },
+});
+
+/* ── To'lov provayderi — uz.kassa.common.enums.PaymentProvider ──────────── */
+export const PAYMENT_PROVIDER = dict("enum.provider", {
+  MANUAL: { icon: "fa-hand-holding-dollar", tone: "neutral" },
+  PAYME:  { icon: "fa-mobile-screen-button", tone: "info" },
+  CLICK:  { icon: "fa-mobile-screen",        tone: "info" },
 });
 
 /* ── Do'kon xodimi roli — RoleType ───────────────────────────────────────── */
@@ -134,6 +142,7 @@ export const paymentEntry   = (v) => entry(PAYMENT_TYPE, v);
 export const saleStatus     = (v) => entry(SALE_STATUS, v);
 export const shopStatus     = (v) => entry(SHOP_STATUS, v);
 export const shopPlan       = (v) => entry(SHOP_PLAN, v);
+export const paymentProvider= (v) => entry(PAYMENT_PROVIDER, v);
 export const roleEntry      = (v) => entry(ROLE, v);
 export const roleLabel      = (v) => entry(ROLE, v).label;
 export const adminRole      = (v) => entry(ADMIN_ROLE, v);
