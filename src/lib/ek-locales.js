@@ -88,6 +88,11 @@ const uz = {
   "nav.section.main": "Asosiy",
   "nav.section.shop": "Do'kon",
   "nav.section.reports": "Hisobotlar",
+  /* "Boshqaruv" — DO'KONNI boshqarish (xodimlar, filiallar): egasi va
+     do'kon admini uchun. "Sozlamalar" esa xodimning SHAXSIY tanlovi
+     (til, mavzu). Ilgari ikkalasi bitta bo'limda turardi va kassir
+     "Sozlamalar" ni ochib xodimlar ro'yxatini ko'rishini kutardi. */
+  "nav.section.management": "Boshqaruv",
   "nav.section.settings": "Sozlamalar",
   "nav.section.system": "Tizim boshqaruvi",
   "nav.dashboard": "Dashboard",
@@ -634,6 +639,24 @@ const uz = {
   "rep.needDates": "Sanalarni kiriting",
   "rep.badRange": "Boshlanish sanasi oxirgisidan katta bo'lmasligi kerak",
   "rep.run": "Hisobot olish",
+
+  /* ── Grafik va eksport (07-ADMIN.md) ───────────────────────────────── */
+  "chart.revenue14d": "14 kunlik tushum",
+  "chart.viewChart": "Grafik",
+  "chart.viewTable": "Jadval",
+  "chart.viewChartAria": "Ma'lumotni grafik ko'rinishida ko'rsatish",
+  "chart.viewTableAria": "Ma'lumotni jadval ko'rinishida ko'rsatish",
+  "chart.day": "Kun",
+  "chart.revenue": "Tushum",
+  "chart.salesCount": "Sotuvlar",
+  "chart.empty": "Bu davrda birorta ham sotuv bo'lmagan",
+  "chart.today": "Bugun",
+  "export.title": "Eksport",
+  "export.csv": "Excel (CSV)",
+  "export.print": "PDF / Chop etish",
+  "export.empty": "Eksport qilinadigan qator yo'q",
+  "export.done": "Fayl yuklab olindi: {name}",
+  "table.virtualHint": "{n} qatordan {shown} tasi chizilgan (tez aylantirish uchun)",
 };
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -708,6 +731,7 @@ const ru = {
   "nav.section.main": "Основное",
   "nav.section.shop": "Магазин",
   "nav.section.reports": "Отчёты",
+  "nav.section.management": "Управление",
   "nav.section.settings": "Настройки",
   "nav.section.system": "Управление системой",
   "nav.dashboard": "Дашборд",
@@ -1223,6 +1247,23 @@ const ru = {
   "rep.needDates": "Укажите даты",
   "rep.badRange": "Начальная дата не может быть позже конечной",
   "rep.run": "Сформировать отчёт",
+
+  "chart.revenue14d": "Выручка за 14 дней",
+  "chart.viewChart": "График",
+  "chart.viewTable": "Таблица",
+  "chart.viewChartAria": "Показать данные в виде графика",
+  "chart.viewTableAria": "Показать данные в виде таблицы",
+  "chart.day": "День",
+  "chart.revenue": "Выручка",
+  "chart.salesCount": "Продажи",
+  "chart.empty": "За этот период не было ни одной продажи",
+  "chart.today": "Сегодня",
+  "export.title": "Экспорт",
+  "export.csv": "Excel (CSV)",
+  "export.print": "PDF / Печать",
+  "export.empty": "Нет строк для экспорта",
+  "export.done": "Файл загружен: {name}",
+  "table.virtualHint": "Отрисовано {shown} строк из {n} (для быстрой прокрутки)",
 };
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -1297,6 +1338,7 @@ const en = {
   "nav.section.main": "Main",
   "nav.section.shop": "Shop",
   "nav.section.reports": "Reports",
+  "nav.section.management": "Management",
   "nav.section.settings": "Settings",
   "nav.section.system": "System management",
   "nav.dashboard": "Dashboard",
@@ -1812,6 +1854,23 @@ const en = {
   "rep.needDates": "Enter the dates",
   "rep.badRange": "The start date cannot be later than the end date",
   "rep.run": "Run report",
+
+  "chart.revenue14d": "Revenue, last 14 days",
+  "chart.viewChart": "Chart",
+  "chart.viewTable": "Table",
+  "chart.viewChartAria": "Show the data as a chart",
+  "chart.viewTableAria": "Show the data as a table",
+  "chart.day": "Day",
+  "chart.revenue": "Revenue",
+  "chart.salesCount": "Sales",
+  "chart.empty": "There were no sales in this period",
+  "chart.today": "Today",
+  "export.title": "Export",
+  "export.csv": "Excel (CSV)",
+  "export.print": "PDF / Print",
+  "export.empty": "No rows to export",
+  "export.done": "File downloaded: {name}",
+  "table.virtualHint": "{shown} of {n} rows rendered (for fast scrolling)",
 };
 
 export default { uz, ru, en };
