@@ -3,6 +3,7 @@ import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { LOGO_URL, LOGO_DARK_URL, MARK_URL, initials } from "../utils";
 import { useConfirm } from "../context/ConfirmProvider";
 import { roleLabel } from "../lib/ek-labels";
+import { hasRole, topRole } from "../lib/ek-roles";
 import { useT } from "../lib/ek-i18n";
 import { weekdayDate } from "../lib/ek-format";
 
@@ -119,9 +120,13 @@ function LowStockBadge({ items, count, onGoInventory }) {
 function Sidebar({ user, onLogout, open, onClose, isCollapsed, onToggleCollapse, lowStockCount }) {
   const { t } = useT();
   const confirm = useConfirm();
+  // Yorliqda BITTA rol ko'rsatiladi — ierarxiyadagi eng yuqorisi.
+  // "SHOP_ADMIN,CASHIER" deb yozib qo'yish foydalanuvchiga hech narsa
+  // bermaydi va tarjima qilinmagan holda chiqardi.
   const roleName = (r) => {
-    const key = EXTRA_ROLE_KEYS[String(r || "").toUpperCase()];
-    return key ? t(key) : roleLabel(r);
+    const top = topRole(r);
+    const key = EXTRA_ROLE_KEYS[top];
+    return key ? t(key) : roleLabel(top);
   };
   const handleLogoutClick = async () => {
     const ok = await confirm({
@@ -155,14 +160,13 @@ function Sidebar({ user, onLogout, open, onClose, isCollapsed, onToggleCollapse,
       </button>
       <nav className="sb-nav">
         {NAV_ITEMS.map((group) => {
-          const userRole = (user?.role || "").toUpperCase().replace("ROLE_", "");
-          const isOwner = userRole === "OWNER";
-          
-          const visibleItems = group.items.filter(item => {
-            if (!item.roles) return true;
-            return item.roles.includes(userRole) || isOwner;
-          });
-          
+          // ⚠ Tekshiruv TO'PLAM bo'yicha. Ilgari bu yerda
+          // `item.roles.includes(userRole)` turardi va `userRole` — sessiyadagi
+          // BUTUN satr. Xodimda ikkita rol bo'lsa u `"SHOP_ADMIN,CASHIER"`
+          // bo'lardi, hech bir ro'yxatga mos kelmasdi va yon menyuda faqat
+          // «Sozlamalar» qolardi. OWNER uchun istisno `hasRole` ichida.
+          const visibleItems = group.items.filter((item) => hasRole(user?.role, item.roles));
+
           if (visibleItems.length === 0) return null;
           return (
             <div key={group.section}>

@@ -25,6 +25,7 @@ import SettingsPage    from "./pages/SettingsPage";
 import LoginPage       from "./pages/LoginPage";
 import NotFound from "./pages/NotFound";
 import { isDesktop } from "./lib/ek-desktop";
+import { hasRole, roleSet } from "./lib/ek-roles";
 
 // ⚠ Tilni URL dan olish MODUL TANASIDA, `replaceState` dan OLDIN bo'lishi
 // shart. Bu fayl `main.jsx` dan import qilinadi va ES modul tartibiga ko'ra
@@ -89,12 +90,15 @@ if (!localToken || localType !== "user") {
   if (!isDesktop()) window.location.replace(withLang(`${LOGIN_URL}?logged_out=1`));
 }
 
+/* ⚠ Tekshiruv `hasRole` orqali — xodimda bir nechta rol bo'lishi mumkin va
+   ular sessiyada vergul bilan saqlanadi. Ilgari bu yerda butun satr bitta
+   rol nomi bilan solishtirilardi va ikki rolli xodim hech qayerga
+   kira olmasdi. OWNER istisnosi `hasRole` ichida.
+
+   Bu FAQAT ko'rinish: haqiqiy ruxsat serverda tekshiriladi. */
 const ProtectedRoute = ({ user, roles, children }) => {
   if (!user) return <Navigate to={LOGIN_URL} replace />;
-  const userRole = (user.role || "").toUpperCase().replace("ROLE_", "");
-  if (roles && userRole !== "OWNER") {
-    if (!roles.includes(userRole)) return <Navigate to="/" replace />;
-  }
+  if (!hasRole(user.role, roles)) return <Navigate to="/" replace />;
   return children;
 };
 
@@ -119,14 +123,18 @@ export default function App() {
         <Layout 
           user={user} 
           onLogout={logout} 
-          isAdmin={user?.role === "SUPERADMIN"}
+          isAdmin={roleSet(user?.role).has("SUPERADMIN")}
           lowStockItems={lowStockItems} 
           lowStockCount={lowStockCount}
         >
           <Routes>
+            {/* Kassirning uy sahifasi — Kassa, Dashboard emas: u smenani
+                sotuvdan boshlaydi. Tekshiruv `hasRole` bilan emas, ANIQ:
+                faqat kassirlik roli borlar. Kassir + omborchi bo'lsa
+                Dashboard foydaliroq. */}
             <Route path="/" element={
-              user?.role === "CASHIER" 
-                ? <Navigate to="/sale" replace /> 
+              roleSet(user?.role).size === 1 && roleSet(user?.role).has("CASHIER")
+                ? <Navigate to="/sale" replace />
                 : <ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><DashboardPage toast={toast} /></ProtectedRoute>
             } />
             <Route path="/sale" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"]}><KassaPage toast={toast} /></ProtectedRoute>} />

@@ -15,7 +15,7 @@ const SHELL = `${VERSION}-shell`;
 
 self.addEventListener("install", (e) => {
   e.waitUntil(
-    caches.open(SHELL).then((c) => c.addAll(["/", "/index.html", "/logo.png", "/manifest.webmanifest"]))
+    caches.open(SHELL).then((c) => c.addAll(["/", "/index.html", "/icon-512.png", "/manifest.webmanifest"]))
       .then(() => self.skipWaiting())
       .catch(() => self.skipWaiting())
   );

@@ -12,7 +12,7 @@
   "icons": [
     { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
     { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" },
-    { "src": "/logo.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
   ],
   "shortcuts": [
     { "name": "Kassa", "url": "/sale" },

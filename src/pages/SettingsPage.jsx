@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useT } from "../lib/ek-i18n";
 import { roleLabel } from "../lib/ek-labels";
+import { roleSet } from "../lib/ek-roles";
 import ThemeSelect from "../components/ek/ThemeSelect";
 import LangSelect from "../components/ek/LangSelect";
 import { useConfirm } from "../context/ConfirmProvider";
@@ -125,7 +126,11 @@ export default function SettingsPage({ toast }) {
           <span className="set-value ek-num">@{user?.username || "—"}</span>
         </Row>
         <Row label={t("common.role")}>
-          <span className="set-value">{roleLabel(user?.role)}</span>
+          {/* Bir nechta rol bo'lsa hammasi ko'rsatiladi — bu ma'lumot
+              ekrani, yorliq emas. */}
+          <span className="set-value">
+            {[...roleSet(user?.role)].map(roleLabel).join(", ") || "—"}
+          </span>
         </Row>
         <Row label={t("settings.shopCode")}>
           <span className="set-value ek-num">{user?.shopCode || "—"}</span>
