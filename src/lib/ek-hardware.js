@@ -71,11 +71,24 @@ export async function listPrinters() {
  * Xatoni YUTMAYDI — chaqiruvchi kassirga ko'rsatishi kerak: chek chiqmagani
  * jimgina o'tib ketadigan narsa emas.
  */
+/**
+ * Amaldagi ulanish turi.
+ *
+ * ⚠ Desktop'da "browser" QAYTARILMAYDI. `window.open` Tauri oynasida
+ * ishlamaydi — u bo'sh OS oynasini ochadi va unga yozib bo'lmaydi, natijada
+ * ekranda OQ OYNA qoladi va chek umuman chiqmaydi. Sozlamada tasodifan
+ * tanlangan bo'lsa ham, printerga to'g'ridan-to'g'ri yuborish afzal.
+ */
+function transportOf(s) {
+  if (!isDesktop()) return "browser";
+  return s.transport === "tcp" ? "tcp" : "windows";
+}
+
 async function send(bytes) {
   const s = getSettings();
   if (!isDesktop()) throw new Error(t("hw.errNoDesktop"));
 
-  if (s.transport === "tcp") {
+  if (transportOf(s) === "tcp") {
     if (!s.host) throw new Error(t("hw.errNoHost"));
     return invoke("print_tcp", { host: s.host, port: Number(s.port) || 9100, data: bytes });
   }
@@ -130,7 +143,9 @@ export function buildReceipt({ saleId, cart = [], total = 0, payType, customer, 
 export async function printReceipt(sale) {
   const s = getSettings();
 
-  if (!isDesktop() || s.transport === "browser") return printInBrowser(sale);
+  // Brauzerda — dialog orqali. Desktop'da HAR DOIM printerga to'g'ridan-to'g'ri
+  // (`transportOf` "browser" ni desktop'da qaytarmaydi).
+  if (!isDesktop()) return printInBrowser(sale);
 
   const r = buildReceipt(sale);
   if (s.openDrawer && sale.payType === "CASH") r.kick();
@@ -151,8 +166,11 @@ export async function testPrint() {
   r.center().double().line(t("hw.testTitle")).double(false);
   r.line(new Date().toLocaleString("uz-UZ"));
   r.left().rule();
-  r.row(t("hw.transport"), s.transport);
-  r.row(t("hw.printer"), s.transport === "tcp" ? `${s.host}:${s.port}` : (s.printerName || t("hw.defaultPrinter")));
+  // AMALDAGI ulanish yoziladi, sozlamadagi emas — sinov cheki nima
+  // sozlanganini emas, nima ISHLAYOTGANINI ko'rsatishi kerak.
+  const tr = transportOf(s);
+  r.row(t("hw.transport"), tr);
+  r.row(t("hw.printer"), tr === "tcp" ? `${s.host}:${s.port}` : (s.printerName || t("hw.defaultPrinter")));
   r.row(t("hw.width"), `${s.width} mm`);
   r.rule();
   // Kenglik to'g'ri sozlanganini KO'Z bilan tekshirish uchun: bu qator

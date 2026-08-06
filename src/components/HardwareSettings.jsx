@@ -70,13 +70,16 @@ export default function HardwareSettings({ toast }) {
 
       <div className="set-list" style={desktop ? undefined : { opacity: .55, pointerEvents: "none" }}>
         <Row label={t("hw.transport")}>
+          {/* ⚠ «Brauzer» varianti desktop'da YO'Q. U `window.open` ga
+              tayanadi, Tauri oynasida esa bu bo'sh OS oynasini ochadi —
+              ekranda oq oyna qoladi va chek umuman chiqmaydi. Brauzer
+              versiyasida esa tanlash shart emas: u yagona yo'l. */}
           <Select
-            value={s.transport}
+            value={s.transport === "browser" ? "windows" : s.transport}
             onChange={(v) => set({ transport: v })}
             options={[
               { value: "windows", label: t("hw.transportWindows") },
               { value: "tcp",     label: t("hw.transportTcp") },
-              { value: "browser", label: t("hw.transportBrowser") },
             ]}
           />
         </Row>
