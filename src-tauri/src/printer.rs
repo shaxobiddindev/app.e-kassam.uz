@@ -21,12 +21,12 @@ use std::io::Write;
 use std::net::{SocketAddr, TcpStream, ToSocketAddrs};
 use std::time::Duration;
 
-use windows::core::PCWSTR;
+use windows::core::{PCWSTR, PWSTR};
 use windows::Win32::Foundation::HANDLE;
 use windows::Win32::Graphics::Printing::{
-    ClosePrinter, EndDocPrinter, EndPagePrinter, EnumPrintersW, OpenPrinterW, StartDocPrinterW,
-    StartPagePrinter, WritePrinter, DOC_INFO_1W, PRINTER_ENUM_CONNECTIONS, PRINTER_ENUM_LOCAL,
-    PRINTER_INFO_2W,
+    ClosePrinter, EndDocPrinter, EndPagePrinter, EnumPrintersW, GetDefaultPrinterW, OpenPrinterW,
+    StartDocPrinterW, StartPagePrinter, WritePrinter, DOC_INFO_1W, PRINTER_ENUM_CONNECTIONS,
+    PRINTER_ENUM_LOCAL, PRINTER_INFO_2W,
 };
 
 /// Rust satrini Windows API kutadigan nol bilan tugaydigan UTF-16 ga o'giradi.
@@ -100,10 +100,13 @@ pub fn print_raw(printer: Option<String>, data: Vec<u8>) -> Result<(), String> {
         let result = (|| -> Result<(), String> {
             let mut wdoc = wide("e-Kassam chek");
             let mut wtype = wide("RAW");
+            // `pDatatype: "RAW"` — ENG MUHIM maydon. Usiz drayver baytlarni
+            // "hujjat" deb talqin qilib, ESC/POS buyruqlarini matn sifatida
+            // bosib chiqarardi.
             let doc = DOC_INFO_1W {
-                pDocName: windows::core::PWSTR(wdoc.as_mut_ptr()),
-                pOutputFile: windows::core::PWSTR::null(),
-                pDatatype: windows::core::PWSTR(wtype.as_mut_ptr()),
+                pDocName: PWSTR::from_raw(wdoc.as_mut_ptr()),
+                pOutputFile: PWSTR::null(),
+                pDatatype: PWSTR::from_raw(wtype.as_mut_ptr()),
             };
 
             let job = StartDocPrinterW(handle, 1, &doc);
@@ -132,20 +135,30 @@ pub fn print_raw(printer: Option<String>, data: Vec<u8>) -> Result<(), String> {
 }
 
 /// Tizimdagi standart printer nomi.
+///
+/// ⚠ `GetDefaultPrinterW` `Result` EMAS, `BOOL` qaytaradi va birinchi
+/// parametri `Option` emas, oddiy `PWSTR`. Ikkalasi ham qo'shni funksiyalardan
+/// farq qiladi (`OpenPrinterW` va `EnumPrintersW` `Result` beradi) — shu
+/// sababli bu yerda `.ok()` orqali `Result` ga o'giriladi.
 fn default_printer() -> Result<String, String> {
     unsafe {
+        // Birinchi chaqiruv faqat kerakli uzunlikni aniqlaydi va ataylab
+        // muvaffaqiyatsiz tugaydi — Win32 dagi odatiy naqsh.
         let mut len = 0u32;
-        let _ = windows::Win32::Graphics::Printing::GetDefaultPrinterW(None, &mut len);
+        let _ = GetDefaultPrinterW(PWSTR::null(), &mut len);
         if len == 0 {
             return Err("Standart printer topilmadi".into());
         }
+
         let mut buf = vec![0u16; len as usize];
-        windows::Win32::Graphics::Printing::GetDefaultPrinterW(
-            Some(windows::core::PWSTR(buf.as_mut_ptr())),
-            &mut len,
-        )
-        .map_err(|e| format!("GetDefaultPrinter: {e}"))?;
-        Ok(String::from_utf16_lossy(&buf[..(len as usize).saturating_sub(1)]))
+        GetDefaultPrinterW(PWSTR::from_raw(buf.as_mut_ptr()), &mut len)
+            .ok()
+            .map_err(|e| format!("GetDefaultPrinter: {e}"))?;
+
+        // `len` yakuniy nolni ham sanaydi — uni kesib tashlaymiz.
+        Ok(String::from_utf16_lossy(
+            &buf[..(len as usize).saturating_sub(1)],
+        ))
     }
 }
 

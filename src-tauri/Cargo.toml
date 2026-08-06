@@ -17,12 +17,19 @@ serde_json = "1"
 # Chek printeri Windows drayveri orqali boshqariladi (winspool).
 # `features` ATAYLAB tor: `windows` krateyi juda katta va kerak bo'lmagan
 # modullar qurilish vaqtini bir necha daqiqaga uzaytiradi.
+# ⚠ To'RTALA xususiyat ham KERAK va ularni "ortiqcha" deb qisqartirmang.
+# `windows` krateyida winspool funksiyalari boshqa modullarga bog'liq:
+#   Win32_Graphics_Gdi → `OpenPrinterW`, `PRINTER_INFO_2W` (printer DEVMODE
+#                        bilan ishlagani uchun GDI turlariga tayanadi)
+#   Win32_Security     → `PRINTER_INFO_2W` (xavfsizlik deskriptori maydoni)
+# Ular yo'q bo'lsa kompilyator "topilmadi" deydi va sababi ko'rinmaydi —
+# element mavjud, lekin `#[cfg(feature = ...)]` ortida yashiringan bo'ladi.
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.58", features = [
-    "Win32_Foundation",
-    "Win32_Graphics_Printing",
-    "Win32_Storage_Xps",
-    "Win32_System_Com",
+    "Win32_Foundation",         # HANDLE, BOOL
+    "Win32_Graphics_Printing",  # winspool: OpenPrinter, WritePrinter, EnumPrinters
+    "Win32_Graphics_Gdi",
+    "Win32_Security",
 ] }
 
 [profile.release]
