@@ -9,6 +9,32 @@ import { useAuth } from "../hooks/useAuth";
 import { paymentEntry, saleStatus } from "../lib/ek-labels";
 import { SkeletonTable } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
+import { printReceipt } from "../lib/ek-hardware";
+import { roleSet } from "../lib/ek-roles";
+
+/* ── Chekni qayta chiqarish ────────────────────────────────────────────────
+   Kassa ekranidagi Ctrl+P faqat OXIRGI chekni chiqaradi. Amalda esa mijoz
+   yarim soatdan keyin qaytib kelib chek so'raydi — o'shanda uni tarixdan
+   topib chiqarish kerak bo'ladi.
+
+   Tarixdagi yozuv Kassa savatidan BOSHQA shaklda keladi
+   (`productName`/`quantity`/`price`), shuning uchun chek quruvchi kutgan
+   shaklga o'giriladi. */
+function saleToReceipt(sale) {
+  return {
+    saleId: `A-${sale.id}`,
+    cart: (sale.items || []).map((i) => ({
+      name:      i.productName,
+      qty:       i.quantity,
+      salePrice: i.price,
+    })),
+    total:    sale.totalAmount,
+    payType:  sale.paymentType,
+    customer: sale.customerName ? { fullName: sale.customerName } : null,
+    shopName: localStorage.getItem("ek_shopName") || localStorage.getItem("ek_shopCode") || "",
+    cashier:  sale.cashierName || "",
+  };
+}
 
 /* Sotuv holati — lug'atdan. `tone` Badge rang nomiga o'giriladi. */
 const TONE_COLOR = { success: "green", danger: "red", warning: "yellow", info: "blue", neutral: "gray" };
@@ -27,7 +53,11 @@ function PayLabel({ type }) {
 export default function SalesPage({ toast }) {
   const confirm                   = useConfirm();
   const { user }                  = useAuth();
-  const isCashier                 = user?.role === "CASHIER";
+  // ⚠ To'plam bo'yicha: xodimda bir nechta rol bo'lishi mumkin va sessiyada
+  // ular vergul bilan saqlanadi. Tenglik bilan solishtirish kassir+omborchi
+  // xodimni "kassir emas" deb hisoblardi.
+  const isCashier                 = roleSet(user?.role).has("CASHIER");
+  const [printing, setPrinting]   = useState(null);
   const [sales, setSales]         = useState([]);
   const [loading, setLoading]     = useState(true);
   // Ekranda ko'rsatiladigan holat: tez javobda skeleton UMUMAN chizilmaydi
@@ -61,6 +91,26 @@ export default function SalesPage({ toast }) {
   // CASHIER uchun faqat bugungi sotuvlar
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
+
+  /**
+   * Tarixdagi sotuvning chekini qayta chiqaradi.
+   *
+   * ⚠ BEKOR QILINGAN sotuv uchun chek CHIQARILMAYDI. Chek — xarid dalili;
+   * bekor qilingan sotuvga haqiqiy ko'rinishdagi chek berish mijoz qo'lida
+   * yaroqli hujjat qoldirardi.
+   */
+  const handleReprint = async (sale) => {
+    if (sale.status === "CANCELLED") return;
+    setPrinting(sale.id);
+    try {
+      await printReceipt(saleToReceipt(sale));
+      toast.success(t("kassa.reprint"));
+    } catch (err) {
+      toast.error(`${t("hw.printFailed")}: ${err.message}`);
+    } finally {
+      setPrinting(null);
+    }
+  };
 
   const handleCancel = async (sale) => {
     const ok = await confirm({
@@ -156,6 +206,18 @@ export default function SalesPage({ toast }) {
                           <button className="btn-icon" title={t("sales.details")} onClick={() => setDetail(sale)}>
                             <i className="fa-solid fa-eye" />
                           </button>
+                          {/* Chek — bekor qilinmagan sotuvlar uchun. Mijoz
+                              keyinroq qaytib kelib chek so'raganda kerak. */}
+                          {sale.status !== "CANCELLED" && (
+                            <button
+                              className="btn-icon"
+                              title={t("kassa.reprint")}
+                              onClick={() => handleReprint(sale)}
+                              disabled={printing === sale.id}
+                            >
+                              {printing === sale.id ? <Spinner small /> : <i className="fa-solid fa-print" />}
+                            </button>
+                          )}
                           {sale.status !== "CANCELLED" && (
                             <button
                               className="btn-icon danger"
@@ -186,6 +248,16 @@ export default function SalesPage({ toast }) {
           onClose={() => setDetail(null)}
           footer={
             <>
+              {detail.status !== "CANCELLED" && (
+                <button
+                  className="btn btn-primary btn-sm"
+                  onClick={() => handleReprint(detail)}
+                  disabled={printing === detail.id}
+                >
+                  {printing === detail.id ? <Spinner small /> : <i className="fa-solid fa-print" />}
+                  {t("kassa.reprint")}
+                </button>
+              )}
               {detail.status !== "CANCELLED" && (
                 <button
                   className="btn btn-danger btn-sm"
