@@ -26,6 +26,7 @@ import LoginPage       from "./pages/LoginPage";
 import NotFound from "./pages/NotFound";
 import { isDesktop } from "./lib/ek-desktop";
 import { hasRole, roleSet } from "./lib/ek-roles";
+import ErrorBoundary, { RouteErrorBoundary } from "./components/ek/ErrorBoundary";
 
 // ⚠ Tilni URL dan olish MODUL TANASIDA, `replaceState` dan OLDIN bo'lishi
 // shart. Bu fayl `main.jsx` dan import qilinadi va ES modul tartibiga ko'ra
@@ -116,7 +117,13 @@ export default function App() {
   // `auth.e-kassam.uz` ga jo'natgan.
   if (!user) return isDesktop() ? <LoginPage onLogin={login} /> : null;
 
+  // Ikki qavatli himoya. ICHKI to'siq (`RouteErrorBoundary`) — sahifa
+  // darajasida: buzilgan bo'lim o'rniga xabar chiqadi, yon menyu va
+  // navigatsiya ISHLAYVERADI, kassir boshqa bo'limga o'tib ketaveradi.
+  // TASHQI to'siq — oxirgi chora: `Layout` yoki `Toast` ning o'zi yiqilsa
+  // ham ekranda hech bo'lmasa xabar va "qayta yuklash" tugmasi qoladi.
   return (
+    <ErrorBoundary>
     <ConfirmProvider>
       <BrowserRouter>
         <Toast toasts={toasts} onDismiss={dismiss} />
@@ -127,6 +134,7 @@ export default function App() {
           lowStockItems={lowStockItems} 
           lowStockCount={lowStockCount}
         >
+          <RouteErrorBoundary>
           <Routes>
             {/* Kassirning uy sahifasi — Kassa, Dashboard emas: u smenani
                 sotuvdan boshlaydi. Tekshiruv `hasRole` bilan emas, ANIQ:
@@ -152,8 +160,10 @@ export default function App() {
             <Route path="/settings" element={<SettingsPage toast={toast} />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
+          </RouteErrorBoundary>
         </Layout>
       </BrowserRouter>
     </ConfirmProvider>
+    </ErrorBoundary>
   );
 }

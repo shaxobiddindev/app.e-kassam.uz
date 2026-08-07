@@ -7,7 +7,11 @@ import { Empty, SearchBar, Badge } from "../components/ui";
 import { useConfirm } from "../context/ConfirmProvider";
 import { useAuth } from "../hooks/useAuth";
 import { paymentEntry, saleStatus } from "../lib/ek-labels";
-import { SkeletonTable } from "../components/ek/Loading";
+// ⚠ `Spinner` HAM shu yerdan. U chek chiqarish va bekor qilish tugmalarida
+// FAQAT amal davomida chiziladi — shuning uchun import unutilgani sahifa
+// ochilganda bilinmasdi, tugma bosilgan zahoti esa render'da
+// `ReferenceError` bo'lib butun ilovani bo'sh oynaga aylantirardi.
+import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
 import { printReceipt } from "../lib/ek-hardware";
 import { roleSet } from "../lib/ek-roles";
