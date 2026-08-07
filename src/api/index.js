@@ -231,7 +231,9 @@ export const securityApi = {
   acknowledge:      (id) => request(`/security/log/${id}/ack`, { method: "PATCH" }),
 
   openShift:    () => request("/security/shift/open",  { method: "POST" }),
+  // Yopish javobi — Z-HISOBOT (yakuniy). X — ochiq smenaning oraliq holati.
   closeShift:   () => request("/security/shift/close", { method: "POST" }),
+  shiftReport:  () => request("/security/shift/report"),
   currentShift: () => request("/security/shift/current"),
   openShifts:   () => request("/security/shift/open-list"),
 

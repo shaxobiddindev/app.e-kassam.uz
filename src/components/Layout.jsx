@@ -6,6 +6,38 @@ import { roleLabel } from "../lib/ek-labels";
 import { hasRole, topRole } from "../lib/ek-roles";
 import { useT } from "../lib/ek-i18n";
 import { weekdayDate } from "../lib/ek-format";
+import { securityApi } from "../api";
+import { roleSet } from "../lib/ek-roles";
+
+/**
+ * O'qilmagan SHUBHALI tasdiqlar soni — «Xavfsizlik» bandidagi qizil belgi.
+ *
+ * Faqat OWNER/SHOP_ADMIN uchun so'raladi (boshqalarga endpoint 403 va
+ * belgi baribir ko'rinmaydi). 2 daqiqalik interval yetarli: bu darhol
+ * yetib borishi shart bo'lgan signal emas, egaga "kirib ko'ring" degan
+ * eslatma. «Ko'rdim» bosilgach hisob kamayadi va belgi o'zi yo'qoladi.
+ */
+function useSuspiciousCount(user) {
+  const [count, setCount] = useState(0);
+  const canSee = roleSet(user?.role).has("OWNER") || roleSet(user?.role).has("SHOP_ADMIN");
+  const location = useLocation();
+
+  useEffect(() => {
+    if (!canSee) return;
+    let alive = true;
+    const load = () =>
+      securityApi.suspiciousCount()
+        .then((r) => { if (alive) setCount(Number(r.data) || 0); })
+        .catch(() => {});
+    load();
+    const id = setInterval(load, 120000);
+    return () => { alive = false; clearInterval(id); };
+    // location.pathname: Xavfsizlik sahifasida «ko'rdim» bosilgach boshqa
+    // sahifaga o'tishda hisob yangilansin.
+  }, [canSee, location.pathname]);
+
+  return canSee ? count : 0;
+}
 
 /* Menyu tuzilishi — YORLIQ EMAS, KALIT saqlanadi. Yorliq har render'da
    `t()` dan olinadi, aks holda til almashtirilganda menyu eski tilda qolardi. */
@@ -124,6 +156,7 @@ function LowStockBadge({ items, count, onGoInventory }) {
 function Sidebar({ user, onLogout, open, onClose, isCollapsed, onToggleCollapse, lowStockCount }) {
   const { t } = useT();
   const confirm = useConfirm();
+  const suspiciousCount = useSuspiciousCount(user);
   // Yorliqda BITTA rol ko'rsatiladi — ierarxiyadagi eng yuqorisi.
   // "SHOP_ADMIN,CASHIER" deb yozib qo'yish foydalanuvchiga hech narsa
   // bermaydi va tarjima qilinmagan holda chiqardi.
@@ -180,6 +213,7 @@ function Sidebar({ user, onLogout, open, onClose, isCollapsed, onToggleCollapse,
                   <i className={`fa-solid ${item.icon}`} aria-hidden="true" />
                   <span className="sb-label">{t(item.key)}</span>
                   {item.id === "inventory" && lowStockCount > 0 && <span className="badge badge-red sb-badge" style={{ marginLeft: "auto" }}>{lowStockCount}</span>}
+                  {item.id === "security" && suspiciousCount > 0 && <span className="badge badge-red sb-badge" style={{ marginLeft: "auto" }}>{suspiciousCount}</span>}
                 </NavLink>
               ))}
             </div>

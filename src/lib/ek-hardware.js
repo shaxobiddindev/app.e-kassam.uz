@@ -189,6 +189,45 @@ export async function printBadge({ fullName, username, version, token, shopName 
   await send(r.build());
 }
 
+/**
+ * Smena hisobotini (X yoki Z) chek printerida chop etish.
+ *
+ * X/Z farqi faqat sarlavhada: Z — yopilgan smena yakuni (closedAt bor),
+ * X — ochiq smenaning oraliq holati. Raqamlar tuzilishi bir xil.
+ */
+export async function printShiftReport(r, shopName) {
+  if (!isDesktop()) throw new Error(t("hw.errNoDesktop"));
+
+  const s = getSettings();
+  const rc = new Receipt(s.width === 58 ? WIDTH_58 : WIDTH_80);
+  const fmtT = (iso) => (iso ? new Date(iso).toLocaleString("uz-UZ", { dateStyle: "short", timeStyle: "short" }) : "-");
+
+  rc.center().double().line(r.closedAt ? "Z-HISOBOT" : "X-HISOBOT").double(false);
+  rc.line(shopName || "E-KASSAM.UZ");
+  rc.left().rule();
+  rc.row(t("sales.colCashier"), r.cashierName || "-");
+  rc.row(t("sec.openedAt"), fmtT(r.openedAt));
+  if (r.closedAt) rc.row(t("shift.closedAt"), fmtT(r.closedAt));
+  rc.rule();
+  rc.row(t("rpt.salesCount"), String(r.salesCount));
+  rc.bold().row(t("rpt.salesTotal"), money(r.salesTotal)).bold(false);
+  // To'lov turlari bo'yicha — kassir yashikdagi naqdni shu qator bilan
+  // solishtiradi, hisobotning eng ko'p ishlatiladigan qismi shu.
+  for (const [type, sum] of Object.entries(r.byPaymentType || {})) {
+    rc.row("  " + paymentLabel(type), money(sum));
+  }
+  rc.rule();
+  rc.row(t("rpt.cancelled"), `${r.cancelledCount} / ${money(r.cancelledTotal)}`);
+  rc.row(t("rpt.confirmations"), String(r.confirmationsCount));
+  if (r.suspiciousCount > 0) {
+    rc.bold().row(t("rpt.suspicious"), String(r.suspiciousCount)).bold(false);
+  }
+  rc.rule();
+  rc.center().line(new Date().toLocaleString("uz-UZ")).line("e-kassam.uz");
+  rc.cut();
+  await send(rc.build());
+}
+
 /** Pul yashigi — sotuvsiz ham ochiladi (qaytim, smena boshi). */
 export async function openDrawer() {
   if (!isDesktop()) throw new Error(t("hw.errNoDesktop"));
