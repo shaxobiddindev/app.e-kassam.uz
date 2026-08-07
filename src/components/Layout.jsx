@@ -175,7 +175,7 @@ function Sidebar({ user, onLogout, open, onClose, isCollapsed, onToggleCollapse,
                 <NavLink key={item.id} to={item.path} title={isCollapsed ? t(item.key) : ""} onClick={() => onClose()} className={({ isActive }) => `sb-item ${isActive ? "active" : ""}`}>
                   <i className={`fa-solid ${item.icon}`} aria-hidden="true" />
                   <span className="sb-label">{t(item.key)}</span>
-                  {item.id === "inventory" && lowStockCount > 0 && <span className="badge badge-red" style={{ marginLeft: "auto" }}>{lowStockCount}</span>}
+                  {item.id === "inventory" && lowStockCount > 0 && <span className="badge badge-red sb-badge" style={{ marginLeft: "auto" }}>{lowStockCount}</span>}
                 </NavLink>
               ))}
             </div>

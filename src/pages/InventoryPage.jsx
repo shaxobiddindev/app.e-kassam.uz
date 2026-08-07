@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { t } from "../lib/ek-i18n";
 import { inventoryApi } from "../api";
 import { BranchSelector, Modal } from "../components";
@@ -17,6 +17,55 @@ const MOV_BADGE = {
   CORRECTION: "badge-yellow",
 };
 
+const isBatchExpired = (b) => b.status === "EXPIRED" || b.expired;
+
+/**
+ * Partiyalarni MAHSULOT bo'yicha guruhlash.
+ *
+ * ⚠ Jadval mahsulotga BITTA qator ko'rsatadi. Backend har xil muddatli
+ * kirimni alohida partiya qilib saqlaydi (FEFO uchun shart) va ilgari har
+ * partiya alohida qator edi — ikkinchi kirimdan keyin omborchi "mahsulot
+ * ikkita bo'lib qoldi" deb ko'rardi. Endi asosiy qatorda jami sotiladigan
+ * qoldiq, partiyalar esa chevron bilan ochiladi.
+ */
+function groupByProduct(items) {
+  const map = new Map();
+  for (const item of items) {
+    if (!map.has(item.productId)) map.set(item.productId, []);
+    map.get(item.productId).push(item);
+  }
+  return [...map.values()].map((batches) => {
+    // FEFO tartibi: muddati yaqin birinchi, muddatsiz eng oxirida
+    const sorted = [...batches].sort((a, b) => {
+      if (!a.expiryDate && !b.expiryDate) return 0;
+      if (!a.expiryDate) return 1;
+      if (!b.expiryDate) return -1;
+      return a.expiryDate < b.expiryDate ? -1 : 1;
+    });
+    const valid = sorted.filter((b) => !isBatchExpired(b));
+    const sellable = valid.reduce((s, b) => s + (b.quantity || 0), 0);
+    const minQ = Math.min(...sorted.map((b) => b.minQuantity ?? 5));
+    // "Chirigan" — sotiladigan qoldiq yo'g'u, chirigan qoldiq BOR bo'lsa.
+    // Shunchaki tugagan mahsulot chirigan emas.
+    const expiredAll = sellable === 0 &&
+      sorted.some((b) => isBatchExpired(b) && (b.quantity || 0) > 0);
+    const nearest = valid.find((b) => b.expiryDate)?.expiryDate || null;
+    const f = sorted[0];
+    return {
+      productId: f.productId,
+      productName: f.productName,
+      barcode: f.barcode,
+      costPrice: f.costPrice,
+      salePrice: f.salePrice,
+      batches: sorted,
+      sellable,
+      minQ,
+      nearest,
+      expiredAll,
+    };
+  });
+}
+
 export default function InventoryPage({ toast }) {
   const { user } = useAuth();
   const [items, setItems]     = useState([]);
@@ -25,13 +74,14 @@ export default function InventoryPage({ toast }) {
   // (180ms kechikish), chizilgan bo'lsa esa kamida 400ms turadi — miltillamaydi.
   const busy = useLoading(loading);
   const [search, setSearch]   = useState("");
-  const [modal, setModal]     = useState(null); // null | inventoryItem  (kirim)
-  const [correct, setCorrect] = useState(null); // null | inventoryItem  (to'g'irlash)
+  const [modal, setModal]     = useState(null); // null | {productId,...}  (kirim)
+  const [correct, setCorrect] = useState(null); // null | batch            (to'g'irlash)
   const [qty, setQty]         = useState("");
   const [expiryDate, setExpiryDate] = useState("");
   const [reason, setReason]   = useState("");
   const [saving, setSaving]   = useState(false);
   const [branchId, setBranchId] = useState(null);
+  const [expanded, setExpanded] = useState(() => new Set()); // productId'lar
 
   // Kirim-chiqim jurnali — alohida ko'rinish (jadval o'rnida)
   const [showHistory, setShowHistory] = useState(false);
@@ -66,29 +116,39 @@ export default function InventoryPage({ toast }) {
 
   useEffect(() => { if (showHistory) loadMovements(); }, [showHistory, loadMovements]);
 
-  const filtered = items.filter((item) =>
-    item.productName?.toLowerCase().includes(search.toLowerCase()) ||
-    (item.barcode || "").includes(search)
+  const groups = useMemo(() => groupByProduct(items), [items]);
+
+  const filtered = groups.filter((g) =>
+    g.productName?.toLowerCase().includes(search.toLowerCase()) ||
+    (g.barcode || "").includes(search)
   );
 
-  const openModal = (item) => {
-    setModal(item);
+  const toggleExpand = (productId) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(productId)) next.delete(productId); else next.add(productId);
+      return next;
+    });
+  };
+
+  const openModal = (group) => {
+    setModal(group);
     setQty("");
     setExpiryDate("");
     setReason("");
   };
 
-  const openCorrect = (item) => {
-    setCorrect(item);
-    setQty(String(item.quantity ?? ""));
+  const openCorrect = (batch) => {
+    setCorrect(batch);
+    setQty(String(batch.quantity ?? ""));
     setReason("");
   };
 
   // Mahsulot bir marta muddat bilan kiritilgan bo'lsa — MUDDATLI: keyingi
   // kirimlarda muddat majburiy (backend ham xuddi shuni tekshiradi). Sut
   // kabi tovarda muddat unutilsa, o'sha partiya nazoratsiz qolardi.
-  const productHasExpiry = (item) =>
-    items.some((i) => i.productId === item.productId && i.expiryDate);
+  const productHasExpiry = (g) =>
+    items.some((i) => i.productId === g.productId && i.expiryDate);
 
   const handleAddStock = async () => {
     if (!qty || Number(qty) <= 0) {
@@ -140,6 +200,12 @@ export default function InventoryPage({ toast }) {
     try { return new Date(iso).toLocaleString("uz-UZ", { dateStyle: "short", timeStyle: "short" }); }
     catch (_) { return iso; }
   };
+
+  const statusBadge = (expired) => (
+    <span className={`badge ${expired ? "badge-red" : "badge-green"}`}>
+      {expired ? t("enum.inventory.EXPIRED") : t("enum.shopStatus.ACTIVE")}
+    </span>
+  );
 
   return (
     <div>
@@ -231,52 +297,85 @@ export default function InventoryPage({ toast }) {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((item) => (
-                  <tr
-                    key={item.inventoryId}
-                    style={
-                      item.status === "EXPIRED" || item.expired
-                        ? { opacity: 0.6, background: "rgba(239,68,68,0.05)" }
-                        : undefined
-                    }
-                  >
-                    <td>
-                      <div className="fw-700">{item.productName}</div>
-                    </td>
-                    <td><code className="mono">{item.barcode || "-"}</code></td>
-                    <td>
-                      <span className={`badge ${item.quantity <= item.minQuantity ? "badge-red" : "badge-green"}`}>
-                        {item.quantity}
-                      </span>
-                    </td>
-                    <td>{money(item.costPrice)}</td>
-                    <td>{money(item.salePrice)}</td>
-                    <td>{item.expiryDate || t("inv.noExpiry")}</td>
-                    <td>
-                      <span
-                        className={`badge ${
-                          item.status === "EXPIRED" || item.expired
-                            ? "badge-red"
-                            : "badge-green"
-                        }`}
-                      >
-                        {item.status === "EXPIRED" || item.expired
-                          ? t("enum.inventory.EXPIRED")
-                          : t("enum.shopStatus.ACTIVE")}
-                      </span>
-                    </td>
-                    {!branchId && (
-                      <td className="text-end">
-                        <button className="btn btn-primary btn-sm" onClick={() => openModal(item)}>
-                          <i className="fa-solid fa-plus" /> {t("inv.receive")}
-                        </button>{" "}
-                        <button className="btn btn-outline btn-sm" onClick={() => openCorrect(item)} title={t("inv.correctHint")}>
-                          <i className="fa-solid fa-sliders" /> {t("inv.correctAction")}
-                        </button>
+                {filtered.map((g) => {
+                  const multi = g.batches.length > 1;
+                  const isOpen = expanded.has(g.productId);
+                  const single = g.batches[0];
+                  return [
+                    /* ── Asosiy qator: mahsulot bo'yicha JAMI ── */
+                    <tr
+                      key={`p-${g.productId}`}
+                      style={{
+                        ...(g.expiredAll ? { opacity: 0.6, background: "rgba(239,68,68,0.05)" } : null),
+                        ...(multi ? { cursor: "pointer" } : null),
+                      }}
+                      onClick={multi ? () => toggleExpand(g.productId) : undefined}
+                    >
+                      <td>
+                        <div className="fw-700" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          {multi && (
+                            <i className={`fa-solid fa-chevron-${isOpen ? "down" : "right"}`}
+                               style={{ fontSize: 11, opacity: 0.55, width: 12 }} aria-hidden="true" />
+                          )}
+                          {g.productName}
+                        </div>
                       </td>
-                    )}
-                  </tr>
-                ))}
+                      <td><code className="mono">{g.barcode || "-"}</code></td>
+                      <td>
+                        <span className={`badge ${g.sellable <= g.minQ ? "badge-red" : "badge-green"}`}>
+                          {g.sellable}
+                        </span>
+                      </td>
+                      <td>{money(g.costPrice)}</td>
+                      <td>{money(g.salePrice)}</td>
+                      <td>
+                        {multi
+                          ? <span className="text-muted">{t("inv.batchCount", { n: g.batches.length })}{g.nearest ? ` · ${g.nearest}` : ""}</span>
+                          : (single.expiryDate || t("inv.noExpiry"))}
+                      </td>
+                      <td>{statusBadge(g.expiredAll)}</td>
+                      {!branchId && (
+                        <td className="text-end" onClick={(e) => e.stopPropagation()}>
+                          <button className="btn btn-primary btn-sm" onClick={() => openModal(g)}>
+                            <i className="fa-solid fa-plus" /> {t("inv.receive")}
+                          </button>{" "}
+                          {/* Bitta partiyada to'g'irlash shu yerda; ko'p
+                              partiyada QAYSI birini — ochib tanlanadi. */}
+                          {!multi && (
+                            <button className="btn btn-outline btn-sm" onClick={() => openCorrect(single)} title={t("inv.correctHint")}>
+                              <i className="fa-solid fa-sliders" /> {t("inv.correctAction")}
+                            </button>
+                          )}
+                        </td>
+                      )}
+                    </tr>,
+                    /* ── Partiya qatorlari (ochilganda) ── */
+                    ...(multi && isOpen
+                      ? g.batches.map((b) => (
+                          <tr key={`b-${b.inventoryId}`}
+                              style={{ background: "var(--bg)", ...(isBatchExpired(b) ? { opacity: 0.6 } : null) }}>
+                            <td colSpan={2}>
+                              <div className="text-muted" style={{ paddingLeft: 26, fontSize: 12.5 }}>
+                                <i className="fa-solid fa-layer-group" style={{ marginRight: 6, fontSize: 11 }} aria-hidden="true" />
+                                {b.expiryDate || t("inv.noExpiry")}
+                              </div>
+                            </td>
+                            <td><span className="mono fw-700">{b.quantity}</span></td>
+                            <td colSpan={2}></td>
+                            <td>{b.expiryDate || t("inv.noExpiry")}</td>
+                            <td>{statusBadge(isBatchExpired(b))}</td>
+                            {!branchId && (
+                              <td className="text-end">
+                                <button className="btn btn-outline btn-sm" onClick={() => openCorrect(b)} title={t("inv.correctHint")}>
+                                  <i className="fa-solid fa-sliders" /> {t("inv.correctAction")}
+                                </button>
+                              </td>
+                            )}
+                          </tr>
+                        ))
+                      : []),
+                  ];
+                })}
               </tbody>
             </table>
           )}
@@ -305,7 +404,7 @@ export default function InventoryPage({ toast }) {
           }
         >
           {/* Muddati o'tgan ogohlantirish */}
-          {(modal.status === "EXPIRED" || modal.expired) && (
+          {modal.expiredAll && (
             <div
               style={{
                 background: "#fef3c7",
@@ -322,7 +421,7 @@ export default function InventoryPage({ toast }) {
             </div>
           )}
 
-          {/* Hozirgi miqdor */}
+          {/* Hozirgi sotiladigan qoldiq (jami) */}
           <div
             style={{
               background: "var(--bg)",
@@ -338,7 +437,7 @@ export default function InventoryPage({ toast }) {
               {t("inv.currentQty")}
             </span>
             <span className="mono fw-800" style={{ fontSize: 16 }}>
-              {modal.quantity} dona
+              {modal.sellable} dona
             </span>
           </div>
 

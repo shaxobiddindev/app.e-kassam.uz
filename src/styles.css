@@ -146,6 +146,7 @@ h1, h2, h3, .page-title, .card-title, .modal-title {
 .sb-nav          { flex: 1; padding: 10px; overflow-y: auto; }
 .sb-section      { font-size: 10px; font-weight: 700; color: var(--sb-fg-dim); text-transform: uppercase; letter-spacing: 1.2px; padding: 12px 8px 5px; }
 .sb-item {
+  position: relative;   /* yig'ilgan rejimdagi burchak badge uchun tayanch */
   display: flex; align-items: center; gap: 10px;
   min-height: var(--hit-min);
   padding: 10px 12px; border-radius: 10px;
@@ -163,6 +164,20 @@ h1, h2, h3, .page-title, .card-title, .modal-title {
 .sidebar.collapsed .sb-section,
 .sidebar.collapsed .sb-user-info { display: none; }
 .sidebar.collapsed .sb-item { justify-content: center; padding: 10px; }
+
+/* Yig'ilgan menyuda sonli belgi (kam-qoldiq) ikonka USTIGA tushmasin:
+   yorliq yashirilgach inline badge kichkina kvadrat ichiga siqilib, ikonka
+   bilan ustma-ust chiqardi. Endi katakning yuqori-o'ng burchagida kichik
+   bo'lib turadi. 900px dan pastda sidebar to'liq enda ochiladi va yorliqlar
+   ko'rinadi — u yerda inline holicha qoladi, shuning uchun min-width sharti. */
+@media (min-width: 901px) {
+  .sidebar.collapsed .sb-item .sb-badge {
+    position: absolute; top: 3px; right: 3px;
+    margin-left: 0 !important;
+    font-size: 10px; padding: 1px 5px;
+    min-width: 16px; text-align: center; line-height: 1.5;
+  }
+}
 
 .sb-toggle {
   position: absolute; top: 72px; right: -12px;
