@@ -246,10 +246,31 @@ export default function KassaPage({ toast, refreshLowStock }) {
     setUndo(null);
   };
 
+  /* ⚠ FAQAT ichki foydalanish (sotuvdan keyingi avtomatik tozalash) —
+     u pul harakati emas, bajik so'ralmaydi. Foydalanuvchi bosadigan
+     tozalash `handleClearCart` orqali: butun savatni o'chirish ham xuddi
+     bitta tovarni o'chirishdek izli bo'lishi kerak — chekni kichraytirish
+     o'rniga sotuvni umuman o'tkazmaslik o'sha suiiste'molning o'zi. */
   const clearCart = () => setCart([]);
 
   const total    = cart.reduce((sum, i) => sum + i.salePrice * i.qty, 0);
   const totalQty = cart.reduce((sum, i) => sum + i.qty, 0);
+
+  const handleClearCart = async () => {
+    if (!cart.length) return;
+    try {
+      await guard(() => securityApi.confirm({
+        action: "CART_ITEM_REMOVE",
+        targetType: "CART",
+        targetId: null,
+        note: `${t("kassa.clearNote")}: ${totalQty} x = ${money(total)}`,
+      }));
+    } catch (err) {
+      if (!err?.cancelled) toast.error(err.message);
+      return;
+    }
+    clearCart();
+  };
 
   /* ── To'lov ───────────────────────────────────────────────── */
   const handlePayTypeChange = (type) => {
@@ -378,7 +399,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
       if (e.key === "Escape") {
         if (finish)       { setFinish(null); focusBarcode(); return; }
         if (showPayModal) { closePayModal(); return; }
-        if (cart.length && window.confirm(t("kassa.clearConfirm"))) clearCart();
+        if (cart.length && window.confirm(t("kassa.clearConfirm"))) handleClearCart();
         return;
       }
 
@@ -510,7 +531,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
                 Savat (<span className="ek-num">{cart.length}</span>)
               </span>
               {cart.length > 0 && (
-                <button className="btn btn-sm" style={{ background: "var(--bg-danger-subtle)", color: "var(--fg-danger)" }} onClick={clearCart}>
+                <button className="btn btn-sm" style={{ background: "var(--bg-danger-subtle)", color: "var(--fg-danger)" }} onClick={handleClearCart}>
                   <i className="fa-solid fa-trash" aria-hidden="true" /> {t("common.reset")} <span className="kbd">Esc</span>
                 </button>
               )}
