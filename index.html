@@ -24,6 +24,47 @@
         } catch (e) {}
       })();
     </script>
+    <!-- Desktop'da qolib ketgan service worker'ni O'CHIRISH.
+         `.exe` ning oldingi versiyasi SW ni ro'yxatdan o'tkazgan bo'lsa, u
+         `assets/index-<hash>.js` ni cache-first bilan beradi. Yangi build'da
+         hash boshqa bo'ladi, SW ichidan Tauri protokoliga qilingan `fetch`
+         esa qaytmaydi — skript yuklanmay, ilova QORA BO'SH OYNA bo'lib
+         ochiladi. Bu yerda turishi shart: modul skriptidan OLDIN va HTML
+         ichida (SW uni ushlab qololmaydi).
+
+         ⚠ Shart `getRegistrations()` ga tayanadi, bayroqqa EMAS. Birinchi
+         variant `sessionStorage` bayrog'i bilan edi va ISHLAMADI: WebView2
+         session storage'ni PROFIL DISKIDA saqlaydi, ya'ni ilova yopilib
+         qayta ochilganda ham bayroq qolib, tozalash bir marta urinib
+         to'xtab qolardi. Endi mezon holatning O'ZI — ro'yxatdan o'tgan SW
+         qolmaguncha tozalash takrorlanadi, qolmagach o'zi to'xtaydi.
+         `localStorage` dagi hisoblagich esa unregister umuman ishlamaydigan
+         holatda cheksiz qayta yuklanishdan saqlaydi. -->
+    <script>
+      (function () {
+        try {
+          var tauri = !!window.__TAURI_INTERNALS__ || location.hostname === "tauri.localhost";
+          if (!tauri || !("serviceWorker" in navigator)) return;
+
+          navigator.serviceWorker.getRegistrations().then(function (rs) {
+            if (!rs.length) { localStorage.removeItem("ek_sw_purge_tries"); return; }
+
+            var tries = Number(localStorage.getItem("ek_sw_purge_tries") || 0);
+            if (tries >= 3) return;                       // taslim — tsiklga tushmaymiz
+            localStorage.setItem("ek_sw_purge_tries", String(tries + 1));
+
+            return Promise.all([
+              Promise.all(rs.map(function (r) { return r.unregister(); })),
+              window.caches
+                ? caches.keys().then(function (ks) {
+                    return Promise.all(ks.map(function (k) { return caches.delete(k); }));
+                  })
+                : null,
+            ]).then(function () { location.reload(); });
+          }).catch(function () {});
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
