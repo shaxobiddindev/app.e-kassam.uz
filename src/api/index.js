@@ -153,16 +153,22 @@ export const productApi = {
 export const inventoryApi = {
   getAll: (shopId) => request(`/inventory${shopId ? `?shopId=${shopId}` : ""}`),
   getLow: () => request("/inventory/low-stock"),
-  addStock: (productId, qty, expiryDate) =>
+  // expiryDate ixtiyoriy — bo'sh bo'lsa muddatsiz partiya (idish, kanstovar)
+  addStock: (productId, qty, expiryDate, reason) =>
     request(`/inventory/product/${productId}/add`, {
       method: "PATCH",
-      body: JSON.stringify({ quantity: Number(qty), expiryDate }),
+      body: JSON.stringify({ quantity: Number(qty), expiryDate: expiryDate || null, reason: reason || null }),
     }),
-  correct: (productId, qty) =>
-    request(`/inventory/product/${productId}/correct`, {
+  // To'g'irlash PARTIYA bo'yicha (inventoryId) — mahsulot bo'yicha emas:
+  // ko'p partiyali mahsulotda "qaysi birini" degan noaniqlik bo'lardi.
+  correctBatch: (inventoryId, qty, reason) =>
+    request(`/inventory/batch/${inventoryId}/correct`, {
       method: "PATCH",
-      body: JSON.stringify({ quantity: Number(qty) }),
+      body: JSON.stringify({ quantity: Number(qty), reason: reason || null }),
     }),
+  // Kirim-chiqim jurnali
+  getMovements: (productId, page = 0, size = 50) =>
+    request(`/inventory/movements?page=${page}&size=${size}${productId ? `&productId=${productId}` : ""}`),
 };
 
 // ─── Mijozlar ─────────────────────────────────────────────────
