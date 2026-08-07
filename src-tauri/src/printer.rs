@@ -15,6 +15,12 @@ Ikkita yo'l qo'llab-quvvatlanadi:
                 "hujjat" deb talqin qilmasdan printerga uzatadi.
 
   `print_tcp` — tarmoq printeri, 9100-port (de-fakto standart).
+
+⚠ UCHALA buyruq ham `#[tauri::command(async)]`. `async` SO'ZINI OLIB
+TASHLAMANG: Tauri sinxron buyruqni ASOSIY OQIMDA bajaradi, ya'ni spooler
+(`StartDocPrinter`/`WritePrinter`) yoki TCP ulanish kutayotgan paytda butun
+oyna qotib qoladi. Kassir buni "chek chiqishida to'xtalish" deb sezadi.
+`(async)` buyruqni ishchi oqimga chiqaradi — oyna kutmaydi.
 */
 
 use std::io::Write;
@@ -38,7 +44,9 @@ fn wide(s: &str) -> Vec<u16> {
 ///
 /// Foydalanuvchi nomni QO'LDA yozmasligi uchun kerak: "Xprinter XP-80" dagi
 /// bitta xato harf chekni jimgina yo'q qilardi.
-#[tauri::command]
+// Tarmoq printeri o'chiq bo'lsa `EnumPrintersW` bir necha soniya kutadi —
+// shu sababli bu ham asosiy oqimda emas.
+#[tauri::command(async)]
 pub fn list_printers() -> Result<Vec<String>, String> {
     unsafe {
         let flags = PRINTER_ENUM_LOCAL | PRINTER_ENUM_CONNECTIONS;
@@ -78,7 +86,7 @@ pub fn list_printers() -> Result<Vec<String>, String> {
 /// Baytlarni Windows printeriga RAW ko'rinishida yuboradi.
 ///
 /// `printer` — `None` bo'lsa tizimdagi standart printer ishlatiladi.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn print_raw(printer: Option<String>, data: Vec<u8>) -> Result<(), String> {
     if data.is_empty() {
         return Err("Bo'sh ma'lumot".into());
@@ -166,7 +174,7 @@ fn default_printer() -> Result<String, String> {
 ///
 /// Taymaut QISQA (3 s): kassir chek chiqishini kutib turadi va uzoq
 /// kutdirilgandan ko'ra tez xato ko'rgani afzal.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn print_tcp(host: String, port: u16, data: Vec<u8>) -> Result<(), String> {
     if data.is_empty() {
         return Err("Bo'sh ma'lumot".into());

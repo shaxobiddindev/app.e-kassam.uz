@@ -35,9 +35,16 @@ const CMD = {
   doubleOff:   [GS,  0x21, 0x00],
   // Qog'ozni to'liq kesish (GS V 66 n — n nuqta oldinga surib kesadi)
   cut:         [GS,  0x56, 66, 3],
-  // Pul yashigi: ESC p m t1 t2 — 2-pin, 50ms/250ms impuls.
+  // Pul yashigi: ESC p m t1 t2 — 2-pin, t1=ON, t2=OFF (birligi 2 ms).
   // Yashik chek printerining RJ11 uyasiga ulanadi, alohida drayveri yo'q.
-  kick:        [ESC, 0x70, 0, 25, 250],
+  //
+  // ⚠ t2 ni KATTALASHTIRMANG. Ilgari `250` (500 ms) edi va chek AYNAN shu
+  // yerda to'xtab qolardi: aksariyat ESC/POS proshivkalari impuls davomida
+  // qog'ozni surishni to'liq to'xtatadi, ya'ni t1+t2 chek o'rtasidagi
+  // ko'rinadigan pauzaga aylanadi. 25/25 = 100 ms, sezilmaydi.
+  // Yashik ochilmay qolsa t1 ni 50 (100 ms) gacha ko'taring — t2 ni EMAS,
+  // u faqat keyingi impulsgacha bo'lgan eng kam oraliq.
+  kick:        [ESC, 0x70, 0, 25, 25],
 };
 
 /**
@@ -127,8 +134,19 @@ export class Receipt {
   /** Qog'ozni surib kesish. Kesuvchisi yo'q printerda buyruq e'tiborsiz qoladi. */
   cut() { return this.feed(4).raw(CMD.cut); }
 
-  /** Pul yashigini ochish impulsi. */
-  kick() { return this.raw(CMD.kick); }
+  /**
+   * Pul yashigini ochish impulsi.
+   *
+   * ⚠ Impuls chek OXIRIGA emas, BOSHIGA qo'yiladi (init'dan keyin darhol) —
+   * `kick()` qachon chaqirilganidan qat'i nazar. Impuls davomida printer
+   * qog'ozni surmaydi; chek o'rtasida bu ko'rinadigan sakrash bo'lardi,
+   * boshida esa hech narsa chiqmagan bo'ladi va sezilmaydi. Yon foydasi:
+   * yashik chek chiqib bo'lishini kutmasdan, chek bilan BIRGA ochiladi.
+   */
+  kick() {
+    this.bytes.splice(CMD.init.length, 0, ...CMD.kick);
+    return this;
+  }
 
   /** Rust tomoniga uzatish uchun — oddiy son massivi. */
   build() { return this.bytes; }
