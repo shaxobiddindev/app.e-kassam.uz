@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { t } from "../lib/ek-i18n";
-import { productApi, customerApi, saleApi } from "../api";
+import { productApi, customerApi, saleApi, securityApi } from "../api";
+import { useBadge } from "../context/BadgeProvider";
 import { money } from "../utils";
 import { Empty } from "../components/ui";
 import { FinishOverlay, SkeletonTiles, Spinner } from "../components/ek/Loading";
 import OfflineBar from "../components/OfflineBar";
+import ShiftBar from "../components/ShiftBar";
 import * as queue from "../lib/ek-offline";
 import { PAYMENT_TYPE, paymentLabel } from "../lib/ek-labels";
 import { useLoading } from "../lib/use-loading";
@@ -67,6 +69,7 @@ function nextOfflineNo() {
 
 // ─── KassaPage ───────────────────────────────────────────────
 export default function KassaPage({ toast, refreshLowStock }) {
+  const { guard } = useBadge();
   const [products, setProducts]     = useState([]);
   const [customers, setCustomers]   = useState([]);
   const [cart, setCart]             = useState([]);
@@ -201,13 +204,29 @@ export default function KassaPage({ toast, refreshLowStock }) {
   const updateQty = (id, delta) =>
     setCart((prev) => prev.map((i) => (i.id === id ? { ...i, qty: i.qty + delta } : i)).filter((i) => i.qty > 0));
 
-  /* O'chirishda tasdiq SO'RALMAYDI — 5 soniyalik undo tezroq (06-APP-KASSIR.md).
+  /* Savat serverda YO'Q (brauzer holati) — shuning uchun o'chirish avval
+     `/security/confirm` ga yozdiriladi: bajik amalni to'smaydi, IZ qoldiradi.
+     Kassir chekni kichraytirib pulni olib qolmoqchi bo'lsa, har o'chirish
+     jurnalda "kim, qachon, nima" bilan turadi. Server 428 qaytarsa
+     `guard` skanerlash modalini ochadi va tasdiqdan keyin o'zi davom etadi.
      Nusxa `setCart` yangilagichidan TASHQARIDA olinadi: React yangilagichni
      ikki marta chaqirishi mumkin, yon ta'sir esa bir marta bo'lishi kerak. */
-  const removeFromCart = (id) => {
+  const removeFromCart = async (id) => {
     const index = cart.findIndex((i) => i.id === id);
     if (index < 0) return;
     const item = cart[index];
+
+    try {
+      await guard(() => securityApi.confirm({
+        action: "CART_ITEM_REMOVE",
+        targetType: "PRODUCT",
+        targetId: item.id,
+        note: `${item.name} x${item.qty} = ${money(item.salePrice * item.qty)}`,
+      }));
+    } catch (err) {
+      if (!err?.cancelled) toast.error(err.message);
+      return;   // tasdiqsiz o'chirilmaydi
+    }
 
     setCart((prev) => prev.filter((i) => i.id !== id));
 
@@ -330,8 +349,18 @@ export default function KassaPage({ toast, refreshLowStock }) {
       .catch((err) => toast.error(`${t("hw.printFailed")}: ${err.message}`));
   };
 
-  /** Pul yashigi — sotuvsiz ham ochiladi: qaytim berish, smena boshi. */
-  const kickDrawer = () => {
+  /** Pul yashigi — sotuvsiz ham ochiladi: qaytim berish, smena boshi.
+      Avval bajik bilan tasdiqlanadi (server yozadi), keyin apparat ochiladi:
+      naqd pulga to'g'ridan-to'g'ri kirish izsiz qolmasligi kerak. */
+  const kickDrawer = async () => {
+    try {
+      await guard(() => securityApi.confirm({
+        action: "DRAWER_OPEN", targetType: null, targetId: null, note: null,
+      }));
+    } catch (err) {
+      if (!err?.cancelled) toast.error(err.message);
+      return;
+    }
     openDrawer().catch((err) => toast.error(`${t("hw.drawerFailed")}: ${err.message}`));
   };
 
@@ -400,6 +429,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
       </div>
 
       <OfflineBar />
+      <ShiftBar toast={toast} />
 
       <div className="kassa-layout" style={{ height: "auto", flex: 1 }}>
         {/* ════ CHAP: Barkod + Mahsulotlar ════ */}

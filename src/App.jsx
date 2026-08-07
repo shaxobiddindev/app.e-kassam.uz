@@ -27,6 +27,8 @@ import NotFound from "./pages/NotFound";
 import { isDesktop } from "./lib/ek-desktop";
 import { hasRole, roleSet } from "./lib/ek-roles";
 import ErrorBoundary, { RouteErrorBoundary } from "./components/ek/ErrorBoundary";
+import { BadgeProvider } from "./context/BadgeProvider";
+import SecurityPage from "./pages/SecurityPage";
 
 // ⚠ Tilni URL dan olish MODUL TANASIDA, `replaceState` dan OLDIN bo'lishi
 // shart. Bu fayl `main.jsx` dan import qilinadi va ES modul tartibiga ko'ra
@@ -125,6 +127,10 @@ export default function App() {
   return (
     <ErrorBoundary>
     <ConfirmProvider>
+      {/* Bajik so'rovi butun ilova bo'ylab bitta joydan boshqariladi:
+          428 kelganda modal ochilib, amal skanerlashdan keyin O'ZI
+          qayta yuboriladi. */}
+      <BadgeProvider toast={toast}>
       <BrowserRouter>
         <Toast toasts={toasts} onDismiss={dismiss} />
         <Layout 
@@ -158,11 +164,16 @@ export default function App() {
             {/* Sozlamalar — hamma rolga ochiq: mavzu va til xodimning
                 shaxsiy tanlovi, do'kon sozlamasi emas. */}
             <Route path="/settings" element={<SettingsPage toast={toast} />} />
+            {/* Xavfsizlik — bajik, smena, tasdiqlar jurnali.
+                Egasi bajik chiqaradi; SHOP_ADMIN faqat jurnalni ko'radi
+                (backend ham shu cheklovni qo'yadi). */}
+            <Route path="/security" element={<ProtectedRoute user={user} roles={["OWNER", "SHOP_ADMIN"]}><SecurityPage toast={toast} /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           </RouteErrorBoundary>
         </Layout>
       </BrowserRouter>
+      </BadgeProvider>
     </ConfirmProvider>
     </ErrorBoundary>
   );

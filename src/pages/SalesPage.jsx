@@ -5,6 +5,7 @@ import { money } from "../utils";
 import { BranchSelector, Modal } from "../components";
 import { Empty, SearchBar, Badge } from "../components/ui";
 import { useConfirm } from "../context/ConfirmProvider";
+import { useBadge } from "../context/BadgeProvider";
 import { useAuth } from "../hooks/useAuth";
 import { paymentEntry, saleStatus } from "../lib/ek-labels";
 // ⚠ `Spinner` HAM shu yerdan. U chek chiqarish va bekor qilish tugmalarida
@@ -125,12 +126,14 @@ export default function SalesPage({ toast }) {
     if (!ok) return;
     setCancelling(sale.id);
     try {
-      await saleApi.cancel(sale.id);
+      // Server 428 qaytarsa `guard` bajik modalini ochadi va tasdiqdan
+      // keyin bekor qilishni o'zi qayta yuboradi.
+      await guard(() => saleApi.cancel(sale.id));
       toast.success(t("sales.cancelled"));
       loadSales();
       setDetail(null);
     } catch (err) {
-      toast.error(err.message);
+      if (!err?.cancelled) toast.error(err.message);
     } finally {
       setCancelling(null);
     }

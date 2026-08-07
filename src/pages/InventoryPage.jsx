@@ -4,6 +4,7 @@ import { inventoryApi } from "../api";
 import { BranchSelector, Modal } from "../components";
 import { Empty, SearchBar } from "../components/ui";
 import { useAuth } from "../hooks/useAuth";
+import { useBadge } from "../context/BadgeProvider";
 import { money } from "../utils";
 import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
@@ -68,6 +69,7 @@ function groupByProduct(items) {
 
 export default function InventoryPage({ toast }) {
   const { user } = useAuth();
+  const { guard } = useBadge();
   const [items, setItems]     = useState([]);
   const [loading, setLoading] = useState(true);
   // Ekranda ko'rsatiladigan holat: tez javobda skeleton UMUMAN chizilmaydi
@@ -185,12 +187,12 @@ export default function InventoryPage({ toast }) {
     }
     setSaving(true);
     try {
-      await inventoryApi.correctBatch(correct.inventoryId, Number(qty), reason.trim());
+      await guard(() => inventoryApi.correctBatch(correct.inventoryId, Number(qty), reason.trim()));
       toast.success(t("inv.correctTitle"));
       setCorrect(null);
       loadData();
     } catch (err) {
-      toast.error(err.message);
+      if (!err?.cancelled) toast.error(err.message);
     } finally {
       setSaving(false);
     }

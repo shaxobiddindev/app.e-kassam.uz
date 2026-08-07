@@ -5,6 +5,7 @@ import { Empty, FormGroup, Badge } from "../../components/ui";
 import { BranchSelector, Modal } from "../../components";
 import { useAuth } from "../../hooks/useAuth";
 import { useConfirm } from "../../context/ConfirmProvider";
+import { useBadge } from "../../context/BadgeProvider";
 import { roleLabel } from "../../lib/ek-labels";
 import Select from "../../components/ek/Select";
 import { SkeletonList, Spinner } from "../../components/ek/Loading";
@@ -19,6 +20,7 @@ const EMPTY_USER_FORM = { fullName: "", username: "", password: "", role: "CASHI
 export default function ShopUsersPage({ toast }) {
   const { user: currentUser }   = useAuth();
   const confirm                 = useConfirm();
+  const { guard } = useBadge();
   const [users, setUsers]       = useState([]);
   const [loading, setLoading]   = useState(true);
   // Ekranda ko'rsatiladigan holat: tez javobda skeleton UMUMAN chizilmaydi
@@ -55,14 +57,14 @@ export default function ShopUsersPage({ toast }) {
     setSaving(true);
     try {
       if (modalMode === "add") {
-        await shopApi.createUser(form, branchId);
+        await guard(() => shopApi.createUser(form, branchId));
         toast.success(t("staff.added"));
       } else {
-        await shopApi.updateUser(editingId, {
+        await guard(() => shopApi.updateUser(editingId, {
           fullName: form.fullName,
           role:     form.role,
           password: form.password || undefined // Bo'sh bo'lsa parolni o'zgartirmaydi
-        }, branchId);
+        }, branchId));
         toast.success(t("staff.saved"));
       }
       setModalMode(null);
@@ -94,7 +96,7 @@ export default function ShopUsersPage({ toast }) {
     });
     if (!ok) return;
     try {
-      await shopApi.deleteUser(userId, branchId);
+      await guard(() => shopApi.deleteUser(userId, branchId));
       toast.success(t("staff.deleted"));
       loadUsers();
     } catch (err) {
@@ -114,7 +116,7 @@ export default function ShopUsersPage({ toast }) {
     if (!ok) return;
 
     try {
-      await shopApi.toggleBlockUser(u.id, branchId);
+      await guard(() => shopApi.toggleBlockUser(u.id, branchId));
       toast.success(t("staff.statusChanged"));
       loadUsers();
     } catch (err) {

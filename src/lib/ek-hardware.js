@@ -153,6 +153,42 @@ export async function printReceipt(sale) {
   await send(r.build());
 }
 
+/**
+ * Xodim bajigini chop etish.
+ *
+ * ⚠ Sir (`token`) EKRANDA emas, faqat QOG'OZDA qoladi: chaqiruvchi uni
+ * ko'rsatmasdan to'g'ridan-to'g'ri shu yerga uzatadi va chop etilgach
+ * holatdan o'chiradi. Ekranda ko'rsatilsa uni suratga olish nusxalashning
+ * eng oson yo'li bo'lardi — bajik esa aynan shundan himoyalanishi kerak.
+ *
+ * ⚠⚠ Termal qog'oz vaqt o'tib xiralashadi (issiq va yorug'likda tezroq).
+ * Bajik uzoq ishlashi uchun uni laminatlash yoki kartaga yopishtirish
+ * kerak. Bu texnik cheklov, tuzatib bo'lmaydi — termal bosishning tabiati.
+ */
+export async function printBadge({ fullName, username, version, token, shopName }) {
+  if (!isDesktop()) throw new Error(t("hw.errNoDesktop"));
+
+  const s = getSettings();
+  const r = new Receipt(s.width === 58 ? WIDTH_58 : WIDTH_80);
+
+  r.center().double().line(t("badge.printTitle")).double(false);
+  r.line(shopName || "E-KASSAM.UZ");
+  r.left().rule();
+  r.center().bold().line(fullName || username || "-").bold(false);
+  r.line("@" + (username || "-"));
+  r.line(`${t("badge.version")} ${version ?? 1}`);
+  r.feed();
+  r.qr(token, 8);
+  r.feed();
+  r.line(new Date().toLocaleString("uz-UZ"));
+  r.left().rule();
+  // Ogohlantirish qog'ozning O'ZIDA turadi — bajikni topgan odam ham,
+  // egasi ham qoidani ko'rib turishi kerak.
+  r.wrap(t("badge.printWarn"));
+  r.cut();
+  await send(r.build());
+}
+
 /** Pul yashigi — sotuvsiz ham ochiladi (qaytim, smena boshi). */
 export async function openDrawer() {
   if (!isDesktop()) throw new Error(t("hw.errNoDesktop"));

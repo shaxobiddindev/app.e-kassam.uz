@@ -67,9 +67,43 @@ async function tryRefreshToken() {
   return refreshPromise;
 }
 
+/* ── Bajik ────────────────────────────────────────────────────
+   Skanerlangan bajik shu modul o'zgaruvchisida turadi va faqat BITTA
+   so'rovga qo'shiladi (`BadgeProvider` qayta urinishdan oldin qo'yadi).
+
+   ⚠ Nega holat/kontekstda emas: bajik `request()` ning ICHIGA tushishi
+   kerak, u esa React daraxtidan tashqarida. Har API chaqiruviga qo'shimcha
+   parametr qo'shish yuzlab joyni o'zgartirishni talab qilardi va bitta
+   unutilgan joy himoyani jimgina o'chirib qo'yardi.
+
+   ⚠⚠ Bajik hech qachon `localStorage` ga YOZILMAYDI: u faqat skanerdan
+   keladi va ishlatilgach darhol o'chadi. Saqlansa — nusxa olish uchun
+   ochiq turgan joy paydo bo'lardi. */
+let pendingBadgeToken = null;
+
+export function setPendingBadgeToken(token) {
+  pendingBadgeToken = token || null;
+}
+
+/** 428 → bajik kerak. Klient buni oddiy xatodan ajratishi shart. */
+export class BadgeRequiredError extends Error {
+  constructor(message, action, policy) {
+    super(message);
+    this.name = "BadgeRequiredError";
+    this.badgeRequired = true;
+    this.action = action;
+    this.policy = policy;
+  }
+}
+
 async function request(path, options = {}, _retry = false) {
   const token    = localStorage.getItem("ek_token");
   const { headers: extraHeaders, ...restOptions } = options;
+
+  // Bajik BIR MARTA ishlatiladi — o'qib olib darhol tozalaymiz, aks holda
+  // keyingi so'rovlarga ham ilashib ketardi.
+  const badge = pendingBadgeToken;
+  pendingBadgeToken = null;
 
   const res = await fetch(`${API_BASE}${path}`, {
     ...restOptions,
@@ -80,6 +114,7 @@ async function request(path, options = {}, _retry = false) {
       "Accept-Language": getLang(),
       "X-Device-Id":     getDeviceId(),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(badge ? { "X-Badge-Token": badge } : {}),
       ...(extraHeaders || {}),
     },
   });
@@ -109,6 +144,13 @@ async function request(path, options = {}, _retry = false) {
   }
 
   const json = await res.json().catch(() => ({}));
+
+  // 428 — bajik kerak. Alohida xato sinfi: chaqiruvchi buni ushlab
+  // skanerlash modalini ochadi va SO'ROVNI QAYTA yuboradi.
+  if (res.status === 428 && json.badgeRequired) {
+    throw new BadgeRequiredError(json.message || "Bajikni skanerlang", json.action, json.policy);
+  }
+
   if (!res.ok) throw new Error(json.message || `Xatolik: ${res.status}`);
   return json;
 }
@@ -169,6 +211,35 @@ export const inventoryApi = {
   // Kirim-chiqim jurnali
   getMovements: (productId, page = 0, size = 50) =>
     request(`/inventory/movements?page=${page}&size=${size}${productId ? `&productId=${productId}` : ""}`),
+};
+
+// ─── Xavfsizlik: bajik, smena, jurnal, obuna ──────────────────
+export const securityApi = {
+  // Bajik — FAQAT do'kon egasi (backend ham yo'l darajasida cheklaydi).
+  // `issue` javobidagi `token` BIR MARTA keladi va saqlanmaydi.
+  issueBadge:  (userId) => request(`/security/badges/${userId}`, { method: "POST" }),
+  revokeBadge: (userId) => request(`/security/badges/${userId}`, { method: "DELETE" }),
+  badges:      ()       => request("/security/badges"),
+
+  policies:    ()               => request("/security/policies"),
+  setPolicy:   (action, data)   => request(`/security/policies/${action}`, {
+                                     method: "PUT", body: JSON.stringify(data) }),
+
+  log:              (onlySuspicious = false, page = 0, size = 50) =>
+                      request(`/security/log?onlySuspicious=${onlySuspicious}&page=${page}&size=${size}`),
+  suspiciousCount:  () => request("/security/log/suspicious-count"),
+  acknowledge:      (id) => request(`/security/log/${id}/ack`, { method: "PATCH" }),
+
+  openShift:    () => request("/security/shift/open",  { method: "POST" }),
+  closeShift:   () => request("/security/shift/close", { method: "POST" }),
+  currentShift: () => request("/security/shift/current"),
+  openShifts:   () => request("/security/shift/open-list"),
+
+  // Serverda mavjud bo'lmagan amalni tasdiqlash (savatdan o'chirish,
+  // pul yashigini ochish) — bajik `setPendingBadgeToken` orqali ketadi.
+  confirm: (data) => request("/security/confirm", { method: "POST", body: JSON.stringify(data) }),
+
+  billing: () => request("/security/billing"),
 };
 
 // ─── Mijozlar ─────────────────────────────────────────────────

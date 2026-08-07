@@ -131,6 +131,40 @@ export class Receipt {
     return this;
   }
 
+  /**
+   * QR kod — printerning O'Z buyrug'i bilan (`GS ( k`).
+   *
+   * NEGA KUTUBXONA EMAS: QR ni brauzerda rasmga aylantirib, so'ng uni
+   * printerga bitmap sifatida yuborish uchun ham kutubxona, ham rasm
+   * yuborish kodi kerak bo'lardi. Printerlarning deyarli hammasi QR ni
+   * o'zi chizadi va natija aniqroq chiqadi — termal bosishda bitmap
+   * ko'pincha xira bo'ladi va skaner o'qimaydi.
+   *
+   * `size` — modul kattaligi (1..16). 8 dan kichigi bajik uchun kichik:
+   * skaner qiyshiq ushlaganda o'qimaydi.
+   */
+  qr(text, size = 8) {
+    const data = [];
+    for (const ch of String(text ?? "")) {
+      const code = ch.codePointAt(0);
+      if (code < 0x80) data.push(code);   // bajik matni ASCII (EKB- + base64url)
+    }
+    // Model 2
+    this.raw([GS, 0x28, 0x6b, 0x04, 0x00, 0x31, 0x41, 0x32, 0x00]);
+    // Modul kattaligi
+    this.raw([GS, 0x28, 0x6b, 0x03, 0x00, 0x31, 0x43, Math.max(1, Math.min(16, size))]);
+    // Xatoni tuzatish darajasi: 0x31 = M (~15%). Bajik eskirib, qog'ozi
+    // g'ijimlanib qolishi mumkin — eng past daraja yetarli emas.
+    this.raw([GS, 0x28, 0x6b, 0x03, 0x00, 0x31, 0x45, 0x31]);
+    // Ma'lumotni saqlash: pL/pH = uzunlik + 3
+    const len = data.length + 3;
+    this.raw([GS, 0x28, 0x6b, len & 0xff, (len >> 8) & 0xff, 0x31, 0x50, 0x30]);
+    this.raw(data);
+    // Chop etish
+    this.raw([GS, 0x28, 0x6b, 0x03, 0x00, 0x31, 0x51, 0x30]);
+    return this;
+  }
+
   /** Qog'ozni surib kesish. Kesuvchisi yo'q printerda buyruq e'tiborsiz qoladi. */
   cut() { return this.feed(4).raw(CMD.cut); }
 

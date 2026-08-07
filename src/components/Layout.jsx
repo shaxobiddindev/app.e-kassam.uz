@@ -37,6 +37,10 @@ const NAV_ITEMS = [
   { section: "nav.section.management", items: [
     { id: "shop-users", path: "/shop-users", key: "nav.staff",    icon: "fa-users-gear", roles: ["ADMIN", "SHOP_ADMIN", "OWNER"] },
     { id: "branches",   path: "/branches",   key: "nav.branches", icon: "fa-store",      roles: ["OWNER"] },
+    /* Xavfsizlik — bajik va tasdiqlar. SHOP_ADMIN ham kiradi, lekin u
+       yerda faqat jurnal va smenalarni ko'radi: bajik chiqarish FAQAT
+       egasida (server ham shuni qo'yadi). */
+    { id: "security",   path: "/security",   key: "nav.security", icon: "fa-shield-halved", roles: ["SHOP_ADMIN", "OWNER"] },
   ]},
   { section: "nav.section.settings", items: [
     /* Sozlamalar — HAMMA rolga ochiq: til va tema shu yerda va ular
