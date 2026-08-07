@@ -5,10 +5,12 @@
    mijoz ismi, do'kon nomi, izoh) HECH QACHON tarjima qilinmaydi — u bazada
    qanday bo'lsa, shundayligicha ko'rsatiladi.
 
-   Til uchta joydan aniqlanadi, shu tartibda:
+   Til shu tartibda aniqlanadi:
      1. URL dagi `?lang=` — ilovalararo yo'naltirishda uzatiladi
      2. localStorage `ek_lang` — foydalanuvchi tanlovi
-     3. brauzer tili → uz/ru/en dan biriga tushiriladi, topilmasa "uz"
+     3. "uz" — tizimning ASOSIY tili. Brauzer tilidan taxmin YO'Q
+        (ataylab): kompyuterlar ko'pincha ruscha/inglizcha o'rnatilgan,
+        kassa esa o'zbekcha ochilishi kerak.
 
    Nega URL birinchi: `auth.e-kassam.uz` va `app.e-kassam.uz` — TURLI origin,
    localStorage ular orasida bo'linmaydi. deviceId bilan bir xil muammo
@@ -50,12 +52,11 @@ function detect() {
     if (isValid(saved)) return saved;
   } catch (_) { /* private mode */ }
 
-  // 3. Brauzer: "ru-RU" → "ru"
-  try {
-    const nav = (navigator.language || "").slice(0, 2).toLowerCase();
-    if (isValid(nav)) return nav;
-  } catch (_) { /* noma'lum muhit */ }
-
+  // 3. O'zbekcha — tizimning ASOSIY tili (2026-08-07 qarori).
+  // ⚠ Brauzer tilidan taxmin ATAYLAB yo'q: mijozlar O'zbekistonda, lekin
+  // Windows/brauzer ko'pincha ruscha yoki inglizcha o'rnatilgan bo'ladi —
+  // kassa shunga qarab chet tilida ochilib ketardi. Boshqa til kerak
+  // bo'lsa foydalanuvchi Sozlamalardan tanlaydi va tanlov saqlanadi.
   return DEFAULT_LANG;
 }
 
