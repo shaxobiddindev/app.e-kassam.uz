@@ -57,6 +57,11 @@ function PayLabel({ type }) {
 
 export default function SalesPage({ toast }) {
   const confirm                   = useConfirm();
+  // ⚠ `guard` — bekor qilishda server 428 qaytarsa bajik modalini ochadi.
+  // U olinmasa `handleCancel` da `ReferenceError` bo'lardi: `useBadge`
+  // import qilingan-u, CHAQIRILMAGAN edi — aynan yuqoridagi `Spinner`
+  // bilan bir xil tuzoq, faqat bu safar bekor qilish tugmasida.
+  const { guard }                 = useBadge();
   const { user }                  = useAuth();
   // ⚠ To'plam bo'yicha: xodimda bir nechta rol bo'lishi mumkin va sessiyada
   // ular vergul bilan saqlanadi. Tenglik bilan solishtirish kassir+omborchi
@@ -69,6 +74,9 @@ export default function SalesPage({ toast }) {
   // (180ms kechikish), chizilgan bo'lsa esa kamida 400ms turadi — miltillamaydi.
   const busy = useLoading(loading);
   const [search, setSearch]       = useState("");
+  // Holat bo'yicha saralash. Standart — BARCHASI: tarix to'liq ko'rinishi
+  // kerak, filtrni foydalanuvchi o'zi tanlaydi.
+  const [status, setStatus]       = useState("ALL");
   const [detail, setDetail]       = useState(null);
   const [cancelling, setCancelling] = useState(null);
   const [branchId, setBranchId]   = useState(null);
@@ -139,13 +147,26 @@ export default function SalesPage({ toast }) {
     }
   };
 
-  const filtered = sales
+  // Holat filtri qidiruvdan OLDIN qo'llanadi, shunda chiplardagi sonlar
+  // qidiruvga bog'liq bo'lmay, "shu do'konda nechta bekor qilingan sotuv
+  // bor" degan savolga javob beradi.
+  const byPeriod = sales.filter((s) => {
+    // CASHIER bo'lsa faqat bugungi
+    if (isCashier && s.createdAt) {
+      const saleDate = new Date(s.createdAt);
+      if (saleDate < todayStart) return false;
+    }
+    return true;
+  });
+  const counts = {
+    ALL:       byPeriod.length,
+    PAID:      byPeriod.filter((s) => s.status === "PAID").length,
+    CANCELLED: byPeriod.filter((s) => s.status === "CANCELLED").length,
+  };
+
+  const filtered = byPeriod
     .filter((s) => {
-      // CASHIER bo'lsa faqat bugungi
-      if (isCashier && s.createdAt) {
-        const saleDate = new Date(s.createdAt);
-        if (saleDate < todayStart) return false;
-      }
+      if (status !== "ALL" && s.status !== status) return false;
       // Qidiruv
       if (!search) return true;
       const q = search.toLowerCase();
@@ -170,13 +191,37 @@ export default function SalesPage({ toast }) {
             {isCashier && (
               <span style={{ fontSize: 12, fontWeight: 700, color: "var(--blue)", background: "var(--blue-l)", padding: "5px 12px", borderRadius: 20 }}>
                 <i className="fa-solid fa-calendar-day" style={{ marginRight: 5 }} />
-                Bugungi sotuvlar ({filtered.length})
+                Bugungi sotuvlar ({counts.ALL})
               </span>
             )}
           </div>
           <button className="btn btn-outline btn-sm" onClick={loadSales}>
             <i className="fa-solid fa-rotate-right" /> {t("common.refresh")}
           </button>
+        </div>
+
+        {/* Holat filtri. Bekor qilingan sotuvlar endi ro'yxatda turadi —
+            ularni ajratib ko'rish uchun shu qator kerak. Chipdagi son
+            qidiruvga bog'liq emas: u davr bo'yicha JAMI holatni ko'rsatadi. */}
+        <div className="card-header" style={{ paddingTop: 0 }}>
+          <div className="cat-tabs" role="tablist" aria-label={t("common.status")}>
+            {[
+              { key: "ALL",       label: t("common.all") },
+              { key: "PAID",      label: saleStatus("PAID").label },
+              { key: "CANCELLED", label: saleStatus("CANCELLED").label },
+            ].map((f) => (
+              <button
+                key={f.key}
+                type="button"
+                role="tab"
+                aria-selected={status === f.key}
+                className={`cat-tab ${status === f.key ? "active" : ""}`}
+                onClick={() => setStatus(f.key)}
+              >
+                {f.label} <span className="mono">({counts[f.key]})</span>
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="table-wrap">
