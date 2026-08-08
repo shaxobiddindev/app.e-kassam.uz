@@ -201,8 +201,22 @@ export default function KassaPage({ toast, refreshLowStock }) {
     doSearch("");
   };
 
-  const updateQty = (id, delta) =>
-    setCart((prev) => prev.map((i) => (i.id === id ? { ...i, qty: i.qty + delta } : i)).filter((i) => i.qty > 0));
+  /* ⚠ «−» OXIRGI donani olib tashlasa, bu X tugmasi bilan AYNI amal —
+     demak u ham bajik so'rashi shart. Ilgari bu yerda `.filter(qty > 0)`
+     turardi va tovar jimgina yo'q bo'lardi: kassir X ni bosmasdan, «−» ni
+     bir necha marta bosib qo'riqlovni butunlay aylanib o'tardi va jurnalda
+     hech qanday iz qolmasdi.
+
+     Endi miqdor 0 ga TUSHMAYDI — 1 dan pastga urinish qo'riqlanadigan
+     `removeFromCart` ga yo'naltiriladi. Shu bilan savatdan chiqishning
+     YAGONA yo'li qoladi va uni yopib qo'yish yetarli. */
+  const updateQty = (id, delta) => {
+    const item = cart.find((i) => i.id === id);
+    if (!item) return;
+    const next = item.qty + delta;
+    if (next <= 0) { removeFromCart(id); return; }
+    setCart((prev) => prev.map((i) => (i.id === id ? { ...i, qty: next } : i)));
+  };
 
   /* Savat serverda YO'Q (brauzer holati) — shuning uchun o'chirish avval
      `/security/confirm` ga yozdiriladi: bajik amalni to'smaydi, IZ qoldiradi.
