@@ -99,6 +99,68 @@ export const INVENTORY_STATUS = dict("enum.inventory", {
   EXPIRED: { tone: "danger",  icon: "fa-triangle-exclamation" },
 });
 
+/* ── O'lchov birligi — UnitOfMeasure ─────────────────────────────────────────
+   `decimals` — nechta kasr xonasi ma'noli. Backend'dagi qiymat bilan BIR XIL
+   bo'lishi shart: kassa miqdor maydonini shu raqamga qarab chizadi (DONA'da
+   kasr umuman kiritilmaydi, KG'da uch xona). */
+export const UNIT = dict("enum.unit", {
+  DONA:       { decimals: 0, icon: "fa-cube" },
+  QUTI:       { decimals: 0, icon: "fa-box" },
+  QOP:        { decimals: 0, icon: "fa-bag-shopping" },
+  JUFT:       { decimals: 0, icon: "fa-shoe-prints" },
+  RULON:      { decimals: 0, icon: "fa-scroll" },
+  TO_PLAM:    { decimals: 0, icon: "fa-boxes-stacked" },
+  KG:         { decimals: 3, icon: "fa-weight-scale" },
+  GRAM:       { decimals: 0, icon: "fa-weight-hanging" },
+  LITR:       { decimals: 3, icon: "fa-bottle-droplet" },
+  MILLILITR:  { decimals: 0, icon: "fa-flask" },
+  METR:       { decimals: 2, icon: "fa-ruler" },
+  METR_KV:    { decimals: 3, icon: "fa-vector-square" },
+  METR_KUB:   { decimals: 3, icon: "fa-cube" },
+  SOAT:       { decimals: 2, icon: "fa-clock" },
+});
+
+/* ── Tovar yoki xizmat — ProductType ─────────────────────────────────────── */
+export const PRODUCT_TYPE = dict("enum.productType", {
+  GOODS:   { icon: "fa-box",       tone: "neutral" },
+  SERVICE: { icon: "fa-handshake", tone: "info" },
+});
+
+/* ── Markirovka guruhi — MarkingGroup ("Asl Belgisi") ────────────────────── */
+export const MARKING_GROUP = dict("enum.marking", {
+  TAMAKI:          { icon: "fa-smoking",         tone: "warning" },
+  ALKOGOL:         { icon: "fa-wine-bottle",     tone: "warning" },
+  PIVO:            { icon: "fa-beer-mug-empty",  tone: "warning" },
+  SUV_ICHIMLIK:    { icon: "fa-bottle-water",    tone: "warning" },
+  DORI:            { icon: "fa-pills",           tone: "warning" },
+  TIBBIY_VOSITA:   { icon: "fa-kit-medical",     tone: "warning" },
+  OYOQ_KIYIM:      { icon: "fa-shoe-prints",     tone: "warning" },
+  MAISHIY_TEXNIKA: { icon: "fa-plug",            tone: "warning" },
+  ZARGARLIK:       { icon: "fa-gem",             tone: "warning" },
+  YOG_MOY:         { icon: "fa-oil-can",         tone: "warning" },
+  BOSHQA:          { icon: "fa-barcode",         tone: "warning" },
+});
+
+/* ── Faoliyat turi — BusinessType ────────────────────────────────────────── */
+export const BUSINESS_TYPE = dict("enum.business", {
+  GROCERY:      { icon: "fa-basket-shopping" },
+  CONSTRUCTION: { icon: "fa-trowel-bricks" },
+  CLOTHING:     { icon: "fa-shirt" },
+  COSMETICS:    { icon: "fa-pump-soap" },
+  STATIONERY:   { icon: "fa-pen" },
+  ELECTRONICS:  { icon: "fa-tv" },
+  AUTO_PARTS:   { icon: "fa-car" },
+  SERVICE:      { icon: "fa-handshake" },
+  OTHER:        { icon: "fa-store" },
+});
+
+/* ── Global katalog holati — GlobalProductStatus ─────────────────────────── */
+export const GLOBAL_STATUS = dict("enum.globalStatus", {
+  PENDING:  { tone: "warning", icon: "fa-hourglass-half" },
+  VERIFIED: { tone: "success", icon: "fa-circle-check" },
+  REJECTED: { tone: "danger",  icon: "fa-circle-xmark" },
+});
+
 /* ==========================================================================
    Yordamchilar
    ========================================================================== */
@@ -147,6 +209,26 @@ export const roleEntry      = (v) => entry(ROLE, v);
 export const roleLabel      = (v) => entry(ROLE, v).label;
 export const adminRole      = (v) => entry(ADMIN_ROLE, v);
 export const inventoryState = (v) => entry(INVENTORY_STATUS, v);
+export const unitEntry      = (v) => entry(UNIT, v);
+export const unitLabel      = (v) => entry(UNIT, v).label;
+export const productType    = (v) => entry(PRODUCT_TYPE, v);
+export const markingGroup   = (v) => entry(MARKING_GROUP, v);
+export const businessType   = (v) => entry(BUSINESS_TYPE, v);
+export const globalStatus   = (v) => entry(GLOBAL_STATUS, v);
+
+/**
+ * Birlikdagi kasr xonalari soni.
+ *
+ * ⚠ Noma'lum birlik uchun 0 emas, 3 qaytariladi. Sabab: backend yangi
+ * bo'linadigan birlik qo'shsa (masalan TONNA), eski front uni "butun son"
+ * deb hisoblab kassirga 0.5 tonna sotishga yo'l bermay qo'yardi — ya'ni
+ * xato SOTUVNI TO'SARDI. Ortiqcha aniqlik esa zararsiz: server baribir
+ * o'z qoidasi bo'yicha yaxlitlaydi.
+ */
+export const unitDecimals = (v) => {
+  const e = UNIT[normalize(v)];
+  return e && typeof e.decimals === "number" ? e.decimals : 3;
+};
 
 /** Bir nechta rol kelganda (`user.roles` massivi) — vergul bilan. */
 export const rolesLabel = (roles) =>

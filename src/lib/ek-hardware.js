@@ -21,8 +21,8 @@
 import { isDesktop, invoke } from "./ek-desktop";
 import { Receipt, WIDTH_80, WIDTH_58, drawerKickBytes } from "./ek-escpos";
 import { t } from "./ek-i18n";
-import { money } from "../utils";
-import { paymentLabel } from "./ek-labels";
+import { money, quantity } from "../utils";
+import { paymentLabel, unitLabel } from "./ek-labels";
 
 const KEY = "ek_hw";
 
@@ -103,7 +103,7 @@ async function send(bytes) {
  * ishlatiladi. "Sinov cheki" bilan haqiqiy chek turli kod bo'lsa, sinov
  * o'tib, haqiqiysi buzilib chiqishi mumkin edi.
  */
-export function buildReceipt({ saleId, cart = [], total = 0, payType, customer, offline, shopName, cashier }) {
+export function buildReceipt({ saleId, cart = [], total = 0, payType, customer, offline, shopName, cashier, fiscal }) {
   const s = getSettings();
   const r = new Receipt(s.width === 58 ? WIDTH_58 : WIDTH_80);
 
@@ -118,7 +118,10 @@ export function buildReceipt({ saleId, cart = [], total = 0, payType, customer, 
   for (const i of cart) {
     // Tovar nomi ALOHIDA qatorda: uzun nomlar narx ustuniga bosim qilmasin.
     r.wrap(i.name);
-    r.row(`  ${i.qty} x ${money(i.salePrice)}`, money(i.salePrice * i.qty));
+    // Miqdor birligi bilan: "0.35 kg x 95 000". Birliksiz "0.35 x 95 000"
+    // mijozga nima sotilganini aytmasdi.
+    const qtyText = `${quantity(i.qty, i.unitDecimals)}${i.unit ? " " + unitLabel(i.unit) : ""}`;
+    r.row(`  ${qtyText} x ${money(i.salePrice)}`, money(i.salePrice * i.qty));
   }
 
   r.rule();
@@ -128,6 +131,34 @@ export function buildReceipt({ saleId, cart = [], total = 0, payType, customer, 
 
   if (offline) {
     r.feed().center().line(t("kassa.receiptOffline")).line(t("kassa.receiptOfflineSub")).left();
+  }
+
+  /* ── QQS jamlanmasi ────────────────────────────────────────────────
+     Fiskal chekda QQS satr-satr emas, JAMI ko'rsatiladi: xaridorga
+     kerakli raqam shu. Narx QQS'ni o'z ichiga oladi (O'zbekistonda
+     chakana narx deyarli doim shunday), shuning uchun ajratish
+     formulasi total × stavka / (100 + stavka). */
+  const vatTotal = cart.reduce((sum, i) => {
+    const rate = Number(i.vatRate);
+    if (!rate) return sum;
+    const line = Number(i.salePrice) * Number(i.qty);
+    return sum + (i.priceIncludesVat === false ? line * rate / 100 : line * rate / (100 + rate));
+  }, 0);
+  if (vatTotal > 0) r.row(t("kassa.receiptVat"), money(vatTotal));
+
+  /* ── Fiskal blok ───────────────────────────────────────────────────
+     Faqat fiskal belgi HAQIQATAN olingan bo'lsa chiqadi. Belgisiz
+     "fiskal chek" ko'rinishini yasash — xaridorni ham, do'konni ham
+     aldash bo'lardi. */
+  if (fiscal?.fiscalSign) {
+    r.rule();
+    r.center().line(t("kassa.receiptFiscal")).left();
+    r.row(t("kassa.receiptFiscalSign"), fiscal.fiscalSign);
+    if (fiscal.terminalId) r.row(t("kassa.receiptTerminal"), fiscal.terminalId);
+    if (fiscal.receiptNo) r.row(t("kassa.receiptFiscalNo"), fiscal.receiptNo);
+    if (fiscal.qrUrl) {
+      r.feed().center().qr(fiscal.qrUrl).left();
+    }
   }
 
   r.rule();
@@ -272,9 +303,10 @@ function printInBrowser({ saleId, cart = [], total = 0, payType, customer, offli
   const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
-  const rows = cart.map((i) =>
-    `<div class="row"><span>${esc(i.name)} x${i.qty}</span><span>${esc(money(i.salePrice * i.qty))}</span></div>`
-  ).join("");
+  const rows = cart.map((i) => {
+    const qtyText = `${quantity(i.qty, i.unitDecimals)}${i.unit ? " " + unitLabel(i.unit) : ""}`;
+    return `<div class="row"><span>${esc(i.name)} × ${esc(qtyText)}</span><span>${esc(money(i.salePrice * i.qty))}</span></div>`;
+  }).join("");
 
   win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(t("kassa.receiptNo"))} ${esc(saleId)}</title>
     <style>

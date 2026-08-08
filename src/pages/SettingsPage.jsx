@@ -6,6 +6,7 @@ import ThemeSelect from "../components/ek/ThemeSelect";
 import LangSelect from "../components/ek/LangSelect";
 import { useConfirm } from "../context/ConfirmProvider";
 import { useAuth } from "../hooks/useAuth";
+import FiscalPanel from "../components/FiscalPanel";
 import HardwareSettings from "../components/HardwareSettings";
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -51,6 +52,8 @@ export default function SettingsPage({ toast }) {
   const { t } = useT();
   const confirm = useConfirm();
   const { user, logout } = useAuth();
+  // Fiskal panel — egasi va do'kon administratoriga.
+  const isManager = [...roleSet(user?.role)].some((r) => r === "OWNER" || r === "SHOP_ADMIN");
 
   const [collapsed, setCollapsed] = useState(
     () => localStorage.getItem("sb_collapsed") === "1"
@@ -142,6 +145,10 @@ export default function SettingsPage({ toast }) {
           </button>
         </Row>
       </Section>
+
+      {/* Fiskal holat — FAQAT rahbarga: kassirning bu yerda qiladigan
+          ishi yo'q va backend ham uni bu yo'lga qo'ymaydi. */}
+      {isManager && <FiscalPanel toast={toast} />}
 
       <Section icon="fa-circle-info" title={t("settings.about")}>
         <Row label="e-Kassam">

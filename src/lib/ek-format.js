@@ -55,6 +55,25 @@ export function qty(n) {
     : num.toFixed(3).replace(/0+$/, "").replace(/\.$/, "");
 }
 
+/**
+ * O'lchov birligiga bog'langan miqdor: `3` (dona) · `0.35` (kg) · `12.5` (m).
+ *
+ * `decimals` backend javobidan keladi (`ProductResponse.unitDecimals`) —
+ * front o'zining birlik jadvalini yuritmaydi, aks holda ikki tomonda ikkita
+ * haqiqat manbai paydo bo'lardi. Ortiqcha nollar kesiladi (kassir "0.350"
+ * emas "0.35" ko'rgani ma'qul), lekin avval `toFixed` qilinadi — aks holda
+ * "0.05" xato yaxlitlanib "0.5" bo'lib ketishi mumkin edi.
+ */
+export function quantity(n, decimals = 3) {
+  const num = Number(n);
+  if (!Number.isFinite(num)) return "0";
+  if (!decimals) return groupDigits(num);
+  const fixed = num.toFixed(decimals);
+  return fixed.includes(".")
+    ? fixed.replace(/0+$/, "").replace(/\.$/, "")
+    : fixed;
+}
+
 /** Foiz, 1 xona: 21.4% */
 export function percent(n) {
   const num = Number(n);

@@ -1,8 +1,12 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { t } from "../lib/ek-i18n";
-import { productApi, customerApi, saleApi, securityApi } from "../api";
+import { productApi, customerApi, saleApi, securityApi, shopApi, mediaApi, fiscalApi } from "../api";
 import { useBadge } from "../context/BadgeProvider";
-import { money } from "../utils";
+import { money, quantity as fmtQty } from "../utils";
+import { unitLabel } from "../lib/ek-labels";
+import ProductTile from "../components/ProductTile";
+import QuantityModal from "../components/QuantityModal";
+import MarkingScanModal from "../components/MarkingScanModal";
 import { Empty } from "../components/ui";
 import { FinishOverlay, SkeletonTiles, Spinner } from "../components/ek/Loading";
 import OfflineBar from "../components/OfflineBar";
@@ -89,6 +93,18 @@ export default function KassaPage({ toast, refreshLowStock }) {
   const [undo, setUndo]             = useState(null);   // { item, index }
   const [bcWarn, setBcWarn]         = useState(false);  // fokus yo'qolgani
 
+  /* ── Katalog ko'rinishi ────────────────────────────────────────
+     Kategoriya tabi va ikki ko'rinish (rasmli / zich). Ko'rinish
+     QURILMADA saqlanadi: bitta do'konda kassa va omborchining
+     ekranlari har xil bo'lishi mumkin, va tanlov har kirishda
+     qaytadan qilinmasin. */
+  const [categories, setCategories] = useState([]);
+  const [categoryId, setCategoryId] = useState(null);   // null = hammasi
+  const [favOnly, setFavOnly]       = useState(false);
+  const [view, setView]             = useState(() => localStorage.getItem("ek_kassaView") || "");
+  const [qtyModal, setQtyModal]     = useState(null);   // { product, initial }
+  const [markModal, setMarkModal]   = useState(null);   // { product } — DataMatrix
+
   const barcodeRef  = useRef(null);
   const searchRef   = useRef(null);
   const debounceRef = useRef(null);
@@ -106,17 +122,44 @@ export default function KassaPage({ toast, refreshLowStock }) {
     customerApi.getAll(branchId).then((r) => setCustomers(r.data || [])).catch(() => {});
   }, [branchId]);
 
+  /* ── Kategoriyalar va standart ko'rinish ───────────────────────
+     Ko'rinish tanlanmagan bo'lsa faoliyat turidan olinadi: oziq-ovqatda
+     zich ro'yxat (tovar barkod bilan tanlanadi va ekranga ko'proq
+     sig'ishi kerak), kiyim/kosmetikada rasmli katakcha (tovar KO'RIB
+     tanlanadi). Bu — standart, majburiyat emas. */
+  useEffect(() => {
+    productApi.getCategories(branchId)
+      .then((r) => setCategories((r.data || []).filter((c) => c.productCount > 0)))
+      .catch(() => {});
+  }, [branchId]);
+
+  useEffect(() => {
+    if (view) return;                       // kassir allaqachon tanlagan
+    shopApi.getProfile()
+      .then((r) => {
+        const bt = r?.data?.businessType;
+        setView(["CLOTHING", "COSMETICS", "SERVICE", "ELECTRONICS"].includes(bt) ? "tiles" : "list");
+      })
+      .catch(() => setView("list"));
+  }, [view]);
+
+  const setViewMode = (mode) => {
+    setView(mode);
+    localStorage.setItem("ek_kassaView", mode);
+  };
+
   /* ── Server qidiruvi (debounce 350ms) ─────────────────────── */
   const doSearch = useCallback(async (q) => {
     setSearching(true);
     try {
-      const res = await productApi.search(q, 0, 40, branchId);
+      const res = await productApi.search(q, 0, 60, branchId,
+        { categoryId, favorites: favOnly });
       setProducts(res.data || []);
     } catch (_) { /* oflaynda katalog eskicha qoladi */ }
     finally { setSearching(false); }
-  }, [branchId]);
+  }, [branchId, categoryId, favOnly]);
 
-  useEffect(() => { doSearch(""); }, [doSearch]);
+  useEffect(() => { doSearch(search); }, [doSearch]);   // kategoriya almashsa ham
 
   const handleSearchChange = (val) => {
     setSearch(val);
@@ -141,9 +184,9 @@ export default function KassaPage({ toast, refreshLowStock }) {
   }, []);
 
   useEffect(() => {
-    if (showPayModal || finish) return;
+    if (showPayModal || finish || qtyModal || markModal) return;
     focusBarcode();
-  }, [showPayModal, finish, focusBarcode]);
+  }, [showPayModal, finish, qtyModal, markModal, focusBarcode]);
 
   useEffect(() => {
     const onFocusOut = () => {
@@ -151,26 +194,78 @@ export default function KassaPage({ toast, refreshLowStock }) {
       refocusRef.current = setTimeout(() => {
         const el = document.activeElement;
         const typing = el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT");
-        if (showPayModal || finish || typing) { setBcWarn(!typing); return; }
+        if (showPayModal || finish || qtyModal || markModal || typing) { setBcWarn(!typing); return; }
         focusBarcode();
       }, REFOCUS_MS);
     };
     document.addEventListener("focusout", onFocusOut);
     return () => { document.removeEventListener("focusout", onFocusOut); clearTimeout(refocusRef.current); };
-  }, [showPayModal, finish, focusBarcode]);
+  }, [showPayModal, finish, qtyModal, markModal, focusBarcode]);
 
-  /* ── Barkod bo'yicha qo'shish ──────────────────────────────── */
+  /* ── Skanerlangan kod ──────────────────────────────────────────
+     Butun mantiq SERVERDA (`/products/scan`): oddiy barkod, qadoq
+     barkodi (quti = 12 dona), tarozi barkodi (ichida og'irlik) va
+     "do'konda yo'q, lekin umumiy bazada bor" holati.
+
+     ⚠ Ilgari kassa barkodni o'zi qidirardi va faqat AYNAN mos
+     keladiganini topa olardi — quti barkodi ham, tarozi barkodi ham
+     "topilmadi" bo'lib chiqardi.
+
+     Oflaynda server yo'q: shunda avval yuklangan ro'yxatdan qidiramiz,
+     ya'ni oddiy barkod baribir ishlaydi. */
   const addByBarcode = async (code) => {
-    const local = products.find((p) => p.barcode === code);
-    if (local) { addToCart(local); return; }
     try {
-      const res = await productApi.search(code, 0, 5, branchId);
-      const found = (res.data || []).find((p) => p.barcode === code);
-      if (found) { addToCart(found); return; }
-    } catch (_) { /* oflayn */ }
+      const res = await productApi.scan(code, branchId);
+      const r = res.data || {};
+
+      // Markirovkali tovarda oddiy barkod YETARLI EMAS: har dona uchun
+      // DataMatrix skanerlanishi shart, aks holda sotuv serverda rad
+      // etilardi va kassir sababni to'lov oynasida bilib olardi.
+      if (r.source === "PRODUCT" && r.product?.markingGroup) {
+        setMarkModal({ product: r.product });
+        return;
+      }
+      if (r.source === "PACK" && r.product?.markingGroup) {
+        setMarkModal({ product: r.product });
+        return;
+      }
+      if (r.source === "PRODUCT") { addToCart(r.product, 1); return; }
+
+      if (r.source === "PACK") {
+        addToCart(r.product, Number(r.quantity) || 1);
+        toast.info(t("kassa.packAdded", {
+          label: r.packLabel || t("products.packBarcodes"),
+          qty: fmtQty(r.quantity, r.product.unitDecimals),
+          unit: unitLabel(r.product.unit),
+        }));
+        return;
+      }
+
+      if (r.source === "WEIGHT") {
+        // Tarozi formati do'konga qarab farq qiladi, shuning uchun
+        // o'qilgan og'irlik JIMGINA qabul qilinmaydi — kassir tasdiqlaydi.
+        setQtyModal({ product: r.product, initial: Number(r.quantity) });
+        toast.info(t("kassa.weightScanned", {
+          qty: fmtQty(r.quantity, r.product.unitDecimals),
+          unit: unitLabel(r.product.unit),
+        }));
+        return;
+      }
+
+      if (r.source === "GLOBAL") {
+        // Do'konda yo'q, lekin umumiy bazada bor: kassir uni yaratmaydi
+        // (narx qo'yish — egasining ishi), lekin nomi aytiladi, aks holda
+        // "topilmadi" xabari hech narsa tushuntirmasdi.
+        toast.info(`${t("catalog.globalFound")}: ${r.suggestion?.name}`);
+        return;
+      }
+    } catch (_) {
+      // Oflayn — yuklangan ro'yxatdan qidiramiz.
+      const local = products.find((p) => p.barcode === code);
+      if (local) { addToCart(local, 1); return; }
+    }
+
     // Xato ovozi emas, taklif (06-APP-KASSIR.md).
-    // ⚠ Ilgari bu satrda `t("products.title")` AYNAN shu ko'rinishda chiqardi:
-    // u shablon satr ichida edi va hech qachon chaqirilmagan.
     toast.info(t("kassa.barcodeNotFound", { code, section: t("products.title") }));
   };
 
@@ -182,24 +277,73 @@ export default function KassaPage({ toast, refreshLowStock }) {
 
      To'lov oynasi ochiq bo'lganda O'CHADI: u yerda summa kiritiladi va
      tasodifiy skanerlash summani buzib yuborardi. */
-  useScanner(addByBarcode, { enabled: !showPayModal && !finish });
+  useScanner(addByBarcode, { enabled: !showPayModal && !finish && !qtyModal && !markModal });
 
   /* ── Savat ────────────────────────────────────────────────── */
-  const addToCart = (product) => {
-    if (product.expired) { toast.error(`${product.name} — muddati o'tgan, sotib bo'lmaydi!`); return; }
-    if (product.stockQuantity != null && product.stockQuantity <= 0) {
-      toast.error(`${product.name} — omborda qolmagan!`); return;
-    }
+
+  /** Bo'linadigan birlik (kg, litr, metr) — "+" bilan yig'ib bo'lmaydi. */
+  const isDivisible = (product) => (product?.unitDecimals ?? 0) > 0;
+
+  /**
+   * Katakcha bosildi. Bo'linadigan tovarda avval miqdor so'raladi:
+   * 0.350 kg ni "+" tugmasi bilan kiritishning iloji yo'q.
+   */
+  const pickProduct = (product) => {
+    if (product.salePrice == null) { toast.error(`${product.name} — ${t("kassa.noPriceWarn")}`); return; }
+    // Markirovkali tovarda miqdorni kassir yozmaydi — u har donaning
+    // yorlig'ini skanerlaydi va miqdor shundan kelib chiqadi.
+    if (product.markingGroup) { setMarkModal({ product }); return; }
+    if (isDivisible(product)) { setQtyModal({ product, initial: null }); return; }
+    addToCart(product, 1);
+  };
+
+  /** Skanerlangan yorliqlar savatga qo'shiladi (miqdor = kodlar soni). */
+  const applyMarkingCodes = (codes) => {
+    const { product } = markModal;
+    setMarkModal(null);
+    if (!codes.length) return;
     setCart((prev) => {
       const exists = prev.find((i) => i.id === product.id);
-      // Bir xil tovar ikkinchi marta → miqdor oshadi, yangi satr yaratilmaydi
-      if (exists) return prev.map((i) => (i.id === product.id ? { ...i, qty: i.qty + 1, _pulse: Date.now() } : i));
-      return [...prev, { ...product, qty: 1, _added: Date.now() }];
+      if (exists) {
+        // Kodlar BIRLASHTIRILADI, almashtirilmaydi: kassir ikkinchi
+        // marta skanerlab yana bitta quti qo'shishi mumkin.
+        const merged = [...new Set([...(exists.markingCodes || []), ...codes])];
+        return prev.map((i) => (i.id === product.id
+          ? { ...i, qty: merged.length, markingCodes: merged, _pulse: Date.now() }
+          : i));
+      }
+      return [...prev, { ...product, qty: codes.length, markingCodes: codes, _added: Date.now() }];
     });
     setSearch("");
     clearTimeout(debounceRef.current);
     doSearch("");
   };
+
+  const addToCart = (product, amount = 1) => {
+    if (product.expired) { toast.error(`${product.name} — muddati o'tgan, sotib bo'lmaydi!`); return; }
+    if (product.salePrice == null) { toast.error(`${product.name} — ${t("kassa.noPriceWarn")}`); return; }
+    // Qoldiq FAQAT ombor yuritiladigan tovarda tekshiriladi: xizmatda
+    // `stockQuantity` umuman bo'lmaydi va u har doim sotiladi.
+    if (product.stockQuantity != null && Number(product.stockQuantity) <= 0) {
+      toast.error(`${product.name} — omborda qolmagan!`); return;
+    }
+    setCart((prev) => {
+      const exists = prev.find((i) => i.id === product.id);
+      // Bir xil tovar ikkinchi marta → miqdor oshadi, yangi satr yaratilmaydi
+      if (exists) {
+        return prev.map((i) => (i.id === product.id
+          ? { ...i, qty: round3(i.qty + amount), _pulse: Date.now() }
+          : i));
+      }
+      return [...prev, { ...product, qty: round3(amount), _added: Date.now() }];
+    });
+    setSearch("");
+    clearTimeout(debounceRef.current);
+    doSearch("");
+  };
+
+  /** Kasrli qo'shishda 0.1 + 0.2 = 0.30000000000000004 bo'lmasin. */
+  const round3 = (n) => Math.round((Number(n) + Number.EPSILON) * 1000) / 1000;
 
   /* ⚠ «−» OXIRGI donani olib tashlasa, bu X tugmasi bilan AYNI amal —
      demak u ham bajik so'rashi shart. Ilgari bu yerda `.filter(qty > 0)`
@@ -213,9 +357,39 @@ export default function KassaPage({ toast, refreshLowStock }) {
   const updateQty = (id, delta) => {
     const item = cart.find((i) => i.id === id);
     if (!item) return;
-    const next = item.qty + delta;
+
+    /* Markirovkali tovarda miqdorni "+" bilan oshirib bo'lmaydi: har dona
+       o'z yorlig'iga bog'langan. "+" yangi yorliq skanerlashni ochadi,
+       "−" esa oxirgi skanerlangan yorliqni olib tashlaydi. */
+    if (item.markingGroup) {
+      if (delta > 0) { setMarkModal({ product: item }); return; }
+      const rest = (item.markingCodes || []).slice(0, -1);
+      if (rest.length === 0) { removeFromCart(id); return; }
+      setCart((prev) => prev.map((i) => (i.id === id
+        ? { ...i, markingCodes: rest, qty: rest.length } : i)));
+      return;
+    }
+
+    // Tarozili tovarda "+" bir kilogramm qo'shishi mantiqsiz — miqdor
+    // oynasi ochiladi va kassir aniq qiymat kiritadi.
+    if (isDivisible(item)) { setQtyModal({ product: item, initial: item.qty }); return; }
+
+    const next = round3(item.qty + delta);
     if (next <= 0) { removeFromCart(id); return; }
     setCart((prev) => prev.map((i) => (i.id === id ? { ...i, qty: next } : i)));
+  };
+
+  /** Miqdor oynasi tasdiqlandi: savatdagi satr YANGILANADI, qo'shilmaydi. */
+  const applyQuantity = (value) => {
+    const { product } = qtyModal;
+    setQtyModal(null);
+    const exists = cart.find((i) => i.id === product.id);
+    if (exists) {
+      setCart((prev) => prev.map((i) => (i.id === product.id
+        ? { ...i, qty: round3(value), _pulse: Date.now() } : i)));
+      return;
+    }
+    addToCart(product, value);
   };
 
   /* Savat serverda YO'Q (brauzer holati) — shuning uchun o'chirish avval
@@ -277,7 +451,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
         action: "CART_ITEM_REMOVE",
         targetType: "CART",
         targetId: null,
-        note: `${t("kassa.clearNote")}: ${totalQty} x = ${money(total)}`,
+        note: `${t("kassa.clearNote")}: ${cart.length} x = ${money(total)}`,
       }));
     } catch (err) {
       if (!err?.cancelled) toast.error(err.message);
@@ -322,7 +496,12 @@ export default function KassaPage({ toast, refreshLowStock }) {
     const payload = {
       idempotencyKey: queue.newIdempotencyKey(),
       customerId: customer?.id || null,
-      items: cart.map((i) => ({ productId: i.id, quantity: i.qty })),
+      items: cart.map((i) => ({
+        productId: i.id,
+        quantity: i.qty,
+        // Markirovkasiz tovarda maydon umuman yuborilmaydi.
+        ...(i.markingCodes?.length ? { markingCodes: i.markingCodes } : {}),
+      })),
       paymentType: payType,
       mixedSecondType: payType === "MIXED" ? mixedSecondType : undefined,
       cashAmount: payType === "CASH" ? total : payType === "MIXED" ? Number(cashAmount) || 0 : 0,
@@ -336,11 +515,13 @@ export default function KassaPage({ toast, refreshLowStock }) {
 
     let receiptNo = null;
     let offline   = false;
+    let res_saleId = null;
 
     try {
       if (!navigator.onLine) throw new Error("OFFLINE");
       const res = await saleApi.create(payload);
-      receiptNo = res?.data?.id != null ? `A-${res.data.id}` : null;
+      res_saleId = res?.data?.id ?? null;
+      receiptNo = res_saleId != null ? `A-${res_saleId}` : null;
     } catch (err) {
       // Tarmoq xatosi yoki oflayn → navbatga. Boshqa xato (masalan qoldiq
       // yetmasligi) esa haqiqiy xato: sotuv qayd etilmaydi.
@@ -358,12 +539,26 @@ export default function KassaPage({ toast, refreshLowStock }) {
       offline = true;
     }
 
-    lastSale.current = { ...snapshot, saleId: receiptNo, offline };
+    /* ── Fiskal belgi ────────────────────────────────────────────────
+       Chek fiskal modulga sotuv yozilgandan KEYIN yuboriladi, shuning
+       uchun belgi sotuv javobida bo'lmaydi. Uni bir marta so'raymiz va
+       KUTIB QOLMAYMIZ: kelmasa chek belgisiz chiqadi va keyin Ctrl+P
+       bilan qayta chop etiladi. Kassa hech qachon fiskal modulni
+       kutib turmaydi. */
+    let fiscal = null;
+    if (!offline && res_saleId) {
+      try {
+        const fr = await fiscalApi.bySale(res_saleId);
+        if (fr?.data?.fiscalSign) fiscal = fr.data;
+      } catch (_) { /* fiskal yo'q — chek baribir chiqadi */ }
+    }
+
+    lastSale.current = { ...snapshot, saleId: receiptNo, offline, fiscal };
     // Chek va pul yashigi — BITTA amalda, kassirdan qo'shimcha bosish
     // talab qilmasdan. Xatosi yutilmaydi, lekin SOTUVNI to'xtatmaydi:
     // sotuv allaqachon qayd etilgan va printer nosozligi uni bekor
     // qilmasligi kerak — kassir chekni Ctrl+P bilan qayta chiqaradi.
-    printReceipt({ saleId: receiptNo, ...snapshot, offline, shopName, cashier })
+    printReceipt({ saleId: receiptNo, ...snapshot, offline, shopName, cashier, fiscal })
       .catch((err) => toast.error(`${t("hw.printFailed")}: ${err.message}`));
 
     setFinish({ phase: "done", total: money(snapshot.total), receiptNo });
@@ -412,6 +607,8 @@ export default function KassaPage({ toast, refreshLowStock }) {
 
       if (e.key === "Escape") {
         if (finish)       { setFinish(null); focusBarcode(); return; }
+        if (qtyModal)     { setQtyModal(null); focusBarcode(); return; }
+        if (markModal)    { setMarkModal(null); focusBarcode(); return; }
         if (showPayModal) { closePayModal(); return; }
         if (cart.length && window.confirm(t("kassa.clearConfirm"))) handleClearCart();
         return;
@@ -510,21 +707,60 @@ export default function KassaPage({ toast, refreshLowStock }) {
                 to'r aynan shu shaklda, shuning uchun sakrash bo'lmaydi.
                 Keyingi qidiruvlarda esa mavjud natijalar joyida qoladi va
                 yuqorida faqat kichik holat ko'rsatiladi. */}
+            {/* ── Kategoriya tabi + ko'rinish tanlovi ──────────────────
+                Bo'sh kategoriya ko'rsatilmaydi (`productCount > 0`):
+                bosilganda bo'sh ro'yxat chiqadigan tab kassirga faqat
+                xalaqit beradi. */}
+            <div className="cat-bar">
+              <div className="cat-tabs" role="tablist" aria-label={t("products.category")}>
+                <button type="button" role="tab" aria-selected={!categoryId && !favOnly}
+                        className={`cat-tab ${!categoryId && !favOnly ? "active" : ""}`}
+                        onClick={() => { setCategoryId(null); setFavOnly(false); }}>
+                  <i className="fa-solid fa-grip" aria-hidden="true" /> {t("kassa.allProducts")}
+                </button>
+
+                <button type="button" role="tab" aria-selected={favOnly}
+                        className={`cat-tab ${favOnly ? "active" : ""}`}
+                        onClick={() => { setFavOnly(true); setCategoryId(null); }}>
+                  <i className="fa-solid fa-star" aria-hidden="true" /> {t("kassa.favorites")}
+                </button>
+
+                {categories.map((c) => (
+                  <button key={c.id} type="button" role="tab" aria-selected={categoryId === c.id}
+                          className={`cat-tab ${categoryId === c.id ? "active" : ""}`}
+                          data-color={c.color || "brand"}
+                          onClick={() => { setCategoryId(c.id); setFavOnly(false); }}>
+                    {c.icon && <i className={`fa-solid ${c.icon}`} aria-hidden="true" />} {c.name}
+                  </button>
+                ))}
+              </div>
+
+              <div className="view-switch" role="group" aria-label={t("kassa.viewTiles")}>
+                <button type="button" className={view === "tiles" ? "active" : ""}
+                        aria-pressed={view === "tiles"} title={t("kassa.viewTiles")}
+                        onClick={() => setViewMode("tiles")}>
+                  <i className="fa-solid fa-table-cells-large" aria-hidden="true" />
+                </button>
+                <button type="button" className={view === "list" ? "active" : ""}
+                        aria-pressed={view === "list"} title={t("kassa.viewList")}
+                        onClick={() => setViewMode("list")}>
+                  <i className="fa-solid fa-list" aria-hidden="true" />
+                </button>
+              </div>
+            </div>
+
             {tilesBusy && products.length === 0 ? (
               <SkeletonTiles count={12} />
             ) : (
-            <div className="product-grid" style={{ position: "relative" }}>
+            <div className={`product-grid ${view === "list" ? "product-grid--list" : ""}`}
+                 style={{ position: "relative" }}>
               {searching && products.length > 0 && (
                 <div style={{ position: "absolute", top: 8, right: 8, zIndex: 10, fontSize: 11, color: "var(--fg-brand)", fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
                   <Spinner small /> Qidirilmoqda…
                 </div>
               )}
               {products.map((p) => (
-                <button type="button" className="product-card" key={p.id} onClick={() => addToCart(p)}>
-                  <div className="product-name">{p.name}</div>
-                  <div className="product-barcode ek-num">{p.barcode || "—"}</div>
-                  <div className="product-price ek-num">{money(p.salePrice)}</div>
-                </button>
+                <ProductTile key={p.id} product={p} view={view} onPick={pickProduct} />
               ))}
               {products.length === 0 && !searching && (
                 <div style={{ gridColumn: "1/-1" }}>
@@ -562,11 +798,18 @@ export default function KassaPage({ toast, refreshLowStock }) {
                   >
                     <div className="cart-item-info">
                       <div className="cart-item-name">{item.name}</div>
-                      <div className="cart-item-price ek-num">{money(item.salePrice)}</div>
+                      {/* Tarozili tovarda "0.35 kg × 95 000" — faqat jami
+                          summani ko'rsatish kassirni ham, mijozni ham
+                          tekshirish imkonidan mahrum qilardi. */}
+                      <div className="cart-item-price ek-num">
+                        {isDivisible(item)
+                          ? `${fmtQty(item.qty, item.unitDecimals)} ${unitLabel(item.unit)} × ${money(item.salePrice)}`
+                          : money(item.salePrice)}
+                      </div>
                     </div>
                     <div className="qty-ctrl">
                       <button className="qty-btn" aria-label={t("kassa.decrease")} onClick={() => updateQty(item.id, -1)}>−</button>
-                      <span className="qty-num">{item.qty}</span>
+                      <span className="qty-num">{fmtQty(item.qty, item.unitDecimals)}</span>
                       <button className="qty-btn" aria-label={t("kassa.increase")} onClick={() => updateQty(item.id, +1)}>+</button>
                     </div>
                     <button className="btn-icon danger" aria-label={`${item.name} — o'chirish`} onClick={() => removeFromCart(item.id)}>
@@ -597,9 +840,12 @@ export default function KassaPage({ toast, refreshLowStock }) {
           </div>
 
           <div className="total-card">
+            {/* ⚠ Miqdorlar YIG'ILMAYDI: 2 dona + 0.35 kg = "2.35" degan
+                raqam ma'nosiz va chalg'ituvchi bo'lardi. Savatdagi SATRLAR
+                soni ko'rsatiladi. */}
             <div className="total-row">
               <span>{t("products.title")}</span>
-              <span className="ek-num">{totalQty} dona</span>
+              <span className="ek-num">{cart.length}</span>
             </div>
             <div className="total-big">
               <span>JAMI</span>
@@ -613,6 +859,26 @@ export default function KassaPage({ toast, refreshLowStock }) {
           </div>
         </div>
       </div>
+
+      {/* ════ Markirovka yorliqlari (tamaki, alkogol, suv…) ════ */}
+      {markModal && (
+        <MarkingScanModal
+          product={markModal.product}
+          mode="sale"
+          onDone={applyMarkingCodes}
+          onClose={() => { setMarkModal(null); focusBarcode(); }}
+        />
+      )}
+
+      {/* ════ Miqdor kiritish (tarozili tovar) ════ */}
+      {qtyModal && (
+        <QuantityModal
+          product={qtyModal.product}
+          initial={qtyModal.initial}
+          onConfirm={applyQuantity}
+          onClose={() => { setQtyModal(null); focusBarcode(); }}
+        />
+      )}
 
       {/* ════ Bekor qilish (undo) ════ */}
       {undo && (
@@ -641,7 +907,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
                 <div className="pay-modal-total-label">{t("kassa.grandTotal")}</div>
                 <div className="pay-modal-total-value ek-num">{money(total)}</div>
                 <div className="pay-modal-total-qty">
-                  <span className="ek-num">{totalQty}</span> ta mahsulot · <span className="ek-num">{cart.length}</span> xil
+                  <span className="ek-num">{cart.length}</span> xil mahsulot
                 </div>
               </div>
 

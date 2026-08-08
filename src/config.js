@@ -46,7 +46,7 @@ export function getDeviceId() {
 // 02-DESIGN-SYSTEM.md: komponentda `toLocaleString` chaqirilmaydi.
 // Yagona manba — src/lib/ek-format.js (packages/ui dan sinxronlanadi).
 export {
-  groupDigits, money as fmtMoney, qty, percent,
+  groupDigits, money as fmtMoney, qty, quantity, percent,
   date as fmtDate, dateTime as fmtDateTime, time as fmtTime,
   phone as fmtPhone, initials,
 } from "./lib/ek-format";

@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { t } from "../lib/ek-i18n";
 import { inventoryApi } from "../api";
 import { BranchSelector, Modal } from "../components";
+import MarkingScanModal from "../components/MarkingScanModal";
 import { Empty, SearchBar } from "../components/ui";
 import { useAuth } from "../hooks/useAuth";
 import { useBadge } from "../context/BadgeProvider";
@@ -56,6 +57,7 @@ function groupByProduct(items) {
       productId: f.productId,
       productName: f.productName,
       barcode: f.barcode,
+      markingGroup: f.markingGroup,
       costPrice: f.costPrice,
       salePrice: f.salePrice,
       batches: sorted,
@@ -81,6 +83,10 @@ export default function InventoryPage({ toast }) {
   const [qty, setQty]         = useState("");
   const [expiryDate, setExpiryDate] = useState("");
   const [reason, setReason]   = useState("");
+  /* Markirovkali tovar kirimida skanerlangan yorliqlar. Miqdor shu
+     ro'yxatdan kelib chiqadi — qo'lda yozilmaydi. */
+  const [markCodes, setMarkCodes] = useState([]);
+  const [markScan, setMarkScan]   = useState(false);
   const [saving, setSaving]   = useState(false);
   const [branchId, setBranchId] = useState(null);
   const [expanded, setExpanded] = useState(() => new Set()); // productId'lar
@@ -138,6 +144,7 @@ export default function InventoryPage({ toast }) {
     setQty("");
     setExpiryDate("");
     setReason("");
+    setMarkCodes([]);
   };
 
   const openCorrect = (batch) => {
@@ -153,7 +160,16 @@ export default function InventoryPage({ toast }) {
     items.some((i) => i.productId === g.productId && i.expiryDate);
 
   const handleAddStock = async () => {
-    if (!qty || Number(qty) <= 0) {
+    const marked = !!modal.markingGroup;
+
+    // Markirovkali tovarda miqdor yorliqlar sonidan keladi: "50" deb yozib
+    // 48 ta yorliq skanerlansa, ikki dona kodsiz qolardi va ular kassada
+    // umuman sotilmasdi.
+    if (marked && markCodes.length === 0) {
+      toast.error(t("marking.required"));
+      return;
+    }
+    if (!marked && (!qty || Number(qty) <= 0)) {
       toast.error(t("inv.needQty"));
       return;
     }
@@ -163,8 +179,10 @@ export default function InventoryPage({ toast }) {
     }
     setSaving(true);
     try {
-      await inventoryApi.addStock(modal.productId, Number(qty), expiryDate || null, reason);
-      toast.success(`${qty} dona kirim qilindi`);
+      const amount = marked ? markCodes.length : Number(qty);
+      const res = await inventoryApi.addStock(
+        modal.productId, amount, expiryDate || null, reason, marked ? markCodes : null);
+      toast.success(res?.message || `${amount} dona kirim qilindi`);
       setModal(null);
       loadData();
     } catch (err) {
@@ -397,7 +415,10 @@ export default function InventoryPage({ toast }) {
               <button
                 className="btn btn-green btn-sm"
                 onClick={handleAddStock}
-                disabled={saving || !qty}
+                /* Markirovkali tovarda miqdor maydoni umuman yo'q — shart
+                   yorliqlar soniga qaraydi, aks holda tugma doim o'chiq
+                   qolardi. */
+                disabled={saving || (modal.markingGroup ? markCodes.length === 0 : !qty)}
               >
                 {saving ? <Spinner /> : <i className="fa-solid fa-check" />}
                 {saving ? t("common.saving") : t("inv.receiveAction")}
@@ -443,18 +464,42 @@ export default function InventoryPage({ toast }) {
             </span>
           </div>
 
-          <div className="form-group">
-            <label className="form-label">{`${t("inv.receiveQty")} *`}</label>
-            <input
-              className="form-input"
-              type="number"
-              min="1"
-              value={qty}
-              onChange={(e) => setQty(e.target.value)}
-              placeholder="masalan: 50"
-              autoFocus
-            />
-          </div>
+          {/* ── Markirovkali tovar: miqdor YORLIQLARDAN ────────────────
+              Bu yerda miqdor maydoni umuman ko'rsatilmaydi. Aks holda
+              omborchi "50" deb yozib, 48 ta yorliq skanerlashi mumkin edi —
+              ikki dona kodsiz qolib, kassada umuman sotilmasdi. */}
+          {modal.markingGroup ? (
+            <div className="form-group">
+              <label className="form-label">{`${t("marking.receiveTitle")} *`}</label>
+              <div className="ek-note ek-note--warn" style={{ marginBottom: 10 }}>
+                <i className="fa-solid fa-barcode" aria-hidden="true" />
+                <div>{t("marking.required")}</div>
+              </div>
+              <button className="btn btn-outline btn-sm" onClick={() => setMarkScan(true)}>
+                <i className="fa-solid fa-qrcode" /> {t("marking.scanTitle")}
+              </button>
+              {markCodes.length > 0 && (
+                <div className="form-hint" style={{ marginTop: 8 }}>
+                  <i className="fa-solid fa-circle-check" style={{ color: "var(--fg-success)" }} />{" "}
+                  {t("marking.received", { n: markCodes.length })}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="form-group">
+              <label className="form-label">{`${t("inv.receiveQty")} *`}</label>
+              <input
+                className="form-input"
+                type="number"
+                min="0"
+                step="any"
+                value={qty}
+                onChange={(e) => setQty(e.target.value)}
+                placeholder="masalan: 50"
+                autoFocus
+              />
+            </div>
+          )}
 
           {/* Muddat: mahsulot ilgari muddat bilan kiritilgan bo'lsa MAJBURIY
               (yulduzcha + hint yo'q), aks holda ixtiyoriy — muddatsiz
@@ -489,6 +534,16 @@ export default function InventoryPage({ toast }) {
             />
           </div>
         </Modal>
+      )}
+
+      {/* ── Markirovka yorliqlarini skanerlash ── */}
+      {markScan && modal && (
+        <MarkingScanModal
+          product={{ id: modal.productId, name: modal.productName, markingGroup: modal.markingGroup }}
+          mode="receive"
+          onDone={(codes) => { setMarkCodes(codes); setMarkScan(false); }}
+          onClose={() => setMarkScan(false)}
+        />
       )}
 
       {/* ── To'g'irlash Modal ── */}
