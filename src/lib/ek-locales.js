@@ -716,6 +716,18 @@ const uz = {
   "hw.errPopup": "Brauzer chek oynasini bloklab qo'ydi",
   "hw.onlyDesktop": "Apparatlar faqat desktop ilovada sozlanadi",
 
+  // Auto-update (faqat `.exe`). Matn kassirga qaratilgan: nima
+  // bo'layotganini va necha vaqt kutishini aytadi.
+  "update.title": "Yangi versiya",
+  "update.available": "e-Kassam {v} tayyor. Sizda hozir — {cur}.",
+  "update.now": "Hozir yangilash",
+  "update.later": "Keyinroq",
+  "update.downloading": "Yuklab olinmoqda…",
+  "update.installing": "O'rnatilmoqda — ilova o'zi qayta ochiladi",
+  "update.autoIdle": "Yangi versiya o'rnatilmoqda. Bu bir daqiqacha vaqt oladi.",
+  "update.failed": "Yangilab bo'lmadi",
+  "update.hintBusy": "Sotuv o'rtasida bo'lsangiz, «Keyinroq» ni tanlang — ilova qayta ishga tushadi.",
+
   // Xato to'sig'i — matn KASSIRGA qaratilgan: ayb qidirmaydi, nima
   // qilishni aytadi va sotuv ma'lumoti joyidaligini bildiradi.
   "err.title": "Bu bo'limda xatolik yuz berdi",
@@ -1637,6 +1649,16 @@ const ru = {
   "hw.errPopup": "Браузер заблокировал окно чека",
   "hw.onlyDesktop": "Оборудование настраивается только в десктопном приложении",
 
+  "update.title": "Новая версия",
+  "update.available": "e-Kassam {v} готова. Сейчас у вас — {cur}.",
+  "update.now": "Обновить сейчас",
+  "update.later": "Позже",
+  "update.downloading": "Загружается…",
+  "update.installing": "Устанавливается — приложение откроется само",
+  "update.autoIdle": "Устанавливается новая версия. Это займёт около минуты.",
+  "update.failed": "Обновить не удалось",
+  "update.hintBusy": "Если вы посреди продажи, выберите «Позже» — приложение перезапустится.",
+
   "err.title": "В этом разделе произошла ошибка",
   "err.desc": "Остальные разделы работают — перейдите в другой через боковое меню. Данные продаж не потеряны.",
   "err.retry": "Повторить",
@@ -2550,6 +2572,16 @@ const en = {
   "hw.errNoHost": "The network printer IP address is not set",
   "hw.errPopup": "The browser blocked the receipt window",
   "hw.onlyDesktop": "Hardware is configured only in the desktop app",
+
+  "update.title": "New version",
+  "update.available": "e-Kassam {v} is ready. You have {cur}.",
+  "update.now": "Update now",
+  "update.later": "Later",
+  "update.downloading": "Downloading…",
+  "update.installing": "Installing — the app will reopen by itself",
+  "update.autoIdle": "Installing the new version. This takes about a minute.",
+  "update.failed": "Could not update",
+  "update.hintBusy": "If you are in the middle of a sale, choose “Later” — the app will restart.",
 
   "err.title": "Something went wrong in this section",
   "err.desc": "The other sections still work — pick another one from the side menu. No sales data was lost.",

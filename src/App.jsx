@@ -9,6 +9,7 @@ import { useToast } from "./hooks/useToast";
 
 import Toast            from "./components/Toast";
 import Layout           from "./components/Layout";
+import AppUpdater       from "./components/AppUpdater";
 import { ConfirmProvider } from "./context/ConfirmProvider";
 import DashboardPage    from "./pages/DashboardPage";
 import ProductsPage     from "./pages/ProductsPage";
@@ -117,7 +118,20 @@ export default function App() {
   // Desktop'da kirish SHU YERDA — alohida origin ham, yo'naltirish ham yo'q.
   // Brauzerda bu holatga umuman kelinmaydi: modul tanasi allaqachon
   // `auth.e-kassam.uz` ga jo'natgan.
-  if (!user) return isDesktop() ? <LoginPage onLogin={login} /> : null;
+  //
+  // ⚠ `AppUpdater` IKKALA shoxda ham chiziladi, va aynan shu MUHIM: kirish
+  // ekranida hech kim sotuv qilmayapti, ya'ni yangilanishni hech kimdan
+  // so'ramasdan o'rnatsa bo'ladi. Faqat ichki daraxtga qo'yilsa, yangilanish
+  // faqat kassir ISHLAYOTGANDA taklif qilinardi — eng noqulay payt.
+  if (!user) {
+    return isDesktop() ? (
+      <>
+        <Toast toasts={toasts} onDismiss={dismiss} />
+        <LoginPage onLogin={login} />
+        <AppUpdater loggedIn={false} toast={toast} />
+      </>
+    ) : null;
+  }
 
   // Ikki qavatli himoya. ICHKI to'siq (`RouteErrorBoundary`) — sahifa
   // darajasida: buzilgan bo'lim o'rniga xabar chiqadi, yon menyu va
@@ -133,6 +147,7 @@ export default function App() {
       <BadgeProvider toast={toast}>
       <BrowserRouter>
         <Toast toasts={toasts} onDismiss={dismiss} />
+        <AppUpdater loggedIn toast={toast} />
         <Layout 
           user={user} 
           onLogout={logout} 

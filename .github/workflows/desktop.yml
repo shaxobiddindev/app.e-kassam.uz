@@ -43,7 +43,29 @@ jobs:
       - name: Bog'liqliklar
         run: npm ci
 
+      # ⚠ IMZO KALITISIZ QURILISH YIQILADI — va bu ATAYLAB shunday.
+      # `createUpdaterArtifacts: true` bo'lgani uchun tauri `.sig` yaratishi
+      # kerak; kalit yo'q bo'lsa u xato beradi. Jimgina imzosiz build
+      # chiqarish ancha yomon bo'lardi: reliz chiqadi, kassalar esa uni
+      # RAD ETADI va auto-update sababsiz ishlamay turaveradi.
+      #
+      # Sirlar: Settings → Secrets and variables → Actions
+      #   TAURI_SIGNING_PRIVATE_KEY           — `ekassam.key` faylining MAZMUNI
+      #   TAURI_SIGNING_PRIVATE_KEY_PASSWORD  — o'sha kalit paroli
+      - name: Imzo kaliti bormi
+        shell: pwsh
+        env:
+          KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:KEY)) {
+            throw "TAURI_SIGNING_PRIVATE_KEY sirri qo'yilmagan — imzosiz build auto-update'da ishlamaydi."
+          }
+          "Kalit joyida."
+
       - name: Qurish
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: npm run desktop:build
 
       # Ikkalasi ham yuklanadi: o'rnatuvchi oddiy foydalanuvchi uchun,
@@ -78,7 +100,45 @@ jobs:
           if (-not $setup) { throw "NSIS o'rnatuvchisi topilmadi" }
           Copy-Item $setup.FullName (Join-Path release $setup.Name)
           Copy-Item $setup.FullName (Join-Path release "e-Kassam-setup.exe")
+
+          # ── latest.json — auto-update shu faylga qaraydi ──────────────────
+          # Ilova `releases/latest/download/latest.json` ni o'qiydi, versiyani
+          # o'zinikiga solishtiradi va yangisi bo'lsa `url` dagi paketni
+          # yuklaydi. `signature` — `.sig` faylining MAZMUNI (yo'li emas):
+          # ilova imzoni ochiq kalit bilan tekshiradi va mos kelmasa
+          # o'rnatmaydi.
+          #
+          # ⚠ `url` VERSIYALI faylga qaraydi, `latest` ga emas. Yangilanish
+          # aynan imzosi tekshirilgan baytlarni olishi kerak; `latest` esa
+          # keyingi reliz chiqqanda BOSHQA faylga ko'chib ketadi va imzo mos
+          # kelmay qolardi.
+          $sig = Get-ChildItem "src-tauri/target/release/bundle/nsis/*.exe.sig" |
+                 Select-Object -First 1
+          if (-not $sig) { throw ".sig topilmadi — imzo kaliti berilmaganmi?" }
+
+          # Versiya YAGONA manbadan — `tauri.conf.json`. Uni teg nomidan
+          # olish xavfli: teg xato yozilsa manifest ilovaning haqiqiy
+          # versiyasidan uzilib qolardi va yangilanish tinimsiz takrorlanardi.
+          $version = (Get-Content src-tauri/tauri.conf.json -Raw |
+                      ConvertFrom-Json).version
+          $tag = $env:GITHUB_REF_NAME
+          if (-not $tag) { $tag = "desktop-v$version" }
+          $manifest = [ordered]@{
+            version   = $version
+            notes     = "e-Kassam $version"
+            pub_date  = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+            platforms = [ordered]@{
+              "windows-x86_64" = [ordered]@{
+                signature = (Get-Content $sig.FullName -Raw).Trim()
+                url = "https://github.com/$env:GITHUB_REPOSITORY/releases/download/$tag/$($setup.Name)"
+              }
+            }
+          }
+          $manifest | ConvertTo-Json -Depth 5 |
+            Set-Content (Join-Path release "latest.json") -Encoding utf8
+
           Get-ChildItem release | Format-Table Name, Length
+          Get-Content (Join-Path release "latest.json")
 
       # Faqat tegdan. `workflow_dispatch` bilan qo'lda qurilgan build sinov
       # uchun — u foydalanuvchiga ko'rinadigan relizni almashtirmasligi kerak.
@@ -91,6 +151,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $tag = $env:GITHUB_REF_NAME
-          gh release create $tag (Get-ChildItem release/*.exe | ForEach-Object FullName) `
+          # ⚠ `latest.json` ham qo'shiladi — auto-update AYNAN shu faylni
+          # o'qiydi. U tushib qolsa ilova yangilanishni topa olmaydi va
+          # buni hech kim sezmaydi: xato chiqmaydi, shunchaki jimlik.
+          gh release create $tag (Get-ChildItem release/*.exe, release/latest.json | ForEach-Object FullName) `
             --title "e-Kassam $($tag -replace '^desktop-v','') — Windows" `
             --notes "Windows uchun o'rnatuvchi. Doimiy havola: https://github.com/$env:GITHUB_REPOSITORY/releases/latest/download/e-Kassam-setup.exe"

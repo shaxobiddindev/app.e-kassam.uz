@@ -1385,3 +1385,17 @@ img.logo--dark { display: none; }
   position: absolute; top: 16px; right: 16px; z-index: 2;
   display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end;
 }
+
+/* ── Yangilanish indikatori ────────────────────────────────────────────────
+   Foiz NOMA'LUM bo'lganda ishlatiladi: server `Content-Length` bermasa
+   yuklangan hajmni foizga aylantirib bo'lmaydi va "0%" da qotib turgan
+   chiziq ilova osilgandek ko'rinardi. Harakat esa "ishlayapti" deydi.
+   `prefers-reduced-motion` da harakat to'xtaydi — chiziq to'liq bo'ladi. */
+@keyframes ekProgressIdle {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(320%); }
+}
+.ek-progress-idle { animation: ekProgressIdle 1.1s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .ek-progress-idle { animation: none; width: 100% !important; opacity: .6; }
+}
