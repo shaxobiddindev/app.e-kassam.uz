@@ -15,7 +15,7 @@ import { paymentEntry, saleStatus } from "../lib/ek-labels";
 import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
 import { printReceipt } from "../lib/ek-hardware";
-import { roleSet } from "../lib/ek-roles";
+import { topRole } from "../lib/ek-roles";
 
 /* ── Chekni qayta chiqarish ────────────────────────────────────────────────
    Kassa ekranidagi Ctrl+P faqat OXIRGI chekni chiqaradi. Amalda esa mijoz
@@ -63,10 +63,17 @@ export default function SalesPage({ toast }) {
   // bilan bir xil tuzoq, faqat bu safar bekor qilish tugmasida.
   const { guard }                 = useBadge();
   const { user }                  = useAuth();
-  // ⚠ To'plam bo'yicha: xodimda bir nechta rol bo'lishi mumkin va sessiyada
-  // ular vergul bilan saqlanadi. Tenglik bilan solishtirish kassir+omborchi
-  // xodimni "kassir emas" deb hisoblardi.
-  const isCashier                 = roleSet(user?.role).has("CASHIER");
+  /* ⚠ ENG YUQORI rol bo'yicha, "CASHIER bormi" bo'yicha EMAS.
+     Xodimda bir nechta rol bo'lishi mumkin va sessiyada ular vergul bilan
+     saqlanadi. Ilgari bu yerda `roleSet(...).has("CASHIER")` turardi va
+     EGASI ham "kassir" deb hisoblanardi: eski hisoblarda `getRoles()`
+     qo'shimchali edi (OWNER → hamma rol, shu jumladan CASHIER), shuning
+     uchun egaga faqat BUGUNGI sotuvlar ko'rinardi va tarix "yo'q" bo'lib
+     qolardi. Endi:
+       OWNER + CASHIER      → OWNER      → hamma sotuv
+       SHOP_ADMIN + CASHIER → SHOP_ADMIN → hamma sotuv
+       faqat CASHIER        → CASHIER    → bugungi (ataylab shunday) */
+  const isCashier                 = topRole(user?.role) === "CASHIER";
   const [printing, setPrinting]   = useState(null);
   const [sales, setSales]         = useState([]);
   const [loading, setLoading]     = useState(true);
