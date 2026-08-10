@@ -1399,3 +1399,127 @@ img.logo--dark { display: none; }
 @media (prefers-reduced-motion: reduce) {
   .ek-progress-idle { animation: none; width: 100% !important; opacity: .6; }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   MONOBLOK — teginish rejimi, ekran klaviaturasi, tozalash tugmasi
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Maydon ichidagi «×» ──────────────────────────────────────────────────
+   Maydon o'ng chetida. Matn tugma tagiga kirib ketmasligi uchun qiymat
+   bo'lganda o'ng padding kengayadi (`.has-clear`) — aks holda uzun matn
+   «×» ostida o'qilmay qolardi. */
+.field { position: relative; display: block; }
+.field-clear {
+  position: absolute; top: 50%; right: 6px; transform: translateY(-50%);
+  width: 30px; height: 30px; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  border: 0; border-radius: 50%;
+  background: var(--bg-sunken); color: var(--fg-secondary);
+  cursor: pointer; font-size: 13px; line-height: 1;
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.field-clear:hover  { background: var(--bg-danger-subtle); color: var(--fg-danger); }
+.field-clear:active { transform: translateY(-50%) scale(.9); }
+.form-input.has-clear { padding-right: 42px; }
+.search-bar { position: relative; }
+.search-bar .field-clear { right: 4px; }
+.search-bar input { padding-right: 34px; }
+
+/* ── Teginish rejimi ──────────────────────────────────────────────────────
+   `data-touch="1"` ni `ek-touch.js` qo'yadi. `@media (pointer: coarse)`
+   ATAYLAB ishlatilmadi: ko'p monobloklar Windows'ga sichqoncha bo'lib
+   ko'rinadi va media-so'rov ularda ishlamaydi. */
+:root[data-touch="1"] .btn,
+:root[data-touch="1"] .btn-sm     { min-height: var(--hit-lg); }
+:root[data-touch="1"] .btn-icon   { width: var(--hit-lg); height: var(--hit-lg); font-size: 15px; }
+:root[data-touch="1"] .form-input { min-height: var(--hit-lg); font-size: 15px; }
+:root[data-touch="1"] .field-clear{ width: 38px; height: 38px; font-size: 15px; right: 5px; }
+:root[data-touch="1"] .form-input.has-clear { padding-right: 52px; }
+:root[data-touch="1"] .cat-tab    { min-height: var(--hit-lg); padding: 10px 18px; }
+/* Jadval qatorlari barmoq uchun balandroq — ustma-ust tegib ketmasin */
+:root[data-touch="1"] td,
+:root[data-touch="1"] th          { padding-top: 14px; padding-bottom: 14px; }
+
+/* Barmoq bilan surish: inersiya va chetga chiqmaslik. `overscroll-behavior`
+   bo'lmasa jadval oxiriga yetganda butun sahifa siljib ketadi va kassir
+   "ilova sakrayapti" deb o'ylaydi. */
+:root[data-touch="1"] .table-wrap,
+:root[data-touch="1"] .modal-body,
+:root[data-touch="1"] .cat-tabs {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+/* Teginishda uzoq bosilganda matn belgilanib, ko'k dog' chiqib ketardi */
+:root[data-touch="1"] .btn,
+:root[data-touch="1"] .btn-icon,
+:root[data-touch="1"] .cat-tab,
+:root[data-touch="1"] .tile,
+:root[data-touch="1"] .osk__key {
+  -webkit-user-select: none; user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* ── Ekran klaviaturasi ───────────────────────────────────────────────── */
+.osk {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 900;
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border-subtle);
+  box-shadow: 0 -8px 24px rgb(0 0 0 / .14);
+  padding: 8px 10px calc(10px + env(safe-area-inset-bottom, 0px));
+  animation: oskUp var(--dur-normal, .18s) var(--ease-out);
+  -webkit-user-select: none; user-select: none;
+}
+@keyframes oskUp { from { transform: translateY(100%); } to { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .osk { animation: none; } }
+
+/* Raqamli pad tor: uni butun ekran kengligiga cho'zish barmoqni uzoq
+   yurishga majbur qilardi. O'ngda — o'ng qo'l uchun qulay. */
+.osk--num { left: auto; width: min(360px, 100%); border-left: 1px solid var(--border-subtle); }
+
+.osk__bar   { display: flex; align-items: center; justify-content: space-between; padding: 0 4px 6px; }
+.osk__hint  { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; color: var(--fg-tertiary); }
+.osk__close { width: 36px; height: 32px; border: 0; border-radius: 8px; background: var(--bg-sunken); color: var(--fg-secondary); cursor: pointer; }
+
+.osk__rows { display: grid; gap: 6px; }
+.osk__row  { display: flex; gap: 6px; }
+.osk--num .osk__row { justify-content: stretch; }
+
+.osk__key {
+  flex: 1 1 0; min-width: 0;
+  min-height: 52px;
+  border: 1px solid var(--border-subtle); border-radius: 10px;
+  background: var(--bg); color: var(--fg-primary);
+  font-family: var(--font); font-size: 18px; font-weight: 600;
+  cursor: pointer; touch-action: manipulation;
+  transition: background var(--dur-instant) var(--ease-out), transform var(--dur-instant) var(--ease-out);
+}
+.osk__key:active   { background: var(--bg-sunken); transform: scale(.95); }
+.osk__key.is-on    { background: var(--bg-brand); color: var(--fg-on-brand); border-color: var(--bg-brand); }
+.osk__key--wide    { flex: 1.4 1 0; }
+.osk__key--space   { flex: 4 1 0; }
+.osk__key--fn      { flex: 1.2 1 0; font-size: 14px; font-weight: 700; }
+.osk__key--ok      { flex: 1.6 1 0; background: var(--bg-brand); color: var(--fg-on-brand); border-color: var(--bg-brand); font-size: 15px; font-weight: 800; }
+.osk__key--ok:active { background: var(--bg-brand-hover); }
+
+/* Raqamli padda tugmalar kattaroq — ular eng ko'p bosiladi (miqdor, to'lov) */
+.osk--num .osk__key { min-height: 60px; font-size: 24px; font-weight: 700; }
+
+/* Klaviatura kontentni yopib qo'ymasin: tagida joy qoldiramiz. */
+:root[data-touch="1"] body.osk-open .content,
+:root[data-touch="1"] body.osk-open main { padding-bottom: 300px; }
+
+/* Barkod maydonidagi klaviatura tugmasi — faqat teginish rejimida chiqadi.
+   Maydon doim fokusda bo'lgani uchun klaviatura o'zi ochilmaydi, shu tugma
+   uni ataylab so'raganda ochadi. */
+.bc-field { position: relative; }
+.bc-field__pad {
+  width: 40px; height: 40px; flex-shrink: 0;
+  border: 1px solid var(--border-subtle); border-radius: 9px;
+  background: var(--bg); color: var(--fg-secondary);
+  cursor: pointer; font-size: 15px;
+}
+.bc-field__pad:active { transform: scale(.94); }
+.bc-field .field-clear { position: static; transform: none; flex-shrink: 0; }
+.bc-field .field-clear:active { transform: scale(.9); }

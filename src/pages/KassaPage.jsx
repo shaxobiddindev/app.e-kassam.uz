@@ -7,7 +7,10 @@ import { unitLabel } from "../lib/ek-labels";
 import ProductTile from "../components/ProductTile";
 import QuantityModal from "../components/QuantityModal";
 import MarkingScanModal from "../components/MarkingScanModal";
-import { Empty } from "../components/ui";
+import { Empty, ClearButton } from "../components/ui";
+import { useKeyboard } from "../context/KeyboardProvider";
+import { clear as clearField } from "../lib/ek-keys";
+import { isTouch } from "../lib/ek-touch";
 import { FinishOverlay, SkeletonTiles, Spinner } from "../components/ek/Loading";
 import OfflineBar from "../components/OfflineBar";
 import ShiftBar from "../components/ShiftBar";
@@ -92,6 +95,12 @@ export default function KassaPage({ toast, refreshLowStock }) {
   const [finish, setFinish]         = useState(null);   // { phase, total, receiptNo }
   const [undo, setUndo]             = useState(null);   // { item, index }
   const [bcWarn, setBcWarn]         = useState(false);  // fokus yo'qolgani
+  /* Barkod maydoni boshqarilmaydi (skaner unga to'g'ridan-to'g'ri yozadi va
+     Enter'da o'zi tozalanadi). «×» tugmasi esa qiymat BORLIGINI bilishi
+     kerak — shuning uchun faqat shu bayroq holatda saqlanadi. */
+  const [bcValue, setBcValue]       = useState("");
+  const keyboard                    = useKeyboard();
+  const touchOn                     = isTouch();
 
   /* ── Katalog ko'rinishi ────────────────────────────────────────
      Kategoriya tabi va ikki ko'rinish (rasmli / zich). Ko'rinish
@@ -674,17 +683,45 @@ export default function KassaPage({ toast, refreshLowStock }) {
               id="bc"
               ref={barcodeRef}
               data-scanner="true"
+              /* ⚠ Ekran klaviaturasi bu maydonda O'ZI OCHILMAYDI. Maydon
+                 doim fokusda turadi (skaner shu yerga yozadi), demak
+                 avtomatik ochilsa klaviatura Kassa ekranidan hech qachon
+                 ketmasdi. Kerak bo'lganda yonidagi tugma bilan ochiladi. */
+              data-osk="off"
               inputMode="numeric"
               autoComplete="off"
               placeholder={t("kassa.scanHint")}
+              onChange={(e) => setBcValue(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key !== "Enter") return;
                 e.preventDefault();
                 const code = e.currentTarget.value.trim();
                 e.currentTarget.value = "";       // skanerdan keyin maydon tozalanadi
+                setBcValue("");
                 if (code.length > 2) addByBarcode(code);
               }}
             />
+            {bcValue && (
+              <ClearButton
+                label={t("osk.clear")}
+                onClear={() => {
+                  if (barcodeRef.current) clearField(barcodeRef.current);
+                  setBcValue("");
+                }}
+              />
+            )}
+            {touchOn && (
+              <button
+                type="button"
+                className="bc-field__pad"
+                title={t("osk.title")}
+                aria-label={t("osk.title")}
+                onPointerDown={(e) => e.preventDefault()}
+                onClick={() => keyboard.open(barcodeRef.current)}
+              >
+                <i className="fa-solid fa-calculator" aria-hidden="true" />
+              </button>
+            )}
             <span className="kbd" title={t("kassa.backToBarcode")}>Ctrl+B</span>
           </div>
 
@@ -699,6 +736,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
                   onChange={(e) => handleSearchChange(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter" && products.length === 1) addToCart(products[0]); }}
                 />
+                {search && <ClearButton label={t("osk.clear")} onClear={() => handleSearchChange("")} />}
                 <span className="kbd">/</span>
               </div>
             </div>

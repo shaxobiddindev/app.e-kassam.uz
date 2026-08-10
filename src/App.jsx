@@ -29,6 +29,7 @@ import { isDesktop } from "./lib/ek-desktop";
 import { hasRole, roleSet } from "./lib/ek-roles";
 import ErrorBoundary, { RouteErrorBoundary } from "./components/ek/ErrorBoundary";
 import { BadgeProvider } from "./context/BadgeProvider";
+import { KeyboardProvider } from "./context/KeyboardProvider";
 import SecurityPage from "./pages/SecurityPage";
 
 // ⚠ Tilni URL dan olish MODUL TANASIDA, `replaceState` dan OLDIN bo'lishi
@@ -125,11 +126,11 @@ export default function App() {
   // faqat kassir ISHLAYOTGANDA taklif qilinardi — eng noqulay payt.
   if (!user) {
     return isDesktop() ? (
-      <>
+      <KeyboardProvider>
         <Toast toasts={toasts} onDismiss={dismiss} />
         <LoginPage onLogin={login} />
         <AppUpdater loggedIn={false} toast={toast} />
-      </>
+      </KeyboardProvider>
     ) : null;
   }
 
@@ -145,6 +146,10 @@ export default function App() {
           428 kelganda modal ochilib, amal skanerlashdan keyin O'ZI
           qayta yuboriladi. */}
       <BadgeProvider toast={toast}>
+      {/* Ekran klaviaturasi butun daraxt ustida: u qaysi maydon fokusda
+          ekanini `focusin` orqali o'zi biladi, ya'ni sahifalarga hech narsa
+          qo'shish kerak emas. */}
+      <KeyboardProvider>
       <BrowserRouter>
         <Toast toasts={toasts} onDismiss={dismiss} />
         <AppUpdater loggedIn toast={toast} />
@@ -188,6 +193,7 @@ export default function App() {
           </RouteErrorBoundary>
         </Layout>
       </BrowserRouter>
+      </KeyboardProvider>
       </BadgeProvider>
     </ConfirmProvider>
     </ErrorBoundary>

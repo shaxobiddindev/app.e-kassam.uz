@@ -8,6 +8,8 @@ import { useConfirm } from "../context/ConfirmProvider";
 import { useAuth } from "../hooks/useAuth";
 import FiscalPanel from "../components/FiscalPanel";
 import HardwareSettings from "../components/HardwareSettings";
+import Select from "../components/ek/Select";
+import { getTouchMode, setTouchMode } from "../lib/ek-touch";
 
 /* ══════════════════════════════════════════════════════════════════════════
    Sozlamalar — BARCHA sozlamalar uchun YAGONA joy.
@@ -54,6 +56,8 @@ export default function SettingsPage({ toast }) {
   const { user, logout } = useAuth();
   // Fiskal panel — egasi va do'kon administratoriga.
   const isManager = [...roleSet(user?.role)].some((r) => r === "OWNER" || r === "SHOP_ADMIN");
+  // Teginish rejimi QURILMAGA tegishli (localStorage), hisobga emas.
+  const [touchMode, setTouch] = useState(() => getTouchMode());
 
   const [collapsed, setCollapsed] = useState(
     () => localStorage.getItem("sb_collapsed") === "1"
@@ -95,6 +99,19 @@ export default function SettingsPage({ toast }) {
       </Section>
 
       <Section icon="fa-sliders" title={t("settings.interface")}>
+        {/* Uch holat — shuning uchun `Select`, tugma emas: "avtomatik"
+            ham to'la huquqli holat va uni tugma bilan ifodalab bo'lmaydi. */}
+        <Row label={t("touch.label")} hint={t("touch.hint")}>
+          <Select
+            value={touchMode}
+            onChange={(v) => { setTouch(v); setTouchMode(v); }}
+            options={[
+              { value: "auto", label: t("touch.auto"), icon: "fa-wand-magic-sparkles" },
+              { value: "on",   label: t("touch.on"),   icon: "fa-hand-pointer" },
+              { value: "off",  label: t("touch.off"),  icon: "fa-computer-mouse" },
+            ]}
+          />
+        </Row>
         <Row label={t("settings.sidebarCollapsed")} hint={t("settings.sidebarHint")}>
           {/* Holat IKKITA — bu yerda tugma to'g'ri. Uch holatli narsa
               (mavzu) uchun `Select` ishlatiladi. */}
