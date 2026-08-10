@@ -99,6 +99,10 @@ export default function KassaPage({ toast, refreshLowStock }) {
      Enter'da o'zi tozalanadi). «×» tugmasi esa qiymat BORLIGINI bilishi
      kerak — shuning uchun faqat shu bayroq holatda saqlanadi. */
   const [bcValue, setBcValue]       = useState("");
+  /* Chek chegirmasi — SUMMA. Kassir foizni emas, summani kiritadi:
+     "5 000 so'm chegirma" mijoz bilan gaplashishda tabiiyroq va chekda
+     ham summa turadi. Server chegarani foizga aylantirib tekshiradi. */
+  const [discount, setDiscount]     = useState("");
   const keyboard                    = useKeyboard();
   const touchOn                     = isTouch();
 
@@ -450,7 +454,12 @@ export default function KassaPage({ toast, refreshLowStock }) {
      o'rniga sotuvni umuman o'tkazmaslik o'sha suiiste'molning o'zi. */
   const clearCart = () => setCart([]);
 
-  const total    = cart.reduce((sum, i) => sum + i.salePrice * i.qty, 0);
+  const subtotal = cart.reduce((sum, i) => sum + i.salePrice * i.qty, 0);
+  /* Chegirma savat jamidan oshib keta olmaydi — aks holda chek manfiy
+     summaga aylanardi. Server ham buni rad etadi; bu yerdagi cheklov
+     kassirga darhol ko'rinadigan javob berish uchun. */
+  const discountNum = Math.max(0, Math.min(Number(discount) || 0, subtotal));
+  const total    = subtotal - discountNum;
   const totalQty = cart.reduce((sum, i) => sum + i.qty, 0);
 
   const handleClearCart = async () => {
@@ -485,7 +494,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
   const openPayModal = () => {
     if (!cart.length) return;
     setPayType("CASH");
-    setCashGiven(""); setCashAmount(""); setCardAmount("");
+    setCashGiven(""); setCashAmount(""); setCardAmount(""); setDiscount("");
     setMixedSecondType("CARD");
     setShowPayModal(true);
   };
@@ -512,6 +521,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
         ...(i.markingCodes?.length ? { markingCodes: i.markingCodes } : {}),
       })),
       paymentType: payType,
+      discountAmount: discountNum,
       mixedSecondType: payType === "MIXED" ? mixedSecondType : undefined,
       cashAmount: payType === "CASH" ? total : payType === "MIXED" ? Number(cashAmount) || 0 : 0,
       cardAmount: ["CARD", "CLICK", "PAYME"].includes(payType) ? total
@@ -575,7 +585,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
 
     clearCart();
     setCustomer(null);
-    setCashGiven(""); setCashAmount(""); setCardAmount("");
+    setCashGiven(""); setCashAmount(""); setCardAmount(""); setDiscount("");
     setPayType("CASH");
     setProcessing(false);
 
@@ -954,6 +964,26 @@ export default function KassaPage({ toast, refreshLowStock }) {
                   <span className="ek-num">{cart.length}</span> xil mahsulot
                 </div>
               </div>
+
+              {/* ── Chegirma ────────────────────────────────────────────
+                  To'lov turidan OLDIN: chegirma jamini o'zgartiradi, ya'ni
+                  kassir avval yakuniy summani ko'rib, keyin to'lovni
+                  qabul qilishi kerak. Chegara oshsa server bajik so'raydi. */}
+              <div className="pay-modal-section-label">
+                <i className="fa-solid fa-tag" aria-hidden="true" /> {t("kassa.discount")}
+              </div>
+              <input
+                type="number" min="0" max={subtotal} inputMode="numeric"
+                className="form-input pay-mixed-input ek-num"
+                value={discount}
+                onChange={(e) => setDiscount(e.target.value)}
+                placeholder="0"
+              />
+              {discountNum > 0 && (
+                <div className="pay-modal-hint">
+                  {money(subtotal)} − {money(discountNum)}
+                </div>
+              )}
 
               <div className="pay-modal-section-label">
                 <i className="fa-solid fa-credit-card" aria-hidden="true" /> To'lov turini tanlang

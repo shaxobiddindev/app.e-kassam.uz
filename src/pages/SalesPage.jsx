@@ -3,7 +3,7 @@ import { t } from "../lib/ek-i18n";
 import { saleApi } from "../api";
 import { money } from "../utils";
 import { BranchSelector, Modal } from "../components";
-import { Empty, SearchBar, Badge } from "../components/ui";
+import { Empty, SearchBar, Badge, Field } from "../components/ui";
 import { useConfirm } from "../context/ConfirmProvider";
 import { useBadge } from "../context/BadgeProvider";
 import { useAuth } from "../hooks/useAuth";
@@ -86,6 +86,9 @@ export default function SalesPage({ toast }) {
   const [status, setStatus]       = useState("ALL");
   const [detail, setDetail]       = useState(null);
   const [cancelling, setCancelling] = useState(null);
+  /* Qaytarish oynasi: { sale, lines: { [saleItemId]: miqdor }, reason } */
+  const [ret, setRet] = useState(null);
+  const [returning, setReturning] = useState(false);
   const [branchId, setBranchId]   = useState(null);
 
   const loadSales = useCallback(async () => {
@@ -169,6 +172,32 @@ export default function SalesPage({ toast }) {
     ALL:       byPeriod.length,
     PAID:      byPeriod.filter((s) => s.status === "PAID").length,
     CANCELLED: byPeriod.filter((s) => s.status === "CANCELLED").length,
+  };
+
+  /**
+   * Qaytarish.
+   *
+   * ⚠ Bekor qilishdan BOSHQA amal: bu yerda tovar javonga qaytadi va
+   * qoldiq tiklanadi. Shuning uchun alohida tugma va alohida oyna —
+   * kassir ikkalasini adashtirmasligi kerak.
+   */
+  const submitReturn = async () => {
+    const items = Object.entries(ret.lines)
+      .map(([saleItemId, quantity]) => ({ saleItemId: Number(saleItemId), quantity: Number(quantity) }))
+      .filter((x) => x.quantity > 0);
+    if (!items.length) return;
+
+    setReturning(true);
+    try {
+      await guard(() => saleApi.returnSale(ret.sale.id, { items, reason: ret.reason }));
+      toast.success(t("ret.done"));
+      setRet(null);
+      loadSales();
+    } catch (err) {
+      if (!err?.cancelled) toast.error(err.message);
+    } finally {
+      setReturning(false);
+    }
   };
 
   const filtered = byPeriod
@@ -280,6 +309,17 @@ export default function SalesPage({ toast }) {
                               {printing === sale.id ? <Spinner small /> : <i className="fa-solid fa-print" />}
                             </button>
                           )}
+                          {/* Qaytarish — faqat SOTUV chekida (qaytarish
+                              chekini qaytarib bo'lmaydi). */}
+                          {sale.status !== "CANCELLED" && sale.type !== "RETURN" && (
+                            <button
+                              className="btn-icon"
+                              title={t("ret.title")}
+                              onClick={() => setRet({ sale, lines: {}, reason: "" })}
+                            >
+                              <i className="fa-solid fa-rotate-left" />
+                            </button>
+                          )}
                           {sale.status !== "CANCELLED" && (
                             <button
                               className="btn-icon danger"
@@ -372,6 +412,74 @@ export default function SalesPage({ toast }) {
               </tbody>
             </table>
           </div>
+        </Modal>
+      )}
+
+      {/* ── Qaytarish oynasi ─────────────────────────────────────────────
+          Kassir QAYSI tovarni va NECHTASINI qaytarayotganini tanlaydi.
+          Har qatorda qolgan miqdor ko'rsatiladi — ilgari qaytarilgani
+          hisobga olinadi va undan oshirib bo'lmaydi. */}
+      {ret && (
+        <Modal
+          title={`${t("ret.title")} — #${ret.sale.id}`}
+          onClose={() => setRet(null)}
+          maxWidth={560}
+          footer={
+            <>
+              <button className="btn btn-outline btn-sm" onClick={() => setRet(null)}>
+                {t("common.cancel")}
+              </button>
+              <button
+                className="btn btn-danger btn-sm"
+                onClick={submitReturn}
+                disabled={returning || !ret.reason.trim()
+                          || !Object.values(ret.lines).some((v) => Number(v) > 0)}
+              >
+                {returning ? <Spinner small /> : <i className="fa-solid fa-rotate-left" />}
+                {t("ret.submit")}
+              </button>
+            </>
+          }
+        >
+          <p className="text-muted" style={{ fontSize: 13, marginBottom: 10 }}>{t("ret.pick")}</p>
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>{t("products.col")}</th>
+                  <th>{t("ret.left")}</th>
+                  <th>{t("ret.qty")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(ret.sale.items || []).map((it) => {
+                  const left = Number(it.quantity || 0) - Number(it.returnedQuantity || 0);
+                  return (
+                    <tr key={it.id}>
+                      <td className="fw-700">{it.productName}</td>
+                      <td><Badge color={left > 0 ? "blue" : "gray"}>{left}</Badge></td>
+                      <td style={{ width: 150 }}>
+                        <Field
+                          type="number" inputMode="decimal" min="0" max={left} step="any"
+                          className="form-input ek-num"
+                          disabled={left <= 0}
+                          value={ret.lines[it.id] ?? ""}
+                          onChange={(e) => setRet({ ...ret, lines: { ...ret.lines, [it.id]: e.target.value } })}
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          <label className="form-label" style={{ marginTop: 12 }}>{t("ret.reason")}</label>
+          <Field
+            className="form-input"
+            value={ret.reason}
+            onChange={(e) => setRet({ ...ret, reason: e.target.value })}
+          />
         </Modal>
       )}
     </div>

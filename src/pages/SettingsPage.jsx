@@ -63,21 +63,31 @@ export default function SettingsPage({ toast }) {
   const [touchMode, setTouch] = useState(() => getTouchMode());
   // Kamomad chegarasi — do'kon profilidan keladi (server saqlaydi).
   const [tolerance, setTolerance] = useState("");
+  const [discountLimit, setDiscountLimit] = useState("");
+  const [returnDays, setReturnDays] = useState("");
   useEffect(() => {
     if (!isManager) return;
     shopApi.getProfile()
-      .then((r) => setTolerance(String(r?.data?.cashDiffTolerance ?? 0)))
+      .then((r) => {
+        setTolerance(String(r?.data?.cashDiffTolerance ?? 0));
+        setDiscountLimit(String(r?.data?.maxDiscountPercent ?? 0));
+        setReturnDays(String(r?.data?.returnDays ?? 0));
+      })
       .catch(() => {});
   }, [isManager]);
 
-  const saveTolerance = async () => {
+  /* Har uchala sozlama bir xil yo'l bilan saqlanadi: maydondan chiqilganda.
+     Alohida «Saqlash» tugmasi qo'yilmadi — bitta raqam uchun tugma bosish
+     ortiqcha qadam, va u bosilmay qolsa sozlama jimgina yo'qolardi. */
+  const saveField = (fn, value, fallback = 0) => async () => {
     try {
-      await shopApi.setCashTolerance(Number(tolerance) || 0);
+      await fn(Number(value) || fallback);
       toast?.success(t("common.saved"));
     } catch (err) {
       toast?.error(err.message);
     }
   };
+  const saveTolerance = saveField(shopApi.setCashTolerance, tolerance);
   // Ilova versiyasi — faqat `.exe` da bor (brauzerda `null` qaytadi).
   const [version, setVersion] = useState(null);
   useEffect(() => { appVersion().then(setVersion).catch(() => {}); }, []);
@@ -133,6 +143,24 @@ export default function SettingsPage({ toast }) {
                    value={tolerance}
                    onChange={(e) => setTolerance(e.target.value)}
                    onBlur={saveTolerance} />
+          </Row>
+        )}
+        {isManager && (
+          <Row label={t("settings.discountLimit")} hint={t("settings.discountLimitHint")}>
+            <Field type="number" inputMode="decimal" min="0" max="100" className="form-input ek-num"
+                   wrapStyle={{ width: 160 }}
+                   value={discountLimit}
+                   onChange={(e) => setDiscountLimit(e.target.value)}
+                   onBlur={saveField(shopApi.setDiscountLimit, discountLimit)} />
+          </Row>
+        )}
+        {isManager && (
+          <Row label={t("settings.returnDays")} hint={t("settings.returnDaysHint")}>
+            <Field type="number" inputMode="numeric" min="0" className="form-input ek-num"
+                   wrapStyle={{ width: 160 }}
+                   value={returnDays}
+                   onChange={(e) => setReturnDays(e.target.value)}
+                   onBlur={saveField(shopApi.setReturnDays, returnDays)} />
           </Row>
         )}
         <Row label={t("touch.label")} hint={t("touch.hint")}>

@@ -365,6 +365,9 @@ export const saleApi = {
   getById: (id)          => request(`/sales/${id}`),
   create:  (data)        => request("/sales",       { method: "POST",  body: JSON.stringify(data) }),
   cancel:  (id)          => request(`/sales/${id}/cancel`, { method: "PATCH" }),
+  /** Qaytarish — tanlangan qatorlar bo'yicha. Bekor qilishdan BOSHQA amal:
+      bu yerda tovar javonga qaytadi va qoldiq tiklanadi. */
+  returnSale: (id, data) => request(`/sales/${id}/return`, { method: "POST", body: JSON.stringify(data) }),
 };
 
 
@@ -375,6 +378,10 @@ export const shopApi = {
   setBusinessType: (type) => request(`/shop/business-type?type=${type}`, { method: "PATCH" }),
   /** Kamomad chegarasi — faqat egasi. */
   setCashTolerance: (value) => request(`/shop/cash-tolerance?value=${value}`, { method: "PATCH" }),
+  /** Do'kon bo'yicha eng katta chegirma foizi. */
+  setDiscountLimit: (percent) => request(`/shop/discount-limit?percent=${percent}`, { method: "PATCH" }),
+  /** Qaytarish muddati (kun). 0 — har safar rahbar tasdig'i. */
+  setReturnDays: (days) => request(`/shop/return-days?days=${days}`, { method: "PATCH" }),
   getUsers:   (shopId) => request(`/shop/users${shopId ? `?shopId=${shopId}` : ""}`),
   createUser: (data, shopId) => request(`/shop/users${shopId ? `?shopId=${shopId}` : ""}`, { method: "POST", body: JSON.stringify(data) }),
   updateUser: (userId, data, shopId) => request(`/shop/users/${userId}${shopId ? `?shopId=${shopId}` : ""}`, { method: "PUT", body: JSON.stringify(data) }),
