@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { t } from "../../lib/ek-i18n";
 import { shopApi } from "../../api";
-import { Empty, FormGroup, Badge } from "../../components/ui";
+import { Empty, Field, FormGroup, Badge } from "../../components/ui";
 import { BranchSelector, Modal } from "../../components";
 import { useAuth } from "../../hooks/useAuth";
 import { useConfirm } from "../../context/ConfirmProvider";
@@ -228,11 +228,11 @@ export default function ShopUsersPage({ toast }) {
           }
         >
           <FormGroup label={`${t("common.fullName")} *`}>
-            <input className="form-input" value={form.fullName} onChange={setField("fullName")} placeholder="Ali Valiyev" autoFocus />
+            <Field className="form-input" value={form.fullName} onChange={setField("fullName")} placeholder="Ali Valiyev" autoFocus />
           </FormGroup>
           <div className="grid-2">
             <FormGroup label={`${t("common.username")} *`}>
-              <input 
+              <Field 
                 className="form-input mono" 
                 value={form.username} 
                 onChange={setField("username")} 
@@ -241,7 +241,7 @@ export default function ShopUsersPage({ toast }) {
               />
             </FormGroup>
             <FormGroup label={modalMode === "add" ? `${t("common.password")} *` : t("adm.users.passwordOptional")}>
-              <input className="form-input" type="password" value={form.password} onChange={setField("password")} placeholder={modalMode === "add" ? "min 6 belgi" : t("staff.passwordChangeHint")} />
+              <Field className="form-input" type="password" value={form.password} onChange={setField("password")} placeholder={modalMode === "add" ? "min 6 belgi" : t("staff.passwordChangeHint")} />
             </FormGroup>
           </div>
           <FormGroup label={`${t("common.role")} *`}>

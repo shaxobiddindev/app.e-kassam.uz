@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { t } from "../../lib/ek-i18n";
 import { shopApi } from "../../api";
 import { maskPhone, cleanPhone } from "../../config";
-import { Empty, FormGroup, Badge } from "../../components/ui";
+import { Empty, Field, FormGroup, Badge } from "../../components/ui";
 import { Modal } from "../../components";
 import { SHOP_STATUS, options } from "../../lib/ek-labels";
 import Select from "../../components/ek/Select";
@@ -157,10 +157,10 @@ export default function ShopsPage({ toast }) {
         >
           <div className="grid-2">
             <FormGroup label={`${t("branch.name")} *`}>
-              <input className="form-input" value={form.name} onChange={setField("name")} placeholder={t("branch.namePlaceholder")} />
+              <Field className="form-input" value={form.name} onChange={setField("name")} placeholder={t("branch.namePlaceholder")} />
             </FormGroup>
             <FormGroup label={`${t("branch.code")} *`}>
-              <input className="form-input mono" value={form.code} onChange={setField("code")} placeholder="branch-1" disabled={modal?.type === "edit"} />
+              <Field className="form-input mono" value={form.code} onChange={setField("code")} placeholder="branch-1" disabled={modal?.type === "edit"} />
               <small className="text-muted">{t("branch.codeHint")}</small>
             </FormGroup>
           </div>
@@ -174,7 +174,7 @@ export default function ShopsPage({ toast }) {
               />
             </FormGroup>
             <FormGroup label={t("common.address")}>
-              <input className="form-input" value={form.address} onChange={setField("address")} placeholder="Toshkent sh., Chilonzor" />
+              <Field className="form-input" value={form.address} onChange={setField("address")} placeholder="Toshkent sh., Chilonzor" />
             </FormGroup>
           </div>
           {modal?.type === "edit" && (

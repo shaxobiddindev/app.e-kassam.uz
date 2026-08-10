@@ -1523,3 +1523,7 @@ img.logo--dark { display: none; }
 .bc-field__pad:active { transform: scale(.94); }
 .bc-field .field-clear { position: static; transform: none; flex-shrink: 0; }
 .bc-field .field-clear:active { transform: scale(.9); }
+
+/* Tab tugmasidagi belgi — yon menyudagi bilan bir xil ma'no: shu bo'limda
+   e'tibor talab qiladigan yozuv bor. Tugma ichida, matndan keyin. */
+.tab-badge { margin-left: 7px; padding: 1px 7px; font-size: 11px; line-height: 1.5; vertical-align: middle; }

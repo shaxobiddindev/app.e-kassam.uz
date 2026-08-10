@@ -21,6 +21,7 @@ import { useLoading } from "../lib/use-loading";
 import { roleSet } from "../lib/ek-roles";
 import { printBadge } from "../lib/ek-hardware";
 import { isDesktop } from "../lib/ek-desktop";
+import { useSuspiciousCount } from "../hooks/useSuspiciousCount";
 
 const TABS = ["badges", "log", "policies", "shifts", "billing"];
 
@@ -38,6 +39,9 @@ export default function SecurityPage({ toast }) {
   const confirm = useConfirm();
   const { guard } = useBadge();
   const isOwner = roleSet(user?.role).has("OWNER");
+
+  // «Jurnal» tabidagi belgi — yon menyudagi bilan ayni manba.
+  const { count: suspicious, refresh: refreshSuspicious } = useSuspiciousCount(user);
 
   const [tab, setTab] = useState(isOwner ? "badges" : "log");
   const [loading, setLoading] = useState(true);
@@ -131,6 +135,8 @@ export default function SecurityPage({ toast }) {
     try {
       await securityApi.acknowledge(id);
       load();
+      // Belgi DARHOL kamaysin: sahifadan chiqib-kirishni kutmasdan.
+      refreshSuspicious();
     } catch (err) {
       toast.error(err.message);
     }
@@ -167,6 +173,12 @@ export default function SecurityPage({ toast }) {
                     className={`btn btn-sm ${tab === x ? "btn-primary" : "btn-outline"}`}
                     onClick={() => setTab(x)}>
               {t(`sec.tab.${x}`)}
+              {/* ⚠ Yon menyudagi bilan AYNI son. Usiz egasi menyudagi qizil
+                  raqamni ko'rib sahifaga kirardi-yu, keyin uchta tab
+                  orasidan qay birida ekanini qidirishga majbur bo'lardi. */}
+              {x === "log" && suspicious > 0 && (
+                <span className="badge badge-red tab-badge">{suspicious}</span>
+              )}
             </button>
           ))}
         </div>

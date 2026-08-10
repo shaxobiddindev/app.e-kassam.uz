@@ -3,7 +3,7 @@ import { t } from "../lib/ek-i18n";
 import { productApi, mediaApi } from "../api";
 import { BranchSelector, Modal } from "../components";
 import CatalogWizard from "../components/CatalogWizard";
-import { Empty, SearchBar, FormGroup } from "../components/ui";
+import { Empty, Field, SearchBar, FormGroup } from "../components/ui";
 import { useConfirm } from "../context/ConfirmProvider";
 import { useAuth } from "../hooks/useAuth";
 import { money, quantity as fmtQty } from "../utils";
@@ -378,7 +378,7 @@ export default function ProductsPage({ toast }) {
             <div className="form-section__title"><i className="fa-solid fa-circle-info" /> {t("products.section.main")}</div>
 
             <FormGroup label={`${t("common.name")} *`}>
-              <input className="form-input" value={form.name} onChange={setField("name")} placeholder={t("products.name")} />
+              <Field className="form-input" value={form.name} onChange={setField("name")} placeholder={t("products.name")} />
             </FormGroup>
 
             <div className="grid-2">
@@ -403,10 +403,10 @@ export default function ProductsPage({ toast }) {
 
             <div className="grid-2">
               <FormGroup label={t("products.barcode")}>
-                <input className="form-input ek-num" value={form.barcode} onChange={setField("barcode")} placeholder="4780001111111" />
+                <Field className="form-input ek-num" value={form.barcode} onChange={setField("barcode")} placeholder="4780001111111" />
               </FormGroup>
               <FormGroup label={t("products.sku")}>
-                <input className="form-input ek-num" value={form.sku} onChange={setField("sku")} placeholder="ART-001" />
+                <Field className="form-input ek-num" value={form.sku} onChange={setField("sku")} placeholder="ART-001" />
               </FormGroup>
             </div>
 
@@ -429,24 +429,24 @@ export default function ProductsPage({ toast }) {
 
             <div className="grid-2">
               <FormGroup label={t("products.salePrice")}>
-                <input className="form-input ek-num" type="number" min="0" value={form.salePrice} onChange={setField("salePrice")} placeholder="0" />
+                <Field className="form-input ek-num" type="number" min="0" value={form.salePrice} onChange={setField("salePrice")} placeholder="0" />
               </FormGroup>
               <FormGroup label={t("products.costPrice")}>
-                <input className="form-input ek-num" type="number" min="0" value={form.costPrice} onChange={setField("costPrice")} placeholder="0" />
+                <Field className="form-input ek-num" type="number" min="0" value={form.costPrice} onChange={setField("costPrice")} placeholder="0" />
               </FormGroup>
             </div>
 
             <div className="grid-2">
               <FormGroup label={t("products.vatRate")}>
-                <input className="form-input ek-num" type="number" min="0" max="100" value={form.vatRate} onChange={setField("vatRate")} placeholder="12" />
+                <Field className="form-input ek-num" type="number" min="0" max="100" value={form.vatRate} onChange={setField("vatRate")} placeholder="12" />
               </FormGroup>
               <FormGroup label={t("products.packageCode")}>
-                <input className="form-input ek-num" value={form.packageCode} onChange={setField("packageCode")} placeholder="1234567" />
+                <Field className="form-input ek-num" value={form.packageCode} onChange={setField("packageCode")} placeholder="1234567" />
               </FormGroup>
             </div>
 
             <FormGroup label={t("products.mxik")}>
-              <input className="form-input ek-num" value={form.mxikCode} onChange={setField("mxikCode")} placeholder="00000000000000000" maxLength={17} />
+              <Field className="form-input ek-num" value={form.mxikCode} onChange={setField("mxikCode")} placeholder="00000000000000000" maxLength={17} />
               <div className="form-hint">
                 {t("products.mxikHint")}{" "}
                 <a href="https://tasnif.soliq.uz/classifier" target="_blank" rel="noreferrer">tasnif.soliq.uz</a>
@@ -475,7 +475,7 @@ export default function ProductsPage({ toast }) {
               <div className="form-section__title"><i className="fa-solid fa-boxes-stacked" /> {t("products.section.stock")}</div>
 
               <FormGroup label={t("products.minQuantity")}>
-                <input className="form-input ek-num" type="number" min="0" step="any"
+                <Field className="form-input ek-num" type="number" min="0" step="any"
                        value={form.minQuantity} onChange={setField("minQuantity")} placeholder="5" />
               </FormGroup>
 

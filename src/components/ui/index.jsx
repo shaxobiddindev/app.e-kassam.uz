@@ -1,3 +1,6 @@
+import { useRef } from "react";
+import { clear as clearField } from "../../lib/ek-keys";
+
 // ─── Loader — OLIB TASHLANDI ─────────────────────────────────
 // Butun sahifani qoplaydigan umumiy spinner endi ishlatilmaydi: u nima
 // yuklanayotganini aytmaydi va kontent kelganda layout sakraydi.
@@ -102,21 +105,34 @@ export function ClearButton({ onClear, label = "Tozalash" }) {
 }
 
 /* ─── Tozalanadigan maydon ────────────────────────────────────
-   Oddiy `<input>` o'rniga: ichida «×» bor va u boshqaruvchi qiymat
-   bilan ishlaydi. Qolgan proplar (`type`, `inputMode`, `placeholder`,
-   `autoFocus`…) to'g'ridan-to'g'ri `<input>` ga uzatiladi — ya'ni
-   mavjud maydonni ko'chirishda faqat teg nomi o'zgaradi. */
-export function Field({ value, onChange, onClear, className = "", wrapStyle, ...rest }) {
-  const has = value != null && value !== "";
+   Oddiy `<input>` ning o'rnini bosadi: ichida «×» bor.
+
+   ⚠ `onChange` IMZOSI O'ZGARMAYDI — u odatdagidek hodisa oladi
+   (`e.target.value`). Aynan shu sababli mavjud maydonni ko'chirishda
+   FAQAT teg nomi o'zgaradi va 40 dan ortiq joyni qayta yozishda
+   xato qilish ehtimoli deyarli yo'q.
+
+   «×» qiymatni maydonga TO'G'RIDAN-TO'G'RI yozadi (`ek-keys.setValue`)
+   va `input` hodisasini yuboradi — shu sababli chaqiruvchi qanday
+   `onChange` ishlatishidan (hodisa yoki qiymat) qat'i nazar ishlaydi. */
+export function Field({ className = "form-input", wrapStyle, onClear, ...rest }) {
+  const ref = useRef(null);
+  const has = rest.value != null && rest.value !== "";
   return (
     <div className="field" style={wrapStyle}>
       <input
-        className={`form-input${has ? " has-clear" : ""} ${className}`.trim()}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
+        ref={ref}
+        className={`${className}${has ? " has-clear" : ""}`}
         {...rest}
       />
-      {has ? <ClearButton onClear={() => (onClear ? onClear() : onChange(""))} /> : null}
+      {has ? (
+        <ClearButton
+          onClear={() => {
+            if (onClear) onClear();
+            else if (ref.current) clearField(ref.current);
+          }}
+        />
+      ) : null}
     </div>
   );
 }

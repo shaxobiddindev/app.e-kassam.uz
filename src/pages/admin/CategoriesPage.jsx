@@ -3,7 +3,7 @@ import { t } from "../../lib/ek-i18n";
 import { productApi } from "../../api";
 import { BranchSelector } from "../../components";
 import Modal from "../../components/Modal";
-import { Empty, FormGroup } from "../../components/ui";
+import { Empty, Field, FormGroup } from "../../components/ui";
 import { useConfirm } from "../../context/ConfirmProvider";
 import { SkeletonList, Spinner } from "../../components/ek/Loading";
 import { useLoading } from "../../lib/use-loading";
@@ -230,7 +230,7 @@ export default function CategoriesPage({ toast }) {
           }
         >
           <FormGroup label={`${t("common.name")} *`}>
-            <input className="form-input" value={form.name} onChange={setField("name")} placeholder={t("cat.name")} autoFocus />
+            <Field className="form-input" value={form.name} onChange={setField("name")} placeholder={t("cat.name")} autoFocus />
           </FormGroup>
 
           <FormGroup label={t("categories.parent")}>
@@ -285,7 +285,7 @@ export default function CategoriesPage({ toast }) {
                                   ...options(UNIT).map((o) => ({ ...o, icon: UNIT[o.value]?.icon }))]} />
               </FormGroup>
               <FormGroup label={t("products.vatRate")}>
-                <input className="form-input ek-num" type="number" min="0" max="100"
+                <Field className="form-input ek-num" type="number" min="0" max="100"
                        value={form.defaultVatRate} onChange={setField("defaultVatRate")} placeholder="12" />
               </FormGroup>
             </div>
@@ -298,7 +298,7 @@ export default function CategoriesPage({ toast }) {
             </FormGroup>
 
             <FormGroup label={t("products.mxik")}>
-              <input className="form-input ek-num" value={form.defaultMxik} onChange={setField("defaultMxik")}
+              <Field className="form-input ek-num" value={form.defaultMxik} onChange={setField("defaultMxik")}
                      placeholder="00000000000000000" maxLength={17} />
               <div className="form-hint">{t("products.mxikHint")}</div>
             </FormGroup>

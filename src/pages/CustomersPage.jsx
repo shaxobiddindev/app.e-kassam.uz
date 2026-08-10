@@ -4,7 +4,7 @@ import { customerApi } from "../api";
 import { BranchSelector } from "../components";
 import { maskPhone, cleanPhone, money } from "../config";
 import Modal from "../components/Modal";
-import { Empty, SearchBar, Avatar, FormGroup } from "../components/ui";
+import { Empty, Field, SearchBar, Avatar, FormGroup } from "../components/ui";
 import { useConfirm } from "../context/ConfirmProvider";
 import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
@@ -187,7 +187,7 @@ export default function CustomersPage({ toast }) {
           }
         >
           <FormGroup label={`${t("common.fullName")} *`}>
-            <input
+            <Field
               className="form-input"
               value={form.fullName}
               onChange={setField("fullName")}
