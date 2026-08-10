@@ -18,15 +18,29 @@ import { useCallback, useEffect, useState } from "react";
 import { t } from "../lib/ek-i18n";
 import { securityApi } from "../api";
 import { Modal } from "../components";
+import { Field } from "./ui";
 import { money } from "../utils";
 import { paymentLabel } from "../lib/ek-labels";
 import { printShiftReport } from "../lib/ek-hardware";
 import { isDesktop } from "../lib/ek-desktop";
+import { useBadge } from "../context/BadgeProvider";
+
+/** Kiritilgan matndan son — bo'sh bo'lsa 0. */
+const num = (v) => {
+  const n = Number(String(v ?? "").replace(/\s/g, "").replace(",", "."));
+  return Number.isFinite(n) ? n : 0;
+};
 
 export default function ShiftBar({ toast }) {
+  // Naqd amallari 428 qaytarishi mumkin (kamomad, inkassatsiya) — bajik
+  // modalini shu ochadi va tasdiqdan keyin amalni O'ZI qayta yuboradi.
+  const { guard } = useBadge();
   const [shift, setShift] = useState(undefined);   // undefined=yuklanmoqda, null=yopiq
   const [busy, setBusy] = useState(false);
   const [report, setReport] = useState(null);      // ko'rsatilayotgan X/Z hisobot
+  const [openForm, setOpenForm]   = useState(null); // { float } — ochish oynasi
+  const [closeForm, setCloseForm] = useState(null); // { counted } — yopish oynasi
+  const [cashForm, setCashForm]   = useState(null); // { type, amount, reason }
 
   const load = useCallback(async () => {
     try {
@@ -41,23 +55,61 @@ export default function ShiftBar({ toast }) {
 
   useEffect(() => { load(); }, [load]);
 
-  const toggle = async () => {
+  /* Ochish/yopish endi BIR BOSISHDA emas: ikkalasi ham naqd summa so'raydi.
+     Ochishda — boshlang'ich qoldiq, yopishda — kassir SANAGAN summa. */
+  const askOpen = async () => {
+    let suggested = "";
+    try {
+      // Oldingi smenada sanalgan naqd — odatda kassada o'sha qoladi.
+      const r = await securityApi.suggestedFloat();
+      if (r?.data != null) suggested = String(r.data);
+    } catch (_) { /* taklif bo'lmasa ham ochish ishlayveradi */ }
+    setOpenForm({ float: suggested });
+  };
+
+  const doOpen = async () => {
     setBusy(true);
     try {
-      if (shift) {
-        // Yopish javobi — Z-hisobot: darhol modalda ko'rsatamiz, kassir
-        // qog'ozga chiqarib kunni topshiradi.
-        const res = await securityApi.closeShift();
-        toast?.success(res.message);
-        setShift(null);
-        setReport(res.data);
-      } else {
-        const res = await securityApi.openShift();
-        toast?.success(res.message);
-        setShift(res.data);
-      }
+      const res = await securityApi.openShift(num(openForm.float));
+      toast?.success(res.message);
+      setShift(res.data);
+      setOpenForm(null);
     } catch (err) {
       toast?.error(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const doClose = async () => {
+    setBusy(true);
+    try {
+      // Yopish javobi — Z-hisobot: darhol modalda ko'rsatamiz, kassir
+      // qog'ozga chiqarib kunni topshiradi.
+      const res = await guard(() => securityApi.closeShift(num(closeForm.counted)));
+      toast?.success(res.message);
+      setShift(null);
+      setCloseForm(null);
+      setReport(res.data);
+    } catch (err) {
+      if (!err?.cancelled) toast?.error(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const doCash = async () => {
+    setBusy(true);
+    try {
+      await guard(() => securityApi.addCash({
+        type: cashForm.type,
+        amount: num(cashForm.amount),
+        reason: cashForm.reason || null,
+      }));
+      toast?.success(t("cash.saved"));
+      setCashForm(null);
+    } catch (err) {
+      if (!err?.cancelled) toast?.error(err.message);
     } finally {
       setBusy(false);
     }
@@ -104,7 +156,14 @@ export default function ShiftBar({ toast }) {
               <i className="fa-solid fa-chart-simple" aria-hidden="true" /> {t("shift.viewX")}
             </button>
           )}
-          <button className={`btn btn-sm ${shift ? "btn-outline" : "btn-primary"}`} onClick={toggle} disabled={busy}>
+          {shift && (
+            <button className="btn btn-outline btn-sm" onClick={() => setCashForm({ type: "COLLECTION", amount: "", reason: "" })}
+                    title={t("cash.title")}>
+              <i className="fa-solid fa-money-bill-transfer" aria-hidden="true" /> {t("cash.title")}
+            </button>
+          )}
+          <button className={`btn btn-sm ${shift ? "btn-outline" : "btn-primary"}`}
+                  onClick={() => (shift ? setCloseForm({ counted: "" }) : askOpen())} disabled={busy}>
             <i className={`fa-solid ${shift ? "fa-right-from-bracket" : "fa-right-to-bracket"}`} aria-hidden="true" />{" "}
             {shift ? t("shift.close") : t("shift.open")}
           </button>
@@ -143,7 +202,104 @@ export default function ShiftBar({ toast }) {
             {report.suspiciousCount > 0 && (
               <Row k={t("rpt.suspicious")} v={report.suspiciousCount} danger />
             )}
+
+            {/* ── Naqd yarashtiruv ──────────────────────────────────────
+                X-hisobotda `countedCash` bo'sh: kassir hali sanamagan.
+                Z-hisobotda esa farq ham chiqadi. */}
+            {report.cash && (
+              <>
+                <hr style={{ border: "none", borderTop: "1px dashed var(--border, #d4d4d8)", margin: "4px 0" }} />
+                <Row k={t("cash.openingFloat")} v={money(report.cash.openingFloat)} />
+                <Row k={t("cash.sales")}        v={money(report.cash.cashSales)} />
+                <Row k={t("cash.movements")}    v={money(report.cash.movements)} />
+                <Row k={t("cash.expected")}     v={money(report.cash.expectedCash)} strong />
+                {report.cash.countedCash != null && (
+                  <>
+                    <Row k={t("cash.counted")} v={money(report.cash.countedCash)} strong />
+                    <Row k={t("cash.difference")} v={money(report.cash.difference)}
+                         danger={Number(report.cash.difference) !== 0} strong />
+                  </>
+                )}
+              </>
+            )}
+            {report.staff?.length > 1 && (
+              <Row k={t("shift.staff")} v={report.staff.join(", ")} muted />
+            )}
           </div>
+        </Modal>
+      )}
+
+      {/* ── Smena ochish: boshlang'ich naqd ─────────────────────────────── */}
+      {openForm && (
+        <Modal title={t("shift.open")} onClose={() => setOpenForm(null)}
+          footer={
+            <>
+              <button className="btn btn-outline btn-sm" onClick={() => setOpenForm(null)}>{t("common.cancel")}</button>
+              <button className="btn btn-primary btn-sm" onClick={doOpen} disabled={busy}>
+                <i className="fa-solid fa-right-to-bracket" aria-hidden="true" /> {t("shift.open")}
+              </button>
+            </>
+          }>
+          <label className="form-label">{t("cash.openingFloat")}</label>
+          <Field type="number" inputMode="decimal" min="0" className="form-input ek-num"
+                 value={openForm.float} autoFocus
+                 onChange={(e) => setOpenForm({ float: e.target.value })} />
+          <p className="form-hint">{t("cash.openingHint")}</p>
+        </Modal>
+      )}
+
+      {/* ── Smena yopish: SANALGAN naqd ──────────────────────────────────
+          ⚠ Kutilgan summa ATAYLAB ko'rsatilmaydi. Ko'rsatilsa kassir shu
+          raqamni ko'chirib yozadi va sanoq ma'nosini yo'qotadi. */}
+      {closeForm && (
+        <Modal title={t("shift.close")} onClose={() => setCloseForm(null)}
+          footer={
+            <>
+              <button className="btn btn-outline btn-sm" onClick={() => setCloseForm(null)}>{t("common.cancel")}</button>
+              <button className="btn btn-danger btn-sm" onClick={doClose}
+                      disabled={busy || closeForm.counted === ""}>
+                <i className="fa-solid fa-right-from-bracket" aria-hidden="true" /> {t("shift.close")}
+              </button>
+            </>
+          }>
+          <label className="form-label">{t("cash.counted")}</label>
+          <Field type="number" inputMode="decimal" min="0" className="form-input ek-num"
+                 value={closeForm.counted} autoFocus
+                 onChange={(e) => setCloseForm({ counted: e.target.value })} />
+          <p className="form-hint">{t("cash.countHint")}</p>
+        </Modal>
+      )}
+
+      {/* ── Naqd harakati ────────────────────────────────────────────────
+          Inkassatsiya va xarajat bajik so'raydi (kamomad yaratadi), kirim
+          esa yo'q. */}
+      {cashForm && (
+        <Modal title={t("cash.title")} onClose={() => setCashForm(null)}
+          footer={
+            <>
+              <button className="btn btn-outline btn-sm" onClick={() => setCashForm(null)}>{t("common.cancel")}</button>
+              <button className="btn btn-primary btn-sm" onClick={doCash}
+                      disabled={busy || !cashForm.amount}>
+                {t("common.save")}
+              </button>
+            </>
+          }>
+          <div className="cat-tabs" role="tablist" aria-label={t("cash.title")} style={{ marginBottom: 12 }}>
+            {["COLLECTION", "WITHDRAWAL", "DEPOSIT"].map((k) => (
+              <button key={k} type="button" role="tab" aria-selected={cashForm.type === k}
+                      className={`cat-tab ${cashForm.type === k ? "active" : ""}`}
+                      onClick={() => setCashForm({ ...cashForm, type: k })}>
+                {t(`cash.type.${k}`)}
+              </button>
+            ))}
+          </div>
+          <label className="form-label">{t("common.sum")}</label>
+          <Field type="number" inputMode="decimal" min="0" className="form-input ek-num"
+                 value={cashForm.amount} autoFocus
+                 onChange={(e) => setCashForm({ ...cashForm, amount: e.target.value })} />
+          <label className="form-label" style={{ marginTop: 10 }}>{t("inv.reason")}</label>
+          <Field className="form-input" value={cashForm.reason}
+                 onChange={(e) => setCashForm({ ...cashForm, reason: e.target.value })} />
         </Modal>
       )}
     </>

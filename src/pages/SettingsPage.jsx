@@ -9,6 +9,8 @@ import { useAuth } from "../hooks/useAuth";
 import FiscalPanel from "../components/FiscalPanel";
 import HardwareSettings from "../components/HardwareSettings";
 import Select from "../components/ek/Select";
+import { Field } from "../components/ui";
+import { shopApi } from "../api";
 import { getTouchMode, setTouchMode } from "../lib/ek-touch";
 import { appVersion } from "../lib/ek-update";
 
@@ -59,6 +61,23 @@ export default function SettingsPage({ toast }) {
   const isManager = [...roleSet(user?.role)].some((r) => r === "OWNER" || r === "SHOP_ADMIN");
   // Teginish rejimi QURILMAGA tegishli (localStorage), hisobga emas.
   const [touchMode, setTouch] = useState(() => getTouchMode());
+  // Kamomad chegarasi — do'kon profilidan keladi (server saqlaydi).
+  const [tolerance, setTolerance] = useState("");
+  useEffect(() => {
+    if (!isManager) return;
+    shopApi.getProfile()
+      .then((r) => setTolerance(String(r?.data?.cashDiffTolerance ?? 0)))
+      .catch(() => {});
+  }, [isManager]);
+
+  const saveTolerance = async () => {
+    try {
+      await shopApi.setCashTolerance(Number(tolerance) || 0);
+      toast?.success(t("common.saved"));
+    } catch (err) {
+      toast?.error(err.message);
+    }
+  };
   // Ilova versiyasi — faqat `.exe` da bor (brauzerda `null` qaytadi).
   const [version, setVersion] = useState(null);
   useEffect(() => { appVersion().then(setVersion).catch(() => {}); }, []);
@@ -105,6 +124,17 @@ export default function SettingsPage({ toast }) {
       <Section icon="fa-sliders" title={t("settings.interface")}>
         {/* Uch holat — shuning uchun `Select`, tugma emas: "avtomatik"
             ham to'la huquqli holat va uni tugma bilan ifodalab bo'lmaydi. */}
+        {/* Kamomad chegarasi — FAQAT egasi/administratorga. Kassir uni
+            o'zgartira olsa, nazorat mexanizmining ma'nosi qolmasdi. */}
+        {isManager && (
+          <Row label={t("settings.cashTolerance")} hint={t("settings.cashToleranceHint")}>
+            <Field type="number" inputMode="decimal" min="0" className="form-input ek-num"
+                   wrapStyle={{ width: 160 }}
+                   value={tolerance}
+                   onChange={(e) => setTolerance(e.target.value)}
+                   onBlur={saveTolerance} />
+          </Row>
+        )}
         <Row label={t("touch.label")} hint={t("touch.hint")}>
           <Select
             value={touchMode}

@@ -326,9 +326,19 @@ export const securityApi = {
   suspiciousCount:  () => request("/security/log/suspicious-count"),
   acknowledge:      (id) => request(`/security/log/${id}/ack`, { method: "PATCH" }),
 
-  openShift:    () => request("/security/shift/open",  { method: "POST" }),
-  // Yopish javobi — Z-HISOBOT (yakuniy). X — ochiq smenaning oraliq holati.
-  closeShift:   () => request("/security/shift/close", { method: "POST" }),
+  /* ⚠ Smena KASSAGA tegishli (`X-Device-Id` bo'yicha), xodimga emas.
+     Hamkasb allaqachon ochgan bo'lsa yangisi ochilmaydi — chaqiruvchi
+     o'shanga qo'shiladi va bajigi ishlay boshlaydi. */
+  openShift:    (openingFloat) => request("/security/shift/open", {
+                  method: "POST", body: JSON.stringify({ openingFloat }) }),
+  /* Yopish javobi — Z-HISOBOT (yakuniy). X — ochiq smenaning oraliq holati.
+     ⚠ `countedCash` MAJBURIY: yopish "tugatish" emas, naqdni topshirish. */
+  closeShift:   (countedCash) => request("/security/shift/close", {
+                  method: "POST", body: JSON.stringify({ countedCash }) }),
+  /* Oldingi smenada sanalgan naqd — yangi smenaga boshlang'ich taklif. */
+  suggestedFloat: () => request("/security/shift/suggested-float"),
+  cashMovements:  () => request("/security/cash"),
+  addCash:        (data) => request("/security/cash", { method: "POST", body: JSON.stringify(data) }),
   shiftReport:  () => request("/security/shift/report"),
   currentShift: () => request("/security/shift/current"),
   openShifts:   () => request("/security/shift/open-list"),
@@ -363,6 +373,8 @@ export const shopApi = {
   getProfile: () => request("/shop/profile"),
   /** Faoliyat turi — tayyor katalog va kassa ekrani standartini belgilaydi. */
   setBusinessType: (type) => request(`/shop/business-type?type=${type}`, { method: "PATCH" }),
+  /** Kamomad chegarasi — faqat egasi. */
+  setCashTolerance: (value) => request(`/shop/cash-tolerance?value=${value}`, { method: "PATCH" }),
   getUsers:   (shopId) => request(`/shop/users${shopId ? `?shopId=${shopId}` : ""}`),
   createUser: (data, shopId) => request(`/shop/users${shopId ? `?shopId=${shopId}` : ""}`, { method: "POST", body: JSON.stringify(data) }),
   updateUser: (userId, data, shopId) => request(`/shop/users/${userId}${shopId ? `?shopId=${shopId}` : ""}`, { method: "PUT", body: JSON.stringify(data) }),

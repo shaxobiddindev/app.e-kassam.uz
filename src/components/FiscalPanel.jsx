@@ -54,6 +54,11 @@ export default function FiscalPanel({ toast }) {
 
   if (loading && !status) return <div className="card" style={{ padding: 18 }}><Spinner /></div>;
   if (!status) return null;
+  /* ⚠ Modul o'chirilgan bo'lsa panel UMUMAN chizilmaydi. Do'kon hali soliq
+     tizimiga ulanmagan: navbat, xatolar va "qayta yuborish" tugmasi faqat
+     chalg'itadi. Soliqqa ulanilganda `app.fiscal.enabled: true` qilinadi
+     va panel o'zi qaytadi. */
+  if (!status.moduleEnabled) return null;
 
   const problem = !status.enabled || status.failed > 0;
 
