@@ -7,6 +7,7 @@ import { useAuth } from "../../hooks/useAuth";
 import { useConfirm } from "../../context/ConfirmProvider";
 import { useBadge } from "../../context/BadgeProvider";
 import { roleLabel } from "../../lib/ek-labels";
+import { roleSet } from "../../lib/ek-roles";
 import Select from "../../components/ek/Select";
 import { SkeletonList, Spinner } from "../../components/ek/Loading";
 import { useLoading } from "../../lib/use-loading";
@@ -31,6 +32,13 @@ export default function ShopUsersPage({ toast }) {
   const [form, setForm]         = useState(EMPTY_USER_FORM);
   const [saving, setSaving]     = useState(false);
   const [branchId, setBranchId] = useState(null);
+  /* Chegirma chegarasi ALOHIDA oynada, xodim formasida emas.
+     Sabab texnik: bajik bitta so'rovga bir marta ishlaydi, ya'ni forma ham
+     xodimni, ham chegarani saqlasa egasi bajikni IKKI marta skanerlardi. */
+  const [limitFor, setLimitFor] = useState(null);   // null | { user, value }
+  const [savingLimit, setSavingLimit] = useState(false);
+  // Chegarani faqat egasi qo'yadi (backend ham shu cheklovni qo'yadi).
+  const isOwner = roleSet(currentUser?.role).has("OWNER");
 
   const loadUsers = useCallback(async () => {
     setLoading(true);
@@ -124,6 +132,23 @@ export default function ShopUsersPage({ toast }) {
     }
   };
 
+  /* `value` bo'sh satr — "do'kon chegarasiga qaytar". Bu `0` DAN BOSHQA
+     narsa: `0` xodimga chegirmani butunlay taqiqlaydi. */
+  const saveLimit = async () => {
+    setSavingLimit(true);
+    try {
+      const raw = String(limitFor.value).trim();
+      await guard(() => shopApi.setUserDiscountLimit(limitFor.user.id, raw === "" ? null : raw, branchId));
+      toast.success(t("staff.saved"));
+      setLimitFor(null);
+      loadUsers();
+    } catch (err) {
+      if (!err?.cancelled) toast.error(err.message || t("common.unknownError"));
+    } finally {
+      setSavingLimit(false);
+    }
+  };
+
   const setField = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
 
   return (
@@ -152,6 +177,7 @@ export default function ShopUsersPage({ toast }) {
                   <th>{t("staff.col")}</th>
                   <th>{t("common.username")}</th>
                   <th>{t("common.role")}</th>
+                  {isOwner && <th>{t("staff.discountLimit")}</th>}
                   <th>{t("common.status")}</th>
                   <th style={{ textAlign: "right" }}>{t("common.actions")}</th>
                 </tr>
@@ -181,6 +207,19 @@ export default function ShopUsersPage({ toast }) {
                         </Badge>
                       )}
                     </td>
+                    {/* Chegirma chegarasi — bo'sh bo'lsa "do'kon bo'yicha".
+                        Raqamning O'ZI yetarli emas edi: 0% va "chegara yo'q"
+                        bir xil ko'rinib, egasi qaysi biri ekanini bilmasdi. */}
+                    {isOwner && (
+                      <td>
+                        <button className="btn btn-outline btn-sm"
+                                onClick={() => setLimitFor({ user: u, value: u.maxDiscountPercent ?? "" })}>
+                          {u.maxDiscountPercent == null
+                            ? <span className="text-muted">{t("staff.shopDefault")}</span>
+                            : <span className="mono fw-700">{u.maxDiscountPercent}%</span>}
+                        </button>
+                      </td>
+                    )}
                     <td>
                       <Badge color={u.enabled !== false ? "green" : "red"}>
                         {u.enabled !== false ? t("common.active") : t("common.blocked")}
@@ -205,7 +244,7 @@ export default function ShopUsersPage({ toast }) {
                     </td>
                   </tr>
                 )) : (
-                  <tr><td colSpan={5}><Empty icon="fa-user-slash" text={t("staff.none")} /></td></tr>
+                  <tr><td colSpan={isOwner ? 6 : 5}><Empty icon="fa-user-slash" text={t("staff.none")} /></td></tr>
                 )}
               </tbody>
             </table>
@@ -252,6 +291,45 @@ export default function ShopUsersPage({ toast }) {
               options={ROLE_OPTIONS.map((r) => ({ value: r, label: roleLabel(r), icon: "fa-user-tag" }))}
             />
           </FormGroup>
+        </Modal>
+      )}
+
+      {/* ── Chegirma chegarasi ───────────────────────────────────────────── */}
+      {limitFor && (
+        <Modal
+          title={`${t("staff.discountLimit")} — ${limitFor.user.fullName}`}
+          onClose={() => setLimitFor(null)}
+          maxWidth={420}
+          footer={
+            <>
+              <button className="btn btn-outline btn-sm" onClick={() => setLimitFor(null)}>
+                {t("common.cancel")}
+              </button>
+              <button className="btn btn-primary btn-sm" onClick={saveLimit} disabled={savingLimit}>
+                {savingLimit ? <Spinner /> : <i className="fa-solid fa-check" />}
+                {savingLimit ? t("common.saving") : t("common.save")}
+              </button>
+            </>
+          }
+        >
+          <FormGroup label={`${t("staff.discountLimit")} (%)`}>
+            <Field type="number" inputMode="decimal" min="0" max="100"
+                   className="form-input ek-num" autoFocus
+                   placeholder={t("staff.shopDefault")}
+                   value={limitFor.value}
+                   onChange={(e) => setLimitFor({ ...limitFor, value: e.target.value })} />
+          </FormGroup>
+          <p className="text-muted" style={{ fontSize: 13, marginTop: -4 }}>
+            {t("staff.discountLimitHint")}
+          </p>
+          {/* Bo'shatish alohida tugma: maydonni tozalash ham shu ishni
+              qiladi, lekin "0 yozsam bo'ladimi?" degan savol tug'ilmasin. */}
+          {limitFor.value !== "" && (
+            <button className="btn btn-outline btn-sm" style={{ marginTop: 8 }}
+                    onClick={() => setLimitFor({ ...limitFor, value: "" })}>
+              <i className="fa-solid fa-rotate-left" /> {t("staff.useShopDefault")}
+            </button>
+          )}
         </Modal>
       )}
     </div>

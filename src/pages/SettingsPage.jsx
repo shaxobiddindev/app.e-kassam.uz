@@ -59,22 +59,28 @@ export default function SettingsPage({ toast }) {
   const { user, logout } = useAuth();
   // Fiskal panel — egasi va do'kon administratoriga.
   const isManager = [...roleSet(user?.role)].some((r) => r === "OWNER" || r === "SHOP_ADMIN");
+  /* Nazorat chegaralari — FAQAT EGASIGA (backend ham shu cheklovni qo'yadi).
+     Do'kon administratori ham xodim: o'zini qo'riqlaydigan raqamni o'zi
+     qo'ya olsa, chegara ikkovi kelishib oladigan narsaga aylanardi. */
+  const isOwner = roleSet(user?.role).has("OWNER");
   // Teginish rejimi QURILMAGA tegishli (localStorage), hisobga emas.
   const [touchMode, setTouch] = useState(() => getTouchMode());
   // Kamomad chegarasi — do'kon profilidan keladi (server saqlaydi).
   const [tolerance, setTolerance] = useState("");
   const [discountLimit, setDiscountLimit] = useState("");
   const [returnDays, setReturnDays] = useState("");
+  const [creditLimit, setCreditLimit] = useState("");
   useEffect(() => {
-    if (!isManager) return;
+    if (!isOwner) return;
     shopApi.getProfile()
       .then((r) => {
         setTolerance(String(r?.data?.cashDiffTolerance ?? 0));
         setDiscountLimit(String(r?.data?.maxDiscountPercent ?? 0));
         setReturnDays(String(r?.data?.returnDays ?? 0));
+        setCreditLimit(String(r?.data?.defaultCreditLimit ?? 0));
       })
       .catch(() => {});
-  }, [isManager]);
+  }, [isOwner]);
 
   /* Har uchala sozlama bir xil yo'l bilan saqlanadi: maydondan chiqilganda.
      Alohida «Saqlash» tugmasi qo'yilmadi — bitta raqam uchun tugma bosish
@@ -134,34 +140,43 @@ export default function SettingsPage({ toast }) {
       <Section icon="fa-sliders" title={t("settings.interface")}>
         {/* Uch holat — shuning uchun `Select`, tugma emas: "avtomatik"
             ham to'la huquqli holat va uni tugma bilan ifodalab bo'lmaydi. */}
-        {/* Kamomad chegarasi — FAQAT egasi/administratorga. Kassir uni
-            o'zgartira olsa, nazorat mexanizmining ma'nosi qolmasdi. */}
-        {isManager && (
-          <Row label={t("settings.cashTolerance")} hint={t("settings.cashToleranceHint")}>
-            <Field type="number" inputMode="decimal" min="0" className="form-input ek-num"
-                   wrapStyle={{ width: 160 }}
-                   value={tolerance}
-                   onChange={(e) => setTolerance(e.target.value)}
-                   onBlur={saveTolerance} />
-          </Row>
-        )}
-        {isManager && (
-          <Row label={t("settings.discountLimit")} hint={t("settings.discountLimitHint")}>
-            <Field type="number" inputMode="decimal" min="0" max="100" className="form-input ek-num"
-                   wrapStyle={{ width: 160 }}
-                   value={discountLimit}
-                   onChange={(e) => setDiscountLimit(e.target.value)}
-                   onBlur={saveField(shopApi.setDiscountLimit, discountLimit)} />
-          </Row>
-        )}
-        {isManager && (
-          <Row label={t("settings.returnDays")} hint={t("settings.returnDaysHint")}>
-            <Field type="number" inputMode="numeric" min="0" className="form-input ek-num"
-                   wrapStyle={{ width: 160 }}
-                   value={returnDays}
-                   onChange={(e) => setReturnDays(e.target.value)}
-                   onBlur={saveField(shopApi.setReturnDays, returnDays)} />
-          </Row>
+        {/* Nazorat chegaralari — FAQAT EGASIGA. Xodim (kassir ham, do'kon
+            admini ham) o'zini qo'riqlaydigan raqamni o'zgartira olsa,
+            nazorat mexanizmining ma'nosi qolmasdi. */}
+        {isOwner && (
+          <>
+            <Row label={t("settings.cashTolerance")} hint={t("settings.cashToleranceHint")}>
+              <Field type="number" inputMode="decimal" min="0" className="form-input ek-num"
+                     wrapStyle={{ width: 160 }}
+                     value={tolerance}
+                     onChange={(e) => setTolerance(e.target.value)}
+                     onBlur={saveTolerance} />
+            </Row>
+            <Row label={t("settings.discountLimit")} hint={t("settings.discountLimitHint")}>
+              <Field type="number" inputMode="decimal" min="0" max="100" className="form-input ek-num"
+                     wrapStyle={{ width: 160 }}
+                     value={discountLimit}
+                     onChange={(e) => setDiscountLimit(e.target.value)}
+                     onBlur={saveField(shopApi.setDiscountLimit, discountLimit)} />
+            </Row>
+            <Row label={t("settings.returnDays")} hint={t("settings.returnDaysHint")}>
+              <Field type="number" inputMode="numeric" min="0" className="form-input ek-num"
+                     wrapStyle={{ width: 160 }}
+                     value={returnDays}
+                     onChange={(e) => setReturnDays(e.target.value)}
+                     onBlur={saveField(shopApi.setReturnDays, returnDays)} />
+            </Row>
+            {/* Nasiya chegarasi — do'kon STANDARTI. Har bir mijozga alohida
+                qiymat Mijozlar sahifasida qo'yiladi va u shu raqamdan
+                ustun turadi. */}
+            <Row label={t("settings.creditLimit")} hint={t("settings.creditLimitHint")}>
+              <Field type="number" inputMode="decimal" min="0" className="form-input ek-num"
+                     wrapStyle={{ width: 160 }}
+                     value={creditLimit}
+                     onChange={(e) => setCreditLimit(e.target.value)}
+                     onBlur={saveField(shopApi.setCreditLimit, creditLimit)} />
+            </Row>
+          </>
         )}
         <Row label={t("touch.label")} hint={t("touch.hint")}>
           <Select

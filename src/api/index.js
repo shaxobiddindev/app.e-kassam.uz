@@ -352,6 +352,18 @@ export const securityApi = {
 
 // ─── Mijozlar ─────────────────────────────────────────────────
 export const customerApi = {
+  /* ── Nasiya ────────────────────────────────────────────────────
+     Qarz JURNALDA saqlanadi, balans esa undan hisoblangan kesh —
+     "qarz qayerdan chiqdi" degan savolga javob bo'lishi uchun. */
+  payDebt:   (id, data) => request(`/customers/${id}/payment`, { method: "POST", body: JSON.stringify(data) }),
+  adjustDebt:(id, data) => request(`/customers/${id}/adjust`,  { method: "POST", body: JSON.stringify(data) }),
+  ledger:    (id) => request(`/customers/${id}/ledger`),
+  debtors:   () => request("/customers/debtors"),
+  /** `value` bo'sh bo'lsa do'kon standartiga qaytadi. */
+  setCreditLimit: (id, value) =>
+    request(`/customers/${id}/credit-limit${value == null || value === "" ? "" : `?value=${value}`}`,
+            { method: "PATCH" }),
+
   getAll:  (shopId)    => request(`/customers${shopId ? `?shopId=${shopId}` : ""}`),
   getById: (id)        => request(`/customers/${id}`),
   create:  (data)      => request("/customers",      { method: "POST", body: JSON.stringify(data) }),
@@ -382,11 +394,25 @@ export const shopApi = {
   setDiscountLimit: (percent) => request(`/shop/discount-limit?percent=${percent}`, { method: "PATCH" }),
   /** Qaytarish muddati (kun). 0 — har safar rahbar tasdig'i. */
   setReturnDays: (days) => request(`/shop/return-days?days=${days}`, { method: "PATCH" }),
+  /** Nasiya chegarasi — do'kon standarti. */
+  setCreditLimit: (value) => request(`/shop/credit-limit?value=${value}`, { method: "PATCH" }),
   getUsers:   (shopId) => request(`/shop/users${shopId ? `?shopId=${shopId}` : ""}`),
   createUser: (data, shopId) => request(`/shop/users${shopId ? `?shopId=${shopId}` : ""}`, { method: "POST", body: JSON.stringify(data) }),
   updateUser: (userId, data, shopId) => request(`/shop/users/${userId}${shopId ? `?shopId=${shopId}` : ""}`, { method: "PUT", body: JSON.stringify(data) }),
   deleteUser: (userId, shopId) => request(`/shop/users/${userId}${shopId ? `?shopId=${shopId}` : ""}`, { method: "DELETE" }),
   toggleBlockUser: (userId, shopId) => request(`/shop/users/${userId}/toggle-block${shopId ? `?shopId=${shopId}` : ""}`, { method: "PATCH" }),
+  /**
+   * Xodimning SHAXSIY chegirma chegarasi. `percent` bo'sh bo'lsa chegara
+   * olib tashlanadi va do'kon chegarasi ishlaydi — shuning uchun `0` bilan
+   * adashtirmaslik kerak: `0` = "bu xodim umuman chegirma bera olmaydi".
+   */
+  setUserDiscountLimit: (userId, percent, shopId) => {
+    const p = new URLSearchParams();
+    if (shopId) p.set("shopId", shopId);
+    if (percent !== null && percent !== "") p.set("percent", percent);
+    const q = p.toString();
+    return request(`/shop/users/${userId}/discount-limit${q ? `?${q}` : ""}`, { method: "PATCH" });
+  },
   
   getBranches: () => request("/shop/branches"),
   createBranch: (data) => request("/shop/branches", { method: "POST", body: JSON.stringify(data) }),

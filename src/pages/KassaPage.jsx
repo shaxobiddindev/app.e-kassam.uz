@@ -48,7 +48,10 @@ const payItem = (key) => {
   const p = PAYMENT_TYPE[key];
   return { key, label: p.label, icon: p.icon, color: p.color, kbd: PAY_KBD[key] };
 };
-const PAY_METHODS  = ["CASH", "CARD", "CLICK", "PAYME", "MIXED"].map(payItem);
+/* ⚠ Nasiya ro'yxatning OXIRIDA: u eng kam ishlatiladigan va eng
+   e'tibor talab qiladigan tur. Boshida tursa kassir tasodifan bosib,
+   pulni olmasdan tovar berib yuborardi. */
+const PAY_METHODS  = ["CASH", "CARD", "CLICK", "PAYME", "MIXED", "CREDIT"].map(payItem);
 const MIXED_SECOND = ["CARD", "CLICK", "PAYME"].map(payItem);
 
 const REFOCUS_MS = 3000;   // fokus yo'qolsa shuncha vaqtdan keyin qaytadi
@@ -503,8 +506,12 @@ export default function KassaPage({ toast, refreshLowStock }) {
   const change      = Math.max(0, (Number(cashGiven) || 0) - total);
   const mixedSum    = (Number(cashAmount) || 0) + (Number(cardAmount) || 0);
   const mixedOk     = payType !== "MIXED" || mixedSum === total;
+  /* Nasiya — MIJOZGA beriladigan qarz. Kimga berilganini bilmasdan yozib
+     bo'lmaydi: server ham rad etadi, lekin kassir buni to'lov tugmasini
+     bosishdan OLDIN ko'rishi kerak. */
+  const creditOk    = payType !== "CREDIT" || !!customer;
   const cashOk      = payType !== "CASH"  || !cashGiven || Number(cashGiven) >= total;
-  const canSubmit   = cart.length > 0 && !processing && mixedOk && cashOk;
+  const canSubmit   = cart.length > 0 && !processing && mixedOk && cashOk && creditOk;
 
   /* ── Sotuvni yakunlash ────────────────────────────────────── */
   const handleSubmit = async () => {
@@ -1113,6 +1120,15 @@ export default function KassaPage({ toast, refreshLowStock }) {
                       jami <span className="ek-num">{total.toLocaleString("uz-UZ")}</span> bilan teng bo'lishi kerak
                     </div>
                   )}
+                </div>
+              )}
+              {/* Nasiyada mijoz tanlanmagan bo'lsa — nima qilish kerakligini
+                  AYTAMIZ. Tugmani jimgina o'chirib qo'yish kassirni
+                  "nega ishlamayapti" deb qidirishga majbur qilardi. */}
+              {payType === "CREDIT" && !customer && (
+                <div className="pay-mixed-warn">
+                  <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />{" "}
+                  {t("credit.customerRequired")}
                 </div>
               )}
             </div>

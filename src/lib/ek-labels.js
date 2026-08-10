@@ -43,6 +43,9 @@ export const PAYMENT_TYPE = dict("enum.payment", {
   CLICK: { icon: "fa-mobile-screen",        color: "var(--ek-role-stock)" },
   PAYME: { icon: "fa-mobile-screen-button", color: "var(--ek-role-cashier)" },
   MIXED: { icon: "fa-shuffle",              color: "var(--ek-pay-mixed)" },
+  /* Nasiya — to'lov EMAS: kassaga pul tushmaydi, mijozning qarzi oshadi.
+     Rang ogohlantirish rangida: kassir uni tasodifan tanlab qo'ymasin. */
+  CREDIT:{ icon: "fa-hand-holding-dollar",  color: "var(--fg-warning)" },
 });
 
 /* ── Sotuv holati — SaleStatus ───────────────────────────────────────────── */
