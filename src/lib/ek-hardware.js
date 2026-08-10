@@ -23,6 +23,7 @@ import { Receipt, WIDTH_80, WIDTH_58, drawerKickBytes } from "./ek-escpos";
 import { t } from "./ek-i18n";
 import { money, quantity } from "../utils";
 import { paymentLabel, unitLabel } from "./ek-labels";
+import { code128Svg, saleCode } from "./ek-barcode";
 
 const KEY = "ek_hw";
 
@@ -103,7 +104,8 @@ async function send(bytes) {
  * ishlatiladi. "Sinov cheki" bilan haqiqiy chek turli kod bo'lsa, sinov
  * o'tib, haqiqiysi buzilib chiqishi mumkin edi.
  */
-export function buildReceipt({ saleId, cart = [], total = 0, payType, customer, offline, shopName, cashier, fiscal }) {
+export function buildReceipt({ saleId, serverSaleId, cart = [], total = 0, subtotal, discount = 0,
+                               payType, customer, offline, shopName, cashier, fiscal }) {
   const s = getSettings();
   const r = new Receipt(s.width === 58 ? WIDTH_58 : WIDTH_80);
 
@@ -125,6 +127,10 @@ export function buildReceipt({ saleId, cart = [], total = 0, payType, customer, 
   }
 
   r.rule();
+  if (discount > 0) {
+    r.row(t("kassa.receiptSubtotal"), money(subtotal ?? (total + discount)));
+    r.row(t("kassa.discount"), "-" + money(discount));
+  }
   r.bold().double().row(t("kassa.receiptTotal"), money(total)).double(false).bold(false);
   r.row(t("kassa.receiptPayment"), paymentLabel(payType));
   if (customer?.fullName) r.row(t("kassa.receiptCustomer"), customer.fullName);
@@ -159,6 +165,23 @@ export function buildReceipt({ saleId, cart = [], total = 0, payType, customer, 
     if (fiscal.qrUrl) {
       r.feed().center().qr(fiscal.qrUrl).left();
     }
+  }
+
+  /* ── Chek raqami barkodi ───────────────────────────────────────────
+     Qaytarishda kassir shu barkodni skanerlaydi va kerakli chek bir
+     soniyada topiladi. Usiz u sana va summa bo'yicha qidiradi — bir
+     kunda 200 ta chek bo'lsa bu sekin va xato qilishga ochiq.
+
+     ⚠ Faqat SERVER raqami bilan: oflayn chekda raqam qurilmada
+     yaratiladi (`OFF-0001`) va serverda bunday sotuv hali yo'q — uni
+     skanerlash hech narsa topmasdi. Ulanish tiklangach chek qayta
+     chiqarilsa, barkod ham paydo bo'ladi.
+
+     ⚠ Raqam barkod OSTIDA matn bilan ham yoziladi: barkod ezilsa yoki
+     mijoz telefonda surat ko'rsatsa, kassir uni qo'lda kiritadi. */
+  if (serverSaleId) {
+    const code = saleCode(serverSaleId);
+    r.feed().center().barcode128(code).line(code).left();
   }
 
   r.rule();
@@ -296,7 +319,7 @@ export async function testPrint() {
  * chekiga aynan shu matn bosilardi. Endi tarjima satr YIG'ILISHIDAN oldin
  * chaqiriladi.
  */
-function printInBrowser({ saleId, cart = [], total = 0, subtotal, discount = 0,
+function printInBrowser({ saleId, serverSaleId, cart = [], total = 0, subtotal, discount = 0,
                           payType, customer, offline, shopName, cashier }) {
   const win = window.open("", "_blank", "width=360,height=640,toolbar=no,menubar=no");
   if (!win) throw new Error(t("hw.errPopup"));
@@ -355,6 +378,10 @@ function printInBrowser({ saleId, cart = [], total = 0, subtotal, discount = 0,
       <div class="row"><span>${esc(t("kassa.receiptPayment"))}</span><span>${esc(paymentLabel(payType))}</span></div>
       ${customer?.fullName ? `<div class="row"><span>${esc(t("kassa.receiptCustomer"))}</span><span>${esc(customer.fullName)}</span></div>` : ""}
       ${offline ? `<div class="off">${esc(t("kassa.receiptOffline"))}<br>${esc(t("kassa.receiptOfflineSub"))}</div>` : ""}
+      ${serverSaleId ? `<div class="c" style="margin-top:6px">
+        ${code128Svg(saleCode(serverSaleId), { height: 12 })}
+        <div class="no">${esc(saleCode(serverSaleId))}</div>
+      </div>` : ""}
       <div class="hr"></div>
       <div class="c"><p>${esc(t("kassa.receiptThanks"))}</p><small>e-kassam.uz</small></div>
     </body></html>`);

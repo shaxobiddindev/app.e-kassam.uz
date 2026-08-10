@@ -165,6 +165,41 @@ export class Receipt {
     return this;
   }
 
+  /**
+   * Code 128 chiziqli barkod — printerning O'Z buyrug'i bilan (`GS k 73`).
+   *
+   * NEGA QR EMAS: chek raqamini kassir QAYTARISHDA skanerlaydi, do'kondagi
+   * skanerlar esa deyarli hammasi bir o'lchovli lazerli va QR ni umuman
+   * o'qimaydi. QR faqat bajikda ishlatiladi — u telefon bilan o'qiladi.
+   *
+   * ⚠ Ma'lumot oldiga `{B` qo'yiladi: bu printerga "Code 128B varianti"
+   * degani. Usiz printer o'zi variant tanlaydi va harfli kod (`S-000123`)
+   * noto'g'ri kodlanadi.
+   *
+   * `height` — nuqtada (203 dpi da 60 ≈ 7.5 mm). Pastroq bo'lsa skaner
+   * qiyshiq ushlaganda o'qimaydi.
+   */
+  barcode128(text, { height = 60, width = 2, hri = false } = {}) {
+    const raw = String(text ?? "");
+    const data = [];
+    for (const ch of raw) {
+      const code = ch.charCodeAt(0);
+      if (code < 32 || code > 127) return this;   // kodlab bo'lmaydi — barkodsiz
+      data.push(code);
+    }
+    if (!data.length) return this;
+
+    this.raw([GS, 0x68, Math.max(1, Math.min(255, height))]);   // GS h — balandlik
+    this.raw([GS, 0x77, Math.max(2, Math.min(6, width))]);      // GS w — modul kengligi
+    this.raw([GS, 0x48, hri ? 2 : 0]);                          // GS H — raqam barkod OSTIDA
+
+    // `{B` = 0x7B 0x42 — Code 128B varianti
+    const payload = [0x7b, 0x42, ...data];
+    this.raw([GS, 0x6b, 73, payload.length]);
+    this.raw(payload);
+    return this;
+  }
+
   /** Qog'ozni surib kesish. Kesuvchisi yo'q printerda buyruq e'tiborsiz qoladi. */
   cut() { return this.feed(4).raw(CMD.cut); }
 

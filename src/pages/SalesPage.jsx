@@ -16,6 +16,8 @@ import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
 import { printReceipt } from "../lib/ek-hardware";
 import { topRole } from "../lib/ek-roles";
+import { useScanner } from "../hooks/useScanner";
+import { parseSaleCode } from "../lib/ek-barcode";
 
 /* ── Chekni qayta chiqarish ────────────────────────────────────────────────
    Kassa ekranidagi Ctrl+P faqat OXIRGI chekni chiqaradi. Amalda esa mijoz
@@ -28,6 +30,8 @@ import { topRole } from "../lib/ek-roles";
 function saleToReceipt(sale) {
   return {
     saleId: `A-${sale.id}`,
+    // Tarixdan qayta chiqarilgan chekda ham barkod bo'lsin.
+    serverSaleId: sale.id,
     cart: (sale.items || []).map((i) => ({
       name:      i.productName,
       qty:       i.quantity,
@@ -173,6 +177,26 @@ export default function SalesPage({ toast }) {
     PAID:      byPeriod.filter((s) => s.status === "PAID").length,
     CANCELLED: byPeriod.filter((s) => s.status === "CANCELLED").length,
   };
+
+  /* ── Chek barkodini skanerlash ────────────────────────────────────
+     Kassir mijoz olib kelgan chekni skanerlaydi va kerakli sotuv darhol
+     topiladi. Usiz u sana va summa bo'yicha qidirardi — bir kunda 200 ta
+     chek bo'lsa bu sekin va xato qilishga ochiq.
+
+     ⚠ Tovar barkodi bu yerda E'TIBORSIZ qoldiriladi: `parseSaleCode`
+     faqat `S-` prefiksli kodni tanidi. Aks holda kassir tovarni
+     skanerlaganda tushunarsiz "topilmadi" xatosi chiqardi. */
+  useScanner((code) => {
+    const id = parseSaleCode(code);
+    if (id == null) return;
+    const sale = sales.find((x) => x.id === id);
+    if (!sale) { toast.error(`${t("ret.notFound")}: ${code}`); return; }
+    if (sale.type === "RETURN" || sale.status === "CANCELLED") {
+      toast.error(t("ret.notReturnable"));
+      return;
+    }
+    setRet({ sale, lines: {}, reason: "" });
+  });
 
   /**
    * Qaytarish.

@@ -580,7 +580,10 @@ export default function KassaPage({ toast, refreshLowStock }) {
     // talab qilmasdan. Xatosi yutilmaydi, lekin SOTUVNI to'xtatmaydi:
     // sotuv allaqachon qayd etilgan va printer nosozligi uni bekor
     // qilmasligi kerak — kassir chekni Ctrl+P bilan qayta chiqaradi.
-    printReceipt({ saleId: receiptNo, ...snapshot, offline, shopName, cashier, fiscal })
+    /* `serverSaleId` — chekdagi barkod uchun. Oflayn sotuvda `null`:
+       serverda bunday sotuv hali yo'q va barkodni skanerlash hech narsa
+       topmasdi. */
+    printReceipt({ saleId: receiptNo, serverSaleId: res_saleId, ...snapshot, offline, shopName, cashier, fiscal })
       .catch((err) => toast.error(`${t("hw.printFailed")}: ${err.message}`));
 
     setFinish({ phase: "done", total: money(snapshot.total), receiptNo });
