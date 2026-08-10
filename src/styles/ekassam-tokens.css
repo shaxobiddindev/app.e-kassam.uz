@@ -207,11 +207,25 @@ body {
   letter-spacing: -.01em;
 }
 
-/* Fokus — klaviatura bilan ishlaydigan kassir uchun majburiy */
+/* Fokus — klaviatura bilan ishlaydigan kassir uchun majburiy.
+
+   ⚠ `border-radius` bu yerda BERILMAYDI. Ilgari u `--r-sm` (6px) qo'yardi
+   va fokusdagi HAR QANDAY maydonning burchagini o'zgartirardi:
+   `.form-input` va `.search-bar` 10px edi, fokusda esa 6px bo'lib qolardi.
+   Natijada maydon ichida boshqacha yumaloqlangan ikkinchi ramka paydo
+   bo'lardi — "input ichida yana kichik input" bo'lib ko'rinardi.
+   Fokus ko'rsatkichi elementning SHAKLINI o'zgartirmasligi kerak. */
 :where(a, button, input, select, textarea, [tabindex]):focus-visible {
   outline: none;
   box-shadow: var(--focus-ring);
-  border-radius: var(--r-sm);
+}
+
+/* ⚠ IDISH ichidagi maydon o'z halqasini olmaydi: `.search-bar` va
+   `.bc-field` fokusni `:focus-within` bilan O'ZI ko'rsatadi, ichkarida
+   yana bitta halqa chizilsa u "ikkinchi input" bo'lib ko'rinardi. */
+.search-bar input:focus-visible,
+.bc-field input:focus-visible {
+  box-shadow: none;
 }
 
 @media (prefers-reduced-motion: reduce) {

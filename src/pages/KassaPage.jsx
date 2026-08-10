@@ -672,7 +672,13 @@ export default function KassaPage({ toast, refreshLowStock }) {
       <OfflineBar />
       <ShiftBar toast={toast} />
 
-      <div className="kassa-layout" style={{ height: "auto", flex: 1 }}>
+      {/* ⚠ Inline `height: "auto"` OLIB TASHLANDI. U CSS dagi
+          `height: calc(100vh - …)` ni bekor qilardi va natijada Kassa
+          balandligi cheklanmasdi: mahsulotlar ko'payganda `.product-grid`
+          ning `overflow-y: auto` si ishga tushmay, BUTUN sahifa cho'zilib
+          ketardi. Kassada esa faqat mahsulotlar ro'yxati surilishi kerak —
+          savat, jami va to'lov tugmalari doim ko'rinib tursin. */}
+      <div className="kassa-layout">
         {/* ════ CHAP: Barkod + Mahsulotlar ════ */}
         <div className="kassa-left">
           {/* Barkod maydoni — doim fokusda, monoshriftda (bu raqam) */}
@@ -725,7 +731,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
             <span className="kbd" title={t("kassa.backToBarcode")}>Ctrl+B</span>
           </div>
 
-          <div className="card" style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
+          <div className="card" style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflow: "hidden" }}>
             <div style={{ padding: "11px 14px", borderBottom: "1px solid var(--border-subtle)", flexShrink: 0 }}>
               <div className="search-bar">
                 <i className="fa-solid fa-magnifying-glass" aria-hidden="true" />
@@ -812,7 +818,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
 
         {/* ════ O'NG: Savat + To'lov ════ */}
         <div className="kassa-right">
-          <div className="card" style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+          <div className="card" style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
             <div className="card-header">
               <span className="card-title">
                 <i className="fa-solid fa-cart-shopping text-blue" aria-hidden="true" />

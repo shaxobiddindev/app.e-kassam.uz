@@ -209,8 +209,11 @@ export default function SalesPage({ toast }) {
 
         {/* Holat filtri. Bekor qilingan sotuvlar endi ro'yxatda turadi —
             ularni ajratib ko'rish uchun shu qator kerak. Chipdagi son
-            qidiruvga bog'liq emas: u davr bo'yicha JAMI holatni ko'rsatadi. */}
-        <div className="card-header" style={{ paddingTop: 0 }}>
+            qidiruvga bog'liq emas: u davr bo'yicha JAMI holatni ko'rsatadi.
+
+            ⚠ `paddingTop: 0` YARAMAYDI: ustidagi sarlavhaning pastki chizig'i
+            aynan shu yerda tugaydi va chiplar unga yopishib qolardi. */}
+        <div className="card-header" style={{ paddingTop: 11 }}>
           <div className="cat-tabs" role="tablist" aria-label={t("common.status")}>
             {[
               { key: "ALL",       label: t("common.all") },
