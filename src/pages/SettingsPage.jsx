@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useT } from "../lib/ek-i18n";
 import { roleLabel } from "../lib/ek-labels";
 import { roleSet } from "../lib/ek-roles";
@@ -10,6 +10,7 @@ import FiscalPanel from "../components/FiscalPanel";
 import HardwareSettings from "../components/HardwareSettings";
 import Select from "../components/ek/Select";
 import { getTouchMode, setTouchMode } from "../lib/ek-touch";
+import { appVersion } from "../lib/ek-update";
 
 /* ══════════════════════════════════════════════════════════════════════════
    Sozlamalar — BARCHA sozlamalar uchun YAGONA joy.
@@ -58,6 +59,9 @@ export default function SettingsPage({ toast }) {
   const isManager = [...roleSet(user?.role)].some((r) => r === "OWNER" || r === "SHOP_ADMIN");
   // Teginish rejimi QURILMAGA tegishli (localStorage), hisobga emas.
   const [touchMode, setTouch] = useState(() => getTouchMode());
+  // Ilova versiyasi — faqat `.exe` da bor (brauzerda `null` qaytadi).
+  const [version, setVersion] = useState(null);
+  useEffect(() => { appVersion().then(setVersion).catch(() => {}); }, []);
 
   const [collapsed, setCollapsed] = useState(
     () => localStorage.getItem("sb_collapsed") === "1"
@@ -171,6 +175,16 @@ export default function SettingsPage({ toast }) {
         <Row label="e-Kassam">
           <span className="set-value ek-num">app.e-kassam.uz</span>
         </Row>
+        {/* ⚠ Versiya KO'RINISHI SHART. Ilgari u hech qayerda yozilmagan edi
+            va "ilova yangilandimi yoki yo'qmi" degan savolga javob berishning
+            yo'li yo'q edi — na kassirda, na qo'ng'iroq qilganda.
+            Brauzerda versiya yo'q (u doim oxirgisi), shuning uchun qator
+            faqat `.exe` da chiziladi. */}
+        {version && (
+          <Row label={t("settings.version")}>
+            <span className="set-value ek-num">{version}</span>
+          </Row>
+        )}
       </Section>
     </div>
   );
