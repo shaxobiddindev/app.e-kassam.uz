@@ -296,9 +296,13 @@ export async function testPrint() {
  * chekiga aynan shu matn bosilardi. Endi tarjima satr YIG'ILISHIDAN oldin
  * chaqiriladi.
  */
-function printInBrowser({ saleId, cart = [], total = 0, payType, customer, offline, shopName }) {
-  const win = window.open("", "_blank", "width=320,height=600,toolbar=no,menubar=no");
+function printInBrowser({ saleId, cart = [], total = 0, subtotal, discount = 0,
+                          payType, customer, offline, shopName, cashier }) {
+  const win = window.open("", "_blank", "width=360,height=640,toolbar=no,menubar=no");
   if (!win) throw new Error(t("hw.errPopup"));
+
+  // Qog'oz kengligi — apparat sozlamasidan (58 yoki 80 mm).
+  const mm = getSettings().width === 58 ? 58 : 80;
 
   const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -310,14 +314,33 @@ function printInBrowser({ saleId, cart = [], total = 0, payType, customer, offli
 
   win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(t("kassa.receiptNo"))} ${esc(saleId)}</title>
     <style>
+      /* CHEK QOG'OZI - A4 EMAS.
+         @page bo'lmasa brauzer chekni A4 sahifaga joylashtiradi, chetiga
+         o'z sarlavha-izohini (manzil, sana, bet raqami) qo'shadi va matn
+         chek printeriga umuman sig'maydi - aynan shu "noto'g'ri format"
+         edi. margin:0 esa brauzerning o'sha sarlavhalarini olib tashlaydi.
+         Balandlik auto: chek uzunligi tovar soniga qarab o'zgaradi. */
+      @page { size: ${mm}mm auto; margin: 0; }
+
       * { margin:0; padding:0; box-sizing:border-box; }
-      body { font-family:'JetBrains Mono',monospace; font-variant-numeric:tabular-nums;
-             font-size:12px; padding:12px; width:280px; color:#0B1524; }
+      /* Shrift TIZIMNIKI: popup oynaga tashqi shrift yuklanmaydi va
+         JetBrains Mono baribir tushmasdi - natijada kenglik hisoblari
+         buzilardi. */
+      body { font-family: ui-monospace, "Cascadia Mono", "Consolas", monospace;
+             font-variant-numeric: tabular-nums;
+             font-size: 12px; line-height: 1.35; color: #000;
+             width: ${mm}mm; padding: 3mm; }
       .c { text-align:center; }
-      .hr { border:none; border-top:1px dashed #0B1524; margin:8px 0; }
-      .row { display:flex; justify-content:space-between; padding:3px 0; gap:8px; }
-      .logo { font-family:Manrope,sans-serif; font-size:18px; font-weight:800; color:#1663D8; }
-      .off { margin-top:6px; padding:4px; border:1px dashed #A16207; color:#A16207; font-size:10px; text-align:center; }
+      .hr { border:none; border-top:1px dashed #000; margin:6px 0; }
+      .row { display:flex; justify-content:space-between; padding:2px 0; gap:8px; }
+      .row span:last-child { white-space: nowrap; }
+      .logo { font-size:15px; font-weight:800; letter-spacing:.5px; }
+      .off { margin-top:6px; padding:4px; border:1px dashed #000; font-size:10px; text-align:center; }
+      .no { font-size:13px; font-weight:800; }
+      @media print {
+        /* Termal printerda kulrang matn o'qilmaydi — hammasi qora. */
+        body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      }
     </style></head><body>
       <div class="c"><div class="logo">${esc(shopName || "E-KASSAM.UZ")}</div>
         <small>${esc(t("kassa.receiptSystem"))}</small></div>
@@ -326,6 +349,8 @@ function printInBrowser({ saleId, cart = [], total = 0, payType, customer, offli
       <div class="hr"></div>
       ${rows}
       <div class="hr"></div>
+      ${discount > 0 ? `<div class="row"><span>${esc(t("kassa.receiptSubtotal"))}</span><span>${esc(money(subtotal ?? (total + discount)))}</span></div>
+      <div class="row"><span>${esc(t("kassa.discount"))}</span><span>-${esc(money(discount))}</span></div>` : ""}
       <div class="row"><b>${esc(t("kassa.receiptTotal"))}</b><b>${esc(money(total))}</b></div>
       <div class="row"><span>${esc(t("kassa.receiptPayment"))}</span><span>${esc(paymentLabel(payType))}</span></div>
       ${customer?.fullName ? `<div class="row"><span>${esc(t("kassa.receiptCustomer"))}</span><span>${esc(customer.fullName)}</span></div>` : ""}
@@ -334,5 +359,9 @@ function printInBrowser({ saleId, cart = [], total = 0, payType, customer, offli
       <div class="c"><p>${esc(t("kassa.receiptThanks"))}</p><small>e-kassam.uz</small></div>
     </body></html>`);
   win.document.close();
-  setTimeout(() => win.print(), 400);
+  /* Tizim shrifti ishlatilgani uchun kutish shart emas — bir kadr yetadi.
+     Chop etilgach oyna O'ZI yopiladi: aks holda kassirning ekranida
+     har chekdan keyin bitta ochiq oyna qolib ketardi. */
+  win.onafterprint = () => win.close();
+  setTimeout(() => win.print(), 60);
 }

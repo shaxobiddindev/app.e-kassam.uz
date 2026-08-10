@@ -527,7 +527,10 @@ export default function KassaPage({ toast, refreshLowStock }) {
       cardAmount: ["CARD", "CLICK", "PAYME"].includes(payType) ? total
                 : payType === "MIXED" ? Number(cardAmount) || 0 : 0,
     };
-    const snapshot = { cart: [...cart], total, payType, customer };
+    /* Chekka chegirma ham tushadi: mijoz "qancha chegirma oldim" degan
+       savolga qog'ozdan javob topishi kerak, aks holda faqat yakuniy
+       summa ko'rinib, chegirma ko'rinmay qolardi. */
+    const snapshot = { cart: [...cart], total, subtotal, discount: discountNum, payType, customer };
 
     setShowPayModal(false);
     setFinish({ phase: "printing", total: money(total) });
