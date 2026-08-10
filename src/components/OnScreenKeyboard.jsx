@@ -82,6 +82,27 @@ export default function OnScreenKeyboard({ target, onClose }) {
   // demak to'sish ham o'sha yerda bo'lishi kerak.
   const hold = (e) => e.preventDefault();
 
+  /**
+   * «Tayyor» — maydonga ENTER yuboradi, so'ng klaviaturani yopadi.
+   *
+   * Nega shunday: ilovada Enter — tugallash tugmasi. Barkod maydonida u
+   * tovarni savatga qo'shadi, miqdor oynasida tasdiqlaydi, qidiruvda
+   * yagona natijani tanlaydi. «Tayyor» faqat klaviaturani yopganda,
+   * kassir monoblokda o'sha amalni bajara olmasdi — jismoniy klaviatura
+   * kerak bo'lardi, ya'ni butun ishning maqsadi yo'qolardi.
+   *
+   * ⚠ To'liq hodisa yuboriladi (`keyCode` bilan ham): React `onKeyDown` ni
+   * o'qiydi, lekin ba'zi eski tekshiruvlar `e.keyCode === 13` ga tayanadi.
+   */
+  const done = () => {
+    if (target && target.isConnected) {
+      const opts = { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true, cancelable: true };
+      target.dispatchEvent(new KeyboardEvent("keydown", opts));
+      target.dispatchEvent(new KeyboardEvent("keyup", opts));
+    }
+    onClose();
+  };
+
   const rows = numeric ? NUM_ROWS : (cyr ? CYR_ROWS : LAT_ROWS);
 
   return (
@@ -137,7 +158,7 @@ export default function OnScreenKeyboard({ target, onClose }) {
             </button>
           )}
           <button type="button" className="osk__key osk__key--ok" onPointerDown={hold}
-                  onClick={onClose}>
+                  onClick={done}>
             <i className="fa-solid fa-check" aria-hidden="true" /> {t("osk.done")}
           </button>
         </div>

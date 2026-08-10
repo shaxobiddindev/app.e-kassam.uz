@@ -1504,7 +1504,21 @@ img.logo--dark { display: none; }
 
 .osk__rows { display: grid; gap: 6px; }
 .osk__row  { display: flex; gap: 6px; }
-.osk--num .osk__row { justify-content: stretch; }
+/* ⚠ RAQAMLI PAD — GRID, flex EMAS.
+   Flex'da har qator o'zicha bo'linardi va pastki qator ("Tozalash",
+   "Tayyor") yuqoridagi uchta ustunga TUSHMASDI: tugmalar har xil
+   kenglikda chiqib, pad qiyshiq ko'rinardi.
+   `display: contents` qatorlarni "eritib yuboradi" — tugmalar
+   to'g'ridan-to'g'ri 3 ustunli gridga tushadi va hammasi bir xil
+   o'lchamda bo'ladi. */
+.osk--num .osk__rows { grid-template-columns: repeat(3, 1fr); }
+.osk--num .osk__row  { display: contents; }
+/* «Tayyor» ikki ustunni egallaydi: 1 + 2 = 3, ya'ni pastki qator ham
+   yuqoridagi to'r bilan aniq tekislanadi. */
+.osk--num .osk__key--ok { grid-column: span 2; }
+/* Gridda kenglikni ustun belgilaydi — flex ulushlari bekor qilinadi,
+   aks holda ular tugmalarni yana har xil qilib yuborardi. */
+.osk--num .osk__key { flex: none; }
 
 .osk__key {
   flex: 1 1 0; min-width: 0;
@@ -1524,7 +1538,11 @@ img.logo--dark { display: none; }
 .osk__key--ok:active { background: var(--bg-brand-hover); }
 
 /* Raqamli padda tugmalar kattaroq — ular eng ko'p bosiladi (miqdor, to'lov) */
-.osk--num .osk__key { min-height: 60px; font-size: 24px; font-weight: 700; }
+.osk--num .osk__key { min-height: 60px; height: 60px; font-size: 24px; font-weight: 700; }
+/* Funksional tugmalar matnli, shuning uchun shrifti kichikroq — lekin
+   O'LCHAMI qolganlari bilan bir xil. */
+.osk--num .osk__key--fn,
+.osk--num .osk__key--ok { font-size: 16px; font-weight: 800; }
 
 /* Klaviatura kontentni yopib qo'ymasin: tagida joy qoldiramiz. */
 :root[data-touch="1"] body.osk-open .content,
