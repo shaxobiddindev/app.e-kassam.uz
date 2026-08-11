@@ -309,6 +309,21 @@ export const inventoryApi = {
   // Kirim-chiqim jurnali
   getMovements: (productId, page = 0, size = 50) =>
     request(`/inventory/movements?page=${page}&size=${size}${productId ? `&productId=${productId}` : ""}`),
+
+  /* ── Inventarizatsiya ────────────────────────────────────────────────
+     ⚠ Kutilgan qoldiq va farq javobda `null` bo'lishi MUMKIN: sanoq
+     ochiq turganda ularni faqat rahbar ko'radi. Front buni "nol" deb
+     emas, "ko'rsatilmaydi" deb o'qishi kerak. */
+  stockTake: {
+    open:    (note) => request("/inventory/stock-take", { method: "POST", body: JSON.stringify({ note: note || null }) }),
+    current: ()     => request("/inventory/stock-take/current"),
+    count:   (productId, quantity) => request("/inventory/stock-take/count", {
+               method: "POST", body: JSON.stringify({ productId, quantity: Number(quantity) }) }),
+    removeLine: (lineId) => request(`/inventory/stock-take/lines/${lineId}`, { method: "DELETE" }),
+    close:   () => request("/inventory/stock-take/close", { method: "POST" }),
+    cancel:  () => request("/inventory/stock-take/cancel", { method: "POST" }),
+    history: () => request("/inventory/stock-take/history"),
+  },
 };
 
 // ─── Xavfsizlik: bajik, smena, jurnal, obuna ──────────────────
@@ -406,6 +421,8 @@ export const shopApi = {
   setCreditLimit: (value) => request(`/shop/credit-limit?value=${value}`, { method: "PATCH" }),
   /** Naqdsiz yarashtiruvda tasdiqsiz o'tadigan farq. Standart 0. */
   setNonCashTolerance: (value) => request(`/shop/noncash-tolerance?value=${value}`, { method: "PATCH" }),
+  /** Inventarizatsiya kamomadi chegarasi — SO'MDA (tannarx bo'yicha). */
+  setStockTolerance: (value) => request(`/shop/stock-tolerance?value=${value}`, { method: "PATCH" }),
   getUsers:   (shopId) => request(`/shop/users${shopId ? `?shopId=${shopId}` : ""}`),
   createUser: (data, shopId) => request(`/shop/users${shopId ? `?shopId=${shopId}` : ""}`, { method: "POST", body: JSON.stringify(data) }),
   updateUser: (userId, data, shopId) => request(`/shop/users/${userId}${shopId ? `?shopId=${shopId}` : ""}`, { method: "PUT", body: JSON.stringify(data) }),

@@ -71,6 +71,7 @@ export default function SettingsPage({ toast }) {
   const [returnDays, setReturnDays] = useState("");
   const [creditLimit, setCreditLimit] = useState("");
   const [nonCashTolerance, setNonCashTolerance] = useState("");
+  const [stockTolerance, setStockTolerance] = useState("");
   useEffect(() => {
     if (!isOwner) return;
     shopApi.getProfile()
@@ -80,6 +81,7 @@ export default function SettingsPage({ toast }) {
         setReturnDays(String(r?.data?.returnDays ?? 0));
         setCreditLimit(String(r?.data?.defaultCreditLimit ?? 0));
         setNonCashTolerance(String(r?.data?.nonCashDiffTolerance ?? 0));
+        setStockTolerance(String(r?.data?.stockDiffTolerance ?? 0));
       })
       .catch(() => {});
   }, [isOwner]);
@@ -163,6 +165,16 @@ export default function SettingsPage({ toast }) {
                      value={nonCashTolerance}
                      onChange={(e) => setNonCashTolerance(e.target.value)}
                      onBlur={saveField(shopApi.setNonCashTolerance, nonCashTolerance)} />
+            </Row>
+            {/* Inventarizatsiya kamomadi — SO'MDA (tannarx bo'yicha), donada
+                emas: 3 dona konfet va 3 dona muzlatgich bir xil ko'rinsa,
+                chegara ma'nosini yo'qotardi. */}
+            <Row label={t("settings.stockTolerance")} hint={t("settings.stockToleranceHint")}>
+              <Field type="number" inputMode="decimal" min="0" className="form-input ek-num"
+                     wrapStyle={{ width: 160 }}
+                     value={stockTolerance}
+                     onChange={(e) => setStockTolerance(e.target.value)}
+                     onBlur={saveField(shopApi.setStockTolerance, stockTolerance)} />
             </Row>
             <Row label={t("settings.discountLimit")} hint={t("settings.discountLimitHint")}>
               <Field type="number" inputMode="decimal" min="0" max="100" className="form-input ek-num"
