@@ -501,6 +501,8 @@ export const shopApi = {
   setNonCashTolerance: (value) => request(`/shop/noncash-tolerance?value=${value}`, { method: "PATCH" }),
   /** Inventarizatsiya kamomadi chegarasi — SO'MDA (tannarx bo'yicha). */
   setStockTolerance: (value) => request(`/shop/stock-tolerance?value=${value}`, { method: "PATCH" }),
+  /** Chekning eng ko'pi shuncha foizi ball bilan yopiladi. `0` = yopiq. */
+  setBonusMaxPercent: (value) => request(`/shop/bonus-max-percent?value=${value}`, { method: "PATCH" }),
   /** Do'kon jurnali. ⚠ `shopId` yuborilmaydi — server uni chaqiruvchining
       do'konidan oladi va so'rovdagisini e'tiborga olmaydi. */
   audit: ({ action, actor, page = 0, size = 50 } = {}) => {

@@ -96,6 +96,9 @@ export default function KassaPage({ toast, refreshLowStock }) {
      ta'sir qilmaydi va shunday bo'lishi ham kerak: front hisoblagan
      chegirma kassir tomonidan o'zgartirilishi mumkin bo'lardi. */
   const [tier, setTier]             = useState(null);
+  /* Ball: kassir kiritgan summa + do'kon chegarasi (foizda). */
+  const [bonusUse, setBonusUse]     = useState("");
+  const [bonusMaxPercent, setBonusMaxPercent] = useState(0);
   const [processing, setProcessing] = useState(false);
   const [branchId]                  = useState(null);
   const [showPayModal, setShowPayModal] = useState(false);
@@ -146,13 +149,17 @@ export default function KassaPage({ toast, refreshLowStock }) {
   /* Tanlangan mijozning darajasi. Xatosi JIM yutiladi: daraja — qo'shimcha
      ma'lumot, uning yo'qligi sotuvga xalaqit bermasligi kerak. */
   useEffect(() => {
-    if (!customer?.id) { setTier(null); return; }
+    if (!customer?.id) { setTier(null); setBonusUse(""); return; }
     let alive = true;
     loyaltyApi.customerTier(customer.id)
       .then((r) => { if (alive) setTier(r.data || null); })
       .catch(() => { if (alive) setTier(null); });
+    // Mijoz almashsa kiritilgan ball tozalanadi: oldingi mijozning
+    // balansiga qarab yozilgan raqam yangisiga to'g'ri kelmaydi.
+    setBonusUse("");
     return () => { alive = false; };
   }, [customer?.id]);
+
 
   /* ── Kategoriyalar va standart ko'rinish ───────────────────────
      Ko'rinish tanlanmagan bo'lsa faoliyat turidan olinadi: oziq-ovqatda
@@ -165,15 +172,26 @@ export default function KassaPage({ toast, refreshLowStock }) {
       .catch(() => {});
   }, [branchId]);
 
+  /* Do'kon profili — BIR MARTA va bitta so'rovda: kassa ko'rinishi ham,
+     ball chegarasi ham shundan olinadi.
+
+     ⚠ Ilgari bu yerda faqat ko'rinish olinardi; ball qo'shilganda ikkinchi
+     `getProfile()` yozilgan edi va kassa ochilishida bir xil so'rov ikki
+     marta ketardi. `setView` funksional shaklda — kassir allaqachon
+     tanlagan ko'rinish ustidan yozilmasin. */
   useEffect(() => {
-    if (view) return;                       // kassir allaqachon tanlagan
     shopApi.getProfile()
       .then((r) => {
+        setBonusMaxPercent(Number(r?.data?.bonusMaxPercent) || 0);
         const bt = r?.data?.businessType;
-        setView(["CLOTHING", "COSMETICS", "SERVICE", "ELECTRONICS"].includes(bt) ? "tiles" : "list");
+        const auto = ["CLOTHING", "COSMETICS", "SERVICE", "ELECTRONICS"].includes(bt) ? "tiles" : "list";
+        setView((cur) => cur || auto);
       })
-      .catch(() => setView("list"));
-  }, [view]);
+      .catch(() => {
+        setBonusMaxPercent(0);
+        setView((cur) => cur || "list");
+      });
+  }, []);
 
   const setViewMode = (mode) => {
     setView(mode);
@@ -478,7 +496,23 @@ export default function KassaPage({ toast, refreshLowStock }) {
      summaga aylanardi. Server ham buni rad etadi; bu yerdagi cheklov
      kassirga darhol ko'rinadigan javob berish uchun. */
   const discountNum = Math.max(0, Math.min(Number(discount) || 0, subtotal));
-  const total    = subtotal - discountNum;
+  const afterDiscount = subtotal - discountNum;
+
+  /* ── Ball ─────────────────────────────────────────────────────────────
+     ⚠ Chegara SERVERDA hisoblanadi va shu yerdagi raqam faqat kassirga
+     darhol ko'rsatish uchun. Server yuborilgan summani qayta tekshiradi
+     va oshib ketsa RAD ETADI (jimgina kamaytirmaydi: kassir mijozga
+     aytgan raqam bilan chekdagi raqam boshqa bo'lib qolardi).
+
+     Sodiqlik chegirmasi bu yerda HISOBGA OLINMAYDI: uni ham server
+     qo'yadi va front uni oldindan bilmaydi. Ya'ni ko'rsatilgan
+     «eng ko'pi» biroz yuqoriroq bo'lishi mumkin — server aniqrog'ini
+     aytadi. */
+  const bonusCap = Math.floor(afterDiscount * (Number(bonusMaxPercent) || 0) / 100);
+  const bonusAvail = Math.min(Number(tier?.bonusBalance) || 0, bonusCap);
+  const bonusNum = Math.max(0, Math.min(Number(bonusUse) || 0, bonusAvail));
+
+  const total    = afterDiscount - bonusNum;
   const totalQty = cart.reduce((sum, i) => sum + i.qty, 0);
 
   const handleClearCart = async () => {
@@ -545,6 +579,9 @@ export default function KassaPage({ toast, refreshLowStock }) {
       })),
       paymentType: payType,
       discountAmount: discountNum,
+      // ⚠ Ball — chegirma, to'lov turi emas: `cashAmount` allaqachon
+      // balldan KEYINGI summani ko'rsatadi va kassaga aynan shu tushadi.
+      bonusAmount: bonusNum,
       mixedSecondType: payType === "MIXED" ? mixedSecondType : undefined,
       cashAmount: payType === "CASH" ? total : payType === "MIXED" ? Number(cashAmount) || 0 : 0,
       cardAmount: ["CARD", "CLICK", "PAYME"].includes(payType) ? total
@@ -615,6 +652,10 @@ export default function KassaPage({ toast, refreshLowStock }) {
     clearCart();
     setCustomer(null);
     setCashGiven(""); setCashAmount(""); setCardAmount(""); setDiscount("");
+    /* ⚠ Ball ham tozalanadi. Usiz keyingi mijozning chekiga oldingi
+       mijozning ball summasi tushib qolardi — va u boshqa odamning
+       balansidan yechilardi. */
+    setBonusUse("");
     setPayType("CASH");
     setProcessing(false);
 
@@ -945,6 +986,35 @@ export default function KassaPage({ toast, refreshLowStock }) {
                 )}
               </div>
             )}
+
+            {/* ── Ball ishlatish ──────────────────────────────────────
+                Faqat balans ham, chegara ham noldan katta bo'lganda
+                ko'rinadi: bo'sh maydon kassirni «nega ishlamayapti»
+                degan savolga qo'yardi. */}
+            {customer && bonusAvail > 0 && (
+              <div style={{
+                marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--border-subtle)",
+              }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, fontSize: 13 }}>
+                  <span>
+                    <i className="fa-solid fa-coins" style={{ color: "var(--fg-warning)", marginRight: 6 }} />
+                    {t("bonus.balance")}: <b className="mono">{money(tier.bonusBalance)}</b>
+                  </span>
+                  <button type="button" className="btn btn-outline btn-sm"
+                          onClick={() => setBonusUse(String(bonusAvail))}>
+                    {t("bonus.useMax")}
+                  </button>
+                </div>
+                <input
+                  className="form-input"
+                  type="number" min="0" max={bonusAvail} step="1000"
+                  style={{ marginTop: 8 }}
+                  value={bonusUse}
+                  onChange={(e) => setBonusUse(e.target.value)}
+                  placeholder={t("bonus.usePh", { max: money(bonusAvail) })}
+                />
+              </div>
+            )}
           </div>
 
           <div className="total-card">
@@ -1036,6 +1106,15 @@ export default function KassaPage({ toast, refreshLowStock }) {
               {discountNum > 0 && (
                 <div className="pay-modal-hint">
                   {money(subtotal)} − {money(discountNum)}
+                </div>
+              )}
+              {/* ⚠ Ball to'lov oynasida ham ko'rinadi: kassir yakuniy
+                  summani aytishdan oldin nima hisobidan kamayganini
+                  bilishi kerak — mijoz albatta so'raydi. */}
+              {bonusNum > 0 && (
+                <div className="pay-modal-hint">
+                  <i className="fa-solid fa-coins" style={{ color: "var(--fg-warning)", marginRight: 4 }} />
+                  {t("bonus.used")}: −{money(bonusNum)}
                 </div>
               )}
 
