@@ -22,6 +22,10 @@ const STATS_CONFIG = [
   { key: "totalRevenue",  label: t("rep.totalSales"),     icon: "fa-sack-dollar",     bg: "rgba(1,125,202,0.09)", color: "#017dca" },
   { key: "totalProfit",   label: t("rpt.grossProfit"),    icon: "fa-arrow-trend-up",  bg: "#ecfdf5",              color: "#22c55e" },
   { key: "totalExpenses", label: t("rpt.expenses"),       icon: "fa-money-bill-wave", bg: "#fef2f2",              color: "#ef4444" },
+  /* ⚠ Ombor yo'qotishi SOF FOYDADAN OLDIN turadi: u ham ayiriladigan
+     raqam va sof foyda nega kamayganini o'sha yerdan ko'rish kerak.
+     Usiz egasi «foyda tushib ketibdi» deb, sababini qidirib yurardi. */
+  { key: "inventoryLoss", label: t("rpt.inventoryLoss"),  icon: "fa-trash-can",       bg: "#fff7ed",              color: "#f97316", hint: t("rpt.inventoryLossHint") },
   { key: "netProfit",     label: t("rpt.netProfit"),      icon: "fa-wallet",          bg: "#eff6ff",              color: "#3b82f6", hint: t("rpt.netProfitHint") },
   { key: "totalSales",    label: t("dash.salesCount"),    icon: "fa-cart-shopping",   bg: "#fffbeb",              color: "#f59e0b" },
   { key: "totalCost",     label: t("dash.costPrice"),     icon: "fa-coins",           bg: "#fdf4ff",              color: "#9333ea" },
