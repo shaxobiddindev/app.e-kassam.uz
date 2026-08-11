@@ -182,6 +182,8 @@ export const reportApi = {
   weekly:  (shopId)        => request(`/reports/weekly${shopId ? `?shopId=${shopId}` : ""}`),
   monthly: (shopId)        => request(`/reports/monthly${shopId ? `?shopId=${shopId}` : ""}`),
   custom:  (from, to, shopId) => request(`/reports/custom?from=${from}&to=${to}${shopId ? `&shopId=${shopId}` : ""}`),
+  /** Kassirlarni taqqoslash — naqdsiz ulushi o'rtachadan chetlanishi. */
+  byCashier: (from, to, shopId) => request(`/reports/by-cashier?from=${from}&to=${to}${shopId ? `&shopId=${shopId}` : ""}`),
 };
 
 // ─── Mahsulotlar ──────────────────────────────────────────────
@@ -333,8 +335,14 @@ export const securityApi = {
                   method: "POST", body: JSON.stringify({ openingFloat }) }),
   /* Yopish javobi — Z-HISOBOT (yakuniy). X — ochiq smenaning oraliq holati.
      ⚠ `countedCash` MAJBURIY: yopish "tugatish" emas, naqdni topshirish. */
-  closeShift:   (countedCash) => request("/security/shift/close", {
-                  method: "POST", body: JSON.stringify({ countedCash }) }),
+  /* `countedNonCash` — terminal/kabinet chekidagi jamlar
+     (`{CARD: 1200000}`). Tizimda o'sha tur bo'yicha sotuv bo'lgan bo'lsa
+     server uni MAJBURIY qiladi. */
+  closeShift:   (countedCash, countedNonCash) => request("/security/shift/close", {
+                  method: "POST", body: JSON.stringify({ countedCash, countedNonCash }) }),
+  /* Yopish oynasi qaysi naqdsiz turlarni so'rashi kerak. ⚠ Faqat TURLAR
+     keladi — summani kassir terminal chekidan ko'chirishi kerak. */
+  nonCashTypes: () => request("/security/shift/noncash-types"),
   /* Oldingi smenada sanalgan naqd — yangi smenaga boshlang'ich taklif. */
   suggestedFloat: () => request("/security/shift/suggested-float"),
   cashMovements:  () => request("/security/cash"),
@@ -396,6 +404,8 @@ export const shopApi = {
   setReturnDays: (days) => request(`/shop/return-days?days=${days}`, { method: "PATCH" }),
   /** Nasiya chegarasi — do'kon standarti. */
   setCreditLimit: (value) => request(`/shop/credit-limit?value=${value}`, { method: "PATCH" }),
+  /** Naqdsiz yarashtiruvda tasdiqsiz o'tadigan farq. Standart 0. */
+  setNonCashTolerance: (value) => request(`/shop/noncash-tolerance?value=${value}`, { method: "PATCH" }),
   getUsers:   (shopId) => request(`/shop/users${shopId ? `?shopId=${shopId}` : ""}`),
   createUser: (data, shopId) => request(`/shop/users${shopId ? `?shopId=${shopId}` : ""}`, { method: "POST", body: JSON.stringify(data) }),
   updateUser: (userId, data, shopId) => request(`/shop/users/${userId}${shopId ? `?shopId=${shopId}` : ""}`, { method: "PUT", body: JSON.stringify(data) }),

@@ -276,6 +276,38 @@ export async function printShiftReport(r, shopName) {
   if (r.suspiciousCount > 0) {
     rc.bold().row(t("rpt.suspicious"), String(r.suspiciousCount)).bold(false);
   }
+
+  /* ── Yarashtiruv ────────────────────────────────────────────────────
+     ⚠ Ilgari chekda BU BO'LIM UMUMAN YO'Q edi: qog'ozda sotuv jamlari
+     chiqib, kamomad esa faqat ekranda qolardi. Holbuki kunni topshirish
+     aynan shu qog'oz bilan bo'ladi va farq imzolanadigan raqam.
+
+     Maydonlar shartli chiziladi — kassirning X-hisobotida kutilgan
+     summalar `null` bo'lib keladi (server ataylab maskalaydi). */
+  if (r.cash) {
+    rc.rule();
+    rc.row(t("cash.openingFloat"), money(r.cash.openingFloat));
+    if (r.cash.expectedCash != null) rc.row(t("cash.expected"), money(r.cash.expectedCash));
+    if (r.cash.countedCash != null) {
+      rc.bold().row(t("cash.counted"), money(r.cash.countedCash)).bold(false);
+      rc.bold().row(t("cash.difference"), money(r.cash.difference)).bold(false);
+    }
+  }
+  if (r.nonCash?.length) {
+    rc.rule();
+    rc.line(t("noncash.title"));
+    for (const l of r.nonCash) {
+      if (l.counted == null) {
+        // X-hisobot: faqat tur ko'rinadi (yoki rahbarga kutilgan summa).
+        rc.row("  " + paymentLabel(l.paymentType), l.expected == null ? "-" : money(l.expected));
+      } else {
+        rc.row("  " + paymentLabel(l.paymentType), `${money(l.expected)} / ${money(l.counted)}`);
+        if (Number(l.difference) !== 0) {
+          rc.bold().row("  " + t("cash.difference"), money(l.difference)).bold(false);
+        }
+      }
+    }
+  }
   rc.rule();
   rc.center().line(new Date().toLocaleString("uz-UZ")).line("e-kassam.uz");
   rc.cut();

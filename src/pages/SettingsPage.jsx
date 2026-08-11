@@ -70,6 +70,7 @@ export default function SettingsPage({ toast }) {
   const [discountLimit, setDiscountLimit] = useState("");
   const [returnDays, setReturnDays] = useState("");
   const [creditLimit, setCreditLimit] = useState("");
+  const [nonCashTolerance, setNonCashTolerance] = useState("");
   useEffect(() => {
     if (!isOwner) return;
     shopApi.getProfile()
@@ -78,6 +79,7 @@ export default function SettingsPage({ toast }) {
         setDiscountLimit(String(r?.data?.maxDiscountPercent ?? 0));
         setReturnDays(String(r?.data?.returnDays ?? 0));
         setCreditLimit(String(r?.data?.defaultCreditLimit ?? 0));
+        setNonCashTolerance(String(r?.data?.nonCashDiffTolerance ?? 0));
       })
       .catch(() => {});
   }, [isOwner]);
@@ -151,6 +153,16 @@ export default function SettingsPage({ toast }) {
                      value={tolerance}
                      onChange={(e) => setTolerance(e.target.value)}
                      onBlur={saveTolerance} />
+            </Row>
+            {/* Naqdsiz farq chegarasi naqdnikidan ALOHIDA va standarti 0:
+                naqdni odam sanaydi, naqdsizda esa ikkala raqam ham
+                mashinadan keladi — farq bo'lsa demak biror narsa noto'g'ri. */}
+            <Row label={t("settings.nonCashTolerance")} hint={t("settings.nonCashToleranceHint")}>
+              <Field type="number" inputMode="decimal" min="0" className="form-input ek-num"
+                     wrapStyle={{ width: 160 }}
+                     value={nonCashTolerance}
+                     onChange={(e) => setNonCashTolerance(e.target.value)}
+                     onBlur={saveField(shopApi.setNonCashTolerance, nonCashTolerance)} />
             </Row>
             <Row label={t("settings.discountLimit")} hint={t("settings.discountLimitHint")}>
               <Field type="number" inputMode="decimal" min="0" max="100" className="form-input ek-num"

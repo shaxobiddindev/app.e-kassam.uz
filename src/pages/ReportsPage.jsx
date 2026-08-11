@@ -29,9 +29,34 @@ function PayLabel({ type }) {
   return <><i className={`fa-solid ${p.icon || "fa-wallet"}`} style={{ color: p.color }} aria-hidden="true" /> {p.label}</>;
 }
 
+/** Naqdsiz turlar — bank yoki provayder bilan solishtiriladigan qism.
+    ⚠ `CREDIT` bu yerda YO'Q: nasiya to'lov emas, qarz — solishtiradigan
+    tashqi raqami yo'q (backenddagi `PaymentSplitter.NON_CASH` bilan bir xil). */
+const NON_CASH = ["CARD", "CLICK", "PAYME"];
+
+/* Davr chegaralari — BACKEND bilan AYNAN bir xil hisoblanadi
+   (`ReportService`: UTC sutka boshi). Boshqacha hisoblansa, bitta
+   sahifadagi ikkita kartochka har xil davrni ko'rsatib, farqning sababi
+   topilmasdi. */
+function periodRange(period) {
+  const now = new Date();
+  const startOfDayUtc = (d) =>
+    new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())).toISOString().replace(/\.\d{3}/, "");
+  if (period === "weekly") {
+    const d = new Date(now); d.setDate(d.getDate() - 7);
+    return [startOfDayUtc(d), now.toISOString().replace(/\.\d{3}/, "")];
+  }
+  if (period === "monthly") {
+    const d = new Date(now.getFullYear(), now.getMonth(), 1);
+    return [startOfDayUtc(d), now.toISOString().replace(/\.\d{3}/, "")];
+  }
+  return [startOfDayUtc(now), now.toISOString().replace(/\.\d{3}/, "")];
+}
+
 export default function ReportsPage({ toast }) {
   const [period, setPeriod]   = useState("daily");
   const [data, setData]       = useState(null);
+  const [cashiers, setCashiers] = useState(null);
   const [loading, setLoading] = useState(false);
   // Tez javobda skeleton umuman chizilmaydi; chizilsa kamida 400ms turadi.
   const busy = useLoading(loading);
@@ -44,6 +69,14 @@ export default function ReportsPage({ toast }) {
       .then((res) => setData(res.data))
       .catch((err) => toast.error(err.message))
       .finally(() => setLoading(false));
+
+    /* Kassirlar taqqoslashi ALOHIDA so'rov: u yiqilsa ham asosiy hisobot
+       chiziladi. Xatosi ham ko'rsatilmaydi — bu qo'shimcha panel, uning
+       yo'qligi sahifani ishlatishga xalaqit bermaydi. */
+    const [from, to] = periodRange(period);
+    reportApi.byCashier(from, to, branchId)
+      .then((res) => setCashiers(res.data))
+      .catch(() => setCashiers(null));
   }, [period, branchId]);
 
   return (
@@ -156,6 +189,100 @@ export default function ReportsPage({ toast }) {
               </div>
             </div>
           </div>
+
+          {/* ── Naqdsiz jamlama ───────────────────────────────────────────
+              Bu kartochka bitta ish uchun: egasi shu raqamlarni bank
+              ilovasi va Click/Payme kabineti bilan solishtiradi. To'lov
+              turini kassir QO'LDA tanlaydi, ya'ni naqdni "karta" deb yozib
+              pulni olib qolish mumkin — mos kelmaslik aynan shuni ochadi. */}
+          <div className="card" style={{ marginTop: 18 }}>
+            <div className="card-header">
+              <span className="card-title">
+                <i className="fa-solid fa-building-columns text-blue" />
+                {t("rpt.nonCashTotals")}
+              </span>
+            </div>
+            <div className="card-body">
+              <p className="text-muted" style={{ fontSize: 13, marginTop: 0 }}>
+                {t("rpt.nonCashCompareHint")}
+              </p>
+              {(() => {
+                const rows = (data.paymentSummary || []).filter((p) => NON_CASH.includes(p.paymentType));
+                if (!rows.length) return <Empty text={t("rep.noData")} />;
+                const total = rows.reduce((s, p) => s + Number(p.amount || 0), 0);
+                return (
+                  <>
+                    {rows.map((p) => (
+                      <div key={p.paymentType} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid var(--border)" }}>
+                        <span className="fw-700" style={{ fontSize: 13 }}><PayLabel type={p.paymentType} /></span>
+                        <span className="mono fw-700">{money(p.amount)}</span>
+                      </div>
+                    ))}
+                    <div style={{ display: "flex", justifyContent: "space-between", paddingTop: 10 }}>
+                      <span className="fw-800">{t("common.total")}</span>
+                      <span className="mono fw-800">{money(total)}</span>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+
+          {/* ── Kassirlar taqqoslash ─────────────────────────────────────
+              Terminal integratsiyasi yo'q ekan, ikkinchi nazorat — NAQSH:
+              bir xil smenalarda ishlagan kassirlarning naqdsiz ulushi
+              bir-biriga yaqin bo'lishi kerak. */}
+          {cashiers?.rows?.length > 0 && (
+            <div className="card" style={{ marginTop: 18 }}>
+              <div className="card-header">
+                <span className="card-title">
+                  <i className="fa-solid fa-users-between-lines text-blue" />
+                  {t("rpt.byCashier")}
+                </span>
+                <span className="text-muted mono" style={{ fontSize: 13 }}>
+                  {t("rpt.shopAverage")}: {cashiers.shopNonCashShare}%
+                </span>
+              </div>
+              <div className="card-body" style={{ paddingBottom: 0 }}>
+                <p className="text-muted" style={{ fontSize: 13, marginTop: 0 }}>
+                  {t("rpt.cashierHint")}
+                </p>
+              </div>
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>{t("sales.colCashier")}</th>
+                      <th>{t("dash.salesCount")}</th>
+                      <th>{t("common.sum")}</th>
+                      <th>{t("rpt.nonCashShare")}</th>
+                      <th>{t("rpt.deviation")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cashiers.rows.map((r) => {
+                      // 10 foizdan katta chetlanish ajratiladi. Bu AYBLOV
+                      // emas — kassir kunning kartali qismida ishlagan
+                      // bo'lishi ham mumkin; qolganini egasi hal qiladi.
+                      const far = Math.abs(Number(r.deviation)) >= 10;
+                      return (
+                        <tr key={r.userId}>
+                          <td className="fw-700">{r.fullName}</td>
+                          <td className="mono">{r.salesCount}</td>
+                          <td className="mono fw-700">{money(r.total)}</td>
+                          <td className="mono">{r.nonCashShare}%</td>
+                          <td className="mono fw-700"
+                              style={far ? { color: "var(--fg-danger)" } : undefined}>
+                            {Number(r.deviation) > 0 ? "+" : ""}{r.deviation}%
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </>
       ) : null}
     </div>

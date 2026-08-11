@@ -39,7 +39,10 @@ export default function ShiftBar({ toast }) {
   const [busy, setBusy] = useState(false);
   const [report, setReport] = useState(null);      // ko'rsatilayotgan X/Z hisobot
   const [openForm, setOpenForm]   = useState(null); // { float } — ochish oynasi
-  const [closeForm, setCloseForm] = useState(null); // { counted } — yopish oynasi
+  /* { counted, nonCash: {CARD: "…"}, types: ["CARD"] } — yopish oynasi.
+     `types` serverdan keladi: qaysi naqdsiz turlar bo'yicha sotuv bo'lgan.
+     ⚠ SUMMALAR kelmaydi — kassir ularni terminal chekidan ko'chiradi. */
+  const [closeForm, setCloseForm] = useState(null);
   const [cashForm, setCashForm]   = useState(null); // { type, amount, reason }
 
   const load = useCallback(async () => {
@@ -81,12 +84,28 @@ export default function ShiftBar({ toast }) {
     }
   };
 
+  /* Yopish oynasi SERVERDAN so'raladi: qaysi naqdsiz turlar bo'yicha
+     sotuv bo'lgani faqat serverga ma'lum. Ro'yxat bo'sh bo'lsa oyna
+     ilgarigidek bitta maydondan iborat bo'ladi. */
+  const askClose = async () => {
+    let types = [];
+    try {
+      types = (await securityApi.nonCashTypes()).data || [];
+    } catch (_) {
+      // Ro'yxat kelmasa ham yopishga yo'l ochiq qoldiramiz: server
+      // yetishmagan turni baribir o'zi aytadi.
+    }
+    setCloseForm({ counted: "", nonCash: {}, types });
+  };
+
   const doClose = async () => {
     setBusy(true);
     try {
       // Yopish javobi — Z-hisobot: darhol modalda ko'rsatamiz, kassir
       // qog'ozga chiqarib kunni topshiradi.
-      const res = await guard(() => securityApi.closeShift(num(closeForm.counted)));
+      const nonCash = {};
+      for (const k of closeForm.types || []) nonCash[k] = num(closeForm.nonCash[k]);
+      const res = await guard(() => securityApi.closeShift(num(closeForm.counted), nonCash));
       toast?.success(res.message);
       setShift(null);
       setCloseForm(null);
@@ -163,7 +182,7 @@ export default function ShiftBar({ toast }) {
             </button>
           )}
           <button className={`btn btn-sm ${shift ? "btn-outline" : "btn-primary"}`}
-                  onClick={() => (shift ? setCloseForm({ counted: "" }) : askOpen())} disabled={busy}>
+                  onClick={() => (shift ? askClose() : askOpen())} disabled={busy}>
             <i className={`fa-solid ${shift ? "fa-right-from-bracket" : "fa-right-to-bracket"}`} aria-hidden="true" />{" "}
             {shift ? t("shift.close") : t("shift.open")}
           </button>
@@ -210,9 +229,14 @@ export default function ShiftBar({ toast }) {
               <>
                 <hr style={{ border: "none", borderTop: "1px dashed var(--border, #d4d4d8)", margin: "4px 0" }} />
                 <Row k={t("cash.openingFloat")} v={money(report.cash.openingFloat)} />
-                <Row k={t("cash.sales")}        v={money(report.cash.cashSales)} />
-                <Row k={t("cash.movements")}    v={money(report.cash.movements)} />
-                <Row k={t("cash.expected")}     v={money(report.cash.expectedCash)} strong />
+                {/* ⚠ Kutilgan qiymatlar kassirga `null` keladi (server
+                    maskalaydi) — u sanashdan oldin raqamni ko'rmasligi
+                    kerak. Shuning uchun qatorlar shartli chiziladi. */}
+                {report.cash.cashSales != null && <Row k={t("cash.sales")}     v={money(report.cash.cashSales)} />}
+                {report.cash.movements != null && <Row k={t("cash.movements")} v={money(report.cash.movements)} />}
+                {report.cash.expectedCash != null && (
+                  <Row k={t("cash.expected")} v={money(report.cash.expectedCash)} strong />
+                )}
                 {report.cash.countedCash != null && (
                   <>
                     <Row k={t("cash.counted")} v={money(report.cash.countedCash)} strong />
@@ -220,6 +244,28 @@ export default function ShiftBar({ toast }) {
                          danger={Number(report.cash.difference) !== 0} strong />
                   </>
                 )}
+              </>
+            )}
+
+            {/* ── Naqdsiz yarashtiruv ──────────────────────────────────
+                X-hisobotda faqat TURLAR ko'rinadi (kassirga summa yo'q),
+                Z-hisobotda esa tizim/terminal/farq uchligi. */}
+            {report.nonCash?.length > 0 && (
+              <>
+                <hr style={{ border: "none", borderTop: "1px dashed var(--border, #d4d4d8)", margin: "4px 0" }} />
+                <Row k={t("noncash.title")} v="" muted />
+                {report.nonCash.map((l) => (
+                  <div key={l.paymentType} style={{ marginLeft: 8 }}>
+                    <Row k={`· ${paymentLabel(l.paymentType)}`}
+                         v={l.counted == null
+                             ? (l.expected == null ? "—" : money(l.expected))
+                             : `${money(l.expected)} / ${money(l.counted)}`}
+                         muted />
+                    {l.difference != null && Number(l.difference) !== 0 && (
+                      <Row k={`  ${t("cash.difference")}`} v={money(l.difference)} danger strong />
+                    )}
+                  </div>
+                ))}
               </>
             )}
             {report.staff?.length > 1 && (
@@ -257,7 +303,8 @@ export default function ShiftBar({ toast }) {
             <>
               <button className="btn btn-outline btn-sm" onClick={() => setCloseForm(null)}>{t("common.cancel")}</button>
               <button className="btn btn-danger btn-sm" onClick={doClose}
-                      disabled={busy || closeForm.counted === ""}>
+                      disabled={busy || closeForm.counted === ""
+                                || (closeForm.types || []).some((k) => (closeForm.nonCash[k] ?? "") === "")}>
                 <i className="fa-solid fa-right-from-bracket" aria-hidden="true" /> {t("shift.close")}
               </button>
             </>
@@ -265,8 +312,31 @@ export default function ShiftBar({ toast }) {
           <label className="form-label">{t("cash.counted")}</label>
           <Field type="number" inputMode="decimal" min="0" className="form-input ek-num"
                  value={closeForm.counted} autoFocus
-                 onChange={(e) => setCloseForm({ counted: e.target.value })} />
+                 onChange={(e) => setCloseForm({ ...closeForm, counted: e.target.value })} />
           <p className="form-hint">{t("cash.countHint")}</p>
+
+          {/* ── Naqdsiz yarashtiruv ──────────────────────────────────────
+              Faqat shu smenada ishlatilgan turlar so'raladi: terminali
+              yo'q do'kon har kuni uchta nolni yozib o'tirmasin.
+              Raqam TERMINALNING o'z chekidan ko'chiriladi — u bank
+              raqami va kassir uni o'ylab topa olmaydi. */}
+          {(closeForm.types || []).length > 0 && (
+            <>
+              <hr style={{ border: "none", borderTop: "1px dashed var(--border, #d4d4d8)", margin: "14px 0 10px" }} />
+              <p className="form-hint" style={{ marginTop: 0 }}>{t("noncash.hint")}</p>
+              {closeForm.types.map((k) => (
+                <div key={k} style={{ marginTop: 8 }}>
+                  <label className="form-label">{paymentLabel(k)}</label>
+                  <Field type="number" inputMode="decimal" min="0" className="form-input ek-num"
+                         value={closeForm.nonCash[k] ?? ""}
+                         onChange={(e) => setCloseForm({
+                           ...closeForm,
+                           nonCash: { ...closeForm.nonCash, [k]: e.target.value },
+                         })} />
+                </div>
+              ))}
+            </>
+          )}
         </Modal>
       )}
 
