@@ -26,6 +26,7 @@ const NAV_ITEMS = [
   ]},
   { section: "nav.section.reports", items: [
     { id: "reports",        path: "/reports",       key: "nav.reports",      icon: "fa-chart-bar",     roles: ["ADMIN", "SHOP_ADMIN", "OWNER"] },
+    { id: "expenses",       path: "/expenses",      key: "nav.expenses",     icon: "fa-money-bill-wave", roles: ["ADMIN", "SHOP_ADMIN", "OWNER"] },
     { id: "custom-report",  path: "/custom-report", key: "nav.customReport", icon: "fa-calendar-days", roles: ["ADMIN", "SHOP_ADMIN", "OWNER"] },
   ]},
   /* ── BOSHQARUV ────────────────────────────────────────────────────────────
@@ -69,6 +70,7 @@ const PAGE_TITLES = {
   "/customers":      { key:"nav.customers",    icon:"fa-users"         },
   "/sales":          { key:"nav.sales",        icon:"fa-receipt"       },
   "/reports":        { key:"nav.reports",      icon:"fa-chart-bar"     },
+  "/expenses":       { key:"nav.expenses",     icon:"fa-money-bill-wave"},
   "/custom-report":  { key:"nav.customReport", icon:"fa-calendar-days" },
   "/shop-users":     { key:"nav.staff",        icon:"fa-users-gear"    },
   "/branches":       { key:"nav.branches",     icon:"fa-store"         },

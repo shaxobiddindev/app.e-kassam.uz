@@ -14,11 +14,17 @@ const PERIODS = [
   { key: "monthly", label: t("rep.month") },
 ];
 
+/* ⚠ `totalProfit` endi YALPI foyda deb ataladi va yonida SOF foyda turadi.
+   Ilgari u "Sof foyda" deb ko'rsatilardi, holbuki ijara/oylik/transport
+   umuman ayirilmasdi — raqam haqiqiydan katta chiqib, zarar ko'rilayotgan
+   oy foydali bo'lib ko'rinardi. */
 const STATS_CONFIG = [
-  { key: "totalRevenue", label: t("rep.totalSales"),    icon: "fa-sack-dollar",    bg: "rgba(1,125,202,0.09)", color: "#017dca" },
-  { key: "totalProfit",  label: t("dash.netProfit"),     icon: "fa-arrow-trend-up", bg: "#ecfdf5",              color: "#22c55e" },
-  { key: "totalSales",   label: t("dash.salesCount"), icon: "fa-cart-shopping",  bg: "#fffbeb",              color: "#f59e0b" },
-  { key: "totalCost",    label: t("dash.costPrice"),      icon: "fa-coins",          bg: "#fdf4ff",              color: "#9333ea" },
+  { key: "totalRevenue",  label: t("rep.totalSales"),     icon: "fa-sack-dollar",     bg: "rgba(1,125,202,0.09)", color: "#017dca" },
+  { key: "totalProfit",   label: t("rpt.grossProfit"),    icon: "fa-arrow-trend-up",  bg: "#ecfdf5",              color: "#22c55e" },
+  { key: "totalExpenses", label: t("rpt.expenses"),       icon: "fa-money-bill-wave", bg: "#fef2f2",              color: "#ef4444" },
+  { key: "netProfit",     label: t("rpt.netProfit"),      icon: "fa-wallet",          bg: "#eff6ff",              color: "#3b82f6", hint: t("rpt.netProfitHint") },
+  { key: "totalSales",    label: t("dash.salesCount"),    icon: "fa-cart-shopping",   bg: "#fffbeb",              color: "#f59e0b" },
+  { key: "totalCost",     label: t("dash.costPrice"),     icon: "fa-coins",           bg: "#fdf4ff",              color: "#9333ea" },
 ];
 
 /* To'lov turi yorlig'i — CLICK va PAYME ham qamrab olinadi.
@@ -112,6 +118,11 @@ export default function ReportsPage({ toast }) {
                 icon={cfg.icon}
                 bg={cfg.bg}
                 color={cfg.color}
+                /* Sof foyda MANFIY bo'lishi mumkin va aynan shunda ko'zga
+                   tashlanishi kerak — oy zarar bilan ketayotgani eng muhim
+                   xabar. */
+                valueColor={cfg.key === "netProfit" && Number(data.netProfit) < 0 ? "var(--fg-danger)" : undefined}
+                hint={cfg.hint}
               />
             ))}
           </div>

@@ -44,15 +44,22 @@ export function FormGroup({ label, children }) {
 }
 
 // ─── Stat Card ────────────────────────────────────────────────
-export function StatCard({ label, value, icon, bg, color, change }) {
+/**
+ * `hint` — yorliq ostidagi kichik izoh (masalan formulani aytish uchun).
+ * `valueColor` — faqat RAQAM rangi. ⚠ `color` ikonka uchun; raqamni ham
+ * u bilan bo'yash barcha mavjud kartochkalarning ko'rinishini o'zgartirib
+ * yuborardi.
+ */
+export function StatCard({ label, value, icon, bg, color, change, hint, valueColor }) {
   return (
     <div className="stat-card">
       <div className="stat-icon" style={{ background: bg, color }}>
         <i className={`fa-solid ${icon}`} />
       </div>
       <div>
-        <div className="stat-value">{value}</div>
+        <div className="stat-value" style={valueColor ? { color: valueColor } : undefined}>{value}</div>
         <div className="stat-label">{label}</div>
+        {hint && <div className="text-muted" style={{ fontSize: 11 }}>{hint}</div>}
         {change && (
           <div className="stat-change">
             <i className="fa-solid fa-caret-up" /> {change}

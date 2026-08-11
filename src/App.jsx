@@ -15,6 +15,7 @@ import DashboardPage    from "./pages/DashboardPage";
 import ProductsPage     from "./pages/ProductsPage";
 import InventoryPage    from "./pages/InventoryPage";
 import StockTakePage    from "./pages/StockTakePage";
+import ExpensesPage     from "./pages/ExpensesPage";
 import CustomersPage    from "./pages/CustomersPage";
 import KassaPage        from "./pages/KassaPage";
 import ReportsPage      from "./pages/ReportsPage";
@@ -183,6 +184,8 @@ export default function App() {
             <Route path="/sales" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"]}><SalesPage toast={toast} /></ProtectedRoute>} />
             <Route path="/reports" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><ReportsPage toast={toast} /></ProtectedRoute>} />
             <Route path="/custom-report" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><CustomReportPage toast={toast} /></ProtectedRoute>} />
+            {/* Xarajat — do'kon pulining qayerga ketgani; kassirga yopiq. */}
+            <Route path="/expenses" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><ExpensesPage toast={toast} /></ProtectedRoute>} />
             <Route path="/shop-users" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><ShopUsersPage toast={toast} /></ProtectedRoute>} />
             <Route path="/branches" element={<ProtectedRoute user={user} roles={["OWNER"]}><ShopsPage toast={toast} /></ProtectedRoute>} />
             {/* Sozlamalar — hamma rolga ochiq: mavzu va til xodimning

@@ -326,6 +326,18 @@ export const inventoryApi = {
   },
 };
 
+// ─── Xarajatlar ───────────────────────────────────────────────
+/* ⚠ `fromRegister: true` — kassadan to'landi: server naqd harakati
+   yaratadi va `expectedCash` kamayadi. Ochiq smena SHART. */
+export const expenseApi = {
+  categories:       () => request("/expenses/categories"),
+  createCategory:   (name) => request("/expenses/categories", { method: "POST", body: JSON.stringify({ name }) }),
+  archiveCategory:  (id) => request(`/expenses/categories/${id}`, { method: "DELETE" }),
+  list:   (from, to) => request(`/expenses${from ? `?from=${from}&to=${to}` : ""}`),
+  create: (data) => request("/expenses", { method: "POST", body: JSON.stringify(data) }),
+  delete: (id) => request(`/expenses/${id}`, { method: "DELETE" }),
+};
+
 // ─── Xavfsizlik: bajik, smena, jurnal, obuna ──────────────────
 export const securityApi = {
   // Bajik — FAQAT do'kon egasi (backend ham yo'l darajasida cheklaydi).
