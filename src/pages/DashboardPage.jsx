@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { t } from "../lib/ek-i18n";
 import { useNavigate } from "react-router-dom";
-import { reportApi, inventoryApi } from "../api";
+import { reportApi, inventoryApi, loyaltyApi } from "../api";
 import { BranchSelector } from "../components";
 import { Empty } from "../components/ui";
 import { money } from "../utils";
@@ -46,6 +46,7 @@ export default function DashboardPage({ toast }) {
   const [data, setData]         = useState(null);
   const [lowStock, setLowStock] = useState([]);
   const [signals, setSignals]   = useState(null);
+  const [loyalty, setLoyalty]   = useState(null);
   const [loading, setLoading]   = useState(true);
   const [branchId, setBranchId] = useState(null);
   const navigate = useNavigate();
@@ -59,8 +60,13 @@ export default function DashboardPage({ toast }) {
          ham sahifa to'liq ishlaydi. Xatoni toast qilish har bir yangilanishda
          egasiga tushunarsiz xabar chiqarardi. */
       reportApi.signals(branchId).then((r) => r.data).catch(() => null),
+      /* Sodiqlik natijasi — joriy oy. U ham qo'shimcha: yiqilsa sahifa
+         ishlayveradi. */
+      loyaltyApi.summary().then((r) => r.data).catch(() => null),
     ])
-      .then(([daily, low, sig]) => { setData(daily); setLowStock(low); setSignals(sig); })
+      .then(([daily, low, sig, loy]) => {
+        setData(daily); setLowStock(low); setSignals(sig); setLoyalty(loy);
+      })
       .finally(() => setLoading(false));
   }, [branchId]);
 
@@ -164,6 +170,44 @@ export default function DashboardPage({ toast }) {
       <div style={{ marginBottom: 18 }}>
         <AttentionList items={loading ? [] : attention} />
       </div>
+
+      {/* ── Sodiqlik ──────────────────────────────────────────────────────
+          ⚠ ATAYLAB «E'tibor talab qiladi» dan TASHQARIDA. U blok
+          muammolar uchun; sodiqlik esa muammo emas va u yerga tushsa,
+          egasi berilgan chegirmani zarar deb o'qirdi.
+
+          ⚠ Chegirma YOLG'IZ ko'rsatilmaydi. Yolg'iz raqam xarajatdek
+          o'qiladi, holbuki bu — sarmoya: uning qaytimi o'ng tomonda
+          turgan tushum. Egasi nisbatni o'zi ko'radi. */}
+      {!loading && loyalty?.receipts > 0 && (
+        <div className="card" style={{ marginBottom: 18 }}>
+          <div className="card-header">
+            <span className="card-title">
+              <i className="fa-solid fa-award" style={{ color: "var(--fg-warning)" }} aria-hidden="true" />
+              {t("dash.loyalty")}
+            </span>
+            <span className="text-muted" style={{ fontSize: 12 }}>
+              {t("dash.loyaltyThisMonth")}
+            </span>
+          </div>
+          <div className="card-body" style={{ display: "flex", flexWrap: "wrap", gap: 24 }}>
+            <div>
+              <div className="text-muted" style={{ fontSize: 12 }}>{t("dash.loyaltyGiven")}</div>
+              <div className="ek-num" style={{ fontSize: 18, fontWeight: 800 }}>{money(loyalty.discountGiven)}</div>
+            </div>
+            <div>
+              <div className="text-muted" style={{ fontSize: 12 }}>{t("dash.loyaltyRevenue")}</div>
+              <div className="ek-num" style={{ fontSize: 18, fontWeight: 800, color: "var(--fg-success)" }}>
+                {money(loyalty.revenue)}
+              </div>
+            </div>
+            <div>
+              <div className="text-muted" style={{ fontSize: 12 }}>{t("dash.loyaltyCustomers")}</div>
+              <div className="ek-num" style={{ fontSize: 18, fontWeight: 800 }}>{loyalty.tieredCustomers}</div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid-2c">
         {/* To'lov turlari */}

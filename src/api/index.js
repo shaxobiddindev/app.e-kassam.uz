@@ -439,6 +439,17 @@ export const loyaltyApi = {
   removeTier:   (id)      => request(`/loyalty/tiers/${id}`, { method: "DELETE" }),
   /** Mijozning darajasi + keyingi darajagacha qancha qolgani. */
   customerTier: (id)      => request(`/loyalty/customers/${id}`),
+  /**
+   * Dasturning natijasi: berilgan chegirma + o'sha cheklarning tushumi.
+   * ⚠ Kassirga YOPIQ (pul hisoboti) — sanasiz chaqirilsa joriy oy.
+   */
+  summary: (from, to) => {
+    const p = new URLSearchParams();
+    if (from) p.set("from", from);
+    if (to) p.set("to", to);
+    const q = p.toString();
+    return request(`/loyalty/summary${q ? `?${q}` : ""}`);
+  },
 };
 
 export const customerApi = {
