@@ -10,6 +10,8 @@ import { money, quantity as fmtQty } from "../utils";
 import Select from "../components/ek/Select";
 import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
+import { isDesktop } from "../lib/ek-desktop";
+import { printPriceLabels } from "../lib/ek-hardware";
 import {
   UNIT, PRODUCT_TYPE, MARKING_GROUP, options, unitLabel, unitDecimals,
 } from "../lib/ek-labels";
@@ -218,6 +220,26 @@ export default function ProductsPage({ toast }) {
   const divisible = unitDecimals(form.unit) > 0;
   const isService = form.type === "SERVICE";
 
+  /* ── Narx yorliqlari ────────────────────────────────────────────────
+     Faqat `.exe` da ko'rinadi: chek printeriga bayt yuborish Tauri
+     tomonida bo'ladi, brauzerda esa umuman imkoni yo'q. Tugmani
+     ko'rsatib qo'yib, bosilganda «desktop kerak» deyish — foydasiz. */
+  const labelsOn = isDesktop();
+  const printLabels = async (items) => {
+    /* Xizmatda javon yorliq ham bo'lmaydi: «soch olish» ni javonga
+       qo'yib bo'lmaydi va barkodi ham yo'q. */
+    const printable = items.filter((p) => p.type !== "SERVICE");
+    if (!printable.length) { toast?.error(t("label.nothing")); return; }
+    try {
+      await printPriceLabels(
+        printable.map((p) => ({ name: p.name, salePrice: p.salePrice, barcode: p.barcode })),
+        { copies: 1, shopName: localStorage.getItem("ek_shopName") || "" });
+      toast?.success(t("label.sent", { n: printable.length }));
+    } catch (err) {
+      toast?.error(err.message);
+    }
+  };
+
   return (
     <div>
       <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
@@ -228,6 +250,16 @@ export default function ProductsPage({ toast }) {
           <button className="btn btn-outline btn-sm" onClick={loadData} title={t("products.refreshTitle")}>
             <i className="fa-solid fa-rotate-right" /> {t("common.refresh")}
           </button>
+          {/* ⚠ FILTRLANGANLAR chiqadi, hammasi emas. Narx o'zgargandan
+              keyin yorliq kerak bo'ladi va bu odatda bitta kategoriya
+              yoki qidiruv natijasi — 800 ta tovarni lenta qilib chiqarish
+              hech kimga kerak emas va bir rulon qog'ozni yeydi. */}
+          {labelsOn && filtered.length > 0 && (
+            <button className="btn btn-outline btn-sm" onClick={() => printLabels(filtered)}
+                    title={t("label.printFilteredHint")}>
+              <i className="fa-solid fa-tags" /> {t("label.printFiltered", { n: filtered.length })}
+            </button>
+          )}
           <BranchSelector selectedId={branchId} onSelect={setBranchId} />
           {!branchId && isHeadUser && (
             <>
@@ -325,6 +357,14 @@ export default function ProductsPage({ toast }) {
                       </td>
                       <td>
                         <div style={{ display: "flex", gap: 6 }}>
+                          {/* Yorliq — faqat `.exe` da: chek printeriga
+                              brauzerdan bayt yuborib bo'lmaydi. */}
+                          {labelsOn && (
+                            <button className="btn-icon" onClick={() => printLabels([p])}
+                                    aria-label={t("label.print")} title={t("label.print")}>
+                              <i className="fa-solid fa-tag" />
+                            </button>
+                          )}
                           <button className="btn-icon" onClick={() => openEdit(p)} aria-label={t("common.edit")}>
                             <i className="fa-solid fa-pen" />
                           </button>

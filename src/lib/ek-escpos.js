@@ -200,6 +200,39 @@ export class Receipt {
     return this;
   }
 
+  /**
+   * EAN-13 barkod — do'kondagi tovarlarning HAQIQIY simvologiyasi.
+   *
+   * NEGA CODE 128 EMAS: do'kon skanerlari ikkalasini ham o'qiydi, lekin
+   * javondagi yorliqdagi barkod tovar QADOG'IDAGI bilan bir xil turda
+   * bo'lishi kerak — aks holda inventarizatsiyada skanerlangan kod bilan
+   * yorliqdagi kod boshqa-boshqa chiqib, xodim qaysi biri to'g'ri ekanini
+   * bilmasdi.
+   *
+   * ⚠ Nazorat raqami TEKSHIRILADI va noto'g'ri bo'lsa `false` qaytadi.
+   * Sabab: printer noto'g'ri EAN ni JIMGINA chiqarmaydi — yorliq
+   * barkodsiz chiqadi va buni faqat javonda skaner qilganda bilinadi.
+   * Chaqiruvchi `false` ni ko'rib Code 128 ga o'tadi.
+   */
+  barcodeEan13(digits) {
+    const raw = String(digits ?? "").replace(/\D/g, "");
+    if (raw.length !== 13) return false;
+
+    // Nazorat raqami: 1,3,1,3… og'irliklar bilan.
+    let sum = 0;
+    for (let i = 0; i < 12; i++) sum += Number(raw[i]) * (i % 2 === 0 ? 1 : 3);
+    const check = (10 - (sum % 10)) % 10;
+    if (check !== Number(raw[12])) return false;
+
+    this.raw([GS, 0x68, 60]);           // balandlik
+    this.raw([GS, 0x77, 2]);            // modul kengligi
+    this.raw([GS, 0x48, 2]);            // raqam barkod OSTIDA
+    const data = [...raw].map((d) => d.charCodeAt(0));
+    this.raw([GS, 0x6b, 67, data.length]);   // GS k 67 — EAN13
+    this.raw(data);
+    return true;
+  }
+
   /** Qog'ozni surib kesish. Kesuvchisi yo'q printerda buyruq e'tiborsiz qoladi. */
   cut() { return this.feed(4).raw(CMD.cut); }
 

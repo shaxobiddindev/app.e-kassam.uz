@@ -320,6 +320,90 @@ export async function openDrawer() {
   await send(drawerKickBytes());
 }
 
+/* ── Narx yorliqlari ───────────────────────────────────────────────────── */
+/**
+ * Javon yorliqlarini CHEK PRINTERIDA chop etadi — lenta ko'rinishida.
+ *
+ * ═══ NEGA ALOHIDA APPARAT SHART EMAS ════════════════════════════════════
+ *
+ * Yorliq printeri (Zebra, TSC) 150-300 dollar turadi va kichik do'kon uni
+ * yiliga bir necha marta ishlatadi. Chek printeri esa allaqachon kassada
+ * turibdi va u yorliq uchun kerak bo'lgan hamma narsani biladi: katta
+ * shrift, barkod, kesish. Yagona farqi — yopishqoq qog'oz yo'q.
+ *
+ * ⚠ IKKITA JIDDIY CHEKLOV, ikkalasi ham TEXNIK va tuzatib bo'lmaydi:
+ *
+ * 1. **Qog'oz o'z-o'zidan kesilmaydi.** Chiqadigan narsa — lenta; uni
+ *    qaychi bilan ajratish kerak. Shuning uchun har yorliq orasiga
+ *    KESISH CHIZIG'I bosiladi: usiz xodim qayerdan kesishni ko'zi bilan
+ *    chamalab, yorliqlarni qiyshiq qirqardi.
+ * 2. **Termal qog'oz xiralashadi** (issiq va yorug'likda tezroq).
+ *    Javonda bir necha oy turadigan yorliq o'chib qolishi mumkin — bu
+ *    bajik bilan bir xil cheklov.
+ *
+ * ⚠ Barkod EAN-13 bo'lib chiqadi (nazorat raqami to'g'ri bo'lsa), aks
+ * holda Code 128. Sabab `Receipt.barcodeEan13` izohida.
+ *
+ * @param items  [{ name, salePrice, barcode, oldPrice }]
+ * @param copies har bir tovar uchun nechta yorliq
+ */
+export async function printPriceLabels(items = [], opts = {}) {
+  if (!isDesktop()) throw new Error(t("hw.errNoDesktop"));
+  await send(buildPriceLabels(items, opts));
+}
+
+/**
+ * Yorliq lentasini ESC/POS baytlariga yig'adi.
+ *
+ * Chop etishdan ALOHIDA — `buildReceipt` bilan bir xil sabab: sinov va
+ * haqiqiy chiqarish bitta kod bo'lishi kerak, aks holda sinov o'tib,
+ * haqiqiysi buzilib chiqishi mumkin.
+ */
+export function buildPriceLabels(items = [], { copies = 1, shopName, width } = {}) {
+  const list = (items || []).filter(Boolean);
+  if (!list.length) throw new Error(t("label.nothing"));
+
+  const s = getSettings();
+  const w = width ?? (s.width === 58 ? WIDTH_58 : WIDTH_80);
+  const r = new Receipt(w);
+  const n = Math.max(1, Math.min(20, Number(copies) || 1));
+
+  for (const item of list) {
+    for (let i = 0; i < n; i++) {
+      r.center();
+      if (shopName) r.line(shopName);
+      // Nom IKKI qatorgacha o'raladi: uzun nomni kesib tashlash javondagi
+      // yorliqni foydasiz qiladi — «Sut 2,5% 1l» ning «Sut 2,5%» qismi
+      // yonidagi boshqa qadoqdan farq qilmaydi.
+      r.bold().wrap(item.name || "-").bold(false);
+      r.feed();
+      // ⚠ Narx IKKI BARAVAR shriftda: yorliqning butun ma'nosi shu raqamda
+      // va u bir metr naridan o'qilishi kerak.
+      r.double().line(money(item.salePrice, { withUnit: true })).double(false);
+      if (item.oldPrice != null && Number(item.oldPrice) > Number(item.salePrice)) {
+        // Eski narx — chegirmani ko'rsatish uchun. Chizib tashlab
+        // bo'lmaydi (ESC/POS da bunday uslub yo'q), shuning uchun so'z bilan.
+        r.line(`${t("label.oldPrice")}: ${money(item.oldPrice, { withUnit: true })}`);
+      }
+      r.feed();
+      if (item.barcode) {
+        if (!r.barcodeEan13(item.barcode)) r.barcode128(item.barcode, { hri: true });
+        r.feed();
+      }
+      r.line(new Date().toLocaleDateString("uz-UZ"));
+      /* Kesish chizig'i — qaychi uchun ko'rsatma.
+         ⚠ Qaychi belgisi (✂) ATAYLAB ishlatilmaydi: `toBytes` ASCII
+         bo'lmagan har qanday belgini `?` ga aylantiradi va butun chiziq
+         `??????` bo'lib chiqardi. Uzuq-uzuq chiziq bir xil vazifani
+         bajaradi va har qanday printerda bir xil ko'rinadi. */
+      r.left().line("- ".repeat(Math.floor(r.width / 2)).trimEnd()).center();
+    }
+  }
+
+  r.cut();
+  return r.build();
+}
+
 /** Printer ulanganini tekshirish. */
 export async function testPrint() {
   const s = getSettings();
