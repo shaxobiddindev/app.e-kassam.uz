@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { t } from "../lib/ek-i18n";
-import { reportApi } from "../api";
+import { reportApi, inventoryApi } from "../api";
 import { BranchSelector } from "../components";
 import { Empty, StatCard } from "../components/ui";
 import { money } from "../utils";
@@ -59,10 +59,31 @@ function periodRange(period) {
   return [startOfDayUtc(now), now.toISOString().replace(/\.\d{3}/, "")];
 }
 
+/**
+ * Davr chegaralari SANA sifatida (YYYY-MM-DD) — chiqit hisoboti uchun.
+ *
+ * ⚠ `periodRange` dan alohida: u ISO lahzalarni UTC da beradi, chiqit
+ * hisoboti esa do'kon kalendari bilan ishlaydi. Ikkalasini aralashtirsak,
+ * kechqurun ochilgan «bugun» hisoboti ertangi kunni ko'rsatib qo'yardi.
+ */
+function periodDates(period) {
+  const now = new Date();
+  const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  if (period === "weekly") {
+    const from = new Date(now); from.setDate(now.getDate() - 6);
+    return [iso(from), iso(now)];
+  }
+  if (period === "monthly") {
+    return [iso(new Date(now.getFullYear(), now.getMonth(), 1)), iso(now)];
+  }
+  return [iso(now), iso(now)];
+}
+
 export default function ReportsPage({ toast }) {
   const [period, setPeriod]   = useState("daily");
   const [data, setData]       = useState(null);
   const [cashiers, setCashiers] = useState(null);
+  const [writeOffs, setWriteOffs] = useState(null);
   const [loading, setLoading] = useState(false);
   // Tez javobda skeleton umuman chizilmaydi; chizilsa kamida 400ms turadi.
   const busy = useLoading(loading);
@@ -83,6 +104,12 @@ export default function ReportsPage({ toast }) {
     reportApi.byCashier(from, to, branchId)
       .then((res) => setCashiers(res.data))
       .catch(() => setCashiers(null));
+
+    /* Chiqit ham qo'shimcha panel — u yiqilsa asosiy hisobot chiziladi. */
+    const [dFrom, dTo] = periodDates(period);
+    inventoryApi.writeOffs(dFrom, dTo)
+      .then((res) => setWriteOffs(res.data))
+      .catch(() => setWriteOffs(null));
   }, [period, branchId]);
 
   return (
@@ -292,6 +319,79 @@ export default function ReportsPage({ toast }) {
                   </tbody>
                 </table>
               </div>
+            </div>
+          )}
+
+          {/* ── Chiqit ───────────────────────────────────────────────────
+              «Shu oy sinishga qancha ketdi» — ilgari bu savolga javob
+              yo'q edi: sabab erkin matn bo'lgani uchun yig'ib bo'lmasdi.
+
+              ⚠ Sanoq kamomadi bu yerda YO'Q va bu ataylab: bu jadval
+              BILIB TURIB chiqarilgan tovar, sanoq kamomadi esa hech kim
+              sezmagan holda yo'qolgani. Ularni qo'shish ikkala savolni
+              ham yo'q qilardi. */}
+          {writeOffs?.rows?.length > 0 && (
+            <div className="card" style={{ marginTop: 18 }}>
+              <div className="card-header">
+                <span className="card-title">
+                  <i className="fa-solid fa-trash-can" style={{ color: "var(--fg-warning)" }} />
+                  {t("rpt.writeOffs")}
+                </span>
+                <span className="mono fw-800" style={{ fontSize: 15, color: "var(--fg-danger)" }}>
+                  {money(writeOffs.lossTotal)}
+                </span>
+              </div>
+              <div className="card-body" style={{ paddingBottom: 0 }}>
+                <p className="text-muted" style={{ fontSize: 13, marginTop: 0 }}>
+                  {t("rpt.writeOffsHint")}
+                </p>
+              </div>
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>{t("inv.writeOffReason")}</th>
+                      <th className="num">{t("common.count")}</th>
+                      <th className="num">{t("rpt.atCost")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {writeOffs.rows.map((r) => (
+                      <tr key={r.reason}>
+                        <td className="fw-700">
+                          {t(`enum.writeOff.${r.reason}`)}
+                          {/* Hisob tuzatishi yo'qotish EMAS — jamiga
+                              kirmagani shu yerda ham aytiladi. */}
+                          {r.reason === "RECOUNT" && (
+                            <span className="text-muted" style={{ fontWeight: 400, fontSize: 12, marginLeft: 6 }}>
+                              {t("rpt.notALoss")}
+                            </span>
+                          )}
+                        </td>
+                        <td className="num mono">{r.quantity}</td>
+                        <td className="num mono fw-700">{money(r.value)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {writeOffs.topProducts?.length > 0 && (
+                <div className="card-body" style={{ paddingTop: 14 }}>
+                  <div className="text-muted" style={{ fontSize: 12, marginBottom: 8, fontWeight: 700 }}>
+                    {t("rpt.writeOffTop")}
+                  </div>
+                  {writeOffs.topProducts.slice(0, 5).map((p, i) => (
+                    <div key={i} style={{
+                      display: "flex", justifyContent: "space-between", gap: 12,
+                      padding: "6px 0", fontSize: 13,
+                    }}>
+                      <span>{p.productName}</span>
+                      <span className="mono fw-700">{money(p.value)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </>

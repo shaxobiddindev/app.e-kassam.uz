@@ -313,14 +313,31 @@ export const inventoryApi = {
     }),
   // To'g'irlash PARTIYA bo'yicha (inventoryId) — mahsulot bo'yicha emas:
   // ko'p partiyali mahsulotda "qaysi birini" degan noaniqlik bo'lardi.
-  correctBatch: (inventoryId, qty, reason) =>
+  correctBatch: (inventoryId, qty, reason, writeOffReason) =>
     request(`/inventory/batch/${inventoryId}/correct`, {
       method: "PATCH",
-      body: JSON.stringify({ quantity: Number(qty), reason: reason || null }),
+      body: JSON.stringify({
+        quantity: Number(qty),
+        reason: reason || null,
+        // Qoldiq kamayganda server buni MAJBURIY deb tekshiradi.
+        writeOffReason: writeOffReason || null,
+      }),
     }),
   // Kirim-chiqim jurnali
   getMovements: (productId, page = 0, size = 50) =>
     request(`/inventory/movements?page=${page}&size=${size}${productId ? `&productId=${productId}` : ""}`),
+
+  /**
+   * Chiqit hisoboti — turkum bo'yicha «shu oy sinishga qancha ketdi».
+   * Sanasiz chaqirilsa server joriy oyni oladi.
+   */
+  writeOffs: (from, to) => {
+    const p = new URLSearchParams();
+    if (from) p.set("from", from);
+    if (to) p.set("to", to);
+    const q = p.toString();
+    return request(`/inventory/write-offs${q ? `?${q}` : ""}`);
+  },
 
   /* ── Inventarizatsiya ────────────────────────────────────────────────
      ⚠ Kutilgan qoldiq va farq javobda `null` bo'lishi MUMKIN: sanoq

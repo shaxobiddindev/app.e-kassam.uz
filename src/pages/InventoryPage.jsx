@@ -4,6 +4,7 @@ import { inventoryApi } from "../api";
 import { BranchSelector, Modal } from "../components";
 import MarkingScanModal from "../components/MarkingScanModal";
 import { Empty, SearchBar } from "../components/ui";
+import Select from "../components/ek/Select";
 import { useAuth } from "../hooks/useAuth";
 import { useBadge } from "../context/BadgeProvider";
 import { money } from "../utils";
@@ -20,6 +21,19 @@ const MOV_BADGE = {
 };
 
 const isBatchExpired = (b) => b.status === "EXPIRED" || b.expired;
+
+/* Chiqit turkumlari — qoldiq KAMAYGANDA so'raladi.
+   Ro'yxat serverdagi `WriteOffReason` bilan bir xil tartibda. */
+const WRITE_OFF_REASONS = [
+  { value: "BREAKAGE",        icon: "fa-hammer" },
+  { value: "SPOILAGE",        icon: "fa-triangle-exclamation" },
+  { value: "EXPIRY",          icon: "fa-hourglass-end" },
+  { value: "THEFT",           icon: "fa-user-secret" },
+  { value: "SUPPLIER_RETURN", icon: "fa-truck-arrow-right" },
+  { value: "OWN_USE",         icon: "fa-store" },
+  { value: "RECOUNT",         icon: "fa-calculator" },
+  { value: "OTHER",           icon: "fa-ellipsis" },
+];
 
 /**
  * Partiyalarni MAHSULOT bo'yicha guruhlash.
@@ -83,6 +97,8 @@ export default function InventoryPage({ toast }) {
   const [qty, setQty]         = useState("");
   const [expiryDate, setExpiryDate] = useState("");
   const [reason, setReason]   = useState("");
+  /* Chiqit turkumi — faqat to'g'irlashda va faqat qoldiq kamayganda. */
+  const [woReason, setWoReason] = useState("");
   /* Markirovkali tovar kirimida skanerlangan yorliqlar. Miqdor shu
      ro'yxatdan kelib chiqadi — qo'lda yozilmaydi. */
   const [markCodes, setMarkCodes] = useState([]);
@@ -151,6 +167,7 @@ export default function InventoryPage({ toast }) {
     setCorrect(batch);
     setQty(String(batch.quantity ?? ""));
     setReason("");
+    setWoReason("");
   };
 
   // Mahsulot bir marta muddat bilan kiritilgan bo'lsa — MUDDATLI: keyingi
@@ -192,6 +209,12 @@ export default function InventoryPage({ toast }) {
     }
   };
 
+  /* Qoldiq KAMAYAYAPTIMI — turkum faqat shunda so'raladi. Topilgan tovar
+     (qoldiq oshishi) yo'qotish emas va undan turkum so'rash omborchini
+     ma'nosiz tanlovga majburlardi. */
+  const isDecrease = correct != null && qty !== ""
+    && Number(qty) < Number(correct.quantity ?? 0);
+
   const handleCorrect = async () => {
     if (qty === "" || Number(qty) < 0) {
       toast.error(t("inv.needQty"));
@@ -203,9 +226,17 @@ export default function InventoryPage({ toast }) {
       toast.error(t("inv.correctNeedReason"));
       return;
     }
+    /* Qoldiq kamaysa TURKUM ham majburiy — server bilan bir xil qoida.
+       Bu yerda ham tekshiriladi, chunki xatoni yuborishdan oldin
+       ko'rsatish tugmani bosib, kutib, so'ng xato olishdan yaxshiroq. */
+    if (isDecrease && !woReason) {
+      toast.error(t("inv.needWriteOffReason"));
+      return;
+    }
     setSaving(true);
     try {
-      await guard(() => inventoryApi.correctBatch(correct.inventoryId, Number(qty), reason.trim()));
+      await guard(() => inventoryApi.correctBatch(
+        correct.inventoryId, Number(qty), reason.trim(), isDecrease ? woReason : null));
       toast.success(t("inv.correctTitle"));
       setCorrect(null);
       loadData();
@@ -292,7 +323,16 @@ export default function InventoryPage({ toast }) {
                       </td>
                       <td>{m.expiryDate || "-"}</td>
                       <td>{m.performedBy}</td>
-                      <td className="text-muted" style={{ maxWidth: 260 }}>{m.reason || "-"}</td>
+                      {/* Turkum izohning O'RNIGA emas, oldida: turkum
+                          «nima bo'ldi», izoh «aynan qanday bo'ldi». */}
+                      <td className="text-muted" style={{ maxWidth: 260 }}>
+                        {m.writeOffReason && (
+                          <span className="badge badge-yellow" style={{ marginRight: 6 }}>
+                            {t(`enum.writeOff.${m.writeOffReason}`)}
+                          </span>
+                        )}
+                        {m.reason || (m.writeOffReason ? "" : "-")}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -559,7 +599,7 @@ export default function InventoryPage({ toast }) {
               <button
                 className="btn btn-primary btn-sm"
                 onClick={handleCorrect}
-                disabled={saving || qty === "" || !reason.trim()}
+                disabled={saving || qty === "" || !reason.trim() || (isDecrease && !woReason)}
               >
                 {saving ? <Spinner /> : <i className="fa-solid fa-check" />}
                 {saving ? t("common.saving") : t("inv.correctAction")}
@@ -601,6 +641,31 @@ export default function InventoryPage({ toast }) {
               {t("inv.correctHint")}
             </div>
           </div>
+
+          {/* ⚠ Turkum faqat KAMAYISHDA. Ilgari sabab faqat erkin matn edi
+              va «sindi», «sinib qoldi», «tushib ketdi» bitta hodisani uch
+              xil nomlardi — «shu oy sinishga qancha ketdi» degan savolga
+              javob yo'q edi. */}
+          {isDecrease && (
+            <div className="form-group" style={{ marginTop: 14 }}>
+              <label className="form-label">{`${t("inv.writeOffReason")} *`}</label>
+              <Select
+                value={woReason}
+                onChange={setWoReason}
+                block
+                variant="field"
+                invalid={!woReason}
+                placeholder={t("inv.writeOffReasonPh")}
+                ariaLabel={t("inv.writeOffReason")}
+                options={WRITE_OFF_REASONS.map((r) => ({
+                  value: r.value, icon: r.icon, label: t(`enum.writeOff.${r.value}`),
+                }))}
+              />
+              <div className="text-muted" style={{ fontSize: 12, marginTop: 4 }}>
+                {t("inv.writeOffHint")}
+              </div>
+            </div>
+          )}
 
           <div className="form-group" style={{ marginTop: 14 }}>
             <label className="form-label">{`${t("inv.reason")} *`}</label>
