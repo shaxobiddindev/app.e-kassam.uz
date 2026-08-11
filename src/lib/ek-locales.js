@@ -854,6 +854,10 @@ const uz = {
   "rpt.expenses": "Xarajatlar",
   "rpt.netProfit": "Sof foyda",
   "rpt.netProfitHint": "Yalpi foyda − xarajatlar − ombor yo'qotishi",
+  /* Oflaynda taqiqlangan amal. Sotuv navbatga tushishini ALOHIDA aytamiz:
+     xodim «hech narsa ishlamayapti» deb kassani to'xtatib qo'ymasin. */
+  "offline.actionBlocked": "Aloqa yo'q — bu amal faqat internet bilan bajariladi. Sotuvni davom ettiravering, u navbatga tushadi va aloqa tiklangach yuboriladi.",
+
   "rpt.inventoryLoss": "Ombor yo'qotishi",
   "rpt.inventoryLossHint": "Chiqit + sanoq kamomadi, tannarxda. Bu tovar sotilmagani uchun tannarxi sotuv hisobiga kirmaydi.",
   "nav.stockTake": "Inventarizatsiya",
@@ -2038,6 +2042,8 @@ const ru = {
   "rpt.expenses": "Расходы",
   "rpt.netProfit": "Чистая прибыль",
   "rpt.netProfitHint": "Валовая прибыль − расходы − потери склада",
+  "offline.actionBlocked": "Нет связи — это действие возможно только с интернетом. Продажи можно продолжать: они встанут в очередь и отправятся, когда связь появится.",
+
   "rpt.inventoryLoss": "Потери склада",
   "rpt.inventoryLossHint": "Списания + недостача по пересчёту, по себестоимости. Этот товар не продан, поэтому его себестоимость не входит в расчёт продаж.",
   "nav.stockTake": "Инвентаризация",
@@ -3213,6 +3219,8 @@ const en = {
   "rpt.expenses": "Expenses",
   "rpt.netProfit": "Net profit",
   "rpt.netProfitHint": "Gross profit − expenses − inventory loss",
+  "offline.actionBlocked": "No connection — this action needs the internet. Keep selling: sales are queued and sent once the connection is back.",
+
   "rpt.inventoryLoss": "Inventory loss",
   "rpt.inventoryLossHint": "Write-offs + stock-take shortage, at cost. These goods were not sold, so their cost is not in the sales figures.",
   "nav.stockTake": "Stock-take",

@@ -24,6 +24,7 @@ import { paymentLabel } from "../lib/ek-labels";
 import { printShiftReport } from "../lib/ek-hardware";
 import { isDesktop } from "../lib/ek-desktop";
 import { useBadge } from "../context/BadgeProvider";
+import { useOnline } from "../hooks/useOnline";
 
 /** Kiritilgan matndan son — bo'sh bo'lsa 0. */
 const num = (v) => {
@@ -35,6 +36,7 @@ export default function ShiftBar({ toast }) {
   // Naqd amallari 428 qaytarishi mumkin (kamomad, inkassatsiya) — bajik
   // modalini shu ochadi va tasdiqdan keyin amalni O'ZI qayta yuboradi.
   const { guard } = useBadge();
+  const online = useOnline();
   const [shift, setShift] = useState(undefined);   // undefined=yuklanmoqda, null=yopiq
   const [busy, setBusy] = useState(false);
   const [report, setReport] = useState(null);      // ko'rsatilayotgan X/Z hisobot
@@ -99,6 +101,12 @@ export default function ShiftBar({ toast }) {
   };
 
   const doClose = async () => {
+    /* ⚠ OFLAYNDA TAQIQ: kutilgan naqdni SERVER hisoblaydi (smenadagi
+       sotuvlar, naqd harakatlari, boshlang'ich qoldiq). Oflaynda uni
+       hisoblab bo'lmaydi va yopishga urinish tarmoq xatosi bilan
+       yiqilardi — kassir esa kunni topshira olmay qolardi va sababini
+       bilmasdi. Endi sabab oldindan aytiladi. */
+    if (!online) { toast?.error(t("offline.actionBlocked")); return; }
     setBusy(true);
     try {
       // Yopish javobi — Z-hisobot: darhol modalda ko'rsatamiz, kassir

@@ -17,6 +17,7 @@ import { Empty, Field, FormGroup } from "../components/ui";
 import Select from "../components/ek/Select";
 import { money } from "../lib/ek-format";
 import { useConfirm } from "../context/ConfirmProvider";
+import { useOnline } from "../hooks/useOnline";
 import { useBadge } from "../context/BadgeProvider";
 import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
@@ -26,6 +27,7 @@ const fmtT = (iso) => (iso ? new Date(iso).toLocaleString("uz-UZ", { dateStyle: 
 export default function PricesPage({ toast }) {
   const confirm = useConfirm();
   const { guard } = useBadge();
+  const online = useOnline();
   const [cats, setCats] = useState([]);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -73,6 +75,11 @@ export default function PricesPage({ toast }) {
   };
 
   const apply = async () => {
+    /* ⚠ OFLAYNDA TAQIQ: narx o'zgarishi butun do'konga va boshqa
+       kassalarga tegadi. Oflaynda uni "keyin yuborish" ham mumkin emas —
+       shu orada sotuvlar ESKI narxda o'tib ketardi va oxirida qaysi chek
+       qaysi narxda ekani chalkashardi. */
+    if (!online) { toast?.error(t("offline.actionBlocked")); return; }
     const ok = await confirm({
       title: t("price.applyTitle"),
       message: t("price.applyConfirm").replace("{n}", preview.count),

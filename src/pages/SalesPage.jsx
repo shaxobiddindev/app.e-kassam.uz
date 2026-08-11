@@ -17,6 +17,7 @@ import { useLoading } from "../lib/use-loading";
 import { printReceipt } from "../lib/ek-hardware";
 import { topRole } from "../lib/ek-roles";
 import { useScanner } from "../hooks/useScanner";
+import { useOnline } from "../hooks/useOnline";
 import { parseSaleCode } from "../lib/ek-barcode";
 
 /* ── Chekni qayta chiqarish ────────────────────────────────────────────────
@@ -66,6 +67,7 @@ export default function SalesPage({ toast }) {
   // import qilingan-u, CHAQIRILMAGAN edi — aynan yuqoridagi `Spinner`
   // bilan bir xil tuzoq, faqat bu safar bekor qilish tugmasida.
   const { guard }                 = useBadge();
+  const online                    = useOnline();
   const { user }                  = useAuth();
   /* ⚠ ENG YUQORI rol bo'yicha, "CASHIER bormi" bo'yicha EMAS.
      Xodimda bir nechta rol bo'lishi mumkin va sessiyada ular vergul bilan
@@ -139,7 +141,19 @@ export default function SalesPage({ toast }) {
     }
   };
 
+  /* ⚠ OFLAYNDA TAQIQ. Oflayn navbat faqat SOTUVNI saqlaydi; bekor qilish
+     va qaytarish esa server holatiga tayanadi (qaysi chek, qaysi qator,
+     qancha qoldiq). Ilgari ular oflaynda shunchaki tarmoq xatosi bilan
+     yiqilardi va kassir sababini bilmasdi.
+     Sabab `useOnline` izohida — bu kafolat emas, tushunarli ogohlantirish. */
+  const requireOnline = () => {
+    if (online) return true;
+    toast.error(t("offline.actionBlocked"));
+    return false;
+  };
+
   const handleCancel = async (sale) => {
+    if (!requireOnline()) return;
     const ok = await confirm({
       title: t("sales.cancelTitle"),
       message: `#${sale.id} raqamli sotuvni bekor qilishni tasdiqlaysizmi? Bu amalni ortga qaytarib bo'lmaydi.`,
@@ -206,6 +220,7 @@ export default function SalesPage({ toast }) {
    * kassir ikkalasini adashtirmasligi kerak.
    */
   const submitReturn = async () => {
+    if (!requireOnline()) return;
     const items = Object.entries(ret.lines)
       .map(([saleItemId, quantity]) => ({ saleItemId: Number(saleItemId), quantity: Number(quantity) }))
       .filter((x) => x.quantity > 0);
