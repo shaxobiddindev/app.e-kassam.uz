@@ -45,22 +45,28 @@ function PayLabel({ type }) {
 const NON_CASH = ["CARD", "CLICK", "PAYME"];
 
 /* Davr chegaralari — BACKEND bilan AYNAN bir xil hisoblanadi
-   (`ReportService`: UTC sutka boshi). Boshqacha hisoblansa, bitta
+   (`ReportService`: MAHALLIY sutka boshi). Boshqacha hisoblansa, bitta
    sahifadagi ikkita kartochka har xil davrni ko'rsatib, farqning sababi
-   topilmasdi. */
+   topilmasdi.
+
+   ⚠ Ilgari bu yerda ham, backendda ham sutka boshi UTC deb olinardi:
+   `Date.UTC(yil, oy, kun)`. Mahalliy 00:00–05:00 oralig'ida bu KELAJAK
+   lahzasini berardi va oraliq teskari bo'lib, hisobot bo'm-bo'sh
+   chiqardi. Endi mahalliy sutka boshi — brauzer mintaqasi do'kon
+   mintaqasi bilan bir xil. */
 function periodRange(period) {
   const now = new Date();
-  const startOfDayUtc = (d) =>
-    new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())).toISOString().replace(/\.\d{3}/, "");
+  const startOfDay = (d) =>
+    new Date(d.getFullYear(), d.getMonth(), d.getDate()).toISOString().replace(/\.\d{3}/, "");
   if (period === "weekly") {
     const d = new Date(now); d.setDate(d.getDate() - 7);
-    return [startOfDayUtc(d), now.toISOString().replace(/\.\d{3}/, "")];
+    return [startOfDay(d), now.toISOString().replace(/\.\d{3}/, "")];
   }
   if (period === "monthly") {
     const d = new Date(now.getFullYear(), now.getMonth(), 1);
-    return [startOfDayUtc(d), now.toISOString().replace(/\.\d{3}/, "")];
+    return [startOfDay(d), now.toISOString().replace(/\.\d{3}/, "")];
   }
-  return [startOfDayUtc(now), now.toISOString().replace(/\.\d{3}/, "")];
+  return [startOfDay(now), now.toISOString().replace(/\.\d{3}/, "")];
 }
 
 /**
