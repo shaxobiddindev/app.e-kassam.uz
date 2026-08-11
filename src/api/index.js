@@ -184,6 +184,11 @@ export const reportApi = {
   custom:  (from, to, shopId) => request(`/reports/custom?from=${from}&to=${to}${shopId ? `&shopId=${shopId}` : ""}`),
   /** Kassirlarni taqqoslash — naqdsiz ulushi o'rtachadan chetlanishi. */
   byCashier: (from, to, shopId) => request(`/reports/by-cashier?from=${from}&to=${to}${shopId ? `&shopId=${shopId}` : ""}`),
+  /**
+   * «E'tibor talab qiladi» signallari — kamomad, naqdsiz chetlanish, sanoq
+   * kamomadi, yetkazib beruvchi qarzi, nasiya. Bitta so'rovda.
+   */
+  signals: (shopId) => request(`/reports/signals${shopId ? `?shopId=${shopId}` : ""}`),
 };
 
 // ─── Mahsulotlar ──────────────────────────────────────────────

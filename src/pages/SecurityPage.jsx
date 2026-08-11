@@ -9,6 +9,7 @@
    ══════════════════════════════════════════════════════════════════════════ */
 
 import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { t } from "../lib/ek-i18n";
 import { securityApi } from "../api";
 import { Modal } from "../components";
@@ -24,6 +25,9 @@ import { isDesktop } from "../lib/ek-desktop";
 import { useSuspiciousCount } from "../hooks/useSuspiciousCount";
 
 const TABS = ["badges", "log", "policies", "shifts", "billing"];
+
+/** Xodim faqat jurnal va smenalarni ko'radi — bajik, siyosat va obuna egasiniki. */
+const visibleTabsFor = (isOwner) => TABS.filter((x) => isOwner || x === "log" || x === "shifts");
 
 const ACTION_BADGE = {
   SALE_CANCEL:       "badge-red",
@@ -43,7 +47,21 @@ export default function SecurityPage({ toast }) {
   // «Jurnal» tabidagi belgi — yon menyudagi bilan ayni manba.
   const { count: suspicious, refresh: refreshSuspicious } = useSuspiciousCount(user);
 
-  const [tab, setTab] = useState(isOwner ? "badges" : "log");
+  /* Bo'lim manzilda ham turadi: bosh sahifadagi «yopilmagan smena» satri
+     shu yerga `?tab=shifts` bilan olib keladi. Ko'rinmaydigan bo'lim
+     so'ralsa e'tiborsiz qoldiriladi — manzil orqali bajik ro'yxatini
+     ochib bo'lmaydi. */
+  const [params, setParams] = useSearchParams();
+  const [tab, setTab] = useState(() => {
+    const q = params.get("tab");
+    return visibleTabsFor(isOwner).includes(q) ? q : (isOwner ? "badges" : "log");
+  });
+
+  useEffect(() => {
+    const next = new URLSearchParams(params);
+    next.set("tab", tab);
+    if (next.toString() !== params.toString()) setParams(next, { replace: true });
+  }, [tab]);
   const [loading, setLoading] = useState(true);
   const busy = useLoading(loading);
 
@@ -157,7 +175,7 @@ export default function SecurityPage({ toast }) {
     catch (_) { return iso; }
   };
 
-  const visibleTabs = TABS.filter((x) => isOwner || x === "log" || x === "shifts");
+  const visibleTabs = visibleTabsFor(isOwner);
 
   return (
     <div>

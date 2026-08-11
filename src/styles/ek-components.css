@@ -53,8 +53,12 @@
 .attn__icon[data-tone="danger"]  { background: var(--bg-danger-subtle);  color: var(--fg-danger); }
 .attn__icon[data-tone="warning"] { background: var(--bg-warning-subtle); color: var(--fg-warning); }
 .attn__icon[data-tone="info"]    { background: var(--bg-brand-subtle);   color: var(--fg-brand); }
+/* ⚠ `flex-shrink: 0` + `nowrap` — satrning o'ng chetida endi soni emas,
+   SUMMA turishi mumkin ("1 250 000"). Ular yo'q edi va telefon ekranida
+   uzun summa o'rtadagi matn bilan bir-birini siqib, ikkalasi ham o'qib
+   bo'lmas holga kelardi. Matn o'ralsin — raqam butun qolsin. */
 .attn__count {
-  margin-left: auto; font-weight: 700;
+  margin-left: auto; font-weight: 700; flex-shrink: 0; white-space: nowrap;
   font-family: var(--font-mono); font-variant-numeric: tabular-nums;
 }
 .attn__empty { padding: 30px 20px; text-align: center; color: var(--fg-secondary); font-size: var(--fs-sm); }

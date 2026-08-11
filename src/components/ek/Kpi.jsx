@@ -89,6 +89,11 @@ export function Sparkline({ data = [], width = 84, height = 26 }) {
 /**
  * `danger` — raqamni qizil qiladi. Sof foyda MANFIY bo'lgan hol uchun:
  * u bosh sahifadagi eng muhim xabar va oddiy rangda ko'zdan qochardi.
+ *
+ * ⚠ Bu xususiyat bir marta YO'QOLGAN: ilgari u faqat `ekassam-app` ichidagi
+ * NUSXAGA yozilgan edi va keyingi `sync-tokens.ps1` uni manbadagi eski
+ * versiya bilan qayta yozib yubordi. Shu papkadagi komponentlar MANBA —
+ * ilova ichidagi nusxa hech qachon qo'lda tahrirlanmaydi.
  */
 export default function Kpi({ label, value, format, delta, trend, hint, danger }) {
   const dir = delta == null ? "flat" : delta > 0 ? "up" : delta < 0 ? "down" : "flat";

@@ -11,6 +11,7 @@
    ══════════════════════════════════════════════════════════════════════════ */
 
 import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { t } from "../lib/ek-i18n";
 import { shopApi } from "../api";
 import { Empty, SearchBar } from "../components/ui";
@@ -40,11 +41,19 @@ const MONEY = new Set([
 const fmtT = (iso) => (iso ? new Date(iso).toLocaleString("uz-UZ", { dateStyle: "short", timeStyle: "short" }) : "—");
 
 export default function AuditPage({ toast }) {
+  /* Filtr manzilda ham turadi: bosh sahifadagi «Kassa kamomadi» satri shu
+     yerga `?action=SHIFT_CLOSE` bilan olib keladi. Manzilsiz signal
+     egasini filtrsiz jurnalga tashlab ketardi va u kerakli qatorni
+     yuzta boshqasi orasidan qidirishga majbur bo'lardi. */
+  const [params, setParams] = useSearchParams();
   const [rows, setRows] = useState([]);
   const [total, setTotal] = useState(0);
   const [pages, setPages] = useState(0);
   const [page, setPage] = useState(0);
-  const [action, setAction] = useState("");
+  const [action, setAction] = useState(() => {
+    const a = params.get("action");
+    return ACTIONS.includes(a) ? a : "";
+  });
   const [actor, setActor] = useState("");
   const [loading, setLoading] = useState(true);
   const busy = useLoading(loading);
@@ -67,6 +76,15 @@ export default function AuditPage({ toast }) {
   // Filtr o'zgarsa birinchi sahifaga qaytamiz — aks holda bo'sh sahifada
   // "jurnal bo'sh" ko'rinib, sabab tushunarsiz bo'lardi.
   useEffect(() => { setPage(0); }, [action, actor]);
+
+  /* Tanlangan amal manzilga yoziladi — havola ulashiladi va F5 filtrni
+     saqlaydi. `replace` bilan: har bir tanlov tarixga yozilsa, "orqaga"
+     tugmasi foydalanuvchini eski filtrlar bo'ylab yurgizib chiqardi. */
+  useEffect(() => {
+    const next = new URLSearchParams(params);
+    if (action) next.set("action", action); else next.delete("action");
+    if (next.toString() !== params.toString()) setParams(next, { replace: true });
+  }, [action]);
 
   return (
     <div>

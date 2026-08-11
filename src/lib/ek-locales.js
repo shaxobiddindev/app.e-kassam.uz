@@ -570,6 +570,16 @@ const uz = {
   "dash.attOutOfStock": "Tugagan tovar",
   "dash.attLowStock": "Minimal qoldiqdan past",
 
+  /* «E'tibor talab qiladi» — pul signallari (`/reports/signals`).
+     Matnda hodisalar SONI, o'ng tomondagi raqamda SUMMA turadi. */
+  "dash.sigCashShort": "Kassa kamomadi — {n} ta smena ({d} kunda)",
+  "dash.sigNonCashDiff": "Naqdsiz to'lov terminal bilan to'g'ri kelmadi — {n} ta smena",
+  "dash.sigStockShort": "Sanoqda kamomad — {n} ta inventarizatsiya ({d} kunda)",
+  "dash.sigStaleShift": "Bir sutkadan beri yopilmagan smena",
+  "dash.sigOverLimit": "Qarzi chegaradan oshgan mijoz",
+  "dash.sigSupplierDebt": "Yetkazib beruvchilarga qarzimiz — {n} ta",
+  "dash.sigCustomerDebt": "Mijozlarning nasiya qarzi — {n} ta",
+
   /* ── Mahsulotlar ───────────────────────────────────────────────────── */
   "products.title": "Mahsulotlar",
   "products.new": "Yangi mahsulot",
@@ -1698,6 +1708,14 @@ const ru = {
   "dash.attOutOfStock": "Закончившийся товар",
   "dash.attLowStock": "Ниже минимального остатка",
 
+  "dash.sigCashShort": "Недостача в кассе — смен: {n} (за {d} дн.)",
+  "dash.sigNonCashDiff": "Безнал не сошёлся с терминалом — смен: {n}",
+  "dash.sigStockShort": "Недостача по пересчёту — инвентаризаций: {n} (за {d} дн.)",
+  "dash.sigStaleShift": "Смена не закрыта больше суток",
+  "dash.sigOverLimit": "Клиенты с долгом выше лимита",
+  "dash.sigSupplierDebt": "Наш долг поставщикам — {n}",
+  "dash.sigCustomerDebt": "Долг клиентов (рассрочка) — {n}",
+
   "products.title": "Товары",
   "products.new": "Новый товар",
   "products.edit": "Изменить товар",
@@ -2810,6 +2828,14 @@ const en = {
   "dash.topProducts": "Top products",
   "dash.attOutOfStock": "Out of stock",
   "dash.attLowStock": "Below minimum stock",
+
+  "dash.sigCashShort": "Cash drawer shortage — {n} shift(s) in {d} days",
+  "dash.sigNonCashDiff": "Card payments don’t match the terminal — {n} shift(s)",
+  "dash.sigStockShort": "Stock-take shortage — {n} count(s) in {d} days",
+  "dash.sigStaleShift": "Shift left open for over a day",
+  "dash.sigOverLimit": "Customers over their credit limit",
+  "dash.sigSupplierDebt": "Owed to suppliers — {n}",
+  "dash.sigCustomerDebt": "Customer credit outstanding — {n}",
 
   "products.title": "Products",
   "products.new": "New product",

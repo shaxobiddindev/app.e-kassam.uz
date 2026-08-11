@@ -45,6 +45,7 @@ function KpiSkeleton() {
 export default function DashboardPage({ toast }) {
   const [data, setData]         = useState(null);
   const [lowStock, setLowStock] = useState([]);
+  const [signals, setSignals]   = useState(null);
   const [loading, setLoading]   = useState(true);
   const [branchId, setBranchId] = useState(null);
   const navigate = useNavigate();
@@ -54,16 +55,58 @@ export default function DashboardPage({ toast }) {
     Promise.all([
       reportApi.daily(branchId).then((r) => r.data).catch((err) => { toast.error(err.message); return null; }),
       inventoryApi.getLow().then((r) => r.data || []).catch(() => []),
+      /* ⚠ Signallar jimgina yiqiladi: ular blokni BOYITADI, lekin ularsiz
+         ham sahifa to'liq ishlaydi. Xatoni toast qilish har bir yangilanishda
+         egasiga tushunarsiz xabar chiqarardi. */
+      reportApi.signals(branchId).then((r) => r.data).catch(() => null),
     ])
-      .then(([daily, low]) => { setData(daily); setLowStock(low); })
+      .then(([daily, low, sig]) => { setData(daily); setLowStock(low); setSignals(sig); })
       .finally(() => setLoading(false));
   }, [branchId]);
 
-  /* ── E'tibor talab qiladi ─────────────────────────────────────────────── */
+  /* ── E'tibor talab qiladi ───────────────────────────────────────────────
+     Tartib ATAYLAB shunday: yuqorida pul yo'qolayotgan joylar (kamomad,
+     naqdsiz chetlanish, sanoq), pastda esa ish rejasi (tugagan tovar,
+     qarzlar). Egasi ro'yxatni yuqoridan o'qiydi va birinchi ko'radigani
+     eng qimmatga tushadigani bo'lishi kerak.
+
+     ⚠ Har bir satr faqat NOLDAN katta bo'lsa chiqadi — chegara ichidagi
+     farqni server allaqachon filtrlagan (`SignalService`). */
   const outOfStock = lowStock.filter((i) => (i.quantity ?? 0) <= 0);
   const belowMin   = lowStock.filter((i) => (i.quantity ?? 0) > 0);
 
+  const sig = signals || {};
+  const has = (row) => Number(row?.count) > 0;
+
   const attention = [
+    has(sig.cashShortage) && {
+      id: "cash", icon: "fa-sack-dollar", tone: "danger",
+      text: t("dash.sigCashShort", { n: sig.cashShortage.count, d: sig.shiftWindowDays }),
+      count: money(sig.cashShortage.amount),
+      onClick: () => navigate("/audit?action=SHIFT_CLOSE"),
+    },
+    has(sig.nonCashDiff) && {
+      id: "noncash", icon: "fa-credit-card", tone: "danger",
+      text: t("dash.sigNonCashDiff", { n: sig.nonCashDiff.count }),
+      count: money(sig.nonCashDiff.amount),
+      onClick: () => navigate("/audit?action=SHIFT_CLOSE"),
+    },
+    has(sig.stockShortage) && {
+      id: "stock", icon: "fa-clipboard-list", tone: "danger",
+      text: t("dash.sigStockShort", { n: sig.stockShortage.count, d: sig.stockWindowDays }),
+      count: money(sig.stockShortage.amount),
+      onClick: () => navigate("/stock-take"),
+    },
+    sig.staleOpenShifts > 0 && {
+      id: "stale", icon: "fa-clock", tone: "warning",
+      text: t("dash.sigStaleShift"), count: sig.staleOpenShifts,
+      onClick: () => navigate("/security?tab=shifts"),
+    },
+    sig.overLimitDebtors > 0 && {
+      id: "overlimit", icon: "fa-user-lock", tone: "danger",
+      text: t("dash.sigOverLimit"), count: sig.overLimitDebtors,
+      onClick: () => navigate("/customers"),
+    },
     outOfStock.length && {
       id: "out", icon: "fa-box-open", tone: "danger",
       text: t("dash.attOutOfStock"), count: outOfStock.length,
@@ -73,6 +116,18 @@ export default function DashboardPage({ toast }) {
       id: "low", icon: "fa-triangle-exclamation", tone: "warning",
       text: t("dash.attLowStock"), count: belowMin.length,
       onClick: () => navigate("/inventory"),
+    },
+    has(sig.supplierDebt) && {
+      id: "supplier", icon: "fa-truck", tone: "warning",
+      text: t("dash.sigSupplierDebt", { n: sig.supplierDebt.count }),
+      count: money(sig.supplierDebt.amount),
+      onClick: () => navigate("/supply"),
+    },
+    has(sig.customerDebt) && {
+      id: "credit", icon: "fa-hand-holding-dollar", tone: "info",
+      text: t("dash.sigCustomerDebt", { n: sig.customerDebt.count }),
+      count: money(sig.customerDebt.amount),
+      onClick: () => navigate("/customers"),
     },
     !data?.totalSales && {
       id: "nosale", icon: "fa-cash-register", tone: "info",
