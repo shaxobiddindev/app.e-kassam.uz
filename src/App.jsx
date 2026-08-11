@@ -16,6 +16,7 @@ import ProductsPage     from "./pages/ProductsPage";
 import InventoryPage    from "./pages/InventoryPage";
 import StockTakePage    from "./pages/StockTakePage";
 import ExpensesPage     from "./pages/ExpensesPage";
+import LoyaltyPage      from "./pages/LoyaltyPage";
 import SupplyPage       from "./pages/SupplyPage";
 import PricesPage       from "./pages/PricesPage";
 import CustomersPage    from "./pages/CustomersPage";
@@ -197,6 +198,8 @@ export default function App() {
             <Route path="/expenses" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><ExpensesPage toast={toast} /></ProtectedRoute>} />
             <Route path="/shop-users" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><ShopUsersPage toast={toast} /></ProtectedRoute>} />
             <Route path="/branches" element={<ProtectedRoute user={user} roles={["OWNER"]}><ShopsPage toast={toast} /></ProtectedRoute>} />
+            {/* Sodiqlik jadvali — chegirma, ya'ni pulga tegadigan sozlama. */}
+            <Route path="/loyalty" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><LoyaltyPage toast={toast} /></ProtectedRoute>} />
             {/* Sozlamalar — hamma rolga ochiq: mavzu va til xodimning
                 shaxsiy tanlovi, do'kon sozlamasi emas. */}
             <Route path="/settings" element={<SettingsPage toast={toast} />} />

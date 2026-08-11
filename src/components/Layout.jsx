@@ -43,6 +43,9 @@ const NAV_ITEMS = [
   { section: "nav.section.management", items: [
     { id: "shop-users", path: "/shop-users", key: "nav.staff",    icon: "fa-users-gear", roles: ["ADMIN", "SHOP_ADMIN", "OWNER"] },
     { id: "branches",   path: "/branches",   key: "nav.branches", icon: "fa-store",      roles: ["OWNER"] },
+    /* Sodiqlik — chegirma jadvali, ya'ni PULGA tegadigan sozlama.
+       Shuning uchun "Boshqaruv" da, kassirda emas. */
+    { id: "loyalty",    path: "/loyalty",    key: "nav.loyalty",  icon: "fa-award",      roles: ["ADMIN", "SHOP_ADMIN", "OWNER"] },
     /* Xavfsizlik — bajik va tasdiqlar. SHOP_ADMIN ham kiradi, lekin u
        yerda faqat jurnal va smenalarni ko'radi: bajik chiqarish FAQAT
        egasida (server ham shuni qo'yadi). */
@@ -79,6 +82,7 @@ const PAGE_TITLES = {
   "/custom-report":  { key:"nav.customReport", icon:"fa-calendar-days" },
   "/shop-users":     { key:"nav.staff",        icon:"fa-users-gear"    },
   "/branches":       { key:"nav.branches",     icon:"fa-store"         },
+  "/loyalty":        { key:"nav.loyalty",      icon:"fa-award"         },
   "/audit":          { key:"nav.audit",        icon:"fa-clock-rotate-left"},
   "/settings":       { key:"nav.settings",     icon:"fa-gear"          },
 };

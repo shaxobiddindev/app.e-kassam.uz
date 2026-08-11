@@ -429,6 +429,18 @@ export const securityApi = {
 };
 
 // ─── Mijozlar ─────────────────────────────────────────────────
+/* ── Sodiqlik darajalari ──────────────────────────────────────────────
+   ⚠ Jadvalni O'QISH kassirga ham ochiq (mijozga darajasini aytishi
+   kerak), YOZISH esa faqat rahbarga — serverdagi qoida bilan bir xil. */
+export const loyaltyApi = {
+  tiers:        ()        => request("/loyalty/tiers"),
+  createTier:   (data)    => request("/loyalty/tiers", { method: "POST", body: JSON.stringify(data) }),
+  updateTier:   (id, data)=> request(`/loyalty/tiers/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  removeTier:   (id)      => request(`/loyalty/tiers/${id}`, { method: "DELETE" }),
+  /** Mijozning darajasi + keyingi darajagacha qancha qolgani. */
+  customerTier: (id)      => request(`/loyalty/customers/${id}`),
+};
+
 export const customerApi = {
   /* ── Nasiya ────────────────────────────────────────────────────
      Qarz JURNALDA saqlanadi, balans esa undan hisoblangan kesh —

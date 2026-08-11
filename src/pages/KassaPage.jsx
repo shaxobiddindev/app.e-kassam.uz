@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { t } from "../lib/ek-i18n";
-import { productApi, customerApi, saleApi, securityApi, shopApi, mediaApi, fiscalApi } from "../api";
+import { productApi, customerApi, saleApi, securityApi, shopApi, mediaApi, fiscalApi, loyaltyApi } from "../api";
 import { useBadge } from "../context/BadgeProvider";
 import { money, quantity as fmtQty } from "../utils";
 import { unitLabel } from "../lib/ek-labels";
@@ -91,6 +91,11 @@ export default function KassaPage({ toast, refreshLowStock }) {
   const [cashAmount, setCashAmount] = useState("");     // aralash: naqd qismi
   const [cardAmount, setCardAmount] = useState("");     // aralash: ikkinchi qism
   const [customer, setCustomer]     = useState(null);
+  /* Mijozning sodiqlik darajasi — faqat KO'RSATISH uchun. Chegirmani
+     server chek yozilganda o'zi hisoblaydi; bu yerdagi raqam hisobga
+     ta'sir qilmaydi va shunday bo'lishi ham kerak: front hisoblagan
+     chegirma kassir tomonidan o'zgartirilishi mumkin bo'lardi. */
+  const [tier, setTier]             = useState(null);
   const [processing, setProcessing] = useState(false);
   const [branchId]                  = useState(null);
   const [showPayModal, setShowPayModal] = useState(false);
@@ -137,6 +142,17 @@ export default function KassaPage({ toast, refreshLowStock }) {
   useEffect(() => {
     customerApi.getAll(branchId).then((r) => setCustomers(r.data || [])).catch(() => {});
   }, [branchId]);
+
+  /* Tanlangan mijozning darajasi. Xatosi JIM yutiladi: daraja — qo'shimcha
+     ma'lumot, uning yo'qligi sotuvga xalaqit bermasligi kerak. */
+  useEffect(() => {
+    if (!customer?.id) { setTier(null); return; }
+    let alive = true;
+    loyaltyApi.customerTier(customer.id)
+      .then((r) => { if (alive) setTier(r.data || null); })
+      .catch(() => { if (alive) setTier(null); });
+    return () => { alive = false; };
+  }, [customer?.id]);
 
   /* ── Kategoriyalar va standart ko'rinish ───────────────────────
      Ko'rinish tanlanmagan bo'lsa faoliyat turidan olinadi: oziq-ovqatda
@@ -904,6 +920,31 @@ export default function KassaPage({ toast, refreshLowStock }) {
                 })),
               ]}
             />
+
+            {/* ── Sodiqlik darajasi ────────────────────────────────────
+                Kassir mijozga aytishi uchun: chegirmasi qancha va keyingi
+                darajagacha qancha qolgan. Chegirmani KASSIR QO'LLAMAYDI —
+                uni server chek yozilganda o'zi hisoblaydi; bu yer faqat
+                ko'rsatadi. */}
+            {customer && tier && (
+              <div style={{
+                marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--border-subtle)",
+                display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8,
+                fontSize: 13,
+              }}>
+                <span>
+                  <i className="fa-solid fa-award" style={{ color: "var(--fg-warning)", marginRight: 6 }} />
+                  {tier.tierName
+                    ? <>{tier.tierName} · <b>{tier.discountPercent}%</b></>
+                    : <span className="text-muted">{t("loyalty.noTier")}</span>}
+                </span>
+                {tier.toNextTier != null && (
+                  <span className="text-muted mono" style={{ fontSize: 12 }}>
+                    {t("loyalty.toNext")}: {money(tier.toNextTier)}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="total-card">
