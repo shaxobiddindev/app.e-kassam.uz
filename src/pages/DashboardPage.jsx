@@ -89,12 +89,19 @@ export default function DashboardPage({ toast }) {
 
       {/* ── KPI qatori ────────────────────────────────────────────────────
           Raqamlar 0 dan sanaladi, monoshriftda — kenglik sakramaydi. */}
+      {/* ⚠ `totalProfit` — YALPI foyda (tushum − tovar tannarxi). Ilgari u
+          shu yerda "Sof foyda" deb turardi, holbuki ijara/oylik/transport
+          undan ayirilmagan: bosh sahifa foydani haqiqiydan katta
+          ko'rsatardi. Endi ikkalasi ham chiziladi va sof foyda manfiy
+          bo'lsa qizil — oy zarar bilan ketayotgani eng muhim xabar. */}
       {loading ? <KpiSkeleton /> : (
         <div className="kpi-row">
-          <Kpi label={t("dash.revenue")}  value={data?.totalRevenue || 0} format={money} />
-          <Kpi label={t("dash.salesCount")}   value={data?.totalSales   || 0} />
-          <Kpi label={t("dash.netProfit")}       value={data?.totalProfit  || 0} format={money} />
-          <Kpi label={t("dash.costPrice")}       value={data?.totalCost    || 0} format={money} />
+          <Kpi label={t("dash.revenue")}    value={data?.totalRevenue  || 0} format={money} />
+          <Kpi label={t("dash.salesCount")} value={data?.totalSales    || 0} />
+          <Kpi label={t("rpt.grossProfit")} value={data?.totalProfit   || 0} format={money} />
+          <Kpi label={t("rpt.expenses")}    value={data?.totalExpenses || 0} format={money} />
+          <Kpi label={t("rpt.netProfit")}   value={data?.netProfit     || 0} format={money}
+               danger={Number(data?.netProfit) < 0} />
         </div>
       )}
 

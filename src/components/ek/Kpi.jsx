@@ -86,13 +86,19 @@ export function Sparkline({ data = [], width = 84, height = 26 }) {
  *                aytadi ("30 kunda kamida bitta sotuv"). Raqamning o'zi
  *                tushuntirmaydigan hollarda kerak.
  */
-export default function Kpi({ label, value, format, delta, trend, hint }) {
+/**
+ * `danger` — raqamni qizil qiladi. Sof foyda MANFIY bo'lgan hol uchun:
+ * u bosh sahifadagi eng muhim xabar va oddiy rangda ko'zdan qochardi.
+ */
+export default function Kpi({ label, value, format, delta, trend, hint, danger }) {
   const dir = delta == null ? "flat" : delta > 0 ? "up" : delta < 0 ? "down" : "flat";
   const arrow = dir === "up" ? "fa-arrow-trend-up" : dir === "down" ? "fa-arrow-trend-down" : "fa-minus";
   return (
     <div className="kpi">
       <span className="kpi__label">{label}</span>
-      <span className="kpi__value"><CountUp value={value} format={format} /></span>
+      <span className="kpi__value" style={danger ? { color: "var(--fg-danger)" } : undefined}>
+        <CountUp value={value} format={format} />
+      </span>
       {hint && <span className="kpi__hint">{hint}</span>}
       <div className="kpi__foot">
         {delta != null ? (
