@@ -202,6 +202,13 @@ export const productApi = {
    * karraga oshadi), tarozi barkodi (og'irlik ichida) yoki umumiy katalog
    * taklifi. Kassa endi barkodni o'zi tahlil qilmaydi — mantiq serverda.
    */
+  /* ── Narx tarixi va ommaviy o'zgartirish ──────────────────────────────
+     ⚠ `dryRun: true` — HECH NARSA o'zgarmaydi, faqat natija qaytadi.
+     Ommaviy amalni ortga qaytarib bo'lmaydi. */
+  priceHistory:     (id) => request(`/products/${id}/price-history`),
+  shopPriceHistory: (page = 0, size = 50) => request(`/products/price-history?page=${page}&size=${size}`),
+  bulkPrice:        (data) => request("/products/price-bulk", { method: "POST", body: JSON.stringify(data) }),
+
   scan:         (code, shopId) =>
                   request(`/products/scan?code=${encodeURIComponent(code)}${shopId ? `&shopId=${shopId}` : ""}`),
   getById:      (id)       => request(`/products/${id}`),
