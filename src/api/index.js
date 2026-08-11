@@ -456,6 +456,14 @@ export const shopApi = {
   setNonCashTolerance: (value) => request(`/shop/noncash-tolerance?value=${value}`, { method: "PATCH" }),
   /** Inventarizatsiya kamomadi chegarasi — SO'MDA (tannarx bo'yicha). */
   setStockTolerance: (value) => request(`/shop/stock-tolerance?value=${value}`, { method: "PATCH" }),
+  /** Do'kon jurnali. ⚠ `shopId` yuborilmaydi — server uni chaqiruvchining
+      do'konidan oladi va so'rovdagisini e'tiborga olmaydi. */
+  audit: ({ action, actor, page = 0, size = 50 } = {}) => {
+    const p = new URLSearchParams({ page, size });
+    if (action) p.set("action", action);
+    if (actor) p.set("actor", actor);
+    return request(`/shop/audit?${p}`);
+  },
   getUsers:   (shopId) => request(`/shop/users${shopId ? `?shopId=${shopId}` : ""}`),
   createUser: (data, shopId) => request(`/shop/users${shopId ? `?shopId=${shopId}` : ""}`, { method: "POST", body: JSON.stringify(data) }),
   updateUser: (userId, data, shopId) => request(`/shop/users/${userId}${shopId ? `?shopId=${shopId}` : ""}`, { method: "PUT", body: JSON.stringify(data) }),

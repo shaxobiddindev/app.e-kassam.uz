@@ -47,6 +47,7 @@ const NAV_ITEMS = [
        yerda faqat jurnal va smenalarni ko'radi: bajik chiqarish FAQAT
        egasida (server ham shuni qo'yadi). */
     { id: "security",   path: "/security",   key: "nav.security", icon: "fa-shield-halved", roles: ["SHOP_ADMIN", "OWNER"] },
+    { id: "audit",      path: "/audit",      key: "nav.audit",    icon: "fa-clock-rotate-left", roles: ["SHOP_ADMIN", "OWNER"] },
   ]},
   { section: "nav.section.settings", items: [
     /* Sozlamalar — HAMMA rolga ochiq: til va tema shu yerda va ular
@@ -78,6 +79,7 @@ const PAGE_TITLES = {
   "/custom-report":  { key:"nav.customReport", icon:"fa-calendar-days" },
   "/shop-users":     { key:"nav.staff",        icon:"fa-users-gear"    },
   "/branches":       { key:"nav.branches",     icon:"fa-store"         },
+  "/audit":          { key:"nav.audit",        icon:"fa-clock-rotate-left"},
   "/settings":       { key:"nav.settings",     icon:"fa-gear"          },
 };
 

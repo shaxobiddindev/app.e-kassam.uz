@@ -35,6 +35,7 @@ import ErrorBoundary, { RouteErrorBoundary } from "./components/ek/ErrorBoundary
 import { BadgeProvider } from "./context/BadgeProvider";
 import { KeyboardProvider } from "./context/KeyboardProvider";
 import SecurityPage from "./pages/SecurityPage";
+import AuditPage from "./pages/AuditPage";
 
 // ⚠ Tilni URL dan olish MODUL TANASIDA, `replaceState` dan OLDIN bo'lishi
 // shart. Bu fayl `main.jsx` dan import qilinadi va ES modul tartibiga ko'ra
@@ -203,6 +204,8 @@ export default function App() {
                 Egasi bajik chiqaradi; SHOP_ADMIN faqat jurnalni ko'radi
                 (backend ham shu cheklovni qo'yadi). */}
             <Route path="/security" element={<ProtectedRoute user={user} roles={["OWNER", "SHOP_ADMIN"]}><SecurityPage toast={toast} /></ProtectedRoute>} />
+            {/* Jurnal — egasi va do'kon administratoriga; kassirga yopiq. */}
+            <Route path="/audit" element={<ProtectedRoute user={user} roles={["OWNER", "SHOP_ADMIN"]}><AuditPage toast={toast} /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           </RouteErrorBoundary>
