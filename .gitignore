@@ -1,0 +1,31 @@
+# Bog'liqliklar — 2300+ fayl. Ilgari git tomonidan KUZATILARDI: har
+# `npm install` yuzlab o'zgarish ko'rsatib, haqiqiy o'zgarishlarni ko'mib
+# tashlardi. `package-lock.json` versiyalarni aniq qayd etadi, ya'ni
+# node_modules ni saqlashning ma'nosi yo'q.
+node_modules/
+
+# Tahrirlagich va OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.log
+
+# Sirlar
+.env
+.env.local
+
+# Tauri quruvchisi
+src-tauri/target/
+
+# ⚠ `dist/` ATAYLAB bu yerda YO'Q.
+#
+# Netlify qurish buyrug'i (`npm run build`) UI da sozlangan bo'lsa, `dist/`
+# ni saqlashning keragi yo'q. Lekin sozlanmagan bo'lsa — Netlify aynan
+# commit qilingan `dist/` ni chop etadi va uni git'dan olib tashlash saytni
+# 404 ga tushiradi.
+#
+# Buni taxmin qilib bo'lmaydi: Netlify sozlamasini tekshirib, qurish
+# buyrug'i borligiga ishonch hosil qilgach shu qatorni oching:
+#     dist/
+# va bir marta `git rm -r --cached dist` qiling.
