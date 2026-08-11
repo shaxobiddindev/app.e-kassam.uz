@@ -16,6 +16,7 @@ import ProductsPage     from "./pages/ProductsPage";
 import InventoryPage    from "./pages/InventoryPage";
 import StockTakePage    from "./pages/StockTakePage";
 import ExpensesPage     from "./pages/ExpensesPage";
+import SupplyPage       from "./pages/SupplyPage";
 import CustomersPage    from "./pages/CustomersPage";
 import KassaPage        from "./pages/KassaPage";
 import ReportsPage      from "./pages/ReportsPage";
@@ -180,6 +181,9 @@ export default function App() {
             {/* Inventarizatsiya — omborchi va yuqorisi; kassirning bu
                 yerda ishi yo'q (backend ham shu cheklovni qo'yadi). */}
             <Route path="/stock-take" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><StockTakePage toast={toast} /></ProtectedRoute>} />
+            {/* Kirim — tovarni jismonan qabul qiladigan odam hujjatni
+                ham yozadi, shuning uchun omborchiga ham ochiq. */}
+            <Route path="/supply" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><SupplyPage toast={toast} /></ProtectedRoute>} />
             <Route path="/customers" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"]}><CustomersPage toast={toast} /></ProtectedRoute>} />
             <Route path="/sales" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"]}><SalesPage toast={toast} /></ProtectedRoute>} />
             <Route path="/reports" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><ReportsPage toast={toast} /></ProtectedRoute>} />

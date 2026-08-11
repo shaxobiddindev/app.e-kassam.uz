@@ -326,6 +326,20 @@ export const inventoryApi = {
   },
 };
 
+// ─── Yetkazib beruvchi va kirim hujjati ───────────────────────
+/* ⚠ `paidNow` + `paymentMethod: "CASH"` — pul smena kassasidan CHIQADI
+   (mijoz qarzini to'lashning teskarisi). Ochiq smena SHART. */
+export const supplyApi = {
+  suppliers:       () => request("/supply/suppliers"),
+  createSupplier:  (data) => request("/supply/suppliers", { method: "POST", body: JSON.stringify(data) }),
+  archiveSupplier: (id) => request(`/supply/suppliers/${id}`, { method: "DELETE" }),
+  ledger:          (id) => request(`/supply/suppliers/${id}/ledger`),
+  pay:             (id, data) => request(`/supply/suppliers/${id}/payment`, { method: "POST", body: JSON.stringify(data) }),
+  receipts:        (from, to) => request(`/supply/receipts${from ? `?from=${from}&to=${to}` : ""}`),
+  receipt:         (id) => request(`/supply/receipts/${id}`),
+  createReceipt:   (data) => request("/supply/receipts", { method: "POST", body: JSON.stringify(data) }),
+};
+
 // ─── Xarajatlar ───────────────────────────────────────────────
 /* ⚠ `fromRegister: true` — kassadan to'landi: server naqd harakati
    yaratadi va `expectedCash` kamayadi. Ochiq smena SHART. */
