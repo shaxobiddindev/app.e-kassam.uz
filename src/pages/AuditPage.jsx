@@ -134,7 +134,22 @@ export default function AuditPage({ toast }) {
                         <div className="text-muted mono" style={{ fontSize: 11 }}>{r.details}</div>
                       )}
                     </td>
-                    <td className="mono text-muted" style={{ fontSize: 13 }}>{r.actorUsername}</td>
+                    {/* ⚠ Platforma xodimi (`actorType === "ADMIN"`) do'kon xodimi EMAS.
+                        Uning ichki foydalanuvchi nomi ("superadmin") egaga hech narsa
+                        aytmaydi — u buni o'z xodimi deb o'ylashi mumkin. Shuning uchun
+                        satr alohida belgilanadi; amalning O'ZI yashirilmaydi, aks holda
+                        «narxni kim o'zgartirdi?» degan savol javobsiz qolardi. */}
+                    <td className="mono text-muted" style={{ fontSize: 13 }}>
+                      {r.actorType === "ADMIN" ? (
+                        <span className="badge badge-orange" title={r.actorUsername}>
+                          <i className="fa-solid fa-headset" aria-hidden="true" /> {t("audit.actorSupport")}
+                        </span>
+                      ) : r.actorType === "SYSTEM" ? (
+                        <span className="badge badge-blue">
+                          <i className="fa-solid fa-robot" aria-hidden="true" /> {t("audit.actorSystem")}
+                        </span>
+                      ) : r.actorUsername}
+                    </td>
                   </tr>
                 )) : (
                   <tr><td colSpan={4}><Empty icon="fa-clock-rotate-left" text={t("audit.none")} /></td></tr>

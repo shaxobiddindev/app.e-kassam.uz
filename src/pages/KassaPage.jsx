@@ -902,7 +902,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
             <div className="card-header">
               <span className="card-title">
                 <i className="fa-solid fa-cart-shopping text-blue" aria-hidden="true" />
-                Savat (<span className="ek-num">{cart.length}</span>)
+                {t("kassa.cart")} (<span className="ek-num">{cart.length}</span>)
               </span>
               {cart.length > 0 && (
                 <button className="btn btn-sm" style={{ background: "var(--bg-danger-subtle)", color: "var(--fg-danger)" }} onClick={handleClearCart}>
@@ -953,7 +953,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
               value={customer?.id ? String(customer.id) : ""}
               onChange={(v) => setCustomer(customers.find((c) => String(c.id) === v) || null)}
               options={[
-                { value: "", label: "Mijoz tanlanmagan", icon: "fa-user-slash" },
+                { value: "", label: t("kassa.noCustomer"), icon: "fa-user-slash" },
                 ...customers.map((c) => ({
                   value: String(c.id),
                   label: `${c.fullName} · ${c.phone}`,
@@ -1026,13 +1026,13 @@ export default function KassaPage({ toast, refreshLowStock }) {
               <span className="ek-num">{cart.length}</span>
             </div>
             <div className="total-big">
-              <span>JAMI</span>
+              <span>{t("common.total").toUpperCase()}</span>
               <span className="ek-num">{money(total)}</span>
             </div>
 
             <button className="btn btn-green btn-full btn-pos" style={{ marginTop: 14 }} onClick={openPayModal} disabled={!cart.length}>
               <i className="fa-solid fa-wallet" aria-hidden="true" />
-              To'lovga o'tish <span className="kbd">F9</span>
+              {t("kassa.checkout")} <span className="kbd">F9</span>
             </button>
           </div>
         </div>
