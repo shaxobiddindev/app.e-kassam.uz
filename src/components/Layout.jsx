@@ -88,6 +88,10 @@ const PAGE_TITLES = {
   "/shop-users":     { key:"nav.staff",        icon:"fa-users-gear"    },
   "/branches":       { key:"nav.branches",     icon:"fa-store"         },
   "/loyalty":        { key:"nav.loyalty",      icon:"fa-award"         },
+  /* ⚠ Ro'yxatda yo'q yo'l JIMGINA "/" ga tushadi: `/security` shu sababli
+     tepada "Dashboard" deb yozilib turardi. Yangi sahifa qo'shsangiz,
+     shu yerga ham qo'shing. */
+  "/security":       { key:"nav.security",     icon:"fa-shield-halved" },
   "/audit":          { key:"nav.audit",        icon:"fa-clock-rotate-left"},
   "/settings":       { key:"nav.settings",     icon:"fa-gear"          },
 };

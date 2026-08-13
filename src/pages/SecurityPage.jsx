@@ -185,7 +185,11 @@ export default function SecurityPage({ toast }) {
       </div>
 
       <div className="card">
-        <div className="card-header" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        {/* ⚠ `justifyContent` ATAYLAB berilgan: `.card-header` standarti —
+            `space-between` (sarlavha chapda, tugma o'ngda). Bu yerda esa
+            beshta tab bor va ular butun kenglikka yoyilib, bir-biriga
+            aloqasiz tugmalarga o'xshab qolardi. */}
+        <div className="card-header" style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-start" }}>
           {visibleTabs.map((x) => (
             <button key={x}
                     className={`btn btn-sm ${tab === x ? "btn-primary" : "btn-outline"}`}
@@ -221,7 +225,8 @@ export default function SecurityPage({ toast }) {
                       {badges.map((b) => (
                         <tr key={b.userId}>
                           <td className="fw-700">{b.fullName || b.username}</td>
-                          <td>{b.role}</td>
+                          {/* Xom enum ("STOREKEEPER") emas — lug'atdagi nomi */}
+                          <td>{t(`enum.role.${b.role}`)}</td>
                           <td>
                             <span className={`badge ${b.hasBadge ? "badge-green" : "badge-red"}`}>
                               {b.hasBadge ? `v${b.version}` : t("badge.none")}

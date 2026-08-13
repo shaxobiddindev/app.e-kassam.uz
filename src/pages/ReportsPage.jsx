@@ -3,7 +3,7 @@ import { t } from "../lib/ek-i18n";
 import { reportApi, inventoryApi } from "../api";
 import { BranchSelector } from "../components";
 import { Empty, StatCard } from "../components/ui";
-import { money } from "../utils";
+import { money, percent } from "../utils";
 import { paymentEntry } from "../lib/ek-labels";
 import { SkeletonCards } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
@@ -173,24 +173,41 @@ export default function ReportsPage({ toast }) {
                   {t("dash.paymentTypes")}
                 </span>
               </div>
+              {/* ⚠ Har satrda ULUSH ham ko'rsatiladi. Sabab ikkita: egasi
+                  aslida "naqd ko'proqmi yoki karta?" degan savolga javob
+                  qidiradi, va faqat ikki qatorli kartochka yonidagi
+                  o'nta qatorli jadval bo'lgani uchun bu yer bo'm-bo'sh
+                  turardi. */}
               <div className="card-body">
                 {data.paymentSummary?.length ? (
-                  data.paymentSummary.map((p, i, arr) => (
-                    <div
-                      key={i}
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        padding: "10px 0",
-                        borderBottom: i < arr.length - 1 ? "1px solid var(--border)" : "none",
-                      }}
-                    >
-                      <span className="fw-700" style={{ fontSize: 13 }}>
-                        <PayLabel type={p.paymentType} />
-                      </span>
-                      <span className="mono fw-700">{money(p.amount)}</span>
-                    </div>
-                  ))
+                  (() => {
+                    const sum = data.paymentSummary.reduce((s, p) => s + Number(p.amount || 0), 0) || 1;
+                    return data.paymentSummary.map((p, i, arr) => {
+                      const pct = (Number(p.amount || 0) / sum) * 100;
+                      return (
+                        <div
+                          key={i}
+                          style={{
+                            padding: "10px 0",
+                            borderBottom: i < arr.length - 1 ? "1px solid var(--border)" : "none",
+                          }}
+                        >
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
+                            <span className="fw-700" style={{ fontSize: 13 }}>
+                              <PayLabel type={p.paymentType} />
+                            </span>
+                            <span style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                              <span className="mono text-muted" style={{ fontSize: 12 }}>{percent(pct)}</span>
+                              <span className="mono fw-700">{money(p.amount)}</span>
+                            </span>
+                          </div>
+                          <div className="pay-share" aria-hidden="true">
+                            <span style={{ width: `${pct}%` }} />
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()
                 ) : (
                   <Empty text={t("rep.noData")} />
                 )}

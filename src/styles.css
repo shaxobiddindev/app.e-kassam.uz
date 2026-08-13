@@ -552,7 +552,13 @@ select.form-input { cursor: pointer; }
                    color: var(--fg-on-brand); font-size: 17px; font-weight: 900; }
 
 .grid-2  { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.grid-2c { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+/* `align-items: start` — kartochka mazmuniga qarab balandlik oladi.
+   Ilgari ikki qatorli «To'lov turlari» kartochkasi yonidagi o'n qatorli
+   jadvalga cho'zilib, yarmi bo'sh ramka bo'lib turardi. */
+.grid-2c { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+/* To'lov turi ulushi — ingichka chiziq */
+.pay-share      { margin-top: 7px; height: 4px; border-radius: 2px; background: var(--bg-sunken); overflow: hidden; }
+.pay-share span { display: block; height: 100%; background: var(--blue, #017dca); border-radius: 2px; }
 
 /* ── UTILS ── */
 .mono    { font-family: var(--mono); }
