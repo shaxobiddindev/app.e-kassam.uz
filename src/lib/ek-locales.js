@@ -577,6 +577,7 @@ const uz = {
   "dash.sigNonCashDiff": "Naqdsiz to'lov terminal bilan to'g'ri kelmadi — {n} ta smena",
   "dash.sigStockShort": "Sanoqda kamomad — {n} ta inventarizatsiya ({d} kunda)",
   "dash.sigStaleShift": "Bir sutkadan beri yopilmagan smena",
+  "dash.sigStaleTransfer": "Bir sutkadan ortiq yo'lda turgan ko'chirish",
   "dash.sigOverLimit": "Qarzi chegaradan oshgan mijoz",
   "dash.sigSupplierDebt": "Yetkazib beruvchilarga qarzimiz — {n} ta",
   "dash.sigCustomerDebt": "Mijozlarning nasiya qarzi — {n} ta",
@@ -1249,6 +1250,9 @@ const uz = {
 
   /* ── v2: markirovka (Asl Belgisi) ───────────────────────── */
   "marking.scanTitle": "Markirovka yorliqlarini skanerlang",
+  "marking.pcs": "dona",
+  "marking.scanArrived": "Kelganini skanerlash",
+  "enum.markedStatus.IN_TRANSIT": "Yo'lda",
   "marking.scanHint": "Har dona uchun bittadan DataMatrix kodi. Miqdor skanerlangan yorliqlar soniga teng bo'ladi",
   "marking.scanPlaceholder": "DataMatrix kodini skanerlang…",
   "marking.noneScanned": "Hali birorta yorliq skanerlanmadi",
@@ -1818,6 +1822,7 @@ const ru = {
   "dash.sigNonCashDiff": "Безнал не сошёлся с терминалом — смен: {n}",
   "dash.sigStockShort": "Недостача по пересчёту — инвентаризаций: {n} (за {d} дн.)",
   "dash.sigStaleShift": "Смена не закрыта больше суток",
+  "dash.sigStaleTransfer": "Перемещения в пути более суток",
   "dash.sigOverLimit": "Клиенты с долгом выше лимита",
   "dash.sigSupplierDebt": "Наш долг поставщикам — {n}",
   "dash.sigCustomerDebt": "Долг клиентов (рассрочка) — {n}",
@@ -2469,6 +2474,9 @@ const ru = {
 
   /* ── v2: маркировка (Asl Belgisi) ───────────────────── */
   "marking.scanTitle": "Отсканируйте коды маркировки",
+  "marking.pcs": "шт",
+  "marking.scanArrived": "Сканировать пришедшее",
+  "enum.markedStatus.IN_TRANSIT": "В пути",
   "marking.scanHint": "По одному DataMatrix на каждую единицу. Количество равно числу этикеток",
   "marking.scanPlaceholder": "Сканируйте код DataMatrix…",
   "marking.noneScanned": "Пока ни одной этикетки",
@@ -3038,6 +3046,7 @@ const en = {
   "dash.sigNonCashDiff": "Card payments don’t match the terminal — {n} shift(s)",
   "dash.sigStockShort": "Stock-take shortage — {n} count(s) in {d} days",
   "dash.sigStaleShift": "Shift left open for over a day",
+  "dash.sigStaleTransfer": "Transfers in transit for over a day",
   "dash.sigOverLimit": "Customers over their credit limit",
   "dash.sigSupplierDebt": "Owed to suppliers — {n}",
   "dash.sigCustomerDebt": "Customer credit outstanding — {n}",
@@ -3689,6 +3698,9 @@ const en = {
 
   /* ── v2: marking (Asl Belgisi) ──────────────────────────── */
   "marking.scanTitle": "Scan the marking labels",
+  "marking.pcs": "pcs",
+  "marking.scanArrived": "Scan what arrived",
+  "enum.markedStatus.IN_TRANSIT": "In transit",
   "marking.scanHint": "One DataMatrix per unit. The quantity equals the number of labels scanned",
   "marking.scanPlaceholder": "Scan a DataMatrix code…",
   "marking.noneScanned": "No labels scanned yet",

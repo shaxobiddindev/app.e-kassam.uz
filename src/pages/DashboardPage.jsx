@@ -108,6 +108,14 @@ export default function DashboardPage({ toast }) {
       text: t("dash.sigStaleShift"), count: sig.staleOpenShifts,
       onClick: () => navigate("/security?tab=shifts"),
     },
+    /* Yo'lda qolib ketgan ko'chirish: tovar hech qaysi do'konning
+       javonida hisobga olinmaydi, ya'ni yo'qotish inventarizatsiyagacha
+       ko'rinmay qoladi. */
+    sig.staleTransfers > 0 && {
+      id: "transit", icon: "fa-truck-fast", tone: "warning",
+      text: t("dash.sigStaleTransfer"), count: sig.staleTransfers,
+      onClick: () => navigate("/transfers"),
+    },
     sig.overLimitDebtors > 0 && {
       id: "overlimit", icon: "fa-user-lock", tone: "danger",
       text: t("dash.sigOverLimit"), count: sig.overLimitDebtors,

@@ -15,6 +15,7 @@ import { Fragment, useCallback, useEffect, useState } from "react";
 import { t } from "../lib/ek-i18n";
 import { transferApi, productApi } from "../api";
 import { Modal } from "../components";
+import MarkingScanModal from "../components/MarkingScanModal";
 import { Empty, Field, FormGroup, SearchBar } from "../components/ui";
 import Select from "../components/ek/Select";
 import { money } from "../lib/ek-format";
@@ -50,6 +51,10 @@ export default function TransfersPage({ toast }) {
   const [search, setSearch] = useState("");
   const [found, setFound] = useState([]);
   const [accept, setAccept] = useState(null);     // { transfer, lines: {...} }
+  /* Yorliq skanerlash oynasi. `{ product, mode, onDone }` — yuborishda ham,
+     qabul qilishda ham bitta komponent ishlaydi (mode="receive": kodlar
+     to'planadi, tekshiruvni server bajaradi). */
+  const [scan, setScan] = useState(null);
   const [cancel, setCancel] = useState(null);     // { transfer, reason }
   const [view, setView] = useState(null);         // yopilgan hujjat tafsiloti
 
@@ -99,8 +104,23 @@ export default function TransfersPage({ toast }) {
       if (f.lines.some((l) => l.productId === p.id)) return f;
       return { ...f, lines: [...f.lines, {
         productId: p.id, productName: p.name, unit: p.unit, quantity: "1",
+        markingGroup: p.markingGroup || null, codes: null,
       }] };
     });
+    /* ⚠ Markirovkali tovarda miqdor QO'LDA yozilmaydi — u skanerlangan
+       yorliqlar sonidan chiqadi. Shuning uchun tovar qo'shilishi bilan
+       skaner oynasi ochiladi: aks holda omborchi "20" deb yozib, keyin
+       nega saqlanmadi deb qolardi. */
+    if (p.markingGroup) {
+      setScan({
+        product: p,
+        onDone: (codes) => {
+          setForm((f) => ({ ...f, lines: f.lines.map((l) => (l.productId === p.id
+            ? { ...l, codes, quantity: String(codes.length) } : l)) }));
+          setScan(null);
+        },
+      });
+    }
   };
 
   const setLine = (i, value) =>
@@ -114,7 +134,11 @@ export default function TransfersPage({ toast }) {
       await transferApi.create({
         toShopId: Number(form.toShopId),
         note: form.note || null,
-        lines: form.lines.map((l) => ({ productId: l.productId, quantity: num(l.quantity) })),
+        lines: form.lines.map((l) => ({
+          productId: l.productId,
+          quantity: num(l.quantity),
+          markingCodes: l.codes || null,
+        })),
       });
       toast?.success(t("transfer.saved"));
       setForm(null);
@@ -143,6 +167,39 @@ export default function TransfersPage({ toast }) {
   const setAcceptLine = (lineId, key, value) =>
     setAccept((a) => ({ ...a, lines: { ...a.lines, [lineId]: { ...a.lines[lineId], [key]: value } } }));
 
+  /**
+   * Markirovkali tovarda kelgan yorliqlar TOVAR bo'yicha skanerlanadi.
+   *
+   * ⚠ Qatorlar partiya (muddat) bo'yicha bo'lingan, kod esa qaysi
+   * partiyadan ekanini bilmaydi. Shuning uchun skanerlangan miqdor
+   * qatorlar bo'ylab FEFO tartibida taqsimlanadi — server ham AYNAN
+   * shunday qiladi, ikkalasi bir xil natija bermasa ekrandagi raqam
+   * yolg'on bo'lardi.
+   */
+  const applyScannedCodes = (productId, codes) =>
+    setAccept((a) => {
+      let left = codes.length;
+      const lines = { ...a.lines };
+      for (const l of a.transfer.lines) {
+        if (l.productId !== productId) continue;
+        const take = Math.min(left, num(l.quantity));
+        left -= take;
+        lines[l.id] = { ...lines[l.id], received: String(take), codes: null };
+      }
+      // Kodlarning o'zi TOVARNING birinchi qatoriga yoziladi — server
+      // ularni baribir tovar bo'yicha birlashtiradi.
+      const first = a.transfer.lines.find((l) => l.productId === productId);
+      if (first) lines[first.id] = { ...lines[first.id], codes };
+      return { ...a, lines };
+    });
+
+  /** Shu tovar bo'yicha skanerlangan yorliqlar soni (`null` — skanerlanmagan). */
+  const scannedCount = (productId) => {
+    const first = accept?.transfer?.lines?.find((l) => l.productId === productId);
+    const codes = first && accept.lines[first.id]?.codes;
+    return codes ? codes.length : null;
+  };
+
   const acceptShortage = (line) => {
     const row = accept?.lines?.[line.id];
     return Math.max(0, num(line.quantity) - num(row?.received));
@@ -169,6 +226,7 @@ export default function TransfersPage({ toast }) {
             receivedQuantity: num(row.received),
             writeOffReason: row.reason || null,
             note: row.note || null,
+            markingCodes: row.codes || null,
           };
         }),
       });
@@ -317,8 +375,13 @@ export default function TransfersPage({ toast }) {
           footer={
             <>
               <button className="btn btn-outline btn-sm" onClick={() => setForm(null)}>{t("common.cancel")}</button>
+              {/* Markirovkali qatorda yorliq skanerlanmagan bo'lsa ham
+                  saqlash yopiq: server baribir rad etadi, lekin xato
+                  tugma bosilgandan keyin emas, oldin ko'rinsin. */}
               <button className="btn btn-primary btn-sm" onClick={send}
-                      disabled={saving || !form.lines.length || form.lines.some((l) => !(num(l.quantity) > 0))}>
+                      disabled={saving || !form.lines.length
+                                || form.lines.some((l) => !(num(l.quantity) > 0)
+                                                          || (l.markingGroup && !l.codes?.length))}>
                 {saving ? <Spinner /> : <i className="fa-solid fa-truck-fast" />} {t("common.save")}
               </button>
             </>
@@ -367,8 +430,24 @@ export default function TransfersPage({ toast }) {
                   <tr key={l.productId}>
                     <td className="fw-700">{l.productName}</td>
                     <td>
-                      <Field className="form-input mono" type="number" min="0" step="0.001"
-                             value={l.quantity} onChange={(e) => setLine(i, e.target.value)} />
+                      {/* Markirovkada miqdor yorliqlardan chiqadi — maydon
+                          yopiq, o'rniga qayta skanerlash tugmasi. */}
+                      {l.markingGroup ? (
+                        <button className="btn btn-outline btn-sm"
+                                onClick={() => setScan({
+                                  product: { id: l.productId, name: l.productName, markingGroup: l.markingGroup },
+                                  onDone: (codes) => {
+                                    setForm((f) => ({ ...f, lines: f.lines.map((x) => (x.productId === l.productId
+                                      ? { ...x, codes, quantity: String(codes.length) } : x)) }));
+                                    setScan(null);
+                                  },
+                                })}>
+                          <i className="fa-solid fa-barcode" /> {l.codes?.length || 0} {t("marking.pcs")}
+                        </button>
+                      ) : (
+                        <Field className="form-input mono" type="number" min="0" step="0.001"
+                               value={l.quantity} onChange={(e) => setLine(i, e.target.value)} />
+                      )}
                     </td>
                     <td>
                       <button className="btn-icon" onClick={() => dropLine(i)} title={t("common.delete")}>
@@ -429,10 +508,26 @@ export default function TransfersPage({ toast }) {
                         <td className="mono" style={{ fontSize: 13 }}>{l.expiryDate || "—"}</td>
                         <td className="mono">{l.quantity}</td>
                         <td>
-                          <Field className="form-input mono" type="number" min="0" step="0.001"
-                                 max={String(l.quantity)}
-                                 value={row.received}
-                                 onChange={(e) => setAcceptLine(l.id, "received", e.target.value)} />
+                          {/* Markirovkada miqdor qo'lda yozilmaydi: qabul
+                              qiluvchi yetib kelgan yorliqlarni skanerlaydi
+                              va son shu ro'yxatdan chiqadi. */}
+                          {l.markingGroup ? (
+                            <button className="btn btn-outline btn-sm"
+                                    onClick={() => setScan({
+                                      product: { id: l.productId, name: l.productName, markingGroup: l.markingGroup },
+                                      onDone: (codes) => { applyScannedCodes(l.productId, codes); setScan(null); },
+                                    })}>
+                              <i className="fa-solid fa-barcode" />{" "}
+                              {scannedCount(l.productId) == null
+                                ? t("marking.scanArrived")
+                                : `${row.received} ${t("marking.pcs")}`}
+                            </button>
+                          ) : (
+                            <Field className="form-input mono" type="number" min="0" step="0.001"
+                                   max={String(l.quantity)}
+                                   value={row.received}
+                                   onChange={(e) => setAcceptLine(l.id, "received", e.target.value)} />
+                          )}
                         </td>
                       </tr>
                       {/* Turkum faqat KAMROQ kelganda so'raladi — har qatorda
@@ -490,6 +585,16 @@ export default function TransfersPage({ toast }) {
             <Field value={cancel.reason} onChange={(e) => setCancel({ ...cancel, reason: e.target.value })} />
           </FormGroup>
         </Modal>
+      )}
+
+      {/* ── Yorliq skanerlash ─────────────────────────────────────────── */}
+      {scan && (
+        <MarkingScanModal
+          product={scan.product}
+          mode="receive"
+          onDone={scan.onDone}
+          onClose={() => setScan(null)}
+        />
       )}
 
       {/* ── Yopilgan hujjat ───────────────────────────────────────────── */}
