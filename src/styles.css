@@ -73,8 +73,15 @@ h1, h2, h3, .page-title, .card-title, .modal-title {
 /* ── LAYOUT ── */
 .app-layout      { display: flex; min-height: 100vh; --current-sw: var(--sw); }
 .app-layout.collapsed { --current-sw: var(--sw-c); }
-.main-content    { margin-left: var(--current-sw); flex: 1; display: flex; flex-direction: column; min-height: 100vh; transition: margin-left .3s; }
-.page-content    { flex: 1; padding: 20px; }
+/* ⚠ `min-width: 0` — HAL QILUVCHI QATOR (admin panelidagi bilan bir xil
+   nosozlik, 2026-08-13 da topildi). Flex bolasining standart
+   `min-width: auto` qiymati uni mazmunidan kichrayishga qo'ymaydi: keng
+   jadval (tovarlar, ombor, sotuvlar, ko'chirish) butun sahifani cho'zib,
+   yon menyu bilan birga gorizontal aylantirib yuborardi.
+   `.table-wrap` dagi `overflow-x: auto` esa ishga tushmasdi — siqiladigan
+   narsa qolmagandi. */
+.main-content    { margin-left: var(--current-sw); flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 100vh; transition: margin-left .3s; }
+.page-content    { flex: 1; min-width: 0; padding: 20px; }
 
 /* ── TOPBAR ── */
 .topbar {
