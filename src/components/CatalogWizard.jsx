@@ -4,6 +4,7 @@ import { catalogApi, shopApi } from "../api";
 import { BUSINESS_TYPE, businessType as btEntry } from "../lib/ek-labels";
 import Modal from "./Modal";
 import { Spinner } from "./ek/Loading";
+import { NumField } from "./ek/EkFields";
 
 /* ══════════════════════════════════════════════════════════════════════════
    Tayyor katalog ustasi.
@@ -147,7 +148,7 @@ export default function CatalogWizard({ onClose, onDone, toast }) {
 
       <div className="form-group">
         <label className="form-label" htmlFor="cat-vat">{t("catalog.vatQuestion")}</label>
-        <input id="cat-vat" className="form-input ek-num" type="number" min="0" max="100" step="1"
+        <NumField id="cat-vat" kind="percent" className="form-input ek-num"
                value={vat} onChange={(e) => setVat(e.target.value)} style={{ maxWidth: 140 }} />
         <div className="form-hint">{t("catalog.vatHint")}</div>
       </div>

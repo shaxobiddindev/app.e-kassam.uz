@@ -329,6 +329,10 @@ tbody tr:hover td { background: var(--bg-sunken); }
   background: var(--bg-sunken); outline: none; transition: .2s;
 }
 .form-input:focus { border-color: var(--blue); background: var(--bg-surface); box-shadow: var(--ring-brand); }
+/* Noto'g'ri format maydonning O'ZIDA ko'rinadi — saqlagandan keyin emas */
+.form-input--error { border-color: var(--red); }
+.form-input--error:focus { border-color: var(--red); box-shadow: 0 0 0 3px rgb(239 68 68 / .18); }
+.field-error { display: block; margin-top: 5px; font-size: 11.5px; color: var(--red); }
 select.form-input { cursor: pointer; }
 
 /* ── SEARCH BAR ── */

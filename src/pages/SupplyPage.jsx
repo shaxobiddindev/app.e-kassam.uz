@@ -20,6 +20,7 @@ import { money } from "../lib/ek-format";
 import { paymentLabel } from "../lib/ek-labels";
 import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
+import { NumField } from "../components/ek/EkFields";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -321,9 +322,9 @@ export default function SupplyPage({ toast }) {
                 {form.lines.length ? form.lines.map((l, i) => (
                   <tr key={i}>
                     <td className="fw-700" style={{ fontSize: 13 }}>{l.productName}</td>
-                    <td><input type="number" min="0" step="0.001" className="form-input ek-num" style={{ width: 90 }}
+                    <td><NumField kind="qty" className="form-input ek-num" style={{ width: 90 }}
                                value={l.quantity} onChange={(e) => setLine(i, "quantity", e.target.value)} /></td>
-                    <td><input type="number" min="0" className="form-input ek-num" style={{ width: 120 }}
+                    <td><NumField kind="money" className="form-input ek-num" style={{ width: 120 }}
                                value={l.costPrice} onChange={(e) => setLine(i, "costPrice", e.target.value)} /></td>
                     <td><input type="date" className="form-input" style={{ width: 150 }}
                                value={l.expiryDate} onChange={(e) => setLine(i, "expiryDate", e.target.value)} /></td>
@@ -348,7 +349,7 @@ export default function SupplyPage({ toast }) {
 
           <div className="grid-2">
             <FormGroup label={t("supply.paidNow")}>
-              <Field type="number" inputMode="decimal" min="0" className="form-input ek-num"
+              <Field kind="money" className="form-input ek-num"
                      value={form.paidNow} onChange={(e) => setForm({ ...form, paidNow: e.target.value })} />
             </FormGroup>
             <FormGroup label={t("credit.method")}>
@@ -383,7 +384,7 @@ export default function SupplyPage({ toast }) {
                    onChange={(e) => setNewSup({ ...newSup, name: e.target.value })} />
           </FormGroup>
           <FormGroup label={t("common.phone")}>
-            <Field className="form-input mono" value={newSup.phone}
+            <Field className="form-input mono ek-num" kind="phone" value={newSup.phone}
                    onChange={(e) => setNewSup({ ...newSup, phone: e.target.value })} />
           </FormGroup>
         </Modal>
@@ -410,7 +411,7 @@ export default function SupplyPage({ toast }) {
             <span className="mono fw-800" style={{ color: "var(--fg-danger)" }}>{money(pay.supplier.balance)}</span>
           </div>
           <label className="form-label">{t("credit.payAmount")}</label>
-          <Field type="number" inputMode="decimal" min="0" max={pay.supplier.balance}
+          <Field kind="money" max={pay.supplier.balance}
                  className="form-input ek-num" autoFocus value={pay.amount}
                  onChange={(e) => setPay({ ...pay, amount: e.target.value })} />
           <label className="form-label" style={{ marginTop: 10 }}>{t("credit.method")}</label>

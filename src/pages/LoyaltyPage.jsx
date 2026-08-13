@@ -18,6 +18,7 @@ import { useConfirm } from "../context/ConfirmProvider";
 import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
 import { money } from "../utils";
+import { NumField } from "../components/ek/EkFields";
 
 const EMPTY_FORM = { name: "", minSpent: "", discountPercent: "", cashbackPercent: "" };
 
@@ -135,9 +136,8 @@ export default function LoyaltyPage({ toast }) {
       <div className="card" style={{ marginBottom: 14 }}>
         <div className="card-body" style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
           <span style={{ fontSize: 13, fontWeight: 600 }}>{t("loyalty.maxPercent")}</span>
-          <input
-            className="form-input"
-            type="number" min="0" max="100" step="5"
+          <NumField kind="percent"
+            className="form-input ek-num"
             style={{ width: 100 }}
             value={maxPercent}
             onChange={(e) => setMaxPercent(e.target.value)}
@@ -223,13 +223,13 @@ export default function LoyaltyPage({ toast }) {
           </div>
           <div className="form-group" style={{ marginTop: 14 }}>
             <label className="form-label">{`${t("loyalty.minSpent")} *`}</label>
-            <input className="form-input" type="number" min="0"
+            <NumField kind="money" className="form-input ek-num"
                    value={form.minSpent} onChange={(e) => setForm({ ...form, minSpent: e.target.value })} />
             <div className="text-muted" style={{ fontSize: 12, marginTop: 4 }}>{t("loyalty.minSpentHint")}</div>
           </div>
           <div className="form-group" style={{ marginTop: 14 }}>
             <label className="form-label">{`${t("loyalty.percent")} *`}</label>
-            <input className="form-input" type="number" min="0" max="50" step="0.5"
+            <NumField kind="percent" max={50} className="form-input ek-num"
                    value={form.discountPercent}
                    onChange={(e) => setForm({ ...form, discountPercent: e.target.value })} />
             {/* ⚠ Yuqori chegara 50: 100% chegirma — sovg'a, chegirma emas,
@@ -242,7 +242,7 @@ export default function LoyaltyPage({ toast }) {
               50% keshbek amalda «ikkinchi mahsulot tekin» degani. */}
           <div className="form-group" style={{ marginTop: 14 }}>
             <label className="form-label">{t("loyalty.cashback")}</label>
-            <input className="form-input" type="number" min="0" max="20" step="0.5"
+            <NumField kind="percent" max={20} className="form-input ek-num"
                    value={form.cashbackPercent}
                    onChange={(e) => setForm({ ...form, cashbackPercent: e.target.value })} />
             <div className="text-muted" style={{ fontSize: 12, marginTop: 4 }}>{t("loyalty.cashbackHint")}</div>

@@ -10,6 +10,7 @@ import { useBadge } from "../context/BadgeProvider";
 import { money } from "../utils";
 import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
+import { NumField } from "../components/ek/EkFields";
 
 /* Jurnal turlari — rang bilan: kirim yashil, chiqim qizil, to'g'irlash sariq.
    Omborchi ro'yxatga qarab o'qimasdan ham manzarani ko'rsin. */
@@ -532,11 +533,8 @@ export default function InventoryPage({ toast }) {
           ) : (
             <div className="form-group">
               <label className="form-label">{`${t("inv.receiveQty")} *`}</label>
-              <input
-                className="form-input"
-                type="number"
-                min="0"
-                step="any"
+              <NumField kind="qty"
+                className="form-input ek-num"
                 value={qty}
                 onChange={(e) => setQty(e.target.value)}
                 placeholder="masalan: 50"
@@ -633,10 +631,8 @@ export default function InventoryPage({ toast }) {
 
           <div className="form-group">
             <label className="form-label">{`${t("inv.correctQty")} *`}</label>
-            <input
-              className="form-input"
-              type="number"
-              min="0"
+            <NumField kind="qty"
+              className="form-input ek-num"
               value={qty}
               onChange={(e) => setQty(e.target.value)}
               autoFocus

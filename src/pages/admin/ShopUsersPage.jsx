@@ -267,7 +267,7 @@ export default function ShopUsersPage({ toast }) {
           }
         >
           <FormGroup label={`${t("common.fullName")} *`}>
-            <Field className="form-input" value={form.fullName} onChange={setField("fullName")} placeholder="Ali Valiyev" autoFocus />
+            <Field className="form-input" kind="name" value={form.fullName} onChange={setField("fullName")} placeholder="Ali Valiyev" autoFocus />
           </FormGroup>
           <div className="grid-2">
             <FormGroup label={`${t("common.username")} *`}>
@@ -313,7 +313,7 @@ export default function ShopUsersPage({ toast }) {
           }
         >
           <FormGroup label={`${t("staff.discountLimit")} (%)`}>
-            <Field type="number" inputMode="decimal" min="0" max="100"
+            <Field kind="percent"
                    className="form-input ek-num" autoFocus
                    placeholder={t("staff.shopDefault")}
                    value={limitFor.value}

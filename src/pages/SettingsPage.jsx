@@ -150,7 +150,7 @@ export default function SettingsPage({ toast }) {
         {isOwner && (
           <>
             <Row label={t("settings.cashTolerance")} hint={t("settings.cashToleranceHint")}>
-              <Field type="number" inputMode="decimal" min="0" className="form-input ek-num"
+              <Field kind="money" className="form-input ek-num"
                      wrapStyle={{ width: 160 }}
                      value={tolerance}
                      onChange={(e) => setTolerance(e.target.value)}
@@ -160,7 +160,7 @@ export default function SettingsPage({ toast }) {
                 naqdni odam sanaydi, naqdsizda esa ikkala raqam ham
                 mashinadan keladi — farq bo'lsa demak biror narsa noto'g'ri. */}
             <Row label={t("settings.nonCashTolerance")} hint={t("settings.nonCashToleranceHint")}>
-              <Field type="number" inputMode="decimal" min="0" className="form-input ek-num"
+              <Field kind="money" className="form-input ek-num"
                      wrapStyle={{ width: 160 }}
                      value={nonCashTolerance}
                      onChange={(e) => setNonCashTolerance(e.target.value)}
@@ -170,21 +170,21 @@ export default function SettingsPage({ toast }) {
                 emas: 3 dona konfet va 3 dona muzlatgich bir xil ko'rinsa,
                 chegara ma'nosini yo'qotardi. */}
             <Row label={t("settings.stockTolerance")} hint={t("settings.stockToleranceHint")}>
-              <Field type="number" inputMode="decimal" min="0" className="form-input ek-num"
+              <Field kind="money" className="form-input ek-num"
                      wrapStyle={{ width: 160 }}
                      value={stockTolerance}
                      onChange={(e) => setStockTolerance(e.target.value)}
                      onBlur={saveField(shopApi.setStockTolerance, stockTolerance)} />
             </Row>
             <Row label={t("settings.discountLimit")} hint={t("settings.discountLimitHint")}>
-              <Field type="number" inputMode="decimal" min="0" max="100" className="form-input ek-num"
+              <Field kind="percent" className="form-input ek-num"
                      wrapStyle={{ width: 160 }}
                      value={discountLimit}
                      onChange={(e) => setDiscountLimit(e.target.value)}
                      onBlur={saveField(shopApi.setDiscountLimit, discountLimit)} />
             </Row>
             <Row label={t("settings.returnDays")} hint={t("settings.returnDaysHint")}>
-              <Field type="number" inputMode="numeric" min="0" className="form-input ek-num"
+              <Field kind="int" className="form-input ek-num"
                      wrapStyle={{ width: 160 }}
                      value={returnDays}
                      onChange={(e) => setReturnDays(e.target.value)}
@@ -194,7 +194,7 @@ export default function SettingsPage({ toast }) {
                 qiymat Mijozlar sahifasida qo'yiladi va u shu raqamdan
                 ustun turadi. */}
             <Row label={t("settings.creditLimit")} hint={t("settings.creditLimitHint")}>
-              <Field type="number" inputMode="decimal" min="0" className="form-input ek-num"
+              <Field kind="money" className="form-input ek-num"
                      wrapStyle={{ width: 160 }}
                      value={creditLimit}
                      onChange={(e) => setCreditLimit(e.target.value)}

@@ -226,7 +226,7 @@ export default function ExpensesPage({ toast }) {
           </FormGroup>
           <div className="grid-2">
             <FormGroup label={t("common.sum")}>
-              <Field type="number" inputMode="decimal" min="0" className="form-input ek-num" autoFocus
+              <Field kind="money" className="form-input ek-num" autoFocus
                      value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
             </FormGroup>
             <FormGroup label={t("common.date")}>

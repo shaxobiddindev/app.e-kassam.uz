@@ -137,12 +137,12 @@ export default function PricesPage({ toast }) {
             <FormGroup label={form.mode === "percent" ? t("price.percentValue") : t("price.amountValue")}>
               {/* Manfiy qiymat ham to'g'ri: "-10%" chegirma mavsumida
                   kerak bo'ladi, shuning uchun `min` qo'yilmagan. */}
-              <Field type="number" inputMode="decimal" className="form-input ek-num"
+              <Field kind="signed" className="form-input ek-num"
                      value={form.value}
                      onChange={(e) => { setForm({ ...form, value: e.target.value }); setPreview(null); }} />
             </FormGroup>
             <FormGroup label={t("price.roundTo")}>
-              <Field type="number" inputMode="numeric" min="0" className="form-input ek-num"
+              <Field kind="int" className="form-input ek-num"
                      value={form.roundTo}
                      onChange={(e) => { setForm({ ...form, roundTo: e.target.value }); setPreview(null); }} />
             </FormGroup>

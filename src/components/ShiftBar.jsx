@@ -295,7 +295,7 @@ export default function ShiftBar({ toast }) {
             </>
           }>
           <label className="form-label">{t("cash.openingFloat")}</label>
-          <Field type="number" inputMode="decimal" min="0" className="form-input ek-num"
+          <Field kind="money" className="form-input ek-num"
                  value={openForm.float} autoFocus
                  onChange={(e) => setOpenForm({ float: e.target.value })} />
           <p className="form-hint">{t("cash.openingHint")}</p>
@@ -318,7 +318,7 @@ export default function ShiftBar({ toast }) {
             </>
           }>
           <label className="form-label">{t("cash.counted")}</label>
-          <Field type="number" inputMode="decimal" min="0" className="form-input ek-num"
+          <Field kind="money" className="form-input ek-num"
                  value={closeForm.counted} autoFocus
                  onChange={(e) => setCloseForm({ ...closeForm, counted: e.target.value })} />
           <p className="form-hint">{t("cash.countHint")}</p>
@@ -335,7 +335,7 @@ export default function ShiftBar({ toast }) {
               {closeForm.types.map((k) => (
                 <div key={k} style={{ marginTop: 8 }}>
                   <label className="form-label">{paymentLabel(k)}</label>
-                  <Field type="number" inputMode="decimal" min="0" className="form-input ek-num"
+                  <Field kind="money" className="form-input ek-num"
                          value={closeForm.nonCash[k] ?? ""}
                          onChange={(e) => setCloseForm({
                            ...closeForm,
@@ -372,7 +372,7 @@ export default function ShiftBar({ toast }) {
             ))}
           </div>
           <label className="form-label">{t("common.sum")}</label>
-          <Field type="number" inputMode="decimal" min="0" className="form-input ek-num"
+          <Field kind="money" className="form-input ek-num"
                  value={cashForm.amount} autoFocus
                  onChange={(e) => setCashForm({ ...cashForm, amount: e.target.value })} />
           <label className="form-label" style={{ marginTop: 10 }}>{t("inv.reason")}</label>

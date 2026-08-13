@@ -21,6 +21,7 @@ import Select from "../components/ek/Select";
 import { printReceipt, openDrawer } from "../lib/ek-hardware";
 import { useScanner } from "../hooks/useScanner";
 import { isDesktop } from "../lib/ek-desktop";
+import { NumField } from "../components/ek/EkFields";
 
 /* ══════════════════════════════════════════════════════════════════════════
    Kassir paneli — 06-APP-KASSIR.md
@@ -1005,9 +1006,8 @@ export default function KassaPage({ toast, refreshLowStock }) {
                     {t("bonus.useMax")}
                   </button>
                 </div>
-                <input
-                  className="form-input"
-                  type="number" min="0" max={bonusAvail} step="1000"
+                <NumField kind="int"
+                  className="form-input ek-num" max={bonusAvail}
                   style={{ marginTop: 8 }}
                   value={bonusUse}
                   onChange={(e) => setBonusUse(e.target.value)}
@@ -1096,8 +1096,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
               <div className="pay-modal-section-label">
                 <i className="fa-solid fa-tag" aria-hidden="true" /> {t("kassa.discount")}
               </div>
-              <input
-                type="number" min="0" max={subtotal} inputMode="numeric"
+              <NumField kind="money" max={subtotal}
                 className="form-input pay-mixed-input ek-num"
                 value={discount}
                 onChange={(e) => setDiscount(e.target.value)}
@@ -1141,9 +1140,8 @@ export default function KassaPage({ toast, refreshLowStock }) {
               {payType === "CASH" && (
                 <div style={{ marginTop: 18 }}>
                   <label className="form-label" htmlFor="given">{t("kassa.received")}</label>
-                  <input
+                  <NumField kind="money"
                     id="given"
-                    type="number" min="0" inputMode="numeric"
                     className="form-input pay-mixed-input"
                     value={cashGiven}
                     autoFocus
@@ -1205,8 +1203,8 @@ export default function KassaPage({ toast, refreshLowStock }) {
                       <label className="pay-mixed-label" htmlFor="mx-cash" style={{ color: "var(--fg-success)" }}>
                         <i className="fa-solid fa-money-bill-1" aria-hidden="true" /> Naqd (so'm)
                       </label>
-                      <input
-                        id="mx-cash" type="number" min="0" inputMode="numeric"
+                      <NumField kind="money"
+                        id="mx-cash"
                         className="form-input pay-mixed-input"
                         style={{ borderColor: "var(--border-success)", color: "var(--fg-success)" }}
                         value={cashAmount}
@@ -1221,8 +1219,8 @@ export default function KassaPage({ toast, refreshLowStock }) {
                         <i className="fa-solid fa-credit-card" aria-hidden="true" />
                         {paymentLabel(mixedSecondType)} (so'm)
                       </label>
-                      <input
-                        id="mx-card" type="number" min="0" inputMode="numeric"
+                      <NumField kind="money"
+                        id="mx-card"
                         className="form-input pay-mixed-input"
                         style={{ borderColor: "var(--border-brand)", color: "var(--fg-brand)" }}
                         value={cardAmount}

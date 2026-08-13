@@ -285,7 +285,7 @@ export default function CategoriesPage({ toast }) {
                                   ...options(UNIT).map((o) => ({ ...o, icon: UNIT[o.value]?.icon }))]} />
               </FormGroup>
               <FormGroup label={t("products.vatRate")}>
-                <Field className="form-input ek-num" type="number" min="0" max="100"
+                <Field className="form-input ek-num" kind="percent"
                        value={form.defaultVatRate} onChange={setField("defaultVatRate")} placeholder="12" />
               </FormGroup>
             </div>
@@ -298,7 +298,7 @@ export default function CategoriesPage({ toast }) {
             </FormGroup>
 
             <FormGroup label={t("products.mxik")}>
-              <Field className="form-input ek-num" value={form.defaultMxik} onChange={setField("defaultMxik")}
+              <Field className="form-input ek-num" kind="mxik" value={form.defaultMxik} onChange={setField("defaultMxik")}
                      placeholder="00000000000000000" maxLength={17} />
               <div className="form-hint">{t("products.mxikHint")}</div>
             </FormGroup>

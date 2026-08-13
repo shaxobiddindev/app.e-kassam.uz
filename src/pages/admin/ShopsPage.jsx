@@ -8,6 +8,7 @@ import { SHOP_STATUS, options } from "../../lib/ek-labels";
 import Select from "../../components/ek/Select";
 import { SkeletonList } from "../../components/ek/Loading";
 import { useLoading } from "../../lib/use-loading";
+import { PhoneField } from "../../components/ek/EkFields";
 
 const EMPTY_BRANCH_FORM = { name: "", code: "", phone: "998", address: "" };
 
@@ -160,17 +161,16 @@ export default function ShopsPage({ toast }) {
               <Field className="form-input" value={form.name} onChange={setField("name")} placeholder={t("branch.namePlaceholder")} />
             </FormGroup>
             <FormGroup label={`${t("branch.code")} *`}>
-              <Field className="form-input mono" value={form.code} onChange={setField("code")} placeholder="branch-1" disabled={modal?.type === "edit"} />
+              <Field className="form-input mono" kind="code" value={form.code} onChange={setField("code")} placeholder="branch-1" disabled={modal?.type === "edit"} />
               <small className="text-muted">{t("branch.codeHint")}</small>
             </FormGroup>
           </div>
           <div className="grid-2">
             <FormGroup label={t("common.phone")}>
-              <input 
-                className="form-input mono" 
-                value={maskPhone(form.phone)} 
-                onChange={(e) => setForm(p => ({ ...p, phone: cleanPhone(e.target.value) }))} 
-                placeholder="+998 (__) ___-__-__" 
+              <PhoneField
+                className="form-input mono ek-num"
+                value={form.phone}
+                onChange={(e) => setForm(p => ({ ...p, phone: e.target.value }))}
               />
             </FormGroup>
             <FormGroup label={t("common.address")}>

@@ -15,6 +15,7 @@ import { printPriceLabels } from "../lib/ek-hardware";
 import {
   UNIT, PRODUCT_TYPE, MARKING_GROUP, options, unitLabel, unitDecimals,
 } from "../lib/ek-labels";
+import { NumField, BarcodeField } from "../components/ek/EkFields";
 
 /* ══════════════════════════════════════════════════════════════════════════
    Tovarlar.
@@ -443,7 +444,7 @@ export default function ProductsPage({ toast }) {
 
             <div className="grid-2">
               <FormGroup label={t("products.barcode")}>
-                <Field className="form-input ek-num" value={form.barcode} onChange={setField("barcode")} placeholder="4780001111111" />
+                <Field className="form-input ek-num" kind="barcode" value={form.barcode} onChange={setField("barcode")} placeholder="4780001111111" />
               </FormGroup>
               <FormGroup label={t("products.sku")}>
                 <Field className="form-input ek-num" value={form.sku} onChange={setField("sku")} placeholder="ART-001" />
@@ -469,16 +470,16 @@ export default function ProductsPage({ toast }) {
 
             <div className="grid-2">
               <FormGroup label={t("products.salePrice")}>
-                <Field className="form-input ek-num" type="number" min="0" value={form.salePrice} onChange={setField("salePrice")} placeholder="0" />
+                <Field className="form-input ek-num" kind="money" value={form.salePrice} onChange={setField("salePrice")} placeholder="0" />
               </FormGroup>
               <FormGroup label={t("products.costPrice")}>
-                <Field className="form-input ek-num" type="number" min="0" value={form.costPrice} onChange={setField("costPrice")} placeholder="0" />
+                <Field className="form-input ek-num" kind="money" value={form.costPrice} onChange={setField("costPrice")} placeholder="0" />
               </FormGroup>
             </div>
 
             <div className="grid-2">
               <FormGroup label={t("products.vatRate")}>
-                <Field className="form-input ek-num" type="number" min="0" max="100" value={form.vatRate} onChange={setField("vatRate")} placeholder="12" />
+                <Field className="form-input ek-num" kind="percent" value={form.vatRate} onChange={setField("vatRate")} placeholder="12" />
               </FormGroup>
               <FormGroup label={t("products.packageCode")}>
                 <Field className="form-input ek-num" value={form.packageCode} onChange={setField("packageCode")} placeholder="1234567" />
@@ -486,7 +487,7 @@ export default function ProductsPage({ toast }) {
             </div>
 
             <FormGroup label={t("products.mxik")}>
-              <Field className="form-input ek-num" value={form.mxikCode} onChange={setField("mxikCode")} placeholder="00000000000000000" maxLength={17} />
+              <Field className="form-input ek-num" kind="mxik" value={form.mxikCode} onChange={setField("mxikCode")} placeholder="00000000000000000" maxLength={17} />
               <div className="form-hint">
                 {t("products.mxikHint")}{" "}
                 <a href="https://tasnif.soliq.uz/classifier" target="_blank" rel="noreferrer">tasnif.soliq.uz</a>
@@ -515,7 +516,7 @@ export default function ProductsPage({ toast }) {
               <div className="form-section__title"><i className="fa-solid fa-boxes-stacked" /> {t("products.section.stock")}</div>
 
               <FormGroup label={t("products.minQuantity")}>
-                <Field className="form-input ek-num" type="number" min="0" step="any"
+                <Field className="form-input ek-num" kind="qty"
                        value={form.minQuantity} onChange={setField("minQuantity")} placeholder="5" />
               </FormGroup>
 
@@ -525,9 +526,9 @@ export default function ProductsPage({ toast }) {
               </div>
               {form.barcodes.map((b, idx) => (
                 <div key={idx} style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-                  <input className="form-input ek-num" style={{ flex: 2 }} placeholder="4780001111128"
+                  <BarcodeField className="form-input ek-num" style={{ flex: 2 }} placeholder="4780001111128"
                          value={b.barcode} onChange={(e) => setPackBarcode(idx, "barcode", e.target.value)} />
-                  <input className="form-input ek-num" style={{ flex: 1 }} type="number" min="0" step="any" placeholder="12"
+                  <NumField className="form-input ek-num" style={{ flex: 1 }} kind="qty" placeholder="12"
                          value={b.packQty} onChange={(e) => setPackBarcode(idx, "packQty", e.target.value)} />
                   <input className="form-input" style={{ flex: 1 }} placeholder={t("products.packLabel")}
                          value={b.label || ""} onChange={(e) => setPackBarcode(idx, "label", e.target.value)} />

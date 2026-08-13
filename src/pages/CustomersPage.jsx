@@ -11,6 +11,7 @@ import { roleSet } from "../lib/ek-roles";
 import { useAuth } from "../hooks/useAuth";
 import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
+import { PhoneField } from "../components/ek/EkFields";
 
 const EMPTY_FORM = { fullName: "", phone: "998", creditLimit: "" };
 
@@ -314,6 +315,7 @@ export default function CustomersPage({ toast }) {
         >
           <FormGroup label={`${t("common.fullName")} *`}>
             <Field
+              kind="name"
               className="form-input"
               value={form.fullName}
               onChange={setField("fullName")}
@@ -322,11 +324,10 @@ export default function CustomersPage({ toast }) {
             />
           </FormGroup>
           <FormGroup label={`${t("common.phone")} *`}>
-            <input
-              className="form-input mono"
-              value={maskPhone(form.phone)}
-              onChange={(e) => setForm(prev => ({ ...prev, phone: cleanPhone(e.target.value) }))}
-              placeholder="+998 (__) ___-__-__"
+            <PhoneField
+              className="form-input mono ek-num"
+              value={form.phone}
+              onChange={(e) => setForm(prev => ({ ...prev, phone: e.target.value }))}
             />
           </FormGroup>
           {/* Shu mijozning ALOHIDA nasiya chegarasi. Bo'sh qoldirilsa
@@ -335,7 +336,7 @@ export default function CustomersPage({ toast }) {
           {canSetLimit && (
             <FormGroup label={t("credit.limit")}>
               <Field
-                type="number" inputMode="decimal" min="0"
+                kind="money"
                 className="form-input ek-num"
                 value={form.creditLimit}
                 onChange={setField("creditLimit")}
@@ -383,7 +384,7 @@ export default function CustomersPage({ toast }) {
           </div>
 
           <label className="form-label">{t("credit.payAmount")}</label>
-          <Field type="number" inputMode="decimal" min="0" max={debt.customer.balance}
+          <Field kind="money" max={debt.customer.balance}
                  className="form-input ek-num" autoFocus
                  value={debt.amount}
                  onChange={(e) => setDebt({ ...debt, amount: e.target.value })} />
