@@ -45,7 +45,15 @@ export function FormGroup({ label, children }) {
 
 // ─── Stat Card ────────────────────────────────────────────────
 /**
- * `hint` — yorliq ostidagi kichik izoh (masalan formulani aytish uchun).
+ * `hint` — formulani tushuntiruvchi izoh. Yorliq yonidagi «i» belgisida
+ * turadi, kartochka ichida MATN sifatida chiqmaydi.
+ *
+ * ⚠ Ilgari u oddiy abzas edi va bitta uzun izoh («Ombor yo'qotishi» —
+ * to'rt qator) BUTUN qatorni ~250px ga cho'zib yuborardi: grid qator
+ * balandligini eng baland kartochka belgilaydi, qolgan oltitasi esa
+ * yarmi bo'sh turardi. Izoh kerak, lekin u ASOSIY raqamdan ko'proq joy
+ * egallamasligi kerak.
+ *
  * `valueColor` — faqat RAQAM rangi. ⚠ `color` ikonka uchun; raqamni ham
  * u bilan bo'yash barcha mavjud kartochkalarning ko'rinishini o'zgartirib
  * yuborardi.
@@ -56,10 +64,16 @@ export function StatCard({ label, value, icon, bg, color, change, hint, valueCol
       <div className="stat-icon" style={{ background: bg, color }}>
         <i className={`fa-solid ${icon}`} />
       </div>
-      <div>
+      <div className="stat-card__body">
         <div className="stat-value" style={valueColor ? { color: valueColor } : undefined}>{value}</div>
-        <div className="stat-label">{label}</div>
-        {hint && <div className="text-muted" style={{ fontSize: 11 }}>{hint}</div>}
+        <div className="stat-label">
+          {label}
+          {hint && (
+            <span className="stat-hint" tabIndex={0} role="note" title={hint} aria-label={hint}>
+              <i className="fa-solid fa-circle-info" aria-hidden="true" />
+            </span>
+          )}
+        </div>
         {change && (
           <div className="stat-change">
             <i className="fa-solid fa-caret-up" /> {change}
