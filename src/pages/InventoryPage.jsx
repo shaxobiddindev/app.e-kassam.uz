@@ -18,6 +18,10 @@ const MOV_BADGE = {
   SALE:       "badge-red",
   EXPIRED:    "badge-red",
   CORRECTION: "badge-yellow",
+  /* Ko'chirish — ko'k: bu na kirim, na yo'qotish. Tovar do'kondan chiqdi
+     yoki kirdi, lekin sotilmadi va yo'qolmadi ham. */
+  TRANSFER_OUT: "badge-blue",
+  TRANSFER_IN:  "badge-blue",
 };
 
 const isBatchExpired = (b) => b.status === "EXPIRED" || b.expired;

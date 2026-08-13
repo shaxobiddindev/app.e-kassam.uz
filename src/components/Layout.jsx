@@ -22,6 +22,10 @@ const NAV_ITEMS = [
     { id: "inventory",  path: "/inventory",  key: "nav.inventory",  icon: "fa-warehouse", roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
     { id: "stock-take", path: "/stock-take", key: "nav.stockTake",  icon: "fa-clipboard-list", roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
     { id: "supply",     path: "/supply",     key: "nav.supply",     icon: "fa-truck-ramp-box", roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
+    /* Ko'chirish — OMBOR bo'limida, «Boshqaruv» da emas: bu tovarni
+       jismonan qo'zg'atadigan kundalik ish, filial sozlamasi emas.
+       Filiali yo'q do'konda sahifa o'zi nima qilish kerakligini aytadi. */
+    { id: "transfers",  path: "/transfers",  key: "nav.transfers",  icon: "fa-truck-fast", roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
     { id: "prices",     path: "/prices",     key: "nav.prices",     icon: "fa-tags", roles: ["ADMIN", "SHOP_ADMIN", "OWNER"] },
     { id: "customers",  path: "/customers",  key: "nav.customers",  icon: "fa-users",     roles: ["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"] },
     { id: "sales",      path: "/sales",      key: "nav.sales",      icon: "fa-receipt",   roles: ["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"] },
@@ -74,6 +78,7 @@ const PAGE_TITLES = {
   "/inventory":      { key:"nav.inventory",    icon:"fa-warehouse"     },
   "/stock-take":     { key:"nav.stockTake",    icon:"fa-clipboard-list"},
   "/supply":         { key:"nav.supply",       icon:"fa-truck-ramp-box"},
+  "/transfers":      { key:"nav.transfers",    icon:"fa-truck-fast"    },
   "/prices":         { key:"nav.prices",       icon:"fa-tags"          },
   "/customers":      { key:"nav.customers",    icon:"fa-users"         },
   "/sales":          { key:"nav.sales",        icon:"fa-receipt"       },

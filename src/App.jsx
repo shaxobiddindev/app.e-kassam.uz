@@ -18,6 +18,7 @@ import StockTakePage    from "./pages/StockTakePage";
 import ExpensesPage     from "./pages/ExpensesPage";
 import LoyaltyPage      from "./pages/LoyaltyPage";
 import SupplyPage       from "./pages/SupplyPage";
+import TransfersPage    from "./pages/TransfersPage";
 import PricesPage       from "./pages/PricesPage";
 import CustomersPage    from "./pages/CustomersPage";
 import KassaPage        from "./pages/KassaPage";
@@ -187,6 +188,10 @@ export default function App() {
             {/* Kirim — tovarni jismonan qabul qiladigan odam hujjatni
                 ham yozadi, shuning uchun omborchiga ham ochiq. */}
             <Route path="/supply" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><SupplyPage toast={toast} /></ProtectedRoute>} />
+            {/* Filiallararo ko'chirish — ombor bilan bir xil doira:
+                tovarni mashinaga ortadigan va tushiradigan odam omborchi.
+                Kassirga yopiq (server ham shuni qo'yadi). */}
+            <Route path="/transfers" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><TransfersPage toast={toast} /></ProtectedRoute>} />
             {/* Narx — egasi va do'kon adminining ishi; omborchi narx
                 qo'ymaydi. */}
             <Route path="/prices" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><PricesPage toast={toast} /></ProtectedRoute>} />

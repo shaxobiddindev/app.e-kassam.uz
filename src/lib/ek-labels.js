@@ -55,6 +55,15 @@ export const SALE_STATUS = dict("enum.sale", {
   CANCELLED: { tone: "danger",  icon: "fa-circle-xmark" },
 });
 
+/* ── Ko'chirish holati — TransferStatus (V22) ────────────────────────────── */
+export const TRANSFER_STATUS = dict("enum.transferStatus", {
+  /* «Yo'lda» — ogohlantirish rangida: bu tugallanmagan ish. Tovar hech
+     qaysi do'konning javonida yo'q va uni kimdir qabul qilishi kerak. */
+  SENT:      { tone: "warning", icon: "fa-truck-fast" },
+  RECEIVED:  { tone: "success", icon: "fa-circle-check" },
+  CANCELLED: { tone: "neutral", icon: "fa-rotate-left" },
+});
+
 /* ── Do'kon holati — ShopStatus ──────────────────────────────────────────── */
 export const SHOP_STATUS = dict("enum.shopStatus", {
   ACTIVE:    { tone: "success", icon: "fa-circle-check" },
@@ -205,6 +214,7 @@ export const options = (d, only) =>
 export const paymentLabel   = (v) => label(PAYMENT_TYPE, v);
 export const paymentEntry   = (v) => entry(PAYMENT_TYPE, v);
 export const saleStatus     = (v) => entry(SALE_STATUS, v);
+export const transferStatus = (v) => entry(TRANSFER_STATUS, v);
 export const shopStatus     = (v) => entry(SHOP_STATUS, v);
 export const shopPlan       = (v) => entry(SHOP_PLAN, v);
 export const paymentProvider= (v) => entry(PAYMENT_PROVIDER, v);

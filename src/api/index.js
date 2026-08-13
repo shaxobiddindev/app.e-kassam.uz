@@ -369,6 +369,22 @@ export const supplyApi = {
   createReceipt:   (data) => request("/supply/receipts", { method: "POST", body: JSON.stringify(data) }),
 };
 
+// ─── Filiallararo ko'chirish (V22) ────────────────────────────
+/* ⚠ IKKI QADAM: `create` da tovar jo'natuvchi ombordan CHIQADI, `accept`
+   da qabul qiluvchiga KIRADI. Orasidagi holat — «yo'lda» (SENT).
+   `accept` da `lines` bo'sh bo'lsa hammasi to'liq qabul qilinadi;
+   kamroq kelgan qatorda `writeOffReason` MAJBURIY. */
+export const transferApi = {
+  targets:  ()       => request("/transfers/targets"),
+  outgoing: (status) => request(`/transfers/outgoing${status ? `?status=${status}` : ""}`),
+  incoming: (status) => request(`/transfers/incoming${status ? `?status=${status}` : ""}`),
+  get:      (id)     => request(`/transfers/${id}`),
+  create:   (data)   => request("/transfers", { method: "POST", body: JSON.stringify(data) }),
+  accept:   (id, data) => request(`/transfers/${id}/accept`, { method: "POST", body: JSON.stringify(data || {}) }),
+  cancel:   (id, reason) => request(`/transfers/${id}/cancel`, {
+              method: "POST", body: JSON.stringify({ reason: reason || null }) }),
+};
+
 // ─── Xarajatlar ───────────────────────────────────────────────
 /* ⚠ `fromRegister: true` — kassadan to'landi: server naqd harakati
    yaratadi va `expectedCash` kamayadi. Ochiq smena SHART. */
