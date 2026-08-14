@@ -31,7 +31,8 @@ import ShopsPage        from "./pages/admin/ShopsPage";
 import SettingsPage    from "./pages/SettingsPage";
 import LoginPage       from "./pages/LoginPage";
 import NotFound from "./pages/NotFound";
-import { isDesktop, isNativeShell } from "./lib/ek-desktop";
+import { isDesktop, isNativeShell, isMobileApp } from "./lib/ek-desktop";
+import MobileApp from "./mobile/MobileApp";
 import { hasRole, roleSet } from "./lib/ek-roles";
 import ErrorBoundary, { RouteErrorBoundary } from "./components/ek/ErrorBoundary";
 import { BadgeProvider } from "./context/BadgeProvider";
@@ -139,6 +140,23 @@ export default function App() {
         <AppUpdater loggedIn={false} toast={toast} />
       </KeyboardProvider>
     ) : null;
+  }
+
+  /* ── MOBIL ILOVA (V33) — kassaning nusxasi EMAS ─────────────────────
+     Telefonda EGASINING NAZORAT daraxti chiziladi: bugungi raqamlar,
+     signallar, cheklar lentasi, sozlamalar. Kassa/ombor/formalar yo'q —
+     savdo do'konda qilinadi, telefonda KUZATILADI. Web/desktop bu
+     shoxga umuman kirmaydi. */
+  if (isMobileApp()) {
+    return (
+      <ErrorBoundary>
+        {/* ConfirmProvider kerak: Sozlamalardagi TelegramPanel undan foydalanadi */}
+        <ConfirmProvider>
+          <Toast toasts={toasts} onDismiss={dismiss} />
+          <MobileApp user={user} logout={logout} toast={toast} />
+        </ConfirmProvider>
+      </ErrorBoundary>
+    );
   }
 
   // Ikki qavatli himoya. ICHKI to'siq (`RouteErrorBoundary`) — sahifa

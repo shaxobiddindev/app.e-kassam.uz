@@ -4,7 +4,8 @@ import { useT, getLang } from "../lib/ek-i18n";
 import { Spinner } from "../components/ek/Loading";
 import LangSelect from "../components/ek/LangSelect";
 import ThemeSelect from "../components/ek/ThemeSelect";
-import { CodeField, UsernameField } from "../components/ek/EkFields";
+import { CodeField, UsernameField, OtpField } from "../components/ek/EkFields";
+import { isMobileApp } from "../lib/ek-desktop";
 
 /* ══════════════════════════════════════════════════════════════════════════
    Kirish — ILOVA ICHIDA (desktop)
@@ -37,7 +38,14 @@ async function post(path, body, headers = {}) {
     body: JSON.stringify(body),
   });
   const json = await res.json().catch(() => ({}));
-  if (!res.ok || json.success === false) throw new Error(json.message || `Xatolik ${res.status}`);
+  if (!res.ok || json.success === false) {
+    const e = new Error(json.message || `Xatolik ${res.status}`);
+    /* ⚠ Javob tanasi ham ilova qilinadi: 428 da `deviceConfirmationRequired`
+       (V29) keladi va uni XATO deb ko'rsatib bo'lmaydi — bu «kod maydonini
+       oching» degan signal (auth.e-kassam.uz bilan bir xil qoida). */
+    e.data = json;
+    throw e;
+  }
   return json;
 }
 
@@ -53,16 +61,22 @@ async function get(path, token) {
 
 export default function LoginPage({ onLogin }) {
   const { t } = useT();
-  const [form, setForm]         = useState({ shopCode: "", username: "", password: "" });
+  const [form, setForm]         = useState({ shopCode: "", username: "", password: "", deviceCode: "" });
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState("");
+  const [notice, setNotice]     = useState("");
   const [shake, setShake]       = useState(0);
   const [showPass, setShowPass] = useState(false);
+  /* Parol to'g'ri, lekin qurilma YANGI — pochtadagi kod kerak (V29, 428). */
+  const [deviceConfirm, setDeviceConfirm] = useState(false);
 
   const firstFieldRef = useRef(null);
+  const deviceRef     = useRef(null);
 
-  // Kassir sichqonchaga tegmasin — birinchi maydon darhol fokusda
-  useEffect(() => { firstFieldRef.current?.focus(); }, []);
+  // Kassir sichqonchaga tegmasin — birinchi maydon darhol fokusda.
+  // ⚠ TELEFONDA EMAS: avto-fokus ekran klaviaturasini ilova ochilishi
+  // bilanoq chiqarib yuboradi.
+  useEffect(() => { if (!isMobileApp()) firstFieldRef.current?.focus(); }, []);
 
   const set = (k) => (e) => { setError(""); setForm((p) => ({ ...p, [k]: e.target.value })); };
   const fail = (msg) => { setError(msg); setShake((n) => n + 1); setLoading(false); };
@@ -78,7 +92,10 @@ export default function LoginPage({ onLogin }) {
     try {
       const deviceId = getDeviceId();
       const r = await post("/auth/login",
-        { shopCode: form.shopCode.trim(), username: form.username.trim(), password: form.password },
+        {
+          shopCode: form.shopCode.trim(), username: form.username.trim(), password: form.password,
+          deviceCode: form.deviceCode.trim() || undefined,
+        },
         { "X-Device-Id": deviceId });
 
       // `/auth/me` — ism va rollar uchun. Yiqilsa kirish TO'XTAMAYDI:
@@ -100,6 +117,14 @@ export default function LoginPage({ onLogin }) {
         shopCode: form.shopCode.trim(),
       });
     } catch (err) {
+      /* 428 — XATO EMAS: parol to'g'ri, endi pochtadagi kod kerak (V29). */
+      if (err.data?.deviceConfirmationRequired) {
+        setDeviceConfirm(true);
+        setLoading(false);
+        setNotice(err.data.message || t("login.deviceHint"));
+        setTimeout(() => deviceRef.current?.focus(), 30);
+        return;
+      }
       fail(err.message);
     }
   };
@@ -161,6 +186,26 @@ export default function LoginPage({ onLogin }) {
               </button>
             </div>
           </div>
+
+          {/* Yangi qurilma kodi (V29) — faqat server so'raganda (428) */}
+          {deviceConfirm && (
+            <div className="auth__field">
+              <label className="auth__label" htmlFor="deviceCode">{t("login.deviceCode")}</label>
+              <OtpField id="deviceCode" ref={deviceRef} className="auth__input ek-num"
+                        value={form.deviceCode} onChange={set("deviceCode")}
+                        placeholder="123456" />
+              <p className="auth__foot" style={{ marginTop: 6, textAlign: "left" }}>
+                {t("login.deviceHint")}
+              </p>
+            </div>
+          )}
+
+          {notice && (
+            <div className="auth__note" role="status" aria-live="polite">
+              <i className="fa-solid fa-circle-info" aria-hidden="true" />
+              <span>{notice}</span>
+            </div>
+          )}
 
           {/* Tugma o'lchami yuklanishda O'ZGARMAYDI — layout sakramasin */}
           <button className="auth__submit" type="submit" disabled={loading}>

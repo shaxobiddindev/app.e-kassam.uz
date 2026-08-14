@@ -19,9 +19,13 @@ export const isDesktop = () =>
 /** Android ilova (Capacitor) ichidamizmi. */
 export const isMobileApp = () =>
   typeof window !== "undefined" &&
-  window.Capacitor != null &&
-  (typeof window.Capacitor.isNativePlatform !== "function"
-    || window.Capacitor.isNativePlatform());
+  ((window.Capacitor != null &&
+    (typeof window.Capacitor.isNativePlatform !== "function"
+      || window.Capacitor.isNativePlatform()))
+   /* Faqat ishlab chiqish uchun: mobil UI'ni brauzerda ko'rish —
+      konsolda `localStorage.ek_forceMobile="1"` deb yozib yangilang.
+      Oddiy foydalanuvchi bu yo'lga tushmaydi. */
+   || localStorage.getItem("ek_forceMobile") === "1");
 
 /**
  * NATIV QOBIQ (Tauri `.exe` YOKI Android APK) ichidamizmi.

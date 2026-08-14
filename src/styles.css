@@ -1661,3 +1661,129 @@ img.logo--dark { display: none; }
 }
 .onb__row:hover:not(:disabled) { border-color: var(--border-brand, var(--blue)); background: var(--bg-brand-subtle); }
 .onb__row:disabled { cursor: default; opacity: .75; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   MOBIL ILOVA (egasi nazorati) — faqat Capacitor qobig'ida chiziladi.
+   Kassa UI'siga tegmaydi. Chetlar: adjustMarginsForEdgeToEdge nativ tomonda,
+   env(safe-area-inset-*) esa zaxira to'siq.
+   ══════════════════════════════════════════════════════════════════════════ */
+.m-app {
+  min-height: 100dvh; display: flex; flex-direction: column;
+  background: var(--bg-base, var(--bg-sunken));
+}
+.m-page {
+  flex: 1; overflow-y: auto;
+  padding: calc(14px + env(safe-area-inset-top, 0px)) 14px calc(76px + env(safe-area-inset-bottom, 0px));
+}
+.m-screen { display: flex; flex-direction: column; gap: 12px; max-width: 560px; margin: 0 auto; }
+
+.m-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.m-head__hi { font-size: 12px; color: var(--fg-secondary); }
+.m-head__title { font-size: 20px; font-weight: 800; margin: 0; }
+
+.m-hero {
+  background: var(--bg-brand); color: #fff;
+  border-radius: 16px; padding: 18px 16px;
+}
+.m-hero__label { font-size: 12px; opacity: .85; }
+.m-hero__value { font-size: 32px; font-weight: 800; line-height: 1.2; font-family: var(--font-mono); }
+.m-hero__sub { display: flex; justify-content: space-between; gap: 8px; margin-top: 8px; font-size: 12.5px; opacity: .95; flex-wrap: wrap; }
+
+.m-grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.m-stat {
+  background: var(--bg-surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 10px; display: flex; flex-direction: column; gap: 4px;
+}
+.m-stat span { font-size: 10.5px; color: var(--fg-secondary); }
+.m-stat b { font-size: 13px; }
+
+.m-card {
+  background: var(--bg-surface); border: 1px solid var(--border);
+  border-radius: 14px; padding: 12px 14px;
+}
+.m-card__title { font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+
+.m-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 9px 0; font-size: 13.5px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.m-row:last-child { border-bottom: none; }
+.m-row--net { font-weight: 800; }
+.m-row__trunc { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+
+.m-sig {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 0; font-size: 13px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.m-sig:last-child { border-bottom: none; }
+.m-sig--danger i { color: var(--fg-danger); }
+.m-sig--warning i { color: var(--fg-warning); }
+.m-sig__text { flex: 1; min-width: 0; }
+
+.m-sale {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 0; border-bottom: 1px solid var(--border-subtle);
+}
+.m-sale:last-child { border-bottom: none; }
+.m-sale__info { display: flex; flex-direction: column; min-width: 0; }
+.m-sale__info small { color: var(--fg-secondary); font-size: 11.5px; }
+.m-sale__badge {
+  margin-left: auto; font-size: 10px; font-weight: 700;
+  background: var(--bg-danger-subtle); color: var(--fg-danger);
+  border-radius: 6px; padding: 2px 7px;
+}
+
+.m-seg {
+  display: flex; gap: 4px; padding: 4px;
+  background: var(--bg-surface); border: 1px solid var(--border); border-radius: 12px;
+}
+.m-seg button {
+  flex: 1; border: 0; background: transparent; border-radius: 9px;
+  padding: 8px 0; font-family: inherit; font-size: 13px; font-weight: 600;
+  color: var(--fg-secondary); cursor: pointer;
+}
+.m-seg button.active { background: var(--bg-brand); color: #fff; }
+
+.m-empty { display: flex; align-items: center; gap: 8px; color: var(--fg-secondary); font-size: 13px; padding: 10px 0; }
+.m-empty i { color: var(--ek-green-700); }
+.m-pos { color: var(--ek-green-700); }
+.m-neg { color: var(--fg-danger); }
+
+.m-refresh {
+  border: 1px solid var(--border); background: var(--bg-surface);
+  border-radius: 12px; padding: 11px; font-family: inherit; font-size: 13px;
+  color: var(--fg-secondary); cursor: pointer;
+}
+.m-iconbtn {
+  width: 36px; height: 36px; border-radius: 10px;
+  border: 1px solid var(--border); background: var(--bg-surface);
+  color: var(--fg-secondary); cursor: pointer;
+}
+
+.m-nav {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  display: flex; z-index: 100;
+  background: var(--bg-surface); border-top: 1px solid var(--border);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.m-nav__btn {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
+  border: 0; background: transparent; padding: 9px 0 7px;
+  font-family: inherit; font-size: 10.5px; font-weight: 600;
+  color: var(--fg-tertiary); cursor: pointer;
+}
+.m-nav__btn i { font-size: 17px; }
+.m-nav__btn.active { color: var(--fg-brand); }
+
+.m-guard {
+  min-height: 100dvh; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 12px;
+  text-align: center; padding: 24px;
+}
+.m-guard i { font-size: 40px; color: var(--fg-brand); }
+.m-guard p { color: var(--fg-secondary); max-width: 300px; }
+
+/* Skeleton holat: raqamlar kelguncha xira */
+.m-skel { opacity: .55; }

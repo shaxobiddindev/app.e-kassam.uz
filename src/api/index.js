@@ -507,6 +507,14 @@ export const saleApi = {
 
 
 // ─── Do'kon profili va foydalanuvchilar (Shop admin) ───
+/* ── Push bildirishnomalar (V33) — mobil ilova ── */
+export const pushApi = {
+  register: (token) => request("/push/register", {
+    method: "POST",
+    body: JSON.stringify({ token, platform: "android" }),
+  }),
+};
+
 /* ── Telegram hisobot boti (V32) — faqat rahbar ── */
 export const telegramApi = {
   status:     ()   => request("/telegram/status"),
