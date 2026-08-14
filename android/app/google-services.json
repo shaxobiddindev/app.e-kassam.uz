@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1053468360480",
+    "project_id": "e-kassam",
+    "storage_bucket": "e-kassam.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1053468360480:android:d4e8820ec8579563f7a145",
+        "android_client_info": {
+          "package_name": "uz.ekassam.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCaNZYInMJXVCg2r6ClkoRsW1XbRrHLCBE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
