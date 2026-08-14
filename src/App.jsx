@@ -146,21 +146,35 @@ export default function App() {
     ) : null;
   }
 
-  /* ── MOBIL ILOVA (V33) — kassaning nusxasi EMAS ─────────────────────
-     Telefonda EGASINING NAZORAT daraxti chiziladi: bugungi raqamlar,
-     signallar, cheklar lentasi, sozlamalar. Kassa/ombor/formalar yo'q —
-     savdo do'konda qilinadi, telefonda KUZATILADI. Web/desktop bu
-     shoxga umuman kirmaydi. */
+  /* ── MOBIL ILOVA (V33/V34) ──────────────────────────────────────────
+     Telefonda ROLGA QARAB ikki daraxtdan biri chiziladi:
+
+       · EGASI / do'kon admini → NAZORAT paneli (bugungi raqamlar,
+         signallar, cheklar lentasi) — standart ko'rinish. Sozlamalardagi
+         «To'liq panel» tugmasi `ek_mobileFull` bayrog'i bilan pastdagi
+         to'liq daraxtga o'tkazadi (topbar'dagi «Nazorat paneli» qaytaradi).
+
+       · KASSIR / OMBORCHI va boshqa rollar → TO'LIQ daraxt (pastda):
+         kassa, ombor, mijozlar — brauzerdagi bilan bir xil, sidebar
+         ≤900px da drawer bo'ladi. Ilgari ularga «bu ilova egasi uchun»
+         to'sig'i chiqardi — endi tizimning HAMMA foydalanuvchisi
+         ilovadan ishlay oladi (foydalanuvchi talabi, 2026-08-15). */
   if (isMobileApp()) {
-    return (
-      <ErrorBoundary>
-        {/* ConfirmProvider kerak: Sozlamalardagi TelegramPanel undan foydalanadi */}
-        <ConfirmProvider>
-          <Toast toasts={toasts} onDismiss={dismiss} />
-          <MobileApp user={user} logout={logout} toast={toast} />
-        </ConfirmProvider>
-      </ErrorBoundary>
-    );
+    const mRoles = roleSet(user?.role);
+    const managerish = mRoles.has("OWNER") || mRoles.has("SHOP_ADMIN");
+    const fullPanel = localStorage.getItem("ek_mobileFull") === "1";
+    if (managerish && !fullPanel) {
+      return (
+        <ErrorBoundary>
+          {/* ConfirmProvider kerak: chiqish tasdig'i + TelegramPanel */}
+          <ConfirmProvider>
+            <Toast toasts={toasts} onDismiss={dismiss} />
+            <MobileApp user={user} logout={logout} toast={toast} />
+          </ConfirmProvider>
+        </ErrorBoundary>
+      );
+    }
+    /* aks holda pastdagi to'liq daraxt davom etadi */
   }
 
   // Ikki qavatli himoya. ICHKI to'siq (`RouteErrorBoundary`) — sahifa

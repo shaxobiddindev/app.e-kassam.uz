@@ -1797,7 +1797,9 @@ img.logo--dark { display: none; }
   position: fixed; inset: 0; z-index: 9999;
   display: grid; place-items: center;
   background: var(--bg-canvas);
-  animation: ek-fade-in 200ms var(--ease-out) both;
+  /* ⚠ Fade-in ATAYLAB YO'Q (landing'dan farqli): intro ilova ochilishining
+     o'zi — birinchi kadrdanoq to'liq noshaffof bo'lmasa, orqadagi ekran
+     bir lahza «yalt» etib ko'rinardi. */
 }
 .ek-intro.is-out { animation: ek-intro-out 320ms var(--ease-in) both; }
 @keyframes ek-intro-out { to { opacity: 0; visibility: hidden; } }

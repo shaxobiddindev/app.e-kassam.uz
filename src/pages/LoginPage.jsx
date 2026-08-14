@@ -140,9 +140,16 @@ export default function LoginPage({ onLogin }) {
     }
   };
 
+  /* Intro paytida forma UMUMAN chizilmaydi. Overlay usulida forma bir
+     kadr OLDIN bo'yalib, intro ustiga kech kelardi — «login yalt etib
+     ko'rinib ketyapti» shikoyati. Intro yopilgach forma o'z kirish
+     animatsiyalari bilan birinchi marta paydo bo'ladi. */
+  if (intro) {
+    return <EkIntro onDone={() => { introShown = true; setIntro(false); }} />;
+  }
+
   return (
     <div className="auth">
-      {intro && <EkIntro onDone={() => { introShown = true; setIntro(false); }} />}
       {/* Til va tema kirishdan OLDIN tanlanadi: forma tushunarsiz tilda
           bo'lsa kassir uni to'ldira olmaydi, kechqurun esa yorug' ekran
           charchatadi. */}

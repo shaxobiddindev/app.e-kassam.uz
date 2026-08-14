@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useT } from "../lib/ek-i18n";
-import { roleSet } from "../lib/ek-roles";
 import MobileHome from "./MobileHome";
 import MobileReports from "./MobileReports";
 import MobileSales from "./MobileSales";
@@ -19,10 +18,12 @@ import MobileSettings from "./MobileSettings";
      · Bosh     — bugungi raqamlar + «e'tibor talab qiladi»
      · Hisobot  — kun / hafta / oy
      · Sotuvlar — oxirgi cheklar lentasi
-     · Sozlash  — Telegram, til, tema, chiqish
+     · Sozlash  — Telegram, til, tema, «To'liq panel», chiqish
 
-   Kassir bu ilovaga kirsa, unga «bu ilova egasi uchun» ekrani chiqadi:
-   pul hisobotlari unga baribir yopiq (server ham 403 qaytaradi).
+   ⚠ Bu daraxtga FAQAT egasi/do'kon admini tushadi — routing App.jsx da:
+   kassir/omborchi to'g'ridan-to'g'ri TO'LIQ daraxtni oladi (V34), shuning
+   uchun bu yerda rol to'sig'i YO'Q. Pul hisobotlari serverda baribir
+   rol bilan himoyalangan (403).
    ══════════════════════════════════════════════════════════════════════════ */
 
 const TABS = [
@@ -36,24 +37,6 @@ export default function MobileApp({ user, logout, toast }) {
   const { t } = useT();
   const [tab, setTab] = useState("home");
   const [branchId, setBranchId] = useState(null);
-
-  const roles = roleSet(user?.role);
-  const isManager = roles.has("OWNER") || roles.has("SHOP_ADMIN");
-
-  if (!isManager) {
-    return (
-      <div className="m-app">
-        <div className="m-guard">
-          <i className="fa-solid fa-user-shield" aria-hidden="true" />
-          <h2>{t("m.guardTitle")}</h2>
-          <p>{t("m.guardText")}</p>
-          <button className="btn btn-outline" onClick={logout}>
-            <i className="fa-solid fa-right-from-bracket" aria-hidden="true" /> {t("layout.logout")}
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="m-app">

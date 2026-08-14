@@ -3,7 +3,8 @@ import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { LOGO_URL, LOGO_DARK_URL, MARK_URL, initials } from "../utils";
 import { useConfirm } from "../context/ConfirmProvider";
 import { roleLabel } from "../lib/ek-labels";
-import { hasRole, topRole } from "../lib/ek-roles";
+import { hasRole, topRole, roleSet } from "../lib/ek-roles";
+import { isMobileApp } from "../lib/ek-desktop";
 import { useT } from "../lib/ek-i18n";
 import { weekdayDate } from "../lib/ek-format";
 import { useSuspiciousCount } from "../hooks/useSuspiciousCount";
@@ -281,6 +282,13 @@ export default function Layout({ user, onLogout, isAdmin, lowStockItems, lowStoc
           <button className="btn-icon ham-btn" onClick={() => setOpen(v => !v)}
                   aria-label={t("layout.menu")} aria-expanded={open}><i className={`fa-solid ${open ? "fa-xmark" : "fa-bars"}`} aria-hidden="true" /></button>
           <span className="topbar-title"><i className={`fa-solid ${title.icon}`} aria-hidden="true" /> {t(title.key)}</span>
+          {/* Telefon ilovasida egasi «To'liq panel»dan NAZORAT paneliga
+              qaytadi (bayroqni App.jsx o'qiydi — reload yetarli). */}
+          {isMobileApp() && (roleSet(user?.role).has("OWNER") || roleSet(user?.role).has("SHOP_ADMIN")) && (
+            <button className="btn btn-sm" onClick={() => { localStorage.removeItem("ek_mobileFull"); window.location.reload(); }}>
+              <i className="fa-solid fa-gauge-high" aria-hidden="true" /> {t("m.controlPanel")}
+            </button>
+          )}
           {isKassaPage && (
             <button className="btn btn-sm kassa-fs-topbar-btn" onClick={toggleKassaFullscreen} title={t("layout.fullscreen")}>
               <i className="fa-solid fa-expand" aria-hidden="true" /> {t("layout.fullscreen")}
