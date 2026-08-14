@@ -306,7 +306,10 @@ tbody tr:hover td { background: var(--bg-sunken); }
 .btn-green:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(31,174,76,.34); }
 .btn-outline     { background: transparent; border: 1.5px solid var(--border); color: var(--text2); }
 .btn-outline:hover { border-color: var(--blue); color: var(--blue); background: var(--blue-l); }
-.btn-danger      { background: var(--red); color: var(--fg-on-brand); }
+/* ⚠ FON uchun `--bg-danger`, `--red` EMAS: `--red` = `--fg-danger`, u
+   qorong'i temada YORUG' qizil (#FF8A80) — ustidagi oq matn 2.3:1 chiqib
+   qolardi. `--bg-danger` ikkala temada ham to'q qizil, oq bilan 4.8:1. */
+.btn-danger      { background: var(--bg-danger); color: var(--fg-on-brand); }
 .btn-danger:hover { background: var(--ek-red-700); }
 .btn-sm          { min-height: 36px; padding: 7px 13px; font-size: 12px; border-radius: 8px; }
 .btn-full        { width: 100%; padding: 13px; font-size: 15px; }
@@ -474,7 +477,10 @@ select.form-input { cursor: pointer; }
 .qty-btn:active  { transform: scale(.92); }
 .qty-num         { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 14px; font-weight: 700; min-width: 26px; text-align: center; }
 .total-card      { background: var(--bg-brand); color: var(--fg-on-brand); border-radius: var(--radius); padding: 18px; }
-.total-row       { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: rgba(255,255,255,.6); margin-bottom: 6px; }
+/* ⚠ Yorliq rangi TO'LIQ oq: brand ko'k fonda oqning o'zi 4.8:1 beradi,
+   `.6` xiralashtirilgani esa 2.7:1 edi (axe: color-contrast). Ierarxiya
+   o'lcham bilan ajratiladi: yorliq 13px, jami 21px qora. */
+.total-row       { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--fg-on-brand); margin-bottom: 6px; }
 .total-big       { font-size: 21px; font-weight: 900; color: var(--fg-on-brand); display: flex; justify-content: space-between; padding-top: 12px; margin-top: 6px; border-top: 1px solid rgba(255,255,255,.12); }
 .payment-grid    { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
 .payment-btn        { min-height: var(--hit-pos); padding: 11px; border-radius: var(--r-lg); border: 2px solid var(--border); background: var(--bg-surface); font-size: 14px; font-weight: 700; cursor: pointer; transition: .2s; font-family: var(--font); color: var(--text); }
@@ -998,6 +1004,12 @@ select.form-input { cursor: pointer; }
   border-radius: 8px !important;
   cursor: pointer;
   transition: all .25s ease;
+}
+
+/* ⚠ Qorong'i temada `--ek-blue-700` (to'q ko'k) to'q fonda 1.9:1 —
+   o'qib bo'lmaydi. Yorug' ko'k (`--fg-brand` dark = #77A9F5) 6.2:1. */
+[data-theme="dark"] .kassa-fs-topbar-btn {
+  color: var(--fg-brand) !important;
 }
 
 .kassa-fs-topbar-btn:hover {

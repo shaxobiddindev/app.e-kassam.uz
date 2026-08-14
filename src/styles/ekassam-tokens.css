@@ -269,7 +269,10 @@ body {
 
   --bg-danger:         var(--ek-danger-600);
   --bg-danger-subtle:  var(--ek-danger-50);
-  --fg-danger:         var(--ek-danger-600);
+  /* ⚠ `-700`, `-600` EMAS — success/warning bilan bir xil qoida.
+     600 ochiq qizil fonda (`--bg-danger-subtle`) 4.44:1 berardi —
+     xato toast'i axe'dan o'tmasdi. 700 esa 6.2:1. */
+  --fg-danger:         var(--ek-danger-700);
   --border-danger:     #FDA29B;
   --ring-danger:       0 0 0 3px rgba(217, 45, 32, .24);
 

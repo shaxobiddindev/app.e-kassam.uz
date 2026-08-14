@@ -4,6 +4,7 @@ import { isDesktop } from "../lib/ek-desktop";
 import { getSettings, saveSettings, listPrinters, testPrint, openDrawer } from "../lib/ek-hardware";
 import Select from "./ek/Select";
 import { Spinner } from "./ek/Loading";
+import { NumField } from "./ek/EkFields";
 
 /* ══════════════════════════════════════════════════════════════════════════
    Kassa apparatlari — Sozlamalar ekranining bo'limi
@@ -29,9 +30,9 @@ function Row({ label, hint, children }) {
   );
 }
 
-function Switch({ checked, onChange, yes, no }) {
+function Switch({ checked, onChange, yes, no, disabled }) {
   return (
-    <button type="button" role="switch" aria-checked={checked}
+    <button type="button" role="switch" aria-checked={checked} disabled={disabled}
             className={`ek-switch ${checked ? "on" : ""}`}
             onClick={() => onChange(!checked)}>
       <span className="ek-switch__knob" />
@@ -46,6 +47,13 @@ export default function HardwareSettings({ toast }) {
   const [printers, setPrinters] = useState([]);
   const [busy, setBusy]     = useState(false);
   const desktop = isDesktop();
+  /* Brauzerda bo'lim O'CHIQ, lekin O'QILADIGAN holda qoladi.
+     ⚠ Ilgari butun ro'yxat `opacity:.55` bilan xiralashtirilardi — matn
+     kontrasti 4.5:1 dan tushib ketardi (axe: color-contrast) va klaviatura
+     bilan baribir kirish mumkin edi (`pointer-events` faqat sichqonchani
+     to'sadi). Endi har bir boshqaruv `disabled` — fokus ham olmaydi,
+     yozuvlar esa to'liq kontrastda o'qiladi. */
+  const off = !desktop;
 
   const load = () => { listPrinters().then(setPrinters).catch(() => setPrinters([])); };
   useEffect(() => { if (desktop) load(); }, [desktop]);
@@ -68,7 +76,7 @@ export default function HardwareSettings({ toast }) {
       </div>
       <p className="set-card__hint">{desktop ? t("hw.subtitle") : t("hw.onlyDesktop")}</p>
 
-      <div className="set-list" style={desktop ? undefined : { opacity: .55, pointerEvents: "none" }}>
+      <div className="set-list">
         <Row label={t("hw.transport")}>
           {/* ⚠ «Brauzer» varianti desktop'da YO'Q. U `window.open` ga
               tayanadi, Tauri oynasida esa bu bo'sh OS oynasini ochadi —
@@ -77,6 +85,7 @@ export default function HardwareSettings({ toast }) {
           <Select
             value={s.transport === "browser" ? "windows" : s.transport}
             onChange={(v) => set({ transport: v })}
+            disabled={off}
             options={[
               { value: "windows", label: t("hw.transportWindows") },
               { value: "tcp",     label: t("hw.transportTcp") },
@@ -90,6 +99,7 @@ export default function HardwareSettings({ toast }) {
               <Select
                 value={s.printerName}
                 onChange={(v) => set({ printerName: v })}
+                disabled={off}
                 options={[
                   { value: "", label: t("hw.defaultPrinter") },
                   ...printers.map((p) => ({ value: p, label: p })),
@@ -97,7 +107,7 @@ export default function HardwareSettings({ toast }) {
               />
               {/* Printer ilova ochiq turganda ulanishi mumkin — ro'yxatni
                   qayta o'qish uchun ilovani yopish shart emas. */}
-              <button className="btn btn-outline btn-sm" onClick={load} title={t("hw.refresh")}>
+              <button className="btn btn-outline btn-sm" onClick={load} disabled={off} title={t("hw.refresh")}>
                 <i className="fa-solid fa-rotate" aria-hidden="true" />
               </button>
             </div>
@@ -107,13 +117,13 @@ export default function HardwareSettings({ toast }) {
         {s.transport === "tcp" && (
           <>
             <Row label={t("hw.host")}>
-              <input className="form-input mono" style={{ maxWidth: 180 }}
+              <input className="form-input mono" style={{ maxWidth: 180 }} disabled={off}
                      value={s.host} placeholder="192.168.1.50"
                      onChange={(e) => set({ host: e.target.value.trim() })} />
             </Row>
             <Row label={t("hw.port")}>
               <NumField className="form-input mono" kind="int" max={65535} style={{ maxWidth: 100 }}
-                     value={s.port}
+                     disabled={off} value={s.port}
                      onChange={(e) => set({ port: Number(e.target.value) || 9100 })} />
             </Row>
           </>
@@ -123,35 +133,36 @@ export default function HardwareSettings({ toast }) {
           <Select
             value={String(s.width)}
             onChange={(v) => set({ width: Number(v) })}
+            disabled={off}
             options={[{ value: "80", label: "80 mm" }, { value: "58", label: "58 mm" }]}
           />
         </Row>
 
         <Row label={t("hw.autoPrint")}>
           <Switch checked={s.autoPrint} onChange={(v) => set({ autoPrint: v })}
-                  yes={t("common.yes")} no={t("common.no")} />
+                  disabled={off} yes={t("common.yes")} no={t("common.no")} />
         </Row>
 
         <Row label={t("hw.openDrawerSetting")}>
           <Switch checked={s.openDrawer} onChange={(v) => set({ openDrawer: v })}
-                  yes={t("common.yes")} no={t("common.no")} />
+                  disabled={off} yes={t("common.yes")} no={t("common.no")} />
         </Row>
 
         <Row label={t("hw.scannerSetting")} hint={t("hw.scannerHint")}>
           <Switch checked={s.scanner} onChange={(v) => set({ scanner: v })}
-                  yes={t("common.yes")} no={t("common.no")} />
+                  disabled={off} yes={t("common.yes")} no={t("common.no")} />
         </Row>
 
         {/* Sinov — sozlash oxiridagi yagona savolga javob beradi:
             "chindan ham ishlayaptimi?" */}
         <Row label={t("hw.test")}>
           <div style={{ display: "flex", gap: 8 }}>
-            <button className="btn btn-primary btn-sm" disabled={busy}
+            <button className="btn btn-primary btn-sm" disabled={busy || off}
                     onClick={() => run(testPrint, t("hw.testSent"))}>
               {busy ? <Spinner small /> : <i className="fa-solid fa-print" aria-hidden="true" />}
               {t("hw.test")}
             </button>
-            <button className="btn btn-outline btn-sm" disabled={busy}
+            <button className="btn btn-outline btn-sm" disabled={busy || off}
                     onClick={() => run(openDrawer, t("hw.openDrawer"))}>
               <i className="fa-solid fa-box-open" aria-hidden="true" /> {t("hw.openDrawer")}
             </button>

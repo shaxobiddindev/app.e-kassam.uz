@@ -14,8 +14,12 @@
 
    Faqat `serious` va `critical` daraja YIQITADI: `minor` ro'yxati uzun
    bo'ladi va u har commitda CI ni qizartirsa, ogohlantirishga umuman
-   qaralmay qo'yiladi. Kontrast esa hozircha OGOHLANTIRISH — sabab
-   quyida, `blocking` o'zgaruvchisi yonida.
+   qaralmay qo'yiladi. Kontrast ham YIQITADI (2026-08-14 dan): qolgan
+   8 ta buzilish tuzatildi, endi chekinishga sabab yo'q.
+
+   Har sahifa IKKI temada tekshiriladi. Ilgari tema yozilmasdi va
+   headless Chrome OS sozlamasiga ergashardi — natija kompyuterga qarab
+   o'zgarardi, buzilishlarning ko'pi esa aynan qorong'i temada edi.
 
    Ishga tushirish:  node scripts/check-a11y.mjs
    ══════════════════════════════════════════════════════════════════════════ */
@@ -59,6 +63,7 @@ const browser = await puppeteer.launch({
 
 let bad = 0;
 for (const route of ROUTES) {
+for (const theme of ["light", "dark"]) {
   const page = await browser.newPage();
   await page.setViewport({ width: 1440, height: 900 });
   await page.setRequestInterception(true);
@@ -79,6 +84,7 @@ for (const route of ROUTES) {
     localStorage.setItem("ek_deviceId", "a11y");
     localStorage.setItem("ek_lang", "uz");
   });
+  await page.evaluateOnNewDocument((t) => localStorage.setItem("ek_theme", t), theme);
   await page.goto(`http://127.0.0.1:${PORT}${route}`, { waitUntil: "networkidle2", timeout: 30_000 });
   await new Promise((r) => setTimeout(r, 1200));
 
@@ -86,27 +92,23 @@ for (const route of ROUTES) {
   const { violations } = await page.evaluate(async () =>
     await window.axe.run(document, { resultTypes: ["violations"] }));
 
-  const heavy = violations.filter((v) => v.impact === "serious" || v.impact === "critical");
-  /* ⚠ KONTRAST HOZIRCHA YIQITMAYDI, faqat ogohlantiradi.
-     Sabab: qolgan buzilishlar bitta-ikkita komponentda emas, DIZAYN
-     TOKENLARIDA — ochiq ko'k fon ustidagi ko'k matn 4.5:1 ga yetmaydi.
-     Uni to'g'rilash tokenlar bo'yicha alohida, ongli o'tishni talab
-     qiladi (02-DESIGN-SYSTEM.md), bitta CSS qatorini almashtirish emas.
-     Shu paytgacha qizil CI har commitda yonib tursa, unga umuman
-     qaralmay qo'yiladi — shuning uchun ogohlantirish. */
-  const blocking = heavy.filter((v) => v.id !== "color-contrast");
-  const warn = heavy.filter((v) => v.id === "color-contrast");
+  /* Kontrast ham shu yerda — 2026-08-14 gacha u faqat ogohlantirish edi
+     (buzilishlar tokenlarda deb o'ylangan; aslida beshtasi bitta
+     `opacity:.55` xiralashtirishda, qolgani tema-ga moslanmagan uch
+     komponentda ekan — hammasi tuzatildi, §10ĝ). */
+  const blocking = violations.filter((v) => v.impact === "serious" || v.impact === "critical");
 
-  console.log(`  ${blocking.length ? "❌" : "✅"} ${route}  (yiqitadigan: ${blocking.length}, ogohlantirish: ${warn.length})`);
+  console.log(`  ${blocking.length ? "❌" : "✅"} ${route} [${theme}]  (buzilish: ${blocking.length})`);
   for (const v of blocking) {
     bad++;
     console.log(`       ${v.id} — ${v.help} (${v.nodes.length} joy)`);
-    console.log(`       ${v.nodes[0]?.html?.slice(0, 90)}`);
-  }
-  for (const v of warn) {
-    console.log(`       ⚠ ${v.id}: ${v.nodes.length} joy — tokenlar o'tishida hal qilinadi`);
+    for (const n of v.nodes.slice(0, 5)) {
+      console.log(`         ${(n.target || []).join(" ")}`);
+      console.log(`         ${String(n.any?.[0]?.message || n.html || "").replace(/\s+/g, " ").slice(0, 160)}`);
+    }
   }
   await page.close();
+}
 }
 
 await browser.close();
