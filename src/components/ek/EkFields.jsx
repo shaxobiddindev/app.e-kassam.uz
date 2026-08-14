@@ -26,7 +26,7 @@ import { forwardRef, useRef, useLayoutEffect, useImperativeHandle } from "react"
 import {
   numberInput, displayNumber, countDigits,
   phoneInput, emailInput, barcodeInput, mxikInput,
-  codeInput, usernameInput, nameInput, otpInput, skuInput,
+  codeInput, usernameInput, nameInput, otpInput, skuInput, dateInput,
 } from "../../lib/ek-input";   // ⚠ ilova ichidagi yo'l (sync-tokens `src/lib/` ga qo'yadi)
 
 /* Kursorni raqam indeksiga qarab tiklaydi. */
@@ -174,11 +174,35 @@ function masked(displayName, mask, defaults = {}) {
 /** Faqat tozalaydigan niqoblar uchun `{raw, display}` qobig'i. */
 const plain = (fn) => (v) => { const raw = fn(v); return { raw, display: raw }; };
 
-/** +998 (90) 123-45-67 — 998 dan boshqa kod kiritib bo'lmaydi. */
-export const PhoneField = masked("PhoneField", phoneInput, {
-  type: "tel", inputMode: "tel", autoComplete: "tel",
-  placeholder: "+998 (90) 123-45-67", maxLength: 19,
-  className: "form-input ek-num",
+/**
+ * Telefon: `+998` — MAYDON ICHIDA EMAS, yonidagi o'zgarmas yorliqda.
+ *
+ * ⚠ Sabab: kod maydon ichida bo'lsa, odam odatdagidek to'liq raqam
+ * yozadi (`998901234567`) va u ikkinchi marta kod emas, ABONENT raqami
+ * bo'lib tushadi — «(99) 890-12-34» jimgina saqlanardi. Bu landingda
+ * ushlandi va o'sha yechim shu yerga ham ko'chirildi.
+ *
+ * ⚠ `maxLength` ATAYLAB yo'q: kodni ham yozgan odamda 10-raqam kelishi
+ * kerak — aynan o'shanda kod tanib olinadi va olib tashlanadi.
+ */
+export const PhoneField = forwardRef(function PhoneField(
+  { className = "form-input ek-num", style, ...rest }, ref
+) {
+  return (
+    <span className="ek-phone" style={style}>
+      <span className="ek-phone__cc" aria-hidden="true">+998</span>
+      <MaskedField
+        ref={ref}
+        mask={phoneInput}
+        type="tel"
+        inputMode="tel"
+        autoComplete="tel"
+        placeholder="(90) 123-45-67"
+        className={className}
+        {...rest}
+      />
+    </span>
+  );
 });
 
 /** Bo'shliqsiz, kichik harfda. */
@@ -221,4 +245,52 @@ export const OtpField = masked("OtpField", plain(otpInput), {
 /** Artikul: katta lotin + raqam + `-._` */
 export const SkuField = masked("SkuField", plain(skuInput), {
   autoComplete: "off", spellCheck: false, keepCaret: false, className: "form-input mono",
+});
+
+/**
+ * Sana: `2026-08-14`, yonida kalendar tugmasi.
+ *
+ * ⚠ Nega `type="date"` emas — `dateInput()` izohiga qarang: uning
+ * ko'rinishi brauzer tiliga bog'liq va bitta ekranda ikki xil format
+ * paydo bo'ladi.
+ */
+export const DateField = forwardRef(function DateField(
+  { className = "form-input ek-num", value, onChange, name, style, ...rest }, ref
+) {
+  const nativeRef = useRef(null);
+  return (
+    <span className="ek-date" style={style}>
+      <MaskedField
+        ref={ref}
+        mask={(v) => { const raw = dateInput(v); return { raw, display: raw }; }}
+        inputMode="numeric"
+        placeholder="2026-01-31"
+        maxLength={10}
+        className={className}
+        value={value}
+        onChange={onChange}
+        name={name}
+        {...rest}
+      />
+      <button
+        type="button"
+        className="ek-date__pick"
+        tabIndex={-1}
+        aria-label="Kalendar"
+        onClick={() => { try { nativeRef.current?.showPicker(); } catch (_) { nativeRef.current?.focus(); } }}
+      >
+        <i className="fa-solid fa-calendar-days" aria-hidden="true" />
+      </button>
+      {/* Kalendarni brauzer chizadi, lekin QIYMAT ko'rinishi bizniki */}
+      <input
+        ref={nativeRef}
+        type="date"
+        className="ek-date__native"
+        tabIndex={-1}
+        aria-hidden="true"
+        value={/^\d{4}-\d{2}-\d{2}$/.test(value || "") ? value : ""}
+        onChange={(e) => onChange?.({ target: { value: e.target.value, name } })}
+      />
+    </span>
+  );
 });

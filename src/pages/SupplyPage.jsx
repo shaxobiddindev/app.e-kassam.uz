@@ -20,7 +20,7 @@ import { money } from "../lib/ek-format";
 import { paymentLabel } from "../lib/ek-labels";
 import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
-import { NumField } from "../components/ek/EkFields";
+import { NumField, DateField } from "../components/ek/EkFields";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -295,7 +295,7 @@ export default function SupplyPage({ toast }) {
             </FormGroup>
           </div>
           <FormGroup label={t("common.date")}>
-            <input type="date" className="form-input" value={form.receivedAt}
+            <DateField className="form-input ek-num" value={form.receivedAt}
                    onChange={(e) => setForm({ ...form, receivedAt: e.target.value })} />
           </FormGroup>
 
@@ -326,7 +326,7 @@ export default function SupplyPage({ toast }) {
                                value={l.quantity} onChange={(e) => setLine(i, "quantity", e.target.value)} /></td>
                     <td><NumField kind="money" className="form-input ek-num" style={{ width: 120 }}
                                value={l.costPrice} onChange={(e) => setLine(i, "costPrice", e.target.value)} /></td>
-                    <td><input type="date" className="form-input" style={{ width: 150 }}
+                    <td><DateField className="form-input ek-num" style={{ width: 150 }}
                                value={l.expiryDate} onChange={(e) => setLine(i, "expiryDate", e.target.value)} /></td>
                     <td className="mono fw-700">{money((Number(l.quantity) || 0) * (Number(l.costPrice) || 0))}</td>
                     <td>

@@ -52,7 +52,11 @@ eq(displayNumber(null, { decimals: 0 }), "", "null — bo'sh ko'rinish");
 
 console.log("\n═══ 4. Telefon (998 + 9 raqam) ═══");
 eq(phoneInput("998901234567").raw, "+998901234567", "to'liq raqam");
-eq(phoneInput("998901234567").display, "+998 (90) 123-45-67", "niqob");
+/* ⚠ Ko'rinishda `+998` YO'Q: u maydon yonidagi o'zgarmas yorliqda
+   (`PhoneField`). Kod maydon ichida bo'lganda odam to'liq raqam
+   yozsa, u ikkinchi marta abonent raqami bo'lib tushardi. */
+eq(phoneInput("998901234567").display, "(90) 123-45-67", "niqob — kodsiz");
+eq(phoneInput("901234567").display, "(90) 123-45-67", "kodsiz kiritilganda ham bir xil");
 eq(phoneInput("901234567").raw, "+998901234567", "kodsiz kiritilgan raqamga 998 qo'shiladi");
 eq(phoneInput("+9989962806286").digits.length, 9, "13 raqamli axlat 9 taga kesiladi");
 eq(phoneInput("+9989962806286").valid, true, "kesilgandan keyin to'g'ri bo'ladi");

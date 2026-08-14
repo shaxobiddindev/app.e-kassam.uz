@@ -376,7 +376,7 @@ export default function ShiftBar({ toast }) {
                  value={cashForm.amount} autoFocus
                  onChange={(e) => setCashForm({ ...cashForm, amount: e.target.value })} />
           <label className="form-label" style={{ marginTop: 10 }}>{t("inv.reason")}</label>
-          <Field className="form-input" value={cashForm.reason}
+          <Field maxLength={500} className="form-input" value={cashForm.reason}
                  onChange={(e) => setCashForm({ ...cashForm, reason: e.target.value })} />
         </Modal>
       )}

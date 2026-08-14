@@ -10,7 +10,7 @@ import { useBadge } from "../context/BadgeProvider";
 import { money } from "../utils";
 import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
-import { NumField } from "../components/ek/EkFields";
+import { NumField, DateField } from "../components/ek/EkFields";
 
 /* Jurnal turlari — rang bilan: kirim yashil, chiqim qizil, to'g'irlash sariq.
    Omborchi ro'yxatga qarab o'qimasdan ham manzarani ko'rsin. */
@@ -550,9 +550,8 @@ export default function InventoryPage({ toast }) {
             <label className="form-label">
               {t("inv.expiry")}{productHasExpiry(modal) ? " *" : ""}
             </label>
-            <input
-              className="form-input"
-              type="date"
+            <DateField
+              className="form-input ek-num"
               value={expiryDate}
               onChange={(e) => setExpiryDate(e.target.value)}
             />

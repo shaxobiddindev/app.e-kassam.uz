@@ -516,6 +516,7 @@ export default function SalesPage({ toast }) {
           <label className="form-label" style={{ marginTop: 12 }}>{t("ret.reason")}</label>
           <Field
             className="form-input"
+            maxLength={500}
             value={ret.reason}
             onChange={(e) => setRet({ ...ret, reason: e.target.value })}
           />

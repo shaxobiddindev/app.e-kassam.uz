@@ -121,12 +121,19 @@ export function displayNumber(raw, { decimals = 0 } = {}) {
  */
 export function phoneInput(input) {
   let d = onlyDigits(input);
-  if (d.startsWith("998")) d = d.slice(3);
-  else if (d.startsWith("8") && d.length > 9) d = d.slice(1);
+  /* ⚠ Kod (`+998`) MAYDONNING O'ZIDA EMAS — u yonidagi o'zgarmas
+     yorliqda (`PhoneField`). Shuning uchun bu yerda kod faqat odam uni
+     O'ZI yozgan yoki to'liq raqamni joylashtirgan holda uchraydi, ya'ni
+     raqamlar soni 9 tadan oshganda. Ilgari kod HAR DOIM kesilardi va
+     maydonda `+998` turgani uchun odam to'liq raqam yozsa (998901234567)
+     kod ikkinchi marta ABONENT raqami bo'lib tushardi: jimgina
+     «(99) 890-12-34» saqlanardi. */
+  if (d.length > 9 && d.startsWith("998")) d = d.slice(3);
+  if (d.length > 9 && d.startsWith("8"))   d = d.slice(1);
   d = d.slice(0, 9);                                  // operator kodi + 7 raqam
 
-  let display = "+998";
-  if (d.length > 0) display += " (" + d.slice(0, 2);
+  let display = "";
+  if (d.length > 0) display = "(" + d.slice(0, 2);
   if (d.length >= 2) display += ")";
   if (d.length > 2) display += " " + d.slice(2, 5);
   if (d.length > 5) display += "-" + d.slice(5, 7);
@@ -134,7 +141,7 @@ export function phoneInput(input) {
 
   return {
     raw: d.length ? "+998" + d : "",
-    display: d.length ? display : "",
+    display,
     digits: d,
     valid: d.length === 9,
   };
@@ -214,6 +221,33 @@ export const isUsername = (s) => /^[a-z0-9_]{3,32}$/.test(String(s ?? ""));
 /** Ism-familiya: raqam va maxsus belgilar kerak emas. */
 export const nameInput = (s) =>
   String(s ?? "").replace(/[^\p{L}\p{M}'’\- .]/gu, "").replace(/\s{2,}/g, " ").slice(0, 120);
+
+/* ── Sana ────────────────────────────────────────────────────────────── */
+
+/**
+ * `YYYY-MM-DD` — mahsulotning hamma joyidagi sana ko'rinishi.
+ *
+ * ⚠ `<input type="date">` ATAYLAB ISHLATILMAYDI: uning ko'rinishi
+ * BRAUZER tiliga bog'liq. Ingliz tilidagi Chrome'da u `08/13/2026` deb
+ * chiqadi, hisobot jadvalida esa `2026-08-13` turadi — bitta ekranda
+ * ikki xil sana formati. Kalendar tugmasi `showPicker()` orqali
+ * saqlanadi (qo'llab-quvvatlanmasa, qo'lda yozish baribir ishlaydi).
+ */
+export function dateInput(v) {
+  const d = onlyDigits(v).slice(0, 8);
+  let out = d.slice(0, 4);
+  if (d.length > 4) out += "-" + d.slice(4, 6);
+  if (d.length > 6) out += "-" + d.slice(6, 8);
+  return out;
+}
+
+export const isDate = (s) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(s ?? ""))) return false;
+  const [y, m, day] = String(s).split("-").map(Number);
+  if (m < 1 || m > 12 || day < 1 || day > 31) return false;
+  const dt = new Date(Date.UTC(y, m - 1, day));
+  return dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === day;
+};
 
 /* ── Umumiy tekshiruvlar (saqlashdan oldin) ──────────────────────────── */
 

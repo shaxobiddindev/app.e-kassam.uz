@@ -463,7 +463,7 @@ export default function TransfersPage({ toast }) {
           </div>
 
           <FormGroup label={t("common.note")}>
-            <Field value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
+            <Field maxLength={500} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
           </FormGroup>
         </Modal>
       )}
@@ -561,7 +561,7 @@ export default function TransfersPage({ toast }) {
             </table>
           </div>
           <FormGroup label={t("common.note")}>
-            <Field value={accept.note} onChange={(e) => setAccept({ ...accept, note: e.target.value })} />
+            <Field maxLength={500} value={accept.note} onChange={(e) => setAccept({ ...accept, note: e.target.value })} />
           </FormGroup>
         </Modal>
       )}
@@ -582,7 +582,7 @@ export default function TransfersPage({ toast }) {
         >
           <p className="text-muted" style={{ marginTop: 0 }}>{t("transfer.cancelHint")}</p>
           <FormGroup label={t("transfer.cancelReason")}>
-            <Field value={cancel.reason} onChange={(e) => setCancel({ ...cancel, reason: e.target.value })} />
+            <Field maxLength={500} value={cancel.reason} onChange={(e) => setCancel({ ...cancel, reason: e.target.value })} />
           </FormGroup>
         </Modal>
       )}

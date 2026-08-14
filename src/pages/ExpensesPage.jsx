@@ -21,6 +21,7 @@ import { money } from "../lib/ek-format";
 import { useConfirm } from "../context/ConfirmProvider";
 import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
+import { DateField } from "../components/ek/EkFields";
 
 /** Oyning birinchi kuni va bugun — `YYYY-MM-DD`. */
 const monthRange = () => {
@@ -128,10 +129,10 @@ export default function ExpensesPage({ toast }) {
       <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
         <h2 className="page-title">{t("expense.title")}</h2>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <input type="date" className="form-input" style={{ width: 150 }}
+          <DateField className="form-input ek-num" style={{ width: 150 }}
                  value={range[0]} onChange={(e) => setRange([e.target.value, range[1]])} />
           <span className="text-muted">—</span>
-          <input type="date" className="form-input" style={{ width: 150 }}
+          <DateField className="form-input ek-num" style={{ width: 150 }}
                  value={range[1]} onChange={(e) => setRange([range[0], e.target.value])} />
           <button className="btn btn-outline btn-sm" onClick={() => setNewCat({ name: "" })}>
             <i className="fa-solid fa-tag" /> {t("expense.newCategory")}
@@ -232,12 +233,12 @@ export default function ExpensesPage({ toast }) {
             <FormGroup label={t("common.date")}>
               {/* Xarajat SANASI — yozilgan vaqt emas: kecha to'langan
                   ijarani ertalab kiritish odatiy hol. */}
-              <input type="date" className="form-input"
+              <DateField className="form-input ek-num"
                      value={form.spentAt} onChange={(e) => setForm({ ...form, spentAt: e.target.value })} />
             </FormGroup>
           </div>
           <FormGroup label={t("inv.reason")}>
-            <Field className="form-input" value={form.note}
+            <Field maxLength={500} className="form-input" value={form.note}
                    onChange={(e) => setForm({ ...form, note: e.target.value })} />
           </FormGroup>
           {/* ⚠ Bu belgi kassaga TA'SIR QILADI — shuning uchun izohi bilan. */}

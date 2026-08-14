@@ -164,6 +164,11 @@ const KIND_FIELDS = {
 
 export function Field({ className = "form-input", wrapStyle, onClear, kind, ...rest }) {
   const ref = useRef(null);
+  /* ⚠ Erkin matnga STANDART CHEGARA. Backendda ustunlar 120–500 belgi;
+     ularsiz odam uzun matn joylashtiradi-yu, xatoni faqat SAQLAGANDAN
+     KEYIN (400) ko'radi. Kerak bo'lsa chaqiruv joyida `maxLength` bilan
+     bekor qilinadi (izoh maydonlari — 500). */
+  if (!kind && rest.maxLength === undefined) rest = { ...rest, maxLength: 200 };
   const has = rest.value != null && rest.value !== "";
   const Typed = kind ? KIND_FIELDS[kind] : null;
   const cls = `${className}${has ? " has-clear" : ""}`;

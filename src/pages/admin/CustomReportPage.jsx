@@ -7,6 +7,7 @@ import { BranchSelector } from "../../components";
 import { paymentEntry } from "../../lib/ek-labels";
 import { SkeletonCards, Spinner } from "../../components/ek/Loading";
 import { useLoading } from "../../lib/use-loading";
+import { DateField } from "../../components/ek/EkFields";
 
 const STATS_CONFIG = [
   { key: "totalRevenue", label: t("rep.totalSales"),    icon: "fa-sack-dollar",    bg: "rgba(1,125,202,0.09)", color: "#017dca" },
@@ -69,11 +70,11 @@ export default function CustomReportPage({ toast }) {
           <div style={{ display: "flex", gap: 12, alignItems: "flex-end", flexWrap: "wrap" }}>
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label className="form-label">{t("rep.dateFrom")}</label>
-              <input className="form-input" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+              <DateField className="form-input ek-num" value={from} onChange={(e) => setFrom(e.target.value)} />
             </div>
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label className="form-label">{t("rep.dateTo")}</label>
-              <input className="form-input" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+              <DateField className="form-input ek-num" value={to} onChange={(e) => setTo(e.target.value)} />
             </div>
             <button className="btn btn-primary" onClick={handleSearch} disabled={loading}>
               {loading ? <Spinner /> : <i className="fa-solid fa-search" />}
