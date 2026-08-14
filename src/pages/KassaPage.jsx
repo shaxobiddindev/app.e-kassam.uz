@@ -1006,6 +1006,15 @@ export default function KassaPage({ toast, refreshLowStock }) {
                     {t("bonus.useMax")}
                   </button>
                 </div>
+                {/* Muddat (V30): kassir mijozga aytadi — «shuncha balingiz
+                    oy ichida kuyadi, ishlatib qoling». Sotuvni ham oshiradi,
+                    kuyish ham kutilmagan bo'lmaydi. */}
+                {Number(tier?.bonusExpiringSoon) > 0 && (
+                  <div style={{ fontSize: 12, marginTop: 4, color: "var(--fg-warning)" }}>
+                    <i className="fa-solid fa-hourglass-half" style={{ marginRight: 5 }} aria-hidden="true" />
+                    {t("bonus.expiringSoon", { amount: money(tier.bonusExpiringSoon) })}
+                  </div>
+                )}
                 <NumField kind="int"
                   className="form-input ek-num" max={bonusAvail}
                   style={{ marginTop: 8 }}

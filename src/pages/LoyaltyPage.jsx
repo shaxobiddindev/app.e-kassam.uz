@@ -35,6 +35,9 @@ export default function LoyaltyPage({ toast }) {
      `onBlur` da bir marta yuboriladi. */
   const [maxPercent, setMaxPercent] = useState("");
   const [savedMax, setSavedMax] = useState("");
+  /* Ball muddati (V30), kunlarda. "0" — muddatsiz. */
+  const [expiryDays, setExpiryDays] = useState("0");
+  const [savedExpiry, setSavedExpiry] = useState("0");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -49,6 +52,9 @@ export default function LoyaltyPage({ toast }) {
         setMaxPercent(v);
         setSavedMax(v);
       }
+      const ed = String(profile?.data?.bonusExpiryDays ?? 0);
+      setExpiryDays(ed);
+      setSavedExpiry(ed);
     } catch (err) {
       toast?.error(err.message);
     } finally {
@@ -69,6 +75,52 @@ export default function LoyaltyPage({ toast }) {
     } catch (err) {
       toast?.error(err.message);
       setMaxPercent(savedMax);
+    }
+  };
+
+  /* ── Ball muddati (V30) ──────────────────────────────────────────────
+     JIMGINA KUYDIRISH YO'Q: saqlashdan oldin server «qancha kuyadi»
+     deb hisoblab beradi (preview) va egasi shu raqamni KO'RIB tasdiqlaydi.
+     Tasdiqlagach — darhol qo'llash ham taklif qilinadi (kunlik 03:40 ni
+     kutmasdan), rad etsa keyingi tunda o'zi kuyadi. */
+  const saveExpiryDays = async () => {
+    if (expiryDays === savedExpiry) return;
+    const v = Number(expiryDays);
+    if (!Number.isInteger(v) || v < 0 || (v > 0 && v < 30) || v > 3650) {
+      toast?.error(t("loyalty.expiryInvalid"));
+      setExpiryDays(savedExpiry);
+      return;
+    }
+    try {
+      if (v > 0) {
+        const p = await loyaltyApi.expiryPreview(v);
+        const burn = Number(p?.data?.amount || 0);
+        const ok = await confirm({
+          title: t("loyalty.expiryTitle"),
+          message: burn > 0
+            ? t("loyalty.expiryConfirmBurn", { days: v, amount: money(burn) })
+            : t("loyalty.expiryConfirmNone", { days: v }),
+          type: burn > 0 ? "danger" : "info",
+        });
+        if (!ok) { setExpiryDays(savedExpiry); return; }
+        await shopApi.setBonusExpiryDays(v);
+        setSavedExpiry(String(v));
+        if (burn > 0) {
+          const runNow = await confirm({
+            title: t("loyalty.expiryRunTitle"),
+            message: t("loyalty.expiryRunMsg", { amount: money(burn) }),
+            type: "danger",
+          });
+          if (runNow) await loyaltyApi.expiryRun();
+        }
+      } else {
+        await shopApi.setBonusExpiryDays(0);
+        setSavedExpiry("0");
+      }
+      toast?.success(t("loyalty.saved"));
+    } catch (err) {
+      toast?.error(err.message);
+      setExpiryDays(savedExpiry);
     }
   };
 
@@ -145,6 +197,25 @@ export default function LoyaltyPage({ toast }) {
           />
           <span className="text-muted" style={{ fontSize: 12, flex: 1, minWidth: 220 }}>
             {t("loyalty.maxPercentHint")}
+          </span>
+        </div>
+      </div>
+
+      {/* ── Ball muddati (V30) ──────────────────────────────────────────
+          Standart 0 (muddatsiz) — hech narsa o'zgarmaydi. Yoqishda server
+          «qancha kuyadi» ni ko'rsatadi va ega tasdiqlaydi. */}
+      <div className="card" style={{ marginBottom: 14 }}>
+        <div className="card-body" style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 13, fontWeight: 600 }}>{t("loyalty.expiryDays")}</span>
+          <NumField kind="int"
+            className="form-input ek-num"
+            style={{ width: 100 }}
+            value={expiryDays}
+            onChange={(e) => setExpiryDays(e.target.value)}
+            onBlur={saveExpiryDays}
+          />
+          <span className="text-muted" style={{ fontSize: 12, flex: 1, minWidth: 220 }}>
+            {t("loyalty.expiryHint")}
           </span>
         </div>
       </div>

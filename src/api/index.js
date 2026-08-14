@@ -466,6 +466,11 @@ export const loyaltyApi = {
     const q = p.toString();
     return request(`/loyalty/summary${q ? `?${q}` : ""}`);
   },
+  /* ── Ball muddati (V30) — faqat rahbar ──
+     preview: muddat yoqilsa qancha kuyishi (sozlashdan OLDIN ko'rsatiladi);
+     run: kuydirishni kunlik 03:40 ni kutmasdan darhol qo'llash. */
+  expiryPreview: (days) => request(`/loyalty/bonus/expiry/preview${days != null ? `?days=${days}` : ""}`),
+  expiryRun:     ()     => request("/loyalty/bonus/expiry/run", { method: "POST" }),
 };
 
 export const customerApi = {
@@ -519,6 +524,8 @@ export const shopApi = {
   setStockTolerance: (value) => request(`/shop/stock-tolerance?value=${value}`, { method: "PATCH" }),
   /** Chekning eng ko'pi shuncha foizi ball bilan yopiladi. `0` = yopiq. */
   setBonusMaxPercent: (value) => request(`/shop/bonus-max-percent?value=${value}`, { method: "PATCH" }),
+  /** Ball amal qilish muddati, kunlarda (V30). `0` = muddatsiz. */
+  setBonusExpiryDays: (value) => request(`/shop/bonus-expiry-days?value=${value}`, { method: "PATCH" }),
   /** Do'kon jurnali. ⚠ `shopId` yuborilmaydi — server uni chaqiruvchining
       do'konidan oladi va so'rovdagisini e'tiborga olmaydi. */
   audit: ({ action, actor, page = 0, size = 50 } = {}) => {
