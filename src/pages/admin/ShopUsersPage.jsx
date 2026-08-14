@@ -16,7 +16,7 @@ import { useLoading } from "../../lib/use-loading";
    `ROLE_` prefiksini ham, katta-kichik harf farqini ham o'zi hal qiladi —
    shuning uchun bu yerda har bir variantni qo'lda sanab chiqish kerak emas. */
 const ROLE_OPTIONS = ["SHOP_ADMIN", "STOREKEEPER", "CASHIER"];
-const EMPTY_USER_FORM = { fullName: "", username: "", password: "", role: "CASHIER" };
+const EMPTY_USER_FORM = { fullName: "", username: "", password: "", role: "CASHIER", email: "" };
 
 export default function ShopUsersPage({ toast }) {
   const { user: currentUser }   = useAuth();
@@ -71,7 +71,11 @@ export default function ShopUsersPage({ toast }) {
         await guard(() => shopApi.updateUser(editingId, {
           fullName: form.fullName,
           role:     form.role,
-          password: form.password || undefined // Bo'sh bo'lsa parolni o'zgartirmaydi
+          password: form.password || undefined, // Bo'sh bo'lsa parolni o'zgartirmaydi
+          // Pochta HAR DOIM yuboriladi: bo'sh satr «tozalansin» degani
+          // (backend: null=tegilmasin, ""=tozalash). Forma mavjud qiymat
+          // bilan to'lgani uchun yubormay qo'yish mumkin emas.
+          email:    form.email.trim(),
         }, branchId));
         toast.success(t("staff.saved"));
       }
@@ -91,7 +95,8 @@ export default function ShopUsersPage({ toast }) {
       fullName: u.fullName,
       username: u.username,
       password: "", // Parol tahrirlanganda ixtiyoriy
-      role:     u.roles?.[0]?.type || u.role || "CASHIER"
+      role:     u.roles?.[0]?.type || u.role || "CASHIER",
+      email:    u.email || ""
     });
     setModalMode("edit");
   };
@@ -291,6 +296,14 @@ export default function ShopUsersPage({ toast }) {
               onChange={(v) => setField("role")({ target: { value: v } })}
               options={ROLE_OPTIONS.map((r) => ({ value: r, label: roleLabel(r), icon: "fa-user-tag" }))}
             />
+          </FormGroup>
+          {/* Pochta IXTIYORIY (V29): parolni tiklash havolasi va yangi
+              qurilma tasdiqlash kodi shu manzilga boradi. Kassirda odatda
+              bo'lmaydi — uning parolini egasi shu sahifadan almashtiradi. */}
+          <FormGroup label={t("staff.email")}>
+            <Field className="form-input" kind="email" value={form.email}
+                   onChange={setField("email")} placeholder="ega@pochta.uz" />
+            <div className="form-hint">{t("staff.emailHint")}</div>
           </FormGroup>
         </Modal>
       )}
