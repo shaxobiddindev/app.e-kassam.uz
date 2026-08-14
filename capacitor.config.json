@@ -1,0 +1,11 @@
+{
+  "appId": "uz.ekassam.app",
+  "appName": "e-Kassam",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": false
+  }
+}

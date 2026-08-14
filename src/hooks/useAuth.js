@@ -1,6 +1,6 @@
 import { LOGIN_URL } from "../config";
 import { t, withLang } from "../lib/ek-i18n";
-import { isDesktop } from "../lib/ek-desktop";
+import { isNativeShell } from "../lib/ek-desktop";
 import { useState, useCallback } from "react";
 
 function ls(...keys) {
@@ -58,7 +58,7 @@ export function useAuth() {
 
     // Desktop'da chiqish oynani TASHLAB KETMAYDI: holat tozalanadi va
     // kirish ekrani shu oynada chiziladi.
-    if (isDesktop()) { setUser(null); return; }
+    if (isNativeShell()) { setUser(null); return; }
     window.location.replace(withLang(`${LOGIN_URL}?logged_out=1`));
   }, []);
 

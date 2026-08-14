@@ -1,6 +1,6 @@
 import { API_BASE, LOGIN_URL, getDeviceId } from "../config";
 import { getLang, withLang } from "../lib/ek-i18n";
-import { isDesktop } from "../lib/ek-desktop";
+import { isNativeShell } from "../lib/ek-desktop";
 
 /**
  * Sessiya tiklab bo'lmadi — foydalanuvchini kirish ekraniga qaytaramiz.
@@ -15,7 +15,8 @@ function forceLogout() {
   localStorage.clear();
   if (lang) localStorage.setItem("ek_lang", lang);
 
-  if (isDesktop()) window.location.reload();
+  // Nativ qobiqda (desktop/mobil) yo'naltirish yo'q — qayta yuklash kirish ekranini chizadi
+  if (isNativeShell()) window.location.reload();
   else window.location.replace(withLang(`${LOGIN_URL}?logged_out=1`));
 }
 

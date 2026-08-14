@@ -31,7 +31,7 @@ import ShopsPage        from "./pages/admin/ShopsPage";
 import SettingsPage    from "./pages/SettingsPage";
 import LoginPage       from "./pages/LoginPage";
 import NotFound from "./pages/NotFound";
-import { isDesktop } from "./lib/ek-desktop";
+import { isDesktop, isNativeShell } from "./lib/ek-desktop";
 import { hasRole, roleSet } from "./lib/ek-roles";
 import ErrorBoundary, { RouteErrorBoundary } from "./components/ek/ErrorBoundary";
 import { BadgeProvider } from "./context/BadgeProvider";
@@ -99,7 +99,7 @@ if (!localToken || localType !== "user") {
   // ⚠ DESKTOP'DA YO'NALTIRISH YO'Q. `.exe` ichida `auth.e-kassam.uz` ga
   // o'tish oynani bo'sh sahifaga aylantirardi va kassir uchun ilova
   // "yiqilgandek" ko'rinardi. Bu yerda `LoginPage` chiziladi (pastda).
-  if (!isDesktop()) window.location.replace(withLang(`${LOGIN_URL}?logged_out=1`));
+  if (!isNativeShell()) window.location.replace(withLang(`${LOGIN_URL}?logged_out=1`));
 }
 
 /* ⚠ Tekshiruv `hasRole` orqali — xodimda bir nechta rol bo'lishi mumkin va
@@ -132,7 +132,7 @@ export default function App() {
   // so'ramasdan o'rnatsa bo'ladi. Faqat ichki daraxtga qo'yilsa, yangilanish
   // faqat kassir ISHLAYOTGANDA taklif qilinardi — eng noqulay payt.
   if (!user) {
-    return isDesktop() ? (
+    return isNativeShell() ? (
       <KeyboardProvider>
         <Toast toasts={toasts} onDismiss={dismiss} />
         <LoginPage onLogin={login} />

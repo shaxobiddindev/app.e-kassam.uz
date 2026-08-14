@@ -29,3 +29,6 @@ src-tauri/target/
 # buyrug'i borligiga ishonch hosil qilgach shu qatorni oching:
 #     dist/
 # va bir marta `git rm -r --cached dist` qiling.
+
+# Android APK artefakti (build-apk.sh)
+/e-kassam.apk

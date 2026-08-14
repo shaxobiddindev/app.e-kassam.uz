@@ -16,6 +16,23 @@ export const isDesktop = () =>
   typeof window !== "undefined" &&
   (window.__TAURI_INTERNALS__ != null || window.__TAURI__ != null);
 
+/** Android ilova (Capacitor) ichidamizmi. */
+export const isMobileApp = () =>
+  typeof window !== "undefined" &&
+  window.Capacitor != null &&
+  (typeof window.Capacitor.isNativePlatform !== "function"
+    || window.Capacitor.isNativePlatform());
+
+/**
+ * NATIV QOBIQ (Tauri `.exe` YOKI Android APK) ichidamizmi.
+ *
+ * ⚠ Farqni bilish MUHIM: kirish/chiqish oqimi ikkala qobiqda ham ILOVA
+ * ICHIDA bo'ladi (`auth.e-kassam.uz` ga yo'naltirish qobiq oynasini bo'sh
+ * sahifaga aylantiradi). Apparat (printer, port) esa FAQAT Tauri'da bor —
+ * u joylar `isDesktop()` ligicha qoladi.
+ */
+export const isNativeShell = () => isDesktop() || isMobileApp();
+
 /**
  * Rust tomonidagi buyruqni chaqiradi.
  *
