@@ -112,7 +112,7 @@ export default function HardwareSettings({ toast }) {
                      onChange={(e) => set({ host: e.target.value.trim() })} />
             </Row>
             <Row label={t("hw.port")}>
-              <input className="form-input mono" style={{ maxWidth: 100 }} inputMode="numeric"
+              <NumField className="form-input mono" kind="int" max={65535} style={{ maxWidth: 100 }}
                      value={s.port}
                      onChange={(e) => set({ port: Number(e.target.value) || 9100 })} />
             </Row>

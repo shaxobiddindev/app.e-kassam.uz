@@ -447,7 +447,7 @@ export default function ProductsPage({ toast }) {
                 <Field className="form-input ek-num" kind="barcode" value={form.barcode} onChange={setField("barcode")} placeholder="4780001111111" />
               </FormGroup>
               <FormGroup label={t("products.sku")}>
-                <Field className="form-input ek-num" value={form.sku} onChange={setField("sku")} placeholder="ART-001" />
+                <Field kind="sku" className="form-input mono" value={form.sku} onChange={setField("sku")} placeholder="ART-001" />
               </FormGroup>
             </div>
 
@@ -482,7 +482,7 @@ export default function ProductsPage({ toast }) {
                 <Field className="form-input ek-num" kind="percent" value={form.vatRate} onChange={setField("vatRate")} placeholder="12" />
               </FormGroup>
               <FormGroup label={t("products.packageCode")}>
-                <Field className="form-input ek-num" value={form.packageCode} onChange={setField("packageCode")} placeholder="1234567" />
+                <Field kind="barcode" className="form-input ek-num" value={form.packageCode} onChange={setField("packageCode")} placeholder="1234567" />
               </FormGroup>
             </div>
 

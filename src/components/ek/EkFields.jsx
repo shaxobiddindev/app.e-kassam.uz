@@ -26,7 +26,7 @@ import { forwardRef, useRef, useLayoutEffect, useImperativeHandle } from "react"
 import {
   numberInput, displayNumber, countDigits,
   phoneInput, emailInput, barcodeInput, mxikInput,
-  codeInput, usernameInput, nameInput, otpInput,
+  codeInput, usernameInput, nameInput, otpInput, skuInput,
 } from "../../lib/ek-input";   // ⚠ ilova ichidagi yo'l (sync-tokens `src/lib/` ga qo'yadi)
 
 /* Kursorni raqam indeksiga qarab tiklaydi. */
@@ -216,4 +216,9 @@ export const NameField = masked("NameField", plain(nameInput), {
 export const OtpField = masked("OtpField", plain(otpInput), {
   inputMode: "text", autoComplete: "one-time-code", spellCheck: false,
   maxLength: 9, keepCaret: false, className: "form-input ek-num",
+});
+
+/** Artikul: katta lotin + raqam + `-._` */
+export const SkuField = masked("SkuField", plain(skuInput), {
+  autoComplete: "off", spellCheck: false, keepCaret: false, className: "form-input mono",
 });

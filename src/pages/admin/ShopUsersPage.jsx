@@ -272,6 +272,7 @@ export default function ShopUsersPage({ toast }) {
           <div className="grid-2">
             <FormGroup label={`${t("common.username")} *`}>
               <Field 
+                kind="username"
                 className="form-input mono" 
                 value={form.username} 
                 onChange={setField("username")} 

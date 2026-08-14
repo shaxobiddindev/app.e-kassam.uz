@@ -176,6 +176,13 @@ export function isBarcodeChecksumValid(s) {
   return (10 - (sum % 10)) % 10 === check;
 }
 
+/** Artikul (SKU): katta lotin, raqam va `-._`. Do'kon ichki kodi. */
+export const skuInput = (s) =>
+  String(s ?? "").toUpperCase().replace(/[^A-Z0-9._-]/g, "").slice(0, 64);
+
+/** Faqat raqam (qadoq kodi, port va h.k.). */
+export const digitsInput = (s, max = 32) => onlyDigits(s).slice(0, max);
+
 /* ── Ikki bosqichli kirish kodi ──────────────────────────────────────── */
 
 /**

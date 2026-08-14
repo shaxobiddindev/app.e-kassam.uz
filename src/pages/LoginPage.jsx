@@ -4,6 +4,7 @@ import { useT, getLang } from "../lib/ek-i18n";
 import { Spinner } from "../components/ek/Loading";
 import LangSelect from "../components/ek/LangSelect";
 import ThemeSelect from "../components/ek/ThemeSelect";
+import { CodeField, UsernameField } from "../components/ek/EkFields";
 
 /* ══════════════════════════════════════════════════════════════════════════
    Kirish — ILOVA ICHIDA (desktop)
@@ -134,15 +135,15 @@ export default function LoginPage({ onLogin }) {
 
           <div className="auth__field">
             <label className="auth__label" htmlFor="shopCode">{t("login.shopCode")}</label>
-            <input id="shopCode" ref={firstFieldRef} className="auth__input mono"
-                   placeholder="shop-code" autoComplete="off" spellCheck="false"
+            <CodeField id="shopCode" ref={firstFieldRef} className="auth__input mono"
+                   placeholder="shop-code"
                    value={form.shopCode} onChange={set("shopCode")}
                    aria-invalid={error ? "true" : undefined} />
           </div>
 
           <div className="auth__field">
             <label className="auth__label" htmlFor="username">{t("common.username")}</label>
-            <input id="username" className="auth__input" autoComplete="username"
+            <UsernameField id="username" className="auth__input"
                    value={form.username} onChange={set("username")}
                    aria-invalid={error ? "true" : undefined} />
           </div>

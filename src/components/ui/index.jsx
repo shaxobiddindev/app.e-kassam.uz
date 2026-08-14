@@ -2,7 +2,7 @@ import { useRef } from "react";
 import { clear as clearField } from "../../lib/ek-keys";
 import {
   NumField, PhoneField, EmailField, BarcodeField,
-  MxikField, CodeField, UsernameField, NameField,
+  MxikField, CodeField, UsernameField, NameField, SkuField, OtpField,
 } from "../ek/EkFields";
 
 // ─── Loader — OLIB TASHLANDI ─────────────────────────────────
@@ -143,11 +143,12 @@ export function ClearButton({ onClear, label = "Tozalash" }) {
 /* `kind` — maydonning VAZIFASI. Berilsa, kiritish o'sha turga qat'iy
    moslanadi (`components/ek/EkFields.jsx` + `lib/ek-input.js`):
 
-     money | qty | percent | int   — son: manfiy YO'Q, razryad ajratiladi,
+     money | qty | percent | int | signed — son: manfiy YO'Q (`signed` dan
+                                     tashqari), razryad ajratiladi,
                                      kasr xonalari cheklangan, foiz ≤ 100
      phone                         — +998 (90) 123-45-67, aniq 12 raqam
      email | barcode | mxik        — mos tozalash
-     code | username | name        — mos tozalash
+     code | username | name | sku | otp — mos tozalash
 
    ⚠ Nega `type="number"` emas: `min="0"` KIRITISHNI TO'SMAYDI (u faqat
    forma validatsiyasiga ta'sir qiladi, forma esa bu yerda `onSubmit`
@@ -155,9 +156,10 @@ export function ClearButton({ onClear, label = "Tozalash" }) {
    g'ildiragi qiymatni jimgina o'zgartiradi va razryadlarni ajratib
    bo'lmaydi. Batafsil: docs/09-CHETLANISHLAR.md §10i₂ */
 const KIND_FIELDS = {
-  money: NumField, qty: NumField, percent: NumField, int: NumField,
+  money: NumField, qty: NumField, percent: NumField, int: NumField, signed: NumField,
   phone: PhoneField, email: EmailField, barcode: BarcodeField,
   mxik: MxikField, code: CodeField, username: UsernameField, name: NameField,
+  sku: SkuField, otp: OtpField,
 };
 
 export function Field({ className = "form-input", wrapStyle, onClear, kind, ...rest }) {

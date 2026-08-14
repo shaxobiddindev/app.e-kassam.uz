@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { t } from "../lib/ek-i18n";
 import { unitLabel } from "../lib/ek-labels";
 import { money } from "../utils";
+import { NumField } from "./ek/EkFields";
 
 /* ══════════════════════════════════════════════════════════════════════════
    Miqdor kiritish — FAQAT bo'linadigan birliklar uchun (kg, litr, metr).
@@ -76,12 +77,12 @@ export default function QuantityModal({ product, initial, onConfirm, onClose }) 
             {t("kassa.quantityFor", { name: product?.name, unit: unitLabel(product?.unit) })}
           </div>
 
-          <input
+          <NumField
             ref={inputRef}
+            kind="qty"
             className="form-input qty-modal__input ek-num"
-            inputMode="decimal"
             value={value}
-            onChange={(e) => setValue(e.target.value.replace(/[^\d.,]/g, ""))}
+            onChange={(e) => setValue(e.target.value)}
             placeholder="0"
             aria-label={t("kassa.enterQuantity")}
           />

@@ -11,7 +11,8 @@
 import {
   numberInput, displayNumber, phoneInput, isEmail, emailInput,
   isBarcodeChecksumValid, mxikInput, isMxik, codeInput, usernameInput,
-  isUsername, nameInput, validate, required, positive, notNegative, between, minLen,
+  isUsername, nameInput, skuInput, otpInput, digitsInput,
+  validate, required, positive, notNegative, between, minLen,
 } from "../src/lib/ek-input.js";
 
 let pass = 0, fail = 0;
@@ -115,6 +116,14 @@ eq(typeSeq("0.5", { decimals: 3 }), "0.5", "noldan boshlanadigan kasr");
 eq(typeSeq("150", { decimals: 2, max: 100 }), "100", "foiz chegarada to'xtaydi");
 eq(typeSeq("-10", { decimals: 2, min: null }), "-10", "narx o'zgartirishda minus MUMKIN");
 eq(typeSeq("abc", { decimals: 2 }), "", "faqat harf — bo'sh qiymat");
+
+console.log("\n═══ 10. Artikul, qadoq kodi va 2FA kodi ═══");
+eq(skuInput("art-001"), "ART-001", "artikul katta harfda");
+eq(skuInput("ART 001!"), "ART001", "bo'shliq va belgilar tashlanadi");
+eq(digitsInput("12ab34"), "1234", "qadoq kodi — faqat raqam");
+eq(otpInput("abcd-efgh"), "ABCD-EFGH", "tiklash kodi katta harfda");
+eq(otpInput("12 34 56"), "123456", "TOTP dan bo'shliqlar olib tashlanadi");
+eq(otpInput("123456789012"), "123456789", "9 belgidan uzun kod kesiladi");
 
 console.log(`\n  ${pass} o'tdi, ${fail} yiqildi\n`);
 process.exit(fail ? 1 : 0);
