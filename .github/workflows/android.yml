@@ -47,16 +47,35 @@ jobs:
           npm run build
           npx cap sync android
 
+      # ⚠ IMZO KALITISIZ QURILISH YIQILADI — va bu ATAYLAB (desktop bilan
+      # bir qoida). Debug kalit har runner'da HAR XIL bo'lgani uchun
+      # birinchi relizlar bir-birining ustiga o'rnatilmasdi.
+      # Sirlar: Settings → Secrets → ANDROID_KEYSTORE_BASE64 / _PASSWORD.
+      - name: Imzo kaliti bormi
+        env:
+          KS: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KS" ]; then
+            echo "ANDROID_KEYSTORE_BASE64 sirri qo'yilmagan — imzosiz APK yangilanish sifatida O'RNATILMAYDI."
+            exit 1
+          fi
+          echo "Kalit joyida."
+
       # versionCode — epoch-daqiqa: har APK avvalgisidan katta raqam bilan
       # chiqadi va o'rnatilganining USTIGA tushadi (build-apk.sh bilan bir xil).
-      - name: Gradle assembleDebug
+      - name: Gradle assembleRelease (imzolangan)
+        env:
+          KS: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         run: |
+          echo "$KS" | base64 -d > /tmp/ekassam.keystore
           VCODE=$(( $(date +%s) / 60 ))
           VNAME="$(date -u +%Y.%m.%d-%H%M)"
           cd android
-          ./gradlew --console=plain assembleDebug \
-            -PappVersionCode="$VCODE" -PappVersionName="$VNAME"
-          cp app/build/outputs/apk/debug/app-debug.apk ../e-kassam.apk
+          ./gradlew --console=plain assembleRelease \
+            -PappVersionCode="$VCODE" -PappVersionName="$VNAME" \
+            -PsignKeystore=/tmp/ekassam.keystore -PsignPassword="$KS_PASS"
+          cp app/build/outputs/apk/release/app-release.apk ../e-kassam.apk
 
       - name: APK artifakti (ishlab chiquvchi uchun)
         uses: actions/upload-artifact@v4

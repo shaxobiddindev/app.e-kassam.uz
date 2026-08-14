@@ -19,10 +19,29 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    /* ⚠ DOIMIY IMZO SHART. Debug kalit HAR MASHINADA (va har CI runner'da)
+       HAR XIL — birinchi relizlar shu tufayli bir-birining ustiga
+       o'rnatilmasdi: Android boshqa imzoli APK'ni yangilanish deb qabul
+       qilmaydi va foydalanuvchi «o'rnata olmayapman» deb qaytadi.
+       Kalit yo'llari propertydan (CI: secrets; lokal: build-apk.sh
+       C:\Users\shaxo\ekassam-android-kalit dan uzatadi). */
+    signingConfigs {
+        release {
+            if (project.hasProperty('signKeystore')) {
+                storeFile file(signKeystore)
+                storePassword signPassword
+                keyAlias 'ekassam'
+                keyPassword signPassword
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (project.hasProperty('signKeystore')) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 }

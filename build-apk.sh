@@ -23,11 +23,19 @@ npx --no-install cap sync android
 VCODE=$(( $(date +%s) / 60 ))
 VNAME="$(date +%Y.%m.%d-%H%M)"
 
-echo "==> 3/4 Gradle assembleDebug (versionCode=$VCODE, versionName=$VNAME)"
-cd "$ROOT/android"
-./gradlew --console=plain assembleDebug \
-  -PappVersionCode="$VCODE" -PappVersionName="$VNAME"
+# ⚠ DOIMIY IMZO: kalit repodan TASHQARIDA (desktop imzo kaliti bilan bir
+# qoida). Usiz qurilgan APK boshqa imzo oladi va o'rnatilganining ustiga
+# tushmaydi — shuning uchun kalit topilmasa to'xtaymiz.
+KEYDIR="/c/Users/shaxo/ekassam-android-kalit"
+[ -f "$KEYDIR/ekassam.keystore" ] || { echo "XATO: $KEYDIR/ekassam.keystore topilmadi"; exit 1; }
+SIGN_PASS="$(cat "$KEYDIR/parol.txt")"
 
-SRC="$ROOT/android/app/build/outputs/apk/debug/app-debug.apk"
+echo "==> 3/4 Gradle assembleRelease (versionCode=$VCODE, versionName=$VNAME)"
+cd "$ROOT/android"
+./gradlew --console=plain assembleRelease \
+  -PappVersionCode="$VCODE" -PappVersionName="$VNAME" \
+  -PsignKeystore="$KEYDIR/ekassam.keystore" -PsignPassword="$SIGN_PASS"
+
+SRC="$ROOT/android/app/build/outputs/apk/release/app-release.apk"
 cp "$SRC" "$ROOT/e-kassam.apk"
-echo "==> 4/4 Tayyor: $ROOT/e-kassam.apk ($VNAME)"
+echo "==> 4/4 Tayyor: $ROOT/e-kassam.apk ($VNAME, imzolangan)"
