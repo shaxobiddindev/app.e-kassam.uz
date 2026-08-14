@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useT } from "../lib/ek-i18n";
 import { roleLabel } from "../lib/ek-labels";
 import { roleSet } from "../lib/ek-roles";
@@ -27,14 +27,24 @@ import { appVersion } from "../lib/ek-update";
    do'kon sozlamasi emas — kassirdan ham olib qo'yish asossiz bo'lardi.
    ══════════════════════════════════════════════════════════════════════════ */
 
+/* ⚠ Yorliq maydon bilan BOG'LANGAN bo'lishi kerak: ilgari u shunchaki
+   yonidagi `<div>` edi va ekran o'quvchi maydonni «nomsiz matn maydoni»
+   deb o'qirdi (axe: «Form elements must have labels»). `aria-label`
+   avtomatik uzatiladi — har satrda qo'lda yozish esdan chiqardi. */
 function Row({ label, hint, children }) {
+  const labelled = typeof label === "string"
+    ? React.Children.map(children, (c) =>
+        React.isValidElement(c) && !c.props["aria-label"] && !c.props.id
+          ? React.cloneElement(c, { "aria-label": label })
+          : c)
+    : children;
   return (
     <div className="set-row">
       <div className="set-row__text">
         <div className="set-row__label">{label}</div>
         {hint && <div className="set-row__hint">{hint}</div>}
       </div>
-      <div className="set-row__control">{children}</div>
+      <div className="set-row__control">{labelled}</div>
     </div>
   );
 }

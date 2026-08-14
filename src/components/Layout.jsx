@@ -185,7 +185,9 @@ function Sidebar({ user, onLogout, open, onClose, isCollapsed, onToggleCollapse,
           )}
         </div>
       </div>
-      <button className="sb-toggle" onClick={onToggleCollapse}>
+      <button className="sb-toggle" onClick={onToggleCollapse}
+              aria-label={isCollapsed ? t("nav.expand") : t("nav.collapse")}
+              title={isCollapsed ? t("nav.expand") : t("nav.collapse")}>
         <i className={`fa-solid ${isCollapsed ? "fa-chevron-right" : "fa-chevron-left"}`} />
       </button>
       <nav className="sb-nav">

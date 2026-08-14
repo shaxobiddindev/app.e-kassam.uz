@@ -1,0 +1,46 @@
+# ══════════════════════════════════════════════════════════════════════════
+#  CI — har push va PR da: qurish · sinov · bandl byudjeti · a11y
+#
+#  ⚠ NEGA KERAK. Byudjet raqamlari 08-ROADMAP.md da bir marta yozilib,
+#  keyin HECH KIM o'lchamagan; a11y esa umuman tekshirilmagan. Bitta
+#  e'tiborsiz `import` bandlni ikki barobar oshiradi va buni faqat 4G
+#  ulanishdagi kassir sezadi.
+#
+#  ⚠ Chrome runner'da OLDINDAN o'rnatilgan (`ubuntu-latest`), shuning
+#  uchun `puppeteer-core` ishlatiladi — 120 MB lik Chromium yuklab
+#  olinmaydi.
+# ══════════════════════════════════════════════════════════════════════════
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - run: npm ci
+
+      - name: Sinovlar
+        run: npm test
+
+      - name: Qurish
+        run: npm run build
+
+      - name: Bandl byudjeti
+        run: node scripts/check-budget.mjs
+
+      - name: A11y (axe)
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+        run: node scripts/check-a11y.mjs

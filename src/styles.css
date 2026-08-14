@@ -156,7 +156,9 @@ h1, h2, h3, .page-title, .card-title, .modal-title {
 .sb-nav::-webkit-scrollbar        { width: 6px; }
 .sb-nav::-webkit-scrollbar-thumb  { background: var(--border); border-radius: 3px; }
 .sb-nav::-webkit-scrollbar-track  { background: transparent; }
-.sb-section      { font-size: 10px; font-weight: 700; color: var(--sb-fg-dim); text-transform: uppercase; letter-spacing: 1.2px; padding: 12px 8px 5px; }
+/* ⚠ Rang `--fg-tertiary` EMAS: u matn uchun yaramaydi (kontrast 3:1 dan
+   past — §1k). axe buni «color-contrast» deb ushladi. */
+.sb-section      { font-size: 10px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 1.2px; padding: 12px 8px 5px; }
 .sb-item {
   position: relative;   /* yig'ilgan rejimdagi burchak badge uchun tayanch */
   display: flex; align-items: center; gap: 10px;
@@ -212,7 +214,9 @@ h1, h2, h3, .page-title, .card-title, .modal-title {
 .sb-user:hover   { background: var(--sb-hover-bg); }
 .sb-user-info    { flex: 1; overflow: hidden; }
 .sb-user-name    { font-size: 13px; font-weight: 600; color: var(--fg-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sb-user-role    { font-size: 11px; color: var(--sb-fg-dim); }
+/* ⚠ `--fg-tertiary` (=`--sb-fg-dim`) MATN uchun yaramaydi: kontrast
+   3:1 dan past va axe uni «color-contrast» deb ushlaydi (§1k). */
+.sb-user-role    { font-size: 11px; color: var(--text2); }
 
 /* ── AVATAR ── */
 .avatar, .av {
@@ -988,7 +992,8 @@ select.form-input { cursor: pointer; }
   font-size: 12px !important;
   font-weight: 700 !important;
   background: var(--blue-l) !important;
-  color: var(--blue) !important;
+  /* ⚠ `--blue` ochiq ko'k fonda 3.5:1 — 12px matn uchun yetarli emas. */
+  color: var(--ek-blue-700) !important;
   border: 1.5px solid rgba(1, 125, 202, 0.2) !important;
   border-radius: 8px !important;
   cursor: pointer;

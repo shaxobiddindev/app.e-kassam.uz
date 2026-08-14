@@ -238,8 +238,12 @@ td.num, th.num { text-align: right; font-family: var(--font-mono); font-variant-
 
 .ek-switch.on {
   border-color: var(--border-brand);
-  color: var(--fg-brand);
+  /* ⚠ `--fg-brand` (ko'k) oq fonda 3.5:1 — 12.5px matn uchun YETARLI EMAS
+     (axe: color-contrast). To'q variant olinadi; qorong'i temada esa
+     `--fg-brand` allaqachon yorug' ko'k va u to'g'ri. */
+  color: var(--ek-blue-700);
 }
+[data-theme="dark"] .ek-switch.on { color: var(--fg-brand); }
 .ek-switch.on .ek-switch__knob { background: var(--bg-brand); }
 .ek-switch.on .ek-switch__knob::after { transform: translateX(14px); }
 
