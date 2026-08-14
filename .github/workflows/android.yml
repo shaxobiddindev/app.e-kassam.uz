@@ -32,10 +32,12 @@ jobs:
         with:
           node-version: 22
 
+      # ⚠ Capacitor 8 android kutubxonasi Java 21 bilan kompilyatsiya
+      # qilinadi — 17 bilan «invalid source release: 21» (bir marta yiqilgan).
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 17
+          java-version: 21
 
       - name: Bog'liqliklar
         run: npm ci
