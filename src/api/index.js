@@ -506,6 +506,13 @@ export const saleApi = {
 
 
 // ─── Do'kon profili va foydalanuvchilar (Shop admin) ───
+/* ── Telegram hisobot boti (V32) — faqat rahbar ── */
+export const telegramApi = {
+  status:     ()   => request("/telegram/status"),
+  bindCode:   ()   => request("/telegram/bind-code", { method: "POST" }),
+  disconnect: (id) => request(`/telegram/chats/${id}`, { method: "DELETE" }),
+};
+
 export const shopApi = {
   getProfile: () => request("/shop/profile"),
   /** Faoliyat turi — tayyor katalog va kassa ekrani standartini belgilaydi. */

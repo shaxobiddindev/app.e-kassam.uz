@@ -7,6 +7,7 @@ import LangSelect from "../components/ek/LangSelect";
 import { useConfirm } from "../context/ConfirmProvider";
 import { useAuth } from "../hooks/useAuth";
 import FiscalPanel from "../components/FiscalPanel";
+import TelegramPanel from "../components/TelegramPanel";
 import HardwareSettings from "../components/HardwareSettings";
 import Select from "../components/ek/Select";
 import { Field } from "../components/ui";
@@ -277,6 +278,9 @@ export default function SettingsPage({ toast }) {
       {/* Fiskal holat — FAQAT rahbarga: kassirning bu yerda qiladigan
           ishi yo'q va backend ham uni bu yo'lga qo'ymaydi. */}
       {isManager && <FiscalPanel toast={toast} />}
+
+      {/* Telegram hisobot boti (V32) — kunlik PUL hisoboti, faqat rahbarga */}
+      {isManager && <TelegramPanel toast={toast} />}
 
       <Section icon="fa-circle-info" title={t("settings.about")}>
         <Row label="e-Kassam">
