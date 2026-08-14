@@ -3,6 +3,9 @@ import { t } from "../lib/ek-i18n";
 import { useNavigate } from "react-router-dom";
 import { reportApi, inventoryApi, loyaltyApi } from "../api";
 import { BranchSelector } from "../components";
+import OnboardingCard from "../components/OnboardingCard";
+import { useAuth } from "../hooks/useAuth";
+import { roleSet } from "../lib/ek-roles";
 import { Empty } from "../components/ui";
 import { money } from "../utils";
 import Kpi from "../components/ek/Kpi";
@@ -50,6 +53,10 @@ export default function DashboardPage({ toast }) {
   const [loading, setLoading]   = useState(true);
   const [branchId, setBranchId] = useState(null);
   const navigate = useNavigate();
+  const { user } = useAuth();
+  /* Onboarding faqat rahbarga: qadamlarning o'zi (katalog, xodim) faqat
+     unga ochiq. Omborchi bosh sahifani ko'radi, lekin bu karta unga emas. */
+  const canOnboard = roleSet(user?.role).has("OWNER") || roleSet(user?.role).has("SHOP_ADMIN");
 
   useEffect(() => {
     setLoading(true);
@@ -155,6 +162,9 @@ export default function DashboardPage({ toast }) {
         <h2 className="page-title">{t("dash.title")}</h2>
         <BranchSelector selectedId={branchId} onSelect={setBranchId} />
       </div>
+
+      {/* Birinchi qadamlar (V31 davomi) — faqat yangi/bo'sh do'konda chiqadi */}
+      {canOnboard && <OnboardingCard toast={toast} />}
 
       {/* ── KPI qatori ────────────────────────────────────────────────────
           Raqamlar 0 dan sanaladi, monoshriftda — kenglik sakramaydi. */}

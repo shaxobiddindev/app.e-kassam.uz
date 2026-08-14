@@ -1649,3 +1649,15 @@ img.logo--dark { display: none; }
 }
 .ek-date__pick:hover { background: var(--bg-sunken); }
 .ek-date__native { position: absolute; right: 8px; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+
+/* ── Birinchi qadamlar (onboarding, V31 davomi) ───────────────────────── */
+.onb__row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 12px; width: 100%;
+  border: 1.5px solid var(--border); border-radius: 10px;
+  background: var(--bg-surface); color: var(--text);
+  cursor: pointer; font-family: inherit; text-align: left;
+  transition: border-color .15s, background .15s;
+}
+.onb__row:hover:not(:disabled) { border-color: var(--border-brand, var(--blue)); background: var(--bg-brand-subtle); }
+.onb__row:disabled { cursor: default; opacity: .75; }
