@@ -25,9 +25,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # ⚠ 22 dan past bo'lmasin: Capacitor CLI 8 `>=22` talab qiladi va
+      # 20 bilan build oxirida `[fatal]` bilan yiqiladi (bir marta shunday
+      # yiqilgan — lokalda Node 24 bo'lgani uchun sezilmagan).
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - uses: actions/setup-java@v4
         with:
