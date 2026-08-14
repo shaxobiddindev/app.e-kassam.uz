@@ -1787,3 +1787,36 @@ img.logo--dark { display: none; }
 
 /* Skeleton holat: raqamlar kelguncha xira */
 .m-skel { opacity: .55; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   BREND INTROSI — telefon ilovasining kirish ekrani (EkIntro.jsx)
+   Sahna animatsiyalari ek-motion.css da (.ek-intro__back/front/ln/chk/char),
+   bu yerda faqat MAKET: landing (e-kassam.uz) bilan bir xil ko'rinish.
+   ══════════════════════════════════════════════════════════════════════════ */
+.ek-intro {
+  position: fixed; inset: 0; z-index: 9999;
+  display: grid; place-items: center;
+  background: var(--bg-canvas);
+  animation: ek-fade-in 200ms var(--ease-out) both;
+}
+.ek-intro.is-out { animation: ek-intro-out 320ms var(--ease-in) both; }
+@keyframes ek-intro-out { to { opacity: 0; visibility: hidden; } }
+
+.ek-intro__stage { display: grid; justify-items: center; gap: 10px; }
+.ek-intro__mark  { overflow: visible; }
+
+.ek-intro__word {
+  display: flex; gap: .01em;
+  font-family: var(--font-display); font-weight: 800;
+  font-size: clamp(1.6rem, 6vw, 2.4rem); letter-spacing: -.03em;
+  color: var(--fg-primary);
+}
+.ek-intro__word .dot { color: var(--ek-green-600); }
+.ek-intro__tag {
+  font-size: var(--fs-sm); letter-spacing: .12em; text-transform: uppercase;
+  color: var(--fg-tertiary);
+  animation: ek-fade-in 400ms var(--ease-out) 1400ms both;
+}
+
+/* Vestibulyar buzilishda intro chizilmaydi (LoginPage ham tekshiradi) */
+@media (prefers-reduced-motion: reduce) { .ek-intro { display: none !important; } }

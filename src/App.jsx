@@ -92,10 +92,14 @@ const localType = localStorage.getItem("ek_type");
 if (!localToken || localType !== "user") {
   // Til tanlovi sessiyaga emas, BRAUZERGA tegishli — `clear()` dan omon
   // qolsin, aks holda chiqarilgan foydalanuvchi kirish ekranini yana
-  // boshqa tilda ko'radi.
+  // boshqa tilda ko'radi. `ek_forceMobile` ham (dev-bayroq): usiz mobil
+  // UI'ni brauzerda chiqib-kirib sinab bo'lmaydi — clear() uni o'chirib,
+  // sahifa auth'ga qochib ketardi.
   const _lang = localStorage.getItem("ek_lang");
+  const _fm   = localStorage.getItem("ek_forceMobile");
   localStorage.clear();
   if (_lang) localStorage.setItem("ek_lang", _lang);
+  if (_fm)   localStorage.setItem("ek_forceMobile", _fm);
 
   // ⚠ DESKTOP'DA YO'NALTIRISH YO'Q. `.exe` ichida `auth.e-kassam.uz` ga
   // o'tish oynani bo'sh sahifaga aylantirardi va kassir uchun ilova

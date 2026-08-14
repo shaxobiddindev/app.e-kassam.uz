@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import OnScreenKeyboard from "../components/OnScreenKeyboard";
 import { isTextEntry } from "../lib/ek-keys";
 import { isTouch, onTouchChange, apply as applyTouch } from "../lib/ek-touch";
+import { isMobileApp } from "../lib/ek-desktop";
 
 /* ══════════════════════════════════════════════════════════════════════════
    Klaviaturani ochish — BITTA joydan, butun ilova uchun
@@ -39,6 +40,11 @@ export function KeyboardProvider({ children }) {
 
   useEffect(() => {
     function onFocusIn(e) {
+      /* ⚠ TELEFONDA (Capacitor) BU KLAVIATURA UMUMAN OCHILMAYDI.
+         U klaviaturasiz MONOBLOK uchun yozilgan; telefonda esa Android
+         o'z klaviaturasini chiqaradi va ikkalasi USTMA-UST tushib,
+         yarim ekranni egallab qolardi (foydalanuvchi shikoyati). */
+      if (isMobileApp()) return;
       if (!isTouch()) return;
       const el = e.target;
       if (!isTextEntry(el)) return;
@@ -73,6 +79,9 @@ export function KeyboardProvider({ children }) {
   const open = useCallback((el) => {
     if (!el) return;
     try { el.focus(); } catch (e) {}
+    // Telefonda fokus yetarli — Android klaviaturasi o'zi ochiladi,
+    // ichki klaviatura esa chizilmaydi (yuqoridagi izohga qarang).
+    if (isMobileApp()) return;
     setTarget(el);
   }, []);
 

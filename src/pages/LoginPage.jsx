@@ -6,6 +6,7 @@ import LangSelect from "../components/ek/LangSelect";
 import ThemeSelect from "../components/ek/ThemeSelect";
 import { CodeField, UsernameField, OtpField } from "../components/ek/EkFields";
 import { isMobileApp } from "../lib/ek-desktop";
+import EkIntro from "../components/EkIntro";
 
 /* ══════════════════════════════════════════════════════════════════════════
    Kirish — ILOVA ICHIDA (desktop)
@@ -29,6 +30,14 @@ import { isMobileApp } from "../lib/ek-desktop";
    Ko'rinish `auth.e-kassam.uz` bilan AYNAN bir xil (`.auth*` sinflari
    `styles.css` ga ko'chirilgan): kassir uchun ilova o'zgargandek tuyulmasin.
    ══════════════════════════════════════════════════════════════════════════ */
+
+/* Intro ilova SOVUQ ochilishida BIR MARTA ko'rsatiladi: modul darajasidagi
+   bayroq JS konteksti bilan yashaydi — chiqib qayta kirishda takrorlanmaydi,
+   ilova qayta ochilganda esa yana ko'rinadi. Vestibulyar buzilishda umuman
+   chizilmaydi (landing bilan bir xil qoida). */
+let introShown = false;
+const REDUCED = typeof matchMedia !== "undefined"
+  && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 async function post(path, body, headers = {}) {
   const res = await fetch(`${API_BASE}${path}`, {
@@ -69,6 +78,8 @@ export default function LoginPage({ onLogin }) {
   const [showPass, setShowPass] = useState(false);
   /* Parol to'g'ri, lekin qurilma YANGI — pochtadagi kod kerak (V29, 428). */
   const [deviceConfirm, setDeviceConfirm] = useState(false);
+  /* Brend introsi — faqat telefon ilovasida, ochilishda bir marta. */
+  const [intro, setIntro] = useState(() => isMobileApp() && !REDUCED && !introShown);
 
   const firstFieldRef = useRef(null);
   const deviceRef     = useRef(null);
@@ -131,6 +142,7 @@ export default function LoginPage({ onLogin }) {
 
   return (
     <div className="auth">
+      {intro && <EkIntro onDone={() => { introShown = true; setIntro(false); }} />}
       {/* Til va tema kirishdan OLDIN tanlanadi: forma tushunarsiz tilda
           bo'lsa kassir uni to'ldira olmaydi, kechqurun esa yorug' ekran
           charchatadi. */}
