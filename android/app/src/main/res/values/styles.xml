@@ -13,10 +13,25 @@
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
         <item name="android:background">@null</item>
+        <!-- Tepa yopishishga qarshi (1-qatlam): Android 15 da majburiy
+             edge-to-edge'dan voz kechamiz — tizim kontentni status-bar
+             OSTIDAN boshlaydi. ⚠ Android 16+ (targetSdk 36) bu atributni
+             e'tiborsiz qoldiradi — u yerda MainActivity'dagi insets
+             listener (2-qatlam) ishlaydi. capacitor.config.json'dagi
+             adjustMarginsForEdgeToEdge esa Capacitor 8.5 da UMUMAN yo'q
+             edi (o'lik kalit) — olib tashlandi. -->
+        <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>
+        <item name="android:statusBarColor">#1663D8</item>
+        <item name="android:windowLightStatusBar">false</item>
     </style>
 
 
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
         <item name="android:background">@drawable/splash</item>
+        <!-- Aktivlik AYNAN shu tema bilan ishlaydi (manifest'da shu
+             ko'rsatilgan) — yuqoridagi uch element bu yerda ham SHART. -->
+        <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>
+        <item name="android:statusBarColor">#1663D8</item>
+        <item name="android:windowLightStatusBar">false</item>
     </style>
 </resources>

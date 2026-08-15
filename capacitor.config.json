@@ -6,7 +6,6 @@
     "androidScheme": "https"
   },
   "android": {
-    "allowMixedContent": false,
-    "adjustMarginsForEdgeToEdge": "force"
+    "allowMixedContent": false
   }
 }
