@@ -1669,7 +1669,12 @@ img.logo--dark { display: none; }
    ══════════════════════════════════════════════════════════════════════════ */
 .m-app {
   min-height: 100dvh; display: flex; flex-direction: column;
-  background: var(--bg-base, var(--bg-sunken));
+  /* ⚠ Ilgari `var(--bg-base, var(--bg-sunken))` edi — `--bg-base` esa
+     HECH QAYERDA aniqlanmagan (tokenlarda yo'q), ya'ni doim zaxira
+     ishlab, mavjud bo'lmagan tokenni kutayotgandek ko'rinardi. Endi
+     to'g'ridan-to'g'ri `--bg-canvas`: ilovaning asosiy foni bilan bir
+     xil, ya'ni status-bar zonasi ham xuddi shu rangda bo'ladi. */
+  background: var(--bg-canvas);
 }
 .m-page {
   flex: 1; overflow-y: auto;
