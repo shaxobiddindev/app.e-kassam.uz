@@ -4,10 +4,15 @@ import App from "./App.jsx";
 import { initTheme } from "./lib/ek-theme";
 import { initLang } from "./lib/ek-i18n";
 import { isDesktop } from "./lib/ek-desktop";
+import { initStatusBar } from "./lib/ek-statusbar";
 
 // Tema — index.html dagi inline skript birinchi bo'yoqni to'g'ri qiladi,
 // bu yerda tizim sozlamasi o'zgarishini kuzatish yoqiladi.
 initTheme();
+
+// Android status-bar foni temaga ergashsin (ekran tepasidagi ko'k
+// ajratuvchi chiziq shu bilan yo'qoladi). Telefondan boshqa joyda — jim.
+initStatusBar();
 
 // Til — URL dagi `?lang=` (ilovalararo yo'naltirishdan) localStorage ga
 // ko'chiriladi va <html lang> qo'yiladi. Faqat INTERFEYSGA ta'sir qiladi.

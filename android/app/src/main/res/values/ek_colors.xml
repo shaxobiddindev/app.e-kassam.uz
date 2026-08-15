@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Status-bar / insets zonasining foni - YORUG' tema.
+         Diqqat: `bg-canvas` tokeni (ekassam-tokens.css) va
+         `ek-statusbar.js` dagi qiymat bilan BIR XIL bo'lishi shart -
+         nomuvofiqlik ekran tepasida ko'rinadigan ajratuvchi chiziqni
+         qaytaradi. (XML izohida ikki tire ketma-ket YOZILMAYDI.) -->
+    <color name="ek_window">#FFFFFF</color>
+</resources>

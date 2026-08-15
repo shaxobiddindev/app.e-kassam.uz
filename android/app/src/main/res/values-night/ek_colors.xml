@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Status-bar / insets zonasining foni - QORONG'I tema
+         (`bg-canvas` tokenining to'q qiymati). -->
+    <color name="ek_window">#08111D</color>
+</resources>
