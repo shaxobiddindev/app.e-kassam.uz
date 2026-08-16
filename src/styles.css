@@ -2010,3 +2010,18 @@ img.logo--dark { display: none; }
 .pt-tg__icon { font-size: 30px; color: #229ED9; flex-shrink: 0; }
 .pt-tg b { display: block; margin-bottom: 2px; }
 .pt-tg p { margin: 0; }
+
+/* ── Do'kon QR paneli (to'liq panel, Sozlamalar) ─────────────────────── */
+.qrp { display: grid; gap: 12px; justify-items: start; }
+.qrp__code { display: grid; justify-items: center; gap: 8px; width: 100%; max-width: 300px; }
+/* ⚠ Oq fon va qat'iy o'lcham: qorong'i temada teskari rangdagi QR ni ko'p
+   kamera o'qimaydi, o'lcham o'zgarsa yangilanishda sakrab ko'rinadi. */
+.qrp__box {
+  background: #FFFFFF; padding: 12px; border-radius: var(--r-lg);
+  width: 264px; height: 264px; display: grid; place-items: center;
+}
+.qrp__timer { width: 100%; height: 4px; border-radius: 2px; background: var(--bg-sunken); overflow: hidden; }
+.qrp__bar { display: block; height: 100%; background: var(--bg-brand); transition: width 1s linear; }
+.qrp__hint { font-size: var(--fs-md); font-weight: 600; text-align: center; }
+.qrp__actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.qrp__note { font-size: var(--fs-xs); max-width: 46ch; }

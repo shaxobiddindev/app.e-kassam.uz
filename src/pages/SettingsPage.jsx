@@ -9,6 +9,7 @@ import { useAuth } from "../hooks/useAuth";
 import FiscalPanel from "../components/FiscalPanel";
 import TelegramPanel from "../components/TelegramPanel";
 import HardwareSettings from "../components/HardwareSettings";
+import ShopQrPanel from "../components/ShopQrPanel";
 import Select from "../components/ek/Select";
 import { Field } from "../components/ui";
 import { shopApi } from "../api";
@@ -150,6 +151,14 @@ export default function SettingsPage({ toast }) {
         <Row label={t("settings.language")} hint={t("settings.languageHint")}>
           <LangSelect />
         </Row>
+      </Section>
+
+      {/* ── Mijoz uchun QR ────────────────────────────────────────────
+          ⚠ Bo'lim KASSIRGA HAM ko'rinadi: QR ni mijoz kassada so'raydi va
+          uni ko'rsatadigan odam — kassir. Yoqish/o'chirish esa faqat
+          rahbarga (`canManage`) — serverdagi qoida bilan bir xil. */}
+      <Section icon="fa-qrcode" title={t("qr.title")} hint={t("qr.settingsHint")}>
+        <ShopQrPanel toast={toast} canManage={isManager} />
       </Section>
 
       <Section icon="fa-sliders" title={t("settings.interface")}>
