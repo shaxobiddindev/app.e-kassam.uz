@@ -1,0 +1,48 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   MIJOZ ILOVASINING API QATLAMI (V37)
+
+   ⚠ `src/api/index.js` ATAYLAB ishlatilmaydi: u har so'rovga XODIM
+   tokenini qo'shadi va 401 da xodim kirish sahifasiga otadi. Mijozda esa
+   xodim tokeni yo'q va uni kassa kirishiga yuborish mantiqsiz.
+
+   Kalit `X-App-Token` sarlavhasida — xodimning `Authorization: Bearer` i
+   bilan ataylab boshqa: bitta qurilmada ikkalasi ham bo'lishi mumkin
+   (do'kon egasi ham oddiy mijoz).
+   ══════════════════════════════════════════════════════════════════════════ */
+import { API_BASE } from "../config";
+
+export const APP_TOKEN_KEY = "ek_app_token";
+
+export const getAppToken = () => localStorage.getItem(APP_TOKEN_KEY) || "";
+export const setAppToken = (t) => localStorage.setItem(APP_TOKEN_KEY, t);
+export const clearAppToken = () => localStorage.removeItem(APP_TOKEN_KEY);
+
+async function call(path, { method = "GET", body, auth = true } = {}) {
+  const res = await fetch(`${API_BASE}/app${path}`, {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      ...(auth && getAppToken() ? { "X-App-Token": getAppToken() } : {}),
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok || json.success === false) {
+    const err = new Error(json.message || `Xatolik ${res.status}`);
+    err.status = res.status;
+    throw err;
+  }
+  return json.data;
+}
+
+export const appApi = {
+  /* ── Kirish ── */
+  loginStart: ()      => call("/auth/telegram/start", { method: "POST", auth: false }),
+  loginPoll:  (code)  => call(`/auth/telegram/poll?code=${encodeURIComponent(code)}`, { auth: false }),
+  logout:     ()      => call("/auth/logout", { method: "POST" }),
+
+  /* ── Profil va do'konlar ── */
+  me:         ()      => call("/me"),
+  updateMe:   (data)  => call("/me", { method: "PUT", body: data }),
+  shops:      ()      => call("/shops"),
+};

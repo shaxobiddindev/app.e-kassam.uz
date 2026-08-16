@@ -2025,3 +2025,173 @@ img.logo--dark { display: none; }
 .qrp__hint { font-size: var(--fs-md); font-weight: 600; text-align: center; }
 .qrp__actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .qrp__note { font-size: var(--fs-xs); max-width: 46ch; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   MIJOZ ILOVASI (V37) — Korzinka Go / Makro uslubidagi sodda daraxt
+
+   ⚠ `.cu-` prefiksi ataylab: kassa (`.kassa-`, `.m-`) va mijoz kabineti
+   (`.pt-`) sinflari bilan kesishmasin. Uchala daraxt bitta bundle'da
+   yashaydi va biri ikkinchisini buzmasligi kerak.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Kirish ekrani ──────────────────────────────────────────────────── */
+.cu-login {
+  min-height: 100dvh;
+  display: flex; flex-direction: column; justify-content: center; gap: 14px;
+  padding: 24px 20px calc(24px + env(safe-area-inset-bottom));
+  background: var(--bg-canvas); max-width: 480px; margin: 0 auto;
+}
+.cu-login__top { text-align: center; }
+.cu-logo { height: 44px; width: auto; margin: 0 auto 18px; }
+.cu-login__title {
+  font-family: var(--font-display); font-size: var(--fs-2xl);
+  font-weight: 800; letter-spacing: -.02em; margin-bottom: 8px;
+}
+.cu-login__lead { color: var(--fg-secondary); font-size: var(--fs-md); }
+.cu-login__points {
+  list-style: none; display: grid; gap: 10px;
+  margin: 22px auto 0; max-width: 300px; text-align: left;
+}
+.cu-login__points li {
+  display: flex; align-items: center; gap: 12px;
+  font-size: var(--fs-md); color: var(--fg-secondary);
+}
+.cu-login__points i { color: var(--fg-brand); width: 20px; text-align: center; }
+
+/* Telegram tugmasi — brend rangida: mijoz nima ochilishini oldindan biladi */
+.cu-btn {
+  min-height: 54px; width: 100%; border: 0; border-radius: var(--r-lg);
+  background: var(--bg-brand); color: var(--fg-on-brand);
+  font-family: var(--font-sans); font-size: var(--fs-lg); font-weight: 600;
+  cursor: pointer; display: inline-flex; align-items: center;
+  justify-content: center; gap: 10px;
+}
+.cu-btn:disabled { opacity: .6; }
+.cu-btn--tg { background: #229ED9; }
+.cu-btn--ghost {
+  background: transparent; color: var(--fg-secondary);
+  border: 1px solid var(--border-subtle); min-height: 46px; font-size: var(--fs-md);
+}
+/* Xodim havolasi — ko'rinadi, lekin e'tiborni tortmaydi */
+.cu-staff {
+  background: none; border: 0; cursor: pointer; padding: 12px;
+  color: var(--fg-tertiary); font-family: var(--font-sans);
+  font-size: var(--fs-sm); text-decoration: underline;
+}
+.cu-back-to-app {
+  position: absolute; top: calc(12px + env(safe-area-inset-top)); left: 12px; z-index: 5;
+  background: var(--bg-surface); border: 1px solid var(--border-subtle);
+  border-radius: var(--r-full); padding: 8px 14px; cursor: pointer;
+  color: var(--fg-secondary); font-family: var(--font-sans); font-size: var(--fs-sm);
+}
+.cu-waiting {
+  display: grid; justify-items: center; gap: 8px; text-align: center;
+  padding: 20px; background: var(--bg-surface);
+  border: 1px solid var(--border-subtle); border-radius: var(--r-xl);
+}
+.cu-waiting__icon { font-size: 40px; color: #229ED9; }
+.cu-error {
+  padding: 10px 14px; border-radius: var(--r-md);
+  background: var(--bg-danger-subtle); color: var(--fg-danger);
+  border: 1px solid var(--border-danger); font-size: var(--fs-sm);
+}
+
+/* ── Ilova qobig'i ──────────────────────────────────────────────────── */
+.cu-app { min-height: 100dvh; display: flex; flex-direction: column; background: var(--bg-canvas); }
+.cu-page { flex: 1; overflow-y: auto; }
+.cu-screen {
+  display: grid; gap: 14px; align-content: start;
+  padding: 16px 14px 20px; max-width: 520px; margin: 0 auto; width: 100%;
+}
+.cu-wrap { min-height: 100dvh; display: grid; place-items: center; padding: 20px; }
+.cu-title { font-family: var(--font-display); font-size: var(--fs-xl); font-weight: 800; }
+.cu-muted { color: var(--fg-secondary); font-size: var(--fs-sm); }
+.cu-center { text-align: center; }
+.cu-pos { color: var(--fg-success); }
+.cu-big-icon { font-size: 42px; color: var(--fg-tertiary); margin-bottom: 10px; }
+
+.cu-card {
+  background: var(--bg-surface); border: 1px solid var(--border-subtle);
+  border-radius: var(--r-xl); padding: 18px 16px; box-shadow: var(--sh-sm);
+}
+
+/* Jami ball — ekranning bosh raqami */
+.cu-hero {
+  display: grid; justify-items: center; gap: 2px; padding: 26px 16px;
+  background: var(--bg-brand); color: var(--fg-on-brand);
+  border-radius: var(--r-xl); box-shadow: var(--sh-md);
+}
+.cu-hero__label { font-size: var(--fs-sm); opacity: .85; }
+.cu-hero__value {
+  font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+  font-size: 2.4rem; font-weight: 800; line-height: 1.1;
+}
+.cu-hero__sub { font-size: var(--fs-xs); opacity: .8; }
+
+/* Karta kodi — DOIM oq fonda, aks holda skaner o'qimaydi */
+.cu-card--code { display: grid; justify-items: center; gap: 10px; }
+.cu-code__shop {
+  font-size: var(--fs-xs); letter-spacing: .1em; text-transform: uppercase;
+  color: var(--fg-brand); font-weight: 600;
+}
+.cu-code__qr, .cu-code__bars { background: #FFFFFF; padding: 10px; border-radius: var(--r-md); }
+.cu-code__bars svg { width: 100%; max-width: 240px; height: auto; }
+.cu-code__num {
+  font-family: var(--font-mono); font-size: var(--fs-lg);
+  letter-spacing: .18em; font-weight: 700;
+}
+
+/* Do'konlar ro'yxati */
+.cu-list { list-style: none; display: grid; gap: 8px; }
+.cu-shop {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  padding: 14px 16px; background: var(--bg-surface);
+  border: 1px solid var(--border-subtle); border-radius: var(--r-lg);
+}
+.cu-shop__left { display: grid; gap: 2px; }
+.cu-shop__right { display: grid; justify-items: end; }
+.cu-shop__right b { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: var(--fs-lg); }
+.cu-total {
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding: 14px 16px; border-top: 1px dashed var(--border-strong);
+}
+.cu-total b { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: var(--fs-xl); }
+
+/* Profil */
+.cu-label { display: block; font-size: var(--fs-xs); font-weight: 600; color: var(--fg-secondary); margin: 10px 0 4px; }
+.cu-input {
+  width: 100%; min-height: var(--hit-min); padding: 12px 14px;
+  border: 1.5px solid var(--border-subtle); border-radius: var(--r-md);
+  background: var(--bg-canvas); color: var(--fg-primary);
+  font-family: var(--font-sans); font-size: var(--fs-md); outline: none;
+}
+.cu-input:focus { border-color: var(--border-brand); box-shadow: var(--ring-brand); }
+.cu-readonly {
+  padding: 12px 14px; border-radius: var(--r-md); background: var(--bg-sunken);
+  color: var(--fg-secondary); font-family: var(--font-mono); margin-bottom: 8px;
+}
+.cu-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.cu-switch {
+  width: 48px; height: 28px; border-radius: 999px; border: 0; cursor: pointer;
+  background: var(--border-strong); position: relative; transition: background .2s;
+}
+.cu-switch.on { background: var(--bg-success); }
+.cu-switch span {
+  position: absolute; top: 3px; left: 3px; width: 22px; height: 22px;
+  border-radius: 50%; background: #FFFFFF; transition: transform .2s;
+}
+.cu-switch.on span { transform: translateX(20px); }
+
+/* Pastki navigatsiya */
+.cu-nav {
+  display: flex; border-top: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.cu-nav__btn {
+  flex: 1; display: grid; justify-items: center; gap: 3px;
+  padding: 10px 4px; border: 0; background: none; cursor: pointer;
+  color: var(--fg-tertiary); font-family: var(--font-sans); font-size: 11px;
+}
+.cu-nav__btn i { font-size: 19px; }
+.cu-nav__btn.active { color: var(--fg-brand); }

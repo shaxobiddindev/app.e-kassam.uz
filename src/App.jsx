@@ -1,5 +1,6 @@
 import "./styles.css";
 /* BUILD_ID: EMERGENCY_FIX_V3_0116 */
+import { useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { LOGIN_URL } from "./config";
 import { initLang, withLang, useT } from "./lib/ek-i18n";
@@ -40,6 +41,10 @@ import { KeyboardProvider } from "./context/KeyboardProvider";
 import SecurityPage from "./pages/SecurityPage";
 import AuditPage from "./pages/AuditPage";
 import CustomerPortal from "./portal/CustomerPortal";
+/* Mijoz ilovasi (V37) — telefon ilovasida kirish ekrani endi shu */
+import CustomerLogin from "./customer/CustomerLogin";
+import CustomerApp from "./customer/CustomerApp";
+import { getAppToken } from "./customer/customerApi";
 
 // ⚠ Tilni URL dan olish MODUL TANASIDA, `replaceState` dan OLDIN bo'lishi
 // shart. Bu fayl `main.jsx` dan import qilinadi va ES modul tartibiga ko'ra
@@ -157,6 +162,14 @@ export default function App() {
   const { toasts, toast, dismiss }                        = useToast();
   const { lowStockItems, lowStockCount, refreshLowStock } = useLowStock();
 
+  /* Mijoz ilovasi (V37): sessiya kaliti va «xodim rejimi» bayrog'i.
+     ⚠ `staffMode` SAQLANMAYDI: xodim kirgach `user` paydo bo'ladi va
+     keyingi ochilishlarda shuning o'zi yetarli. Uni localStorage ga
+     yozish esa mijozni bir marta xato bosgani uchun doim kassa kirishiga
+     otib yuborardi. */
+  const [appToken, setAppToken] = useState(() => getAppToken());
+  const [staffMode, setStaffMode] = useState(false);
+
   // Desktop'da kirish SHU YERDA — alohida origin ham, yo'naltirish ham yo'q.
   // Brauzerda bu holatga umuman kelinmaydi: modul tanasi allaqachon
   // `auth.e-kassam.uz` ga jo'natgan.
@@ -165,10 +178,43 @@ export default function App() {
   // ekranida hech kim sotuv qilmayapti, ya'ni yangilanishni hech kimdan
   // so'ramasdan o'rnatsa bo'ladi. Faqat ichki daraxtga qo'yilsa, yangilanish
   // faqat kassir ISHLAYOTGANDA taklif qilinardi — eng noqulay payt.
+  /* ══════════════════════════════════════════════════════════════════════
+     MIJOZ ILOVASI (V37) — ilova endi HAR KIMGA ochiq
+
+     Telefonda kirish ekrani MIJOZNIKI: odam Telegram bilan ro'yxatdan
+     o'tadi va o'z kartasini, ballarini, cheklarini ko'radi. Xodim esa
+     pastdagi «Do'kon xodimiman» havolasi orqali odatdagi kirish
+     formasiga (do'kon kodi + parol) o'tadi.
+
+     ⚠ Bu FAQAT telefon ilovasida: brauzer va `.exe` da kassa oqimi
+     o'zgarmaydi — u yerda mijoz ilovasining ma'nosi yo'q.
+
+     ⚠ Mijoz tokeni bo'lsa, xodim kirishi umuman chizilmaydi: bitta
+     qurilmada ikkalasi ham bo'lishi mumkin, lekin bir vaqtda bittasi
+     ko'rinadi (do'kon egasi ham oddiy mijoz). */
+  if (isMobileApp() && !user && !staffMode) {
+    return (
+      <ErrorBoundary>
+        <Toast toasts={toasts} onDismiss={dismiss} />
+        {appToken
+          ? <CustomerApp onLoggedOut={() => setAppToken("")} />
+          : <CustomerLogin onLoggedIn={() => setAppToken(getAppToken())}
+                           onStaffLogin={() => setStaffMode(true)} />}
+        <AppUpdater loggedIn={false} toast={toast} />
+      </ErrorBoundary>
+    );
+  }
+
   if (!user) {
     return isNativeShell() ? (
       <KeyboardProvider>
         <Toast toasts={toasts} onDismiss={dismiss} />
+        {/* Mijoz ilovasidan kelingan bo'lsa — orqaga qaytish yo'li */}
+        {staffMode && (
+          <button className="cu-back-to-app" onClick={() => setStaffMode(false)}>
+            <i className="fa-solid fa-chevron-left" aria-hidden="true" /> Mijoz ilovasi
+          </button>
+        )}
         <LoginPage onLogin={login} />
         <AppUpdater loggedIn={false} toast={toast} />
       </KeyboardProvider>
