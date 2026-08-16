@@ -41,23 +41,37 @@ const UNIT_LABEL = {
 };
 
 /**
- * Chek ikki yo'l bilan ochiladi:
- *   · KABINETDAN — `token` + `id` (mijoz o'z cheklari ro'yxatidan);
+ * Chek UCH yo'l bilan ochiladi — ko'rinishi uchalasida ham bir xil:
+ *   · KABINETDAN (brauzer) — `token` + `id`;
+ *   · TELEFON ILOVASIDAN — `appToken` + `id` + `customerId` (mijozning
+ *     har do'konda alohida yozuvi bor, shuning uchun qaysi biri ekani
+ *     ham aytiladi);
  *   · QOG'OZ CHEKDAGI QR dan — `signedId` + `signature`, kalitsiz.
- * Ikkinchisi ataylab kalitsiz: chekni qo'lida ushlab turgan odam uni
+ * Oxirgisi ataylab kalitsiz: chekni qo'lida ushlab turgan odam uni
  * allaqachon ko'rgan, imzo esa faqat SHU chekni ochadi.
+ *
+ * ⚠ Chek KO'RINISHI bitta faylda qoladi. Ilova uchun alohida nusxa
+ * yozilsa, qog'oz chekka kiritilgan har o'zgarish ikki joyda qilinishi
+ * kerak bo'lardi — va bittasi albatta unutilardi.
  */
-export default function Receipt({ token, id, signedId, signature, onClose }) {
+export default function Receipt({ token, appToken, customerId, id, signedId, signature, onClose }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   /* Qaysi kod kattalashtirilgan: `null` · `"qr"` (fiskal) · `"bar"` (chek raqami) */
   const [zoom, setZoom] = useState(null);
 
   useEffect(() => {
-    const url = signedId
-      ? `${API_BASE}/public/portal/receipt/${signedId}?k=${encodeURIComponent(signature)}`
-      : `${API_BASE}/public/portal/receipts/${id}`;
-    const headers = signedId ? {} : { "X-Portal-Token": token };
+    let url;
+    let headers = {};
+    if (signedId) {
+      url = `${API_BASE}/public/portal/receipt/${signedId}?k=${encodeURIComponent(signature)}`;
+    } else if (appToken) {
+      url = `${API_BASE}/app/receipts/${id}?c=${encodeURIComponent(customerId)}`;
+      headers = { "X-App-Token": appToken };
+    } else {
+      url = `${API_BASE}/public/portal/receipts/${id}`;
+      headers = { "X-Portal-Token": token };
+    }
 
     fetch(url, { headers })
       .then((r) => r.json())
@@ -66,7 +80,7 @@ export default function Receipt({ token, id, signedId, signature, onClose }) {
         setData(j.data);
       })
       .catch((e) => setError(e.message || "Chekni ochib bo'lmadi"));
-  }, [id, token, signedId, signature]);
+  }, [id, token, appToken, customerId, signedId, signature]);
 
   // Esc bilan yopish — telefonda ham, brauzerda ham kutiladigan xatti-harakat
   useEffect(() => {

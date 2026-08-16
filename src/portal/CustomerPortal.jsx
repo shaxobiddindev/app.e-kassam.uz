@@ -4,6 +4,7 @@ import { qrSvg } from "../lib/ek-qr";
 import { code128Svg } from "../lib/ek-barcode";
 import { useConfirm } from "../context/ConfirmProvider";
 import CodeZoom from "../components/CodeZoom";
+import { dateTime } from "../lib/ek-format";
 import Receipt from "./Receipt";
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -284,7 +285,9 @@ function CabinetScreen({ token, onLogout }) {
               <button className="pt-row" onClick={() => setOpenId(r.id)}>
                 <span className="pt-row__left">
                   <b>{r.receiptNo}</b>
-                  <small>{new Date(r.date).toLocaleString("uz-UZ", { dateStyle: "medium", timeStyle: "short" })}</small>
+                  {/* ⚠ `toLocaleString("uz-UZ")` brauzerda «2026 M08 16» beradi —
+                      tizimning umumiy formatchisi ishlatiladi. */}
+                  <small>{dateTime(r.date)}</small>
                 </span>
                 <span className="pt-row__right">
                   <b>{money(r.total)}</b>

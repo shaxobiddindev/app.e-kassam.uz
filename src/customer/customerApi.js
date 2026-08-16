@@ -45,4 +45,16 @@ export const appApi = {
   me:         ()      => call("/me"),
   updateMe:   (data)  => call("/me", { method: "PUT", body: data }),
   shops:      ()      => call("/shops"),
+
+  /* ── Cheklar ──
+     ⚠ Lenta HAMMA do'kon bo'yicha bitta ro'yxat (server qo'shib beradi),
+     bitta chekni ochishda esa qaysi do'kondagi yozuv ekani ham
+     yuboriladi — mijozning har do'konda alohida `customers.id` si bor. */
+  receipts:   (limit = 30) => call(`/receipts?limit=${limit}`),
+
+  /* ── Ball tarixi ──
+     ⚠ Do'kon bo'yicha ALOHIDA: ballar do'konlar o'rtasida ko'chmaydi,
+     aralash lenta esa mijozni chalkashtirardi. */
+  bonus:      (customerId, limit = 50) =>
+                call(`/bonus?c=${encodeURIComponent(customerId)}&limit=${limit}`),
 };
