@@ -2004,3 +2004,9 @@ img.logo--dark { display: none; }
   color: var(--fg-primary); cursor: pointer; margin-right: 10px; flex-shrink: 0;
 }
 .m-head--back { justify-content: flex-start; }
+
+/* Telegramga ulash taklifi (V35) — mijoz kabinetida */
+.pt-tg { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 12px; }
+.pt-tg__icon { font-size: 30px; color: #229ED9; flex-shrink: 0; }
+.pt-tg b { display: block; margin-bottom: 2px; }
+.pt-tg p { margin: 0; }

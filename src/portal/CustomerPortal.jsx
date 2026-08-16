@@ -142,11 +142,28 @@ function CabinetScreen({ token, onLogout }) {
   const [receipts, setReceipts] = useState([]);
   const [openId, setOpenId]     = useState(null);
   const [error, setError]       = useState("");
+  const [tgBusy, setTgBusy]     = useState(false);
 
   useEffect(() => {
     api("/me", { token }).then(setMe).catch((e) => setError(e.message));
     api("/receipts?limit=50", { token }).then(setReceipts).catch(() => {});
   }, [token]);
+
+  /* Telegramga ulash: server bir martalik kod beradi, biz esa botni
+     ochamiz. Bot `/start <kod>` ni olgach chat kabinetga bog'lanadi.
+     ⚠ Yangi oynada ochiladi: telefonda bu Telegram ilovasini ishga
+     tushiradi, kabinet esa brauzerda ochiq qoladi. */
+  const linkTelegram = async () => {
+    setTgBusy(true);
+    try {
+      const data = await api("/telegram-link", { method: "POST", token });
+      if (data?.link) window.open(data.link, "_blank", "noopener");
+    } catch (e) {
+      setError(e.message || "Havola olinmadi");
+    } finally {
+      setTgBusy(false);
+    }
+  };
 
   if (error) {
     return (
@@ -190,6 +207,26 @@ function CabinetScreen({ token, onLogout }) {
           <b>{money(me.bonusBalance)}</b>
         </div>
       </div>
+
+      {/* ── Telegram: xabar olish ─────────────────────────────────────
+          ⚠ Faqat MIJOZNING o'zi ulaydi — telefon raqamidan chat'ni topib
+          bo'lmaydi va bu yaxshi: aks holda do'kon so'ramasdan yozaverardi. */}
+      {!me.telegramLinked && (
+        <section className="pt-card">
+          <div className="pt-tg">
+            <i className="fa-brands fa-telegram pt-tg__icon" aria-hidden="true" />
+            <div>
+              <b>Telegramda xabar oling</b>
+              <p className="pt-muted">
+                Har xariddan keyin yig'ilgan ball va chek havolasi keladi.
+              </p>
+            </div>
+          </div>
+          <button className="pt-btn pt-btn--ghost" onClick={linkTelegram} disabled={tgBusy}>
+            {tgBusy ? "Havola olinmoqda…" : "Telegramga ulash"}
+          </button>
+        </section>
+      )}
 
       {/* ── Cheklar lentasi ──────────────────────────────────────────── */}
       <div className="pt-section">
