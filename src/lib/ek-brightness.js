@@ -21,12 +21,16 @@
 
 const plugin = () => window.Capacitor?.Plugins?.ScreenBrightness;
 
+/* ⚠ Bo'sh `{}` ATAYLAB uzatiladi: Capacitor ko'prigi metodni
+   `(options, callback)` deb chaqiradi va argumentsiz chaqiruvda ba'zi
+   versiyalarda `undefined.toJSON` da yiqiladi. */
+
 /** Ekranni maksimal yorug'likka o'tkazadi va so'nishiga yo'l qo'ymaydi. */
 export function maxBrightness() {
-  try { plugin()?.max?.(); } catch (e) { /* eski APK — jim o'tamiz */ }
+  try { plugin()?.max?.({}); } catch (e) { /* eski APK — jim o'tamiz */ }
 }
 
 /** Yorug'likni tizim boshqaruviga qaytaradi. */
 export function restoreBrightness() {
-  try { plugin()?.restore?.(); } catch (e) { /* eski APK — jim o'tamiz */ }
+  try { plugin()?.restore?.({}); } catch (e) { /* eski APK — jim o'tamiz */ }
 }

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { API_BASE } from "../config";
 import { code128Svg } from "../lib/ek-barcode";
 import { qrSvg } from "../lib/ek-qr";
+import CodeZoom from "../components/CodeZoom";
 
 /* ══════════════════════════════════════════════════════════════════════════
    ELEKTRON CHEK — QOG'OZ CHEKNING AYNAN O'ZI
@@ -49,6 +50,8 @@ const UNIT_LABEL = {
 export default function Receipt({ token, id, signedId, signature, onClose }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
+  /* Qaysi kod kattalashtirilgan: `null` · `"qr"` (fiskal) · `"bar"` (chek raqami) */
+  const [zoom, setZoom] = useState(null);
 
   useEffect(() => {
     const url = signedId
@@ -158,19 +161,32 @@ export default function Receipt({ token, id, signedId, signature, onClose }) {
                 <div className="pt-hr" />
                 <div className="pt-tape__row"><span>Fiskal belgi</span><span>{data.fiscalSign}</span></div>
                 {data.fiscalQrUrl && (
-                  <div className="pt-fiscalqr"
-                       dangerouslySetInnerHTML={{ __html: qrSvg(data.fiscalQrUrl, { size: 110, margin: 1 }) }} />
+                  /* Chekdagi kodlar ham bosiladi: fiskal QR ni soliq
+                     ilovasi o'qiydi, chek shtrixini esa kassa skaneri —
+                     ikkalasi ham kichkina chizilgan. */
+                  <button type="button" className="pt-fiscalqr ek-code-btn"
+                          onClick={() => setZoom("qr")} aria-label="Fiskal QR ni kattalashtirish"
+                          dangerouslySetInnerHTML={{ __html: qrSvg(data.fiscalQrUrl, { size: 110, margin: 1 }) }} />
                 )}
               </>
             )}
 
             <div className="pt-hr" />
-            <div className="pt-center pt-barcode"
-                 dangerouslySetInnerHTML={{ __html: code128Svg(`S-${String(data.id).padStart(6, "0")}`) }} />
+            <button type="button" className="pt-center pt-barcode ek-code-btn"
+                    onClick={() => setZoom("bar")} aria-label="Shtrix kodni kattalashtirish"
+                    dangerouslySetInnerHTML={{ __html: code128Svg(`S-${String(data.id).padStart(6, "0")}`) }} />
             <div className="pt-center pt-tape__no">S-{String(data.id).padStart(6, "0")}</div>
             <div className="pt-center pt-thanks">Xarid uchun rahmat!</div>
             <div className="pt-center pt-tape__site">e-kassam.uz</div>
           </div>
+        )}
+
+        {zoom && data && (
+          <CodeZoom
+            kind={zoom}
+            value={zoom === "qr" ? data.fiscalQrUrl : `S-${String(data.id).padStart(6, "0")}`}
+            caption={zoom === "bar" ? `S-${String(data.id).padStart(6, "0")}` : null}
+            onClose={() => setZoom(null)} />
         )}
       </div>
     </div>

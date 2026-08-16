@@ -3,6 +3,7 @@ import { useT } from "../lib/ek-i18n";
 import { qrSvg, totpNow, secondsLeft } from "../lib/ek-qr";
 import { shopQrApi } from "../api";
 import { printQrPoster } from "../components/QrPoster";
+import CodeZoom from "../components/CodeZoom";
 
 /* ══════════════════════════════════════════════════════════════════════════
    DO'KON QR KODI — mijozni ro'yxatdan o'tkazish uchun (V34)
@@ -28,6 +29,7 @@ export default function MobileShopQr({ toast, onClose }) {
   const [left, setLeft]   = useState(30);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [zoom, setZoom]   = useState(false);
   const timer = useRef(null);
   /* Do'kon nomi — chekda ishlatiladigan bilan bir xil manba (KassaPage). */
   const shopName = localStorage.getItem("ek_shopName")
@@ -127,8 +129,14 @@ export default function MobileShopQr({ toast, onClose }) {
       {cfg?.joinEnabled && (
         <>
           <section className="m-card m-qr">
-            {/* Kod yangilanganda QR sakramasligi uchun o'lcham qat'iy */}
-            <div className="m-qr__box" dangerouslySetInnerHTML={{ __html: svg }} />
+            {/* Kod yangilanganda QR sakramasligi uchun o'lcham qat'iy.
+                ⚠ Bosilsa butun ekranda va maksimal yorug'likda ochiladi:
+                mijoz uni O'Z telefoni kamerasi bilan o'qiydi va xira
+                ekrandan, yon tomondan turib olishi qiyin edi. */}
+            <button type="button" className="m-qr__box ek-code-btn"
+                    onClick={() => setZoom(true)}
+                    aria-label={t("qr.title")}
+                    dangerouslySetInnerHTML={{ __html: svg }} />
             <div className="m-qr__timer">
               <span className="m-qr__bar" style={{ width: `${(left / (cfg.periodSeconds || 30)) * 100}%` }} />
             </div>
@@ -168,6 +176,10 @@ export default function MobileShopQr({ toast, onClose }) {
           <button className="btn btn-outline" style={{ width: "100%" }} onClick={toggle} disabled={saving}>
             {t("qr.disable")}
           </button>
+
+          {/* ⚠ Tayyor SVG uzatiladi: kod har 30 soniyada yangilanadi va
+              kattalashtirilgani ham shu bilan birga aylanib turadi. */}
+          {zoom && <CodeZoom kind="qr" svg={svg} onClose={() => setZoom(false)} />}
         </>
       )}
     </div>

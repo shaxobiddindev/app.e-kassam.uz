@@ -3,6 +3,7 @@ import { useT } from "../lib/ek-i18n";
 import { qrSvg, totpNow, secondsLeft } from "../lib/ek-qr";
 import { shopQrApi } from "../api";
 import { printQrPoster } from "./QrPoster";
+import CodeZoom from "./CodeZoom";
 
 /* ══════════════════════════════════════════════════════════════════════════
    DO'KON QR — TO'LIQ PANEL uchun (Sozlamalar sahifasi)
@@ -23,6 +24,7 @@ export default function ShopQrPanel({ toast, canManage }) {
   const [left, setLeft]     = useState(30);
   const [error, setError]   = useState("");
   const [saving, setSaving] = useState(false);
+  const [zoom, setZoom]     = useState(false);
   const timer = useRef(null);
 
   const shopName = localStorage.getItem("ek_shopName")
@@ -92,7 +94,12 @@ export default function ShopQrPanel({ toast, canManage }) {
           <div className="qrp__code">
             {/* Oq fon SHART: qorong'i temada teskari rangdagi QR ni ko'p
                 telefon kamerasi umuman o'qimaydi. */}
-            <div className="qrp__box" dangerouslySetInnerHTML={{ __html: svg }} />
+            {/* Bosilsa butun ekranda va maksimal yorug'likda — mijoz uni
+                o'z telefoni bilan o'qiydi, kassir esa ekranni unga
+                cho'zib turadi. */}
+            <button type="button" className="qrp__box ek-code-btn"
+                    onClick={() => setZoom(true)} aria-label={t("qr.title")}
+                    dangerouslySetInnerHTML={{ __html: svg }} />
             <div className="qrp__timer">
               <span className="qrp__bar"
                     style={{ width: `${(left / (cfg.periodSeconds || 30)) * 100}%` }} />
@@ -124,6 +131,10 @@ export default function ShopQrPanel({ toast, canManage }) {
             </div>
           )}
           {canManage && <p className="text-muted qrp__note">{t("qr.posterHint")}</p>}
+
+          {/* ⚠ Tayyor SVG: kod har 30 soniyada yangilanadi va
+              kattalashtirilgani ham u bilan birga aylanadi. */}
+          {zoom && <CodeZoom kind="qr" svg={svg} onClose={() => setZoom(false)} />}
         </>
       )}
     </div>
