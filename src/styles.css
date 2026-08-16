@@ -311,6 +311,10 @@ tbody tr:hover td { background: var(--bg-sunken); }
    qolardi. `--bg-danger` ikkala temada ham to'q qizil, oq bilan 4.8:1. */
 .btn-danger      { background: var(--bg-danger); color: var(--fg-on-brand); }
 .btn-danger:hover { background: var(--ek-red-700); }
+/* ⚠ `--bg-warning` (500) EMAS: oq matn bilan 2.8:1 chiqadi. 700 esa ikkala
+   temada ham to'q va oq bilan ~5.9:1. Hover FAQAT to'qaytiradi. */
+.btn-warning     { background: var(--ek-warning-700); color: var(--fg-on-brand); }
+.btn-warning:hover { filter: brightness(.92); }
 .btn-sm          { min-height: 36px; padding: 7px 13px; font-size: 12px; border-radius: 8px; }
 .btn-full        { width: 100%; padding: 13px; font-size: 15px; }
 /* Kassir ekrani uchun — 06-APP-KASSIR.md: to'lov tugmalari 56px */
@@ -2195,3 +2199,45 @@ img.logo--dark { display: none; }
 }
 .cu-nav__btn i { font-size: 19px; }
 .cu-nav__btn.active { color: var(--fg-brand); }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   KODNI KATTALASHTIRISH (`CodeZoom.jsx`) — kartadagi QR/shtrix ustiga bosilsa
+
+   Mijoz kabineti (`.pt-`) ham, mijoz ilovasi (`.cu-`) ham SHU oynani
+   ishlatadi, shuning uchun alohida `.ekz-` prefiksi.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Bosiladigan kod — tugma, lekin ko'rinishi kartadagidek qolsin */
+.ek-code-btn {
+  display: block; border: 0; padding: 10px; cursor: pointer;
+  background: #FFFFFF; border-radius: var(--r-md); line-height: 0;
+}
+.ek-code-btn:active { transform: scale(.98); }
+.ek-code-btn:focus-visible { outline: 2px solid var(--border-brand); outline-offset: 2px; }
+
+/* ⚠ OQ FON va TO'Q kod — qattiq kodlangan: qorong'i temada teskari
+   rangdagi kodni skanerlarning ko'pi o'qimaydi. */
+.ekz {
+  position: fixed; inset: 0; z-index: 900;
+  background: #FFFFFF; color: #0B1220;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 18px; padding: max(18px, env(safe-area-inset-top)) 16px 22px;
+}
+.ekz__x {
+  position: absolute; top: max(12px, env(safe-area-inset-top)); right: 12px;
+  width: 44px; height: 44px; border-radius: 50%; cursor: pointer;
+  border: 1.5px solid #D5DAE3; background: #FFFFFF; color: #0B1220;
+  font-size: 18px; display: flex; align-items: center; justify-content: center;
+}
+.ekz__x:active { background: #EEF1F6; }
+.ekz__code { line-height: 0; }
+.ekz__code svg { display: block; width: 100%; height: auto; }
+/* QR — kvadrat, ekranning kaltaroq tomoniga sig'adi */
+.ekz__code--qr  { width: min(86vw, 62vh); }
+/* Shtrix — imkon qadar KENG: lazerli skaner uzunlikdan o'qiydi */
+.ekz__code--bar { width: 94vw; }
+.ekz__num {
+  font-family: var(--font-mono); font-size: var(--fs-xl); font-weight: 700;
+  letter-spacing: .18em;
+}
+.ekz__hint { font-size: var(--fs-sm); color: #5B6675; }

@@ -1,14 +1,38 @@
 import Modal from "./Modal";
 import { t } from "../lib/ek-i18n";
 
-export default function ConfirmModal({ title, message, type = "info", onConfirm, onCancel }) {
-  const iconMap = {
-    info:    { icon: "fa-circle-info",          color: "var(--blue)" },
-    danger:  { icon: "fa-triangle-exclamation", color: "var(--red)"  },
-    warning: { icon: "fa-circle-exclamation",    color: "var(--orange)" },
-  };
+/* ══════════════════════════════════════════════════════════════════════════
+   TASDIQLASH MODALI — butun tizimda YAGONA so'rov oynasi
 
-  const { icon, color } = iconMap[type] || iconMap.info;
+   ⚠ `window.confirm` ISHLATILMAYDI. Brauzerning o'z oynasi ilova temasiga
+   bo'ysunmaydi, telefon ilovasida esa «e-kassam.uz says…» degan begona
+   sarlavha bilan chiqib, mijozni qo'rqitadi. Har qanday tasdiq — shu modal.
+
+   ⚠ Ranglar TOKENLARDAN. Ilgari bu yerda `var(--red)`/`var(--orange)` va
+   fon `${color}15` deb yasalardi: `--red` = MATN rangi va qorong'i temada
+   yorug' qizil, ya'ni fon ham, matn ham yorug' bo'lib qolardi.
+
+   ⚠ `confirmText`/`cancelText` — tugma yozuvlari. Ilgari ular qabul
+   qilinmasdi va chaqiruvchilar bergan «Chiqish», «Qo'llash», «Yopish»
+   yozuvlari JIMGINA yo'qolib, hamma joyda «Tasdiqlash» chiqardi.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+const TYPE = {
+  danger:  { icon: "fa-triangle-exclamation", fg: "var(--fg-danger)",  bg: "var(--bg-danger-subtle)",  btn: "btn-danger"  },
+  warning: { icon: "fa-circle-exclamation",   fg: "var(--fg-warning)", bg: "var(--bg-warning-subtle)", btn: "btn-warning" },
+  info:    { icon: "fa-circle-info",          fg: "var(--fg-brand)",   bg: "var(--bg-brand-subtle)",   btn: "btn-primary" },
+};
+
+export default function ConfirmModal({
+  title,
+  message,
+  type = "info",
+  confirmText,
+  cancelText,
+  onConfirm,
+  onCancel,
+}) {
+  const s = TYPE[type] || TYPE.info;
 
   return (
     <Modal
@@ -18,32 +42,28 @@ export default function ConfirmModal({ title, message, type = "info", onConfirm,
       footer={
         <div style={{ display: "flex", gap: 12, justifyContent: "flex-end", width: "100%" }}>
           <button className="btn btn-outline btn-sm" onClick={onCancel}>
-            {t("common.cancel")}
+            {cancelText || t("common.cancel")}
           </button>
-          <button 
-            className={`btn btn-sm ${type === "danger" ? "btn-danger" : "btn-primary"}`} 
-            onClick={onConfirm}
-            autoFocus
-          >
-            {t("common.confirm")}
+          <button className={`btn btn-sm ${s.btn}`} onClick={onConfirm} autoFocus>
+            {confirmText || t("common.confirm")}
           </button>
         </div>
       }
     >
       <div style={{ display: "flex", gap: 20, alignItems: "center", padding: "10px 0" }}>
-        <div style={{ 
-          fontSize: 32, 
-          color,
-          width: 60,
-          height: 60,
+        <div style={{
+          fontSize: 26,
+          color: s.fg,
+          background: s.bg,
+          width: 56,
+          height: 56,
           borderRadius: "50%",
-          background: `${color}15`,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          flexShrink: 0
+          flexShrink: 0,
         }}>
-          <i className={`fa-solid ${icon}`} />
+          <i className={`fa-solid ${s.icon}`} aria-hidden="true" />
         </div>
         <div style={{ fontSize: 15, lineHeight: 1.6, color: "var(--text-main)" }}>
           {message}

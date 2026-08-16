@@ -2,6 +2,8 @@ import { useEffect, useState, useCallback } from "react";
 import { API_BASE } from "../config";
 import { qrSvg } from "../lib/ek-qr";
 import { code128Svg } from "../lib/ek-barcode";
+import { useConfirm } from "../context/ConfirmProvider";
+import CodeZoom from "../components/CodeZoom";
 import Receipt from "./Receipt";
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -143,6 +145,26 @@ function CabinetScreen({ token, onLogout }) {
   const [openId, setOpenId]     = useState(null);
   const [error, setError]       = useState("");
   const [tgBusy, setTgBusy]     = useState(false);
+  /* ⚠ Telegram xatosi ALOHIDA: u `error` ga yozilganda butun kabinet
+     «Karta topilmadi» ekraniga almashib ketardi — karta esa joyida. */
+  const [tgError, setTgError]   = useState("");
+  /* Qaysi kod kattalashtirilgan: `null` · `"qr"` · `"bar"` */
+  const [zoom, setZoom]         = useState(null);
+  const confirm                 = useConfirm();
+
+  /* ⚠ Kartani o'chirish TASDIQSIZ edi. Kalit faqat shu brauzerda saqlanadi
+     va o'chsa mijoz kabinetga qayta kira olmaydi — do'konda QR ni qaytadan
+     skanerlashi kerak bo'ladi. Tasdiq brauzer oynasi emas, ILOVA modali. */
+  const askLogout = async () => {
+    const ok = await confirm({
+      title: "Kartani o'chirish",
+      message: "Karta shu qurilmadan o'chiriladi. Qayta ochish uchun do'kondagi QR kodni yana skanerlashingiz kerak bo'ladi.",
+      type: "danger",
+      confirmText: "O'chirish",
+      cancelText: "Bekor qilish",
+    });
+    if (ok) onLogout();
+  };
 
   useEffect(() => {
     api("/me", { token }).then(setMe).catch((e) => setError(e.message));
@@ -155,24 +177,32 @@ function CabinetScreen({ token, onLogout }) {
      tushiradi, kabinet esa brauzerda ochiq qoladi. */
   const linkTelegram = async () => {
     setTgBusy(true);
+    setTgError("");
     try {
       const data = await api("/telegram-link", { method: "POST", token });
       if (data?.link) window.open(data.link, "_blank", "noopener");
     } catch (e) {
-      setError(e.message || "Havola olinmadi");
+      setTgError(e.message || "Havola olinmadi");
     } finally {
       setTgBusy(false);
     }
   };
 
   if (error) {
+    /* ⚠ Bu yerda yagona tugma «Yopish» deb turardi-yu, aslida KARTANI
+       O'CHIRARDI: internet uzilib qolgan odam kalitini bilmasdan yo'qotib,
+       do'konga borib QR ni qayta skanerlashga majbur bo'lardi. Endi
+       birinchi taklif — qayta urinish; o'chirish esa tasdiq so'raydi. */
     return (
       <div className="pt-wrap">
         <div className="pt-card pt-center">
           <i className="fa-solid fa-circle-exclamation pt-icon-bad" aria-hidden="true" />
-          <h2>Karta topilmadi</h2>
+          <h2>Karta ochilmadi</h2>
           <p className="pt-muted">{error}</p>
-          <button className="pt-btn pt-btn--ghost" onClick={onLogout}>Yopish</button>
+          <button className="pt-btn" onClick={() => window.location.reload()}>Qayta urinish</button>
+          <button className="pt-btn pt-btn--ghost" onClick={askLogout}>
+            Kartani bu qurilmadan o'chirish
+          </button>
         </div>
       </div>
     );
@@ -194,13 +224,24 @@ function CabinetScreen({ token, onLogout }) {
             esa YO'Q. Sabab: kassa skanerlangan matnni aynan shu prefiks
             bilan tovar barkodidan ajratadi (`KassaPage`, `CustomerService`),
             mijoz esa kartasini og'zaki aytganda qisqa kodni aytadi. */}
+        {/* ⚠ Ikkala kod ham BOSILADI: ustiga bosilganda aynan o'sha bittasi
+            butun ekranda va maksimal yorug'likda ochiladi (`CodeZoom`) —
+            kartadagi kichik kodni xira telefondan skaner ololmasdi. */}
         <div className="pt-codes">
-          <div className="pt-qr"
-               dangerouslySetInnerHTML={{ __html: qrSvg(CARD_PREFIX + me.cardCode, { size: 168, margin: 1 }) }} />
-          <div className="pt-bars"
-               dangerouslySetInnerHTML={{ __html: code128Svg(CARD_PREFIX + me.cardCode) }} />
+          <button type="button" className="ek-code-btn pt-qr"
+                  onClick={() => setZoom("qr")} aria-label="QR kodni kattalashtirish"
+                  dangerouslySetInnerHTML={{ __html: qrSvg(CARD_PREFIX + me.cardCode, { size: 168, margin: 1 }) }} />
+          <button type="button" className="ek-code-btn pt-bars"
+                  onClick={() => setZoom("bar")} aria-label="Shtrix kodni kattalashtirish"
+                  dangerouslySetInnerHTML={{ __html: code128Svg(CARD_PREFIX + me.cardCode) }} />
           <div className="pt-cardcode">{me.cardCode}</div>
+          <p className="pt-muted">Kattalashtirish uchun kod ustiga bosing</p>
         </div>
+
+        {zoom && (
+          <CodeZoom kind={zoom} value={CARD_PREFIX + me.cardCode}
+                    caption={me.cardCode} onClose={() => setZoom(null)} />
+        )}
 
         <div className="pt-balance">
           <span>Ballaringiz</span>
@@ -222,6 +263,7 @@ function CabinetScreen({ token, onLogout }) {
               </p>
             </div>
           </div>
+          {tgError && <div className="pt-error" role="alert">{tgError}</div>}
           <button className="pt-btn pt-btn--ghost" onClick={linkTelegram} disabled={tgBusy}>
             {tgBusy ? "Havola olinmoqda…" : "Telegramga ulash"}
           </button>
@@ -256,7 +298,7 @@ function CabinetScreen({ token, onLogout }) {
 
       {openId && <Receipt token={token} id={openId} onClose={() => setOpenId(null)} />}
 
-      <button className="pt-btn pt-btn--ghost pt-logout" onClick={onLogout}>
+      <button className="pt-btn pt-btn--ghost pt-logout" onClick={askLogout}>
         Kartani bu qurilmadan o'chirish
       </button>
     </div>

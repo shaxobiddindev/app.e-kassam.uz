@@ -44,6 +44,7 @@ public class MainActivity extends BridgeActivity {
         /* ⚠ super.onCreate() dan OLDIN: bridge aynan o'sha yerda quriladi
            va keyin ro'yxatga olingan plagin JS'da `undefined` bo'lib qoladi. */
         registerPlugin(ThemeBarPlugin.class);
+        registerPlugin(ScreenBrightnessPlugin.class);
         super.onCreate(savedInstanceState);
 
         content = findViewById(android.R.id.content);

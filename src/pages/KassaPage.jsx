@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { t } from "../lib/ek-i18n";
 import { productApi, customerApi, saleApi, securityApi, shopApi, mediaApi, fiscalApi, loyaltyApi } from "../api";
 import { useBadge } from "../context/BadgeProvider";
+import { useConfirm } from "../context/ConfirmProvider";
 import { money, quantity as fmtQty } from "../utils";
 import { unitLabel } from "../lib/ek-labels";
 import ProductTile from "../components/ProductTile";
@@ -117,6 +118,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
   const [discount, setDiscount]     = useState("");
   const keyboard                    = useKeyboard();
   const touchOn                     = isTouch();
+  const confirm                     = useConfirm();
 
   /* ── Katalog ko'rinishi ────────────────────────────────────────
      Kategoriya tabi va ikki ko'rinish (rasmli / zich). Ko'rinish
@@ -136,6 +138,9 @@ export default function KassaPage({ toast, refreshLowStock }) {
   const refocusRef  = useRef(null);
   const undoRef     = useRef(null);
   const lastSale    = useRef(null);   // Ctrl+P uchun
+  /* Savatni tozalash so'ralganmi. Escape modal ochiq turganda yana bosilsa
+     ikkinchi so'rov ochilib ketmasligi kerak. */
+  const clearAsk    = useRef(false);
 
   // Chek sarlavhasi va imzosi. Sessiyadan olinadi — chek uchun alohida
   // so'rov yubormaymiz: kassa ekrani oflaynda ham ishlashi kerak.
@@ -734,7 +739,21 @@ export default function KassaPage({ toast, refreshLowStock }) {
         if (qtyModal)     { setQtyModal(null); focusBarcode(); return; }
         if (markModal)    { setMarkModal(null); focusBarcode(); return; }
         if (showPayModal) { closePayModal(); return; }
-        if (cart.length && window.confirm(t("kassa.clearConfirm"))) handleClearCart();
+        /* ⚠ `window.confirm` EMAS: brauzerning o'z oynasi ilova temasidan
+           tashqarida chiqadi va `.exe` da butun oynani bloklaydi. */
+        if (cart.length && !clearAsk.current) {
+          clearAsk.current = true;
+          confirm({
+            title: t("kassa.clear"),
+            message: t("kassa.clearConfirm"),
+            type: "danger",
+            confirmText: t("kassa.clear"),
+          }).then((ok) => {
+            clearAsk.current = false;
+            if (ok) handleClearCart();
+            focusBarcode();
+          });
+        }
         return;
       }
 

@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { appApi, clearAppToken } from "./customerApi";
 import { qrSvg } from "../lib/ek-qr";
 import { code128Svg } from "../lib/ek-barcode";
+import { useConfirm } from "../context/ConfirmProvider";
+import CodeZoom from "../components/CodeZoom";
 
 /* ══════════════════════════════════════════════════════════════════════════
    MIJOZ ILOVASI (V37) — Korzinka Go / Makro uslubidagi sodda daraxt
@@ -80,6 +82,9 @@ function CardScreen({ me, shops }) {
      ostida qaysi do'kon ekani yozilади — mijoz chalkashmasligi uchun. */
   const first = shops?.items?.[0];
 
+  /* Qaysi kod kattalashtirilgan: `null` · `"qr"` · `"bar"` */
+  const [zoom, setZoom] = useState(null);
+
   return (
     <div className="cu-screen">
       <div className="cu-hero">
@@ -92,13 +97,19 @@ function CardScreen({ me, shops }) {
         <div className="cu-card cu-card--code">
           <div className="cu-code__shop">{first.shopName}</div>
           {/* Oq fon SHART: qorong'i temada teskari rangdagi kodni ko'p
-              skaner va kamera umuman o'qimaydi. */}
-          <div className="cu-code__qr"
-               dangerouslySetInnerHTML={{ __html: qrSvg("EKC-" + first.cardCode, { size: 180, margin: 1 }) }} />
-          <div className="cu-code__bars"
-               dangerouslySetInnerHTML={{ __html: code128Svg("EKC-" + first.cardCode) }} />
+              skaner va kamera umuman o'qimaydi.
+
+              ⚠ Ikkalasi ham BOSILADI: ustiga bosilganda aynan o'sha kod
+              butun ekranda va maksimal yorug'likda ochiladi (`CodeZoom`).
+              Kartadagi kichik kodni xira telefondan skaner ololmasdi. */}
+          <button type="button" className="ek-code-btn cu-code__qr"
+                  onClick={() => setZoom("qr")} aria-label="QR kodni kattalashtirish"
+                  dangerouslySetInnerHTML={{ __html: qrSvg("EKC-" + first.cardCode, { size: 180, margin: 1 }) }} />
+          <button type="button" className="ek-code-btn cu-code__bars"
+                  onClick={() => setZoom("bar")} aria-label="Shtrix kodni kattalashtirish"
+                  dangerouslySetInnerHTML={{ __html: code128Svg("EKC-" + first.cardCode) }} />
           <div className="cu-code__num">{first.cardCode}</div>
-          <p className="cu-muted cu-center">Kassada shu kodni ko'rsating</p>
+          <p className="cu-muted cu-center">Kassada shu kodni ko'rsating — kattalashtirish uchun bosing</p>
         </div>
       ) : (
         <div className="cu-card cu-center">
@@ -108,6 +119,11 @@ function CardScreen({ me, shops }) {
             Do'kondagi QR kodni skanerlang — karta shu yerda paydo bo'ladi.
           </p>
         </div>
+      )}
+
+      {zoom && first && (
+        <CodeZoom kind={zoom} value={"EKC-" + first.cardCode}
+                  caption={first.cardCode} onClose={() => setZoom(null)} />
       )}
     </div>
   );
@@ -159,6 +175,22 @@ function ProfileScreen({ me, onSaved, onLogout }) {
   const [name, setName] = useState(me.fullName || "");
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
+  const confirm = useConfirm();
+
+  /* ⚠ Chiqish TASDIQSIZ edi: tasodifan bosilgan tugma mijozni kirish
+     ekraniga otib yuborardi va u qayta kirish uchun Telegramga borishi
+     kerak bo'lardi. Tasdiq brauzerning `confirm` oynasi emas, ILOVANING
+     modali — qolgan hamma joyda ham shunday. */
+  const askLogout = async () => {
+    const ok = await confirm({
+      title: "Chiqish",
+      message: "Hisobingizdan chiqasizmi? Qayta kirish uchun Telegram orqali tasdiqlash kerak bo'ladi.",
+      type: "warning",
+      confirmText: "Chiqish",
+      cancelText: "Bekor qilish",
+    });
+    if (ok) onLogout();
+  };
 
   const save = async () => {
     setBusy(true);
@@ -209,7 +241,7 @@ function ProfileScreen({ me, onSaved, onLogout }) {
         </p>
       </div>
 
-      <button className="cu-btn cu-btn--ghost" onClick={onLogout}>Chiqish</button>
+      <button className="cu-btn cu-btn--ghost" onClick={askLogout}>Chiqish</button>
     </div>
   );
 }

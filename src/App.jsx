@@ -154,7 +154,12 @@ export default function App() {
   if (IS_PORTAL) {
     return (
       <ErrorBoundary>
-        <CustomerPortal />
+        {/* Tasdiq oynasi shu shoxda ham kerak: kartani o'chirish qaytarib
+            bo'lmaydigan amal va u brauzerning `confirm` i bilan emas,
+            ilovaning modali bilan so'raladi (butun tizimda shunday). */}
+        <ConfirmProvider>
+          <CustomerPortal />
+        </ConfirmProvider>
       </ErrorBoundary>
     );
   }
@@ -195,12 +200,15 @@ export default function App() {
   if (isMobileApp() && !user && !staffMode) {
     return (
       <ErrorBoundary>
-        <Toast toasts={toasts} onDismiss={dismiss} />
-        {appToken
-          ? <CustomerApp onLoggedOut={() => setAppToken("")} />
-          : <CustomerLogin onLoggedIn={() => setAppToken(getAppToken())}
-                           onStaffLogin={() => setStaffMode(true)} />}
-        <AppUpdater loggedIn={false} toast={toast} />
+        {/* ConfirmProvider kerak: hisobdan chiqish tasdig'i */}
+        <ConfirmProvider>
+          <Toast toasts={toasts} onDismiss={dismiss} />
+          {appToken
+            ? <CustomerApp onLoggedOut={() => setAppToken("")} />
+            : <CustomerLogin onLoggedIn={() => setAppToken(getAppToken())}
+                             onStaffLogin={() => setStaffMode(true)} />}
+          <AppUpdater loggedIn={false} toast={toast} />
+        </ConfirmProvider>
       </ErrorBoundary>
     );
   }
