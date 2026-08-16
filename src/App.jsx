@@ -56,7 +56,7 @@ initLang();
    QR ni o'qigan xaridor to'g'ridan-to'g'ri kirish sahifasiga otilib
    ketardi va kartasini umuman ko'rmasdi.
    ══════════════════════════════════════════════════════════════════════════ */
-const IS_PORTAL = /^\/(qr|kabinet)(\/|$)/.test(window.location.pathname);
+const IS_PORTAL = /^\/(qr|kabinet|c\/)(\/|$|\d)/.test(window.location.pathname);
 
 // ── Auth Handling ────────────────────────────────────────────
 const urlParams = new URLSearchParams(window.location.search);

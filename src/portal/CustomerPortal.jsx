@@ -236,6 +236,15 @@ export default function CustomerPortal() {
   const code = params.get("c") || "";
   const isJoin = window.location.pathname.startsWith("/qr");
 
+  /* ── Qog'oz chekdagi QR: `/c/{saleId}-{imzo}` ────────────────────────
+     ⚠ Kabinet kaliti TALAB QILINMAYDI — chekni qo'lida ushlab turgan
+     odam uni allaqachon ko'rgan, QR shuni telefonga ko'chiradi. Ya'ni
+     ro'yxatdan o'tmagan xaridor ham o'z chekini ochadi. */
+  const signed = /^\/c\/(\d+)-([0-9a-f]+)$/i.exec(window.location.pathname);
+  if (signed) {
+    return <Receipt signedId={signed[1]} signature={signed[2]} onClose={() => window.history.back()} />;
+  }
+
   const finishJoin = useCallback(() => {
     setToken(localStorage.getItem(TOKEN_KEY) || "");
     // QR parametrlari (bir martalik kod) manzil qatorida qolmasin

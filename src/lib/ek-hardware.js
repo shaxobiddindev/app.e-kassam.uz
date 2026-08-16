@@ -24,6 +24,9 @@ import { t } from "./ek-i18n";
 import { money, quantity } from "../utils";
 import { paymentLabel, unitLabel } from "./ek-labels";
 import { code128Svg, saleCode } from "./ek-barcode";
+/* Brauzer cheki uchun QR (V34). ESC/POS printerda QR ni apparatning O'ZI
+   chizadi (`Receipt.qr`), brauzerda esa SVG kerak. */
+import { qrSvg } from "./ek-qr";
 
 const KEY = "ek_hw";
 
@@ -105,7 +108,7 @@ async function send(bytes) {
  * o'tib, haqiqiysi buzilib chiqishi mumkin edi.
  */
 export function buildReceipt({ saleId, serverSaleId, cart = [], total = 0, subtotal, discount = 0,
-                               payType, customer, offline, shopName, cashier, fiscal }) {
+                               payType, customer, offline, shopName, cashier, fiscal, receiptUrl }) {
   const s = getSettings();
   const r = new Receipt(s.width === 58 ? WIDTH_58 : WIDTH_80);
 
@@ -182,6 +185,17 @@ export function buildReceipt({ saleId, serverSaleId, cart = [], total = 0, subto
   if (serverSaleId) {
     const code = saleCode(serverSaleId);
     r.feed().center().barcode128(code).line(code).left();
+  }
+
+  /* ── ELEKTRON CHEK QR (V34) ────────────────────────────────────────
+     Mijoz uni telefon kamerasi bilan o'qiydi va chekning elektron
+     nusxasini oladi — qog'oz yo'qolsa ham xarid tarixi qoladi.
+
+     ⚠ Havolani SERVER beradi (`receiptUrl`, imzo bilan): front uni o'zi
+     yasay olmaydi va yasamasligi ham kerak — imzo siri faqat serverda.
+     Havola yo'q bo'lsa (oflayn chek yoki eski server) QR chizilmaydi. */
+  if (receiptUrl) {
+    r.feed().center().qr(receiptUrl, 6).line(t("kassa.receiptQrHint")).left();
   }
 
   r.rule();
@@ -436,7 +450,7 @@ export async function testPrint() {
  * chaqiriladi.
  */
 function printInBrowser({ saleId, serverSaleId, cart = [], total = 0, subtotal, discount = 0,
-                          payType, customer, offline, shopName, cashier }) {
+                          payType, customer, offline, shopName, cashier, receiptUrl }) {
   const win = window.open("", "_blank", "width=360,height=640,toolbar=no,menubar=no");
   if (!win) throw new Error(t("hw.errPopup"));
 
@@ -497,6 +511,10 @@ function printInBrowser({ saleId, serverSaleId, cart = [], total = 0, subtotal, 
       ${serverSaleId ? `<div class="c" style="margin-top:6px">
         ${code128Svg(saleCode(serverSaleId), { height: 12 })}
         <div class="no">${esc(saleCode(serverSaleId))}</div>
+      </div>` : ""}
+      ${receiptUrl ? `<div class="c" style="margin-top:8px">
+        ${qrSvg(receiptUrl, { size: 96, margin: 1 })}
+        <small>${esc(t("kassa.receiptQrHint"))}</small>
       </div>` : ""}
       <div class="hr"></div>
       <div class="c"><p>${esc(t("kassa.receiptThanks"))}</p><small>e-kassam.uz</small></div>

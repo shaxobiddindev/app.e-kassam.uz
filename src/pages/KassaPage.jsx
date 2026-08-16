@@ -628,12 +628,17 @@ export default function KassaPage({ toast, refreshLowStock }) {
     let receiptNo = null;
     let offline   = false;
     let res_saleId = null;
+    let receiptUrl = null;
 
     try {
       if (!navigator.onLine) throw new Error("OFFLINE");
       const res = await saleApi.create(payload);
       res_saleId = res?.data?.id ?? null;
       receiptNo = res_saleId != null ? `A-${res_saleId}` : null;
+      /* Elektron chek havolasi (V34) — chekka QR bo'lib bosiladi.
+         ⚠ Havolani SERVER beradi (imzo siri faqat u yerda), front uni
+         o'zi yasay olmaydi. Eski serverda maydon yo'q — QR chizilmaydi. */
+      receiptUrl = res?.data?.receiptUrl || null;
     } catch (err) {
       // Tarmoq xatosi yoki oflayn → navbatga. Boshqa xato (masalan qoldiq
       // yetmasligi) esa haqiqiy xato: sotuv qayd etilmaydi.
@@ -665,7 +670,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
       } catch (_) { /* fiskal yo'q — chek baribir chiqadi */ }
     }
 
-    lastSale.current = { ...snapshot, saleId: receiptNo, offline, fiscal };
+    lastSale.current = { ...snapshot, saleId: receiptNo, serverSaleId: res_saleId, offline, fiscal, receiptUrl };
     // Chek va pul yashigi — BITTA amalda, kassirdan qo'shimcha bosish
     // talab qilmasdan. Xatosi yutilmaydi, lekin SOTUVNI to'xtatmaydi:
     // sotuv allaqachon qayd etilgan va printer nosozligi uni bekor
@@ -673,7 +678,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
     /* `serverSaleId` — chekdagi barkod uchun. Oflayn sotuvda `null`:
        serverda bunday sotuv hali yo'q va barkodni skanerlash hech narsa
        topmasdi. */
-    printReceipt({ saleId: receiptNo, serverSaleId: res_saleId, ...snapshot, offline, shopName, cashier, fiscal })
+    printReceipt({ saleId: receiptNo, serverSaleId: res_saleId, ...snapshot, offline, shopName, cashier, fiscal, receiptUrl })
       .catch((err) => toast.error(`${t("hw.printFailed")}: ${err.message}`));
 
     setFinish({ phase: "done", total: money(snapshot.total), receiptNo });

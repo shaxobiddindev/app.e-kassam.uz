@@ -39,19 +39,31 @@ const UNIT_LABEL = {
   DONA: "dona", KG: "kg", GRAM: "g", LITR: "l", METR: "m", QUTI: "quti", UPAK: "upak",
 };
 
-export default function Receipt({ token, id, onClose }) {
+/**
+ * Chek ikki yo'l bilan ochiladi:
+ *   · KABINETDAN — `token` + `id` (mijoz o'z cheklari ro'yxatidan);
+ *   · QOG'OZ CHEKDAGI QR dan — `signedId` + `signature`, kalitsiz.
+ * Ikkinchisi ataylab kalitsiz: chekni qo'lida ushlab turgan odam uni
+ * allaqachon ko'rgan, imzo esa faqat SHU chekni ochadi.
+ */
+export default function Receipt({ token, id, signedId, signature, onClose }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    fetch(`${API_BASE}/public/portal/receipts/${id}`, { headers: { "X-Portal-Token": token } })
+    const url = signedId
+      ? `${API_BASE}/public/portal/receipt/${signedId}?k=${encodeURIComponent(signature)}`
+      : `${API_BASE}/public/portal/receipts/${id}`;
+    const headers = signedId ? {} : { "X-Portal-Token": token };
+
+    fetch(url, { headers })
       .then((r) => r.json())
       .then((j) => {
         if (j.success === false) throw new Error(j.message);
         setData(j.data);
       })
       .catch((e) => setError(e.message || "Chekni ochib bo'lmadi"));
-  }, [id, token]);
+  }, [id, token, signedId, signature]);
 
   // Esc bilan yopish — telefonda ham, brauzerda ham kutiladigan xatti-harakat
   useEffect(() => {
