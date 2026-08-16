@@ -51,6 +51,9 @@ const NAV_ITEMS = [
     /* Sodiqlik — chegirma jadvali, ya'ni PULGA tegadigan sozlama.
        Shuning uchun "Boshqaruv" da, kassirda emas. */
     { id: "loyalty",    path: "/loyalty",    key: "nav.loyalty",  icon: "fa-award",      roles: ["ADMIN", "SHOP_ADMIN", "OWNER"] },
+    /* Aksiyalar — do'konning MIJOZLARGA ketadigan gapi (V39). Kassirda
+       emas: bitta bosishda minglab telefonga push ketadi. */
+    { id: "announcements", path: "/announcements", key: "nav.announcements", icon: "fa-bullhorn", roles: ["ADMIN", "SHOP_ADMIN", "OWNER"] },
     /* Xavfsizlik — bajik va tasdiqlar. SHOP_ADMIN ham kiradi, lekin u
        yerda faqat jurnal va smenalarni ko'radi: bajik chiqarish FAQAT
        egasida (server ham shuni qo'yadi). */
@@ -89,6 +92,7 @@ const PAGE_TITLES = {
   "/shop-users":     { key:"nav.staff",        icon:"fa-users-gear"    },
   "/branches":       { key:"nav.branches",     icon:"fa-store"         },
   "/loyalty":        { key:"nav.loyalty",      icon:"fa-award"         },
+  "/announcements":  { key:"nav.announcements", icon:"fa-bullhorn"     },
   /* ⚠ Ro'yxatda yo'q yo'l JIMGINA "/" ga tushadi: `/security` shu sababli
      tepada "Dashboard" deb yozilib turardi. Yangi sahifa qo'shsangiz,
      shu yerga ham qo'shing. */

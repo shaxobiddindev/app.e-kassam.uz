@@ -6,12 +6,13 @@ import { code128Svg } from "../lib/ek-barcode";
 import { useConfirm } from "../context/ConfirmProvider";
 import CodeZoom from "../components/CodeZoom";
 import { dateTime } from "../lib/ek-format";
+import { registerPushIfPossible, getPushToken } from "../lib/ek-push";
 
 /* ══════════════════════════════════════════════════════════════════════════
-   MIJOZ ILOVASI (V37) — Korzinka Go / Makro uslubidagi sodda daraxt
+   MIJOZ ILOVASI (V37–V39) — Korzinka Go / Makro uslubidagi sodda daraxt
 
-   Uch ekran, xolos: KARTA (jami ball) · DO'KONLARIM · PROFIL.
-   Kassa interfeysining hech bir qismi bu yerda ko'rinmaydi.
+   Besh ekran: KARTA (jami ball) · AKSIYALAR · CHEKLAR · DO'KONLARIM ·
+   PROFIL. Kassa interfeysining hech bir qismi bu yerda ko'rinmaydi.
 
    ⚠ Ballar do'kon bo'yicha ALOHIDA (do'konlar pulni bo'lishmaydi), jami
    esa faqat ko'rsatish uchun: bir do'konda ikkinchisining balliga to'lab
@@ -23,6 +24,7 @@ const money = (v) =>
 
 const TABS = [
   { key: "card",     icon: "fa-id-card",  label: "Kartam" },
+  { key: "news",     icon: "fa-bullhorn", label: "Aksiyalar" },
   { key: "receipts", icon: "fa-receipt",  label: "Cheklar" },
   { key: "shops",    icon: "fa-store",    label: "Do'konlar" },
   { key: "profile",  icon: "fa-user",     label: "Profil" },
@@ -50,8 +52,18 @@ export default function CustomerApp({ onLoggedOut }) {
 
   useEffect(load, [load]);
 
+  /* ── Bildirishnoma (V38) ───────────────────────────────────────────
+     ⚠ Ilgari Profildagi tugma HECH NARSA QILMASDI: bayroq bazaga
+     yozilardi-yu, qurilma tokeni ro'yxatga olinmasdi. Ro'yxatga olish
+     ekran ochilishida, faqat mijoz xabarni O'CHIRMAGAN bo'lsa
+     (o'chirgan odamdan Android ruxsatini qayta so'rash — bezorilik). */
+  useEffect(() => {
+    if (!me?.pushEnabled) return;
+    registerPushIfPossible(appApi.pushRegister).catch(() => {});
+  }, [me?.pushEnabled]);
+
   const logout = async () => {
-    try { await appApi.logout(); } catch (_) { /* baribir chiqamiz */ }
+    try { await appApi.logout(getPushToken()); } catch (_) { /* baribir chiqamiz */ }
     clearAppToken();
     onLoggedOut();
   };
@@ -63,6 +75,7 @@ export default function CustomerApp({ onLoggedOut }) {
     <div className="cu-app">
       <main className="cu-page">
         {tab === "card"     && <CardScreen me={me} shops={shops} />}
+        {tab === "news"     && <NewsScreen />}
         {tab === "receipts" && <ReceiptsScreen />}
         {tab === "shops"    && <ShopsScreen shops={shops} />}
         {tab === "profile"  && <ProfileScreen me={me} onSaved={setMe} onLogout={logout} />}
@@ -181,7 +194,55 @@ function CardScreen({ me, shops }) {
   );
 }
 
-/* ── 2. Cheklarim ───────────────────────────────────────────────────────
+/* ── 2. Aksiyalar va yangiliklar ─────────────────────────────────────────
+   ⚠ Muddati o'tgani KO'RINMAYDI (server filtrlaydi): tugagan aksiya
+   ro'yxatda osilib tursa, do'kon yolg'onchi bo'lib qoladi. */
+
+function NewsScreen() {
+  const [items, setItems] = useState(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    appApi.announcements().then(setItems).catch((e) => setError(e.message));
+  }, []);
+
+  if (error)  return <div className="cu-screen"><div className="cu-card cu-center">{error}</div></div>;
+  if (!items) return <div className="cu-screen"><div className="cu-card cu-center">Yuklanmoqda…</div></div>;
+
+  return (
+    <div className="cu-screen">
+      <h1 className="cu-title">Aksiyalar</h1>
+
+      {items.length === 0 && (
+        <div className="cu-card cu-center">
+          <i className="fa-solid fa-bullhorn cu-big-icon" aria-hidden="true" />
+          <p><b>Hozircha e'lon yo'q</b></p>
+          <p className="cu-muted">
+            Do'konlaringiz chegirma yoki yangilik e'lon qilsa, u shu yerda paydo bo'ladi.
+          </p>
+        </div>
+      )}
+
+      {items.map((a) => (
+        <article key={a.id} className="cu-card cu-news">
+          <div className="cu-news__shop">{a.shopName}</div>
+          <h2 className="cu-news__title">{a.title}</h2>
+          {a.body && <p className="cu-news__body">{a.body}</p>}
+          <div className="cu-news__foot">
+            <span className="cu-muted">{dateLabel(a.date)}</span>
+            {a.endsAt && (
+              <span className="cu-warn">
+                <i className="fa-solid fa-clock" aria-hidden="true" /> {dateLabel(a.endsAt)} gacha
+              </span>
+            )}
+          </div>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+/* ── 3. Cheklarim ───────────────────────────────────────────────────────
    ⚠ Lenta HAMMA do'kon bo'yicha bitta ro'yxat: mijoz xaridni sana bo'yicha
    eslaydi, «qaysi do'konda edi» deb emas. Do'kon nomi har satrda turadi. */
 
@@ -240,7 +301,7 @@ function ReceiptsScreen() {
   );
 }
 
-/* ── 3. Do'konlarim ─────────────────────────────────────────────────── */
+/* ── 4. Do'konlarim ─────────────────────────────────────────────────── */
 
 function ShopsScreen({ shops }) {
   const items = shops?.items || [];
@@ -299,7 +360,7 @@ function ShopsScreen({ shops }) {
   );
 }
 
-/* ── 3b. Ball tarixi ────────────────────────────────────────────────────
+/* ── 4b. Ball tarixi ────────────────────────────────────────────────────
    ⚠ Turlar SERVERDAN kelgan nom bilan keladi va shu yerda tarjima
    qilinadi. Summani mijoz IMZO bilan ko'radi (+840 / −5 000) — «SPEND»
    degan so'zni o'qib yo'nalishni o'zi topishi kerak emas. */
@@ -391,7 +452,7 @@ function BonusSheet({ customerId, shopName, onClose }) {
   );
 }
 
-/* ── 4. Profil ──────────────────────────────────────────────────────── */
+/* ── 5. Profil ──────────────────────────────────────────────────────── */
 
 function ProfileScreen({ me, onSaved, onLogout }) {
   const [name, setName] = useState(me.fullName || "");

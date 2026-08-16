@@ -39,7 +39,16 @@ export const appApi = {
   /* ── Kirish ── */
   loginStart: ()      => call("/auth/telegram/start", { method: "POST", auth: false }),
   loginPoll:  (code)  => call(`/auth/telegram/poll?code=${encodeURIComponent(code)}`, { auth: false }),
-  logout:     ()      => call("/auth/logout", { method: "POST" }),
+  /* ⚠ Chiqishda qurilma push tokeni ham unutiladi — telefonda boshqa
+     odam kirsa, xabarlar eski egaga kelib turmasin. */
+  logout:     (push)  => call(`/auth/logout${push ? `?push=${encodeURIComponent(push)}` : ""}`,
+                              { method: "POST" }),
+
+  /* ── Bildirishnoma ──
+     Qurilma tokeni XODIMNIKIDAN alohida jadvalda (`app_push_tokens`):
+     mijoz `users` da yo'q va bu chegara ataylab qo'yilgan. */
+  pushRegister: (token, platform = "android") =>
+                call("/push/register", { method: "POST", body: { token, platform } }),
 
   /* ── Profil va do'konlar ── */
   me:         ()      => call("/me"),
@@ -57,4 +66,9 @@ export const appApi = {
      aralash lenta esa mijozni chalkashtirardi. */
   bonus:      (customerId, limit = 50) =>
                 call(`/bonus?c=${encodeURIComponent(customerId)}&limit=${limit}`),
+
+  /* ── Aksiyalar ──
+     Mijozning barcha do'konlaridagi JORIY e'lonlar; muddati o'tgani
+     serverda filtrlanadi (tugagan aksiya do'konni yolg'onchi qiladi). */
+  announcements: () => call("/announcements"),
 };

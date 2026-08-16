@@ -2169,6 +2169,20 @@ img.logo--dark { display: none; }
   background: var(--bg-brand); color: var(--fg-on-brand); border-color: var(--bg-brand);
 }
 
+/* Aksiya kartochkasi */
+.cu-news { display: grid; gap: 6px; }
+.cu-news__shop {
+  font-size: var(--fs-xs); letter-spacing: .1em; text-transform: uppercase;
+  color: var(--fg-brand); font-weight: 600;
+}
+.cu-news__title { font-family: var(--font-display); font-size: var(--fs-lg); font-weight: 800; }
+.cu-news__body { white-space: pre-wrap; color: var(--fg-secondary); font-size: var(--fs-sm); }
+.cu-news__foot {
+  display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+  font-size: var(--fs-xs); padding-top: 6px;
+  border-top: 1px dashed var(--border-subtle);
+}
+
 /* Chek satri */
 .cu-rcp {
   width: 100%; display: flex; justify-content: space-between; align-items: center;

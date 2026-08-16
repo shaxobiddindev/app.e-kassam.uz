@@ -459,6 +459,18 @@ export const shopQrApi = {
   setPoster:  (value) => request(`/shop-qr/poster?value=${value ? "true" : "false"}`, { method: "POST" }),
 };
 
+/* ── E'lonlar: aksiya va yangiliklar (V39) ────────────────────────────
+   ⚠ Yuborish ALOHIDA amal va faqat BIR MARTA ishlaydi (server ham shuni
+   qo'yadi): saqlashning o'zi push qilsa, xatoni tuzatish uchun qilingan
+   har tahrir mijozning telefonini qayta chiriltirardi. */
+export const announceApi = {
+  list:   ()         => request("/announcements"),
+  create: (data)     => request("/announcements", { method: "POST", body: JSON.stringify(data) }),
+  update: (id, data) => request(`/announcements/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  remove: (id)       => request(`/announcements/${id}`, { method: "DELETE" }),
+  push:   (id)       => request(`/announcements/${id}/push`, { method: "POST" }),
+};
+
 // ─── Mijozlar ─────────────────────────────────────────────────
 /* ── Sodiqlik darajalari ──────────────────────────────────────────────
    ⚠ Jadvalni O'QISH kassirga ham ochiq (mijozga darajasini aytishi

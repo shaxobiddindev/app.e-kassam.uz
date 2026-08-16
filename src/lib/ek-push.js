@@ -12,7 +12,20 @@
 import { isMobileApp } from "./ek-desktop";
 import { pushApi } from "../api";
 
-export async function registerPushIfPossible() {
+/* Oxirgi olingan qurilma tokeni — chiqishda uni SERVERDAN o'chirish
+   uchun kerak: aks holda telefonda boshqa odam kirsa ham, xabarlar eski
+   egaga tegishli bo'lib kelaverardi. */
+let lastToken = "";
+
+export const getPushToken = () => lastToken;
+
+/**
+ * @param register serverga yozish usuli. Standarti — XODIM yo'li
+ *        (`/push/register`). Mijoz ilovasi o'z yo'lini beradi
+ *        (`/app/push/register`): tokenning egasi ham, jadvali ham
+ *        boshqa, oqim esa aynan bir xil.
+ */
+export async function registerPushIfPossible(register = pushApi.register) {
   if (!isMobileApp()) return "unsupported";
   let PushNotifications;
   try {
@@ -32,7 +45,8 @@ export async function registerPushIfPossible() {
       PushNotifications.addListener("registration", async ({ value }) => {
         if (done) return; done = true;
         try {
-          await pushApi.register(value);
+          lastToken = value;
+          await register(value);
           resolve("on");
         } catch (_) {
           resolve("off");

@@ -18,6 +18,7 @@ import InventoryPage    from "./pages/InventoryPage";
 import StockTakePage    from "./pages/StockTakePage";
 import ExpensesPage     from "./pages/ExpensesPage";
 import LoyaltyPage      from "./pages/LoyaltyPage";
+import AnnouncementsPage from "./pages/AnnouncementsPage";
 import SupplyPage       from "./pages/SupplyPage";
 import TransfersPage    from "./pages/TransfersPage";
 import PricesPage       from "./pages/PricesPage";
@@ -324,6 +325,9 @@ export default function App() {
             <Route path="/branches" element={<ProtectedRoute user={user} roles={["OWNER"]}><ShopsPage toast={toast} /></ProtectedRoute>} />
             {/* Sodiqlik jadvali — chegirma, ya'ni pulga tegadigan sozlama. */}
             <Route path="/loyalty" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><LoyaltyPage toast={toast} /></ProtectedRoute>} />
+            {/* Aksiyalar (V39) — do'konning MIJOZLARGA ketadigan gapi;
+                kassirga yopiq (server ham shu cheklovni qo'yadi). */}
+            <Route path="/announcements" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><AnnouncementsPage toast={toast} /></ProtectedRoute>} />
             {/* Sozlamalar — hamma rolga ochiq: mavzu va til xodimning
                 shaxsiy tanlovi, do'kon sozlamasi emas. */}
             <Route path="/settings" element={<SettingsPage toast={toast} />} />
