@@ -24,6 +24,10 @@ import Receipt from "./Receipt";
 
 const TOKEN_KEY = "ek_portal_token";
 
+/** Karta shtrixi/QR prefiksi — kassa va server bilan BIR XIL bo'lishi shart
+    (`KassaPage.CARD_PREFIX`, `CustomerService.CARD_PREFIX`). */
+const CARD_PREFIX = "EKC-";
+
 async function api(path, { method = "GET", body, token } = {}) {
   const res = await fetch(`${API_BASE}/public/portal${path}`, {
     method,
@@ -169,9 +173,15 @@ function CabinetScreen({ token, onLogout }) {
         <div className="pt-shop">{me.shopName}</div>
         <div className="pt-name">{me.fullName}</div>
 
+        {/* ⚠ Kodlarda `EKC-` PREFIKSI bor, ekranda ko'rinadigan raqamda
+            esa YO'Q. Sabab: kassa skanerlangan matnni aynan shu prefiks
+            bilan tovar barkodidan ajratadi (`KassaPage`, `CustomerService`),
+            mijoz esa kartasini og'zaki aytganda qisqa kodni aytadi. */}
         <div className="pt-codes">
-          <div className="pt-qr" dangerouslySetInnerHTML={{ __html: qrSvg(me.cardCode, { size: 168, margin: 1 }) }} />
-          <div className="pt-bars" dangerouslySetInnerHTML={{ __html: code128Svg(me.cardCode) }} />
+          <div className="pt-qr"
+               dangerouslySetInnerHTML={{ __html: qrSvg(CARD_PREFIX + me.cardCode, { size: 168, margin: 1 }) }} />
+          <div className="pt-bars"
+               dangerouslySetInnerHTML={{ __html: code128Svg(CARD_PREFIX + me.cardCode) }} />
           <div className="pt-cardcode">{me.cardCode}</div>
         </div>
 

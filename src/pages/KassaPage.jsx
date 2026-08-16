@@ -264,7 +264,36 @@ export default function KassaPage({ toast, refreshLowStock }) {
 
      Oflaynda server yo'q: shunda avval yuklangan ro'yxatdan qidiramiz,
      ya'ni oddiy barkod baribir ishlaydi. */
+  /* ── MIJOZ KARTASI (V34) ───────────────────────────────────────
+     Karta shtrixi `EKC-` prefiksi bilan kodlangan — aynan shu bilan u
+     tovar barkodidan ajraladi. Prefikssiz ajratib bo'lmasdi: karta kodi
+     ham, artikul ham harf-raqamli bo'lishi mumkin va kassir mijozning
+     kartasini skanerlaganda tizim uni "topilmagan tovar" deb hisoblardi.
+
+     ⚠ Prefiks SERVER bilan bir xil (`CustomerService.CARD_PREFIX`). */
+  const CARD_PREFIX = "EKC-";
+
+  const attachCustomerByCard = async (raw) => {
+    try {
+      const r = await customerApi.byCard(raw);
+      const c = r.data;
+      if (!c?.id) throw new Error("not found");
+      setCustomer(c);
+      toast.success(t("kassa.cardAttached", { name: c.fullName || c.phone || "" }));
+    } catch (_) {
+      // Karta bor, lekin bu do'konga tegishli emas yoki o'chirilgan.
+      toast.info(t("kassa.cardNotFound"));
+    }
+  };
+
   const addByBarcode = async (code) => {
+    /* ⚠ Kartani TOVARDAN OLDIN tekshiramiz: aks holda kod avval
+       `/products/scan` ga ketib, "topilmadi" xabari chiqardi. */
+    if (String(code).toUpperCase().startsWith(CARD_PREFIX)) {
+      await attachCustomerByCard(code);
+      return;
+    }
+
     try {
       const res = await productApi.scan(code, branchId);
       const r = res.data || {};

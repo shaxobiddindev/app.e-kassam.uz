@@ -487,6 +487,10 @@ export const loyaltyApi = {
 };
 
 export const customerApi = {
+  /** Karta kodi bo'yicha (V34) — kassada skanerlanganda. */
+  byCard: (code) => request(`/customers/by-card/${encodeURIComponent(code)}`),
+  /** Telefon bo'yicha — mijoz kartasini unutgan bo'lsa. */
+  byPhone: (phone) => request(`/customers/phone/${encodeURIComponent(phone)}`),
   /* ── Nasiya ────────────────────────────────────────────────────
      Qarz JURNALDA saqlanadi, balans esa undan hisoblangan kesh —
      "qarz qayerdan chiqdi" degan savolga javob bo'lishi uchun. */
