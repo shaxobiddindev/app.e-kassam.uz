@@ -455,6 +455,8 @@ export const securityApi = {
 export const shopQrApi = {
   config:     ()      => request("/shop-qr"),
   setEnabled: (value) => request(`/shop-qr/enabled?value=${value ? "true" : "false"}`, { method: "POST" }),
+  /** Devor plakati (V36) — o'zgarmas QR, ALOHIDA yoqiladi. */
+  setPoster:  (value) => request(`/shop-qr/poster?value=${value ? "true" : "false"}`, { method: "POST" }),
 };
 
 // ─── Mijozlar ─────────────────────────────────────────────────

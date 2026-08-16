@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useT } from "../lib/ek-i18n";
 import { qrSvg, totpNow, secondsLeft } from "../lib/ek-qr";
 import { shopQrApi } from "../api";
+import { printQrPoster } from "../components/QrPoster";
 
 /* ══════════════════════════════════════════════════════════════════════════
    DO'KON QR KODI — mijozni ro'yxatdan o'tkazish uchun (V34)
@@ -28,6 +29,9 @@ export default function MobileShopQr({ toast, onClose }) {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const timer = useRef(null);
+  /* Do'kon nomi — chekda ishlatiladigan bilan bir xil manba (KassaPage). */
+  const shopName = localStorage.getItem("ek_shopName")
+                || localStorage.getItem("ek_shopCode") || "";
 
   // 1. Sozlamani bir marta olamiz (sir + havola)
   useEffect(() => {
@@ -76,6 +80,30 @@ export default function MobileShopQr({ toast, onClose }) {
     }
   };
 
+  const togglePoster = async () => {
+    setSaving(true);
+    try {
+      const r = await shopQrApi.setPoster(!cfg.posterEnabled);
+      setCfg(r.data);
+      toast?.(r.data.posterEnabled ? t("qr.enabled") : t("qr.disabled"), "success");
+    } catch (e) {
+      toast?.(e.message || "Xatolik", "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  /* Plakat ALOHIDA oynada chop etiladi: sahifa ichida `@media print`
+     bilan qilinganda kassa interfeysining qoldiqlari qog'ozga chiqib
+     ketardi (chek chop etishda ham shu qolip). */
+  const printPoster = () => {
+    try {
+      printQrPoster({ url: cfg.posterUrl, shopName: shopName || "e-Kassam" });
+    } catch (e) {
+      toast?.(e.message || "Chop etilmadi", "error");
+    }
+  };
+
   return (
     <div className="m-screen">
       <header className="m-head m-head--back">
@@ -108,6 +136,33 @@ export default function MobileShopQr({ toast, onClose }) {
             <p className="text-muted" style={{ fontSize: 13, textAlign: "center" }}>
               {t("qr.refresh", { n: left })}
             </p>
+          </section>
+
+          {/* ── Devor plakati ─────────────────────────────────────────
+              ⚠ Plakatdagi QR AYLANMAYDI: qog'ozdagi kod «odam do'konda
+              turibdi» kafolatini bera olmaydi. Shuning uchun bu alohida,
+              ongli yoqiladigan rejim — matnda ham shu aytilgan. */}
+          <section className="m-card">
+            <div className="m-row">
+              <span><i className="fa-solid fa-print" aria-hidden="true" /> {t("qr.poster")}</span>
+              <b className={cfg.posterEnabled ? "m-pos" : ""}>
+                {cfg.posterEnabled ? t("qr.enabled") : t("qr.disabled")}
+              </b>
+            </div>
+            <p className="text-muted" style={{ fontSize: 13, margin: "6px 0 10px" }}>
+              {t("qr.posterHint")}
+            </p>
+
+            {cfg.posterEnabled && cfg.posterUrl && (
+              <button className="btn btn-primary" style={{ width: "100%", marginBottom: 8 }}
+                      onClick={printPoster}>
+                <i className="fa-solid fa-file-arrow-down" aria-hidden="true" /> {t("qr.posterPrint")}
+              </button>
+            )}
+            <button className="btn btn-outline" style={{ width: "100%" }}
+                    onClick={togglePoster} disabled={saving}>
+              {cfg.posterEnabled ? t("qr.posterOff") : t("qr.posterOn")}
+            </button>
           </section>
 
           <button className="btn btn-outline" style={{ width: "100%" }} onClick={toggle} disabled={saving}>
