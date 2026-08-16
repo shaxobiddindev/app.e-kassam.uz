@@ -39,12 +39,24 @@ import { BadgeProvider } from "./context/BadgeProvider";
 import { KeyboardProvider } from "./context/KeyboardProvider";
 import SecurityPage from "./pages/SecurityPage";
 import AuditPage from "./pages/AuditPage";
+import CustomerPortal from "./portal/CustomerPortal";
 
 // ⚠ Tilni URL dan olish MODUL TANASIDA, `replaceState` dan OLDIN bo'lishi
 // shart. Bu fayl `main.jsx` dan import qilinadi va ES modul tartibiga ko'ra
 // shu tana `main.jsx` dagi `initLang()` dan OLDIN ishlaydi. Agar avval URL
 // tozalansa, `?lang=` yo'qoladi va login'da tanlangan til yetib kelmaydi.
 initLang();
+
+/* ══════════════════════════════════════════════════════════════════════════
+   MIJOZ KABINETI (V34) — bu yo'llar XODIM oqimidan BUTUNLAY chetda
+
+   ⚠ Tekshiruv MODUL TANASIDA, hamma narsadan OLDIN turishi SHART. Quyida
+   token yo'q bo'lsa `localStorage.clear()` + `auth.e-kassam.uz` ga
+   yo'naltirish bor — mijozda esa xodim tokeni HECH QACHON bo'lmaydi, ya'ni
+   QR ni o'qigan xaridor to'g'ridan-to'g'ri kirish sahifasiga otilib
+   ketardi va kartasini umuman ko'rmasdi.
+   ══════════════════════════════════════════════════════════════════════════ */
+const IS_PORTAL = /^\/(qr|kabinet)(\/|$)/.test(window.location.pathname);
 
 // ── Auth Handling ────────────────────────────────────────────
 const urlParams = new URLSearchParams(window.location.search);
@@ -89,7 +101,10 @@ if (authParam) {
 
 const localToken = localStorage.getItem("ek_token");
 const localType = localStorage.getItem("ek_type");
-if (!localToken || localType !== "user") {
+/* ⚠ `!IS_PORTAL`: mijoz kabinetida xodim tokeni yo'q va BO'LMAYDI ham.
+   Usiz `clear()` mijozning kabinet kalitini o'chirib, uni kirish
+   sahifasiga otib yuborardi. */
+if (!IS_PORTAL && (!localToken || localType !== "user")) {
   // Til tanlovi sessiyaga emas, BRAUZERGA tegishli — `clear()` dan omon
   // qolsin, aks holda chiqarilgan foydalanuvchi kirish ekranini yana
   // boshqa tilda ko'radi. `ek_forceMobile` ham (dev-bayroq): usiz mobil
@@ -124,6 +139,20 @@ export default function App() {
   // ichkaridagi barcha `t()` chaqiruvlari yangi tilni oladi. Shu sababli
   // har bir sahifada alohida obuna kerak emas.
   useT();
+
+  /* ── MIJOZ KABINETI (V34) ────────────────────────────────────────────
+     Xaridorning sahifasi: kirish, rol, do'kon tanlash — hech biri yo'q.
+
+     ⚠ `IS_PORTAL` — MODUL darajasidagi o'zgarmas (manzil qatoridan bir
+     marta o'qiladi). Shu sababli bu erta `return` React'ning hook
+     tartibini buzmaydi: har render'da bir xil shox tanlanadi. */
+  if (IS_PORTAL) {
+    return (
+      <ErrorBoundary>
+        <CustomerPortal />
+      </ErrorBoundary>
+    );
+  }
   const { user, login, logout }                           = useAuth();
   const { toasts, toast, dismiss }                        = useToast();
   const { lowStockItems, lowStockCount, refreshLowStock } = useLowStock();

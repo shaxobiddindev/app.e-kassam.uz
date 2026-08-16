@@ -4,6 +4,7 @@ import MobileHome from "./MobileHome";
 import MobileReports from "./MobileReports";
 import MobileSales from "./MobileSales";
 import MobileSettings from "./MobileSettings";
+import MobileShopQr from "./MobileShopQr";
 
 /* ══════════════════════════════════════════════════════════════════════════
    MOBIL ILOVA — do'kon EGASINING nazorat ilovasi.
@@ -37,6 +38,20 @@ export default function MobileApp({ user, logout, toast }) {
   const { t } = useT();
   const [tab, setTab] = useState("home");
   const [branchId, setBranchId] = useState(null);
+  /* Do'kon QR — alohida ekran, tab EMAS: u kundalik emas, mijoz
+     so'raganda ochiladi va butun ekranni egallashi kerak (QR katta
+     bo'lsa kamera osonroq o'qiydi). */
+  const [qrOpen, setQrOpen] = useState(false);
+
+  if (qrOpen) {
+    return (
+      <div className="m-app">
+        <main className="m-page">
+          <MobileShopQr toast={toast} onClose={() => setQrOpen(false)} />
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="m-app">
@@ -44,7 +59,8 @@ export default function MobileApp({ user, logout, toast }) {
         {tab === "home"     && <MobileHome     toast={toast} branchId={branchId} setBranchId={setBranchId} />}
         {tab === "reports"  && <MobileReports  toast={toast} branchId={branchId} />}
         {tab === "sales"    && <MobileSales    toast={toast} branchId={branchId} />}
-        {tab === "settings" && <MobileSettings toast={toast} user={user} logout={logout} />}
+        {tab === "settings" && <MobileSettings toast={toast} user={user} logout={logout}
+                                              onOpenQr={() => setQrOpen(true)} />}
       </main>
 
       <nav className="m-nav" aria-label={t("m.nav")}>

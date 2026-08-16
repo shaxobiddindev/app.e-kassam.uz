@@ -1827,3 +1827,180 @@ img.logo--dark { display: none; }
 
 /* Vestibulyar buzilishda intro chizilmaydi (LoginPage ham tekshiradi) */
 @media (prefers-reduced-motion: reduce) { .ek-intro { display: none !important; } }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   MIJOZ KABINETI (V34) — do'kon xaridorining sahifasi
+
+   ⚠ Bu daraxt xodimlar UI'sidan AJRATILGAN: `.pt-` prefiksi ataylab —
+   kassa sinflari bilan kesishmasin va biri ikkinchisini buzmasin.
+   Ko'rinishi ham boshqa: bu mijozning kartasi, kassa emas.
+   ══════════════════════════════════════════════════════════════════════════ */
+.pt-wrap {
+  min-height: 100dvh;
+  padding: 16px 14px calc(24px + env(safe-area-inset-bottom));
+  background: var(--bg-canvas);
+  display: grid; gap: 14px; align-content: start;
+  max-width: 520px; margin: 0 auto;
+}
+.pt-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-xl);
+  padding: 20px 18px;
+  box-shadow: var(--sh-md);
+}
+.pt-center { text-align: center; }
+.pt-muted  { color: var(--fg-secondary); font-size: var(--fs-sm); }
+.pt-fine   { margin-top: 14px; font-size: var(--fs-xs); color: var(--fg-tertiary); text-align: center; }
+.pt-shop   { font-size: var(--fs-xs); letter-spacing: .1em; text-transform: uppercase; color: var(--fg-brand); font-weight: 600; }
+.pt-title  { font-family: var(--font-display); font-size: var(--fs-2xl); font-weight: 800; margin: 6px 0 8px; }
+.pt-h2     { font-family: var(--font-display); font-size: var(--fs-lg); font-weight: 700; margin-bottom: 10px; }
+.pt-icon     { font-size: 40px; color: var(--fg-brand); margin-bottom: 10px; }
+.pt-icon-bad { font-size: 40px; color: var(--fg-danger); margin-bottom: 10px; }
+
+.pt-form  { display: grid; gap: 6px; margin-top: 16px; }
+.pt-label { font-size: var(--fs-xs); font-weight: 600; color: var(--fg-secondary); margin-top: 8px; }
+.pt-input {
+  width: 100%; min-height: var(--hit-min); padding: 12px 14px;
+  border: 1.5px solid var(--border-subtle); border-radius: var(--r-md);
+  background: var(--bg-canvas); color: var(--fg-primary);
+  font-family: var(--font-sans); font-size: var(--fs-md); outline: none;
+}
+.pt-input:focus { border-color: var(--border-brand); box-shadow: var(--ring-brand); }
+/* `+998` maydon ichida emas, yonida — sabab CustomerPortal.jsx izohida */
+.pt-phone { display: flex; align-items: stretch; border: 1.5px solid var(--border-subtle);
+            border-radius: var(--r-md); overflow: hidden; background: var(--bg-canvas); }
+.pt-phone:focus-within { border-color: var(--border-brand); box-shadow: var(--ring-brand); }
+.pt-phone__cc { display: flex; align-items: center; padding: 0 10px 0 14px;
+                font-family: var(--font-mono); color: var(--fg-secondary);
+                background: var(--bg-sunken); border-right: 1.5px solid var(--border-subtle); }
+.pt-phone .pt-input { border: 0; border-radius: 0; font-family: var(--font-mono); }
+.pt-phone .pt-input:focus { box-shadow: none; }
+
+.pt-btn {
+  min-height: 52px; width: 100%; margin-top: 16px;
+  border: 0; border-radius: var(--r-lg);
+  background: var(--bg-brand); color: var(--fg-on-brand);
+  font-family: var(--font-sans); font-size: var(--fs-lg); font-weight: 600; cursor: pointer;
+}
+.pt-btn:disabled { opacity: .6; }
+.pt-btn--ghost { background: transparent; color: var(--fg-secondary); border: 1px solid var(--border-subtle); }
+.pt-logout { margin-top: 4px; min-height: 44px; font-size: var(--fs-sm); }
+.pt-error {
+  margin-top: 14px; padding: 10px 14px; border-radius: var(--r-md);
+  background: var(--bg-danger-subtle); color: var(--fg-danger);
+  border: 1px solid var(--border-danger); font-size: var(--fs-sm);
+}
+
+/* ── Karta: kassada ko'rsatiladi ─────────────────────────────────────── */
+.pt-card--card { text-align: center; }
+.pt-name  { font-size: var(--fs-lg); font-weight: 700; margin: 4px 0 14px; }
+.pt-codes { display: grid; justify-items: center; gap: 10px; }
+/* ⚠ QR va shtrix DOIM oq fonda: qorong'i temada ham skaner o'qishi kerak,
+   teskari rangdagi kodni ko'p qurilma umuman ko'rmaydi. */
+.pt-qr, .pt-bars { background: #FFFFFF; padding: 10px; border-radius: var(--r-md); }
+.pt-bars svg { width: 100%; max-width: 260px; height: auto; }
+.pt-cardcode { font-family: var(--font-mono); font-size: var(--fs-lg); letter-spacing: .18em; font-weight: 700; }
+.pt-balance {
+  display: flex; align-items: baseline; justify-content: space-between;
+  margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--border-strong);
+}
+.pt-balance span { font-size: var(--fs-sm); color: var(--fg-secondary); }
+.pt-balance b { font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+                font-size: var(--fs-2xl); color: var(--fg-success); }
+
+/* ── Cheklar lentasi ─────────────────────────────────────────────────── */
+.pt-section { display: grid; gap: 8px; }
+.pt-list { list-style: none; display: grid; gap: 8px; }
+.pt-row {
+  width: 100%; display: flex; justify-content: space-between; gap: 12px;
+  padding: 12px 14px; min-height: var(--hit-min);
+  background: var(--bg-surface); border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg); cursor: pointer; text-align: left;
+  font-family: var(--font-sans); color: var(--fg-primary);
+}
+.pt-row:active { transform: scale(.99); }
+.pt-row__left, .pt-row__right { display: grid; gap: 2px; }
+.pt-row__right { text-align: right; }
+.pt-row small { font-size: var(--fs-xs); color: var(--fg-tertiary); }
+.pt-row b { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.pt-plus { color: var(--fg-success) !important; }
+
+/* ══════════════════════════════════════════════════════════════════════
+   ELEKTRON CHEK — qog'oz tasmaning taqlidi
+   ══════════════════════════════════════════════════════════════════════ */
+.pt-modal {
+  position: fixed; inset: 0; z-index: var(--z-modal);
+  background: rgba(8, 17, 29, .6);
+  -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
+  display: grid; place-items: start center;
+  padding: 20px 12px 40px; overflow-y: auto;
+}
+.pt-modal__inner { position: relative; width: 100%; max-width: 380px; }
+.pt-close {
+  position: absolute; top: -8px; right: -4px; z-index: 2;
+  width: 40px; height: 40px; border-radius: 50%;
+  border: 0; background: var(--bg-surface); color: var(--fg-primary);
+  box-shadow: var(--sh-md); cursor: pointer; font-size: 16px;
+}
+/* ⚠ Tasma kengligi 58mm chek qog'ozining nisbatini takrorlaydi. Shrift
+   MONOSPACE va `tabular-nums`: raqamlar ustma-ust tushmasa, chek "haqiqiy"
+   ko'rinmaydi — bu detal butun taassurotni ushlab turadi. */
+.pt-tape {
+  --tear: 9px;
+  background: #FFFFFF; color: #111111;
+  font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+  font-size: 12.5px; line-height: 1.45;
+  padding: 18px 16px 22px;
+  border-radius: 4px 4px 0 0;
+  box-shadow: var(--sh-lg);
+}
+/* Chek DOIM oq qog'ozda — qorong'i tema unga tegmaydi (qog'oz qorayamaydi) */
+[data-theme="dark"] .pt-tape { background: #FFFFFF; color: #111111; }
+.pt-tape__head { text-align: center; }
+.pt-tape__shop { font-size: 15px; font-weight: 800; letter-spacing: .5px; }
+.pt-hr { border-top: 1px dashed #999999; margin: 8px 0; }
+.pt-tape__row { display: flex; justify-content: space-between; gap: 10px; padding: 1px 0; }
+.pt-tape__row > span:last-child { white-space: nowrap; }
+.pt-line { padding: 3px 0; }
+.pt-line__name { font-weight: 700; }
+.pt-total { font-size: 15px; font-weight: 800; padding: 6px 0; border-top: 1px solid #111111; margin-top: 4px; }
+.pt-earn { font-weight: 700; }
+.pt-returned {
+  margin: 10px 0; padding: 6px; text-align: center; font-weight: 800; letter-spacing: .2em;
+  border: 2px solid #111111; border-radius: 4px;
+}
+.pt-fiscalqr { display: grid; place-items: center; margin: 8px 0; }
+.pt-barcode svg { width: 100%; max-width: 240px; height: auto; }
+.pt-tape__no { font-size: 13px; font-weight: 800; margin-top: 2px; }
+.pt-thanks { margin-top: 10px; font-weight: 700; }
+.pt-tape__site { font-size: 11px; color: #555555; }
+
+/* ── Do'kon QR ekrani (V34) — mijozni ro'yxatdan o'tkazish ───────────── */
+.m-qr { display: grid; justify-items: center; gap: 12px; }
+/* ⚠ QR DOIM oq fonda va qat'iy o'lchamda: qorong'i temada teskari
+   rangdagi kodni ko'p kamera umuman o'qimaydi, o'lcham o'zgarsa esa
+   yangilanish paytida sakrab ko'rinardi. */
+.m-qr__box {
+  background: #FFFFFF; padding: 14px; border-radius: var(--r-lg);
+  width: 288px; height: 288px; display: grid; place-items: center;
+}
+.m-qr__box svg { display: block; }
+/* Orqa hisob — chiziq. Raqamdan ko'ra tez o'qiladi: mijoz QR qachon
+   yangilanishini bir qarashda tushunadi. */
+.m-qr__timer { width: 100%; max-width: 288px; height: 4px; border-radius: 2px;
+               background: var(--bg-sunken); overflow: hidden; }
+.m-qr__bar { display: block; height: 100%; background: var(--bg-brand);
+             transition: width 1s linear; }
+.m-qr__hint { text-align: center; font-size: var(--fs-md); font-weight: 600; }
+.m-alert { color: var(--fg-danger); }
+/* Orqaga tugmasi — sarlavha yonida.
+   ⚠ `.m-head` da `justify-content: space-between` bor (u ikki chetga
+   yoyadi) — orqaga tugmasi bo'lgan sarlavhada esa ikkalasi CHAPDA
+   turishi kerak, shuning uchun alohida modifikator. */
+.m-back {
+  width: 40px; height: 40px; border-radius: var(--r-md);
+  border: 1px solid var(--border-subtle); background: var(--bg-surface);
+  color: var(--fg-primary); cursor: pointer; margin-right: 10px; flex-shrink: 0;
+}
+.m-head--back { justify-content: flex-start; }

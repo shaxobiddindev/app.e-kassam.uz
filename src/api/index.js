@@ -445,6 +445,18 @@ export const securityApi = {
   billing: () => request("/security/billing"),
 };
 
+/* ── Do'kon QR kodi (V34) ─────────────────────────────────────────────
+   Mijozni ro'yxatdan o'tkazish uchun AYLANUVCHI QR (30 soniya).
+
+   ⚠ `config()` SIRNI qaytaradi va ilova kodni O'ZI hisoblaydi (TOTP) —
+   do'konda internet uzilganda ham QR yangilanaveradi. `setEnabled` esa
+   faqat rahbarga ochiq (serverdagi qoida bilan bir xil): u butun
+   mijozlar bazasini yangi yozuvlarga ochadigan sozlama. */
+export const shopQrApi = {
+  config:     ()      => request("/shop-qr"),
+  setEnabled: (value) => request(`/shop-qr/enabled?value=${value ? "true" : "false"}`, { method: "POST" }),
+};
+
 // ─── Mijozlar ─────────────────────────────────────────────────
 /* ── Sodiqlik darajalari ──────────────────────────────────────────────
    ⚠ Jadvalni O'QISH kassirga ham ochiq (mijozga darajasini aytishi

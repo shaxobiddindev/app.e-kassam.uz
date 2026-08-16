@@ -9,7 +9,7 @@ import { useEffect, useState } from "react";
 /* Sozlamalar: Telegram, push holati, til/tema, to'liq panel, chiqish.
    Kassa sozlamalari (chegaralar, fiskal, apparat) ATAYLAB yo'q —
    ular do'kondagi ishlar, telefondan sozlanmaydi. */
-export default function MobileSettings({ toast, user, logout }) {
+export default function MobileSettings({ toast, user, logout, onOpenQr }) {
   const { t } = useT();
   const confirm = useConfirm();
   const [pushState, setPushState] = useState("unknown"); // unknown|on|off|unsupported
@@ -66,6 +66,16 @@ export default function MobileSettings({ toast, user, logout }) {
       </section>
 
       <TelegramPanel toast={toast} />
+
+      {/* Do'kon QR — mijozni ro'yxatdan o'tkazish (V34) */}
+      <section className="m-card">
+        <button className="btn btn-outline" style={{ width: "100%" }} onClick={onOpenQr}>
+          <i className="fa-solid fa-qrcode" aria-hidden="true" /> {t("qr.title")}
+        </button>
+        <p className="text-muted" style={{ marginTop: 8, fontSize: 13, textAlign: "center" }}>
+          {t("qr.settingsHint")}
+        </p>
+      </section>
 
       {/* To'liq panel: kassa, ombor, mijozlar va boshqa barcha bo'limlar */}
       <section className="m-card">
