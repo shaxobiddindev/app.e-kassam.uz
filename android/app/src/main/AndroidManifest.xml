@@ -18,6 +18,22 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
+            <!-- ILOVANI TASHQARIDAN OCHISH (V37).
+                 Telegram botdagi «Ilovani ochish» tugmasi shu yerga olib
+                 keladi. ⚠ Telegram inline tugmada FAQAT http/https ga
+                 ruxsat beradi va `ekassam://` kabi sxemani rad etadi —
+                 shuning uchun bot https havolasini beradi, o'sha sahifa
+                 esa shu manzilga yo'naltiradi va Android ilovani ochadi.
+
+                 ⚠ Ilova o'rnatilmagan bo'lsa hech narsa buzilmaydi:
+                 havoladagi sahifa brauzerda ochilib qolaveradi. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="ekassam" android:host="app" />
+            </intent-filter>
         </activity>
 
         <provider
