@@ -1,16 +1,21 @@
 import { useEffect, useRef, useState } from "react";
 import { appApi, setAppToken } from "./customerApi";
 import { LOGO_URL, LOGO_DARK_URL } from "../config";
+import { isNativeShell } from "../lib/ek-desktop";
 
 /* ══════════════════════════════════════════════════════════════════════════
    MIJOZ KIRISHI (V37 · V40)
 
    To'rtta yo'l, bittasi asosiy:
-     1. TELEGRAM BOTI (standart) — tugma → bot ochiladi → mijoz «Telefon
-        yuborish» ni bosadi → ilova sessiyani O'ZI oladi (polling). Mijoz
-        hech qanday kod ko'chirmaydi.
-     2. TELEGRAM BILAN KIRISH (OIDC) — brauzerda: bot bilan yozishish
-        shart emas, Telegramning o'z sahifasida ruxsat beriladi.
+     1. TELEGRAM BOTI (standart) — tugma → TELEGRAM ILOVASI ochiladi
+        (`tg://`, brauzersiz) → mijoz «Telefon yuborish» ni bosadi →
+        ilova sessiyani O'ZI oladi (polling) va odam orqaga qaytishi
+        bilan kirgan bo'ladi. Hech qanday kod ko'chirilmaydi.
+     2. TELEGRAM BILAN KIRISH (OIDC) — FAQAT BRAUZERDA. Bu veb oqim:
+        `oauth.telegram.org` sahifasi ochiladi. ⚠ Telefon ilovasida bu
+        tugma KO'RSATILMAYDI — u yerda Chrome ochilib, qaytishda ham
+        Chrome'da qolib ketardi (foydalanuvchi shikoyati, 2026-08-17).
+        Ilovada 1-yo'lning o'zi «ilovadan → Telegramga → ilovaga» beradi.
      3. SMS kodi — telefon raqamini O'ZI tasdiqlaydi, ya'ni yangi hisob
         ham shu yerda ochiladi.
      4. POCHTA kodi — faqat MAVJUD hisobga kirish uchun (pochta profilda,
@@ -36,6 +41,8 @@ export default function CustomerLogin({ onLoggedIn, onStaffLogin }) {
   const [mode, setMode]   = useState("idle");
   const [error, setError] = useState("");
   const [methods, setMethods] = useState({ telegramBot: true });
+  /* Telegram ilovasi o'rnatilmagan bo'lsa — brauzerdagi zaxira havola */
+  const [webLink, setWebLink] = useState("");
   const poller = useRef(null);
   const stopAt = useRef(0);
 
@@ -49,11 +56,20 @@ export default function CustomerLogin({ onLoggedIn, onStaffLogin }) {
     setError("");
     setMode("waiting");
     try {
-      const { code, link } = await appApi.loginStart();
+      const { code, link, appLink } = await appApi.loginStart();
+      setWebLink(link);
 
-      /* Botni ochamiz. Telefonda bu Telegram ilovasini ishga tushiradi,
-         brauzerda esa web-telegram. */
-      window.open(link, "_blank", "noopener");
+      /* ⚠⚠ TELEFON ILOVASIDA `tg://` SXEMASI (2026-08-17, foydalanuvchi
+         shikoyati). `https://t.me/…` ishlatilganda Android avval CHROME ni
+         ochib, keyin uni Telegramga o'tkazardi — qaytishda esa odam
+         Chrome'da qolib ketardi. `tg://resolve?...` esa Telegram ilovasini
+         TO'G'RIDAN-TO'G'RI ochadi: brauzer umuman aralashmaydi.
+
+         ⚠ `location.href`, `window.open` EMAS: nostandart sxemani
+         Capacitor WebView'i Intent qilib uzatadi, `window.open` esa uni
+         yangi «oyna» deb hisoblab, baribir brauzerga berardi. */
+      if (isNativeShell() && appLink) window.location.href = appLink;
+      else window.open(link, "_blank", "noopener");
 
       /* ⚠ Polling 10 daqiqada to'xtaydi — kod ham shuncha yashaydi.
          Cheksiz so'rov yuborish telefon batareyasini yeb qo'yardi. */
@@ -129,6 +145,13 @@ export default function CustomerLogin({ onLoggedIn, onStaffLogin }) {
           <p className="cu-muted">
             «📱 Telefon raqamimni yuborish» tugmasini bosing — bu yerga o'zi qaytadi.
           </p>
+          {/* Telegram o'rnatilmagan qurilma uchun — brauzerdagi web-telegram */}
+          {webLink && (
+            <button className="cu-btn cu-btn--ghost"
+                    onClick={() => window.open(webLink, "_blank", "noopener")}>
+              Telegram ochilmadimi? Brauzerda ochish
+            </button>
+          )}
           <button className="cu-btn cu-btn--ghost"
                   onClick={() => { clearInterval(poller.current); setMode("idle"); }}>
             Bekor qilish
@@ -156,7 +179,11 @@ export default function CustomerLogin({ onLoggedIn, onStaffLogin }) {
             <i className="fa-brands fa-telegram" aria-hidden="true" /> Telegram bilan kirish
           </button>
 
-          {methods.telegramOidc && (
+          {/* ⚠ OIDC — VEB oqim (oauth.telegram.org sahifasi). Ilovada uni
+              ko'rsatish Chrome ochilishiga olib keladi, foydalanuvchi esa
+              aynan shuni istamadi: ilovadan → Telegramga → ilovaga.
+              Yuqoridagi bot tugmasi shu yo'lni beradi. */}
+          {methods.telegramOidc && !isNativeShell() && (
             <button className="cu-btn cu-btn--ghost" onClick={startOidc}>
               <i className="fa-brands fa-telegram" aria-hidden="true" /> Telegram hisobim bilan (botsiz)
             </button>
