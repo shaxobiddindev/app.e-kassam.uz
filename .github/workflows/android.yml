@@ -87,18 +87,39 @@ jobs:
       # Doimiy `android-latest` relizi: bo'lsa faqat APK yangilanadi
       # (--clobber), bo'lmasa yaratiladi. Sayt havolasi hech qachon
       # o'zgarmaydi.
+      #
+      # ⚠ QAYTA URINISH SHART. 2026-08-17 da ketma-ket IKKI reliz aynan shu
+      # yerda yiqildi: `--clobber` avval eski asset'ni O'CHIRADI va o'sha
+      # DELETE so'rovi GitHub'ning o'z uzilishida `HTTP 503` oldi. APK esa
+      # qurilib, imzolanib bo'lgan edi — ikki daqiqalik qurilish bir
+      # soniyalik xizmat uzilishi tufayli behuda ketdi va relizni qo'lda
+      # qaytadan teglashga to'g'ri keldi. Bu qadam SO'NGGISI: qayta
+      # urinish hech narsani takrorlamaydi, faqat yuklashni.
       - name: Reliz (android-latest, prerelease)
         if: startsWith(github.ref, 'refs/tags/android-v')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG_NOTES="Android APK. Doimiy havola: https://github.com/$GITHUB_REPOSITORY/releases/download/android-latest/e-kassam.apk"
-          if gh release view android-latest > /dev/null 2>&1; then
-            gh release upload android-latest e-kassam.apk --clobber
-            gh release edit android-latest --notes "$TAG_NOTES ($GITHUB_REF_NAME)"
-          else
-            gh release create android-latest e-kassam.apk \
-              --prerelease \
-              --title "e-Kassam — Android" \
-              --notes "$TAG_NOTES ($GITHUB_REF_NAME)"
-          fi
+
+          publish() {
+            if gh release view android-latest > /dev/null 2>&1; then
+              gh release upload android-latest e-kassam.apk --clobber || return 1
+              gh release edit android-latest --notes "$TAG_NOTES ($GITHUB_REF_NAME)" || return 1
+            else
+              gh release create android-latest e-kassam.apk \
+                --prerelease \
+                --title "e-Kassam — Android" \
+                --notes "$TAG_NOTES ($GITHUB_REF_NAME)" || return 1
+            fi
+          }
+
+          # Oxirgi 0 — «boshqa kutmaymiz», ya'ni jami besh urinish.
+          for delay in 15 30 60 120 0; do
+            if publish; then echo "Reliz yangilandi."; exit 0; fi
+            [ "$delay" = "0" ] && break
+            echo "Reliz qadami yiqildi — ${delay}s dan keyin qayta urinaman."
+            sleep "$delay"
+          done
+          echo "Reliz besh urinishda ham o'tmadi — GitHub holatini tekshiring."
+          exit 1
