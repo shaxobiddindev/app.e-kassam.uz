@@ -1878,8 +1878,8 @@ img.logo--dark { display: none; }
 .pt-phone__cc { display: flex; align-items: center; padding: 0 10px 0 14px;
                 font-family: var(--font-mono); color: var(--fg-secondary);
                 background: var(--bg-sunken); border-right: 1.5px solid var(--border-subtle); }
-.pt-phone .pt-input { border: 0; border-radius: 0; font-family: var(--font-mono); }
-.pt-phone .pt-input:focus { box-shadow: none; }
+.pt-phone .pt-input, .pt-phone .cu-input { border: 0; border-radius: 0; font-family: var(--font-mono); }
+.pt-phone .pt-input:focus, .pt-phone .cu-input:focus { box-shadow: none; }
 
 .pt-btn {
   min-height: 52px; width: 100%; margin-top: 16px;
@@ -2076,6 +2076,17 @@ img.logo--dark { display: none; }
   background: transparent; color: var(--fg-secondary);
   border: 1px solid var(--border-subtle); min-height: 46px; font-size: var(--fs-md);
 }
+/* Kirish usullari ro'yxati (V40) — birinchisi asosiy, qolgani zaxira */
+.cu-methods { display: grid; gap: 10px; }
+
+/* Kod bilan kirish formasi (pochta va SMS uchun bitta) */
+.cu-otp {
+  display: grid; gap: 8px; padding: 16px;
+  background: var(--bg-surface); border: 1px solid var(--border-subtle);
+  border-radius: var(--r-xl);
+}
+.cu-otp .cu-label { margin-top: 0; }
+
 /* Xodim havolasi — ko'rinadi, lekin e'tiborni tortmaydi */
 .cu-staff {
   background: none; border: 0; cursor: pointer; padding: 12px;

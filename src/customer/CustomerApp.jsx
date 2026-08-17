@@ -511,6 +511,8 @@ function ProfileScreen({ me, onSaved, onLogout }) {
         </button>
       </div>
 
+      <EmailCard me={me} onSaved={onSaved} />
+
       <div className="cu-card">
         <div className="cu-row">
           <span><i className="fa-solid fa-bell" aria-hidden="true" /> Bildirishnomalar</span>
@@ -525,6 +527,96 @@ function ProfileScreen({ me, onSaved, onLogout }) {
       </div>
 
       <button className="cu-btn cu-btn--ghost" onClick={askLogout}>Chiqish</button>
+    </div>
+  );
+}
+
+/* ── Pochta bilan kirish (V40) ───────────────────────────────────────────
+   ⚠ Pochta TELEFONNING O'RNINI BOSMAYDI: do'kondagi karta va ballar
+   telefon bo'yicha bog'lanadi, pochta esa faqat SHU hisobga kirishning
+   ikkinchi yo'li (Telegram o'chirilgan yoki qo'lda emas holat uchun).
+   Shu sababli u profilda qo'shiladi va kod bilan tasdiqlanadi. */
+
+function EmailCard({ me, onSaved }) {
+  const [email, setEmail] = useState(me.email || "");
+  const [code, setCode]   = useState("");
+  const [stage, setStage] = useState(me.emailVerified ? "done" : (me.email ? "code" : "edit"));
+  const [busy, setBusy]   = useState(false);
+  const [error, setError] = useState("");
+  const [note, setNote]   = useState("");
+
+  const send = async () => {
+    setError(""); setNote(""); setBusy(true);
+    try {
+      await appApi.emailAdd(email.trim());
+      setStage("code");
+      setNote("Tasdiqlash kodi pochtangizga yuborildi.");
+    } catch (e) {
+      setError(e.message || "Yuborilmadi");
+    } finally { setBusy(false); }
+  };
+
+  const confirm = async () => {
+    setError(""); setBusy(true);
+    try {
+      const r = await appApi.emailConfirm(code.trim());
+      onSaved(r);
+      setStage("done");
+      setNote("Pochta tasdiqlandi — endi u bilan ham kirsangiz bo'ladi.");
+    } catch (e) {
+      setError(e.message || "Kod noto'g'ri");
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <div className="cu-card">
+      <div className="cu-row">
+        <span><i className="fa-solid fa-envelope" aria-hidden="true" /> Pochta bilan kirish</span>
+        {me.emailVerified && <span className="cu-pos">tasdiqlangan</span>}
+      </div>
+      <p className="cu-muted" style={{ fontSize: 13, margin: "6px 0 8px" }}>
+        Telegramsiz ham kira olishingiz uchun. Kirish kodi shu manzilga keladi.
+      </p>
+
+      {stage === "done" ? (
+        <>
+          <div className="cu-readonly">{me.email}</div>
+          <button className="cu-btn cu-btn--ghost"
+                  onClick={() => { setStage("edit"); setNote(""); }}>
+            Boshqa pochta
+          </button>
+        </>
+      ) : (
+        <>
+          <label className="cu-label" htmlFor="cu-email">Pochta manzili</label>
+          <input id="cu-email" className="cu-input" type="email" inputMode="email"
+                 autoComplete="email" placeholder="ism@pochta.uz" value={email}
+                 disabled={stage === "code"}
+                 onChange={(e) => setEmail(e.target.value)} />
+
+          {stage === "code" && (
+            <>
+              <label className="cu-label" htmlFor="cu-email-code">Kelgan kod</label>
+              <input id="cu-email-code" className="cu-input" inputMode="numeric"
+                     autoComplete="one-time-code" maxLength={6} placeholder="123456"
+                     value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))} />
+            </>
+          )}
+
+          {error && <div className="cu-error" role="alert">{error}</div>}
+          {note && <p className="cu-muted">{note}</p>}
+
+          <button className="cu-btn" disabled={busy || (stage === "edit" ? !email.trim() : code.length < 4)}
+                  onClick={stage === "edit" ? send : confirm}>
+            {busy ? "Kutilmoqda…" : stage === "edit" ? "Kod yuborish" : "Tasdiqlash"}
+          </button>
+          {stage === "code" && (
+            <button className="cu-btn cu-btn--ghost" onClick={() => { setStage("edit"); setCode(""); }}>
+              Manzilni o'zgartirish
+            </button>
+          )}
+        </>
+      )}
     </div>
   );
 }

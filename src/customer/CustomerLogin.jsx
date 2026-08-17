@@ -3,32 +3,51 @@ import { appApi, setAppToken } from "./customerApi";
 import { LOGO_URL, LOGO_DARK_URL } from "../config";
 
 /* ══════════════════════════════════════════════════════════════════════════
-   MIJOZ KIRISHI — Telegram orqali (V37)
+   MIJOZ KIRISHI (V37 · V40)
 
-   Oqim: tugma → bot ochiladi → mijoz «Telefon yuborish» ni bosadi →
-   ilova sessiyani O'ZI oladi (polling). Mijoz hech qanday kod
-   ko'chirmaydi — SMS kutishdan ham tez.
+   To'rtta yo'l, bittasi asosiy:
+     1. TELEGRAM BOTI (standart) — tugma → bot ochiladi → mijoz «Telefon
+        yuborish» ni bosadi → ilova sessiyani O'ZI oladi (polling). Mijoz
+        hech qanday kod ko'chirmaydi.
+     2. TELEGRAM BILAN KIRISH (OIDC) — brauzerda: bot bilan yozishish
+        shart emas, Telegramning o'z sahifasida ruxsat beriladi.
+     3. SMS kodi — telefon raqamini O'ZI tasdiqlaydi, ya'ni yangi hisob
+        ham shu yerda ochiladi.
+     4. POCHTA kodi — faqat MAVJUD hisobga kirish uchun (pochta profilda,
+        telefon tasdiqlangandan keyin qo'shiladi).
 
-   ⚠ NEGA SMS EMAS: provayder hali ulanmagan. Telegram esa tasdiqlangan
-   raqamni bepul beradi. SMS ulanganda bu ekranga ikkinchi tugma
-   qo'shiladi, oqimning qolgani o'zgarmaydi.
+   ⚠ Ro'yxat SERVERDAN keladi (`/app/auth/methods`): SMS provayderi yoki
+   Telegram OIDC siri sozlanmagan bo'lsa, tugma UMUMAN chizilmaydi.
+   Ishlamaydigan tugma odamni bekorga urintiradi.
+
+   ⚠⚠ NEGA POCHTA BILAN YANGI HISOB OCHILMAYDI: do'kondagi karta va
+   ballar TELEFON bo'yicha bog'lanadi. Tasdiqlanmagan raqamli hisob
+   mijozga begonaning ballarini ko'rsatib qo'yishi mumkin edi.
 
    ⚠ «Do'kon xodimiman» — pastda, kichik. Mijoz uni ko'radi-yu e'tibor
    bermaydi (unga ma'nosiz), do'kon egasi esa hech narsa eslab qolmasdan
-   bosadi. Yashirin kod yoki «7 marta bosish» kabi hiyla kerak emas:
-   egasi ham oddiy odam.
+   bosadi. Yashirin kod yoki «7 marta bosish» kabi hiyla kerak emas.
    ══════════════════════════════════════════════════════════════════════════ */
+
+const OIDC_STATE_KEY = "ek_app_oidc";
+
 export default function CustomerLogin({ onLoggedIn, onStaffLogin }) {
-  const [phase, setPhase] = useState("idle");   // idle | waiting | error
+  /* idle | waiting (bot) | email | sms — oxirgi ikkisida kod so'raladi */
+  const [mode, setMode]   = useState("idle");
   const [error, setError] = useState("");
+  const [methods, setMethods] = useState({ telegramBot: true });
   const poller = useRef(null);
   const stopAt = useRef(0);
 
-  useEffect(() => () => clearInterval(poller.current), []);
+  useEffect(() => {
+    appApi.methods().then(setMethods).catch(() => {});
+    return () => clearInterval(poller.current);
+  }, []);
 
-  const start = async () => {
+  /* ── 1. Bot orqali ────────────────────────────────────────────────── */
+  const startBot = async () => {
     setError("");
-    setPhase("waiting");
+    setMode("waiting");
     try {
       const { code, link } = await appApi.loginStart();
 
@@ -43,7 +62,7 @@ export default function CustomerLogin({ onLoggedIn, onStaffLogin }) {
       poller.current = setInterval(async () => {
         if (Date.now() > stopAt.current) {
           clearInterval(poller.current);
-          setPhase("idle");
+          setMode("idle");
           setError("Vaqt tugadi — qaytadan urinib ko'ring");
           return;
         }
@@ -56,13 +75,27 @@ export default function CustomerLogin({ onLoggedIn, onStaffLogin }) {
           }
         } catch (e) {
           clearInterval(poller.current);
-          setPhase("idle");
+          setMode("idle");
           setError(e.message || "Kirish bekor qilindi");
         }
       }, 2500);
     } catch (e) {
-      setPhase("idle");
+      setMode("idle");
       setError(e.message || "Havola olinmadi");
+    }
+  };
+
+  /* ── 2. Telegram OIDC ─────────────────────────────────────────────── */
+  const startOidc = async () => {
+    setError("");
+    try {
+      const { url } = await appApi.oidcStart();
+      /* ⚠ Yangi oyna EMAS, o'sha oynada: Telegram qaytish manzilini
+         ro'yxatdan tekshiradi va pop-up brauzerlarda to'silib qoladi. */
+      sessionStorage.setItem(OIDC_STATE_KEY, "1");
+      window.location.href = url;
+    } catch (e) {
+      setError(e.message || "Telegram sahifasi ochilmadi");
     }
   };
 
@@ -89,27 +122,153 @@ export default function CustomerLogin({ onLoggedIn, onStaffLogin }) {
 
       {error && <div className="cu-error" role="alert">{error}</div>}
 
-      {phase === "waiting" ? (
+      {mode === "waiting" && (
         <div className="cu-waiting">
           <i className="fa-brands fa-telegram cu-waiting__icon" aria-hidden="true" />
           <p><b>Telegram ochildi</b></p>
           <p className="cu-muted">
             «📱 Telefon raqamimni yuborish» tugmasini bosing — bu yerga o'zi qaytadi.
           </p>
-          <button className="cu-btn cu-btn--ghost" onClick={() => { clearInterval(poller.current); setPhase("idle"); }}>
+          <button className="cu-btn cu-btn--ghost"
+                  onClick={() => { clearInterval(poller.current); setMode("idle"); }}>
             Bekor qilish
           </button>
         </div>
-      ) : (
-        <button className="cu-btn cu-btn--tg" onClick={start}>
-          <i className="fa-brands fa-telegram" aria-hidden="true" /> Telegram bilan kirish
-        </button>
+      )}
+
+      {mode === "email" && (
+        <OtpForm
+          kind="email"
+          onBack={() => setMode("idle")}
+          onDone={(token) => { setAppToken(token); onLoggedIn(); }} />
+      )}
+
+      {mode === "sms" && (
+        <OtpForm
+          kind="sms"
+          onBack={() => setMode("idle")}
+          onDone={(token) => { setAppToken(token); onLoggedIn(); }} />
+      )}
+
+      {mode === "idle" && (
+        <div className="cu-methods">
+          <button className="cu-btn cu-btn--tg" onClick={startBot}>
+            <i className="fa-brands fa-telegram" aria-hidden="true" /> Telegram bilan kirish
+          </button>
+
+          {methods.telegramOidc && (
+            <button className="cu-btn cu-btn--ghost" onClick={startOidc}>
+              <i className="fa-brands fa-telegram" aria-hidden="true" /> Telegram hisobim bilan (botsiz)
+            </button>
+          )}
+
+          {methods.sms && (
+            <button className="cu-btn cu-btn--ghost" onClick={() => { setError(""); setMode("sms"); }}>
+              <i className="fa-solid fa-comment-sms" aria-hidden="true" /> SMS kodi bilan
+            </button>
+          )}
+
+          {methods.email && (
+            <button className="cu-btn cu-btn--ghost" onClick={() => { setError(""); setMode("email"); }}>
+              <i className="fa-solid fa-envelope" aria-hidden="true" /> Pochta orqali
+            </button>
+          )}
+        </div>
       )}
 
       {/* Xodimlar uchun — kichik, lekin yashirin emas */}
       <button className="cu-staff" onClick={onStaffLogin}>
         Do'kon xodimiman
       </button>
+    </div>
+  );
+}
+
+/* ── Kod bilan kirish (pochta va SMS uchun bitta forma) ──────────────────
+   ⚠ Ikkala kanal uchun BITTA komponent: oqim aynan bir xil (manzil →
+   kod → sessiya) va uni ikki marta yozish ikki xil xatoga olib borardi. */
+
+function OtpForm({ kind, onBack, onDone }) {
+  const [target, setTarget] = useState("");
+  const [code, setCode]     = useState("");
+  const [sent, setSent]     = useState(false);
+  const [busy, setBusy]     = useState(false);
+  const [error, setError]   = useState("");
+
+  const isEmail = kind === "email";
+
+  const send = async () => {
+    setError("");
+    setBusy(true);
+    try {
+      if (isEmail) await appApi.emailStart(target.trim());
+      else         await appApi.smsStart(target.trim());
+      setSent(true);
+    } catch (e) {
+      setError(e.message || "Yuborilmadi");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const verify = async () => {
+    setError("");
+    setBusy(true);
+    try {
+      const r = isEmail
+        ? await appApi.emailVerify(target.trim(), code.trim())
+        : await appApi.smsVerify(target.trim(), code.trim());
+      onDone(r.token);
+    } catch (e) {
+      setError(e.message || "Kod noto'g'ri");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="cu-otp">
+      <label className="cu-label" htmlFor="cu-otp-target">
+        {isEmail ? "Pochta manzilingiz" : "Telefon raqamingiz"}
+      </label>
+      {isEmail ? (
+        <input id="cu-otp-target" className="cu-input" type="email" inputMode="email"
+               autoComplete="email" placeholder="ism@pochta.uz" value={target}
+               disabled={sent}
+               onChange={(e) => setTarget(e.target.value)} />
+      ) : (
+        /* ⚠ `+998` maydon ICHIDA emas, yonida: kod ichida bo'lsa odam
+           to'liq raqam yozadi va u abonent raqami bo'lib tushadi. */
+        <div className="pt-phone">
+          <span className="pt-phone__cc">+998</span>
+          <input id="cu-otp-target" className="cu-input" type="tel" inputMode="tel"
+                 autoComplete="tel" placeholder="90 123 45 67" value={target}
+                 disabled={sent}
+                 onChange={(e) => setTarget(e.target.value)} />
+        </div>
+      )}
+
+      {sent && (
+        <>
+          <label className="cu-label" htmlFor="cu-otp-code">Kelgan kod</label>
+          <input id="cu-otp-code" className="cu-input" inputMode="numeric"
+                 autoComplete="one-time-code" maxLength={6} placeholder="123456"
+                 value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))} />
+          <p className="cu-muted">
+            {isEmail
+              ? "Kod pochtangizga yuborildi. Agar bu manzil hech qanday hisobga bog'lanmagan bo'lsa, xat kelmaydi."
+              : "Kod SMS orqali yuborildi."}
+          </p>
+        </>
+      )}
+
+      {error && <div className="cu-error" role="alert">{error}</div>}
+
+      <button className="cu-btn" disabled={busy || (!sent ? !target.trim() : code.length < 4)}
+              onClick={sent ? verify : send}>
+        {busy ? "Kutilmoqda…" : sent ? "Kirish" : "Kod yuborish"}
+      </button>
+      <button className="cu-btn cu-btn--ghost" onClick={onBack}>Orqaga</button>
     </div>
   );
 }

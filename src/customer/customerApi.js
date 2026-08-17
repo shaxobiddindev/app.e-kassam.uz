@@ -44,6 +44,31 @@ export const appApi = {
   logout:     (push)  => call(`/auth/logout${push ? `?push=${encodeURIComponent(push)}` : ""}`,
                               { method: "POST" }),
 
+  /* ── Kirishning boshqa yo'llari (V40) ──
+     ⚠ `methods()` qaysi usul HOZIR ishlashini aytadi: sozlanmagan
+     usulni ko'rsatib qo'yish odamni ishlamaydigan yo'lga boshlaydi. */
+  methods:      ()             => call("/auth/methods", { auth: false }),
+
+  emailStart:   (email)        => call("/auth/email/start",
+                                       { method: "POST", body: { email }, auth: false }),
+  emailVerify:  (email, code)  => call("/auth/email/verify",
+                                       { method: "POST", body: { email, code }, auth: false }),
+
+  smsStart:     (phone)        => call("/auth/sms/start",
+                                       { method: "POST", body: { phone }, auth: false }),
+  smsVerify:    (phone, code)  => call("/auth/sms/verify",
+                                       { method: "POST", body: { phone, code }, auth: false }),
+
+  /* Telegram OIDC: server manzil beradi, brauzer o'sha yerga o'tadi va
+     `?code=&state=` bilan qaytadi. */
+  oidcStart:    ()             => call("/auth/telegram/oidc/start", { auth: false }),
+  oidcFinish:   (code, state)  => call("/auth/telegram/oidc/callback",
+                                       { method: "POST", body: { code, state }, auth: false }),
+
+  /* Profildagi pochta — qo'shish va kod bilan tasdiqlash. */
+  emailAdd:     (email)        => call("/me/email", { method: "POST", body: { email } }),
+  emailConfirm: (code)         => call("/me/email/confirm", { method: "POST", body: { code } }),
+
   /* ── Bildirishnoma ──
      Qurilma tokeni XODIMNIKIDAN alohida jadvalda (`app_push_tokens`):
      mijoz `users` da yo'q va bu chegara ataylab qo'yilgan. */

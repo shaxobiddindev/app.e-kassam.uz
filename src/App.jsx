@@ -45,6 +45,8 @@ import CustomerPortal from "./portal/CustomerPortal";
 /* Mijoz ilovasi (V37) — telefon ilovasida kirish ekrani endi shu */
 import CustomerLogin from "./customer/CustomerLogin";
 import CustomerApp from "./customer/CustomerApp";
+/* Mijoz ilovasi BRAUZERDA (V40) — Telegram OIDC dan qaytish ham shu yerda */
+import CustomerWeb from "./customer/CustomerWeb";
 import { getAppToken } from "./customer/customerApi";
 
 // ⚠ Tilni URL dan olish MODUL TANASIDA, `replaceState` dan OLDIN bo'lishi
@@ -63,6 +65,18 @@ initLang();
    ketardi va kartasini umuman ko'rmasdi.
    ══════════════════════════════════════════════════════════════════════════ */
 const IS_PORTAL = /^\/(qr|kabinet|c\/)(\/|$|\d)/.test(window.location.pathname);
+
+/* ══════════════════════════════════════════════════════════════════════════
+   MIJOZ ILOVASI BRAUZERDA (V40)
+
+   `/kirish/telegram` — Telegram OIDC dan qaytish manzili (BotFather'da
+   ro'yxatdan o'tgan bo'lishi shart), `/mening` — kirgandan keyingi
+   ekranlar.
+
+   ⚠ Bu ham `IS_PORTAL` kabi MODUL TANASIDA va quyidagi `clear()` dan
+   OLDIN aniqlanishi shart: u yerda xodim tokeni yo'q deb hisoblanib,
+   brauzer kirish sahifasiga otib yuborilardi. */
+const IS_APP_WEB = /^\/(mening|kirish\/telegram)(\/|$)/.test(window.location.pathname);
 
 // ── Auth Handling ────────────────────────────────────────────
 const urlParams = new URLSearchParams(window.location.search);
@@ -110,7 +124,7 @@ const localType = localStorage.getItem("ek_type");
 /* ⚠ `!IS_PORTAL`: mijoz kabinetida xodim tokeni yo'q va BO'LMAYDI ham.
    Usiz `clear()` mijozning kabinet kalitini o'chirib, uni kirish
    sahifasiga otib yuborardi. */
-if (!IS_PORTAL && (!localToken || localType !== "user")) {
+if (!IS_PORTAL && !IS_APP_WEB && (!localToken || localType !== "user")) {
   // Til tanlovi sessiyaga emas, BRAUZERGA tegishli — `clear()` dan omon
   // qolsin, aks holda chiqarilgan foydalanuvchi kirish ekranini yana
   // boshqa tilda ko'radi. `ek_forceMobile` ham (dev-bayroq): usiz mobil
@@ -118,9 +132,19 @@ if (!IS_PORTAL && (!localToken || localType !== "user")) {
   // sahifa auth'ga qochib ketardi.
   const _lang = localStorage.getItem("ek_lang");
   const _fm   = localStorage.getItem("ek_forceMobile");
+  /* ⚠⚠ MIJOZ SESSIYASI ham omon qolishi SHART (V37 dan beri buzuq edi):
+     mijoz qurilmasida xodim tokeni HECH QACHON bo'lmaydi, ya'ni bu shox
+     har ochilishda ishlaydi va `clear()` mijozning kalitini o'chirib
+     yuborardi — odam ilovani har safar qaytadan ochganda Telegramdan
+     qayta kirishga majbur bo'lardi. Karta tanlovi ham shu yerda: u
+     shunchaki qulaylik sozlamasi. */
+  const _app  = localStorage.getItem("ek_app_token");
+  const _card = localStorage.getItem("ek_app_card_shop");
   localStorage.clear();
   if (_lang) localStorage.setItem("ek_lang", _lang);
   if (_fm)   localStorage.setItem("ek_forceMobile", _fm);
+  if (_app)  localStorage.setItem("ek_app_token", _app);
+  if (_card) localStorage.setItem("ek_app_card_shop", _card);
 
   // ⚠ DESKTOP'DA YO'NALTIRISH YO'Q. `.exe` ichida `auth.e-kassam.uz` ga
   // o'tish oynani bo'sh sahifaga aylantirardi va kassir uchun ilova
@@ -152,6 +176,19 @@ export default function App() {
      ⚠ `IS_PORTAL` — MODUL darajasidagi o'zgarmas (manzil qatoridan bir
      marta o'qiladi). Shu sababli bu erta `return` React'ning hook
      tartibini buzmaydi: har render'da bir xil shox tanlanadi. */
+  /* ── MIJOZ ILOVASI BRAUZERDA (V40) ──────────────────────────────────
+     Telegram OIDC dan qaytish va undan keyingi ekranlar. Xodim oqimidan
+     butunlay chetda — bu yerda ham kirish, ham rol, ham do'kon yo'q. */
+  if (IS_APP_WEB) {
+    return (
+      <ErrorBoundary>
+        <ConfirmProvider>
+          <CustomerWeb />
+        </ConfirmProvider>
+      </ErrorBoundary>
+    );
+  }
+
   if (IS_PORTAL) {
     return (
       <ErrorBoundary>
