@@ -18,14 +18,26 @@ export const setAppToken = (t) => localStorage.setItem(APP_TOKEN_KEY, t);
 export const clearAppToken = () => localStorage.removeItem(APP_TOKEN_KEY);
 
 async function call(path, { method = "GET", body, auth = true } = {}) {
-  const res = await fetch(`${API_BASE}/app${path}`, {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-      ...(auth && getAppToken() ? { "X-App-Token": getAppToken() } : {}),
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  let res;
+  try {
+    res = await fetch(`${API_BASE}/app${path}`, {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        ...(auth && getAppToken() ? { "X-App-Token": getAppToken() } : {}),
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch (e) {
+    /* ⚠ Brauzerning o'z matni — «Failed to fetch» (2026-08-17 shikoyati).
+       U odamga hech narsa demaydi va uni «ilova buzuq» deb o'ylatadi.
+       Aslida bu deyarli har doim internet uzilishi yoki server javob
+       bermayotgani. Xatoni BELGILAB qo'yamiz — ekran shunga qarab
+       «qayta urinish» taklif qiladi. */
+    const err = new Error("Internet bilan aloqa yo'q. Ulanishni tekshirib, qayta urinib ko'ring.");
+    err.offline = true;
+    throw err;
+  }
   const json = await res.json().catch(() => ({}));
   if (!res.ok || json.success === false) {
     const err = new Error(json.message || `Xatolik ${res.status}`);

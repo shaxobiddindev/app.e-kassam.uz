@@ -7,6 +7,7 @@ import LangSelect from "../components/ek/LangSelect";
 import { useConfirm } from "../context/ConfirmProvider";
 import { useAuth } from "../hooks/useAuth";
 import FiscalPanel from "../components/FiscalPanel";
+import UpdatePanel from "../components/UpdatePanel";
 import TelegramPanel from "../components/TelegramPanel";
 import HardwareSettings from "../components/HardwareSettings";
 import ShopQrPanel from "../components/ShopQrPanel";
@@ -290,6 +291,15 @@ export default function SettingsPage({ toast }) {
 
       {/* Telegram hisobot boti (V32) — kunlik PUL hisoboti, faqat rahbarga */}
       {isManager && <TelegramPanel toast={toast} />}
+
+      {/* ⚠ YANGILANISH BO'LIMI (2026-08-17). Ilgari yangilanish faqat
+          avtomatik oyna orqali taklif qilinardi va u tasodifan yopilsa
+          ikki soatga uxlab qolardi — odamda uni qayta chaqirish yo'li
+          yo'q edi (ilovani o'chirib-yoqishdan boshqa). */}
+      <Section icon="fa-cloud-arrow-down" title={t("update.section")}
+               hint={t("update.sectionHint")}>
+        <UpdatePanel version={version} toast={toast} />
+      </Section>
 
       <Section icon="fa-circle-info" title={t("settings.about")}>
         <Row label="e-Kassam">

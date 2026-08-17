@@ -1,6 +1,14 @@
-export default function Modal({ title, onClose, children, footer, maxWidth = 460 }) {
+/**
+ * ⚠ `dismissible={false}` — ORQA FONGA bosish oynani YOPMAYDI.
+ * Sabab (2026-08-17, foydalanuvchi shikoyati): yangilanish oynasi
+ * ekranning boshqa yeriga tasodifan tegilganda yo'qolib ketardi va
+ * qaytadan faqat ilova o'chirib-yoqilganda chiqardi. Muhim tanlov
+ * so'ralayotgan oyna tasodifiy teginish bilan ketmasligi kerak; chiqish
+ * yo'li baribir bor — ✕ va tugmalar.
+ */
+export default function Modal({ title, onClose, children, footer, maxWidth = 460, dismissible = true }) {
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onClick={dismissible ? onClose : undefined}>
       <div
         className="modal-box"
         style={{ maxWidth }}

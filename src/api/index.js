@@ -1,5 +1,5 @@
 import { API_BASE, LOGIN_URL, getDeviceId } from "../config";
-import { getLang, withLang } from "../lib/ek-i18n";
+import { getLang, withLang, t } from "../lib/ek-i18n";
 import { isNativeShell } from "../lib/ek-desktop";
 
 /**
@@ -124,11 +124,23 @@ async function request(path, options = {}, _retry = false) {
     if (headers[key] === undefined) delete headers[key];
   }
 
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...restOptions,
-    credentials: "include",
-    headers,
-  });
+  let res;
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      ...restOptions,
+      credentials: "include",
+      headers,
+    });
+  } catch (e) {
+    /* ⚠ Brauzerning xom matni — «Failed to fetch» (2026-08-17 shikoyati):
+       u kassirga hech narsa aytmaydi va «ilova buzuq» degan taassurot
+       qoldiradi. Aslida bu deyarli har doim internet uzilishi yoki server
+       javob bermayotgani. `offline` belgisi bilan chaqiruvchi joylar buni
+       tarmoq xatosi deb ajrata oladi. */
+    const err = new Error(t("common.offline"));
+    err.offline = true;
+    throw err;
+  }
 
   // Token muddati o'tgan — refresh qilib qayta urinib ko'r
   if (res.status === 401 && !_retry) {

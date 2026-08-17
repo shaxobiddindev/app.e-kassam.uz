@@ -68,7 +68,24 @@ export default function CustomerApp({ onLoggedOut }) {
     onLoggedOut();
   };
 
-  if (error) return <div className="cu-wrap"><div className="cu-card cu-center">{error}</div></div>;
+  /* ⚠ XATO EKRANI BOSHI BERK EDI (2026-08-17 shikoyati): «Failed to
+     fetch» yozuvi chiqib, na qaytish, na qayta urinish tugmasi bo'lardi —
+     ilovani o'chirib-yoqishdan boshqa yo'l qolmasdi. */
+  if (error) {
+    return (
+      <div className="cu-wrap">
+        <div className="cu-card cu-center">
+          <i className="fa-solid fa-wifi cu-big-icon" aria-hidden="true" />
+          <p><b>Ma'lumot yuklanmadi</b></p>
+          <p className="cu-muted">{error}</p>
+          <button className="cu-btn" onClick={() => { setError(""); load(); }}>
+            Qayta urinish
+          </button>
+          <button className="cu-btn cu-btn--ghost" onClick={logout}>Chiqish</button>
+        </div>
+      </div>
+    );
+  }
   if (!me)   return <div className="cu-wrap"><div className="cu-card cu-center">Yuklanmoqda…</div></div>;
 
   return (
@@ -92,6 +109,18 @@ export default function CustomerApp({ onLoggedOut }) {
           </button>
         ))}
       </nav>
+    </div>
+  );
+}
+
+/* ⚠ Har bir xato ekranida CHIQISH YO'LI bo'lishi shart: tarmoq uzilishi
+   odatiy hol va u ilovani boshi berk ko'chaga olib kirmasligi kerak. */
+function Retry({ text, onRetry }) {
+  return (
+    <div className="cu-card cu-center">
+      <i className="fa-solid fa-wifi cu-big-icon" aria-hidden="true" />
+      <p className="cu-muted">{text}</p>
+      <button className="cu-btn" onClick={onRetry}>Qayta urinish</button>
     </div>
   );
 }
@@ -202,11 +231,14 @@ function NewsScreen() {
   const [items, setItems] = useState(null);
   const [error, setError] = useState("");
 
-  useEffect(() => {
+  const load = () => {
+    setError("");
+    setItems(null);
     appApi.announcements().then(setItems).catch((e) => setError(e.message));
-  }, []);
+  };
+  useEffect(load, []);
 
-  if (error)  return <div className="cu-screen"><div className="cu-card cu-center">{error}</div></div>;
+  if (error)  return <div className="cu-screen"><Retry text={error} onRetry={load} /></div>;
   if (!items) return <div className="cu-screen"><div className="cu-card cu-center">Yuklanmoqda…</div></div>;
 
   return (
@@ -251,11 +283,14 @@ function ReceiptsScreen() {
   const [error, setError] = useState("");
   const [open, setOpen]   = useState(null);   // { id, customerId }
 
-  useEffect(() => {
+  const load = () => {
+    setError("");
+    setItems(null);
     appApi.receipts(50).then(setItems).catch((e) => setError(e.message));
-  }, []);
+  };
+  useEffect(load, []);
 
-  if (error) return <div className="cu-screen"><div className="cu-card cu-center">{error}</div></div>;
+  if (error) return <div className="cu-screen"><Retry text={error} onRetry={load} /></div>;
   if (!items) return <div className="cu-screen"><div className="cu-card cu-center">Yuklanmoqda…</div></div>;
 
   return (
@@ -400,7 +435,8 @@ function BonusSheet({ customerId, shopName, onClose }) {
       </header>
 
       <div className="cu-sheet__body">
-        {error && <div className="cu-card cu-center">{error}</div>}
+        {error && <Retry text={error} onRetry={() =>
+          { setError(""); appApi.bonus(customerId).then(setData).catch((e) => setError(e.message)); }} />}
         {!data && !error && <div className="cu-card cu-center">Yuklanmoqda…</div>}
 
         {data && (

@@ -88,7 +88,7 @@ export default function AppUpdater({ loggedIn, toast }) {
   // Kirish ekranidagi avtomatik o'rnatish: tanlov yo'q, faqat holat.
   if (busy && !loggedIn) {
     return (
-      <Modal title={t("update.title")} onClose={() => {}}>
+      <Modal title={t("update.title")} onClose={() => {}} dismissible={false}>
         <Progress percent={percent} label={t("update.autoIdle")} />
       </Modal>
     );
@@ -98,6 +98,12 @@ export default function AppUpdater({ loggedIn, toast }) {
     <Modal
       title={t("update.title")}
       onClose={busy ? () => {} : later}
+      /* ⚠ Orqa fonga bosish YOPMAYDI: ilgari tasodifiy teginish
+         yangilanishni 2 SOATGA uxlatib qo'yardi va odam buni sezmasdi
+         ham. Endi tanlov ONGLI: «Keyinroq» yoki «Yangilash». Uxlatilgan
+         bo'lsa ham Sozlamalar → «Yangilanish» dan istalgan payt
+         yangilash mumkin. */
+      dismissible={false}
       footer={busy ? null : (
         <>
           <button className="btn btn-outline btn-sm" onClick={later}>{t("update.later")}</button>
