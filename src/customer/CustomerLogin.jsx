@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { appApi, setAppToken } from "./customerApi";
 import { LOGO_URL, LOGO_DARK_URL } from "../config";
 import { isNativeShell } from "../lib/ek-desktop";
+import { nativeTelegramAvailable, loginWithTelegramApp } from "../lib/ek-tglogin";
 
 /* ══════════════════════════════════════════════════════════════════════════
    MIJOZ KIRISHI (V37 · V40)
@@ -101,7 +102,24 @@ export default function CustomerLogin({ onLoggedIn, onStaffLogin }) {
     }
   };
 
-  /* ── 2. Telegram OIDC ─────────────────────────────────────────────── */
+  /* ── 2. Telegram NATIV kirish (V41) ───────────────────────────────
+     Brauzer OCHILMAYDI: Telegram ilovasi deep link bilan chaqiriladi va
+     imzolangan token bilan qaytadi. */
+  const startNative = async () => {
+    setError("");
+    setMode("waiting-native");
+    try {
+      const idToken = await loginWithTelegramApp();
+      const r = await appApi.telegramNative(idToken);
+      setAppToken(r.token);
+      onLoggedIn();
+    } catch (e) {
+      setMode("idle");
+      setError(e.message || "Telegram orqali kirib bo'lmadi");
+    }
+  };
+
+  /* ── 3. Telegram OIDC (faqat brauzer) ─────────────────────────────── */
   const startOidc = async () => {
     setError("");
     try {
@@ -159,6 +177,17 @@ export default function CustomerLogin({ onLoggedIn, onStaffLogin }) {
         </div>
       )}
 
+      {mode === "waiting-native" && (
+        <div className="cu-waiting">
+          <i className="fa-brands fa-telegram cu-waiting__icon" aria-hidden="true" />
+          <p><b>Telegram ochildi</b></p>
+          <p className="cu-muted">Ruxsat bering — ilova o'zi davom ettiradi.</p>
+          <button className="cu-btn cu-btn--ghost" onClick={() => setMode("idle")}>
+            Bekor qilish
+          </button>
+        </div>
+      )}
+
       {mode === "email" && (
         <OtpForm
           kind="email"
@@ -175,9 +204,23 @@ export default function CustomerLogin({ onLoggedIn, onStaffLogin }) {
 
       {mode === "idle" && (
         <div className="cu-methods">
-          <button className="cu-btn cu-btn--tg" onClick={startBot}>
-            <i className="fa-brands fa-telegram" aria-hidden="true" /> Telegram bilan kirish
-          </button>
+          {/* ⚠ NATIV kirish bor bo'lsa — ASOSIY tugma aynan u: bitta
+              bosish, brauzersiz va botsiz. Qolgan yo'llar pastda zaxira
+              bo'lib turadi. */}
+          {methods.telegramNative && nativeTelegramAvailable() ? (
+            <>
+              <button className="cu-btn cu-btn--tg" onClick={startNative}>
+                <i className="fa-brands fa-telegram" aria-hidden="true" /> Telegram bilan kirish
+              </button>
+              <button className="cu-btn cu-btn--ghost" onClick={startBot}>
+                Bot orqali kirish
+              </button>
+            </>
+          ) : (
+            <button className="cu-btn cu-btn--tg" onClick={startBot}>
+              <i className="fa-brands fa-telegram" aria-hidden="true" /> Telegram bilan kirish
+            </button>
+          )}
 
           {/* ⚠ OIDC — VEB oqim (oauth.telegram.org sahifasi). Ilovada uni
               ko'rsatish Chrome ochilishiga olib keladi, foydalanuvchi esa

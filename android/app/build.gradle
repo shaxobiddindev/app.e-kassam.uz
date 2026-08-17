@@ -52,7 +52,26 @@ repositories {
     }
 }
 
+/* ══ Telegram «Native Login» SDK bor-yo'qligi (V41) ═══════════════════════
+   SDK FAQAT GitHub Packages'da va u TOKENSIZ bermaydi (`401`). Token
+   bo'lmasa ilova AVVALGIDEK quriladi — shunchaki nativ kirish tugmasi
+   bo'lmaydi: plagin manbasi kompilyatsiyaga qo'shilmaydi va ilova buni
+   ish paytida o'zi sezadi.
+
+   ⚠ Aks holda tokeni yo'q har bir quruvchida (va CI da) BUTUN APK yig'ilmay
+   qolardi — bitta ixtiyoriy imkoniyat uchun bu juda qimmat. */
+def tgLoginSdk = (project.findProperty('gpr.key') ?: System.getenv('GHPR_TOKEN')) ? true : false
+
+android {
+    sourceSets {
+        main {
+            if (tgLoginSdk) java.srcDirs += 'src/telegram/java'
+        }
+    }
+}
+
 dependencies {
+    if (tgLoginSdk) implementation 'org.telegram:login-sdk:1.0.0'
     implementation fileTree(include: ['*.jar'], dir: 'libs')
     implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
     implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"

@@ -45,6 +45,7 @@ public class MainActivity extends BridgeActivity {
            va keyin ro'yxatga olingan plagin JS'da `undefined` bo'lib qoladi. */
         registerPlugin(ThemeBarPlugin.class);
         registerPlugin(ScreenBrightnessPlugin.class);
+        registerTelegramLoginIfPresent();
         super.onCreate(savedInstanceState);
 
         content = findViewById(android.R.id.content);
@@ -72,6 +73,52 @@ public class MainActivity extends BridgeActivity {
             } catch (Exception ignored) { /* buzuq qiymat — DayNight qoladi */ }
         }
         applyBar(color, dark);
+    }
+
+    /* ══ TELEGRAM «NATIVE LOGIN» (V41) ═══════════════════════════════════
+       ⚠ Plagin REFLEKSIYA bilan ro'yxatga olinadi: uning manbasi Telegram
+       SDK siga tayanadi, SDK esa faqat GitHub Packages'da va tokensiz
+       olinmaydi. Tokensiz qurilishda sinf UMUMAN bo'lmaydi va bu yer
+       jimgina o'tishi kerak — aks holda bitta ixtiyoriy imkoniyat butun
+       ilovani ishga tushmaydigan qilib qo'yardi. */
+    private static final String TG_PLUGIN = "uz.ekassam.app.TelegramLoginPlugin";
+
+    @SuppressWarnings("unchecked")
+    private void registerTelegramLoginIfPresent() {
+        try {
+            Class<?> c = Class.forName(TG_PLUGIN);
+            registerPlugin((Class<? extends com.getcapacitor.Plugin>) c);
+        } catch (ClassNotFoundException e) {
+            /* SDK siz qurilgan APK — nativ kirish tugmasi ko'rsatilmaydi */
+        }
+    }
+
+    /**
+     * Telegramdan qaytgan havola.
+     *
+     * ⚠ `singleTask` tufayli ilova qaytadan yaratilmaydi va havola
+     * shu yerga keladi. Uni plaginga uzatamiz; plagin bo'lmasa yoki
+     * havola boshqa narsa bo'lsa — Capacitor o'z ishini davom ettiradi
+     * (masalan `ekassam://app`).
+     */
+    @Override
+    protected void onNewIntent(android.content.Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        try {
+            var handle = getBridge().getPlugin("TelegramLogin");
+            if (handle != null) {
+                /* ⚠ Sinf nomi bilan emas, REFLEKSIYA bilan: bu fayl SDK siz
+                   ham kompilyatsiya bo'lishi kerak, ya'ni
+                   `TelegramLoginPlugin` turiga bog'lanib qolmasligi shart. */
+                Object instance = handle.getInstance();
+                instance.getClass()
+                        .getMethod("handleIntent", android.content.Intent.class)
+                        .invoke(instance, intent);
+            }
+        } catch (Throwable ignored) {
+            /* Plagin yo'q (SDK siz qurilgan) — hech narsa qilinmaydi */
+        }
     }
 
     /**

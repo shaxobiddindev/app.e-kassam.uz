@@ -59,6 +59,11 @@ export const appApi = {
   smsVerify:    (phone, code)  => call("/auth/sms/verify",
                                        { method: "POST", body: { phone, code }, auth: false }),
 
+  /* Telegram NATIV kirish (V41): SDK bergan `id_token` serverda
+     tekshiriladi (imzo, `aud`, muddat) va sessiya qaytadi. */
+  telegramNative: (idToken) => call("/auth/telegram/native",
+                                    { method: "POST", body: { idToken }, auth: false }),
+
   /* Telegram OIDC: server manzil beradi, brauzer o'sha yerga o'tadi va
      `?code=&state=` bilan qaytadi. */
   oidcStart:    ()             => call("/auth/telegram/oidc/start", { auth: false }),

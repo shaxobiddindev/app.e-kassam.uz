@@ -34,6 +34,28 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="ekassam" android:host="app" />
             </intent-filter>
+
+            <!-- TELEGRAM «NATIVE LOGIN» QAYTISHI (V41).
+                 Telegram ilovasi kirishni tasdiqlagach shu manzilga
+                 qaytaradi va Android uni BIZNING ilovaga beradi — brauzer
+                 umuman ochilmaydi.
+
+                 ⚠ Host BotFather'dagi «Native App» ro'yxatidan keladi
+                 (`app<nativeAppId>-login.tg.dev`) va u yerdagi paket nomi
+                 + imzo izi bilan bog'langan: boshqa ilova bu havolani
+                 o'g'irlab ololmaydi (App Links tekshiruvi).
+
+                 ⚠ `autoVerify` SHART: usiz Android «qaysi ilovada
+                 ochay?» deb so'raydi va oqim brauzerga tushib ketishi
+                 mumkin — aynan shundan qochyapmiz. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https"
+                      android:host="app3938439594-login.tg.dev"
+                      android:pathPrefix="/tglogin" />
+            </intent-filter>
         </activity>
 
         <provider
