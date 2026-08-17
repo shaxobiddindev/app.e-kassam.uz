@@ -3,6 +3,10 @@
 # Built application files
 *.apk
 *.aar
+# ⚠ Telegram «Native Login» SDK si — repoda ATAYLAB saqlanadi (izohi
+# app/build.gradle da): u faqat GitHub Packages'da va tokensiz olinmaydi,
+# ya'ni bu qatorsiz CI va boshqa kompyuter APK ni nativ kirishsiz qurardi.
+!app/libs/*.aar
 *.ap_
 *.aab
 

@@ -22,29 +22,6 @@ allprojects {
         google()
         mavenCentral()
 
-        /* ══ Telegram «Native Login» SDK (V41) ═══════════════════════════
-           ⚠ SDK FAQAT GitHub Packages'da: Maven Central'da yo'q va u
-           kredensialsiz `401` qaytaradi (GitHub'ning ma'lum cheklovi —
-           ommaviy paket ham token talab qiladi). Shu sababli `gpr.user` /
-           `gpr.key` kerak:
-             · lokalda — `~/.gradle/gradle.properties`;
-             · CI da — `GITHUB_ACTOR` va `GHPR_TOKEN` muhit o'zgaruvchilari.
-
-           ⚠ Token TOPILMASA ombor RO'YXATGA QO'SHILMAYDI: shunda xato
-           «401» emas, «bunday bog'liqlik topilmadi» bo'lib chiqadi va
-           sababi darrov ko'rinadi. */
-        def gprUser = findProperty('gpr.user') ?: System.getenv('GITHUB_ACTOR')
-        def gprKey  = findProperty('gpr.key')  ?: System.getenv('GHPR_TOKEN')
-        if (gprUser && gprKey) {
-            maven {
-                name = 'TelegramLoginSdk'
-                url = uri('https://maven.pkg.github.com/TelegramMessenger/telegram-login-android')
-                credentials {
-                    username = gprUser
-                    password = gprKey
-                }
-            }
-        }
     }
 }
 

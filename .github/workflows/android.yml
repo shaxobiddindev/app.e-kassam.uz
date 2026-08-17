@@ -67,12 +67,6 @@ jobs:
         env:
           KS: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          # ⚠ Telegram «Native Login» SDK GitHub Packages'da va TOKENSIZ
-          # bermaydi. Secret qo'yilmagan bo'lsa APK AVVALGIDEK yig'iladi —
-          # shunchaki nativ kirish tugmasi bo'lmaydi (build.gradle dagi
-          # shartga qarang). Ya'ni bu secret majburiy emas.
-          GITHUB_ACTOR: ${{ github.actor }}
-          GHPR_TOKEN: ${{ secrets.GHPR_TOKEN }}
         run: |
           echo "$KS" | base64 -d > /tmp/ekassam.keystore
           VCODE=$(( $(date +%s) / 60 ))
