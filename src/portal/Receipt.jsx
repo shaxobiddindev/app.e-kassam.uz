@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { API_BASE } from "../config";
 import { code128Svg } from "../lib/ek-barcode";
 import { qrSvg } from "../lib/ek-qr";
+import { saveReceiptPdf } from "../lib/ek-receipt-pdf";
 import CodeZoom from "../components/CodeZoom";
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -59,6 +60,10 @@ export default function Receipt({ token, appToken, customerId, id, signedId, sig
   const [error, setError] = useState("");
   /* Qaysi kod kattalashtirilgan: `null` · `"qr"` (fiskal) · `"bar"` (chek raqami) */
   const [zoom, setZoom] = useState(null);
+  /* PDF chiqarishda ekrandagi tasmaning AYNAN O'ZI nusxalanadi — chek
+     ko'rinishi ikkinchi marta yozilmasin (yuqoridagi izohga qarang). */
+  const tapeRef = useRef(null);
+  const [pdfError, setPdfError] = useState("");
 
   useEffect(() => {
     let url;
@@ -82,6 +87,15 @@ export default function Receipt({ token, appToken, customerId, id, signedId, sig
       .catch((e) => setError(e.message || "Chekni ochib bo'lmadi"));
   }, [id, token, appToken, customerId, signedId, signature]);
 
+  const savePdf = async () => {
+    setPdfError("");
+    try {
+      await saveReceiptPdf(tapeRef.current, data ? `Chek ${data.receiptNo}` : "Chek");
+    } catch (e) {
+      setPdfError(e.message || "Saqlab bo'lmadi");
+    }
+  };
+
   // Esc bilan yopish — telefonda ham, brauzerda ham kutiladigan xatti-harakat
   useEffect(() => {
     const onKey = (e) => { if (e.key === "Escape") onClose(); };
@@ -100,7 +114,7 @@ export default function Receipt({ token, appToken, customerId, id, signedId, sig
         {!data && !error && <div className="pt-tape pt-center">Yuklanmoqda…</div>}
 
         {data && (
-          <div className="pt-tape ek-tear">
+          <div className="pt-tape ek-tear" ref={tapeRef}>
             <div className="pt-tape__head">
               <div className="pt-tape__shop">{data.shopName}</div>
               {data.shopAddress && <div>{data.shopAddress}</div>}
@@ -192,6 +206,17 @@ export default function Receipt({ token, appToken, customerId, id, signedId, sig
             <div className="pt-center pt-tape__no">S-{String(data.id).padStart(6, "0")}</div>
             <div className="pt-center pt-thanks">Xarid uchun rahmat!</div>
             <div className="pt-center pt-tape__site">e-kassam.uz</div>
+          </div>
+        )}
+
+        {/* ⚠ Tugma tasmadan TASHQARIDA: PDF'ga `.pt-tape` tugunining nusxasi
+            tushadi va o'z ichidagi tugma qog'ozga chiqib qolardi. */}
+        {data && (
+          <div className="pt-actions">
+            <button type="button" className="btn btn-primary" onClick={savePdf}>
+              <i className="fa-solid fa-file-pdf" aria-hidden="true" /> PDF qilib saqlash
+            </button>
+            {pdfError && <div className="pt-actions__err">{pdfError}</div>}
           </div>
         )}
 

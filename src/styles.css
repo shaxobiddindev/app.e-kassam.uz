@@ -1979,6 +1979,11 @@ img.logo--dark { display: none; }
 .pt-tape__no { font-size: 13px; font-weight: 800; margin-top: 2px; }
 .pt-thanks { margin-top: 10px; font-weight: 700; }
 .pt-tape__site { font-size: 11px; color: #555555; }
+/* PDF tugmasi — tasmadan TASHQARIDA (nusxaga tushmasligi uchun).
+   ⚠ Yuqoridagi bo'shliq `--tear` (9px) dan katta: yirtilgan qirra
+   tasmadan pastda, absolyut joylashgan — tugma unga tegib turmasin. */
+.pt-actions { display: grid; gap: 8px; justify-items: center; margin-top: 22px; }
+.pt-actions__err { color: var(--fg-danger); font-size: var(--fs-sm); text-align: center; }
 
 /* ── Do'kon QR ekrani (V34) — mijozni ro'yxatdan o'tkazish ───────────── */
 .m-qr { display: grid; justify-items: center; gap: 12px; }

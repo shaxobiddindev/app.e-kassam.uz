@@ -46,6 +46,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(ThemeBarPlugin.class);
         registerPlugin(ScreenBrightnessPlugin.class);
         registerPlugin(TelegramLoginPlugin.class);
+        registerPlugin(ReceiptPrintPlugin.class);
         super.onCreate(savedInstanceState);
 
         content = findViewById(android.R.id.content);
