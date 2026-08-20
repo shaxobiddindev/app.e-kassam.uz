@@ -1509,6 +1509,16 @@ const uz = {
   "nav.group.manage": "Boshqaruv",
   "nav.stock": "Qoldiq",
   "nav.overview": "Umumiy",
+
+  /* ── Ombor: muddat va kam qoldiq ogohlantirishi (2026-08-20) ───── */
+  "inv.alertTitle": "E'tibor talab qiladi",
+  "inv.alertHint": "«Muddati yaqin» — {n} kun ichida tugaydigan tovar",
+  "inv.fltNear": "Muddati yaqin",
+  "inv.fltLow": "Kam qolgan",
+  "inv.nearDays": "{n} kun qoldi",
+  "inv.nearToday": "Bugun tugaydi",
+  "inv.lowBadge": "Kam qoldi",
+  "inv.noMatch": "Bu filtrga mos tovar yo'q",
 };
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -2955,6 +2965,16 @@ const ru = {
   "nav.group.manage": "Управление",
   "nav.stock": "Остатки",
   "nav.overview": "Общий",
+
+  /* ── Ombor: muddat va kam qoldiq ogohlantirishi (2026-08-20) ───── */
+  "inv.alertTitle": "Требует внимания",
+  "inv.alertHint": "«Скоро истекает» — товар, срок которого выйдет за {n} дн.",
+  "inv.fltNear": "Скоро истекает",
+  "inv.fltLow": "Мало осталось",
+  "inv.nearDays": "Осталось {n} дн.",
+  "inv.nearToday": "Истекает сегодня",
+  "inv.lowBadge": "Мало",
+  "inv.noMatch": "Под этот фильтр товаров нет",
 };
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -4401,6 +4421,16 @@ const en = {
   "nav.group.manage": "Management",
   "nav.stock": "Stock",
   "nav.overview": "Overview",
+
+  /* ── Ombor: muddat va kam qoldiq ogohlantirishi (2026-08-20) ───── */
+  "inv.alertTitle": "Needs attention",
+  "inv.alertHint": "“Expiring soon” — goods that expire within {n} days",
+  "inv.fltNear": "Expiring soon",
+  "inv.fltLow": "Low stock",
+  "inv.nearDays": "{n} days left",
+  "inv.nearToday": "Expires today",
+  "inv.lowBadge": "Low",
+  "inv.noMatch": "No goods match this filter",
 };
 
 export default { uz, ru, en };

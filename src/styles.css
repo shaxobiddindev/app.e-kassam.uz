@@ -283,6 +283,69 @@ td               { padding: 11px 14px; font-size: 13px; color: var(--text); bord
 tr:last-child td { border-bottom: none; }
 tbody tr:hover td { background: var(--bg-sunken); }
 
+/* ── OMBOR: muddat va kam qoldiq ranglari (2026-08-20) ────────────────────
+   Fon `td` ga beriladi, `tr` ga EMAS: yuqorida `tbody tr:hover td` bor va u
+   `tr` dagi fonni bosib ketardi — sichqoncha tekkan qator rangini
+   yo'qotardi. Bu yerdagi qoidalar aniqroq (`.table` + holat sinfi = ikki
+   sinf), shuning uchun hover'da ham ustun turadi; hover varianti esa faqat
+   javob berish uchun — bir pog'ona to'qroq.
+
+   ⚠ Rang YAGONA belgi emas: har qatorda yozuv ham bor (`stateBadges`).
+   ⚠ Kam qoldiq ATAYLAB och qizil (`--bg-danger-faint`): u muddati o'tgan
+   tovar bilan bir xil shoshilinch emas — «buyurtma bering» degani. Bir
+   qarashda qaysi qator og'irroq ekani ko'rinib turishi kerak. */
+.table tbody tr.inv-row--expired td { background: var(--bg-danger-subtle); }
+.table tbody tr.inv-row--near    td { background: var(--bg-warning-subtle); }
+.table tbody tr.inv-row--low     td { background: var(--bg-danger-faint); }
+
+.table tbody tr.inv-row--expired:hover td { background: var(--bg-danger-hover); }
+.table tbody tr.inv-row--near:hover    td { background: var(--bg-warning-hover); }
+.table tbody tr.inv-row--low:hover     td { background: var(--bg-danger-subtle); }
+
+/* ⚠ CHAP CHIZIQ — ranglarni AJRATADIGAN asosiy belgi. Faqat fon bilan
+   qilib ko'rildi va ishlamadi: `--bg-danger-subtle` (#FEF3F2) bilan
+   `--bg-warning-subtle` (#FFF4ED) shu darajada yaqin-ki, jadvalda qizil
+   qator sariqdan farq qilmasdi. To'yingan chiziq esa bir qarashda
+   ajraladi va qora-oq chop etishda ham qoladi (qalinligi bo'yicha).
+
+   `box-shadow: inset` — `border-left` EMAS: `border-collapse: collapse`
+   da chegara qo'shni katakning chizig'i bilan urishib, qator balandligini
+   surib yuborardi. */
+.table tbody tr.inv-row--expired td:first-child { box-shadow: inset 4px 0 0 var(--bg-danger); }
+.table tbody tr.inv-row--near    td:first-child { box-shadow: inset 4px 0 0 var(--bg-warning); }
+.table tbody tr.inv-row--low     td:first-child { box-shadow: inset 4px 0 0 var(--border-danger); }
+
+/* ⚠ Belgilar rangli qatorda YO'QOLIB ketardi: `badge-red` foni
+   `--red-l` — o'sha och qizil, ya'ni qator foni bilan deyarli bir xil.
+   Rangli qatorda belgi SIRT rangida turadi va o'z rangi bilan
+   ramkalanadi. */
+.table tbody tr[class*="inv-row--"] .badge {
+  background: var(--bg-surface);
+  box-shadow: inset 0 0 0 1px currentColor;
+}
+
+/* Partiya qatori — asosiy qatordan bir pog'ona botiq */
+.table tbody tr.inv-row--batch td { background: var(--bg); }
+
+/* Bir tovarda bir nechta holat bo'lishi mumkin (muddati o'tgan VA kam) */
+.inv-flags { display: flex; flex-wrap: wrap; gap: 4px; }
+
+/* ── Pin qilingan ogohlantirish ───────────────────────────────────────────
+   ⚠ `top` — topbar balandligi (`--sh`): sahifa oyna bo'ylab sirg'aladi va
+   topbar ham `sticky`, shuning uchun blok aynan uning ostiga yopishadi.
+   Nolga qo'yilsa u topbar ostiga kirib ketardi. */
+.inv-alert {
+  position: sticky; top: var(--sh); z-index: 20;
+  margin-bottom: 14px; padding: 12px 14px;
+  background: var(--bg-warning-subtle);
+  border: 1px solid var(--border-warning);
+  border-radius: var(--r-lg);
+}
+.inv-alert__head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; }
+.inv-alert__head > i { color: var(--fg-warning); }
+.inv-alert__hint { font-size: 12px; }
+.inv-alert__chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+
 /* ── BADGES ── */
 .badge           { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
 .badge-blue      { background: var(--blue-l); color: var(--blue-d); }

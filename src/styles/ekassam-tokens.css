@@ -273,11 +273,17 @@ body {
      600 ochiq qizil fonda (`--bg-danger-subtle`) 4.44:1 berardi —
      xato toast'i axe'dan o'tmasdi. 700 esa 6.2:1. */
   --fg-danger:         var(--ek-danger-700);
+  /* Eng yengil qizil — "e'tibor ber", lekin "shoshilinch" emas. Ombordagi
+     kam qoldiq qatori shu fonda: muddati o'tgan tovar bilan bir xil
+     ko'rinmasligi kerak (09-CHETLANISHLAR §10ń). */
+  --bg-danger-faint:   #FEF9F8;
+  --bg-danger-hover:   #FDE6E3;
   --border-danger:     #FDA29B;
   --ring-danger:       0 0 0 3px rgba(217, 45, 32, .24);
 
   --bg-warning:        var(--ek-warning-500);
   --bg-warning-subtle: var(--ek-warning-50);
+  --bg-warning-hover:  #FFE6D5;
   --fg-warning:        var(--ek-warning-700);
   --border-warning:    #FDBE8C;
 
@@ -319,7 +325,10 @@ body {
 [data-theme="dark"] {
   --bg-success-subtle: rgba(53, 200, 99, .12);
   --bg-danger-subtle:  rgba(240, 68, 56, .12);
+  --bg-danger-faint:   rgba(240, 68, 56, .06);
+  --bg-danger-hover:   rgba(240, 68, 56, .19);
   --bg-warning-subtle: rgba(251, 122, 42, .12);
+  --bg-warning-hover:  rgba(251, 122, 42, .19);
   --fg-success:        var(--ek-green-400);
   --fg-danger:         #FF8A80;
   --fg-warning:        var(--ek-warning-500);

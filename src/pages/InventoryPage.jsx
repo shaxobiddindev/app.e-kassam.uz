@@ -27,6 +27,69 @@ const MOV_BADGE = {
 
 const isBatchExpired = (b) => b.status === "EXPIRED" || b.expired;
 
+/* ══════════════════════════════════════════════════════════════════════════
+   MUDDAT VA KAM QOLDIQ — QATOR RANGI (2026-08-20)
+
+   Ilgari omborchi faqat QOLDIQ USTUNIDAGI kichkina qizil sonni ko'rardi:
+   yuz qatorli jadvalda uni ko'z ilg'amasdi. Muddat esa umuman rangsiz edi —
+   muddati o'tgan tovarni topish uchun har qatorning sanasini o'qish kerak
+   bo'lgan.
+
+   Endi butun qator bo'yaladi:
+     · muddati o'tgan   → QIZIL   (chiqit qilinishi kerak)
+     · muddati yaqin    → SARIQ   (sotish yoki chegirma vaqti)
+     · kam qolgan       → och qizil (buyurtma berish vaqti)
+
+   ⚠ RANG YAGONA BELGI EMAS. Har qator o'z holatini YOZUV bilan ham aytadi
+   (`badge`) — rang ko'rmaydigan odam va qora-oq chop etishda ma'no
+   yo'qolmasin. Bu 02-DESIGN-SYSTEM.md qoidasi.
+
+   ⚠ Ustunlik tartibi: o'tgan > yaqin > kam. Bir tovar uchalasi ham bo'lishi
+   mumkin (muddati o'tgan va qoldig'i ham kam) — fon eng jiddiysini
+   ko'rsatadi, yozuvlar esa HAMMASINI.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/** «Muddati yaqin» oynasi — necha kun qolganda tovar sariq bo'ladi. */
+const NEAR_EXPIRY_DAYS = 7;
+
+/**
+ * Muddatgacha necha kun qolgani. Muddatsiz tovarda `null`.
+ *
+ * ⚠ Hisob SANA bo'yicha, soat bo'yicha emas. `expiryDate` — kun
+ * (`YYYY-MM-DD`) va `new Date("2026-08-20")` uni UTC yarim tuni deb
+ * o'qiydi; Toshkent (+5) da bu bugun tugaydigan tovarni «kecha tugagan»
+ * qilib ko'rsatardi. Shuning uchun sana qismlarga bo'lib, MAHALLIY
+ * kun sifatida quriladi.
+ */
+function daysLeft(iso) {
+  if (!iso) return null;
+  const [y, m, d] = String(iso).slice(0, 10).split("-").map(Number);
+  if (!y || !m || !d) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Math.round((new Date(y, m - 1, d) - today) / 86400000);
+}
+
+/**
+ * Qatorning holati.
+ *
+ * ⚠ `left < 0` ham MUDDATI O'TGAN deb hisoblanadi. Partiyaning `EXPIRED`
+ * holatini server qo'yadi va u fon vazifasi bilan keladi — sana kecha
+ * o'tgan bo'lsayu holat hali almashmagan bo'lsa, tovar ikkala filtrdan
+ * ham tushib qolardi.
+ */
+function flagsOf(g) {
+  const left = daysLeft(g.nearest);
+  const expired = g.hasExpired || (left !== null && left < 0);
+  return {
+    expired,
+    /* Muddati o'tgan tovarda «yaqin» yozuvi chiqmaydi — u endi ortiqcha */
+    near: !expired && left !== null && left <= NEAR_EXPIRY_DAYS,
+    low: g.sellable <= g.minQ,
+    left,
+  };
+}
+
 /* Chiqit turkumlari — qoldiq KAMAYGANDA so'raladi.
    Ro'yxat serverdagi `WriteOffReason` bilan bir xil tartibda. */
 const WRITE_OFF_REASONS = [
@@ -70,6 +133,11 @@ function groupByProduct(items) {
     // Shunchaki tugagan mahsulot chirigan emas.
     const expiredAll = sellable === 0 &&
       sorted.some((b) => isBatchExpired(b) && (b.quantity || 0) > 0);
+    /* ⚠ `expiredAll` — tovar BUTUNLAY o'lgan (sotiladigani qolmagan).
+       `hasExpired` esa YUMSHOQROQ: sotiladigan qoldiq bor-u, omborda
+       muddati o'tgan partiya ham yotibdi. Aynan shunisi ko'rinmasdi —
+       chiqit qilinmagan tovar jimgina qoldiqda turaverardi. */
+    const hasExpired = sorted.some((b) => isBatchExpired(b) && (b.quantity || 0) > 0);
     const nearest = valid.find((b) => b.expiryDate)?.expiryDate || null;
     const f = sorted[0];
     return {
@@ -84,6 +152,7 @@ function groupByProduct(items) {
       minQ,
       nearest,
       expiredAll,
+      hasExpired,
     };
   });
 }
@@ -111,6 +180,10 @@ export default function InventoryPage({ toast }) {
   const [saving, setSaving]   = useState(false);
   const [branchId, setBranchId] = useState(null);
   const [expanded, setExpanded] = useState(() => new Set()); // productId'lar
+  /* Ogohlantirish filtri: "all" | "expired" | "near" | "low".
+     Ogohlantirish blokidagi raqamlarning O'ZI filtr tugmasi — alohida
+     boshqaruv qatori qo'shilsa, ekranda ikkita bir xil ro'yxat turardi. */
+  const [flt, setFlt] = useState("all");
 
   // Kirim-chiqim jurnali — alohida ko'rinish (jadval o'rnida)
   const [showHistory, setShowHistory] = useState(false);
@@ -147,10 +220,28 @@ export default function InventoryPage({ toast }) {
 
   const groups = useMemo(() => groupByProduct(items), [items]);
 
-  const filtered = groups.filter((g) =>
-    g.productName?.toLowerCase().includes(search.toLowerCase()) ||
-    (g.barcode || "").includes(search)
-  );
+  /* Har qatorning holati bir marta hisoblanadi: u ham rang, ham yozuv,
+     ham filtr, ham ogohlantirishdagi raqam uchun kerak. */
+  const rows = useMemo(() => groups.map((g) => ({ g, f: flagsOf(g) })), [groups]);
+
+  /* ⚠ Raqamlar QIDIRUVDAN OLDINGI ro'yxatdan olinadi: ogohlantirish
+     do'kondagi haqiqiy holatni aytishi kerak, qidiruv maydonida nima
+     yozilganini emas. */
+  const counts = useMemo(() => ({
+    expired: rows.filter((r) => r.f.expired).length,
+    near:    rows.filter((r) => r.f.near).length,
+    low:     rows.filter((r) => r.f.low).length,
+  }), [rows]);
+
+  const filtered = rows.filter(({ g, f }) => {
+    const q = search.toLowerCase();
+    const hit = g.productName?.toLowerCase().includes(q) || (g.barcode || "").includes(search);
+    if (!hit) return false;
+    if (flt === "expired") return f.expired;
+    if (flt === "near")    return f.near;
+    if (flt === "low")     return f.low;
+    return true;
+  });
 
   const toggleExpand = (productId) => {
     setExpanded((prev) => {
@@ -263,6 +354,37 @@ export default function InventoryPage({ toast }) {
     </span>
   );
 
+  /* Holat ustuni — RANGNING YOZUVDAGI nusxasi. Rang tez o'qiladi, yozuv
+     esa aniq aytadi; ikkalasi ham kerak (rang ko'rmaydigan odam, qora-oq
+     chop etish). Bir tovarda bir nechta yozuv bo'lishi mumkin. */
+  const stateBadges = (f) => {
+    if (!f.expired && !f.near && !f.low) return statusBadge(false);
+    return (
+      <div className="inv-flags">
+        {f.expired && <span className="badge badge-red">{t("enum.inventory.EXPIRED")}</span>}
+        {f.near && (
+          <span className="badge badge-yellow">
+            {f.left === 0 ? t("inv.nearToday") : t("inv.nearDays", { n: f.left })}
+          </span>
+        )}
+        {f.low && <span className="badge badge-red">{t("inv.lowBadge")}</span>}
+      </div>
+    );
+  };
+
+  /* Partiyaning holati. ⚠ Bu yerda "kam qoldiq" YO'Q: minimal qoldiq
+     mahsulotga qo'yiladi, alohida partiyaga emas — ikkita yarim partiya
+     birgalikda yetarli bo'lsa ham ikkalasi "kam" bo'lib qizarardi. */
+  const batchFlags = (b) => {
+    const left = daysLeft(b.expiryDate);
+    const expired = isBatchExpired(b) || (left !== null && left < 0);
+    return { expired, near: !expired && left !== null && left <= NEAR_EXPIRY_DAYS, low: false, left };
+  };
+
+  /* Fon sinfi — eng jiddiy holat bo'yicha (o'tgan > yaqin > kam). */
+  const rowClass = (f) =>
+    f.expired ? "inv-row--expired" : f.near ? "inv-row--near" : f.low ? "inv-row--low" : "";
+
   return (
     <div>
       <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -271,6 +393,64 @@ export default function InventoryPage({ toast }) {
         </div>
         <BranchSelector selectedId={branchId} onSelect={setBranchId} />
       </div>
+
+      {/* ── PIN QILINGAN OGOHLANTIRISH ──────────────────────────────────
+          Jadval bilan birga sirg'almaydi: `position: sticky` bilan topbar
+          ostida turib qoladi. Sabab — muammoli tovar ro'yxatning O'RTASIDA
+          bo'lishi mumkin va pastga tushgan omborchi ogohlantirishni ko'rmay
+          qolardi.
+
+          Raqamlarning o'zi FILTR tugmasi: «7 ta muddati o'tgan» ni bosgan
+          odam aynan o'shalarni ko'radi. Alohida filtr paneli qo'shilsa,
+          ekranda bir xil ma'noli ikkita boshqaruv turardi.
+
+          ⚠ Blok muammo yo'q paytda UMUMAN chizilmaydi — har kuni bekorga
+          yonib turgan ogohlantirish bir haftada ko'rinmas bo'lib qoladi
+          (bosh sahifadagi «E'tibor talab qiladi» bloki bilan bir qoida).
+          Filtr yoqilgan bo'lsa esa qoladi: aks holda tovarlar tuzatilgach
+          blok yo'qolib, filtrni o'chirish tugmasi ham yo'qolardi. */}
+      {!showHistory && (counts.expired + counts.near + counts.low > 0 || flt !== "all") && (
+        <div className="inv-alert" role="status">
+          <div className="inv-alert__head">
+            <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />
+            <b>{t("inv.alertTitle")}</b>
+            <span className="text-muted inv-alert__hint">
+              {t("inv.alertHint", { n: NEAR_EXPIRY_DAYS })}
+            </span>
+          </div>
+          <div className="inv-alert__chips">
+            <button type="button"
+                    className={`btn btn-sm ${flt === "all" ? "btn-primary" : "btn-outline"}`}
+                    onClick={() => setFlt("all")}>
+              {t("common.all")} <span className="badge tab-badge">{rows.length}</span>
+            </button>
+            {counts.expired > 0 && (
+              <button type="button"
+                      className={`btn btn-sm ${flt === "expired" ? "btn-primary" : "btn-outline"}`}
+                      onClick={() => setFlt("expired")}>
+                <i className="fa-solid fa-hourglass-end" aria-hidden="true" /> {t("enum.inventory.EXPIRED")}
+                <span className="badge badge-red tab-badge">{counts.expired}</span>
+              </button>
+            )}
+            {counts.near > 0 && (
+              <button type="button"
+                      className={`btn btn-sm ${flt === "near" ? "btn-primary" : "btn-outline"}`}
+                      onClick={() => setFlt("near")}>
+                <i className="fa-solid fa-clock" aria-hidden="true" /> {t("inv.fltNear")}
+                <span className="badge badge-yellow tab-badge">{counts.near}</span>
+              </button>
+            )}
+            {counts.low > 0 && (
+              <button type="button"
+                      className={`btn btn-sm ${flt === "low" ? "btn-primary" : "btn-outline"}`}
+                      onClick={() => setFlt("low")}>
+                <i className="fa-solid fa-arrow-down-short-wide" aria-hidden="true" /> {t("inv.fltLow")}
+                <span className="badge badge-red tab-badge">{counts.low}</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="card">
         <div className="card-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
@@ -346,7 +526,9 @@ export default function InventoryPage({ toast }) {
           ) : busy ? (
             <SkeletonTable rows={8} cols={["wide", "num", "num", "text"]} />
           ) : filtered.length === 0 ? (
-            <Empty text={t("inv.notFound")} />
+            /* Filtr yoqiqda "omborda topilmadi" degan xabar yolg'on bo'lardi:
+               tovar bor, faqat shu filtrga tushmaydi. */
+            <Empty text={t(flt === "all" ? "inv.notFound" : "inv.noMatch")} />
           ) : (
             <table className="table">
               <thead>
@@ -362,18 +544,20 @@ export default function InventoryPage({ toast }) {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((g) => {
+                {filtered.map(({ g, f }) => {
                   const multi = g.batches.length > 1;
                   const isOpen = expanded.has(g.productId);
                   const single = g.batches[0];
                   return [
                     /* ── Asosiy qator: mahsulot bo'yicha JAMI ── */
+                    /* ⚠ `opacity: .6` OLIB TASHLANDI. U matn kontrastini ham
+                       tushirardi va aynan shu naqsh 09-CHETLANISHLAR §10ĝ da
+                       taqiqlangan: "o'chganday" ko'rsatish uchun shaffoflik
+                       ishlatilmaydi. Endi ma'noni fon rangi va yozuv beradi. */
                     <tr
                       key={`p-${g.productId}`}
-                      style={{
-                        ...(g.expiredAll ? { opacity: 0.6, background: "rgba(239,68,68,0.05)" } : null),
-                        ...(multi ? { cursor: "pointer" } : null),
-                      }}
+                      className={rowClass(f)}
+                      style={multi ? { cursor: "pointer" } : undefined}
                       onClick={multi ? () => toggleExpand(g.productId) : undefined}
                     >
                       <td>
@@ -387,7 +571,7 @@ export default function InventoryPage({ toast }) {
                       </td>
                       <td><code className="mono">{g.barcode || "-"}</code></td>
                       <td>
-                        <span className={`badge ${g.sellable <= g.minQ ? "badge-red" : "badge-green"}`}>
+                        <span className={`badge ${f.low ? "badge-red" : "badge-green"}`}>
                           {g.sellable}
                         </span>
                       </td>
@@ -398,7 +582,7 @@ export default function InventoryPage({ toast }) {
                           ? <span className="text-muted">{t("inv.batchCount", { n: g.batches.length })}{g.nearest ? ` · ${g.nearest}` : ""}</span>
                           : (single.expiryDate || t("inv.noExpiry"))}
                       </td>
-                      <td>{statusBadge(g.expiredAll)}</td>
+                      <td>{stateBadges(f)}</td>
                       {!branchId && (
                         <td className="text-end" onClick={(e) => e.stopPropagation()}>
                           <button className="btn btn-primary btn-sm" onClick={() => openModal(g)}>
@@ -417,8 +601,11 @@ export default function InventoryPage({ toast }) {
                     /* ── Partiya qatorlari (ochilganda) ── */
                     ...(multi && isOpen
                       ? g.batches.map((b) => (
+                          /* Partiya qatori ham o'z holatida bo'yaladi: guruh
+                             sariq bo'lsayu ichida bittasi allaqachon o'tgan
+                             bo'lsa, ochilgan ro'yxatda o'sha darrov ko'rinadi. */
                           <tr key={`b-${b.inventoryId}`}
-                              style={{ background: "var(--bg)", ...(isBatchExpired(b) ? { opacity: 0.6 } : null) }}>
+                              className={`inv-row--batch ${rowClass(batchFlags(b))}`}>
                             <td colSpan={2}>
                               <div className="text-muted" style={{ paddingLeft: 26, fontSize: 12.5 }}>
                                 <i className="fa-solid fa-layer-group" style={{ marginRight: 6, fontSize: 11 }} aria-hidden="true" />
@@ -428,7 +615,7 @@ export default function InventoryPage({ toast }) {
                             <td><span className="mono fw-700">{b.quantity}</span></td>
                             <td colSpan={2}></td>
                             <td>{b.expiryDate || t("inv.noExpiry")}</td>
-                            <td>{statusBadge(isBatchExpired(b))}</td>
+                            <td>{stateBadges(batchFlags(b))}</td>
                             {!branchId && (
                               <td className="text-end">
                                 <button className="btn btn-outline btn-sm" onClick={() => openCorrect(b)} title={t("inv.correctHint")}>
