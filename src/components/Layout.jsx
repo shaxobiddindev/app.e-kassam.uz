@@ -10,95 +10,126 @@ import { weekdayDate } from "../lib/ek-format";
 import { useSuspiciousCount } from "../hooks/useSuspiciousCount";
 
 
-/* Menyu tuzilishi — YORLIQ EMAS, KALIT saqlanadi. Yorliq har render'da
-   `t()` dan olinadi, aks holda til almashtirilganda menyu eski tilda qolardi. */
-const NAV_ITEMS = [
-  { section: "nav.section.main", items: [
-    { id: "dashboard", path: "/",      key: "nav.dashboard", icon: "fa-chart-pie",     roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
-    { id: "sale",      path: "/sale",  key: "nav.kassa",     icon: "fa-cash-register", roles: ["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"] },
-  ]},
-  { section: "nav.section.shop", items: [
-    { id: "products",   path: "/products",   key: "nav.products",   icon: "fa-box",       roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
-    { id: "categories", path: "/categories", key: "nav.categories", icon: "fa-tags",      roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
-    { id: "inventory",  path: "/inventory",  key: "nav.inventory",  icon: "fa-warehouse", roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
-    { id: "stock-take", path: "/stock-take", key: "nav.stockTake",  icon: "fa-clipboard-list", roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
-    { id: "supply",     path: "/supply",     key: "nav.supply",     icon: "fa-truck-ramp-box", roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
-    /* Ko'chirish — OMBOR bo'limida, «Boshqaruv» da emas: bu tovarni
-       jismonan qo'zg'atadigan kundalik ish, filial sozlamasi emas.
-       Filiali yo'q do'konda sahifa o'zi nima qilish kerakligini aytadi. */
-    { id: "transfers",  path: "/transfers",  key: "nav.transfers",  icon: "fa-truck-fast", roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
-    { id: "prices",     path: "/prices",     key: "nav.prices",     icon: "fa-tags", roles: ["ADMIN", "SHOP_ADMIN", "OWNER"] },
-    { id: "customers",  path: "/customers",  key: "nav.customers",  icon: "fa-users",     roles: ["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"] },
-    { id: "sales",      path: "/sales",      key: "nav.sales",      icon: "fa-receipt",   roles: ["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"] },
-  ]},
-  { section: "nav.section.reports", items: [
-    { id: "reports",        path: "/reports",       key: "nav.reports",      icon: "fa-chart-bar",     roles: ["ADMIN", "SHOP_ADMIN", "OWNER"] },
-    { id: "expenses",       path: "/expenses",      key: "nav.expenses",     icon: "fa-money-bill-wave", roles: ["ADMIN", "SHOP_ADMIN", "OWNER"] },
-    { id: "custom-report",  path: "/custom-report", key: "nav.customReport", icon: "fa-calendar-days", roles: ["ADMIN", "SHOP_ADMIN", "OWNER"] },
-  ]},
-  /* ── BOSHQARUV ────────────────────────────────────────────────────────────
-     DO'KONNI boshqarish — egasi va do'kon admini uchun. Ilgari bu bandlar
-     "Sozlamalar" bo'limida, xodimning shaxsiy sozlamalari bilan bir qatorda
-     turardi: kassir "Sozlamalar" ni ochib xodimlar ro'yxatini kutardi,
-     egasi esa do'konni boshqaradigan joyni topolmasdi. 07-ADMIN.md aytadigan
-     "egasi/admin paneli" — aynan shu bo'lim, alohida sayt emas.
+/* ══════════════════════════════════════════════════════════════════════════
+   MENYU — GURUHLANGAN (2026-08-17)
 
-     ⚠ Bu FAQAT ko'rinish tartibi. Haqiqiy ruxsat serverda: `SecurityConfig`
-     `/shop/users/**` va `/shop/branches/**` ni alohida tekshiradi. */
-  { section: "nav.section.management", items: [
-    { id: "shop-users", path: "/shop-users", key: "nav.staff",    icon: "fa-users-gear", roles: ["ADMIN", "SHOP_ADMIN", "OWNER"] },
-    { id: "branches",   path: "/branches",   key: "nav.branches", icon: "fa-store",      roles: ["OWNER"] },
-    /* Sodiqlik — chegirma jadvali, ya'ni PULGA tegadigan sozlama.
-       Shuning uchun "Boshqaruv" da, kassirda emas. */
-    { id: "loyalty",    path: "/loyalty",    key: "nav.loyalty",  icon: "fa-award",      roles: ["ADMIN", "SHOP_ADMIN", "OWNER"] },
-    /* Aksiyalar — do'konning MIJOZLARGA ketadigan gapi (V39). Kassirda
-       emas: bitta bosishda minglab telefonga push ketadi. */
-    { id: "announcements", path: "/announcements", key: "nav.announcements", icon: "fa-bullhorn", roles: ["ADMIN", "SHOP_ADMIN", "OWNER"] },
-    /* Xavfsizlik — bajik va tasdiqlar. SHOP_ADMIN ham kiradi, lekin u
-       yerda faqat jurnal va smenalarni ko'radi: bajik chiqarish FAQAT
-       egasida (server ham shuni qo'yadi). */
-    { id: "security",   path: "/security",   key: "nav.security", icon: "fa-shield-halved", roles: ["SHOP_ADMIN", "OWNER"] },
-    { id: "audit",      path: "/audit",      key: "nav.audit",    icon: "fa-clock-rotate-left", roles: ["SHOP_ADMIN", "OWNER"] },
+   Ilgari yon menyuda 5 bo'lim va 21 ta band turardi, faqat «Do'kon» ning
+   o'zida 9 tasi. Bunday ro'yxatda ko'z kerakli bandni o'qib emas, QIDIRIB
+   topadi — va har yangi sahifa uni yana bir qator uzaytirardi.
+
+   Endi o'xshash sahifalar bitta bandga yig'ilgan va o'zaro tab bilan
+   almashadi (`children`). Yon menyuda 8 ta band qoldi.
+
+   ⚠ YO'LLAR O'ZGARMADI. Har sahifa o'z manzilida turibdi (`/prices`,
+   `/supply`, …) — saqlangan havolalar, brauzer tarixi va koddagi
+   `navigate()` chaqiruvlari ishlayveradi. Guruh — FAQAT ko'rinish qatlami,
+   marshrutlar `App.jsx` da tegilmagan.
+
+   ⚠ Guruh bandining havolasi — uning KO'RINADIGAN birinchi bolasi. Filtr
+   bolalarga qo'llanadi: omborchida «Katalog» ichida «Narxlar» yo'q, shu
+   sababli band uni `/products` ga olib boradi, bo'sh guruh esa umuman
+   chizilmaydi.
+
+   ⚠ Bandning YORLIG'I emas, KALITI saqlanadi — yorliq har render'da `t()`
+   dan olinadi, aks holda til almashtirilganda menyu eski tilda qolardi.
+   ══════════════════════════════════════════════════════════════════════════ */
+const NAV = [
+  { id: "dashboard", path: "/",     key: "nav.dashboard", icon: "fa-chart-pie",     roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
+  { id: "sale",      path: "/sale", key: "nav.kassa",     icon: "fa-cash-register", roles: ["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"] },
+
+  /* KATALOG — tovarning O'ZI haqidagi ma'lumot: nomi, turkumi, narxi.
+     Miqdor bu yerda emas: u «Ombor» ning ishi. */
+  { id: "catalog", key: "nav.group.catalog", icon: "fa-box", children: [
+    { id: "products",   path: "/products",   key: "nav.products",   icon: "fa-box",                roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
+    { id: "categories", path: "/categories", key: "nav.categories", icon: "fa-tags",               roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
+    { id: "prices",     path: "/prices",     key: "nav.prices",     icon: "fa-money-check-dollar", roles: ["ADMIN", "SHOP_ADMIN", "OWNER"] },
   ]},
-  { section: "nav.section.settings", items: [
-    /* Sozlamalar — HAMMA rolga ochiq: til va tema shu yerda va ular
-       xodimning shaxsiy tanlovi, do'kon sozlamasi emas. */
-    { id: "settings",   path: "/settings",   key: "nav.settings", icon: "fa-gear" },
+
+  /* OMBOR — tovarning MIQDORINI qo'zg'atadigan ishlar. Ko'chirish ham shu
+     yerda: u tovarni jismonan yuradigan kundalik ish, filial sozlamasi
+     emas (filiali yo'q do'konda sahifa o'zi shuni aytadi). */
+  { id: "warehouse", key: "nav.group.warehouse", icon: "fa-warehouse", children: [
+    { id: "inventory",  path: "/inventory",  key: "nav.stock",     icon: "fa-warehouse",      roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
+    { id: "stock-take", path: "/stock-take", key: "nav.stockTake", icon: "fa-clipboard-list", roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
+    { id: "supply",     path: "/supply",     key: "nav.supply",    icon: "fa-truck-ramp-box", roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
+    { id: "transfers",  path: "/transfers",  key: "nav.transfers", icon: "fa-truck-fast",     roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
   ]},
+
+  /* SAVDO — bo'lib o'tgan xarid va uni kim qilgani. Kassirga ochiq yagona
+     guruh: u chekni qaytadan chiqaradi va mijozni qidiradi. */
+  { id: "trade", key: "nav.group.trade", icon: "fa-receipt", children: [
+    { id: "sales",     path: "/sales",     key: "nav.sales",     icon: "fa-receipt", roles: ["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"] },
+    { id: "customers", path: "/customers", key: "nav.customers", icon: "fa-users",   roles: ["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"] },
+  ]},
+
+  { id: "reports", key: "nav.reports", icon: "fa-chart-bar", children: [
+    { id: "reports-main",  path: "/reports",       key: "nav.overview",     icon: "fa-chart-bar",       roles: ["ADMIN", "SHOP_ADMIN", "OWNER"] },
+    { id: "expenses",      path: "/expenses",      key: "nav.expenses",     icon: "fa-money-bill-wave", roles: ["ADMIN", "SHOP_ADMIN", "OWNER"] },
+    { id: "custom-report", path: "/custom-report", key: "nav.customReport", icon: "fa-calendar-days",   roles: ["ADMIN", "SHOP_ADMIN", "OWNER"] },
+  ]},
+
+  /* BOSHQARUV — DO'KONNI boshqarish, egasi va do'kon admini uchun.
+     07-ADMIN.md aytadigan «egasi paneli» aynan shu, alohida sayt emas.
+
+     Sodiqlik bu yerda: u chegirma jadvali, ya'ni PULGA tegadigan sozlama.
+     Aksiyalar ham: bitta bosishda minglab telefonga push ketadi.
+
+     ⚠ Bu FAQAT ko'rinish tartibi. Haqiqiy ruxsat serverda:
+     `SecurityConfig` `/shop/users/**` va `/shop/branches/**` ni alohida
+     tekshiradi. Xavfsizlikka SHOP_ADMIN ham kiradi, lekin bajik chiqarish
+     faqat egasida — buni ham server qo'yadi. */
+  { id: "manage", key: "nav.group.manage", icon: "fa-users-gear", children: [
+    { id: "shop-users",    path: "/shop-users",    key: "nav.staff",         icon: "fa-users-gear",        roles: ["ADMIN", "SHOP_ADMIN", "OWNER"] },
+    { id: "branches",      path: "/branches",      key: "nav.branches",      icon: "fa-store",             roles: ["OWNER"] },
+    { id: "loyalty",       path: "/loyalty",       key: "nav.loyalty",       icon: "fa-award",             roles: ["ADMIN", "SHOP_ADMIN", "OWNER"] },
+    { id: "announcements", path: "/announcements", key: "nav.announcements", icon: "fa-bullhorn",          roles: ["ADMIN", "SHOP_ADMIN", "OWNER"] },
+    { id: "security",      path: "/security",      key: "nav.security",      icon: "fa-shield-halved",     roles: ["SHOP_ADMIN", "OWNER"] },
+    { id: "audit",         path: "/audit",         key: "nav.audit",         icon: "fa-clock-rotate-left", roles: ["SHOP_ADMIN", "OWNER"] },
+  ]},
+
+  /* Sozlamalar — HAMMA rolga ochiq: til va tema shu yerda va ular
+     xodimning shaxsiy tanlovi, do'kon sozlamasi emas. */
+  { id: "settings", path: "/settings", key: "nav.settings", icon: "fa-gear" },
 ];
+
+/** Guruhning bolalari; oddiy band — o'zi bitta bola. */
+const childrenOf = (item) => item.children || [item];
+
+/** Rol bo'yicha ko'rinadigan bolalar. */
+const visibleChildren = (item, role) => childrenOf(item).filter((c) => hasRole(role, c.roles));
+
+/**
+ * Manzil qaysi guruhning qaysi sahifasi.
+ *
+ * ⚠ `PAGE_TITLES` jadvali OLIB TASHLANDI. U shu ro'yxat bilan qo'lda
+ * sinxron turishi kerak edi va bir marta `/security` unutilgani uchun
+ * sahifa tepasida «Dashboard» deb yozilib turgan edi. Endi sarlavha ham,
+ * tab qatori ham AYNAN shu yagona ro'yxatdan chiqadi.
+ */
+function findPlace(pathname) {
+  for (const item of NAV) {
+    const child = childrenOf(item).find((c) => c.path === pathname);
+    if (child) return { group: item, child };
+  }
+  /* Noma'lum yo'l — bosh sahifa (eski xatti-harakat) */
+  return { group: NAV[0], child: NAV[0] };
+}
+
+/* Bo'limda e'tibor talab qiladigan yozuv borligini bildiruvchi son.
+   Guruh bandida ham, uning ichidagi tab'da ham AYNI raqam chiqadi: usiz
+   egasi menyudagi qizil sonni ko'rib guruhga kirardi-yu, keyin tab'lar
+   orasidan qay birida ekanini qidirishga majbur bo'lardi. */
+const badgeFor = (id, { lowStock, suspicious }) => {
+  if (id === "warehouse" || id === "inventory") return lowStock;
+  if (id === "manage" || id === "security") return suspicious;
+  return 0;
+};
 
 /* Rol nomi — lug'atdan. SUPERADMIN va ADMIN do'kon roli emas: birinchisi
    tizim admini, ikkinchisi eski nom. Shuning uchun alohida kalitlar. */
 const EXTRA_ROLE_KEYS = {
   SUPERADMIN: "enum.adminRole.SUPER_ADMIN",
   ADMIN:      "enum.role.SHOP_ADMIN",
-};
-
-const PAGE_TITLES = {
-  "/":               { key:"nav.dashboard",    icon:"fa-chart-pie"     },
-  "/sale":           { key:"nav.kassa",        icon:"fa-cash-register" },
-  "/products":       { key:"nav.products",     icon:"fa-box"           },
-  "/categories":     { key:"nav.categories",   icon:"fa-tags"          },
-  "/inventory":      { key:"nav.inventory",    icon:"fa-warehouse"     },
-  "/stock-take":     { key:"nav.stockTake",    icon:"fa-clipboard-list"},
-  "/supply":         { key:"nav.supply",       icon:"fa-truck-ramp-box"},
-  "/transfers":      { key:"nav.transfers",    icon:"fa-truck-fast"    },
-  "/prices":         { key:"nav.prices",       icon:"fa-tags"          },
-  "/customers":      { key:"nav.customers",    icon:"fa-users"         },
-  "/sales":          { key:"nav.sales",        icon:"fa-receipt"       },
-  "/reports":        { key:"nav.reports",      icon:"fa-chart-bar"     },
-  "/expenses":       { key:"nav.expenses",     icon:"fa-money-bill-wave"},
-  "/custom-report":  { key:"nav.customReport", icon:"fa-calendar-days" },
-  "/shop-users":     { key:"nav.staff",        icon:"fa-users-gear"    },
-  "/branches":       { key:"nav.branches",     icon:"fa-store"         },
-  "/loyalty":        { key:"nav.loyalty",      icon:"fa-award"         },
-  "/announcements":  { key:"nav.announcements", icon:"fa-bullhorn"     },
-  /* ⚠ Ro'yxatda yo'q yo'l JIMGINA "/" ga tushadi: `/security` shu sababli
-     tepada "Dashboard" deb yozilib turardi. Yangi sahifa qo'shsangiz,
-     shu yerga ham qo'shing. */
-  "/security":       { key:"nav.security",     icon:"fa-shield-halved" },
-  "/audit":          { key:"nav.audit",        icon:"fa-clock-rotate-left"},
-  "/settings":       { key:"nav.settings",     icon:"fa-gear"          },
 };
 
 function LowStockBadge({ items, count, onGoInventory }) {
@@ -151,10 +182,12 @@ function LowStockBadge({ items, count, onGoInventory }) {
   );
 }
 
-function Sidebar({ user, onLogout, open, onClose, isCollapsed, onToggleCollapse, lowStockCount }) {
+function Sidebar({ user, onLogout, open, onClose, isCollapsed, onToggleCollapse, lowStockCount, suspiciousCount }) {
   const { t } = useT();
   const confirm = useConfirm();
-  const { count: suspiciousCount } = useSuspiciousCount(user);
+  /* Guruh bandi o'z bolalaridan birortasida turgan bo'lsa yonadi — shuning
+     uchun bu yerda joriy manzil kerak (NavLink ning isActive i yetmaydi). */
+  const { pathname } = useLocation();
   // Yorliqda BITTA rol ko'rsatiladi — ierarxiyadagi eng yuqorisi.
   // "SHOP_ADMIN,CASHIER" deb yozib qo'yish foydalanuvchiga hech narsa
   // bermaydi va tarjima qilinmagan holda chiqardi.
@@ -196,27 +229,33 @@ function Sidebar({ user, onLogout, open, onClose, isCollapsed, onToggleCollapse,
         <i className={`fa-solid ${isCollapsed ? "fa-chevron-right" : "fa-chevron-left"}`} />
       </button>
       <nav className="sb-nav">
-        {NAV_ITEMS.map((group) => {
+        {NAV.map((item) => {
           // ⚠ Tekshiruv TO'PLAM bo'yicha. Ilgari bu yerda
           // `item.roles.includes(userRole)` turardi va `userRole` — sessiyadagi
           // BUTUN satr. Xodimda ikkita rol bo'lsa u `"SHOP_ADMIN,CASHIER"`
           // bo'lardi, hech bir ro'yxatga mos kelmasdi va yon menyuda faqat
           // «Sozlamalar» qolardi. OWNER uchun istisno `hasRole` ichida.
-          const visibleItems = group.items.filter((item) => hasRole(user?.role, item.roles));
+          const kids = visibleChildren(item, user?.role);
+          if (kids.length === 0) return null;
 
-          if (visibleItems.length === 0) return null;
+          /* Guruh havolasi — ko'rinadigan BIRINCHI bola. Guruhning o'z
+             manzili yo'q: yangi yo'l ochish `App.jsx` ni ham, saqlangan
+             havolalarni ham qayta ishlashni talab qilardi. */
+          const to = item.path || kids[0].path;
+          /* ⚠ `NavLink` ning o'z `isActive` i yaramaydi: u faqat `to`
+             bilan solishtiradi va «Ombor» dan «Kirim» ga o'tilganda band
+             o'chib qolardi. Guruh o'z bolalaridan BIRORTASIDA turgan
+             bo'lsa yonib turishi kerak. */
+          const active = kids.some((c) => c.path === pathname);
+          const badge = badgeFor(item.id, { lowStock: lowStockCount, suspicious: suspiciousCount });
+
           return (
-            <div key={group.section}>
-              <div className="sb-section">{t(group.section)}</div>
-              {visibleItems.map((item) => (
-                <NavLink key={item.id} to={item.path} title={isCollapsed ? t(item.key) : ""} onClick={() => onClose()} className={({ isActive }) => `sb-item ${isActive ? "active" : ""}`}>
-                  <i className={`fa-solid ${item.icon}`} aria-hidden="true" />
-                  <span className="sb-label">{t(item.key)}</span>
-                  {item.id === "inventory" && lowStockCount > 0 && <span className="badge badge-red sb-badge" style={{ marginLeft: "auto" }}>{lowStockCount}</span>}
-                  {item.id === "security" && suspiciousCount > 0 && <span className="badge badge-red sb-badge" style={{ marginLeft: "auto" }}>{suspiciousCount}</span>}
-                </NavLink>
-              ))}
-            </div>
+            <NavLink key={item.id} to={to} title={isCollapsed ? t(item.key) : ""} onClick={() => onClose()}
+                     className={`sb-item ${active ? "active" : ""}`}>
+              <i className={`fa-solid ${item.icon}`} aria-hidden="true" />
+              <span className="sb-label">{t(item.key)}</span>
+              {badge > 0 && <span className="badge badge-red sb-badge" style={{ marginLeft: "auto" }}>{badge}</span>}
+            </NavLink>
           );
         })}
       </nav>
@@ -244,6 +283,10 @@ export default function Layout({ user, onLogout, isAdmin, lowStockItems, lowStoc
   const [kassaFullscreen, setKassaFullscreen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  /* ⚠ Hisob SHU YERDA olinadi va yon menyuga prop bilan uzatiladi: hook
+     ikkinchi marta chaqirilsa server IKKI BAROBAR ko'p so'rov olardi
+     (har 2 daqiqada va har sahifa almashganda). */
+  const { count: suspiciousCount } = useSuspiciousCount(user);
   
   const toggleCollapse = () => {
     setIsCollapsed(p => {
@@ -259,8 +302,11 @@ export default function Layout({ user, onLogout, isAdmin, lowStockItems, lowStoc
   // Boshqa sahifaga o'tganda fullscreen dan chiqish
   if (!isKassaPage && kassaFullscreen) setKassaFullscreen(false);
 
-  const matchedTitle = Object.keys(PAGE_TITLES).find(k => location.pathname === k) || "/";
-  const title = PAGE_TITLES[matchedTitle] || PAGE_TITLES["/"];
+  /* Sarlavha ham, tab qatori ham YAGONA `NAV` ro'yxatidan chiqadi —
+     ilgari buning uchun alohida `PAGE_TITLES` jadvali bor edi va u
+     ro'yxat bilan qo'lda sinxron turishi kerak edi. */
+  const { group, child } = findPlace(location.pathname);
+  const tabs = visibleChildren(group, user?.role);
 
   // Children ga kassaFullscreen props ni uzatish
   const enhancedChildren = isKassaPage
@@ -279,13 +325,14 @@ export default function Layout({ user, onLogout, isAdmin, lowStockItems, lowStoc
         onClose={() => setOpen(false)} 
         isCollapsed={isCollapsed} 
         onToggleCollapse={toggleCollapse} 
-        lowStockCount={lowStockCount} 
+        lowStockCount={lowStockCount}
+        suspiciousCount={suspiciousCount}
       />
       <main className="main-content">
         <div className="topbar">
           <button className="btn-icon ham-btn" onClick={() => setOpen(v => !v)}
                   aria-label={t("layout.menu")} aria-expanded={open}><i className={`fa-solid ${open ? "fa-xmark" : "fa-bars"}`} aria-hidden="true" /></button>
-          <span className="topbar-title"><i className={`fa-solid ${title.icon}`} aria-hidden="true" /> {t(title.key)}</span>
+          <span className="topbar-title"><i className={`fa-solid ${group.icon}`} aria-hidden="true" /> {t(group.key)}</span>
           {/* Telefon ilovasida egasi «To'liq panel»dan NAZORAT paneliga
               qaytadi (bayroqni App.jsx o'qiydi — reload yetarli). */}
           {isMobileApp() && (roleSet(user?.role).has("OWNER") || roleSet(user?.role).has("SHOP_ADMIN")) && (
@@ -303,6 +350,31 @@ export default function Layout({ user, onLogout, isAdmin, lowStockItems, lowStoc
               turlicha chiqadi va tilga ergashmaydi (02-DESIGN-SYSTEM.md). */}
           <span className="topbar-date ek-num"><i className="fa-regular fa-clock" aria-hidden="true" /> {weekdayDate()}</span>
         </div>
+        {/* ── Guruh ichidagi sahifalar ────────────────────────────────────
+            Yon menyu 8 bandga tushgani uchun guruhning qolgan sahifalari
+            AYNAN shu qatorda ochiladi. Ko'rinishi sahifa ichidagi tab'lar
+            bilan bir xil (`btn btn-sm` + `btn-primary`/`btn-outline`) —
+            Xavfsizlik sahifasidagi qolip, foydalanuvchi uni allaqachon
+            biladi.
+
+            ⚠ Bitta sahifali guruhda qator UMUMAN chizilmaydi: yolg'iz
+            tab hech qayerga olib bormaydi va faqat joy egallaydi
+            (kassirda «Savdo» dan bittasi qolishi mumkin). */}
+        {tabs.length > 1 && (
+          <div className="pg-tabs" role="tablist">
+            {tabs.map((c) => {
+              const badge = badgeFor(c.id, { lowStock: lowStockCount, suspicious: suspiciousCount });
+              return (
+                <NavLink key={c.id} to={c.path} role="tab"
+                         aria-selected={c.path === child.path}
+                         className={`btn btn-sm ${c.path === child.path ? "btn-primary" : "btn-outline"}`}>
+                  <i className={`fa-solid ${c.icon}`} aria-hidden="true" /> {t(c.key)}
+                  {badge > 0 && <span className="badge badge-red tab-badge">{badge}</span>}
+                </NavLink>
+              );
+            })}
+          </div>
+        )}
         {/* Sahifa o'tishi — FAQAT opacity, 140ms. Siljish yo'q: POS'da chalg'itadi. */}
         <div className="page-content ek-page-in" key={location.pathname}>
           {children}

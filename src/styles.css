@@ -83,6 +83,23 @@ h1, h2, h3, .page-title, .card-title, .modal-title {
 .main-content    { margin-left: var(--current-sw); flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 100vh; transition: margin-left .3s; }
 .page-content    { flex: 1; min-width: 0; padding: 20px; }
 
+/* ── Guruh ichidagi sahifalar qatori ──────────────────────────────────────
+   Yon menyu guruhlarga yig'ilgach (21 band → 8) guruhning qolgan
+   sahifalari shu qatordan ochiladi. Topbar bilan kontent orasida turadi.
+
+   ⚠ Gorizontal scroll ATAYLAB: «Boshqaruv«da oltita sahifa bor va tor
+   ekranda ular ikkinchi qatorga tushib, kontentni pastga surib yuborardi.
+   ⚠ `flex-shrink: 0` tugmalarda — usiz uzun yorliqlar («Maxsus
+   hisobot») siqilib, matni kesilib qolardi. */
+.pg-tabs {
+  display: flex; gap: 8px; align-items: center;
+  padding: 12px 20px 0; overflow-x: auto;
+  scrollbar-width: none;
+}
+.pg-tabs::-webkit-scrollbar { display: none; }
+.pg-tabs > * { flex-shrink: 0; }
+.pg-tabs + .page-content { padding-top: 14px; }
+
 /* ── TOPBAR ── */
 .topbar {
   height: var(--sh);
@@ -156,9 +173,6 @@ h1, h2, h3, .page-title, .card-title, .modal-title {
 .sb-nav::-webkit-scrollbar        { width: 6px; }
 .sb-nav::-webkit-scrollbar-thumb  { background: var(--border); border-radius: 3px; }
 .sb-nav::-webkit-scrollbar-track  { background: transparent; }
-/* ⚠ Rang `--fg-tertiary` EMAS: u matn uchun yaramaydi (kontrast 3:1 dan
-   past — §1k). axe buni «color-contrast» deb ushladi. */
-.sb-section      { font-size: 10px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 1.2px; padding: 12px 8px 5px; }
 .sb-item {
   position: relative;   /* yig'ilgan rejimdagi burchak badge uchun tayanch */
   display: flex; align-items: center; gap: 10px;
@@ -175,7 +189,6 @@ h1, h2, h3, .page-title, .card-title, .modal-title {
 .sb-item i       { width: 18px; text-align: center; font-size: 14px; flex-shrink: 0; }
 .sb-label        { white-space: nowrap; transition: opacity .2s; }
 .sidebar.collapsed .sb-label,
-.sidebar.collapsed .sb-section,
 .sidebar.collapsed .sb-user-info { display: none; }
 .sidebar.collapsed .sb-item { justify-content: center; padding: 10px; }
 
@@ -609,7 +622,7 @@ select.form-input { cursor: pointer; }
   .sidebar.collapsed.open { transform: none; }
   .app-layout.collapsed { --current-sw: 0px; }
   .sb-toggle { display: none; }
-  .sidebar.collapsed .sb-label, .sidebar.collapsed .sb-section, .sidebar.collapsed .sb-user-info { display: block; }
+  .sidebar.collapsed .sb-label, .sidebar.collapsed .sb-user-info { display: block; }
   .kassa-layout   { grid-template-columns: 1fr; height: auto; flex: initial; min-height: auto; }
   .stats-grid     { grid-template-columns: 1fr 1fr; }
   .grid-2c        { grid-template-columns: 1fr; }
@@ -617,6 +630,7 @@ select.form-input { cursor: pointer; }
 @media (max-width: 520px) {
   .stats-grid { grid-template-columns: 1fr; }
   .page-content { padding: 12px; }
+  .pg-tabs { padding: 10px 12px 0; }
   .grid-2 { grid-template-columns: 1fr; }
 }
 
