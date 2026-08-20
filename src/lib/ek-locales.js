@@ -1502,7 +1502,7 @@ const uz = {
   "fiscal.noReceipts": "Hozircha chek yo'q",
   "fiscal.legalNote": "Chakana savdo dasturi soliq organlari bilan virtual kassa sifatida integratsiya qilingan bo'lishi shart. Ulanish uchun OFD operatori bilan shartnoma kerak.",
 
-  /* ── Menyu guruhlari (2026-08-17) — yon menyu 21 banddan 8 ga tushdi ── */
+  /* ── Menyu guruhlari (2026-08-20) — yon menyu 21 banddan 8 ga tushdi ── */
   "nav.group.catalog": "Katalog",
   "nav.group.warehouse": "Ombor",
   "nav.group.trade": "Savdo",
@@ -2948,7 +2948,7 @@ const ru = {
   "fiscal.noReceipts": "Чеков пока нет",
   "fiscal.legalNote": "Программа розничной торговли должна быть интегрирована с налоговыми органами как виртуальная касса. Для подключения нужен договор с оператором ОФД.",
 
-  /* ── Menyu guruhlari (2026-08-17) — yon menyu 21 banddan 8 ga tushdi ── */
+  /* ── Menyu guruhlari (2026-08-20) — yon menyu 21 banddan 8 ga tushdi ── */
   "nav.group.catalog": "Каталог",
   "nav.group.warehouse": "Склад",
   "nav.group.trade": "Продажи",
@@ -4394,7 +4394,7 @@ const en = {
   "fiscal.noReceipts": "No receipts yet",
   "fiscal.legalNote": "Retail software must be integrated with the tax authority as a virtual cash register. Connecting requires a contract with an OFD operator.",
 
-  /* ── Menyu guruhlari (2026-08-17) — yon menyu 21 banddan 8 ga tushdi ── */
+  /* ── Menyu guruhlari (2026-08-20) — yon menyu 21 banddan 8 ga tushdi ── */
   "nav.group.catalog": "Catalog",
   "nav.group.warehouse": "Warehouse",
   "nav.group.trade": "Sales",

@@ -11,7 +11,7 @@ import { useSuspiciousCount } from "../hooks/useSuspiciousCount";
 
 
 /* ══════════════════════════════════════════════════════════════════════════
-   MENYU — GURUHLANGAN (2026-08-17)
+   MENYU — GURUHLANGAN (2026-08-20)
 
    Ilgari yon menyuda 5 bo'lim va 21 ta band turardi, faqat «Do'kon» ning
    o'zida 9 tasi. Bunday ro'yxatda ko'z kerakli bandni o'qib emas, QIDIRIB
