@@ -12,6 +12,7 @@ import TelegramPanel from "../components/TelegramPanel";
 import HardwareSettings from "../components/HardwareSettings";
 import ShopQrPanel from "../components/ShopQrPanel";
 import Select from "../components/ek/Select";
+import { DEFAULT_NEAR_EXPIRY_DAYS } from "../lib/ek-expiry";
 import { Field } from "../components/ui";
 import { shopApi } from "../api";
 import { getTouchMode, setTouchMode } from "../lib/ek-touch";
@@ -85,6 +86,7 @@ export default function SettingsPage({ toast }) {
   const [creditLimit, setCreditLimit] = useState("");
   const [nonCashTolerance, setNonCashTolerance] = useState("");
   const [stockTolerance, setStockTolerance] = useState("");
+  const [nearExpiry, setNearExpiry] = useState("");
   useEffect(() => {
     if (!isOwner) return;
     shopApi.getProfile()
@@ -95,6 +97,9 @@ export default function SettingsPage({ toast }) {
         setCreditLimit(String(r?.data?.defaultCreditLimit ?? 0));
         setNonCashTolerance(String(r?.data?.nonCashDiffTolerance ?? 0));
         setStockTolerance(String(r?.data?.stockDiffTolerance ?? 0));
+        /* ⚠ Bo'sh ustun — STANDART (7 kun), nol emas. Nol ko'rsatilsa egasi
+           «ogohlantirish o'chiq» deb o'ylardi va u hech qachon o'chirilmagan. */
+        setNearExpiry(String(r?.data?.nearExpiryDays ?? DEFAULT_NEAR_EXPIRY_DAYS));
       })
       .catch(() => {});
   }, [isOwner]);
@@ -196,6 +201,16 @@ export default function SettingsPage({ toast }) {
                      value={stockTolerance}
                      onChange={(e) => setStockTolerance(e.target.value)}
                      onBlur={saveField(shopApi.setStockTolerance, stockTolerance)} />
+            </Row>
+            {/* «Muddati yaqin» oynasi (V41) — chegaralar yonida, chunki u
+                ham do'kon bo'ylab ishlaydigan va faqat egasi qo'yadigan
+                raqam. Sut do'koniga 7 kun uzoq, dorixonaga qisqa. */}
+            <Row label={t("settings.nearExpiry")} hint={t("settings.nearExpiryHint")}>
+              <Field kind="int" className="form-input ek-num"
+                     wrapStyle={{ width: 160 }}
+                     value={nearExpiry}
+                     onChange={(e) => setNearExpiry(e.target.value)}
+                     onBlur={saveField(shopApi.setNearExpiryDays, nearExpiry, DEFAULT_NEAR_EXPIRY_DAYS)} />
             </Row>
             <Row label={t("settings.discountLimit")} hint={t("settings.discountLimitHint")}>
               <Field kind="percent" className="form-input ek-num"

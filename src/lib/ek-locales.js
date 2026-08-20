@@ -1519,6 +1519,10 @@ const uz = {
   "inv.nearToday": "Bugun tugaydi",
   "inv.lowBadge": "Kam qoldi",
   "inv.noMatch": "Bu filtrga mos tovar yo'q",
+
+  /* ── «Muddati yaqin» oynasi do'kon sozlamasi (V41, 2026-08-20) ─── */
+  "settings.nearExpiry": "«Muddati yaqin» oynasi, kun",
+  "settings.nearExpiryHint": "Omborda tovar shuncha kun qolganda sariq bo'ladi. Sut do'koniga 2-3 kun, dorixonaga 30-60 kun to'g'ri keladi.",
 };
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -2975,6 +2979,10 @@ const ru = {
   "inv.nearToday": "Истекает сегодня",
   "inv.lowBadge": "Мало",
   "inv.noMatch": "Под этот фильтр товаров нет",
+
+  /* ── «Muddati yaqin» oynasi do'kon sozlamasi (V41, 2026-08-20) ─── */
+  "settings.nearExpiry": "Окно «скоро истекает», дн.",
+  "settings.nearExpiryHint": "Товар желтеет на складе за столько дней до конца срока. Молочному магазину подходит 2–3 дня, аптеке — 30–60.",
 };
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -4431,6 +4439,10 @@ const en = {
   "inv.nearToday": "Expires today",
   "inv.lowBadge": "Low",
   "inv.noMatch": "No goods match this filter",
+
+  /* ── «Muddati yaqin» oynasi do'kon sozlamasi (V41, 2026-08-20) ─── */
+  "settings.nearExpiry": "“Expiring soon” window, days",
+  "settings.nearExpiryHint": "Goods turn yellow in stock this many days before expiry. A dairy shop wants 2–3 days; a pharmacy 30–60.",
 };
 
 export default { uz, ru, en };

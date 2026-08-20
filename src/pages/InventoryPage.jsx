@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { t } from "../lib/ek-i18n";
-import { inventoryApi } from "../api";
+import { inventoryApi, shopApi } from "../api";
 import { BranchSelector, Modal } from "../components";
 import MarkingScanModal from "../components/MarkingScanModal";
 import { Empty, SearchBar } from "../components/ui";
@@ -11,6 +11,7 @@ import { money } from "../utils";
 import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
 import { NumField, DateField } from "../components/ek/EkFields";
+import { DEFAULT_NEAR_EXPIRY_DAYS, daysLeft } from "../lib/ek-expiry";
 
 /* Jurnal turlari — rang bilan: kirim yashil, chiqim qizil, to'g'irlash sariq.
    Omborchi ro'yxatga qarab o'qimasdan ham manzarani ko'rsin. */
@@ -49,27 +50,6 @@ const isBatchExpired = (b) => b.status === "EXPIRED" || b.expired;
    ko'rsatadi, yozuvlar esa HAMMASINI.
    ══════════════════════════════════════════════════════════════════════════ */
 
-/** «Muddati yaqin» oynasi — necha kun qolganda tovar sariq bo'ladi. */
-const NEAR_EXPIRY_DAYS = 7;
-
-/**
- * Muddatgacha necha kun qolgani. Muddatsiz tovarda `null`.
- *
- * ⚠ Hisob SANA bo'yicha, soat bo'yicha emas. `expiryDate` — kun
- * (`YYYY-MM-DD`) va `new Date("2026-08-20")` uni UTC yarim tuni deb
- * o'qiydi; Toshkent (+5) da bu bugun tugaydigan tovarni «kecha tugagan»
- * qilib ko'rsatardi. Shuning uchun sana qismlarga bo'lib, MAHALLIY
- * kun sifatida quriladi.
- */
-function daysLeft(iso) {
-  if (!iso) return null;
-  const [y, m, d] = String(iso).slice(0, 10).split("-").map(Number);
-  if (!y || !m || !d) return null;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return Math.round((new Date(y, m - 1, d) - today) / 86400000);
-}
-
 /**
  * Qatorning holati.
  *
@@ -78,13 +58,13 @@ function daysLeft(iso) {
  * o'tgan bo'lsayu holat hali almashmagan bo'lsa, tovar ikkala filtrdan
  * ham tushib qolardi.
  */
-function flagsOf(g) {
+function flagsOf(g, nearDays) {
   const left = daysLeft(g.nearest);
   const expired = g.hasExpired || (left !== null && left < 0);
   return {
     expired,
     /* Muddati o'tgan tovarda «yaqin» yozuvi chiqmaydi — u endi ortiqcha */
-    near: !expired && left !== null && left <= NEAR_EXPIRY_DAYS,
+    near: !expired && left !== null && left <= nearDays,
     low: g.sellable <= g.minQ,
     left,
   };
@@ -184,6 +164,22 @@ export default function InventoryPage({ toast }) {
      Ogohlantirish blokidagi raqamlarning O'ZI filtr tugmasi — alohida
      boshqaruv qatori qo'shilsa, ekranda ikkita bir xil ro'yxat turardi. */
   const [flt, setFlt] = useState("all");
+  /* «Muddati yaqin» oynasi — DO'KON sozlamasi (V41). Ustun bo'sh bo'lsa
+     standart 7 kun; profil yuklanmaguncha ham shu qiymat ishlaydi, ya'ni
+     jadval hech qachon chegarasiz qolmaydi. */
+  const [nearDays, setNearDays] = useState(DEFAULT_NEAR_EXPIRY_DAYS);
+
+  /* ⚠ `GET /shop/profile` HAR ROLGA ochiq (SecurityConfig'da `/shop/**`
+     `.authenticated()`) — omborchi ham, kassir ham chegarani o'qiy oladi.
+     Yozish esa faqat egasida. */
+  useEffect(() => {
+    shopApi.getProfile()
+      .then((r) => {
+        const v = Number(r?.data?.nearExpiryDays);
+        if (Number.isFinite(v) && v > 0) setNearDays(v);
+      })
+      .catch(() => { /* o'qib bo'lmadi — standart qiymat qoladi */ });
+  }, []);
 
   // Kirim-chiqim jurnali — alohida ko'rinish (jadval o'rnida)
   const [showHistory, setShowHistory] = useState(false);
@@ -222,7 +218,7 @@ export default function InventoryPage({ toast }) {
 
   /* Har qatorning holati bir marta hisoblanadi: u ham rang, ham yozuv,
      ham filtr, ham ogohlantirishdagi raqam uchun kerak. */
-  const rows = useMemo(() => groups.map((g) => ({ g, f: flagsOf(g) })), [groups]);
+  const rows = useMemo(() => groups.map((g) => ({ g, f: flagsOf(g, nearDays) })), [groups, nearDays]);
 
   /* ⚠ Raqamlar QIDIRUVDAN OLDINGI ro'yxatdan olinadi: ogohlantirish
      do'kondagi haqiqiy holatni aytishi kerak, qidiruv maydonida nima
@@ -378,7 +374,7 @@ export default function InventoryPage({ toast }) {
   const batchFlags = (b) => {
     const left = daysLeft(b.expiryDate);
     const expired = isBatchExpired(b) || (left !== null && left < 0);
-    return { expired, near: !expired && left !== null && left <= NEAR_EXPIRY_DAYS, low: false, left };
+    return { expired, near: !expired && left !== null && left <= nearDays, low: false, left };
   };
 
   /* Fon sinfi — eng jiddiy holat bo'yicha (o'tgan > yaqin > kam). */
@@ -415,7 +411,7 @@ export default function InventoryPage({ toast }) {
             <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />
             <b>{t("inv.alertTitle")}</b>
             <span className="text-muted inv-alert__hint">
-              {t("inv.alertHint", { n: NEAR_EXPIRY_DAYS })}
+              {t("inv.alertHint", { n: nearDays })}
             </span>
           </div>
           <div className="inv-alert__chips">
