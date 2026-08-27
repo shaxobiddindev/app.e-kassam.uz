@@ -1467,6 +1467,9 @@ const uz = {
   "kassa.outOfStock": "Qolmagan",
   "kassa.noPriceWarn": "Narx qo'yilmagan — sotib bo'lmaydi",
   "kassa.confirmQty": "Tasdiqlash",
+  /* Uzilishdan keyin savat qaytarildi — kassir buni BILISHI kerak,
+     aks holda eski savat ustiga yangisini terib yuborardi. */
+  "kassa.cartRestored": "Tugallanmagan savat qaytarildi ({n} tovar)",
   /* Qoldiqdan ko'p sotishga urinish — kassir MIJOZ OLDIDA turibdi,
      shuning uchun xato tovar nomini ham, nechta borligini ham aytadi. */
   "kassa.stockShort": "{name} — omborda faqat {qty} bor",
@@ -2938,6 +2941,7 @@ const ru = {
   "kassa.outOfStock": "Нет в наличии",
   "kassa.noPriceWarn": "Цена не задана — продать нельзя",
   "kassa.confirmQty": "Подтвердить",
+  "kassa.cartRestored": "Незавершённая корзина восстановлена ({n} товаров)",
   "kassa.stockShort": "{name} — на складе только {qty}",
   "kassa.qtyFromLabels": "Количество берётся из марок",
 
@@ -4402,6 +4406,7 @@ const en = {
   "kassa.outOfStock": "Out of stock",
   "kassa.noPriceWarn": "No price set — cannot be sold",
   "kassa.confirmQty": "Confirm",
+  "kassa.cartRestored": "Unfinished cart restored ({n} items)",
   "kassa.stockShort": "{name} — only {qty} in stock",
   "kassa.qtyFromLabels": "Quantity comes from the labels",
 

@@ -454,6 +454,13 @@ export const securityApi = {
   // pul yashigini ochish) — bajik `setPendingBadgeToken` orqali ketadi.
   confirm: (data) => request("/security/confirm", { method: "POST", body: JSON.stringify(data) }),
 
+  /* To'lanmagan savat tashlab ketilgani — BAJIK SO'RAMAYDI.
+     `confirm` bu yerga to'g'ri kelmaydi: u bajik talab qiladi, siyosat
+     o'chirilgan bo'lsa esa umuman hech narsa yozmaydi. Bu yerda esa hech
+     kim tugma bosmayapti — kassa ochilganda eski savat topildi. */
+  cartAbandoned: (data) =>
+    request("/security/cart-abandoned", { method: "POST", body: JSON.stringify(data) }),
+
   billing: () => request("/security/billing"),
 };
 

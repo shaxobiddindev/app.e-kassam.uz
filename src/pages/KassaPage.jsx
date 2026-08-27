@@ -16,6 +16,7 @@ import { FinishOverlay, SkeletonTiles, Spinner } from "../components/ek/Loading"
 import OfflineBar from "../components/OfflineBar";
 import ShiftBar from "../components/ShiftBar";
 import * as queue from "../lib/ek-offline";
+import * as cartStore from "../lib/ek-cart-store";
 import { PAYMENT_TYPE, paymentLabel } from "../lib/ek-labels";
 import { useLoading } from "../lib/use-loading";
 import Select from "../components/ek/Select";
@@ -205,15 +206,44 @@ export default function KassaPage({ toast, refreshLowStock }) {
   };
 
   /* ── Server qidiruvi (debounce 350ms) ─────────────────────── */
+  /* Filtrsiz ro'yxat — KESHDA.
+
+     ⚠ NEGA. Savatga qo'shilgandan keyin qidiruv maydoni tozalanadi va
+     katakchalar to'liq ro'yxatga qaytishi kerak. Ilgari buning uchun har
+     safar SERVERGA so'rov ketardi — ya'ni har skanerlangan tovar uchun
+     bittadan. Yigirma dona tovarli chekda bu yigirmata keraksiz so'rov:
+     sekin tarmoqda katakchalar miltillab turardi, oflaynda esa har biri
+     kutib qolardi. Ro'yxat esa o'sha-o'sha edi. */
+  const baseProducts = useRef(null);
+
   const doSearch = useCallback(async (q) => {
     setSearching(true);
     try {
       const res = await productApi.search(q, 0, 60, branchId,
         { categoryId, favorites: favOnly });
-      setProducts(res.data || []);
+      const list = res.data || [];
+      if (!q) baseProducts.current = list;
+      setProducts(list);
     } catch (_) { /* oflaynda katalog eskicha qoladi */ }
     finally { setSearching(false); }
   }, [branchId, categoryId, favOnly]);
+
+  /* Kategoriya yoki filial almashsa kesh yaroqsiz — ro'yxat boshqa. */
+  useEffect(() => { baseProducts.current = null; }, [branchId, categoryId, favOnly]);
+
+  /**
+   * Qidiruvni tozalash — savatga qo'shilgandan keyin.
+   *
+   * Kesh bo'lsa serverga BORMAYDI. Katakchadagi son baribir to'g'ri
+   * qoladi: u savatni hisobga olib chiziladi (`available`), sotuvdan
+   * keyin esa ro'yxat serverdan qayta o'qiladi.
+   */
+  const resetSearch = useCallback(() => {
+    setSearch("");
+    clearTimeout(debounceRef.current);
+    if (baseProducts.current) setProducts(baseProducts.current);
+    else doSearch("");
+  }, [doSearch]);
 
   useEffect(() => { doSearch(search); }, [doSearch]);   // kategoriya almashsa ham
 
@@ -222,6 +252,38 @@ export default function KassaPage({ toast, refreshLowStock }) {
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => doSearch(val), 350);
   };
+
+  /* ══ SAVATNI SAQLASH ═══════════════════════════════════════
+     ⚠ NEGA. Savatdan o'chirish bajik bilan qo'riqlanadi va jurnalga
+     yoziladi, lekin savatning o'zi `useState` da edi — bitta F5 uni izsiz
+     yo'q qilardi. Ya'ni qo'riqlashni aylanib o'tish uchun tugmani ham
+     bosish shart emasdi. Endi savat saqlanadi va F5 uni yo'qotmaydi.
+
+     ⚠ BU DEVOR EMAS: brauzer kassirning qo'lida. Bu qatlam tasodifiy va
+     beparvo chetlab o'tishni yopadi, ataylab qilinganini esa KO'RINADIGAN
+     qiladi. Haqiqiy devor bitta — savat serverda yashashi. */
+  useEffect(() => {
+    const found = cartStore.take();
+    if (!found) return;
+
+    if (!found.stale) {
+      setCart(found.cart);
+      toast.info(t("kassa.cartRestored", { n: found.cart.length }));
+      return;
+    }
+
+    /* Eskirgan savat TIKLANMAYDI — mijoz ketib bo'lgan, narx o'zgargan
+       bo'lishi mumkin. Lekin izsiz ham qolmaydi: kim, qachon va nimani
+       to'lamasdan qoldirgani jurnalga tushadi. */
+    securityApi.cartAbandoned({
+      itemCount: found.cart.length,
+      total: cartStore.totalOf(found.cart),
+      note: cartStore.describe(found.cart),
+    }).catch(() => { /* jurnal yozilmasa ham kassa ishlaydi */ });
+  }, [toast]);
+
+  /* Har o'zgarishda saqlanadi. Bo'sh savat yozuvni o'chiradi. */
+  useEffect(() => { cartStore.save(cart); }, [cart]);
 
   /* ── Oflayn navbat: yuborish funksiyasini ulaymiz ─────────── */
   useEffect(() => {
@@ -425,9 +487,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
       }
       return [...prev, { ...product, qty: codes.length, markingCodes: codes, _added: Date.now() }];
     });
-    setSearch("");
-    clearTimeout(debounceRef.current);
-    doSearch("");
+    resetSearch();
   };
 
   const addToCart = (product, amount = 1) => {
@@ -452,9 +512,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
       }
       return [...prev, { ...product, qty: round3(amount), _added: Date.now() }];
     });
-    setSearch("");
-    clearTimeout(debounceRef.current);
-    doSearch("");
+    resetSearch();
   };
 
   /** Kasrli qo'shishda 0.1 + 0.2 = 0.30000000000000004 bo'lmasin. */
