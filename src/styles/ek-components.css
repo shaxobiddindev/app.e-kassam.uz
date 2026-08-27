@@ -331,3 +331,110 @@ td.num, th.num { text-align: right; font-family: var(--font-mono); font-variant-
   color: var(--fg-secondary);
   line-height: 1.35;
 }
+
+/* ── Toast dastasi ────────────────────────────────────────────────────────
+   Ekranning YUQORI O'RTASIDA. Kartochkalar bir-birining USTIDA turadi:
+   eng yangisi to'liq ko'rinadi, oldingilari ortidan pastdan mo'ralaydi.
+
+   ⚠ Nechta xabar bo'lsa ham dasta BIR XIL joy egallaydi. Ilgari ular
+   ustun bo'lib terilardi va oltita bir xil xato ekranni yuqoridan pastgacha
+   yopib qo'yardi. Shu sababli kartochkalar `absolute` — o'ram balandligi
+   ularga bog'liq emas.
+
+   Chuqurlik `--depth` orqali keladi (0 — oldingi kartochka). */
+.ek-toast-stack {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--z-toast);
+  width: min(440px, calc(100vw - 32px));
+  /* Fon bo'sh joyi bosishni yutmasin — kartochkalar o'zi qaytarib oladi. */
+  pointer-events: none;
+}
+.ek-toast-slot {
+  pointer-events: auto;
+  /* ⚠ `bottom center` ATAYLAB. `top` bo'lsa, kichraytirish kartochkaning
+     PASTKI qirrasini yuqoriga tortadi va mo'ralash yo'qoladi. Pastdan
+     kichraytirilganda pastki qirra joyida qoladi, ya'ni ko'rinadigan
+     bo'lak faqat siljishdan hosil bo'ladi va u aniq: har qatlam 8px. */
+  transform-origin: bottom center;
+  transform: translateY(calc(var(--depth) * 8px)) scale(calc(1 - var(--depth) * 0.04));
+  opacity: calc(1 - var(--depth) * 0.3);
+  transition: transform var(--dur-base) var(--ease-out),
+              opacity   var(--dur-base) var(--ease-out);
+}
+/* Oldingi kartochka OQIMDA — dastaning balandligini aynan u belgilaydi. */
+.ek-toast-slot--lead { position: relative; }
+/* Ortdagilar oldingisining o'lchamiga tortiladi. ⚠ Busiz ular o'z
+   balandligicha qolardi: oldingisi ikki qatorli bo'lsa, bir qatorli
+   ortdagi kartochka uning ostida BUTUNLAY berkilib ketardi — aynan shu
+   sababli dasta ko'rinmay qolgan edi. */
+.ek-toast-slot--back { position: absolute; inset: 0; }
+.ek-toast-slot--back .ek-toast-card { height: 100%; }
+.ek-toast-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 13px 14px;
+  border: 1px solid transparent;   /* rangi turiga qarab JSX dan keladi */
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-lg);
+}
+.ek-toast-card > i { font-size: 16px; margin-top: 1px; flex-shrink: 0; }
+
+/* Oldingi kartochkani TEPAGA surib yopish mumkin. `touch-action: none`
+   busiz sensorli ekranda brauzer sahifani aylantirib yuborardi va surish
+   umuman ishlamasdi. */
+.ek-toast-card--grab {
+  position: relative;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.ek-toast-card--grab:active { cursor: grabbing; }
+/* Surish mumkinligining ishorasi — tepadagi kichik dastak. `absolute`,
+   chunki flex qatorini surib yubormasligi kerak. */
+.ek-toast-card--grab::before {
+  content: "";
+  position: absolute;
+  top: 5px; left: 50%;
+  width: 26px; height: 3px;
+  margin-left: -13px;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: .28;
+}
+.ek-toast-msg {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+/* Takrorlangan xabar hisoblagichi — «×3». */
+.ek-toast-count {
+  flex-shrink: 0;
+  padding: 1px 7px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.5;
+}
+.ek-toast-x {
+  flex-shrink: 0;
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 14px;
+  line-height: 1;
+  opacity: .6;
+  cursor: pointer;
+}
+.ek-toast-x:hover { opacity: 1; }
+
+/* Harakatni kamaytirish so'ralganda dasta siljimaydi — faqat shaffoflik. */
+@media (prefers-reduced-motion: reduce) {
+  .ek-toast-slot { transition: opacity var(--dur-fast) linear; }
+}

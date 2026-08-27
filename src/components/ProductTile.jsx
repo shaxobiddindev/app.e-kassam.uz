@@ -37,10 +37,19 @@ function initialsOf(name) {
   return words.map((w) => w[0]).join("").toUpperCase();
 }
 
-export default function ProductTile({ product, view = "tiles", onPick }) {
+/**
+ * `available` — SAVATNI hisobga olgan qoldiq (KassaPage beradi).
+ *
+ * ⚠ Nega alohida prop, nega `product.stockQuantity` ga yozilmagan: bosilganda
+ * `onPick(p)` AYNAN shu obyektni uzatadi va qoldiq nazorati o'sha yerda
+ * ishlaydi. Kamaytirilgan qiymatni obyektga yozib yuborsak, savat ikki
+ * marta ayirilardi va kassir hali bori bor tovarni qo'sha olmay qolardi.
+ */
+export default function ProductTile({ product, view = "tiles", onPick, available }) {
   const p = product;
   const tracks = p.stockQuantity != null;
-  const out = tracks && Number(p.stockQuantity) <= 0;
+  const shown = available != null ? available : p.stockQuantity;
+  const out = tracks && Number(shown) <= 0;
   const noPrice = p.salePrice == null;
   const color = COLOR_VAR[p.color] || "var(--bg-brand)";
   const thumb = mediaApi.url(p.thumbUrl);
@@ -77,7 +86,7 @@ export default function ProductTile({ product, view = "tiles", onPick }) {
           {tracks && (
             <span className={`product-stock ek-num ${out ? "is-out" : ""}`}>
               {out ? t("kassa.outOfStock")
-                   : `${fmtQty(p.stockQuantity, p.unitDecimals)} ${unitLabel(p.unit)}`}
+                   : `${fmtQty(shown, p.unitDecimals)} ${unitLabel(p.unit)}`}
             </span>
           )}
         </span>

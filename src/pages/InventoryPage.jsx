@@ -125,7 +125,11 @@ function groupByProduct(items) {
        muddati o'tgan partiya ham yotibdi. Aynan shunisi ko'rinmasdi —
        chiqit qilinmagan tovar jimgina qoldiqda turaverardi. */
     const hasExpired = sorted.some((b) => isBatchExpired(b) && (b.quantity || 0) > 0);
-    const nearest = valid.find((b) => b.expiryDate)?.expiryDate || null;
+    /* ⚠ Muddat ogohlantirishi faqat QOLDIG'I BOR partiyadan olinadi.
+       Ilgari bo'shab qolgan partiya ham hisobga olinardi: qoldig'i nol
+       tovarda «Yaroqlilik: 4 kun qoldi» va «Tugagan» yonma-yon turardi.
+       Sotiladigan narsa qolmagan bo'lsa, uning muddati ham ma'nosiz. */
+    const nearest = valid.find((b) => b.expiryDate && (b.quantity || 0) > 0)?.expiryDate || null;
     const f = sorted[0];
     return {
       productId: f.productId,
@@ -402,9 +406,22 @@ export default function InventoryPage({ toast }) {
      mahsulotga qo'yiladi, alohida partiyaga emas — ikkita yarim partiya
      birgalikda yetarli bo'lsa ham ikkalasi "kam" bo'lib qizarardi. */
   const batchFlags = (b) => {
+    /* ⚠ Bo'shab qolgan partiya «Faol» EMAS. Ilgari `out` doim yolg'on edi
+       va qoldig'i nol partiya yashil «Faol» bo'lib turardi — ro'yxatga
+       qaragan odam u yerda tovar bor deb o'ylardi.
+
+       Muddat ogohlantirishi ham berilmaydi: chirishi mumkin bo'lgan narsa
+       qolmagan. Shu sababli `out` boshqa hamma narsani bosadi. */
+    const out = (Number(b.quantity) || 0) <= 0;
     const left = daysLeft(b.expiryDate);
-    const expired = isBatchExpired(b) || (left !== null && left < 0);
-    return { expired, near: !expired && left !== null && left <= nearDays, low: false, out: false, left };
+    const expired = !out && (isBatchExpired(b) || (left !== null && left < 0));
+    return {
+      expired,
+      near: !out && !expired && left !== null && left <= nearDays,
+      low: false,
+      out,
+      left,
+    };
   };
 
   /* Fon sinfi — eng jiddiy holat bo'yicha (o'tgan > yaqin > tugagan > kam).
@@ -475,7 +492,11 @@ export default function InventoryPage({ toast }) {
               <button type="button"
                       className={`btn btn-sm ${flt === "low" ? "btn-primary" : "btn-outline"}`}
                       onClick={() => setFlt("low")}>
-                <i className="fa-solid fa-arrow-down-short-wide" aria-hidden="true" /> {t("inv.fltLow")}
+                {/* ⚠ `arrow-down-short-wide` EMAS. Unda o'q pastga qaraydi,
+                    ustunlar esa pastga qarab O'SADI — ikkita qarama-qarshi
+                    ishora bitta ikonkada. `arrow-trend-down` bir narsani
+                    aytadi: kamayish. */}
+                <i className="fa-solid fa-arrow-trend-down" aria-hidden="true" /> {t("inv.fltLow")}
                 <span className="badge badge-red tab-badge">{counts.low}</span>
               </button>
             )}

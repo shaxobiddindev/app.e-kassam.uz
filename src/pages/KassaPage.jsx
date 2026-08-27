@@ -738,6 +738,11 @@ export default function KassaPage({ toast, refreshLowStock }) {
 
     setFinish({ phase: "done", total: money(snapshot.total), receiptNo });
     if (refreshLowStock) refreshLowStock();
+    /* ⚠ Katakchalar ham QAYTA O'QILADI. Ilgari faqat yon paneldagi «kam
+       qolgan» belgisi yangilanardi, mahsulot katakchalari esa oxirgi
+       qidiruvdan qolgan eski qoldiqni ko'rsatib turaverardi — kassir
+       sahifani qo'lda yangilamaguncha son o'zgarmasdi. */
+    doSearch(search);
 
     clearCart();
     setCustomer(null);
@@ -988,7 +993,19 @@ export default function KassaPage({ toast, refreshLowStock }) {
                 </div>
               )}
               {products.map((p) => (
-                <ProductTile key={p.id} product={p} view={view} onPick={pickProduct} />
+                /* Katakchadagi son SAVATNI hisobga oladi: 38 dona bordi,
+                   3 tasi savatda — katakchada 35 turadi. Ilgari u ombor
+                   qoldig'ini ko'rsatib turaverardi va kassir savatga
+                   qancha olganini faqat savatdan sanab bilardi. */
+                <ProductTile
+                  key={p.id}
+                  product={p}
+                  available={p.stockQuantity != null
+                    ? round3(Number(p.stockQuantity) - inCart(p.id))
+                    : null}
+                  view={view}
+                  onPick={pickProduct}
+                />
               ))}
               {products.length === 0 && !searching && (
                 <div style={{ gridColumn: "1/-1" }}>
