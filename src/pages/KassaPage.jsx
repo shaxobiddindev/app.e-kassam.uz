@@ -308,7 +308,14 @@ export default function KassaPage({ toast, refreshLowStock }) {
      ⚠ BU DEVOR EMAS: brauzer kassirning qo'lida. Bu qatlam tasodifiy va
      beparvo chetlab o'tishni yopadi, ataylab qilinganini esa KO'RINADIGAN
      qiladi. Haqiqiy devor bitta — savat serverda yashashi. */
+  /* ⚠ ANIQ BIR MARTA. Bog'liqlik ro'yxati bo'sh bo'lsa ham React
+     StrictMode ni ishlab chiqishda effektni IKKI MARTA chaqiradi, shuning
+     uchun qo'riqlagich `ref` da. Busiz xabar ikki marta chiqardi. */
+  const restored = useRef(false);
   useEffect(() => {
+    if (restored.current) return;
+    restored.current = true;
+
     const found = cartStore.take();
     if (!found) return;
 
@@ -326,7 +333,10 @@ export default function KassaPage({ toast, refreshLowStock }) {
       total: cartStore.totalOf(found.cart),
       note: cartStore.describe(found.cart),
     }).catch(() => { /* jurnal yozilmasa ham kassa ishlaydi */ });
-  }, [toast]);
+    /* eslint-disable-next-line react-hooks/exhaustive-deps --
+       ATAYLAB bo'sh: bu ochilishdagi BIR MARTALIK amal, `toast` esa
+       bog'liqlikka qo'yilganda halqa hosil qilardi. */
+  }, []);
 
   /* Har o'zgarishda saqlanadi. Bo'sh savat yozuvni o'chiradi. */
   useEffect(() => { cartStore.save(cart); }, [cart]);

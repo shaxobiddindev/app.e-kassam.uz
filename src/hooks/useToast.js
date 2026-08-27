@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 
 /* ══════════════════════════════════════════════════════════════════════════
    Toast — xabarlar navbati.
@@ -75,12 +75,20 @@ export function useToast() {
     setToasts((prev) => prev.filter((x) => x.id !== id));
   }, []);
 
-  const toast = {
+  /* ⚠ `useMemo` SHART. Ilgari bu oddiy obyekt edi va HAR CHIZISHDA
+     yangisi yaratilardi. Uni `useEffect` bog'liqligiga qo'ygan har qanday
+     kod cheksiz halqaga tushardi: effekt ishlaydi → holat o'zgaradi →
+     qayta chiziladi → `toast` boshqa obyekt → effekt yana ishlaydi.
+
+     Aynan shu bo'ldi: savatni tiklash xabari to'xtovsiz chiqaverdi
+     (2026-08-27). Halqani chaqiruvchi tomonda emas, MANBADA yopdik —
+     aks holda keyingi odam ham xuddi shu tuzoqqa tushardi. */
+  const toast = useMemo(() => ({
     success: (msg) => showToast(msg, "success"),
     error:   (msg) => showToast(msg, "error"),
     info:    (msg) => showToast(msg, "info"),
     warning: (msg) => showToast(msg, "warning"),
-  };
+  }), [showToast]);
 
   return { toasts, toast, dismiss };
 }
