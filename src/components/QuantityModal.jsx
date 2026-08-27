@@ -147,8 +147,17 @@ export default function QuantityModal({ product, initial, stock: stockProp, onCo
 
               `aria-live` bilan ekran o'quvchi summa o'zgarganini aytadi,
               chunki endi element «paydo bo'lish» hodisasi bermaydi. */}
-          <div className="qty-modal__total ek-num" aria-live="polite">
-            {valid && product?.salePrice != null ? money(total) : ""}
+          <div className={`qty-modal__total ek-num ${valid ? "" : "is-hint"}`} aria-live="polite">
+            {valid && product?.salePrice != null
+              ? money(total)
+              /* ⚠ BO'SH QOLDIRILMAYDI. Joyni ushlab turish uchun bo'sh
+                 qatorni qoldirish oynada tushunarsiz teshik hosil
+                 qilardi — «bu yerda nimadir bo'lishi kerakmi?». Endi
+                 o'sha joyda birlik narxi turadi: kassir uni baribir
+                 bilishi kerak va qator balandligi o'zgarmaydi. */
+              : (product?.salePrice != null
+                  ? `1 ${unitLabel(product?.unit)} = ${money(product.salePrice)}`
+                  : "")}
           </div>
 
           <div className="qty-modal__keys">
@@ -163,7 +172,7 @@ export default function QuantityModal({ product, initial, stock: stockProp, onCo
                 Raqamlar joyi O'ZGARMADI: kassirning barmog'i 7-8-9 ni
                 yod biladi va ularni surish yangi xatolar tug'dirardi. */}
             <button type="button" className="qty-modal__key qty-modal__clear"
-                    onClick={clearAll} disabled={!value}
+                    onClick={clearAll}
                     aria-label={t("kassa.clearInput")}>
               C
               <span className="kbd">Del</span>

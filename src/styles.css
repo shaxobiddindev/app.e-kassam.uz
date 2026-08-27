@@ -479,7 +479,22 @@ select.form-input { cursor: pointer; }
    kontentidan kichrayolmaydi (standart `min-height: auto`), ya'ni ichkarida
    `overflow-y: auto` bo'lsa ham u HECH QACHON ishga tushmaydi: mahsulot
    ko'paygan sayin butun sahifa cho'ziladi. Aynan shu xato edi. */
-.kassa-layout    { display: grid; grid-template-columns: 1fr 360px; gap: 16px; flex: 1; min-height: 0; }
+/* ⚠ Uchta ustun: chap · CHEGARA · o'ng. Oraliq 6+4+6 = 16px, ya'ni
+   ilgarigi `gap: 16px` bilan bir xil — chegara qo'shilgani bilan
+   ekran ko'rinishi siljimadi. */
+.kassa-layout    { display: grid; grid-template-columns: 1fr 4px var(--kassa-right-w, 360px);
+                   gap: 6px; flex: 1; min-height: 0; }
+/* Chegara ingichka, LEKIN bosish maydoni keng (`::before`): 4px lik
+   chiziqni sichqoncha bilan ushlash azob, barmoq bilan esa umuman
+   imkonsiz bo'lardi. */
+.kassa-split     { position: relative; cursor: col-resize; touch-action: none;
+                   display: flex; align-items: center; justify-content: center; }
+.kassa-split::before { content: ""; position: absolute; inset: 0 -8px; }
+.kassa-split__grip { width: 4px; height: 46px; border-radius: 3px; background: var(--border-subtle);
+                     transition: background var(--dur-fast) var(--ease-out); }
+.kassa-split:hover .kassa-split__grip,
+.kassa-split:focus-visible .kassa-split__grip { background: var(--bg-brand); height: 72px; }
+.kassa-split:focus-visible { outline: none; }
 .kassa-left      { display: flex; flex-direction: column; gap: 12px; overflow: hidden; min-height: 0; }
 .kassa-right     { display: flex; flex-direction: column; gap: 11px; overflow: hidden; min-height: 0; }
 .product-grid    { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 10px; overflow-y: auto; padding: 12px; }
@@ -580,6 +595,9 @@ select.form-input { cursor: pointer; }
    kiritilganda raqamli klaviatura pastga sakraydi (QuantityModal.jsx). */
 .qty-modal__total { text-align: center; font-size: 20px; font-weight: 900; color: var(--fg-brand);
                     margin-top: 8px; line-height: 26px; min-height: 26px; }
+/* Miqdor kiritilmaguncha bu qatorda birlik narxi turadi — u ma'lumot,
+   javob emas, shuning uchun mayda va xira. Balandligi esa O'SHA-O'SHA. */
+.qty-modal__total.is-hint { font-size: 13px; font-weight: 700; color: var(--fg-secondary); }
 .qty-modal__keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 14px; }
 /* «C» — butun kenglikda va raqamlardan YUQORIDA (`order: -1`).
    Pastga qo'yilsa u «Bekor» bilan yonma-yon tushardi: ikkisi ham
@@ -650,12 +668,18 @@ select.form-input { cursor: pointer; }
                    transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out); }
 .qty-num--edit:hover:not(:disabled) { color: var(--blue); border-bottom-color: var(--blue); }
 .qty-num--edit:disabled             { cursor: default; border-bottom-color: transparent; }
-.total-card      { background: var(--bg-brand); color: var(--fg-on-brand); border-radius: var(--radius); padding: 18px; }
+/* ⚠ Ichki bo'shliq 18 → 12px, tugma tepasidagi oraliq 14 → 10px.
+   Bu blokda uchta qator bor, xolos — 18px lik chekka uni ustundan
+   ortiqcha 20 piksel o'g'irlaydigan qilardi. O'sha piksellar
+   savat ro'yxatiga ketadi: kassir eng ko'p o'sha yerga qaraydi. */
+.total-card      { background: var(--bg-brand); color: var(--fg-on-brand); border-radius: var(--radius); padding: 12px 14px; }
 /* ⚠ Yorliq rangi TO'LIQ oq: brand ko'k fonda oqning o'zi 4.8:1 beradi,
    `.6` xiralashtirilgani esa 2.7:1 edi (axe: color-contrast). Ierarxiya
    o'lcham bilan ajratiladi: yorliq 13px, jami 21px qora. */
 .total-row       { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--fg-on-brand); margin-bottom: 6px; }
-.total-big       { font-size: 21px; font-weight: 900; color: var(--fg-on-brand); display: flex; justify-content: space-between; padding-top: 12px; margin-top: 6px; border-top: 1px solid rgba(255,255,255,.12); }
+.total-big       { font-size: 21px; font-weight: 900; color: var(--fg-on-brand); display: flex; justify-content: space-between; padding-top: 8px; margin-top: 4px; border-top: 1px solid rgba(255,255,255,.12); }
+/* Mijoz tanlagichi savat kartochkasining ETAGIDA. */
+.cart-cust       { flex-shrink: 0; padding: 8px 10px; border-top: 1px solid var(--border-subtle); }
 .payment-grid    { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
 .payment-btn        { min-height: var(--hit-pos); padding: 11px; border-radius: var(--r-lg); border: 2px solid var(--border); background: var(--bg-surface); font-size: 14px; font-weight: 700; cursor: pointer; transition: .2s; font-family: var(--font); color: var(--text); }
 .payment-btn.active { border-color: var(--blue); background: var(--blue); color: var(--fg-on-brand); box-shadow: var(--sh-brand); }
@@ -780,7 +804,9 @@ select.form-input { cursor: pointer; }
   .app-layout.collapsed { --current-sw: 0px; }
   .sb-toggle { display: none; }
   .sidebar.collapsed .sb-label, .sidebar.collapsed .sb-user-info { display: block; }
+  /* Bitta ustunda chegaraning ma'nosi yo'q — yashiriladi. */
   .kassa-layout   { grid-template-columns: 1fr; height: auto; flex: initial; min-height: auto; }
+  .kassa-split    { display: none; }
   .stats-grid     { grid-template-columns: 1fr 1fr; }
   .grid-2c        { grid-template-columns: 1fr; }
 }
@@ -1316,6 +1342,12 @@ select.form-input { cursor: pointer; }
   line-height: 1;
 }
 .btn .kbd, .payment-btn .kbd { border-color: currentColor; background: transparent; color: inherit; opacity: .7; }
+/* ⚠ CHEGARALI TUGMADA SHAFFOFLIK YO'Q. `opacity: .7` to'q fonli (yashil,
+   ko'k) tugmada xavfsiz — matn oq. Oq fonli `btn-outline` da esa u
+   `--fg-secondary` ni 4.6:1 dan 3.38:1 ga tushirardi va axe uni haqli
+   ravishda ushladi (09-CHETLANISHLAR §1k: shaffoflik bilan «xiralashtirish»
+   ishlatilmaydi). Yorliq matnning O'ZI allaqachon ikkinchi darajali. */
+.btn-outline .kbd { opacity: 1; color: var(--fg-secondary); border-color: var(--border-strong); }
 
 /* ── Holat tasmasi (oflayn / sinxronizatsiya) ─────────────────────────────
    Yashiringan holat bo'lmaydi — navbat doim ko'rinadi (01-ARCHITECTURE.md). */
@@ -1817,7 +1849,12 @@ img.logo--dark { display: none; }
 
 /* Sana maydoni: kalendar tugmasi maydon ichida, brauzerning o'z
    ko'rinishi esa yashirin (`dateInput()` izohiga qarang). */
-.ek-date { position: relative; display: inline-flex; align-items: center; width: 100%; }
+/* `flex-wrap` — xato yozuvi maydonning OSTIDA, yonida emas: yonida
+   turganda u maydonni siqib, sanani ko'rsatmay qo'yardi. */
+.ek-date { position: relative; display: inline-flex; align-items: center; flex-wrap: wrap; width: 100%; }
+.ek-date.is-invalid > input.form-input { border-color: var(--border-danger); }
+.ek-date__err { flex-basis: 100%; display: flex; align-items: center; gap: 5px;
+                margin-top: 4px; font-size: 12px; font-weight: 700; color: var(--fg-danger); }
 .ek-date > input.form-input { padding-right: 36px; }
 .ek-date__pick {
   position: absolute; right: 4px; width: 30px; height: 30px;
@@ -2541,18 +2578,31 @@ img.logo--dark { display: none; }
    Partiyalar jadval qatori sifatida emas, o'z kartochkalarida: jadval
    ustunlari («Tan narxi», «Barkod») partiyaga tegishli emas edi va
    bo'sh kataklar qatorni o'qishni qiyinlashtirardi. */
-.inv-detail__grid  { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; margin-bottom: 16px; }
-.inv-detail__grid > div { display: flex; flex-direction: column; gap: 2px; }
-.inv-detail__label { font-size: 11.5px; font-weight: 700; color: var(--fg-secondary); }
-.inv-detail__value { font-size: 14px; font-weight: 800; color: var(--fg-primary); }
-.inv-detail__head  { display: flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 800;
+.inv-detail__grid  { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 20px; margin-bottom: 14px; }
+/* ⚠ Yorliq va qiymat BIR QATORDA (ustma-ust emas). Oyna eniga keng,
+   shuning uchun yon tomonda joy bor; ustma-ust turganda esa to'rtta
+   maydon sakkiz qator egallab, partiyalarni pastga surib yuborardi. */
+.inv-detail__grid > div { display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+                          padding: 4px 0; border-bottom: 1px dashed var(--border-subtle); }
+.inv-detail__label { font-size: 12px; font-weight: 700; color: var(--fg-secondary); flex-shrink: 0; }
+.inv-detail__value { font-size: 13.5px; font-weight: 800; color: var(--fg-primary);
+                     text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.inv-detail__head  { display: flex; align-items: center; justify-content: space-between; gap: 7px;
+                     font-size: 12.5px; font-weight: 800;
                      color: var(--fg-secondary); padding-top: 12px; margin-bottom: 8px;
                      border-top: 1px solid var(--border-subtle); }
+.inv-detail__toggle{ border: 0; background: none; cursor: pointer; padding: 2px 4px;
+                     font-size: 12px; font-weight: 700; color: var(--fg-brand); text-decoration: underline; }
 .inv-detail__batches { display: flex; flex-direction: column; gap: 7px; max-height: 46vh; overflow-y: auto; }
-.inv-batch         { display: flex; align-items: center; justify-content: space-between; gap: 12px;
+/* ⚠ `flex-wrap` — sana UCHTA QATORGA bo'linmasin. Belgi va tugma yonida
+   joy qolmaganda «Yaroqlilik muddati: 02-09-2026» so'zma-so'z sinib,
+   partiya kartochkasi uch barobar balandlashardi. Endi sig'masa
+   belgi bilan tugma pastga tushadi, sana esa butun qoladi. */
+.inv-batch         { display: flex; align-items: center; justify-content: space-between;
+                     flex-wrap: wrap; gap: 6px 12px;
                      padding: 9px 12px; border-radius: 10px; background: var(--bg-sunken);
                      border: 1px solid var(--border-subtle); }
-.inv-batch__main   { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.inv-batch__main   { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 auto; }
 .inv-batch__qty    { font-size: 14px; font-weight: 800; color: var(--fg-primary); }
-.inv-batch__exp    { font-size: 11.5px; font-weight: 700; color: var(--fg-secondary); }
-.inv-batch__side   { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.inv-batch__exp    { font-size: 11.5px; font-weight: 700; color: var(--fg-secondary); white-space: nowrap; }
+.inv-batch__side   { display: flex; align-items: center; gap: 8px; flex-shrink: 0; margin-left: auto; }

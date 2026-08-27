@@ -188,7 +188,16 @@ export default function InventoryPage({ toast }) {
 
      Endi tafsilot MODAL oynada: jadval qimirlamaydi, partiyalar esa
      o'z sarlavhalari bilan, kengroq joyda ko'rinadi. */
-  const [detail, setDetail] = useState(null);   // ochilgan mahsulot guruhi
+  /* ⚠ OBYEKT EMAS, ID saqlanadi. Guruh har chizishda `rows` dan qaytadan
+     olinadi, ya'ni to'g'irlashdan yoki kirimdan keyin oyna YANGI raqamni
+     ko'rsatadi. Obyekt saqlansa, omborchi qaytib kelganda o'zi hozirgina
+     o'zgartirgan sonni eskisicha ko'rardi. */
+  const [detailId, setDetailId] = useState(null);
+  /* Qaysi mahsulot tafsilotidan chiqilgan — «Orqaga» shu yerga qaytaradi.
+     Jadvaldan to'g'ridan-to'g'ri ochilganda `null` va tugma ko'rinmaydi. */
+  const [backTo, setBackTo] = useState(null);
+  /* Bo'shab qolgan partiyalarni ko'rsatishmi. */
+  const [showEmptyBatches, setShowEmptyBatches] = useState(false);
   /* Ogohlantirish filtri: "all" | "expired" | "near" | "low".
      Ogohlantirish blokidagi raqamlarning O'ZI filtr tugmasi — alohida
      boshqaruv qatori qo'shilsa, ekranda ikkita bir xil ro'yxat turardi. */
@@ -293,6 +302,10 @@ export default function InventoryPage({ toast }) {
      ham filtr, ham ogohlantirishdagi raqam uchun kerak. */
   const rows = useMemo(() => groups.map((g) => ({ g, f: flagsOf(g, nearDays) })), [groups, nearDays]);
 
+  /* Ochilgan tafsilot — HOZIRGI ma'lumotdan. Mahsulot ro'yxatdan
+     yo'qolsa (filial almashdi, o'chirildi) oyna o'zi yopiladi. */
+  const detail = detailId == null ? null : (rows.find((r) => r.g.productId === detailId)?.g || null);
+
   /* ⚠ Raqamlar QIDIRUVDAN OLDINGI ro'yxatdan olinadi: ogohlantirish
      do'kondagi haqiqiy holatni aytishi kerak, qidiruv maydonida nima
      yozilganini emas. */
@@ -319,6 +332,28 @@ export default function InventoryPage({ toast }) {
     return true;
   });
 
+
+  /**
+   * Tafsilotdan chaqirilgan oynadan ORQAGA.
+   *
+   * ⚠ Har oyna uchun bir xil: kirim ham, to'g'irlash ham tafsilotdan
+   * ochiladi va ikkalasidan ham qaytish yo'li bo'lishi kerak. Ilgari
+   * to'g'irlash oynasi ochilganda tafsilot yopilib ketardi va omborchi
+   * qolgan partiyalarni ko'rish uchun jadvaldan qaytadan qidirardi.
+   */
+  const goBack = () => {
+    setModal(null);
+    setCorrect(null);
+    setDetailId(backTo);
+    setBackTo(null);
+  };
+
+  /** Tafsilotdan boshqa oynaga o'tish — qaytish nuqtasini eslab qolib. */
+  const fromDetail = (open) => {
+    setBackTo(detailId);
+    setDetailId(null);
+    open();
+  };
 
   const openModal = (group) => {
     setModal(group);
@@ -366,7 +401,10 @@ export default function InventoryPage({ toast }) {
         modal.productId, amount, expiryDate || null, reason, marked ? markCodes : null);
       toast.success(res?.message
         || `${fmtQty(amount, unitDecimals(modal.unit))} ${unitLabel(modal.unit)} kirim qilindi`);
-      setModal(null);
+      /* ⚠ Muvaffaqiyatdan keyin ham TAFSILOTGA qaytiladi (agar undan
+         kelingan bo'lsa): omborchi kiritgan miqdorining partiyalar
+         ro'yxatida paydo bo'lganini o'sha zahoti ko'radi. */
+      if (backTo != null) goBack(); else setModal(null);
       loadData();
     } catch (err) {
       toast.error(err.message);
@@ -404,7 +442,7 @@ export default function InventoryPage({ toast }) {
       await guard(() => inventoryApi.correctBatch(
         correct.inventoryId, Number(qty), reason.trim(), isDecrease ? woReason : null));
       toast.success(t("inv.correctTitle"));
-      setCorrect(null);
+      if (backTo != null) goBack(); else setCorrect(null);
       loadData();
     } catch (err) {
       if (!err?.cancelled) toast.error(err.message);
@@ -661,7 +699,7 @@ export default function InventoryPage({ toast }) {
                       key={`p-${g.productId}`}
                       className={rowClass(f)}
                       style={{ cursor: "pointer" }}
-                      onClick={() => setDetail(g)}
+                      onClick={() => setDetailId(g.productId)}
                       title={t("inv.openDetails")}
                     >
                       <td>
@@ -723,18 +761,38 @@ export default function InventoryPage({ toast }) {
           Jadvaldagi qator bosilganda ochiladi. Jadval o'z o'rnida qoladi:
           omborchi oynani yopgach nigohi qayerda qolgan bo'lsa, o'sha
           yerdan davom etadi. */}
-      {detail && (
+      {detail && (() => {
+        /* ⚠ BO'SHAB QOLGAN PARTIYALAR YASHIRILADI (o'chirilmaydi).
+
+           Savol o'rinli edi: qoldig'i nol partiyani nega ko'rsatamiz?
+           Javob — uni BAZADAN o'chirib bo'lmaydi: har kirim-chiqim
+           yozuvi o'sha partiyaga ishora qiladi (kim, qachon, qaysi
+           muddatli tovarni sotdi/chiqitga chiqardi). Partiyani
+           o'chirish jurnalni ham, chiqit hisobotini ham uzib qo'yardi —
+           ya'ni nazoratning o'zini.
+
+           Lekin EKRANDA ular kerak emas: sotiladigan narsa yo'q. Shuning
+           uchun yashiriladi, kerak bo'lsa bir bosishda ochiladi. */
+        const empties = detail.batches.filter((b) => !(Number(b.quantity) > 0));
+        const shown = showEmptyBatches
+          ? detail.batches
+          : detail.batches.filter((b) => Number(b.quantity) > 0);
+        /* Hech narsa qolmagan mahsulotda bittasini ko'rsatamiz —
+           bo'sh ro'yxat «ma'lumot yuklanmadi» degan taassurot berardi. */
+        const list = shown.length ? shown : detail.batches.slice(0, 1);
+
+        return (
         <Modal
           title={detail.productName}
-          onClose={() => setDetail(null)}
+          onClose={() => setDetailId(null)}
           footer={
             <>
-              <button className="btn btn-outline btn-sm" onClick={() => setDetail(null)}>
+              <button className="btn btn-outline btn-sm" onClick={() => setDetailId(null)}>
                 {t("common.close")}
               </button>
               {!branchId && (
                 <button className="btn btn-green btn-sm"
-                        onClick={() => { const g = detail; setDetail(null); openModal(g); }}>
+                        onClick={() => fromDetail(() => openModal(detail))}>
                   <i className="fa-solid fa-plus" /> {t("inv.receive")}
                 </button>
               )}
@@ -742,6 +800,10 @@ export default function InventoryPage({ toast }) {
           }
         >
           <div className="inv-detail">
+            {/* ⚠ Yorliq va qiymat BIR QATORDA. Ustma-ust turganda oyna
+                enига keng bo'lsa ham behuda cho'zilardi: to'rtta maydon
+                sakkiz qator joy olardi, partiyalar esa pastga tushib
+                ko'rinmay qolardi. */}
             <div className="inv-detail__grid">
               <div>
                 <span className="inv-detail__label">{t("products.barcode")}</span>
@@ -764,15 +826,25 @@ export default function InventoryPage({ toast }) {
             </div>
 
             <div className="inv-detail__head">
-              <i className="fa-solid fa-layer-group" aria-hidden="true" />
-              {t("inv.batchCount", { n: detail.batches.length })}
+              <span>
+                <i className="fa-solid fa-layer-group" aria-hidden="true" />{" "}
+                {t("inv.batchCount", { n: list.length })}
+              </span>
+              {empties.length > 0 && (
+                <button type="button" className="inv-detail__toggle"
+                        onClick={() => setShowEmptyBatches((v) => !v)}>
+                  {showEmptyBatches
+                    ? t("inv.hideEmptyBatches")
+                    : t("inv.showEmptyBatches", { n: empties.length })}
+                </button>
+              )}
             </div>
 
             {/* ⚠ Partiya HOLATI bilan: guruh sariq bo'lsayu ichida bittasi
                 allaqachon o'tgan bo'lsa, aynan o'shasi ko'rinib turishi
                 kerak — omborchi shu qatorni chiqarib tashlaydi. */}
             <div className="inv-detail__batches">
-              {detail.batches.map((b) => (
+              {list.map((b) => (
                 <div key={b.inventoryId ?? "empty"} className={`inv-batch ${rowClass(batchFlags(b))}`}>
                   <div className="inv-batch__main">
                     <span className="inv-batch__qty ek-num">
@@ -790,7 +862,7 @@ export default function InventoryPage({ toast }) {
                         amal, shuning uchun bunda ko'rsatilmaydi. */}
                     {!branchId && b.inventoryId != null && (
                       <button className="btn btn-outline btn-sm"
-                              onClick={() => { setDetail(null); openCorrect(b); }}
+                              onClick={() => fromDetail(() => openCorrect(b))}
                               title={t("inv.correctHint")}>
                         <i className="fa-solid fa-sliders" /> {t("inv.correctAction")}
                       </button>
@@ -801,17 +873,23 @@ export default function InventoryPage({ toast }) {
             </div>
           </div>
         </Modal>
-      )}
+        );
+      })()}
 
       {/* ── Kirim Modal ── */}
       {modal && (
         <Modal
           title={`${t("inv.receive")} — ${modal.productName}`}
-          onClose={() => setModal(null)}
+          onClose={() => (backTo != null ? goBack() : setModal(null))}
           footer={
             <>
-              <button className="btn btn-outline btn-sm" onClick={() => setModal(null)}>
-                {t("common.cancel")}
+              {/* Tafsilotdan kelingan bo'lsa — «Orqaga», aks holda «Bekor».
+                  Amal bir xil (saqlamasdan yopish), lekin nomi qayerga
+                  tushishini aytadi. */}
+              <button className="btn btn-outline btn-sm" onClick={() => (backTo != null ? goBack() : setModal(null))}>
+                {backTo != null
+                  ? <><i className="fa-solid fa-arrow-left" aria-hidden="true" /> {t("common.back")}</>
+                  : t("common.cancel")}
               </button>
               <button
                 className="btn btn-green btn-sm"
@@ -947,11 +1025,13 @@ export default function InventoryPage({ toast }) {
       {correct && (
         <Modal
           title={`${t("inv.correctTitle")} — ${correct.productName}`}
-          onClose={() => setCorrect(null)}
+          onClose={() => (backTo != null ? goBack() : setCorrect(null))}
           footer={
             <>
-              <button className="btn btn-outline btn-sm" onClick={() => setCorrect(null)}>
-                {t("common.cancel")}
+              <button className="btn btn-outline btn-sm" onClick={() => (backTo != null ? goBack() : setCorrect(null))}>
+                {backTo != null
+                  ? <><i className="fa-solid fa-arrow-left" aria-hidden="true" /> {t("common.back")}</>
+                  : t("common.cancel")}
               </button>
               <button
                 className="btn btn-primary btn-sm"

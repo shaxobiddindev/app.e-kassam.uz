@@ -12,7 +12,7 @@ import {
   numberInput, displayNumber, phoneInput, isEmail, emailInput,
   isBarcodeChecksumValid, mxikInput, isMxik, codeInput, usernameInput,
   isUsername, nameInput, skuInput, otpInput, digitsInput,
-  dateDisplayInput, isoToDisplayDate, displayDateToIso,
+  dateDisplayInput, isoToDisplayDate, displayDateToIso, dateInputError,
   validate, required, positive, notNegative, between, minLen,
 } from "../src/lib/ek-input.js";
 
@@ -151,6 +151,31 @@ eq(displayDateToIso("31-01-2026"), "2026-01-31", "ko'rinish \u2192 ISO");
 eq(displayDateToIso("31-01"), "", "yarim sanadan ISO CHIQMAYDI");
 eq(displayDateToIso(""), "", "bo'sh \u2014 bo'sh");
 eq(displayDateToIso(isoToDisplayDate("2026-12-01")), "2026-12-01", "ikki yoqlama aylanish qiymatni saqlaydi");
+
+/* \u26a0 MAVJUD BO'LMAGAN SANA. Raqamlar to'g'ri joyda turibdi-yu, bunday
+   kun yo'q. Ilgari u ISO ga aylanib serverga ketardi va xato faqat
+   «Saqlash» dan keyin qaytardi. */
+eq(displayDateToIso("32-09-2026"), "", "32-sentabr \u2014 bunday kun yo'q");
+eq(displayDateToIso("00-09-2026"), "", "nol-kun qabul qilinmaydi");
+eq(displayDateToIso("15-13-2026"), "", "13-oy yo'q");
+eq(displayDateToIso("15-00-2026"), "", "nol-oy yo'q");
+eq(displayDateToIso("30-02-2026"), "", "30-fevral yo'q (`new Date` uni martga surib yuborardi)");
+eq(displayDateToIso("29-02-2025"), "", "2025 kabisa emas \u2014 29-fevral yo'q");
+eq(displayDateToIso("29-02-2024"), "2024-02-29", "2024 kabisa \u2014 29-fevral BOR");
+eq(displayDateToIso("31-12-2026"), "2026-12-31", "yil oxiri o'tadi");
+
+/* Xato DARHOL ko'rinadi, sakkizta raqam to'lishini kutmasdan \u2014 lekin
+   yarim yozilgani xato deb belgilanmaydi. */
+eq(dateInputError("3"), false, "yarim yozilgan kun \u2014 hali xato emas");
+eq(dateInputError("32"), true, "«32» darhol xato (yil kutilmaydi)");
+eq(dateInputError("30"), false, "«30» \u2014 to'g'ri kun");
+eq(dateInputError("00"), true, "«00» kun yo'q");
+eq(dateInputError("30-0"), false, "yarim yozilgan oy \u2014 hali xato emas");
+eq(dateInputError("30-13"), true, "«13» oy darhol xato");
+eq(dateInputError("30-00"), true, "«00» oy yo'q");
+eq(dateInputError("30-02-2026"), true, "30-fevral \u2014 kalendar tekshiruvi");
+eq(dateInputError("30-09-2026"), false, "to'g'ri sana \u2014 xato yo'q");
+eq(dateInputError(""), false, "bo'sh maydon xato emas");
 
 console.log(`\n  ${pass} o'tdi, ${fail} yiqildi\n`);
 process.exit(fail ? 1 : 0);

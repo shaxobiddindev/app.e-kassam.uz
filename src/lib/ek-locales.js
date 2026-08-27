@@ -34,6 +34,9 @@ const uz = {
   "common.creating": "Yaratilmoqda…",
   "common.close": "Yopish",
   "common.back": "Orqaga",
+  /* Sana maydoni: raqamlar joyida-yu, bunday kun yo'q (32-09, 30-02).
+     Xato SAQLASHDAN OLDIN aytiladi. */
+  "validation.dateInvalid": "Bunday sana yo'q",
   "common.next": "Keyingi",
   "common.search": "Qidirish",
   "common.filter": "Filtr",
@@ -820,6 +823,10 @@ const uz = {
      o'zi qimirlamasin (partiyalar qator sifatida ochilganda pastdagi
      hamma narsa surilib ketardi). */
   "inv.openDetails": "Tafsilotni ochish",
+  /* Bo'shab qolgan partiya EKRANDA yashiriladi, bazadan o'chirilmaydi:
+     har kirim-chiqim yozuvi o'sha partiyaga ishora qiladi. */
+  "inv.showEmptyBatches": "Bo'shaganlarini ko'rsatish ({n})",
+  "inv.hideEmptyBatches": "Bo'shaganlarini yashirish",
   "inv.expiredWarn": "Bu mahsulot muddati o'tgan. Kirim qilsangiz eskisi «Muddati o'tgan» holatida qoladi va yangi inventar yaratiladi.",
   "inv.expiryOptional": "Bo'sh qoldirilsa — muddatsiz tovar (idish, kanstovar)",
   "inv.batchCount": "{n} partiya",
@@ -1514,6 +1521,7 @@ const uz = {
   "kassa.cartN": "Savat {n}",
   "kassa.cartEmpty": "bo'sh",
   "kassa.newCart": "Yangi savat",
+  "kassa.resizeHint": "Ustunlar kengligini surish (o'q tugmalari bilan ham)",
   "kassa.closeCart": "Savatni yopish",
   "kassa.cartsMax": "Bir vaqtda ko'pi bilan {n} ta savat ochish mumkin",
   /* Tovar shu yerda, lekin qo'shni savatda — kassirni omborga
@@ -1611,6 +1619,7 @@ const ru = {
   "common.creating": "Создание…",
   "common.close": "Закрыть",
   "common.back": "Назад",
+  "validation.dateInvalid": "Такой даты не существует",
   "common.next": "Далее",
   "common.search": "Поиск",
   "common.filter": "Фильтр",
@@ -2359,6 +2368,8 @@ const ru = {
   "inv.expiry": "Срок годности",
   "inv.stock": "Остаток",
   "inv.openDetails": "Открыть детали",
+  "inv.showEmptyBatches": "Показать пустые ({n})",
+  "inv.hideEmptyBatches": "Скрыть пустые",
   "inv.expiredWarn": "У этого товара истёк срок годности. При приходе старая партия останется «Просрочена», а будет создана новая.",
   "inv.expiryOptional": "Оставьте пустым — товар без срока (посуда, канцтовары)",
   "inv.batchCount": "{n} парт.",
@@ -3026,6 +3037,7 @@ const ru = {
   "kassa.cartN": "Корзина {n}",
   "kassa.cartEmpty": "пусто",
   "kassa.newCart": "Новая корзина",
+  "kassa.resizeHint": "Изменить ширину колонок (можно стрелками)",
   "kassa.closeCart": "Закрыть корзину",
   "kassa.cartsMax": "Одновременно можно открыть не более {n} корзин",
   "kassa.stockShortParked": "{name} — осталось {qty} ({held} в другой корзине)",
@@ -3114,6 +3126,7 @@ const en = {
   "common.creating": "Creating…",
   "common.close": "Close",
   "common.back": "Back",
+  "validation.dateInvalid": "No such date",
   "common.next": "Next",
   "common.search": "Search",
   "common.filter": "Filter",
@@ -3862,6 +3875,8 @@ const en = {
   "inv.expiry": "Expiry date",
   "inv.stock": "Stock",
   "inv.openDetails": "Open details",
+  "inv.showEmptyBatches": "Show empty ({n})",
+  "inv.hideEmptyBatches": "Hide empty",
   "inv.expiredWarn": "This product has expired. If you receive stock, the old batch stays “Expired” and a new inventory record is created.",
   "inv.expiryOptional": "Leave empty for non-perishable goods (dishes, stationery)",
   "inv.batchCount": "{n} batches",
@@ -4529,6 +4544,7 @@ const en = {
   "kassa.cartN": "Cart {n}",
   "kassa.cartEmpty": "empty",
   "kassa.newCart": "New cart",
+  "kassa.resizeHint": "Resize columns (arrow keys work too)",
   "kassa.closeCart": "Close cart",
   "kassa.cartsMax": "At most {n} carts can be open at once",
   "kassa.stockShortParked": "{name} — {qty} left ({held} in another cart)",

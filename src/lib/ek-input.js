@@ -263,22 +263,36 @@ export function dateDisplayInput(v) {
   return out;
 }
 
-/** `2026-01-31` → `31-01-2026`. To'liq bo'lmasa — bo'sh satr. */
-export function isoToDisplayDate(iso) {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso ?? ""));
-  return m ? `${m[3]}-${m[2]}-${m[1]}` : "";
-}
-
 /**
- * `31-01-2026` → `2026-01-31`. To'liq bo'lmasa — bo'sh satr.
+ * Sana HAQIQIYmi (ISO ko'rinishida).
  *
- * ⚠ Bo'sh satr ATAYLAB: yarim yozilgan sana serverga yuborilmasligi
- * kerak. «31-01» dan yil chiqmaydi va uni taxmin qilish xato bo'lardi.
+ * ⚠ `new Date` ning o'zi yetmaydi: u `2026-02-30` ni 2-martga «tuzatib»
+ * yuboradi. Shuning uchun natija qaytadan solishtiriladi.
  */
-export function displayDateToIso(display) {
+/**
+ * Kiritilayotgan sanadagi xato — DARHOL, oxirigacha yozilishini kutmasdan.
+ *
+ * ⚠ NEGA QISMLAB TEKSHIRILADI. «32» ni yozgan odam yil raqamini ham
+ * yozib bo'lgunicha kutib turishi shart emas — xato o'sha ikki raqamda
+ * allaqachon ma'lum. Sakkizta raqam to'lguncha jim turish esa aynan
+ * shu kutishni yaratardi.
+ *
+ * ⚠ YARIM YOZILGANI XATO EMAS. «3», «30-0» — hali tugallanmagan, xolos.
+ * Har bosishda qizil ko'rsatish yozishning o'ziga xalaqit berardi.
+ */
+export function dateInputError(display) {
   const d = onlyDigits(display);
-  if (d.length !== 8) return "";
-  return `${d.slice(4, 8)}-${d.slice(2, 4)}-${d.slice(0, 2)}`;
+  if (d.length >= 2) {
+    const day = Number(d.slice(0, 2));
+    if (day < 1 || day > 31) return true;
+  }
+  if (d.length >= 4) {
+    const mon = Number(d.slice(2, 4));
+    if (mon < 1 || mon > 12) return true;
+  }
+  // Sakkizta raqam to'lgach — kalendar bo'yicha (30-fevral kabi hollar).
+  if (d.length === 8) return !displayDateToIso(display);
+  return false;
 }
 
 export const isDate = (s) => {
@@ -288,6 +302,31 @@ export const isDate = (s) => {
   const dt = new Date(Date.UTC(y, m - 1, day));
   return dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === day;
 };
+
+/** `2026-01-31` → `31-01-2026`. To'liq bo'lmasa — bo'sh satr. */
+export function isoToDisplayDate(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso ?? ""));
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : "";
+}
+
+/**
+ * `31-01-2026` → `2026-01-31`. To'liq YOKI HAQIQIY bo'lmasa — bo'sh satr.
+ *
+ * ⚠ Bo'sh satr ATAYLAB: yarim yozilgan sana serverga yuborilmasligi
+ * kerak. «31-01» dan yil chiqmaydi va uni taxmin qilish xato bo'lardi.
+ *
+ * ⚠ MAVJUD BO'LMAGAN SANA HAM BO'SH QAYTARADI. `32-09-2026` yoki
+ * `30-02-2026` — raqamlari to'g'ri joyda turibdi-yu, bunday kun yo'q.
+ * Ilgari u ISO ga aylantirilib yuqoriga uzatilardi va xato faqat
+ * serverdan qaytardi — omborchi «Saqlash» ni bosgandan keyin.
+ * Endi qiymat CHIQMAYDI, maydon esa darhol ogohlantiradi.
+ */
+export function displayDateToIso(display) {
+  const d = onlyDigits(display);
+  if (d.length !== 8) return "";
+  const iso = `${d.slice(4, 8)}-${d.slice(2, 4)}-${d.slice(0, 2)}`;
+  return isDate(iso) ? iso : "";
+}
 
 /* ── Umumiy tekshiruvlar (saqlashdan oldin) ──────────────────────────── */
 

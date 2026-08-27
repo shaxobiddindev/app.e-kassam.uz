@@ -80,6 +80,16 @@ const LIVE_REFRESH_MS = 15_000;
 /** Qoldig'i o'zgargan katakcha shuncha vaqt belgilanib turadi. */
 const FLASH_MS = 1600;
 
+/* Savat ustunining eng kichik va eng katta kengligi.
+   ⚠ Pastki chegara ATAYLAB 300: undan tor bo'lsa savat qatoridagi
+   «− 2 +» tugmalari nom ustiga chiqib ketardi. Yuqori chegara esa
+   katakchalar uchun joy qoldirish uchun — ustunni butun ekranga
+   cho'zib qo'yish mahsulot tanlashni imkonsiz qilardi. */
+const MIN_RIGHT_W = 300;
+const MAX_RIGHT_W = 620;
+const clampRight = (w, layoutW) =>
+  Math.round(Math.max(MIN_RIGHT_W, Math.min(w, MAX_RIGHT_W, layoutW * 0.6)));
+
 /** Oflayn chek raqami — server raqami bilan chalkashmasligi uchun OFF- prefiksli. */
 function nextOfflineNo() {
   const n = (Number(localStorage.getItem("ek_offline_seq")) || 0) + 1;
@@ -179,6 +189,59 @@ export default function KassaPage({ toast, refreshLowStock }) {
   const [categoryId, setCategoryId] = useState(null);   // null = hammasi
   const [favOnly, setFavOnly]       = useState(false);
   const [view, setView]             = useState(() => localStorage.getItem("ek_kassaView") || "");
+  /* ══ USTUNLAR KENGLIGI ═══════════════════════════════════════════════
+     ⚠ Kassa 360px lik qat'iy savat ustuni bilan kelardi. Bitta do'konda
+     tovar nomlari uzun (kiyim, kosmetika) va savat kengroq bo'lishi
+     kerak; boshqasida kassir katakchalarni ko'proq ko'rishni xohlaydi.
+     Ikkalasiga bir vaqtda to'g'ri keladigan raqam yo'q, shuning uchun
+     chegarani KASSIR suradi.
+
+     ⚠ QURILMADA saqlanadi, hisobda emas: bu ekranning o'lchamiga
+     bog'liq tanlov. Bitta hisob bilan kirilgan kassa monitori va
+     noutbukda bir xil bo'lishi shart emas. */
+  const [rightW, setRightW] = useState(() => {
+    const saved = Number(localStorage.getItem("ek_kassaRightW"));
+    return Number.isFinite(saved) && saved >= MIN_RIGHT_W ? saved : 360;
+  });
+  const layoutRef = useRef(null);
+
+  /** Chegarani surish. Piksel emas, CHETDAN masofa hisoblanadi. */
+  const dragSplit = (e) => {
+    const box = layoutRef.current?.getBoundingClientRect();
+    if (!box) return;
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    const move = (ev) => {
+      /* Sichqoncha oynadan chiqib ketsa ham hisob buzilmasin —
+         `clientX` chegaralanadi. */
+      const w = clampRight(box.right - ev.clientX, box.width);
+      setRightW(w);
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      /* Saqlash FAQAT qo'yib yuborilganda: har piksel harakatda
+         `localStorage` ga yozish diskni bekorga charxlaydi. */
+      setRightW((w) => { localStorage.setItem("ek_kassaRightW", String(w)); return w; });
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  };
+
+  /** Klaviatura bilan ham: sichqonchasiz kassa terminallari bor. */
+  const nudgeSplit = (e) => {
+    const step = e.shiftKey ? 60 : 20;
+    let d = 0;
+    if (e.key === "ArrowLeft")  d = +step;   // savat kengayadi
+    if (e.key === "ArrowRight") d = -step;
+    if (!d) return;
+    e.preventDefault();
+    const box = layoutRef.current?.getBoundingClientRect();
+    setRightW((w) => {
+      const next = clampRight(w + d, box?.width || 1200);
+      localStorage.setItem("ek_kassaRightW", String(next));
+      return next;
+    });
+  };
   const [qtyModal, setQtyModal]     = useState(null);   // { product, initial }
   const [markModal, setMarkModal]   = useState(null);   // { product } — DataMatrix
 
@@ -1174,7 +1237,8 @@ export default function KassaPage({ toast, refreshLowStock }) {
           shuning uchun ko'rinib turishi kerak — lekin savat ustunidan
           balandlik o'g'irlashi shart emas. Endi savat ekranning to'liq
           balandligini egallaydi. */}
-      <div className="kassa-layout">
+      <div className="kassa-layout" ref={layoutRef}
+           style={{ "--kassa-right-w": `${rightW}px` }}>
         {/* ════ CHAP: Barkod + Mahsulotlar ════ */}
         <div className="kassa-left">
           <OfflineBar />
@@ -1250,6 +1314,18 @@ export default function KassaPage({ toast, refreshLowStock }) {
                   ⚠ Faqat BELGI qoldi, matn yo'q: qidiruv qatori ustunning
                   eng muhim elementi va uni ikkita yozuv bilan qisqartirish
                   bir muammoni ikkinchisi bilan almashtirish bo'lardi. */}
+              {/* ⚠ «Yangi savat» SHU YERDA, tablar yonida emas. Savat
+                  ustuni tor va uning har piksel balandligi ro'yxatga
+                  kerak — tugmani o'sha yerga qo'yish tablarni siqib,
+                  ularni suriladigan qilib qo'yardi. Bu yerda esa joy
+                  bor va tugma kassirning ko'z o'ngida turadi. */}
+              <button type="button" className="btn btn-outline btn-sm" onClick={addCart}
+                      disabled={carts.length >= cartStore.MAX_CARTS}
+                      title={t("kassa.newCart")}>
+                <i className="fa-solid fa-cart-plus" aria-hidden="true" />
+                <span className="kbd">F2</span>
+              </button>
+
               {isDesktop() && (
                 <>
                   <button type="button" className="btn-icon" onClick={kickDrawer}
@@ -1346,6 +1422,16 @@ export default function KassaPage({ toast, refreshLowStock }) {
           </div>
         </div>
 
+        {/* Ustunlar chegarasi — suriladi. `separator` roli va o'q
+            tugmalari bilan: sichqonchasiz terminalda ham ishlasin. */}
+        <div className="kassa-split" role="separator" aria-orientation="vertical"
+             tabIndex={0} aria-label={t("kassa.resizeHint")}
+             aria-valuenow={rightW} aria-valuemin={MIN_RIGHT_W} aria-valuemax={MAX_RIGHT_W}
+             title={t("kassa.resizeHint")}
+             onPointerDown={dragSplit} onKeyDown={nudgeSplit}>
+          <span className="kassa-split__grip" aria-hidden="true" />
+        </div>
+
         {/* ════ O'NG: Savat + To'lov ════ */}
         <div className="kassa-right">
           <div className="card" style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
@@ -1401,12 +1487,6 @@ export default function KassaPage({ toast, refreshLowStock }) {
                   </div>
                 );
               })}
-                <button type="button" className="cart-tab__add" onClick={addCart}
-                        disabled={carts.length >= cartStore.MAX_CARTS}
-                        title={t("kassa.newCart")} aria-label={t("kassa.newCart")}>
-                  <i className="fa-solid fa-plus" aria-hidden="true" />
-                  <span className="kbd">F2</span>
-                </button>
               </div>
 
               {/* Tozalash tablardan TASHQARIDA: tablar yon tomonga
@@ -1465,9 +1545,14 @@ export default function KassaPage({ toast, refreshLowStock }) {
                 ))
               )}
             </div>
-          </div>
+            {/* ⚠ MIJOZ SAVATNING ICHIDA, alohida kartochkada emas.
 
-          <div className="card" style={{ padding: "10px 14px" }}>
+                Ikki sabab. Birinchisi — MA'NO: mijoz endi har savatga
+                alohida biriktiriladi, ya'ni u savatning bir qismi.
+                Ikkinchisi — JOY: alohida kartochka o'z chekkasi, soyasi
+                va oraliq bo'shlig'i bilan ustundan 70+ piksel olardi va
+                o'sha piksellar savat ro'yxatidan yeyilardi. */}
+            <div className="cart-cust">
             <Select
               block
               ariaLabel={t("kassa.customer")}
@@ -1547,6 +1632,8 @@ export default function KassaPage({ toast, refreshLowStock }) {
             )}
           </div>
 
+          </div>
+
           <div className="total-card">
             {/* ⚠ Miqdorlar YIG'ILMAYDI: 2 dona + 0.35 kg = "2.35" degan
                 raqam ma'nosiz va chalg'ituvchi bo'lardi. Savatdagi SATRLAR
@@ -1560,7 +1647,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
               <span className="ek-num">{money(total)}</span>
             </div>
 
-            <button className="btn btn-green btn-full btn-pos" style={{ marginTop: 14 }} onClick={openPayModal} disabled={!cart.length}>
+            <button className="btn btn-green btn-full btn-pos" style={{ marginTop: 10 }} onClick={openPayModal} disabled={!cart.length}>
               <i className="fa-solid fa-wallet" aria-hidden="true" />
               {t("kassa.checkout")} <span className="kbd">F9</span>
             </button>

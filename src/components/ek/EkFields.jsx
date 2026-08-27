@@ -27,8 +27,9 @@ import {
   numberInput, displayNumber, countDigits,
   phoneInput, emailInput, barcodeInput, mxikInput,
   codeInput, usernameInput, nameInput, otpInput, skuInput,
-  dateDisplayInput, isoToDisplayDate, displayDateToIso,
+  dateDisplayInput, isoToDisplayDate, displayDateToIso, dateInputError,
 } from "../../lib/ek-input";   // ⚠ ilova ichidagi yo'l (sync-tokens `src/lib/` ga qo'yadi)
+import { t } from "../../lib/ek-i18n";
 
 /* Kursorni raqam indeksiga qarab tiklaydi. */
 function useCaret(ref) {
@@ -277,6 +278,15 @@ export const DateField = forwardRef(function DateField(
 
   const display = draft ?? isoToDisplayDate(value);
 
+  /* ⚠ XATO DARHOL AYTILADI. `32-09-2026` — raqamlar to'g'ri joyda, lekin
+     bunday kun yo'q. Ilgari maydon jimgina turaverardi va omborchi buni
+     «Saqlash» dan keyin, serverdan qaytgan xatodan bilardi — kiritilgan
+     boshqa maydonlar bilan birga qaytadan qarab chiqishga to'g'ri kelardi.
+
+     Faqat TO'LIQ yozilganda tekshiriladi: «3» ni yozgan odamga darrov
+     «noto'g'ri» deyish yozishga xalaqit berardi. */
+  const invalid = dateInputError(display);
+
   const handle = (e) => {
     const masked = dateDisplayInput(e.target.value);
     setDraft(masked);
@@ -284,9 +294,10 @@ export const DateField = forwardRef(function DateField(
   };
 
   return (
-    <span className="ek-date" style={style}>
+    <span className={`ek-date ${invalid ? "is-invalid" : ""}`} style={style}>
       <input
         ref={ref}
+        aria-invalid={invalid || undefined}
         className={className}
         inputMode="numeric"
         placeholder="31-01-2026"
@@ -313,8 +324,13 @@ export const DateField = forwardRef(function DateField(
         tabIndex={-1}
         aria-hidden="true"
         value={/^\d{4}-\d{2}-\d{2}$/.test(value || "") ? value : ""}
-        onChange={(e) => onChange?.({ target: { value: e.target.value, name } })}
+        onChange={(e) => { setDraft(null); onChange?.({ target: { value: e.target.value, name } }); }}
       />
+      {invalid && (
+        <span className="ek-date__err" role="alert">
+          <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" /> {t("validation.dateInvalid")}
+        </span>
+      )}
     </span>
   );
 });
