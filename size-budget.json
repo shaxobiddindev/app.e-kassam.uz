@@ -1,5 +1,6 @@
 {
   "_izoh": "08-ROADMAP.md dagi byudjet. Oshirish — ONGLI qaror: sababini commit xabarida yozing.",
-  "jsKb": 232,
+  "_2026_08_27": "232 → 240. Tarozi sozlamalari va PLU maydoni (V42) qo'shilganda chegara oshdi. ⚠ SABAB YANGI KODDA EMAS: o'zgarishdan OLDIN ham 231/232 edi — bo'sh joy 1 KB, ya'ni har qanday yangi ekran shu chegarani buzardi. Matnlarni qisqartirish YORDAM BERMADI: gzip ularni allaqachon siqadi, hajm kodda. ASL SABAB — ilova bitta yaxlit chunk (793 KB xom), marshrutlar bo'yicha bo'linmagan. To'g'ri yechim: React.lazy bilan marshrutlarni ajratish. ⚠ Lekin u BU tekshiruvni o'zgartirmaydi — skript dist/assets dagi HAMMA .js ni qo'shadi, ya'ni bo'lish umumiy hajmni kamaytirmaydi, faqat BIRINCHI yuklanishni yengillashtiradi. 240 — bir necha keyingi imkoniyatga joy, ochiq cheksizlik emas.",
+  "jsKb": 240,
   "cssKb": 40
 }

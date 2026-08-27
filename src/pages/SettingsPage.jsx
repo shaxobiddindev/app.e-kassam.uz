@@ -10,6 +10,7 @@ import FiscalPanel from "../components/FiscalPanel";
 import UpdatePanel from "../components/UpdatePanel";
 import TelegramPanel from "../components/TelegramPanel";
 import HardwareSettings from "../components/HardwareSettings";
+import ScaleSettings from "../components/ScaleSettings";
 import ShopQrPanel from "../components/ShopQrPanel";
 import Select from "../components/ek/Select";
 import { DEFAULT_NEAR_EXPIRY_DAYS } from "../lib/ek-expiry";
@@ -270,6 +271,11 @@ export default function SettingsPage({ toast }) {
       {/* Apparatlar — hisobdan OLDIN: kassir bu ekranga aynan printer
           ishlamay qolganda keladi, "hisob" bo'limiga esa deyarli hech qachon. */}
       <HardwareSettings toast={toast} />
+
+      {/* Tarozi formati — faqat EGAGA: server ham shu yo'lni egaga
+          cheklaydi (`/shop/scale`), bo'limni kassirga ko'rsatib qo'yish
+          esa faqat umid uyg'otib, keyin 403 bilan tugardi. */}
+      {isOwner && <ScaleSettings toast={toast} />}
 
       <Section
         icon="fa-user"

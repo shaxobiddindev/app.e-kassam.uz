@@ -571,8 +571,46 @@ export const telegramApi = {
   disconnect: (id) => request(`/telegram/chats/${id}`, { method: "DELETE" }),
 };
 
+/**
+ * Taroziga eksport — CSV FAYLNI yuklab oladi (V42).
+ *
+ * ⚠ `request()` YARAMAYDI: u javobni JSON deb tahlil qiladi, bu yerda esa
+ * `text/csv` keladi. Shuning uchun to'g'ridan-to'g'ri `fetch` va `blob`.
+ * Sarlavhalar qo'lda qo'yiladi — `request()` ichidagi mantiq bu yo'lda
+ * ishtirok etmaydi.
+ */
+export async function downloadScaleExport() {
+  const token = localStorage.getItem("ek_token");
+  const res = await fetch(`${API_BASE}/products/scale-export`, {
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      "X-Device-Id": getDeviceId(),
+    },
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "tarozi-plu.csv";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  /* Havolani darhol bo'shatib bo'lmaydi — ba'zi brauzerlar yuklashni
+     boshlashga ulgurmaydi va fayl bo'sh chiqadi. */
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}
+
 export const shopApi = {
   getProfile: () => request("/shop/profile"),
+
+  /* Tarozi barkodi formati (V42) — BUTUN TANA bilan.
+     Boshqa sozlamalar bittalab saqlanadi, bu esa bir butun: prefiks, PLU
+     va qiymat xonalari birgalikda 13 ga yig'ilishi kerak. Bo'sh tana —
+     standart formatga qaytarish. */
+  setScale: (data) =>
+    request("/shop/scale", { method: "PATCH", body: JSON.stringify(data || {}) }),
   /** Faoliyat turi — tayyor katalog va kassa ekrani standartini belgilaydi. */
   setBusinessType: (type) => request(`/shop/business-type?type=${type}`, { method: "PATCH" }),
   /** Kamomad chegarasi — faqat egasi. */

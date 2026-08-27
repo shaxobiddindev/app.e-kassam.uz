@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { t } from "../lib/ek-i18n";
-import { productApi, mediaApi } from "../api";
+import { productApi, mediaApi, downloadScaleExport } from "../api";
 import { BranchSelector, Modal } from "../components";
 import CatalogWizard from "../components/CatalogWizard";
 import { Empty, Field, SearchBar, FormGroup } from "../components/ui";
@@ -28,7 +28,7 @@ import { NumField, BarcodeField } from "../components/ek/EkFields";
    ══════════════════════════════════════════════════════════════════════════ */
 
 const EMPTY_FORM = {
-  name: "", barcode: "", sku: "", salePrice: "", costPrice: "", categoryId: "",
+  name: "", barcode: "", sku: "", plu: "", salePrice: "", costPrice: "", categoryId: "",
   type: "GOODS", unit: "DONA", minQuantity: "",
   mxikCode: "", packageCode: "", vatRate: "", priceIncludesVat: true,
   markingGroup: "", imageId: null, imageUrl: null, color: "", favorite: false,
@@ -90,6 +90,7 @@ export default function ProductsPage({ toast }) {
       name: p.name || "",
       barcode: p.barcode || "",
       sku: p.sku || "",
+      plu: p.plu || "",
       salePrice: p.salePrice ?? "",
       costPrice: p.costPrice ?? "",
       // ⚠ `categoryId` javobda ILGARI YO'Q EDI va bu yerda doim `undefined`
@@ -157,6 +158,10 @@ export default function ProductsPage({ toast }) {
         name: form.name,
         barcode: form.barcode || null,
         sku: form.sku || null,
+        /* ⚠ Bo'sh satr — «PLU ni OLIB TASHLA», `null` emas. Serverda
+           `null` «tegilmasin» degani, ya'ni maydonni bo'shatgan odam
+           PLU o'chmaganini keyin bilib qolardi. */
+        plu: form.plu || "",
         salePrice: num(form.salePrice),
         costPrice: num(form.costPrice),
         categoryId: form.categoryId || null,
@@ -225,6 +230,14 @@ export default function ProductsPage({ toast }) {
      Faqat `.exe` da ko'rinadi: chek printeriga bayt yuborish Tauri
      tomonida bo'ladi, brauzerda esa umuman imkoni yo'q. Tugmani
      ko'rsatib qo'yib, bosilganda «desktop kerak» deyish — foydasiz. */
+  const exportForScale = async () => {
+    try {
+      await downloadScaleExport();
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
+
   const labelsOn = isDesktop();
   const printLabels = async (items) => {
     /* Xizmatda javon yorliq ham bo'lmaydi: «soch olish» ni javonga
@@ -266,6 +279,14 @@ export default function ProductsPage({ toast }) {
             <>
               <button className="btn btn-outline btn-sm" onClick={() => setWizard(true)}>
                 <i className="fa-solid fa-wand-magic-sparkles" /> {t("products.fromCatalog")}
+              </button>
+              {/* Taroziga eksport (V42) — faqat PLU biriktirilgan tovarlar
+                  chiqadi. Tugma HAR DOIM ko'rinadi: PLU'li tovar yo'q bo'lsa
+                  ham odam qayerdan boshlashni bilishi kerak, bo'sh fayl esa
+                  o'zi tushuntiradi. */}
+              <button className="btn btn-outline btn-sm" onClick={exportForScale}
+                      title={t("products.scaleExportHint")}>
+                <i className="fa-solid fa-scale-balanced" /> {t("products.scaleExport")}
               </button>
               <button className="btn btn-primary" onClick={openAdd}>
                 <i className="fa-solid fa-plus" /> {t("products.new")}
@@ -465,6 +486,33 @@ export default function ProductsPage({ toast }) {
                 <Field kind="sku" className="form-input mono" value={form.sku} onChange={setField("sku")} placeholder="ART-001" />
               </FormGroup>
             </div>
+
+            {/* PLU — TAROZIdagi tovar kodi (V42).
+
+                ⚠ Faqat BO'LINADIGAN birlikda yoqiladi: tarozi barkodi
+                0.350 kg keltiradi, DONA tovarda esa u nolga yaxlitlanib
+                sotuvni to'sardi. Server ham shu qoidani qo'llaydi.
+
+                ⚠ Maydon YASHIRILMAYDI, o'chiriladi va sababi yoziladi.
+                Yashirilsa, foydalanuvchi «PLU sozlamasi qayerda?» deb
+                qidirib qolardi. */}
+            <FormGroup label={t("products.plu")}>
+              {/* ⚠ `Field kind="int"` YARAMAYDI: u sonni formatlab, boshidagi
+                  NOLLARNI yeb qo'yadi — «00012» «12» ga aylanardi va tarozi
+                  barkodiga tushmasdi. Shuning uchun oddiy input, raqam
+                  filtri qo'lda. Uzunlik chegarasi 8 — ustun kengligi;
+                  formatdagi aniq xona sonini server tekshiradi. */}
+              <input className="form-input mono" style={{ width: 160 }}
+                     value={form.plu}
+                     onChange={(e) => setField("plu")({
+                       target: { value: e.target.value.replace(/\D/g, "").slice(0, 8) },
+                     })}
+                     placeholder="00012" inputMode="numeric"
+                     disabled={!divisible} aria-label={t("products.plu")} />
+              <div className="set-row__hint" style={{ marginTop: 4 }}>
+                {divisible ? t("products.pluHint") : t("products.pluUnitHint")}
+              </div>
+            </FormGroup>
 
             <FormGroup label={t("products.category")}>
               <Select
