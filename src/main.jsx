@@ -1,5 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { schedulePrefetch } from "./lib/ek-pages";
 import App from "./App.jsx";
 import { initTheme } from "./lib/ek-theme";
 import { initLang } from "./lib/ek-i18n";
@@ -34,3 +35,15 @@ if ("serviceWorker" in navigator && import.meta.env.PROD && !isDesktop()) {
 }
 
 createRoot(document.getElementById("root")).render(<StrictMode><App /></StrictMode>);
+
+/* ⚠ OLDINDAN YUKLASH SHU YERDA, `App` ICHIDA EMAS.
+
+   Avval u `App` dagi `useEffect` da edi va HECH QACHON ISHLAMASDI:
+   komponentda shartli erta `return` lar bor (mijoz portali, mobil ilova)
+   va oddiy oqimda effekt ularning ortida qolib ketardi. Brauzerda
+   o'lchab ko'rilganda kassa ekrani chizilgandan 14 soniya keyin ham
+   birorta chunk tortilmagan edi.
+
+   Bu yerda esa hech qanday shart yo'q: ilova ishga tushdi — demak
+   rejalashtirildi. Oflayn uchun kesh aynan shunga bog'liq. */
+schedulePrefetch();

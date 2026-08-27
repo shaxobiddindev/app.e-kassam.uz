@@ -1,0 +1,1 @@
+const u=7;function a(t){if(!t)return null;const[n,e,r]=String(t).slice(0,10).split("-").map(Number);if(!n||!e||!r)return null;const s=new Date;return s.setHours(0,0,0,0),Math.round((new Date(n,e-1,r)-s)/864e5)}export{u as D,a as d};

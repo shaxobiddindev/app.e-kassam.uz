@@ -1,6 +1,6 @@
 import "./styles.css";
 /* BUILD_ID: EMERGENCY_FIX_V3_0116 */
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { LOGIN_URL } from "./config";
 import { initLang, withLang, useT } from "./lib/ek-i18n";
@@ -12,35 +12,16 @@ import Toast            from "./components/Toast";
 import Layout           from "./components/Layout";
 import AppUpdater       from "./components/AppUpdater";
 import { ConfirmProvider } from "./context/ConfirmProvider";
-import DashboardPage    from "./pages/DashboardPage";
-import ProductsPage     from "./pages/ProductsPage";
-import InventoryPage    from "./pages/InventoryPage";
-import StockTakePage    from "./pages/StockTakePage";
-import ExpensesPage     from "./pages/ExpensesPage";
-import LoyaltyPage      from "./pages/LoyaltyPage";
-import AnnouncementsPage from "./pages/AnnouncementsPage";
-import SupplyPage       from "./pages/SupplyPage";
-import TransfersPage    from "./pages/TransfersPage";
-import PricesPage       from "./pages/PricesPage";
-import CustomersPage    from "./pages/CustomersPage";
-import KassaPage        from "./pages/KassaPage";
-import ReportsPage      from "./pages/ReportsPage";
-import SalesPage        from "./pages/SalesPage";
-import CategoriesPage   from "./pages/admin/CategoriesPage";
-import CustomReportPage from "./pages/admin/CustomReportPage";
-import ShopUsersPage    from "./pages/admin/ShopUsersPage";
-import ShopsPage        from "./pages/admin/ShopsPage";
-import SettingsPage    from "./pages/SettingsPage";
 import LoginPage       from "./pages/LoginPage";
 import NotFound from "./pages/NotFound";
 import { isDesktop, isNativeShell, isMobileApp } from "./lib/ek-desktop";
 import MobileApp from "./mobile/MobileApp";
 import { hasRole, roleSet } from "./lib/ek-roles";
 import ErrorBoundary, { RouteErrorBoundary } from "./components/ek/ErrorBoundary";
+import { P } from "./lib/ek-pages";
+import { Progress } from "./components/ek/Loading";
 import { BadgeProvider } from "./context/BadgeProvider";
 import { KeyboardProvider } from "./context/KeyboardProvider";
-import SecurityPage from "./pages/SecurityPage";
-import AuditPage from "./pages/AuditPage";
 import CustomerPortal from "./portal/CustomerPortal";
 /* Mijoz ilovasi (V37) — telefon ilovasida kirish ekrani endi shu */
 import CustomerLogin from "./customer/CustomerLogin";
@@ -205,6 +186,7 @@ export default function App() {
   const { toasts, toast, dismiss }                        = useToast();
   const { lowStockItems, lowStockCount, refreshLowStock } = useLowStock();
 
+
   /* Mijoz ilovasi (V37): sessiya kaliti va «xodim rejimi» bayrog'i.
      ⚠ `staffMode` SAQLANMAYDI: xodim kirgach `user` paydo bo'ladi va
      keyingi ochilishlarda shuning o'zi yetarli. Uni localStorage ga
@@ -325,6 +307,12 @@ export default function App() {
           lowStockCount={lowStockCount}
         >
           <RouteErrorBoundary>
+          {/* ⚠ Fallback YENGIL bo'lishi shart. Sahifalar endi alohida
+              chunk va o'tishda qisqa kutish paydo bo'ladi; butun ekranni
+              egallaydigan yuklagich bunda miltillab, o'tishni sekin
+              ko'rsatardi. Ingichka chiziq — bor-yo'g'i "kutilmoqda"
+              belgisi. */}
+          <Suspense fallback={<Progress />}>
           <Routes>
             {/* Kassirning uy sahifasi — Kassa, Dashboard emas: u smenani
                 sotuvdan boshlaydi. Tekshiruv `hasRole` bilan emas, ANIQ:
@@ -333,49 +321,50 @@ export default function App() {
             <Route path="/" element={
               roleSet(user?.role).size === 1 && roleSet(user?.role).has("CASHIER")
                 ? <Navigate to="/sale" replace />
-                : <ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><DashboardPage toast={toast} /></ProtectedRoute>
+                : <ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><P.Dashboard toast={toast} /></ProtectedRoute>
             } />
-            <Route path="/sale" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"]}><KassaPage toast={toast} /></ProtectedRoute>} />
-            <Route path="/products" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><ProductsPage toast={toast} /></ProtectedRoute>} />
-            <Route path="/categories" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><CategoriesPage toast={toast} /></ProtectedRoute>} />
-            <Route path="/inventory" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><InventoryPage toast={toast} refreshLowStock={refreshLowStock} /></ProtectedRoute>} />
+            <Route path="/sale" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"]}><P.Kassa toast={toast} /></ProtectedRoute>} />
+            <Route path="/products" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><P.Products toast={toast} /></ProtectedRoute>} />
+            <Route path="/categories" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><P.Categories toast={toast} /></ProtectedRoute>} />
+            <Route path="/inventory" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><P.Inventory toast={toast} refreshLowStock={refreshLowStock} /></ProtectedRoute>} />
             {/* Inventarizatsiya — omborchi va yuqorisi; kassirning bu
                 yerda ishi yo'q (backend ham shu cheklovni qo'yadi). */}
-            <Route path="/stock-take" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><StockTakePage toast={toast} /></ProtectedRoute>} />
+            <Route path="/stock-take" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><P.StockTake toast={toast} /></ProtectedRoute>} />
             {/* Kirim — tovarni jismonan qabul qiladigan odam hujjatni
                 ham yozadi, shuning uchun omborchiga ham ochiq. */}
-            <Route path="/supply" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><SupplyPage toast={toast} /></ProtectedRoute>} />
+            <Route path="/supply" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><P.Supply toast={toast} /></ProtectedRoute>} />
             {/* Filiallararo ko'chirish — ombor bilan bir xil doira:
                 tovarni mashinaga ortadigan va tushiradigan odam omborchi.
                 Kassirga yopiq (server ham shuni qo'yadi). */}
-            <Route path="/transfers" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><TransfersPage toast={toast} /></ProtectedRoute>} />
+            <Route path="/transfers" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><P.Transfers toast={toast} /></ProtectedRoute>} />
             {/* Narx — egasi va do'kon adminining ishi; omborchi narx
                 qo'ymaydi. */}
-            <Route path="/prices" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><PricesPage toast={toast} /></ProtectedRoute>} />
-            <Route path="/customers" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"]}><CustomersPage toast={toast} /></ProtectedRoute>} />
-            <Route path="/sales" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"]}><SalesPage toast={toast} /></ProtectedRoute>} />
-            <Route path="/reports" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><ReportsPage toast={toast} /></ProtectedRoute>} />
-            <Route path="/custom-report" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><CustomReportPage toast={toast} /></ProtectedRoute>} />
+            <Route path="/prices" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><P.Prices toast={toast} /></ProtectedRoute>} />
+            <Route path="/customers" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"]}><P.Customers toast={toast} /></ProtectedRoute>} />
+            <Route path="/sales" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"]}><P.Sales toast={toast} /></ProtectedRoute>} />
+            <Route path="/reports" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><P.Reports toast={toast} /></ProtectedRoute>} />
+            <Route path="/custom-report" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><P.CustomReport toast={toast} /></ProtectedRoute>} />
             {/* Xarajat — do'kon pulining qayerga ketgani; kassirga yopiq. */}
-            <Route path="/expenses" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><ExpensesPage toast={toast} /></ProtectedRoute>} />
-            <Route path="/shop-users" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><ShopUsersPage toast={toast} /></ProtectedRoute>} />
-            <Route path="/branches" element={<ProtectedRoute user={user} roles={["OWNER"]}><ShopsPage toast={toast} /></ProtectedRoute>} />
+            <Route path="/expenses" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><P.Expenses toast={toast} /></ProtectedRoute>} />
+            <Route path="/shop-users" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><P.ShopUsers toast={toast} /></ProtectedRoute>} />
+            <Route path="/branches" element={<ProtectedRoute user={user} roles={["OWNER"]}><P.Shops toast={toast} /></ProtectedRoute>} />
             {/* Sodiqlik jadvali — chegirma, ya'ni pulga tegadigan sozlama. */}
-            <Route path="/loyalty" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><LoyaltyPage toast={toast} /></ProtectedRoute>} />
+            <Route path="/loyalty" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><P.Loyalty toast={toast} /></ProtectedRoute>} />
             {/* Aksiyalar (V39) — do'konning MIJOZLARGA ketadigan gapi;
                 kassirga yopiq (server ham shu cheklovni qo'yadi). */}
-            <Route path="/announcements" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><AnnouncementsPage toast={toast} /></ProtectedRoute>} />
+            <Route path="/announcements" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><P.Announcements toast={toast} /></ProtectedRoute>} />
             {/* Sozlamalar — hamma rolga ochiq: mavzu va til xodimning
                 shaxsiy tanlovi, do'kon sozlamasi emas. */}
-            <Route path="/settings" element={<SettingsPage toast={toast} />} />
+            <Route path="/settings" element={<P.Settings toast={toast} />} />
             {/* Xavfsizlik — bajik, smena, tasdiqlar jurnali.
                 Egasi bajik chiqaradi; SHOP_ADMIN faqat jurnalni ko'radi
                 (backend ham shu cheklovni qo'yadi). */}
-            <Route path="/security" element={<ProtectedRoute user={user} roles={["OWNER", "SHOP_ADMIN"]}><SecurityPage toast={toast} /></ProtectedRoute>} />
+            <Route path="/security" element={<ProtectedRoute user={user} roles={["OWNER", "SHOP_ADMIN"]}><P.Security toast={toast} /></ProtectedRoute>} />
             {/* Jurnal — egasi va do'kon administratoriga; kassirga yopiq. */}
-            <Route path="/audit" element={<ProtectedRoute user={user} roles={["OWNER", "SHOP_ADMIN"]}><AuditPage toast={toast} /></ProtectedRoute>} />
+            <Route path="/audit" element={<ProtectedRoute user={user} roles={["OWNER", "SHOP_ADMIN"]}><P.Audit toast={toast} /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
+          </Suspense>
           </RouteErrorBoundary>
         </Layout>
       </BrowserRouter>

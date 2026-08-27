@@ -27,14 +27,41 @@ if (!fs.existsSync(DIST)) {
 }
 
 const files = fs.readdirSync(DIST);
-const sum = (ext) => files
-  .filter((f) => f.endsWith(ext))
-  .reduce((n, f) => n + gzipSync(fs.readFileSync(path.join(DIST, f))).length, 0);
+const gz = (f) => gzipSync(fs.readFileSync(path.join(DIST, f))).length;
+const sum = (ext) => files.filter((f) => f.endsWith(ext)).reduce((n, f) => n + gz(f), 0);
+
+/* ⚠ KIRISH TO'PLAMI ALOHIDA O'LCHANADI (2026-08-27).
+
+   Ilova marshrutlar bo'yicha bo'lingandan keyin «hamma faylning
+   yig'indisi» yuqoridagi maqsadni O'LCHAMAY QO'YDI: chunklarning ko'pi
+   birinchi ochilishda umuman yuklanmaydi. Aksincha, bo'lish umumiy
+   hajmni bir oz OSHIRADI (har chunkning o'z yuki bor) — ya'ni eski
+   o'lchov bo'yicha to'g'ri qilingan ish «yomonlashish» bo'lib ko'rinardi.
+
+   Endi ikkita raqam bor va IKKALASI HAM majburiy:
+
+     KIRISH — `index.html` so'raydigan to'plam va uslub. Aynan shuni
+              kassir har ochilishda kutadi. Sarlavhadagi «4G dagi
+              qo'shimcha soniyalar» — shu raqam.
+
+     JAMI   — hamma JS. Kirish raqami yaxshi ko'rinsin deb kodni
+              cheksiz ko'paytirishning oldini oladi: bo'lish bahona
+              bo'lib qolmasin.
+
+   Kirish fayli `dist/index.html` dan o'qiladi — build qanday nomlashidan
+   qat'i nazar to'g'ri topiladi. */
+const html = fs.readFileSync(path.join(ROOT, "dist", "index.html"), "utf8");
+const pick = (re) => {
+  const m = html.match(re);
+  return m && files.includes(m[1]) ? gz(m[1]) : 0;
+};
+const entry = pick(/\/assets\/([A-Za-z0-9_.-]+\.js)/) + pick(/\/assets\/([A-Za-z0-9_.-]+\.css)/);
 
 const kb = (n) => Math.round(n / 1024);
 const results = [
-  ["JS  (gzip)", kb(sum(".js")),  budget.jsKb],
-  ["CSS (gzip)", kb(sum(".css")), budget.cssKb],
+  ["KIRISH (gzip)", kb(entry),     budget.entryKb],
+  ["JAMI JS (gzip)", kb(sum(".js")),  budget.jsKb],
+  ["CSS    (gzip)", kb(sum(".css")), budget.cssKb],
 ];
 
 let failed = false;

@@ -1,6 +1,7 @@
 {
   "_izoh": "08-ROADMAP.md dagi byudjet. Oshirish — ONGLI qaror: sababini commit xabarida yozing.",
-  "_2026_08_27": "232 → 240. Tarozi sozlamalari va PLU maydoni (V42) qo'shilganda chegara oshdi. ⚠ SABAB YANGI KODDA EMAS: o'zgarishdan OLDIN ham 231/232 edi — bo'sh joy 1 KB, ya'ni har qanday yangi ekran shu chegarani buzardi. Matnlarni qisqartirish YORDAM BERMADI: gzip ularni allaqachon siqadi, hajm kodda. ASL SABAB — ilova bitta yaxlit chunk (793 KB xom), marshrutlar bo'yicha bo'linmagan. To'g'ri yechim: React.lazy bilan marshrutlarni ajratish. ⚠ Lekin u BU tekshiruvni o'zgartirmaydi — skript dist/assets dagi HAMMA .js ni qo'shadi, ya'ni bo'lish umumiy hajmni kamaytirmaydi, faqat BIRINCHI yuklanishni yengillashtiradi. 240 — bir necha keyingi imkoniyatga joy, ochiq cheksizlik emas.",
-  "jsKb": 240,
+  "_2026_08_27": "Marshrutlar React.lazy bilan bo'lindi. ⚠ O'LCHOV O'ZGARDI, chunki eskisi maqsadni o'lchamay qo'ydi. Bo'lingan ilovada chunklarning ko'pi birinchi ochilishda yuklanmaydi, ammo umumiy hajm bo'lish tufayli BIR OZ OSHADI (har chunkning o'z yuki bor) — ya'ni to'g'ri qilingan ish eski raqamda «yomonlashish» bo'lib ko'rinardi. Endi ikkita raqam: KIRISH (index.html so'raydigan JS+CSS — kassir har ochilishda aynan shuni kutadi) va JAMI JS (bo'lish kodni cheksiz ko'paytirishga bahona bo'lmasin). Birinchi chizish 254 → 193 KB tushdi (kassa uchun +13.7 KB o'z chunki); jami 234 → 256 ga chiqdi.",
+  "entryKb": 200,
+  "jsKb": 270,
   "cssKb": 40
 }
