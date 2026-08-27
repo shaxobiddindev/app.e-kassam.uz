@@ -7,7 +7,8 @@ import { Empty, SearchBar } from "../components/ui";
 import Select from "../components/ek/Select";
 import { useAuth } from "../hooks/useAuth";
 import { useBadge } from "../context/BadgeProvider";
-import { money } from "../utils";
+import { money, quantity as fmtQty } from "../utils";
+import { unitLabel, unitDecimals } from "../lib/ek-labels";
 import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
 import { NumField, DateField } from "../components/ek/EkFields";
@@ -61,11 +62,17 @@ const isBatchExpired = (b) => b.status === "EXPIRED" || b.expired;
 function flagsOf(g, nearDays) {
   const left = daysLeft(g.nearest);
   const expired = g.hasExpired || (left !== null && left < 0);
+  /* ⚠ TUGAGAN ≠ KAM QOLGAN. Ilgari ikkalasi ham `low` edi: qoldig'i NOL
+     tovar ham «Kam qoldi» deb yozilardi, omborchi esa buni "hali bor,
+     lekin ozaygan" deb o'qib buyurtmani ertaga qoldirardi. Nol qoldiq
+     boshqa gap — tovar UMUMAN sotilmayapti, buyurtma bugun kerak. */
+  const out = g.sellable <= 0;
   return {
     expired,
     /* Muddati o'tgan tovarda «yaqin» yozuvi chiqmaydi — u endi ortiqcha */
     near: !expired && left !== null && left <= nearDays,
-    low: g.sellable <= g.minQ,
+    out,
+    low: !out && g.sellable <= g.minQ,
     left,
   };
 }
@@ -127,6 +134,9 @@ function groupByProduct(items) {
       markingGroup: f.markingGroup,
       costPrice: f.costPrice,
       salePrice: f.salePrice,
+      /* Birlik — «Kam qoldi: 3 dona» yozuvi uchun. Partiyalar bitta
+         mahsulotniki, shuning uchun birinchisiniki hammasiga yetadi. */
+      unit: f.unit,
       batches: sorted,
       sellable,
       minQ,
@@ -223,10 +233,17 @@ export default function InventoryPage({ toast }) {
   /* ⚠ Raqamlar QIDIRUVDAN OLDINGI ro'yxatdan olinadi: ogohlantirish
      do'kondagi haqiqiy holatni aytishi kerak, qidiruv maydonida nima
      yozilganini emas. */
+  /* ⚠ «Kam qolgan» = KAM + TUGAGAN. Yozuvda ikkalasi ajratiladi (tugagan
+     tovarni «kam qoldi» deb atash yolg'on), lekin FILTR bo'yicha ular bir
+     xil ish talab qiladi: buyurtma berish. Ajratganda tugagan tovar
+     ro'yxatdan butunlay tushib qolardi — ya'ni eng shoshilinchi tovar
+     ko'rinmay qolardi. */
+  const needsOrder = (f) => f.low || f.out;
+
   const counts = useMemo(() => ({
     expired: rows.filter((r) => r.f.expired).length,
     near:    rows.filter((r) => r.f.near).length,
-    low:     rows.filter((r) => r.f.low).length,
+    low:     rows.filter((r) => needsOrder(r.f)).length,
   }), [rows]);
 
   const filtered = rows.filter(({ g, f }) => {
@@ -235,7 +252,7 @@ export default function InventoryPage({ toast }) {
     if (!hit) return false;
     if (flt === "expired") return f.expired;
     if (flt === "near")    return f.near;
-    if (flt === "low")     return f.low;
+    if (flt === "low")     return needsOrder(f);
     return true;
   });
 
@@ -352,9 +369,20 @@ export default function InventoryPage({ toast }) {
 
   /* Holat ustuni — RANGNING YOZUVDAGI nusxasi. Rang tez o'qiladi, yozuv
      esa aniq aytadi; ikkalasi ham kerak (rang ko'rmaydigan odam, qora-oq
-     chop etish). Bir tovarda bir nechta yozuv bo'lishi mumkin. */
-  const stateBadges = (f) => {
-    if (!f.expired && !f.near && !f.low) return statusBadge(false);
+     chop etish). Bir tovarda bir nechta yozuv bo'lishi mumkin.
+
+     ⚠ HAR YOZUV O'ZI NIMA HAQIDALIGINI AYTADI. Ilgari shu ustunda yonma-yon
+     «4 kun qoldi» va «Kam qoldi» turardi — birinchisi MUDDAT haqida,
+     ikkinchisi MIQDOR haqida, lekin ikkalasi bir xil ko'rinardi va
+     «4 kun qoldi» ni "4 dona qoldi" deb o'qish hech narsa bilan
+     to'silmasdi. Endi muddat yozuvi «Yaroqlilik:» bilan boshlanadi,
+     qoldiq yozuvi esa SONNI o'zi bilan olib yuradi. */
+  const stateBadges = (f, g) => {
+    if (!f.expired && !f.near && !f.low && !f.out) return statusBadge(false);
+    /* `g` faqat MAHSULOT qatorida bo'ladi; partiya qatorida «kam qoldi» va
+       «tugagan» yozuvlari umuman chiqmaydi, shuning uchun miqdor ham
+       kerak emas. Guruhsiz chaqiruvda yiqilmasin. */
+    const qty = g ? `${fmtQty(g.sellable, unitDecimals(g.unit))} ${unitLabel(g.unit)}` : "";
     return (
       <div className="inv-flags">
         {f.expired && <span className="badge badge-red">{t("enum.inventory.EXPIRED")}</span>}
@@ -363,7 +391,8 @@ export default function InventoryPage({ toast }) {
             {f.left === 0 ? t("inv.nearToday") : t("inv.nearDays", { n: f.left })}
           </span>
         )}
-        {f.low && <span className="badge badge-red">{t("inv.lowBadge")}</span>}
+        {f.out && <span className="badge badge-red">{t("inv.outBadge")}</span>}
+        {f.low && <span className="badge badge-red">{t("inv.lowBadge", { qty })}</span>}
       </div>
     );
   };
@@ -374,12 +403,17 @@ export default function InventoryPage({ toast }) {
   const batchFlags = (b) => {
     const left = daysLeft(b.expiryDate);
     const expired = isBatchExpired(b) || (left !== null && left < 0);
-    return { expired, near: !expired && left !== null && left <= nearDays, low: false, left };
+    return { expired, near: !expired && left !== null && left <= nearDays, low: false, out: false, left };
   };
 
-  /* Fon sinfi — eng jiddiy holat bo'yicha (o'tgan > yaqin > kam). */
+  /* Fon sinfi — eng jiddiy holat bo'yicha (o'tgan > yaqin > tugagan > kam).
+     Tugagan tovar kam qolgandan jiddiyroq, shuning uchun u oldinroq
+     tekshiriladi; ikkalasi ham bir xil «och qizil» fonni ishlatadi. */
   const rowClass = (f) =>
-    f.expired ? "inv-row--expired" : f.near ? "inv-row--near" : f.low ? "inv-row--low" : "";
+    f.expired ? "inv-row--expired"
+      : f.near ? "inv-row--near"
+      : (f.out || f.low) ? "inv-row--low"
+      : "";
 
   return (
     <div>
@@ -567,8 +601,12 @@ export default function InventoryPage({ toast }) {
                       </td>
                       <td><code className="mono">{g.barcode || "-"}</code></td>
                       <td>
-                        <span className={`badge ${f.low ? "badge-red" : "badge-green"}`}>
-                          {g.sellable}
+                        {/* ⚠ Yalang'och son emas, BIRLIGI bilan: «0 dona»,
+                            «1.5 kg». Ilgari ustunda faqat raqam turardi va
+                            tarozili tovarda «1.5» nimani — kilonimi, donanimi
+                            bildirishini jadvalga qarab bilib bo'lmasdi. */}
+                        <span className={`badge ${(f.out || f.low) ? "badge-red" : "badge-green"}`}>
+                          {fmtQty(g.sellable, unitDecimals(g.unit))} {unitLabel(g.unit)}
                         </span>
                       </td>
                       <td>{money(g.costPrice)}</td>
@@ -578,7 +616,7 @@ export default function InventoryPage({ toast }) {
                           ? <span className="text-muted">{t("inv.batchCount", { n: g.batches.length })}{g.nearest ? ` · ${g.nearest}` : ""}</span>
                           : (single.expiryDate || t("inv.noExpiry"))}
                       </td>
-                      <td>{stateBadges(f)}</td>
+                      <td>{stateBadges(f, g)}</td>
                       {!branchId && (
                         <td className="text-end" onClick={(e) => e.stopPropagation()}>
                           <button className="btn btn-primary btn-sm" onClick={() => openModal(g)}>

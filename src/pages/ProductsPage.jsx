@@ -352,9 +352,24 @@ export default function ProductsPage({ toast }) {
                             </span>}
                       </td>
                       <td>
-                        <span className={`badge ${p.active ? "badge-green" : "badge-red"}`}>
-                          {p.active ? t("common.active") : t("products.inactive")}
-                        </span>
+                        {/* ⚠ UCH HOLAT, IKKITA EMAS. Ilgari bu yerda faqat
+                            `p.active` o'qilardi va qoldig'i NOL tovar ham
+                            yashil «Faol» bo'lib turardi — ro'yxatga qaragan
+                            odam uni sotuvga tayyor deb o'ylardi, kassada esa
+                            tovar yo'q chiqardi. Endi:
+                              Nofaol  — sotuvchi ataylab o'chirgan (eng ustun);
+                              Tugagan — sotuvda, lekin qoldig'i nol;
+                              Faol    — sotuvda va qoldig'i bor.
+                            `stockQuantity == null` — ombor yuritilmaydigan
+                            tovar (xizmat): unda qoldiq tushunchasi yo'q,
+                            shuning uchun u doim «Faol». */}
+                        {!p.active ? (
+                          <span className="badge badge-red">{t("products.inactive")}</span>
+                        ) : p.stockQuantity != null && Number(p.stockQuantity) <= 0 ? (
+                          <span className="badge badge-amber">{t("products.outOfStock")}</span>
+                        ) : (
+                          <span className="badge badge-green">{t("common.active")}</span>
+                        )}
                       </td>
                       <td>
                         <div style={{ display: "flex", gap: 6 }}>

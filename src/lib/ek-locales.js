@@ -769,6 +769,11 @@ const uz = {
   "products.category": "Kategoriya",
   "products.noCategory": "Kategoriya tanlanmagan",
   "products.inactive": "Nofaol",
+  /* ⚠ «Tugagan» — «Nofaol» EMAS. Nofaol: sotuvchi tovarni ataylab
+     o'chirgan. Tugagan: tovar sotuvda, lekin qoldig'i nol. Ilgari
+     ikkinchisi ham «Faol» deb yashil turardi va ro'yxatga qaragan odam
+     tovar bor deb o'ylardi. */
+  "products.outOfStock": "Tugagan",
   "products.col": "Mahsulot",
   "products.requiredFields": "Majburiy maydonlarni to'ldiring",
   "products.refreshTitle": "Ma'lumotlarni yangilash",
@@ -1515,9 +1520,15 @@ const uz = {
   "inv.alertHint": "«Muddati yaqin» — {n} kun ichida tugaydigan tovar",
   "inv.fltNear": "Muddati yaqin",
   "inv.fltLow": "Kam qolgan",
-  "inv.nearDays": "{n} kun qoldi",
-  "inv.nearToday": "Bugun tugaydi",
-  "inv.lowBadge": "Kam qoldi",
+  /* ⚠ Yozuvlar O'ZINI TANISHTIRADI. «4 kun qoldi» va «Kam qoldi» bitta
+     ustunda yonma-yon turardi: birinchisi MUDDAT, ikkinchisi MIQDOR
+     haqida edi, lekin buni matndan bilib bo'lmasdi — «4 kun qoldi» ni
+     "4 dona qoldi" deb o'qish oson edi. Endi muddat yozuvi «Yaroqlilik:»
+     bilan boshlanadi, qoldiq yozuvi esa sonni o'zi bilan olib yuradi. */
+  "inv.nearDays": "Yaroqlilik: {n} kun qoldi",
+  "inv.nearToday": "Yaroqlilik: bugun tugaydi",
+  "inv.lowBadge": "Kam qoldi: {qty}",
+  "inv.outBadge": "Tugagan",
   "inv.noMatch": "Bu filtrga mos tovar yo'q",
 
   /* ── «Muddati yaqin» oynasi do'kon sozlamasi (V41, 2026-08-20) ─── */
@@ -2250,6 +2261,7 @@ const ru = {
   "products.category": "Категория",
   "products.noCategory": "Категория не выбрана",
   "products.inactive": "Неактивен",
+  "products.outOfStock": "Закончился",
   "products.col": "Товар",
   "products.requiredFields": "Заполните обязательные поля",
   "products.refreshTitle": "Обновить данные",
@@ -2975,9 +2987,10 @@ const ru = {
   "inv.alertHint": "«Скоро истекает» — товар, срок которого выйдет за {n} дн.",
   "inv.fltNear": "Скоро истекает",
   "inv.fltLow": "Мало осталось",
-  "inv.nearDays": "Осталось {n} дн.",
-  "inv.nearToday": "Истекает сегодня",
-  "inv.lowBadge": "Мало",
+  "inv.nearDays": "Срок годности: {n} дн.",
+  "inv.nearToday": "Срок годности: истекает сегодня",
+  "inv.lowBadge": "Мало: {qty}",
+  "inv.outBadge": "Закончился",
   "inv.noMatch": "Под этот фильтр товаров нет",
 
   /* ── «Muddati yaqin» oynasi do'kon sozlamasi (V41, 2026-08-20) ─── */
@@ -3710,6 +3723,7 @@ const en = {
   "products.category": "Category",
   "products.noCategory": "No category selected",
   "products.inactive": "Inactive",
+  "products.outOfStock": "Out of stock",
   "products.col": "Product",
   "products.requiredFields": "Fill in the required fields",
   "products.refreshTitle": "Refresh data",
@@ -4435,9 +4449,10 @@ const en = {
   "inv.alertHint": "“Expiring soon” — goods that expire within {n} days",
   "inv.fltNear": "Expiring soon",
   "inv.fltLow": "Low stock",
-  "inv.nearDays": "{n} days left",
-  "inv.nearToday": "Expires today",
-  "inv.lowBadge": "Low",
+  "inv.nearDays": "Shelf life: {n} days left",
+  "inv.nearToday": "Shelf life: expires today",
+  "inv.lowBadge": "Low stock: {qty}",
+  "inv.outBadge": "Out of stock",
   "inv.noMatch": "No goods match this filter",
 
   /* ── «Muddati yaqin» oynasi do'kon sozlamasi (V41, 2026-08-20) ─── */
