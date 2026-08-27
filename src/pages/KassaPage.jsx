@@ -73,6 +73,10 @@ const UNDO_MS    = 5000;   // o'chirishni bekor qilish oynasi
       kesib, naqd to'lovda pul yashigini ochib. Ikkala yo'l bitta joyda
       turishi kerak, aks holda ular ajralib ketardi. */
 
+/* Jonli qoldiq qadami — ombor sahifasi bilan bir xil. Kassir bir ilovada
+   ikki xil tezlikka ko'nikmasligi kerak. */
+const LIVE_REFRESH_MS = 15_000;
+
 /** Oflayn chek raqami — server raqami bilan chalkashmasligi uchun OFF- prefiksli. */
 function nextOfflineNo() {
   const n = (Number(localStorage.getItem("ek_offline_seq")) || 0) + 1;
@@ -216,8 +220,16 @@ export default function KassaPage({ toast, refreshLowStock }) {
      kutib qolardi. Ro'yxat esa o'sha-o'sha edi. */
   const baseProducts = useRef(null);
 
-  const doSearch = useCallback(async (q) => {
-    setSearching(true);
+  /**
+   * `silent` — FON yangilanishi.
+   *
+   * ⚠ Fonda «Qidirilmoqda…» spinneri chizilmaydi: bu yangilanishni kassir
+   * so'ramagan va har 15 soniyada miltillab turgan yozuv ish maydonini
+   * bezovta qilardi. Xato ham ko'rsatilmaydi — katalog eskicha qoladi
+   * (oflayn uchun allaqachon shunday edi).
+   */
+  const doSearch = useCallback(async (q, { silent = false } = {}) => {
+    if (!silent) setSearching(true);
     try {
       const res = await productApi.search(q, 0, 60, branchId,
         { categoryId, favorites: favOnly });
@@ -225,11 +237,45 @@ export default function KassaPage({ toast, refreshLowStock }) {
       if (!q) baseProducts.current = list;
       setProducts(list);
     } catch (_) { /* oflaynda katalog eskicha qoladi */ }
-    finally { setSearching(false); }
+    finally { if (!silent) setSearching(false); }
   }, [branchId, categoryId, favOnly]);
 
   /* Kategoriya yoki filial almashsa kesh yaroqsiz — ro'yxat boshqa. */
   useEffect(() => { baseProducts.current = null; }, [branchId, categoryId, favOnly]);
+
+  /* ══ JONLI QOLDIQ ══════════════════════════════════════════
+     Katakchadagi son boshqa kassadagi sotuvdan ham o'zgaradi, lekin
+     ro'yxat faqat qidiruvda va sotuvdan keyin yangilanardi. Ikkinchi
+     kassir oxirgi donani sotib yuborsa, bu kassada u hamon «bor» bo'lib
+     turardi va kassir buni faqat to'lovda bilardi.
+
+     ⚠ FAQAT KASSIR BO'SH TURGANDA. Kassa — eng band ekran: to'lov oynasi,
+     miqdor oynasi, yorliq skaneri ochiq bo'lsa yoki qidiruvga biror narsa
+     yozilgan bo'lsa, jadval QIMIRLAMAYDI. Kassirning qo'li ostida
+     katakchalar o'rin almashishi xato bosishga olib kelardi — mijoz
+     oldida bu eng yomon vaqt.
+
+     ⚠ Sahifa ko'rinmasa ham so'rov yuborilmaydi; tabga qaytilganda
+     darhol yangilanadi. Ombor sahifasi bilan bir xil qoida. */
+  const kassaBusy = useRef(false);
+  useEffect(() => {
+    kassaBusy.current = Boolean(
+      showPayModal || finish || qtyModal || markModal || processing || search
+    );
+  }, [showPayModal, finish, qtyModal, markModal, processing, search]);
+
+  useEffect(() => {
+    const tick = () => {
+      if (document.visibilityState !== "visible" || kassaBusy.current) return;
+      doSearch("", { silent: true });
+    };
+    const timer = setInterval(tick, LIVE_REFRESH_MS);
+    document.addEventListener("visibilitychange", tick);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", tick);
+    };
+  }, [doSearch]);
 
   /**
    * Qidiruvni tozalash — savatga qo'shilgandan keyin.
