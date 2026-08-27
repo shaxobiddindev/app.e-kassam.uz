@@ -1,5 +1,5 @@
 /* ══════════════════════════════════════════════════════════════════════════
-   SAVATNI SAQLASH — brauzerda, kassir va do'kon bo'yicha alohida.
+   SAVATLARNI SAQLASH — brauzerda, kassir va do'kon bo'yicha alohida.
 
    ⚠ NEGA KERAK. Savatdan tovarni o'chirish bajik bilan qo'riqlanadi va
    jurnalga yoziladi (`CART_ITEM_REMOVE`). Lekin savat `useState` da edi —
@@ -20,9 +20,17 @@
    ⚠ KALIT DO'KON VA KASSIR BO'YICHA. Aks holda bitta terminalda smena
    almashganda yangi kassir oldingisining savatini meros qilib olardi va
    jurnal butunlay yolg'on ko'rsatardi.
+
+   ⚠ ENDI SAVAT BITTA EMAS (2026-08-27). Bitta kassada bir vaqtda bir
+   nechta mijozga xizmat ko'rsatiladi, shuning uchun yozuvda savatlar
+   RO'YXATI turadi. Eski, bitta savatli yozuv ham o'qiladi — yangilanish
+   paytida kassaning o'rtasida turgan savat yo'qolmasligi kerak.
    ══════════════════════════════════════════════════════════════════════════ */
 
 const PREFIX = "ek_cart_";
+
+/** Bir vaqtda ochib turish mumkin bo'lgan savatlar soni. */
+export const MAX_CARTS = 5;
 
 /**
  * Savat shuncha vaqtdan keyin ESKIRGAN hisoblanadi.
@@ -40,15 +48,21 @@ function keyFor() {
   return `${PREFIX}${shop}_${user}`;
 }
 
-/** Savatni saqlaydi. Bo'sh savat — yozuvni butunlay o'chiradi. */
-export function save(cart) {
+/** Bo'sh savat. `id` — faqat brauzer ichida, serverga hech qachon ketmaydi. */
+export function blank(id) {
+  return { id, items: [], customer: null };
+}
+
+/** Savatlar ro'yxatini saqlaydi. Hammasi bo'sh bo'lsa — yozuvni o'chiradi. */
+export function save(carts, activeId) {
   try {
     const key = keyFor();
-    if (!cart || cart.length === 0) {
+    const full = (carts || []).filter((c) => c.items?.length);
+    if (full.length === 0) {
       localStorage.removeItem(key);
       return;
     }
-    localStorage.setItem(key, JSON.stringify({ savedAt: Date.now(), cart }));
+    localStorage.setItem(key, JSON.stringify({ savedAt: Date.now(), v: 2, carts: full, activeId }));
   } catch (_) {
     /* Xotira to'lgan yoki shaxsiy rejim — saqlanmasa ham kassa ishlaydi.
        Bu qatlam qulaylik va iz uchun, sotuvning sharti emas. */
@@ -56,9 +70,9 @@ export function save(cart) {
 }
 
 /**
- * Saqlangan savatni o'qiydi va YOZUVNI O'CHIRADI.
+ * Saqlangan savatlarni o'qiydi va YOZUVNI O'CHIRADI.
  *
- * Qaytadi: `{ cart, stale }` yoki `null`.
+ * Qaytadi: `{ carts, activeId, stale }` yoki `null`.
  *   stale=false → tiklash kerak (yaqinda uzilgan)
  *   stale=true  → tiklanmaydi, lekin JURNALGA YOZILADI
  *
@@ -74,24 +88,48 @@ export function take() {
     localStorage.removeItem(key);
 
     const parsed = JSON.parse(raw);
-    const cart = Array.isArray(parsed?.cart) ? parsed.cart : null;
-    if (!cart || cart.length === 0) return null;
 
-    return { cart, stale: Date.now() - (parsed.savedAt || 0) > STALE_MS };
+    /* ⚠ ESKI YOZUV (v1) — bitta savat `cart` maydonida. Uni tashlab
+       yuborish yangilanish chiqqan kunning o'rtasida terilgan savatlarni
+       yo'q qilardi, ya'ni aynan o'sha xatoni qaytarardi. */
+    const list = Array.isArray(parsed?.carts)
+      ? parsed.carts
+      : (Array.isArray(parsed?.cart) ? [{ id: 1, items: parsed.cart, customer: null }] : null);
+    if (!list) return null;
+
+    const carts = list
+      .map((c, i) => ({
+        id: Number(c?.id) || i + 1,
+        items: Array.isArray(c?.items) ? c.items : [],
+        customer: c?.customer || null,
+      }))
+      .filter((c) => c.items.length > 0)
+      .slice(0, MAX_CARTS);
+    if (carts.length === 0) return null;
+
+    const wanted = Number(parsed?.activeId);
+    const activeId = carts.some((c) => c.id === wanted) ? wanted : carts[0].id;
+
+    return { carts, activeId, stale: Date.now() - (parsed.savedAt || 0) > STALE_MS };
   } catch (_) {
     return null;   // buzuq yozuv — yo'q deb hisoblanadi
   }
 }
 
 /** Jurnal uchun qisqa matn: «Suv ×2; Non ×1». */
-export function describe(cart) {
-  return (cart || [])
+export function describe(items) {
+  return (items || [])
     .map((i) => `${i.name} ×${i.qty}`)
     .join("; ")
     .slice(0, 1000);
 }
 
 /** Savat jami summasi. */
-export function totalOf(cart) {
-  return (cart || []).reduce((sum, i) => sum + (Number(i.salePrice) || 0) * (Number(i.qty) || 0), 0);
+export function totalOf(items) {
+  return (items || []).reduce((sum, i) => sum + (Number(i.salePrice) || 0) * (Number(i.qty) || 0), 0);
+}
+
+/** Barcha savatlardagi tovarlar — eskirgan savatni jurnalga yozish uchun. */
+export function flatten(carts) {
+  return (carts || []).flatMap((c) => c.items || []);
 }

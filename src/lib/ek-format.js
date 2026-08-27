@@ -95,6 +95,23 @@ export function date(iso) {
   return `${d.getDate()}${sep}${months()[d.getMonth()]} ${d.getFullYear()}`;
 }
 
+/**
+ * Qisqa sana: `02-09-2026`.
+ *
+ * ⚠ KIRITISH MAYDONI bilan BIR XIL format (`DateField`). Ilgari
+ * yaroqlilik muddati jadvalda serverdan kelgan ISO ko'rinishida
+ * (`2026-09-02`) turardi, maydonda esa boshqacha — bitta ekranda ikki
+ * xil sana yozuvi «oldinda oymi, kunmi?» degan savolni tug'dirardi.
+ *
+ * ⚠ `date()` dan farqi: u oy nomini yozadi («2-sentabr 2026») va matn
+ * ichida o'qish uchun yaxshi. Jadval ustunida esa qat'iy kenglikdagi
+ * raqamlar kerak — ko'z ularni yuqoridan pastga solishtiradi.
+ */
+export function shortDate(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso ?? ""));
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : "—";
+}
+
 /** Topbar uchun: "Yak, 2-avgust 2026" · "Вс, 2 августа 2026" · "Sun, 2 August 2026" */
 export function weekdayDate(iso) {
   const d = iso ? new Date(iso) : new Date();

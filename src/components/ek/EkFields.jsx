@@ -22,11 +22,12 @@
    (`ref`), kassa esa skanerdan keyin maydonni tanlaydi. Oddiy
    funksiya-komponent `ref` ni yutib yuboradi va bu JIMGINA buziladi.
    ========================================================================== */
-import { forwardRef, useRef, useLayoutEffect, useImperativeHandle } from "react";
+import { forwardRef, useRef, useState, useEffect, useLayoutEffect, useImperativeHandle } from "react";
 import {
   numberInput, displayNumber, countDigits,
   phoneInput, emailInput, barcodeInput, mxikInput,
-  codeInput, usernameInput, nameInput, otpInput, skuInput, dateInput,
+  codeInput, usernameInput, nameInput, otpInput, skuInput,
+  dateDisplayInput, isoToDisplayDate, displayDateToIso,
 } from "../../lib/ek-input";   // ⚠ ilova ichidagi yo'l (sync-tokens `src/lib/` ga qo'yadi)
 
 /* Kursorni raqam indeksiga qarab tiklaydi. */
@@ -247,28 +248,51 @@ export const SkuField = masked("SkuField", plain(skuInput), {
   autoComplete: "off", spellCheck: false, keepCaret: false, className: "form-input mono",
 });
 
-/**
- * Sana: `2026-08-14`, yonida kalendar tugmasi.
- *
- * ⚠ Nega `type="date"` emas — `dateInput()` izohiga qarang: uning
- * ko'rinishi brauzer tiliga bog'liq va bitta ekranda ikki xil format
- * paydo bo'ladi.
- */
+/* ══════════════════════════════════════════════════════════════════════════
+   SANA MAYDONI — ko'rinishi `DD-MM-YYYY`, saqlanishi `YYYY-MM-DD`.
+
+   ⚠ NEGA ICHKI HOLAT KERAK. `MaskedField` bitta `mask` funksiyasini ham
+   chizishda, ham yozishda ishlatadi. Ikkala format bir xil bo'lganda bu
+   yetarli edi, endi esa yo'q: yarim yozilgan «31» dan ISO chiqmaydi
+   (yil yo'q), ya'ni yuqoriga bo'sh qiymat ketadi va keyingi chizishda
+   maydon O'ZINI TOZALAB yuborardi — yozib bo'lmasdi.
+
+   Shuning uchun yozilayotgan matn shu yerda turadi (`draft`), yuqoriga
+   esa faqat TO'LIQ sana ISO ko'rinishida uzatiladi.
+
+   ⚠ Qiymat TASHQARIDAN o'zgarsa (kalendar, forma tozalanishi) `draft`
+   tashlanadi. Buni bilish uchun `draft` ning ISO si kelgan qiymatga
+   teng-emasligiga qaraladi: teng bo'lsa — o'zimiz yozganmiz.
+   ══════════════════════════════════════════════════════════════════════════ */
 export const DateField = forwardRef(function DateField(
   { className = "form-input ek-num", value, onChange, name, style, ...rest }, ref
 ) {
   const nativeRef = useRef(null);
+  const [draft, setDraft] = useState(null);
+
+  useEffect(() => {
+    if (draft !== null && displayDateToIso(draft) === (value || "")) return;
+    setDraft(null);
+  }, [value]);   // eslint-disable-line react-hooks/exhaustive-deps
+
+  const display = draft ?? isoToDisplayDate(value);
+
+  const handle = (e) => {
+    const masked = dateDisplayInput(e.target.value);
+    setDraft(masked);
+    onChange?.({ target: { value: displayDateToIso(masked), name } });
+  };
+
   return (
     <span className="ek-date" style={style}>
-      <MaskedField
+      <input
         ref={ref}
-        mask={(v) => { const raw = dateInput(v); return { raw, display: raw }; }}
-        inputMode="numeric"
-        placeholder="2026-01-31"
-        maxLength={10}
         className={className}
-        value={value}
-        onChange={onChange}
+        inputMode="numeric"
+        placeholder="31-01-2026"
+        maxLength={10}
+        value={display}
+        onChange={handle}
         name={name}
         {...rest}
       />

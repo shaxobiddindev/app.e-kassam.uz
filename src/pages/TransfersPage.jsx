@@ -18,7 +18,7 @@ import { Modal } from "../components";
 import MarkingScanModal from "../components/MarkingScanModal";
 import { Empty, Field, FormGroup, SearchBar } from "../components/ui";
 import Select from "../components/ek/Select";
-import { money } from "../lib/ek-format";
+import { money, shortDate } from "../lib/ek-format";
 import { transferStatus, unitLabel } from "../lib/ek-labels";
 import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
@@ -505,7 +505,7 @@ export default function TransfersPage({ toast }) {
                           {l.productName}
                           <div className="text-muted" style={{ fontSize: 12 }}>{unitLabel(l.unit)}</div>
                         </td>
-                        <td className="mono" style={{ fontSize: 13 }}>{l.expiryDate || "—"}</td>
+                        <td className="mono" style={{ fontSize: 13 }}>{shortDate(l.expiryDate)}</td>
                         <td className="mono">{l.quantity}</td>
                         <td>
                           {/* Markirovkada miqdor qo'lda yozilmaydi: qabul
@@ -616,7 +616,7 @@ export default function TransfersPage({ toast }) {
                 {view.lines.map((l) => (
                   <tr key={l.id}>
                     <td className="fw-700">{l.productName}</td>
-                    <td className="mono" style={{ fontSize: 13 }}>{l.expiryDate || "—"}</td>
+                    <td className="mono" style={{ fontSize: 13 }}>{shortDate(l.expiryDate)}</td>
                     <td className="mono">{l.quantity}</td>
                     <td className="mono">{l.receivedQuantity ?? "—"}</td>
                     <td className="text-muted">

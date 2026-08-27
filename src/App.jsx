@@ -301,7 +301,6 @@ export default function App() {
         <AppUpdater loggedIn toast={toast} />
         <Layout 
           user={user} 
-          onLogout={logout} 
           isAdmin={roleSet(user?.role).has("SUPERADMIN")}
           lowStockItems={lowStockItems} 
           lowStockCount={lowStockCount}

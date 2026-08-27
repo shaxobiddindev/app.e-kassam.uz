@@ -241,6 +241,46 @@ export function dateInput(v) {
   return out;
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   SANA: KO'RSATISH FORMATI ≠ SAQLASH FORMATI
+
+   Odam sanani `31-01-2026` deb o'qiydi, server esa `2026-01-31` kutadi
+   (`LocalDate`). Ilgari maydonda ISO turardi va omborchi «2026-01-31» ni
+   ko'rib, qaysi raqam kun ekanini bir zum o'ylab qolardi.
+
+   ⚠ SAQLANADIGAN QIYMAT O'ZGARMADI. Faqat ko'rinish o'zgardi — API ham,
+   `isDate` tekshiruvi ham, brauzer kalendari ham avvalgidek ISO bilan
+   ishlaydi. Aks holda to'rtta sahifadagi har bir chaqiruvni qayta yozish
+   kerak bo'lardi.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/** Yozilayotgan matnni `DD-MM-YYYY` qolipiga soladi. */
+export function dateDisplayInput(v) {
+  const d = onlyDigits(v).slice(0, 8);
+  let out = d.slice(0, 2);
+  if (d.length > 2) out += "-" + d.slice(2, 4);
+  if (d.length > 4) out += "-" + d.slice(4, 8);
+  return out;
+}
+
+/** `2026-01-31` → `31-01-2026`. To'liq bo'lmasa — bo'sh satr. */
+export function isoToDisplayDate(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso ?? ""));
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : "";
+}
+
+/**
+ * `31-01-2026` → `2026-01-31`. To'liq bo'lmasa — bo'sh satr.
+ *
+ * ⚠ Bo'sh satr ATAYLAB: yarim yozilgan sana serverga yuborilmasligi
+ * kerak. «31-01» dan yil chiqmaydi va uni taxmin qilish xato bo'lardi.
+ */
+export function displayDateToIso(display) {
+  const d = onlyDigits(display);
+  if (d.length !== 8) return "";
+  return `${d.slice(4, 8)}-${d.slice(2, 4)}-${d.slice(0, 2)}`;
+}
+
 export const isDate = (s) => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(s ?? ""))) return false;
   const [y, m, day] = String(s).split("-").map(Number);

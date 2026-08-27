@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { LOGO_URL, LOGO_DARK_URL, MARK_URL, initials } from "../utils";
-import { useConfirm } from "../context/ConfirmProvider";
 import { roleLabel } from "../lib/ek-labels";
 import { hasRole, topRole, roleSet } from "../lib/ek-roles";
 import { isMobileApp } from "../lib/ek-desktop";
@@ -182,9 +181,8 @@ function LowStockBadge({ items, count, onGoInventory }) {
   );
 }
 
-function Sidebar({ user, onLogout, open, onClose, isCollapsed, onToggleCollapse, lowStockCount, suspiciousCount }) {
+function Sidebar({ user, open, onClose, isCollapsed, onToggleCollapse, lowStockCount, suspiciousCount }) {
   const { t } = useT();
-  const confirm = useConfirm();
   /* Guruh bandi o'z bolalaridan birortasida turgan bo'lsa yonadi — shuning
      uchun bu yerda joriy manzil kerak (NavLink ning isActive i yetmaydi). */
   const { pathname } = useLocation();
@@ -195,16 +193,6 @@ function Sidebar({ user, onLogout, open, onClose, isCollapsed, onToggleCollapse,
     const top = topRole(r);
     const key = EXTRA_ROLE_KEYS[top];
     return key ? t(key) : roleLabel(top);
-  };
-  const handleLogoutClick = async () => {
-    const ok = await confirm({
-      title: t("layout.logout"),
-      message: t("layout.logoutConfirm"),
-      type: "warning",
-      confirmText: t("layout.logout"),
-      cancelText: t("common.cancel"),
-    });
-    if (ok) onLogout();
   };
   return (
     <aside className={`sidebar ${open ? "open" : ""} ${isCollapsed ? "collapsed" : ""}`}>
@@ -262,21 +250,31 @@ function Sidebar({ user, onLogout, open, onClose, isCollapsed, onToggleCollapse,
       {/* Tema tanlagichi bu yerdan OLIB TASHLANDI: barcha sozlamalar endi
           «Sozlamalar» sahifasida — bitta joy, bitta qidiruv. */}
       <div className="sb-footer">
-        <div className="sb-user" onClick={handleLogoutClick} title={isCollapsed ? t("layout.logout") : ""}
-             role="button" tabIndex={0}
-             onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleLogoutClick(); } }}>
+        {/* ⚠ CHIQISH TUGMASI BU YERDAN OLIB TASHLANDI (2026-08-27).
+
+            U kassirning ismi ustida turardi va butun blok bosiladigan edi:
+            yon menyu yopilayotganda yoki sichqoncha sirg'anganda tizimdan
+            chiqib ketish uchun bitta noto'g'ri bosish yetardi. Kassada bu
+            terilgan savatni, ochiq smenani va mijozning vaqtini
+            yo'qotishga teng.
+
+            Chiqish endi FAQAT «Sozlamalar» sahifasida — ataylab
+            boriladigan, tasodifan bosilmaydigan joyda. Shu sababli bu
+            blok endi o'sha sahifaga olib boradi: kassir «chiqish qayerda?»
+            deb qidirib qolmasin. */}
+        <NavLink to="/settings" className="sb-user" title={isCollapsed ? t("nav.settings") : ""}>
           <div className="av" style={{ width: isCollapsed ? 28 : 34, height: isCollapsed ? 28 : 34 }}>{initials(user?.fullName || user?.username)}</div>
           <div className="sb-user-info">
             <div className="sb-user-name">{user?.fullName || user?.username}</div>
-            <div className="sb-user-role">{roleName(user?.role)} <i className="fa-solid fa-right-from-bracket" /></div>
+            <div className="sb-user-role">{roleName(user?.role)} <i className="fa-solid fa-gear" /></div>
           </div>
-        </div>
+        </NavLink>
       </div>
     </aside>
   );
 }
 
-export default function Layout({ user, onLogout, isAdmin, lowStockItems, lowStockCount, children }) {
+export default function Layout({ user, isAdmin, lowStockItems, lowStockCount, children }) {
   const { t } = useT();
   const [open, setOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(() => localStorage.getItem("sb_collapsed") === "1");
@@ -320,7 +318,6 @@ export default function Layout({ user, onLogout, isAdmin, lowStockItems, lowStoc
       {open && <div onClick={() => setOpen(false)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.45)", zIndex:199 }} />}
       <Sidebar 
         user={user} 
-        onLogout={onLogout} 
         open={open} 
         onClose={() => setOpen(false)} 
         isCollapsed={isCollapsed} 

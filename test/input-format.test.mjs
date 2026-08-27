@@ -12,6 +12,7 @@ import {
   numberInput, displayNumber, phoneInput, isEmail, emailInput,
   isBarcodeChecksumValid, mxikInput, isMxik, codeInput, usernameInput,
   isUsername, nameInput, skuInput, otpInput, digitsInput,
+  dateDisplayInput, isoToDisplayDate, displayDateToIso,
   validate, required, positive, notNegative, between, minLen,
 } from "../src/lib/ek-input.js";
 
@@ -128,6 +129,28 @@ eq(digitsInput("12ab34"), "1234", "qadoq kodi — faqat raqam");
 eq(otpInput("abcd-efgh"), "ABCD-EFGH", "tiklash kodi katta harfda");
 eq(otpInput("12 34 56"), "123456", "TOTP dan bo'shliqlar olib tashlanadi");
 eq(otpInput("123456789012"), "123456789", "9 belgidan uzun kod kesiladi");
+
+console.log("\n\u2550\u2550\u2550 11. Sana \u2014 ko'rinishi DD-MM-YYYY, saqlanishi YYYY-MM-DD \u2550\u2550\u2550");
+/* \u26a0 IKKI FORMAT bir maydonda: kassir `31-01-2026` ko'radi, serverga
+   `2026-01-31` ketadi. Chegara holatlari — yarim yozilgan sana va
+   tashqaridan kelgan bo'sh qiymat — aynan shu yerda ushlanadi. */
+eq(dateDisplayInput("31012026"), "31-01-2026", "raqamlar niqobga tushadi");
+eq(dateDisplayInput("3"), "3", "bitta raqam \u2014 chiziqcha qo'shilmaydi");
+eq(dateDisplayInput("3101"), "31-01", "yarim sana yozilaveradi");
+eq(dateDisplayInput("31-01-2026"), "31-01-2026", "qayta formatlash buzmaydi");
+eq(dateDisplayInput("31a01b2026"), "31-01-2026", "harflar tashlanadi");
+eq(dateDisplayInput("310120261234"), "31-01-2026", "ortiqcha raqamlar kesiladi");
+eq(dateDisplayInput(""), "", "bo'sh \u2014 bo'sh");
+
+eq(isoToDisplayDate("2026-01-31"), "31-01-2026", "ISO \u2192 ko'rinish");
+eq(isoToDisplayDate(""), "", "bo'sh ISO \u2014 bo'sh ko'rinish");
+eq(isoToDisplayDate(null), "", "null ham yiqitmaydi");
+eq(isoToDisplayDate("2026-1-3"), "", "to'liq bo'lmagan ISO qabul qilinmaydi");
+
+eq(displayDateToIso("31-01-2026"), "2026-01-31", "ko'rinish \u2192 ISO");
+eq(displayDateToIso("31-01"), "", "yarim sanadan ISO CHIQMAYDI");
+eq(displayDateToIso(""), "", "bo'sh \u2014 bo'sh");
+eq(displayDateToIso(isoToDisplayDate("2026-12-01")), "2026-12-01", "ikki yoqlama aylanish qiymatni saqlaydi");
 
 console.log(`\n  ${pass} o'tdi, ${fail} yiqildi\n`);
 process.exit(fail ? 1 : 0);

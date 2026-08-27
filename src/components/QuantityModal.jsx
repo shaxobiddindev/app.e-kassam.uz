@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { t } from "../lib/ek-i18n";
 import { unitLabel } from "../lib/ek-labels";
-import { money } from "../utils";
+import { money, quantity as fmtQty } from "../utils";
 import { NumField } from "./ek/EkFields";
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -13,13 +13,14 @@ import { NumField } from "./ek/EkFields";
    tarozi formati do'kondan do'konga farq qiladi va noto'g'ri o'qilgan
    og'irlik jimgina chekka tushib qolmasligi kerak.
 
-   Klaviatura: raqamlar, nuqta, Enter (tasdiq), Esc (bekor). Sichqonchasiz
-   ham, sensorli ekranda ham ishlaydi — tugmalar 56px (CLAUDE.md #3).
+   Klaviatura: raqamlar, nuqta, Enter (tasdiq), Esc (bekor), Delete
+   (tozalash). Sichqonchasiz ham, sensorli ekranda ham ishlaydi —
+   tugmalar 56px (CLAUDE.md #3).
    ══════════════════════════════════════════════════════════════════════════ */
 
 const KEYS = ["7", "8", "9", "4", "5", "6", "1", "2", "3", ".", "0", "⌫"];
 
-export default function QuantityModal({ product, initial, onConfirm, onClose }) {
+export default function QuantityModal({ product, initial, stock: stockProp, onConfirm, onClose }) {
   const decimals = product?.unitDecimals ?? 3;
   const [value, setValue] = useState(
     initial != null ? String(Number(initial)) : ""
@@ -31,6 +32,20 @@ export default function QuantityModal({ product, initial, onConfirm, onClose }) 
   const num = Number(value.replace(",", "."));
   const valid = Number.isFinite(num) && num > 0;
   const total = valid && product?.salePrice != null ? num * product.salePrice : 0;
+
+  /* Ombor qoldig'i. `null` — xizmat yoki ombor yuritilmaydigan tovar:
+     bunda qoldiq tushunchasi yo'q va hech narsa ko'rsatilmaydi.
+
+     ⚠ `stock` proplari ustun: Kassa boshqa ochiq savatlarda band bo'lgan
+     miqdorni ayirib beradi va oynadagi raqam tasdiqlashdagi tekshiruv
+     bilan bir xil bo'lishi kerak. */
+  const stock = stockProp != null
+    ? Number(stockProp)
+    : (product?.stockQuantity != null ? Number(product.stockQuantity) : null);
+  const stockText = stock != null
+    ? `${fmtQty(stock, product?.unitDecimals)} ${unitLabel(product?.unit)}`
+    : null;
+  const over = stock != null && valid && num > stock;
 
   /**
    * ⚠ Nuqta ALOHIDA ishlanadi. Ilgari u umumiy qoidaga tushardi
@@ -51,16 +66,33 @@ export default function QuantityModal({ product, initial, onConfirm, onClose }) 
     setValue((v) => (v === "0" ? key : v + key));
   };
 
+  /* Butun maydonni tozalash. ⌫ bilan 6 xonali xato miqdorni o'chirish
+     olti bosish — mijoz oldida bu uzoq. */
+  const clearAll = () => { setValue(""); inputRef.current?.focus(); };
+
   const confirm = () => { if (valid) onConfirm(num); };
 
-  const onKeyDown = (e) => {
-    if (e.key === "Enter") { e.preventDefault(); confirm(); return; }
-    if (e.key === "Escape") { e.preventDefault(); onClose(); }
-  };
+  /* ⚠ Tinglovchi HUJJATDA, oyna elementida emas. Ilgari `onKeyDown` shu
+     `div` da turardi va faqat fokus oyna ICHIDA bo'lgandagina ishlardi:
+     kassir raqam tugmasini bosgach fokus tugmaga o'tar, keyin sichqoncha
+     bilan fon bosilsa esa umuman yo'qolardi — Esc javob bermay qolardi.
+     Endi oyna ochiq ekan, tugmalar fokusdan qat'i nazar ishlaydi.
+
+     `capture` bosqichida: Kassa sahifasining o'z yorliqlari ham `window`
+     da turibdi va Esc ni savatni tozalash so'roviga olib ketishi mumkin. */
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); onClose(); return; }
+      if (e.key === "Enter")  { e.preventDefault(); e.stopPropagation(); if (valid) onConfirm(num); return; }
+      if (e.key === "Delete") { e.preventDefault(); clearAll(); }
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  });   // har renderda yangilanadi — `valid`/`num` yangi bo'lishi shart
 
   return (
     <div className="pay-modal-overlay ek-overlay" role="dialog" aria-modal="true"
-         aria-label={t("kassa.enterQuantity")} onKeyDown={onKeyDown}>
+         aria-label={t("kassa.enterQuantity")}>
       <div className="ek-dialog qty-modal">
         <div className="pay-modal-header">
           <div className="pay-modal-title">
@@ -77,6 +109,20 @@ export default function QuantityModal({ product, initial, onConfirm, onClose }) 
             {t("kassa.quantityFor", { name: product?.name, unit: unitLabel(product?.unit) })}
           </div>
 
+          {/* ⚠ QOLDIQ SHU YERDA. Ilgari kassir «omborda nechta bor?» degan
+              savolga javob olish uchun oynani yopib, tovar katakchasiga
+              qarab, keyin qaytadan ochishga majbur edi. Endi raqam
+              kiritilayotgan joyning o'zida turadi.
+
+              Qoldiqdan oshib ketsa qizarib, sababi yoziladi — xato
+              «Tasdiqlash» dan KEYIN emas, oldin ko'rinadi. */}
+          {stockText && (
+            <div className={`qty-modal__stock ek-num ${over ? "is-over" : ""}`}>
+              <i className={`fa-solid ${over ? "fa-triangle-exclamation" : "fa-boxes-stacked"}`} aria-hidden="true" />
+              {over ? t("kassa.overStock", { qty: stockText }) : t("kassa.inStock", { qty: stockText })}
+            </div>
+          )}
+
           <NumField
             ref={inputRef}
             kind="qty"
@@ -87,9 +133,23 @@ export default function QuantityModal({ product, initial, onConfirm, onClose }) 
             aria-label={t("kassa.enterQuantity")}
           />
 
-          {valid && product?.salePrice != null && (
-            <div className="qty-modal__total ek-num">{money(total)}</div>
-          )}
+          {/* ⚠ QATOR HAR DOIM TURADI, faqat MATNI paydo bo'ladi.
+
+              Ilgari butun qator shartli edi: miqdor kiritilgan zahoti u
+              yo'qdan bor bo'lib, ostidagi raqamli klaviaturani ~30px
+              pastga surardi. Kassir «7» ni mo'ljallab bosgan barmog'i
+              tugmalar surilgach «4» ga tushishi mumkin edi — sotuvda
+              bunday xato jimgina noto'g'ri miqdorga aylanadi.
+
+              Klaviatura hech qachon surilmasligi kerak. Shuning uchun
+              bo'sh holatda ham element chizilaveradi va balandligini
+              ushlab turadi (`min-height` — `styles.css`).
+
+              `aria-live` bilan ekran o'quvchi summa o'zgarganini aytadi,
+              chunki endi element «paydo bo'lish» hodisasi bermaydi. */}
+          <div className="qty-modal__total ek-num" aria-live="polite">
+            {valid && product?.salePrice != null ? money(total) : ""}
+          </div>
 
           <div className="qty-modal__keys">
             {KEYS.map((k) => (
@@ -99,12 +159,22 @@ export default function QuantityModal({ product, initial, onConfirm, onClose }) 
                 {k}
               </button>
             ))}
+            {/* Kalkulyatordagi «C» — butun qiymatni bir bosishda tozalaydi.
+                Raqamlar joyi O'ZGARMADI: kassirning barmog'i 7-8-9 ni
+                yod biladi va ularni surish yangi xatolar tug'dirardi. */}
+            <button type="button" className="qty-modal__key qty-modal__clear"
+                    onClick={clearAll} disabled={!value}
+                    aria-label={t("kassa.clearInput")}>
+              C
+              <span className="kbd">Del</span>
+            </button>
           </div>
         </div>
 
         <div className="pay-modal-footer">
-          <button className="btn btn-outline" onClick={onClose}>
+          <button className="btn btn-outline qty-modal__cancel" onClick={onClose}>
             {t("common.cancel")}
+            <span className="kbd">Esc</span>
           </button>
           <button className="btn btn-green btn-pos" onClick={confirm} disabled={!valid}>
             <i className="fa-solid fa-check" aria-hidden="true" /> {t("kassa.confirmQty")}

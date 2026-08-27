@@ -218,13 +218,16 @@ h1, h2, h3, .page-title, .card-title, .modal-title {
 .sidebar.collapsed .sb-toggle { right: -12px; }
 
 .sb-footer       { padding: 8px 10px; border-top: 1px solid var(--sb-border); display: grid; gap: 4px; }
+/* Endi bu havola («Sozlamalar» ga) — `<a>` ning o'z chizig'i va ko'k
+   rangi meros bo'lib o'tmasin. */
 .sb-user {
   display: flex; align-items: center; gap: 10px;
   min-height: var(--hit-min);
   padding: 6px 12px; border-radius: 10px;
-  cursor: pointer; transition: background var(--dur-fast) var(--ease-out);
+  cursor: pointer; text-decoration: none; color: inherit;
+  transition: background var(--dur-fast) var(--ease-out);
 }
-.sb-user:hover   { background: var(--sb-hover-bg); }
+.sb-user:hover, .sb-user.active { background: var(--sb-hover-bg); }
 .sb-user-info    { flex: 1; overflow: hidden; }
 .sb-user-name    { font-size: 13px; font-weight: 600; color: var(--fg-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* ⚠ `--fg-tertiary` (=`--sb-fg-dim`) MATN uchun yaramaydi: kontrast
@@ -522,20 +525,71 @@ select.form-input { cursor: pointer; }
 .product-body    { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .product-attrs   { font-size: 11px; color: var(--fg-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .product-meta    { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
-.product-stock   { font-size: 11px; color: var(--fg-secondary); font-family: var(--font-mono); }
-.product-stock.is-out { color: var(--fg-danger); font-weight: 700; }
+/* ⚠ Qoldiq soni KATTA va ASOSIY matn rangida. 11px `--fg-secondary` da u
+   narx yonida ikkinchi darajali maydaroq yozuvga o'xshardi, holbuki
+   kassir aynan shu songa qarab «yetadimi?» degan qarorni qabul qiladi. */
+.product-stock   { font-size: 13px; font-weight: 800; color: var(--fg-primary); font-family: var(--font-mono); }
+.product-stock.is-out { color: var(--fg-danger); font-weight: 800; }
+
+/* ══ «Boshqa kassada sotildi» — jonli yangilanish belgisi ═══════════════
+   Silkinish 6px dan oshmaydi: katakcha o'z o'rnidan ketmaydi, faqat
+   ko'zni tortadi. Fon ham bir lahzaga yorishadi — silkinish tugagach
+   ham qaysi tovar o'zgargani ko'rinib turishi uchun. */
+@keyframes ek-shake {
+  0%, 100% { transform: translateX(0); }
+  15% { transform: translateX(-6px); }
+  30% { transform: translateX(5px); }
+  45% { transform: translateX(-4px); }
+  60% { transform: translateX(3px); }
+  75% { transform: translateX(-2px); }
+}
+.product-card.is-changed {
+  animation: ek-shake .5s var(--ease-out) both;
+  border-color: var(--border-brand);
+  background: var(--bg-brand-subtle);
+}
 .product-noprice { font-size: 11.5px; font-weight: 700; color: var(--fg-warning); }
 /* Sotib bo'lmaydigan tovar YASHIRILMAYDI, faqat xiralashadi: ro'yxatdan
    yo'qolgan tovar "bu do'konda umuman yo'q" degan xato xulosaga olib keladi. */
 .product-card.is-dim { opacity: .55; }
 
 /* ══ Miqdor oynasi (tarozili tovar) ══════════════════════════════════════ */
+/* ⚠ SIRT (fon, chekka, soya) SHU YERDA. `.ek-dialog` faqat ANIMATSIYA
+   beradi — u nomiga qarab «oyna» bo'lib ko'rinsa-da, ichida bironta
+   ko'rinish qoidasi yo'q. Shu sababli bu ikki oyna fonsiz chizilib,
+   ostidagi Kassa ekrani matn orasidan o'qilib turardi: tovar nomi ham,
+   summa ham, «Bekor» ham xira ko'rinardi. Rangni quyuqroq qilish
+   yordam bermasdi — muammo rangda emas, SIRT YO'Qligida edi. */
+.qty-modal,
+.mark-modal      { background: var(--bg-surface); border-radius: 22px;
+                   border: 1px solid var(--border-subtle); box-shadow: var(--sh-xl);
+                   max-height: 92vh; overflow-y: auto; }
 .qty-modal       { width: min(380px, 92vw); }
 .qty-modal__body { padding: 18px; }
-.qty-modal__product { font-size: 13px; font-weight: 700; color: var(--fg-secondary); margin-bottom: 10px; text-align: center; }
+/* Tovar nomi — ASOSIY matn rangida. `--fg-secondary` da u sarlavhadan ham,
+   raqamdan ham xira edi, holbuki kassir aynan shu nomni tekshiradi. */
+.qty-modal__product { font-size: 15px; font-weight: 800; color: var(--fg-primary); margin-bottom: 6px; text-align: center; }
+/* Ombor qoldig'i — nomdan past, raqamdan yuqori. */
+.qty-modal__stock { display: flex; align-items: center; justify-content: center; gap: 6px;
+                    font-size: 12.5px; font-weight: 700; color: var(--fg-secondary);
+                    margin-bottom: 10px; line-height: 18px; min-height: 18px; }
+.qty-modal__stock.is-over { color: var(--fg-danger); }
 .qty-modal__input { font-size: 30px; font-weight: 900; text-align: center; height: 64px; }
-.qty-modal__total { text-align: center; font-size: 15px; font-weight: 800; color: var(--fg-brand); margin-top: 8px; }
+/* ⚠ `min-height` + qat'iy `line-height` — SURILISHGA QARSHI. Summa qatori
+   bo'sh bo'lganda ham o'z joyini egallaydi, aks holda birinchi raqam
+   kiritilganda raqamli klaviatura pastga sakraydi (QuantityModal.jsx). */
+.qty-modal__total { text-align: center; font-size: 20px; font-weight: 900; color: var(--fg-brand);
+                    margin-top: 8px; line-height: 26px; min-height: 26px; }
 .qty-modal__keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 14px; }
+/* «C» — butun kenglikda va raqamlardan YUQORIDA (`order: -1`).
+   Pastga qo'yilsa u «Bekor» bilan yonma-yon tushardi: ikkisi ham
+   «bekor qilish» ma'nosini beradi-yu, oqibati boshqacha. */
+.qty-modal__clear { order: -1; grid-column: 1 / -1; min-height: 44px;
+                    display: flex; align-items: center; justify-content: center; gap: 8px;
+                    border-color: var(--border-danger); color: var(--fg-danger); }
+.qty-modal__clear:hover { border-color: var(--border-danger); background: var(--bg-danger-subtle); color: var(--fg-danger); }
+/* «Bekor» — oddiy `btn-outline` fonsiz sirtda ko'rinmay qolgandi. */
+.qty-modal__cancel { border-color: var(--border-strong); color: var(--fg-primary); font-weight: 700; }
 .qty-modal__key  { min-height: var(--hit-pos); border-radius: 10px; border: 1.5px solid var(--border-subtle);
                    background: var(--bg-surface); color: var(--fg-primary); font-family: var(--font-mono);
                    font-size: 20px; font-weight: 700; cursor: pointer;
@@ -543,6 +597,38 @@ select.form-input { cursor: pointer; }
 .qty-modal__key:hover  { border-color: var(--border-brand); color: var(--fg-brand); }
 .qty-modal__key:active { transform: scale(.94); }
 .qty-modal__key:disabled { opacity: .35; cursor: not-allowed; }
+/* ══ Savat tablari — bir vaqtda bir nechta mijoz ═════════════════════════
+   ⚠ TAB O'ZI EMAS, USTIDAGI TUGMA bosiladi. «×» tabning ichida alohida
+   tugma bo'lib turadi; ikkisini bitta tugmaga solib qo'yish «savatga
+   o'tmoqchi edim, yopib qo'ydim» degan xatoni tug'dirardi.
+
+   ⚠ Yon-tomonga suriladi, qatorga tushmaydi: ikkinchi qator paydo
+   bo'lganda savat ro'yxati sakrab pastga surilardi. */
+.cart-head       { display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+                   border-bottom: 1px solid var(--border-subtle); flex-shrink: 0; }
+.cart-head__clear{ flex-shrink: 0; background: var(--bg-danger-subtle); color: var(--fg-danger); }
+.cart-tabs       { display: flex; gap: 6px; overflow-x: auto; flex: 1; min-width: 0; }
+.cart-tab        { display: flex; align-items: stretch; flex-shrink: 0;
+                   border: 1.5px solid var(--border-subtle); border-radius: 10px;
+                   background: var(--bg-surface); overflow: hidden; }
+.cart-tab.is-on  { border-color: var(--border-brand); background: var(--bg-brand-subtle); }
+.cart-tab__pick  { display: flex; flex-direction: column; align-items: flex-start; gap: 1px;
+                   padding: 6px 10px; border: 0; background: none; cursor: pointer;
+                   min-height: 40px; justify-content: center; }
+.cart-tab__name  { font-size: 12.5px; font-weight: 800; color: var(--fg-primary);
+                   max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cart-tab__sum   { font-size: 11px; font-weight: 700; color: var(--fg-secondary); white-space: nowrap; }
+.cart-tab.is-on .cart-tab__sum { color: var(--fg-brand); }
+.cart-tab__x     { border: 0; background: none; cursor: pointer; padding: 0 8px;
+                   color: var(--fg-secondary); font-size: 12px; }
+.cart-tab__x:hover { background: var(--bg-danger-subtle); color: var(--fg-danger); }
+.cart-tab__add   { display: flex; align-items: center; gap: 6px; flex-shrink: 0;
+                   padding: 0 12px; min-height: 40px; border-radius: 10px;
+                   border: 1.5px dashed var(--border-subtle); background: none;
+                   color: var(--fg-secondary); cursor: pointer; font-size: 13px; }
+.cart-tab__add:hover:not(:disabled) { border-color: var(--border-brand); color: var(--fg-brand); }
+.cart-tab__add:disabled { opacity: .4; cursor: not-allowed; }
+
 .cart-items      { flex: 1; overflow-y: auto; }
 .cart-item       { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--border); transition: .15s; }
 .cart-item:hover { background: var(--bg-sunken); }
@@ -718,8 +804,11 @@ select.form-input { cursor: pointer; }
   position: fixed;
   inset: 0;
   background: var(--scrim);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  /* ⚠ 16px YETMASDI. Kassa ekrani zich va rangli — orqadagi katakchalar
+     oyna ustidan «o'qilib» turardi va kassirning ko'zi qayerga qarashni
+     bilmasdi. 24px da fon shaklga aylanadi, matn esa yo'qoladi. */
+  backdrop-filter: blur(24px) saturate(.9);
+  -webkit-backdrop-filter: blur(24px) saturate(.9);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2447,3 +2536,23 @@ img.logo--dark { display: none; }
   letter-spacing: .18em;
 }
 .ekz__hint { font-size: var(--fs-sm); color: #5B6675; }
+
+/* ══ Ombor — mahsulot tafsiloti modali ═════════════════════════════════
+   Partiyalar jadval qatori sifatida emas, o'z kartochkalarida: jadval
+   ustunlari («Tan narxi», «Barkod») partiyaga tegishli emas edi va
+   bo'sh kataklar qatorni o'qishni qiyinlashtirardi. */
+.inv-detail__grid  { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; margin-bottom: 16px; }
+.inv-detail__grid > div { display: flex; flex-direction: column; gap: 2px; }
+.inv-detail__label { font-size: 11.5px; font-weight: 700; color: var(--fg-secondary); }
+.inv-detail__value { font-size: 14px; font-weight: 800; color: var(--fg-primary); }
+.inv-detail__head  { display: flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 800;
+                     color: var(--fg-secondary); padding-top: 12px; margin-bottom: 8px;
+                     border-top: 1px solid var(--border-subtle); }
+.inv-detail__batches { display: flex; flex-direction: column; gap: 7px; max-height: 46vh; overflow-y: auto; }
+.inv-batch         { display: flex; align-items: center; justify-content: space-between; gap: 12px;
+                     padding: 9px 12px; border-radius: 10px; background: var(--bg-sunken);
+                     border: 1px solid var(--border-subtle); }
+.inv-batch__main   { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.inv-batch__qty    { font-size: 14px; font-weight: 800; color: var(--fg-primary); }
+.inv-batch__exp    { font-size: 11.5px; font-weight: 700; color: var(--fg-secondary); }
+.inv-batch__side   { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }

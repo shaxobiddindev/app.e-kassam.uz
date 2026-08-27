@@ -45,7 +45,7 @@ function initialsOf(name) {
  * ishlaydi. Kamaytirilgan qiymatni obyektga yozib yuborsak, savat ikki
  * marta ayirilardi va kassir hali bori bor tovarni qo'sha olmay qolardi.
  */
-export default function ProductTile({ product, view = "tiles", onPick, available }) {
+export default function ProductTile({ product, view = "tiles", onPick, available, changed = false }) {
   const p = product;
   const tracks = p.stockQuantity != null;
   const shown = available != null ? available : p.stockQuantity;
@@ -60,6 +60,9 @@ export default function ProductTile({ product, view = "tiles", onPick, available
     "product-card",
     view === "tiles" ? "product-card--tile" : "product-card--list",
     out || noPrice ? "is-dim" : "",
+    /* Qoldig'i endigina o'zgargan (boshqa kassada sotilgan) katakcha —
+       bir silkinib e'tiborni tortadi. Belgi KassaPage dan keladi. */
+    changed ? "is-changed" : "",
   ].filter(Boolean).join(" ");
 
   return (

@@ -77,6 +77,9 @@ const UNDO_MS    = 5000;   // o'chirishni bekor qilish oynasi
    ikki xil tezlikka ko'nikmasligi kerak. */
 const LIVE_REFRESH_MS = 15_000;
 
+/** Qoldig'i o'zgargan katakcha shuncha vaqt belgilanib turadi. */
+const FLASH_MS = 1600;
+
 /** Oflayn chek raqami — server raqami bilan chalkashmasligi uchun OFF- prefiksli. */
 function nextOfflineNo() {
   const n = (Number(localStorage.getItem("ek_offline_seq")) || 0) + 1;
@@ -89,7 +92,48 @@ export default function KassaPage({ toast, refreshLowStock }) {
   const { guard } = useBadge();
   const [products, setProducts]     = useState([]);
   const [customers, setCustomers]   = useState([]);
-  const [cart, setCart]             = useState([]);
+
+  /* ══ BIR NECHTA SAVAT ═══════════════════════════════════════════════
+     ⚠ MUAMMO. Kassada bitta savat bor edi. Mijoz «yodimdan chiqibdi»
+     deb tuz olib kelgani ketsa, orqasidagi navbat kutib turardi:
+     kassirning terilgan savatni qo'yib turadigan joyi yo'q edi. Yagona
+     chora savatni tozalab, keyin qaytadan terish bo'lardi — bu esa
+     mijozning ham, navbatning ham vaqti.
+
+     ⚠ NEGA MASSIV, nega ikkinchi `useState` emas. Savat soni oldindan
+     ma'lum emas va har biri BIR XIL huquqqa ega: qaysi biri «asosiy»
+     ekanini kod bilishi shart emas, faqat qaysi biri OCHIQ ekanini
+     bilishi kerak.
+
+     ⚠ HAR SAVAT O'Z MIJOZI BILAN. Aks holda ikkinchi mijozga o'tganda
+     birinchisining sodiqlik kartasi chekka tushib qolardi — ball
+     boshqa odamning balansidan yechilardi.
+
+     ⚠ `cart` va `setCart` NOMLARI SAQLANDI. Sahifada yigirmadan ortiq
+     joyda ishlatiladi; ularni ochiq savatga yo'naltirish o'sha joylarni
+     o'zgartirmasdan bir xil ishlashini ta'minlaydi. `setCart` chizish
+     paytidagi savat raqamini YOPIB OLADI: bajik so'ralayotganda kassir
+     boshqa tabga o'tsa ham, o'chirish o'sha savatdan bo'ladi. */
+  const [carts, setCarts]           = useState(() => [cartStore.blank(1)]);
+  const [activeId, setActiveId]     = useState(1);
+  const cartSeq                     = useRef(1);
+
+  const active = carts.find((c) => c.id === activeId) || carts[0];
+  const cart   = active.items;
+
+  /* Uzoq davom etadigan amallar (bajik so'rovi) uchun HOZIRGI holat.
+     `await` dan keyin chizish paytidagi nusxa eskirgan bo'lishi mumkin. */
+  const cartsRef = useRef(carts);
+  const activeIdRef = useRef(activeId);
+  useEffect(() => { cartsRef.current = carts; activeIdRef.current = activeId; }, [carts, activeId]);
+
+  const patchCart = (id, patch) =>
+    setCarts((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)));
+
+  const setCart = (updater) =>
+    setCarts((prev) => prev.map((c) => (c.id === active.id
+      ? { ...c, items: typeof updater === "function" ? updater(c.items) : updater }
+      : c)));
   const [search, setSearch]         = useState("");
   const [searching, setSearching]   = useState(true);   // birinchi yuklash
   const tilesBusy = useLoading(searching);
@@ -97,7 +141,8 @@ export default function KassaPage({ toast, refreshLowStock }) {
   const [cashGiven, setCashGiven]   = useState("");     // naqdda berilgan summa
   const [cashAmount, setCashAmount] = useState("");     // aralash: naqd qismi
   const [cardAmount, setCardAmount] = useState("");     // aralash: ikkinchi qism
-  const [customer, setCustomer]     = useState(null);
+  const customer = active.customer;
+  const setCustomer = (c) => patchCart(active.id, { customer: c });
   /* Mijozning sodiqlik darajasi — faqat KO'RSATISH uchun. Chegirmani
      server chek yozilganda o'zi hisoblaydi; bu yerdagi raqam hisobga
      ta'sir qilmaydi va shunday bo'lishi ham kerak: front hisoblagan
@@ -220,6 +265,35 @@ export default function KassaPage({ toast, refreshLowStock }) {
      kutib qolardi. Ro'yxat esa o'sha-o'sha edi. */
   const baseProducts = useRef(null);
 
+  /* ══ «BOSHQA KASSADA SOTILDI» BELGISI ═══════════════════════════════
+     ⚠ Jonli yangilanish JIM edi: son o'zgarardi-yu, kassir buni ko'rmasdi.
+     Ekranda 40 ta katakcha turibdi va ulardan bittasining raqami 5 dan
+     4 ga tushganini payqash — imkonsiz ish. Natijada jonli yangilanish
+     bor edi, foydasi esa yo'q.
+
+     Endi o'zgargan katakcha bir silkinib qo'yadi. Silkinish qisqa
+     (1.6 s) va faqat SONI O'ZGARGANLARIDA — hammasi qimirlasa u ogohlik
+     emas, bezovtalikka aylanardi.
+
+     ⚠ Harakatni kamaytirish rejimida (`prefers-reduced-motion`) animatsiya
+     o'zi o'chadi — `ek-motion.css` dagi umumiy qoida. */
+  const [flash, setFlash] = useState(() => new Set());
+  const flashTimer = useRef(null);
+  const productsRef = useRef([]);
+  useEffect(() => { productsRef.current = products; }, [products]);
+  useEffect(() => () => clearTimeout(flashTimer.current), []);
+
+  const flagChanges = useCallback((list) => {
+    const before = new Map(productsRef.current.map((p) => [p.id, p.stockQuantity]));
+    const moved = list
+      .filter((p) => before.has(p.id) && Number(before.get(p.id)) !== Number(p.stockQuantity))
+      .map((p) => p.id);
+    if (moved.length === 0) return;
+    setFlash(new Set(moved));
+    clearTimeout(flashTimer.current);
+    flashTimer.current = setTimeout(() => setFlash(new Set()), FLASH_MS);
+  }, []);
+
   /**
    * `silent` — FON yangilanishi.
    *
@@ -235,10 +309,15 @@ export default function KassaPage({ toast, refreshLowStock }) {
         { categoryId, favorites: favOnly });
       const list = res.data || [];
       if (!q) baseProducts.current = list;
+      /* ⚠ FAQAT FON yangilanishida belgilanadi. Kassirning o'z sotuvidan
+         keyin ham qoldiq o'zgaradi, lekin uni kassir allaqachon biladi —
+         har chekdan keyin yarim ekran silkinishi shovqindan boshqa narsa
+         emas. Belgi BOSHQA odam qilgan o'zgarish uchun. */
+      if (silent) flagChanges(list);
       setProducts(list);
     } catch (_) { /* oflaynda katalog eskicha qoladi */ }
     finally { if (!silent) setSearching(false); }
-  }, [branchId, categoryId, favOnly]);
+  }, [branchId, categoryId, favOnly, flagChanges]);
 
   /* Kategoriya yoki filial almashsa kesh yaroqsiz — ro'yxat boshqa. */
   useEffect(() => { baseProducts.current = null; }, [branchId, categoryId, favOnly]);
@@ -320,26 +399,96 @@ export default function KassaPage({ toast, refreshLowStock }) {
     if (!found) return;
 
     if (!found.stale) {
-      setCart(found.cart);
-      toast.info(t("kassa.cartRestored", { n: found.cart.length }));
+      setCarts(found.carts);
+      setActiveId(found.activeId);
+      cartSeq.current = Math.max(...found.carts.map((c) => c.id));
+      const items = cartStore.flatten(found.carts);
+      toast.info(found.carts.length > 1
+        ? t("kassa.cartsRestored", { c: found.carts.length, n: items.length })
+        : t("kassa.cartRestored", { n: items.length }));
       return;
     }
 
     /* Eskirgan savat TIKLANMAYDI — mijoz ketib bo'lgan, narx o'zgargan
        bo'lishi mumkin. Lekin izsiz ham qolmaydi: kim, qachon va nimani
        to'lamasdan qoldirgani jurnalga tushadi. */
+    const abandoned = cartStore.flatten(found.carts);
     securityApi.cartAbandoned({
-      itemCount: found.cart.length,
-      total: cartStore.totalOf(found.cart),
-      note: cartStore.describe(found.cart),
+      itemCount: abandoned.length,
+      total: cartStore.totalOf(abandoned),
+      note: cartStore.describe(abandoned),
     }).catch(() => { /* jurnal yozilmasa ham kassa ishlaydi */ });
     /* eslint-disable-next-line react-hooks/exhaustive-deps --
        ATAYLAB bo'sh: bu ochilishdagi BIR MARTALIK amal, `toast` esa
        bog'liqlikka qo'yilganda halqa hosil qilardi. */
   }, []);
 
-  /* Har o'zgarishda saqlanadi. Bo'sh savat yozuvni o'chiradi. */
-  useEffect(() => { cartStore.save(cart); }, [cart]);
+  /* Har o'zgarishda saqlanadi. Hamma savat bo'sh bo'lsa yozuv o'chadi. */
+  useEffect(() => { cartStore.save(carts, activeId); }, [carts, activeId]);
+
+  /* ══ SAVATLARNI BOSHQARISH ══════════════════════════════════════════ */
+
+  /** Yangi bo'sh savat ochadi va unga o'tadi. */
+  const addCart = () => {
+    if (carts.length >= cartStore.MAX_CARTS) {
+      toast.error(t("kassa.cartsMax", { n: cartStore.MAX_CARTS }));
+      return;
+    }
+    const id = ++cartSeq.current;
+    setCarts((prev) => [...prev, cartStore.blank(id)]);
+    setActiveId(id);
+    focusBarcode();
+  };
+
+  /**
+   * Savatni yopadi.
+   *
+   * ⚠ TOVARI BOR SAVAT — bajik bilan. Yopish `handleClearCart` bilan bir
+   * xil amal: chekka tushmagan tovarlar yo'q bo'ladi. Tab bo'ylab uni
+   * qo'riqlanmagan qoldirish butun nazoratni ochiq eshikka aylantirardi.
+   *
+   * ⚠ OXIRGI SAVAT YO'QOLMAYDI, faqat bo'shaydi: kassada doim bitta
+   * ochiq savat turishi kerak, aks holda ekranda nima ko'rsatiladi?
+   */
+  const dropCart = async (id) => {
+    const victim = carts.find((c) => c.id === id);
+    if (!victim) return;
+
+    if (victim.items.length) {
+      try {
+        await guard(() => securityApi.confirm({
+          action: "CART_ITEM_REMOVE",
+          targetType: "CART",
+          targetId: null,
+          note: `${t("kassa.clearNote")}: ${victim.items.length} x = ${money(cartStore.totalOf(victim.items))}`,
+        }));
+      } catch (err) {
+        if (!err?.cancelled) toast.error(err.message);
+        return;
+      }
+    }
+
+    /* ⚠ Ro'yxat `cartsRef` dan o'qiladi, chizish paytidagi `carts` dan
+       emas: bajik oynasi ochiq turganda skaner boshqa savatga tovar
+       qo'shib qo'yishi mumkin va eski nusxani qaytarib yozish o'sha
+       tovarni yo'q qilardi. */
+    const list = cartsRef.current;
+    if (list.length === 1) { setCarts([cartStore.blank(id)]); return; }
+    const idx = list.findIndex((c) => c.id === id);
+    const rest = list.filter((c) => c.id !== id);
+    setCarts(rest);
+    if (id === activeIdRef.current) setActiveId(rest[Math.min(idx, rest.length - 1)].id);
+  };
+
+  /** Keyingi savatga o'tish (F3) — oxirgisidan keyin boshiga qaytadi. */
+  const nextCart = () => {
+    if (carts.length < 2) return;
+    const i = carts.findIndex((c) => c.id === activeId);
+    setActiveId(carts[(i + 1) % carts.length].id);
+    focusBarcode();
+  };
+
+  const switchCart = (id) => { setActiveId(id); focusBarcode(); };
 
   /* ── Oflayn navbat: yuborish funksiyasini ulaymiz ─────────── */
   useEffect(() => {
@@ -491,6 +640,27 @@ export default function KassaPage({ toast, refreshLowStock }) {
   const inCart = (id) => cart.find((i) => i.id === id)?.qty ?? 0;
 
   /**
+   * BOSHQA ochiq savatlarda turgan miqdor.
+   *
+   * ⚠ NEGA HISOBGA OLINADI. Omborda 3 dona bor, birinchi savatga 2 tasi
+   * terilgan. Ikkinchi mijozga ham 2 tasini terib bo'lardi — chek
+   * yozilganda esa server ikkinchisini rad etardi va kassir mijoz
+   * oldida sababini tushuntira olmasdi. Bu — bitta terminal ichidagi
+   * o'ziga o'zi qo'ygan tuzoq, uni yopish arzon.
+   *
+   * ⚠ Bu SERVERDA joy band qilish EMAS. Boshqa kassadagi kassir baribir
+   * shu tovarni sotib yuborishi mumkin va oxirgi so'z serverniki
+   * qoladi — bu yerdagi hisob faqat SHU EKRANdagi savatlarni biladi.
+   */
+  const parked = (id) => carts.reduce(
+    (sum, c) => (c.id === active.id ? sum : sum + (c.items.find((i) => i.id === id)?.qty ?? 0)), 0);
+
+  /** Boshqa savatlar hisobga olingan, sotish mumkin bo'lgan qoldiq. */
+  const freeStock = (product) => (product?.stockQuantity == null
+    ? null
+    : round3(Number(product.stockQuantity) - parked(product.id)));
+
+  /**
    * Qoldiq yetadimi — SAVATDAGI JAMI miqdorga qarab.
    *
    * ⚠ Ilgari faqat `stockQuantity <= 0` tekshirilardi, ya'ni "umuman
@@ -505,11 +675,22 @@ export default function KassaPage({ toast, refreshLowStock }) {
   const stockError = (product, wanted) => {
     // Xizmatda (`stockQuantity` yo'q) qoldiq tushunchasi yo'q — doim sotiladi.
     if (product?.stockQuantity == null) return null;
-    const left = Number(product.stockQuantity);
+    const held = parked(product.id);
+    const left = round3(Number(product.stockQuantity) - held);
     if (wanted <= left) return null;
+    const unit = unitLabel(product.unit);
+    /* Sabab AYTILADI: «omborda 1 ta» degan xabar kassirni omborga
+       yugurtirardi, holbuki tovar shu yerda — qo'shni savatda turibdi. */
+    if (held > 0) {
+      return t("kassa.stockShortParked", {
+        name: product.name,
+        qty: `${fmtQty(Math.max(0, left), product.unitDecimals)} ${unit}`,
+        held: `${fmtQty(held, product.unitDecimals)} ${unit}`,
+      });
+    }
     return t("kassa.stockShort", {
       name: product.name,
-      qty: `${fmtQty(left, product.unitDecimals)} ${unitLabel(product.unit)}`,
+      qty: `${fmtQty(left, product.unitDecimals)} ${unit}`,
     });
   };
 
@@ -554,6 +735,8 @@ export default function KassaPage({ toast, refreshLowStock }) {
     if (product.stockQuantity != null && Number(product.stockQuantity) <= 0) {
       toast.error(`${product.name} — omborda qolmagan!`); return;
     }
+    /* Boshqa savatlar hammasini olib bo'lgan bo'lsa ham shu yerda
+       to'xtaydi — quyidagi `stockError` sababini aytadi. */
     /* Savatdagi miqdor bilan QO'SHIB tekshiriladi — bittalab bosib
        qoldiqdan oshirib yuborishning yo'li yopiladi. */
     const shortage = stockError(product, round3(inCart(product.id) + amount));
@@ -689,6 +872,26 @@ export default function KassaPage({ toast, refreshLowStock }) {
      bitta tovarni o'chirishdek izli bo'lishi kerak — chekni kichraytirish
      o'rniga sotuvni umuman o'tkazmaslik o'sha suiiste'molning o'zi. */
   const clearCart = () => setCart([]);
+
+  /**
+   * Sotuvdan keyin savatni yopadi.
+   *
+   * Bittagina savat qolgan bo'lsa u BO'SHAYDI — kassada doim ochiq savat
+   * turishi kerak. Bir nechtasi bo'lsa sotilgani ro'yxatdan CHIQADI va
+   * kassir keyingi mijozning savatiga tushadi: bo'sh tab qoldirilsa
+   * kassir «qaysi biri sotildi?» deb tekshirishga majbur bo'lardi.
+   *
+   * Mijoz ham shu yerda tozalanadi (`blank` uni `null` qiladi) — usiz
+   * keyingi chekka oldingi mijozning kartasi tushib qolardi.
+   */
+  const closeSoldCart = () => {
+    const id = active.id;
+    const idx = carts.findIndex((c) => c.id === id);
+    if (carts.length === 1) { setCarts([cartStore.blank(id)]); return; }
+    const rest = carts.filter((c) => c.id !== id);
+    setCarts(rest);
+    setActiveId(rest[Math.min(idx, rest.length - 1)].id);
+  };
 
   const subtotal = cart.reduce((sum, i) => sum + i.salePrice * i.qty, 0);
   /* Chegirma savat jamidan oshib keta olmaydi — aks holda chek manfiy
@@ -858,8 +1061,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
        sahifani qo'lda yangilamaguncha son o'zgarmasdi. */
     doSearch(search);
 
-    clearCart();
-    setCustomer(null);
+    closeSoldCart();
     setCashGiven(""); setCashAmount(""); setCardAmount(""); setDiscount("");
     /* ⚠ Ball ham tozalanadi. Usiz keyingi mijozning chekiga oldingi
        mijozning ball summasi tushib qolardi — va u boshqa odamning
@@ -926,6 +1128,15 @@ export default function KassaPage({ toast, refreshLowStock }) {
         return;
       }
 
+      /* F2 / F3 — savatlar. To'lov oynasi ochiq bo'lganda ular to'lov
+         turini tanlaydi, shuning uchun faqat kassa ekranida ishlaydi.
+         ⚠ Ctrl+1..9 EMAS: brauzerda u varaqlarni almashtiradi va
+         kassirning kassasi ko'zdan g'oyib bo'lardi. */
+      if (!showPayModal && !finish && !qtyModal && !markModal) {
+        if (e.key === "F2") { e.preventDefault(); addCart();  return; }
+        if (e.key === "F3") { e.preventDefault(); nextCart(); return; }
+      }
+
       if (e.key === "F9") {
         e.preventDefault();
         if (showPayModal) handleSubmit(); else openPayModal();
@@ -945,45 +1156,29 @@ export default function KassaPage({ toast, refreshLowStock }) {
   /* ═══════════════════════════════════════════════════════════ */
   return (
     <div style={{ height: "calc(100vh - var(--sh) - 40px)", display: "flex", flexDirection: "column" }}>
-      <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexShrink: 0, gap: 12 }}>
-        <h2 className="page-title" style={{ fontSize: 18 }}>{t("kassa.title")}</h2>
+      {/* ⚠ SAHIFA SARLAVHASI VA SMENA BELGISI OLIB TASHLANDI (2026-08-27).
 
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: "auto" }}>
-          {/* Apparat tugmalari FAQAT desktop'da. Brauzerda ular bosilganda
-              hech nima qilmasdi va kassirni chalg'itardi. */}
-          {isDesktop() && (
-            <>
-              <button type="button" className="btn btn-outline btn-sm" onClick={kickDrawer}
-                      title={t("hw.openDrawerHint")}>
-                <i className="fa-solid fa-cash-register" aria-hidden="true" /> {t("hw.openDrawer")}
-              </button>
-              <button type="button" className="btn btn-outline btn-sm" onClick={reprint}
-                      title={t("kassa.reprintHint")}>
-                <i className="fa-solid fa-print" aria-hidden="true" /> {t("kassa.reprint")}
-                <span className="kbd" style={{ marginLeft: 6 }}>Ctrl+P</span>
-              </button>
-            </>
-          )}
+          Ular butun kenglikni egallab, PASTDAGI IKKALA USTUNni ham
+          pastga surardi — jumladan savatni, ya'ni kassaning eng ko'p
+          ishlatiladigan qismini. Evaziga bergan foydasi esa yo'q edi:
 
-          <div className="ek-shift" data-open="true">
-            <span className="ek-shift__dot" aria-hidden="true" />
-            {t("kassa.shiftOpen")}
-          </div>
-        </div>
-      </div>
+            · «Savdo (Kassa)» sarlavhasi — yon menyuda o'sha bo'lim
+              allaqachon yoritilgan holda turibdi;
+            · «Smena ochiq» belgisi — smena panelining O'ZIDA aniqroq
+              yozilgan («09:12 dan ochiq»), ya'ni bir xil ma'lumot ikki
+              joyda takrorlanardi;
+            · apparat tugmalari — pastda, qidiruv qatorining yoniga
+              ko'chdi va endi hech qanday qo'shimcha balandlik olmaydi.
 
-      <OfflineBar />
-      <ShiftBar toast={toast} />
-
-      {/* ⚠ Inline `height: "auto"` OLIB TASHLANDI. U CSS dagi
-          `height: calc(100vh - …)` ni bekor qilardi va natijada Kassa
-          balandligi cheklanmasdi: mahsulotlar ko'payganda `.product-grid`
-          ning `overflow-y: auto` si ishga tushmay, BUTUN sahifa cho'zilib
-          ketardi. Kassada esa faqat mahsulotlar ro'yxati surilishi kerak —
-          savat, jami va to'lov tugmalari doim ko'rinib tursin. */}
+          ⚠ SMENA VA OFLAYN PANELLARI CHAP USTUNGA ko'chdi. Ular ogohlik,
+          shuning uchun ko'rinib turishi kerak — lekin savat ustunidan
+          balandlik o'g'irlashi shart emas. Endi savat ekranning to'liq
+          balandligini egallaydi. */}
       <div className="kassa-layout">
         {/* ════ CHAP: Barkod + Mahsulotlar ════ */}
         <div className="kassa-left">
+          <OfflineBar />
+          <ShiftBar toast={toast} />
           {/* Barkod maydoni — doim fokusda, monoshriftda (bu raqam) */}
           <div className="bc-field" data-unfocused={bcWarn}>
             <i className="fa-solid fa-barcode" aria-hidden="true" />
@@ -1035,8 +1230,9 @@ export default function KassaPage({ toast, refreshLowStock }) {
           </div>
 
           <div className="card" style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflow: "hidden" }}>
-            <div style={{ padding: "11px 14px", borderBottom: "1px solid var(--border-subtle)", flexShrink: 0 }}>
-              <div className="search-bar">
+            <div style={{ padding: "11px 14px", borderBottom: "1px solid var(--border-subtle)", flexShrink: 0,
+                          display: "flex", alignItems: "center", gap: 8 }}>
+              <div className="search-bar" style={{ flex: 1, minWidth: 0 }}>
                 <i className="fa-solid fa-magnifying-glass" aria-hidden="true" />
                 <input
                   ref={searchRef}
@@ -1048,6 +1244,24 @@ export default function KassaPage({ toast, refreshLowStock }) {
                 {search && <ClearButton label={t("osk.clear")} onClear={() => handleSearchChange("")} />}
                 <span className="kbd">/</span>
               </div>
+
+              {/* Apparat tugmalari FAQAT desktop'da. Brauzerda ular bosilganda
+                  hech nima qilmasdi va kassirni chalg'itardi.
+                  ⚠ Faqat BELGI qoldi, matn yo'q: qidiruv qatori ustunning
+                  eng muhim elementi va uni ikkita yozuv bilan qisqartirish
+                  bir muammoni ikkinchisi bilan almashtirish bo'lardi. */}
+              {isDesktop() && (
+                <>
+                  <button type="button" className="btn-icon" onClick={kickDrawer}
+                          title={t("hw.openDrawerHint")} aria-label={t("hw.openDrawer")}>
+                    <i className="fa-solid fa-cash-register" aria-hidden="true" />
+                  </button>
+                  <button type="button" className="btn-icon" onClick={reprint}
+                          title={`${t("kassa.reprint")} (Ctrl+P)`} aria-label={t("kassa.reprint")}>
+                    <i className="fa-solid fa-print" aria-hidden="true" />
+                  </button>
+                </>
+              )}
             </div>
 
             {/* Birinchi yuklanishda katakcha shaklidagi skeleton — kelayotgan
@@ -1115,10 +1329,11 @@ export default function KassaPage({ toast, refreshLowStock }) {
                   key={p.id}
                   product={p}
                   available={p.stockQuantity != null
-                    ? round3(Number(p.stockQuantity) - inCart(p.id))
+                    ? round3(freeStock(p) - inCart(p.id))
                     : null}
                   view={view}
                   onPick={pickProduct}
+                  changed={flash.has(p.id)}
                 />
               ))}
               {products.length === 0 && !searching && (
@@ -1134,13 +1349,71 @@ export default function KassaPage({ toast, refreshLowStock }) {
         {/* ════ O'NG: Savat + To'lov ════ */}
         <div className="kassa-right">
           <div className="card" style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-            <div className="card-header">
-              <span className="card-title">
-                <i className="fa-solid fa-cart-shopping text-blue" aria-hidden="true" />
-                {t("kassa.cart")} (<span className="ek-num">{cart.length}</span>)
-              </span>
+            {/* ════ SAVAT SARLAVHASI = TABLAR ════
+
+                ⚠ «Savat (2)» yozuvi OLIB TASHLANDI va uning qatori tablar
+                bilan birlashtirildi. Ikkisi bir xil narsani aytardi —
+                tabning o'zida tovar soni ham, summasi ham turibdi — va
+                shu takror savat ro'yxatidan bir qator balandlik o'g'irlardi.
+
+                ⚠ TAB DOIM KO'RINADI, bitta savatda ham. Yashirilsa, kassir
+                bu imkoniyat borligini bilmasdi — «+» ni faqat kerak bo'lganda
+                ko'rish uchun avval kerakligini bilish kerak bo'lardi.
+
+                Har tabda MIJOZ NOMI yoki raqam, tovar soni va summa turadi:
+                qaytib kelgan mijozning savatini kassir summasidan taniydi. */}
+            <div className="cart-head">
+              {/* ⚠ `role="tablist"` EMAS, `role="group"`. ARIA da tablist ning
+                  bevosita bolalari FAQAT `role="tab"` bo'lishi shart, bu
+                  yerda esa har tabning ichida yopish tugmasi ham bor
+                  (tugma ichiga tugma qo'yib bo'lmaydi, demak o'rash
+                  kerak). axe buni haqli ravishda buzilish deb belgiladi.
+
+                  Ochiq savat `aria-current` bilan aytiladi — bu ro'yxatdagi
+                  «hozir shu» ma'nosini beradigan to'g'ri atribut. */}
+              <div className="cart-tabs" role="group" aria-label={t("kassa.carts")}>
+                {carts.map((c, i) => {
+                const on = c.id === active.id;
+                return (
+                  <div key={c.id} className={`cart-tab ${on ? "is-on" : ""}`}>
+                    <button type="button" aria-current={on ? "true" : undefined}
+                            className="cart-tab__pick"
+                            onClick={() => switchCart(c.id)}>
+                      <span className="cart-tab__name">
+                        {c.customer?.name || t("kassa.cartN", { n: i + 1 })}
+                      </span>
+                      <span className="cart-tab__sum ek-num">
+                        {c.items.length
+                          ? `${c.items.length} × ${money(cartStore.totalOf(c.items))}`
+                          : t("kassa.cartEmpty")}
+                      </span>
+                    </button>
+                    {/* Yopish tugmasi FAQAT ochiq tabda: yopilmaydigan
+                        savatning ustidagi «×» tasodifan bosiladigan
+                        tugmadan boshqa narsa emas. */}
+                    {on && (carts.length > 1 || c.items.length > 0) && (
+                      <button type="button" className="cart-tab__x"
+                              onClick={() => dropCart(c.id)}
+                              aria-label={t("kassa.closeCart")} title={t("kassa.closeCart")}>
+                        <i className="fa-solid fa-xmark" aria-hidden="true" />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+                <button type="button" className="cart-tab__add" onClick={addCart}
+                        disabled={carts.length >= cartStore.MAX_CARTS}
+                        title={t("kassa.newCart")} aria-label={t("kassa.newCart")}>
+                  <i className="fa-solid fa-plus" aria-hidden="true" />
+                  <span className="kbd">F2</span>
+                </button>
+              </div>
+
+              {/* Tozalash tablardan TASHQARIDA: tablar yon tomonga
+                  suriladi va surilib ketadigan «Tozalash» tugmasi
+                  topilmay qolardi. */}
               {cart.length > 0 && (
-                <button className="btn btn-sm" style={{ background: "var(--bg-danger-subtle)", color: "var(--fg-danger)" }} onClick={handleClearCart}>
+                <button className="btn btn-sm cart-head__clear" onClick={handleClearCart}>
                   <i className="fa-solid fa-trash" aria-hidden="true" /> {t("common.reset")} <span className="kbd">Esc</span>
                 </button>
               )}
@@ -1309,6 +1582,10 @@ export default function KassaPage({ toast, refreshLowStock }) {
       {qtyModal && (
         <QuantityModal
           product={qtyModal.product}
+          /* Boshqa savatlarda band bo'lgan miqdor AYIRILGAN qoldiq:
+             oynada «omborda 3 ta» deb turib, tasdiqlashda «yetmaydi»
+             deyish kassirni ishonchdan mahrum qilardi. */
+          stock={freeStock(qtyModal.product)}
           initial={qtyModal.initial}
           onConfirm={applyQuantity}
           onClose={() => { setQtyModal(null); focusBarcode(); }}

@@ -816,6 +816,10 @@ const uz = {
   "inv.receiveQty": "Kirim miqdori",
   "inv.expiry": "Yaroqlilik muddati",
   "inv.stock": "Qoldiq",
+  /* Jadval qatori bosilganda tafsilot MODALDA ochiladi — jadvalning
+     o'zi qimirlamasin (partiyalar qator sifatida ochilganda pastdagi
+     hamma narsa surilib ketardi). */
+  "inv.openDetails": "Tafsilotni ochish",
   "inv.expiredWarn": "Bu mahsulot muddati o'tgan. Kirim qilsangiz eskisi «Muddati o'tgan» holatida qoladi va yangi inventar yaratiladi.",
   "inv.expiryOptional": "Bo'sh qoldirilsa — muddatsiz tovar (idish, kanstovar)",
   "inv.batchCount": "{n} partiya",
@@ -1494,9 +1498,27 @@ const uz = {
   "kassa.outOfStock": "Qolmagan",
   "kassa.noPriceWarn": "Narx qo'yilmagan — sotib bo'lmaydi",
   "kassa.confirmQty": "Tasdiqlash",
+  /* Miqdor oynasida ombordagi qoldiq KO'RSATILADI: kassir «qancha bor?» deb
+     savatni yopib, tovar ro'yxatiga qaytmasin. */
+  "kassa.inStock": "Omborda: {qty}",
+  "kassa.overStock": "Omborda faqat {qty} bor",
+  "kassa.clearInput": "Tozalash",
   /* Uzilishdan keyin savat qaytarildi — kassir buni BILISHI kerak,
      aks holda eski savat ustiga yangisini terib yuborardi. */
   "kassa.cartRestored": "Tugallanmagan savat qaytarildi ({n} tovar)",
+  "kassa.cartsRestored": "Tugallanmagan {c} ta savat qaytarildi ({n} tovar)",
+  /* ══ Bir vaqtda bir nechta mijoz ══
+     Kassir bitta ekranda bir nechta savat yuritadi: mijoz biror narsani
+     olib kelgani ketsa, uning savati kutib turadi va navbat to'xtamaydi. */
+  "kassa.carts": "Savatlar",
+  "kassa.cartN": "Savat {n}",
+  "kassa.cartEmpty": "bo'sh",
+  "kassa.newCart": "Yangi savat",
+  "kassa.closeCart": "Savatni yopish",
+  "kassa.cartsMax": "Bir vaqtda ko'pi bilan {n} ta savat ochish mumkin",
+  /* Tovar shu yerda, lekin qo'shni savatda — kassirni omborga
+     yugurtirmaslik uchun sababi aytiladi. */
+  "kassa.stockShortParked": "{name} — {qty} qoldi ({held} boshqa savatda)",
   /* Qoldiqdan ko'p sotishga urinish — kassir MIJOZ OLDIDA turibdi,
      shuning uchun xato tovar nomini ham, nechta borligini ham aytadi. */
   "kassa.stockShort": "{name} — omborda faqat {qty} bor",
@@ -2336,6 +2358,7 @@ const ru = {
   "inv.receiveQty": "Количество прихода",
   "inv.expiry": "Срок годности",
   "inv.stock": "Остаток",
+  "inv.openDetails": "Открыть детали",
   "inv.expiredWarn": "У этого товара истёк срок годности. При приходе старая партия останется «Просрочена», а будет создана новая.",
   "inv.expiryOptional": "Оставьте пустым — товар без срока (посуда, канцтовары)",
   "inv.batchCount": "{n} парт.",
@@ -2994,7 +3017,18 @@ const ru = {
   "kassa.outOfStock": "Нет в наличии",
   "kassa.noPriceWarn": "Цена не задана — продать нельзя",
   "kassa.confirmQty": "Подтвердить",
+  "kassa.inStock": "На складе: {qty}",
+  "kassa.overStock": "На складе только {qty}",
+  "kassa.clearInput": "Очистить",
   "kassa.cartRestored": "Незавершённая корзина восстановлена ({n} товаров)",
+  "kassa.cartsRestored": "Восстановлено незавершённых корзин: {c} ({n} товаров)",
+  "kassa.carts": "Корзины",
+  "kassa.cartN": "Корзина {n}",
+  "kassa.cartEmpty": "пусто",
+  "kassa.newCart": "Новая корзина",
+  "kassa.closeCart": "Закрыть корзину",
+  "kassa.cartsMax": "Одновременно можно открыть не более {n} корзин",
+  "kassa.stockShortParked": "{name} — осталось {qty} ({held} в другой корзине)",
   "kassa.stockShort": "{name} — на складе только {qty}",
   "kassa.qtyFromLabels": "Количество берётся из марок",
 
@@ -3827,6 +3861,7 @@ const en = {
   "inv.receiveQty": "Quantity received",
   "inv.expiry": "Expiry date",
   "inv.stock": "Stock",
+  "inv.openDetails": "Open details",
   "inv.expiredWarn": "This product has expired. If you receive stock, the old batch stays “Expired” and a new inventory record is created.",
   "inv.expiryOptional": "Leave empty for non-perishable goods (dishes, stationery)",
   "inv.batchCount": "{n} batches",
@@ -4485,7 +4520,18 @@ const en = {
   "kassa.outOfStock": "Out of stock",
   "kassa.noPriceWarn": "No price set — cannot be sold",
   "kassa.confirmQty": "Confirm",
+  "kassa.inStock": "In stock: {qty}",
+  "kassa.overStock": "Only {qty} in stock",
+  "kassa.clearInput": "Clear",
   "kassa.cartRestored": "Unfinished cart restored ({n} items)",
+  "kassa.cartsRestored": "{c} unfinished carts restored ({n} items)",
+  "kassa.carts": "Carts",
+  "kassa.cartN": "Cart {n}",
+  "kassa.cartEmpty": "empty",
+  "kassa.newCart": "New cart",
+  "kassa.closeCart": "Close cart",
+  "kassa.cartsMax": "At most {n} carts can be open at once",
+  "kassa.stockShortParked": "{name} — {qty} left ({held} in another cart)",
   "kassa.stockShort": "{name} — only {qty} in stock",
   "kassa.qtyFromLabels": "Quantity comes from the labels",
 

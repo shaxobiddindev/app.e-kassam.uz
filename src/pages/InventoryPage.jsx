@@ -8,6 +8,7 @@ import Select from "../components/ek/Select";
 import { useAuth } from "../hooks/useAuth";
 import { useBadge } from "../context/BadgeProvider";
 import { money, quantity as fmtQty } from "../utils";
+import { shortDate } from "../lib/ek-format";
 import { unitLabel, unitDecimals } from "../lib/ek-labels";
 import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
@@ -177,7 +178,17 @@ export default function InventoryPage({ toast }) {
   const [markScan, setMarkScan]   = useState(false);
   const [saving, setSaving]   = useState(false);
   const [branchId, setBranchId] = useState(null);
-  const [expanded, setExpanded] = useState(() => new Set()); // productId'lar
+  /* ⚠ ILGARI QATOR JOYIDA OCHILARDI (`expanded` — ochilgan `productId` lar).
+
+     Partiyalar asosiy qatorning ostiga qo'shimcha qator bo'lib chiqardi va
+     jadvalning qolgan qismi pastga surilib ketardi: omborchi qaragan
+     tovar ko'zdan qochardi, ikkitasi ochilsa esa jadvalni umuman
+     o'qib bo'lmasdi. Ustun sarlavhalari ham partiya qatorlariga
+     to'g'ri kelmasdi — bitta jadvalda ikki xil ma'noli qator turardi.
+
+     Endi tafsilot MODAL oynada: jadval qimirlamaydi, partiyalar esa
+     o'z sarlavhalari bilan, kengroq joyda ko'rinadi. */
+  const [detail, setDetail] = useState(null);   // ochilgan mahsulot guruhi
   /* Ogohlantirish filtri: "all" | "expired" | "near" | "low".
      Ogohlantirish blokidagi raqamlarning O'ZI filtr tugmasi — alohida
      boshqaruv qatori qo'shilsa, ekranda ikkita bir xil ro'yxat turardi. */
@@ -308,13 +319,6 @@ export default function InventoryPage({ toast }) {
     return true;
   });
 
-  const toggleExpand = (productId) => {
-    setExpanded((prev) => {
-      const next = new Set(prev);
-      if (next.has(productId)) next.delete(productId); else next.add(productId);
-      return next;
-    });
-  };
 
   const openModal = (group) => {
     setModal(group);
@@ -606,7 +610,7 @@ export default function InventoryPage({ toast }) {
                       <td className="mono fw-700" style={{ color: m.delta < 0 ? "var(--red, #dc2626)" : "var(--green, #16a34a)" }}>
                         {m.delta > 0 ? `+${m.delta}` : m.delta}
                       </td>
-                      <td>{m.expiryDate || "-"}</td>
+                      <td>{m.expiryDate ? shortDate(m.expiryDate) : "-"}</td>
                       <td>{m.performedBy}</td>
                       {/* Turkum izohning O'RNIGA emas, oldida: turkum
                           «nima bo'ldi», izoh «aynan qanday bo'ldi». */}
@@ -646,7 +650,6 @@ export default function InventoryPage({ toast }) {
               <tbody>
                 {filtered.map(({ g, f }) => {
                   const multi = g.batches.length > 1;
-                  const isOpen = expanded.has(g.productId);
                   const single = g.batches[0];
                   return [
                     /* ── Asosiy qator: mahsulot bo'yicha JAMI ── */
@@ -657,15 +660,14 @@ export default function InventoryPage({ toast }) {
                     <tr
                       key={`p-${g.productId}`}
                       className={rowClass(f)}
-                      style={multi ? { cursor: "pointer" } : undefined}
-                      onClick={multi ? () => toggleExpand(g.productId) : undefined}
+                      style={{ cursor: "pointer" }}
+                      onClick={() => setDetail(g)}
+                      title={t("inv.openDetails")}
                     >
                       <td>
                         <div className="fw-700" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          {multi && (
-                            <i className={`fa-solid fa-chevron-${isOpen ? "down" : "right"}`}
-                               style={{ fontSize: 11, opacity: 0.55, width: 12 }} aria-hidden="true" />
-                          )}
+                          <i className="fa-solid fa-chevron-right"
+                             style={{ fontSize: 11, opacity: 0.55, width: 12 }} aria-hidden="true" />
                           {g.productName}
                         </div>
                       </td>
@@ -683,8 +685,8 @@ export default function InventoryPage({ toast }) {
                       <td>{money(g.salePrice)}</td>
                       <td>
                         {multi
-                          ? <span className="text-muted">{t("inv.batchCount", { n: g.batches.length })}{g.nearest ? ` · ${g.nearest}` : ""}</span>
-                          : (single.expiryDate || t("inv.noExpiry"))}
+                          ? <span className="text-muted">{t("inv.batchCount", { n: g.batches.length })}{g.nearest ? ` · ${shortDate(g.nearest)}` : ""}</span>
+                          : (single.expiryDate ? shortDate(single.expiryDate) : t("inv.noExpiry"))}
                       </td>
                       <td>{stateBadges(f, g)}</td>
                       {!branchId && (
@@ -709,34 +711,6 @@ export default function InventoryPage({ toast }) {
                         </td>
                       )}
                     </tr>,
-                    /* ── Partiya qatorlari (ochilganda) ── */
-                    ...(multi && isOpen
-                      ? g.batches.map((b) => (
-                          /* Partiya qatori ham o'z holatida bo'yaladi: guruh
-                             sariq bo'lsayu ichida bittasi allaqachon o'tgan
-                             bo'lsa, ochilgan ro'yxatda o'sha darrov ko'rinadi. */
-                          <tr key={`b-${b.inventoryId}`}
-                              className={`inv-row--batch ${rowClass(batchFlags(b))}`}>
-                            <td colSpan={2}>
-                              <div className="text-muted" style={{ paddingLeft: 26, fontSize: 12.5 }}>
-                                <i className="fa-solid fa-layer-group" style={{ marginRight: 6, fontSize: 11 }} aria-hidden="true" />
-                                {b.expiryDate || t("inv.noExpiry")}
-                              </div>
-                            </td>
-                            <td><span className="mono fw-700">{b.quantity}</span></td>
-                            <td colSpan={2}></td>
-                            <td>{b.expiryDate || t("inv.noExpiry")}</td>
-                            <td>{stateBadges(batchFlags(b))}</td>
-                            {!branchId && (
-                              <td className="text-end">
-                                <button className="btn btn-outline btn-sm" onClick={() => openCorrect(b)} title={t("inv.correctHint")}>
-                                  <i className="fa-solid fa-sliders" /> {t("inv.correctAction")}
-                                </button>
-                              </td>
-                            )}
-                          </tr>
-                        ))
-                      : []),
                   ];
                 })}
               </tbody>
@@ -744,6 +718,90 @@ export default function InventoryPage({ toast }) {
           )}
         </div>
       </div>
+
+      {/* ── Mahsulot tafsiloti ──────────────────────────────────────────
+          Jadvaldagi qator bosilganda ochiladi. Jadval o'z o'rnida qoladi:
+          omborchi oynani yopgach nigohi qayerda qolgan bo'lsa, o'sha
+          yerdan davom etadi. */}
+      {detail && (
+        <Modal
+          title={detail.productName}
+          onClose={() => setDetail(null)}
+          footer={
+            <>
+              <button className="btn btn-outline btn-sm" onClick={() => setDetail(null)}>
+                {t("common.close")}
+              </button>
+              {!branchId && (
+                <button className="btn btn-green btn-sm"
+                        onClick={() => { const g = detail; setDetail(null); openModal(g); }}>
+                  <i className="fa-solid fa-plus" /> {t("inv.receive")}
+                </button>
+              )}
+            </>
+          }
+        >
+          <div className="inv-detail">
+            <div className="inv-detail__grid">
+              <div>
+                <span className="inv-detail__label">{t("products.barcode")}</span>
+                <span className="inv-detail__value mono">{detail.barcode || "-"}</span>
+              </div>
+              <div>
+                <span className="inv-detail__label">{t("inv.stock")}</span>
+                <span className="inv-detail__value ek-num">
+                  {fmtQty(detail.sellable, unitDecimals(detail.unit))} {unitLabel(detail.unit)}
+                </span>
+              </div>
+              <div>
+                <span className="inv-detail__label">{t("products.costPrice")}</span>
+                <span className="inv-detail__value ek-num">{money(detail.costPrice)}</span>
+              </div>
+              <div>
+                <span className="inv-detail__label">{t("products.salePrice")}</span>
+                <span className="inv-detail__value ek-num">{money(detail.salePrice)}</span>
+              </div>
+            </div>
+
+            <div className="inv-detail__head">
+              <i className="fa-solid fa-layer-group" aria-hidden="true" />
+              {t("inv.batchCount", { n: detail.batches.length })}
+            </div>
+
+            {/* ⚠ Partiya HOLATI bilan: guruh sariq bo'lsayu ichida bittasi
+                allaqachon o'tgan bo'lsa, aynan o'shasi ko'rinib turishi
+                kerak — omborchi shu qatorni chiqarib tashlaydi. */}
+            <div className="inv-detail__batches">
+              {detail.batches.map((b) => (
+                <div key={b.inventoryId ?? "empty"} className={`inv-batch ${rowClass(batchFlags(b))}`}>
+                  <div className="inv-batch__main">
+                    <span className="inv-batch__qty ek-num">
+                      {fmtQty(b.quantity, unitDecimals(detail.unit))} {unitLabel(detail.unit)}
+                    </span>
+                    <span className="inv-batch__exp">
+                      {b.expiryDate ? `${t("inv.expiry")}: ${shortDate(b.expiryDate)}` : t("inv.noExpiry")}
+                    </span>
+                  </div>
+                  <div className="inv-batch__side">
+                    {stateBadges(batchFlags(b))}
+                    {/* ⚠ `inventoryId == null` — hali kirim olmagan tovar:
+                        server uni nol qoldiqli qator qilib YASAB beradi,
+                        bazada partiya yo'q. To'g'irlash partiyaga tegishli
+                        amal, shuning uchun bunda ko'rsatilmaydi. */}
+                    {!branchId && b.inventoryId != null && (
+                      <button className="btn btn-outline btn-sm"
+                              onClick={() => { setDetail(null); openCorrect(b); }}
+                              title={t("inv.correctHint")}>
+                        <i className="fa-solid fa-sliders" /> {t("inv.correctAction")}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {/* ── Kirim Modal ── */}
       {modal && (
@@ -919,7 +977,7 @@ export default function InventoryPage({ toast }) {
           >
             <span className="text-muted" style={{ fontSize: 13, fontWeight: 600 }}>
               {t("inv.currentQty")}
-              {correct.expiryDate ? ` · ${correct.expiryDate}` : ` · ${t("inv.noExpiry")}`}
+              {correct.expiryDate ? ` · ${shortDate(correct.expiryDate)}` : ` · ${t("inv.noExpiry")}`}
             </span>
             <span className="mono fw-800" style={{ fontSize: 16 }}>
               {fmtQty(correct.quantity, unitDecimals(correct.unit))} {unitLabel(correct.unit)}
