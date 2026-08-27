@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { t } from "../lib/ek-i18n";
 import { inventoryApi, shopApi } from "../api";
 import { BranchSelector, Modal } from "../components";
@@ -28,6 +28,10 @@ const MOV_BADGE = {
 };
 
 const isBatchExpired = (b) => b.status === "EXPIRED" || b.expired;
+
+/* Jonli yangilanish qadami. 15 soniya — kassadagi sotuv omborda deyarli
+   darhol ko'rinadi, lekin server bekorga band bo'lmaydi. */
+const LIVE_REFRESH_MS = 15_000;
 
 /* ══════════════════════════════════════════════════════════════════════════
    MUDDAT VA KAM QOLDIQ — QATOR RANGI (2026-08-20)
@@ -200,19 +204,63 @@ export default function InventoryPage({ toast }) {
   const [movements, setMovements] = useState([]);
   const [movLoading, setMovLoading] = useState(false);
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
+  /**
+   * `silent` — FON yangilanishi.
+   *
+   * ⚠ Fonda skeleton chizilmaydi va xato ko'rsatilmaydi. Sabab: bu
+   * yangilanishni kassir SO'RAMAGAN. Har 15 soniyada jadval miltillab
+   * tursa ishlab bo'lmaydi; tarmoq bir lahzaga uzilganda esa hech kim
+   * bosmagan tugma uchun qizil xabar chiqishi bundan ham yomon —
+   * ekrandagi ma'lumot baribir joyida qoladi va keyingi urinishda
+   * yangilanadi.
+   */
+  const loadData = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) setLoading(true);
     try {
       const res = await inventoryApi.getAll(branchId);
       setItems(res.data || []);
     } catch (err) {
-      toast.error(err.message);
+      if (!silent) toast.error(err.message);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [branchId]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  /* ⚠ Modal ochiq bo'lsa fon yangilanishi TO'XTAYDI. Kirim yoki
+     to'g'irlash oynasi ochiq turganda jadval qayta chizilsa, qatorlar
+     omborchining qo'li ostida siljib ketardi. Eskirgan jadval bundan
+     yaxshiroq: oyna yopilishi bilan baribir yangilanadi.
+
+     Ref ishlatilgan, holat emas — aks holda har modal ochilib-yopilganda
+     taymer noldan boshlanardi va uzoq ishlaganda yangilanish umuman
+     kechikib ketishi mumkin edi. */
+  const pausedRef = useRef(false);
+  useEffect(() => {
+    pausedRef.current = modal !== null || correct !== null || markScan;
+  }, [modal, correct, markScan]);
+
+  /* Jonli yangilanish. Qoldiq shu sahifada emas, KASSADA o'zgaradi —
+     boshqa kassir sotgani ham, ikkinchi terminaldagi kirim ham bu yerda
+     ko'rinishi kerak edi, lekin jadval faqat sahifa ochilganda yuklanardi.
+
+     ⚠ Sahifa KO'RINMASA so'rov yuborilmaydi. Ombor tabi kun bo'yi orqada
+     ochiq turadi — uni har 15 soniyada so'rovga tutish serverni ham,
+     tarmoqni ham bekorga band qilardi. Tabga qaytilganda esa darhol
+     yangilanadi: odam aynan o'sha lahzada ekranga qaraydi. */
+  useEffect(() => {
+    const tick = () => {
+      if (document.visibilityState !== "visible" || pausedRef.current) return;
+      loadData({ silent: true });
+    };
+    const timer = setInterval(tick, LIVE_REFRESH_MS);
+    document.addEventListener("visibilitychange", tick);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", tick);
+    };
+  }, [loadData]);
 
   const loadMovements = useCallback(async () => {
     setMovLoading(true);
@@ -519,7 +567,7 @@ export default function InventoryPage({ toast }) {
             >
               <i className="fa-solid fa-clock-rotate-left" /> {t("inv.history")}
             </button>
-            <button className="btn btn-outline btn-sm" onClick={showHistory ? loadMovements : loadData} title={t("products.refreshTitle")}>
+            <button className="btn btn-outline btn-sm" onClick={() => (showHistory ? loadMovements() : loadData())} title={t("products.refreshTitle")}>
               <i className="fa-solid fa-rotate-right" /> {t("common.refresh")}
             </button>
           </div>
