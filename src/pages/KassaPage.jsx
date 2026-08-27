@@ -369,6 +369,32 @@ export default function KassaPage({ toast, refreshLowStock }) {
   /** Bo'linadigan birlik (kg, litr, metr) — "+" bilan yig'ib bo'lmaydi. */
   const isDivisible = (product) => (product?.unitDecimals ?? 0) > 0;
 
+  /** Savatda shu tovardan ALLAQACHON nechta bor. */
+  const inCart = (id) => cart.find((i) => i.id === id)?.qty ?? 0;
+
+  /**
+   * Qoldiq yetadimi — SAVATDAGI JAMI miqdorga qarab.
+   *
+   * ⚠ Ilgari faqat `stockQuantity <= 0` tekshirilardi, ya'ni "umuman
+   * qolmaganmi". Omborda 4 dona bo'lsa, kassir 6 marta bosardi va har
+   * safar tekshiruv o'tardi (4 > 0) — savatga 6 dona tushardi. Xato
+   * faqat TO'LOV bosqichida, serverdan chiqardi va u qaysi tovar
+   * yetishmayotganini aytmasdi: kassir mijoz oldida savatni birma-bir
+   * qarab chiqishga majbur bo'lardi.
+   *
+   * Yetsa `null`, aks holda kassirga ko'rsatiladigan matn qaytadi.
+   */
+  const stockError = (product, wanted) => {
+    // Xizmatda (`stockQuantity` yo'q) qoldiq tushunchasi yo'q — doim sotiladi.
+    if (product?.stockQuantity == null) return null;
+    const left = Number(product.stockQuantity);
+    if (wanted <= left) return null;
+    return t("kassa.stockShort", {
+      name: product.name,
+      qty: `${fmtQty(left, product.unitDecimals)} ${unitLabel(product.unit)}`,
+    });
+  };
+
   /**
    * Katakcha bosildi. Bo'linadigan tovarda avval miqdor so'raladi:
    * 0.350 kg ni "+" tugmasi bilan kiritishning iloji yo'q.
@@ -412,6 +438,10 @@ export default function KassaPage({ toast, refreshLowStock }) {
     if (product.stockQuantity != null && Number(product.stockQuantity) <= 0) {
       toast.error(`${product.name} — omborda qolmagan!`); return;
     }
+    /* Savatdagi miqdor bilan QO'SHIB tekshiriladi — bittalab bosib
+       qoldiqdan oshirib yuborishning yo'li yopiladi. */
+    const shortage = stockError(product, round3(inCart(product.id) + amount));
+    if (shortage) { toast.error(shortage); return; }
     setCart((prev) => {
       const exists = prev.find((i) => i.id === product.id);
       // Bir xil tovar ikkinchi marta → miqdor oshadi, yangi satr yaratilmaydi
@@ -461,13 +491,33 @@ export default function KassaPage({ toast, refreshLowStock }) {
 
     const next = round3(item.qty + delta);
     if (next <= 0) { removeFromCart(id); return; }
+    const shortage = stockError(item, next);
+    if (shortage) { toast.error(shortage); return; }
     setCart((prev) => prev.map((i) => (i.id === id ? { ...i, qty: next } : i)));
+  };
+
+  /**
+   * Savat qatoridagi SONGA bosildi — miqdorni yozib kiritish.
+   *
+   * ⚠ Markirovkali tovar bundan MUSTASNO: uning miqdori skanerlangan
+   * yorliqlar sonidan kelib chiqadi va uni qo'lda yozish yorliq bilan
+   * dona o'rtasidagi bog'lanishni buzardi.
+   */
+  const editQty = (item) => {
+    if (item.markingGroup) return;
+    setQtyModal({ product: item, initial: item.qty });
   };
 
   /** Miqdor oynasi tasdiqlandi: savatdagi satr YANGILANADI, qo'shilmaydi. */
   const applyQuantity = (value) => {
     const { product } = qtyModal;
     setQtyModal(null);
+    /* Bu yerda miqdor ALMASHTIRILADI (qo'shilmaydi), shuning uchun
+       kiritilgan qiymatning o'zi qoldiq bilan solishtiriladi. Ilgari bu
+       yo'lda umuman tekshiruv yo'q edi: kassir 2 kg qolgan tovarga
+       500 yozib yuborsa ham savat qabul qilardi. */
+    const shortage = stockError(product, round3(value));
+    if (shortage) { toast.error(shortage); return; }
     const exists = cart.find((i) => i.id === product.id);
     if (exists) {
       setCart((prev) => prev.map((i) => (i.id === product.id
@@ -987,7 +1037,21 @@ export default function KassaPage({ toast, refreshLowStock }) {
                     </div>
                     <div className="qty-ctrl">
                       <button className="qty-btn" aria-label={t("kassa.decrease")} onClick={() => updateQty(item.id, -1)}>−</button>
-                      <span className="qty-num">{fmtQty(item.qty, item.unitDecimals)}</span>
+                      {/* ⚠ SON BOSILADI. Ilgari bu oddiy `<span>` edi va
+                          donalab tovarda miqdorni oshirishning yagona yo'li
+                          «+» bo'lgan: 200 dona qog'oz sochiq sotish uchun
+                          kassir «+» ni 200 marta bosishi kerak edi. Endi
+                          sonning ustiga bosilsa miqdor oynasi ochiladi va
+                          qiymat yoziladi — kasrli birlikda ham, donada ham. */}
+                      <button
+                        className="qty-num qty-num--edit"
+                        onClick={() => editQty(item)}
+                        disabled={!!item.markingGroup}
+                        title={item.markingGroup ? t("kassa.qtyFromLabels") : t("kassa.enterQuantity")}
+                        aria-label={`${item.name} — ${t("kassa.enterQuantity")}`}
+                      >
+                        {fmtQty(item.qty, item.unitDecimals)}
+                      </button>
                       <button className="qty-btn" aria-label={t("kassa.increase")} onClick={() => updateQty(item.id, +1)}>+</button>
                     </div>
                     <button className="btn-icon danger" aria-label={`${item.name} — o'chirish`} onClick={() => removeFromCart(item.id)}>

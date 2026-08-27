@@ -556,6 +556,14 @@ select.form-input { cursor: pointer; }
 .qty-btn:hover   { border-color: var(--blue); color: var(--blue); }
 .qty-btn:active  { transform: scale(.92); }
 .qty-num         { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 14px; font-weight: 700; min-width: 26px; text-align: center; }
+/* Miqdor SONI bosiladi — «+» ni 200 marta bosmaslik uchun. Tugma ekani
+   ko'rinib tursin (ostida punktir), lekin «+/−» bilan raqobatlashmasin:
+   foni ham, ramkasi ham yo'q. */
+.qty-num--edit   { min-height: var(--hit-md); padding: 0 4px; border: none; background: none; color: var(--text); cursor: pointer;
+                   border-bottom: 1.5px dashed var(--border); border-radius: 0;
+                   transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out); }
+.qty-num--edit:hover:not(:disabled) { color: var(--blue); border-bottom-color: var(--blue); }
+.qty-num--edit:disabled             { cursor: default; border-bottom-color: transparent; }
 .total-card      { background: var(--bg-brand); color: var(--fg-on-brand); border-radius: var(--radius); padding: 18px; }
 /* ⚠ Yorliq rangi TO'LIQ oq: brand ko'k fonda oqning o'zi 4.8:1 beradi,
    `.6` xiralashtirilgani esa 2.7:1 edi (axe: color-contrast). Ierarxiya

@@ -1467,6 +1467,10 @@ const uz = {
   "kassa.outOfStock": "Qolmagan",
   "kassa.noPriceWarn": "Narx qo'yilmagan — sotib bo'lmaydi",
   "kassa.confirmQty": "Tasdiqlash",
+  /* Qoldiqdan ko'p sotishga urinish — kassir MIJOZ OLDIDA turibdi,
+     shuning uchun xato tovar nomini ham, nechta borligini ham aytadi. */
+  "kassa.stockShort": "{name} — omborda faqat {qty} bor",
+  "kassa.qtyFromLabels": "Miqdor yorliqlardan olinadi",
 
   /* ── v2: markirovka (Asl Belgisi) ───────────────────────── */
   "marking.scanTitle": "Markirovka yorliqlarini skanerlang",
@@ -2934,6 +2938,8 @@ const ru = {
   "kassa.outOfStock": "Нет в наличии",
   "kassa.noPriceWarn": "Цена не задана — продать нельзя",
   "kassa.confirmQty": "Подтвердить",
+  "kassa.stockShort": "{name} — на складе только {qty}",
+  "kassa.qtyFromLabels": "Количество берётся из марок",
 
   /* ── v2: маркировка (Asl Belgisi) ───────────────────── */
   "marking.scanTitle": "Отсканируйте коды маркировки",
@@ -4396,6 +4402,8 @@ const en = {
   "kassa.outOfStock": "Out of stock",
   "kassa.noPriceWarn": "No price set — cannot be sold",
   "kassa.confirmQty": "Confirm",
+  "kassa.stockShort": "{name} — only {qty} in stock",
+  "kassa.qtyFromLabels": "Quantity comes from the labels",
 
   /* ── v2: marking (Asl Belgisi) ──────────────────────────── */
   "marking.scanTitle": "Scan the marking labels",
