@@ -308,7 +308,8 @@ export default function InventoryPage({ toast }) {
       const amount = marked ? markCodes.length : Number(qty);
       const res = await inventoryApi.addStock(
         modal.productId, amount, expiryDate || null, reason, marked ? markCodes : null);
-      toast.success(res?.message || `${amount} dona kirim qilindi`);
+      toast.success(res?.message
+        || `${fmtQty(amount, unitDecimals(modal.unit))} ${unitLabel(modal.unit)} kirim qilindi`);
       setModal(null);
       loadData();
     } catch (err) {
@@ -623,8 +624,15 @@ export default function InventoryPage({ toast }) {
                             <i className="fa-solid fa-plus" /> {t("inv.receive")}
                           </button>{" "}
                           {/* Bitta partiyada to'g'irlash shu yerda; ko'p
-                              partiyada QAYSI birini — ochib tanlanadi. */}
-                          {!multi && (
+                              partiyada QAYSI birini — ochib tanlanadi.
+
+                              ⚠ `inventoryId == null` — hali kirim olmagan
+                              tovar: server uni nol qoldiqli qator qilib
+                              YASAB beradi, bazada partiya yo'q. To'g'irlash
+                              partiyaga tegishli amal, shuning uchun bunda u
+                              ko'rsatilmaydi — «Kirim» esa ishlaydi va
+                              birinchi partiyani o'zi ochadi. */}
+                          {!multi && single.inventoryId != null && (
                             <button className="btn btn-outline btn-sm" onClick={() => openCorrect(single)} title={t("inv.correctHint")}>
                               <i className="fa-solid fa-sliders" /> {t("inv.correctAction")}
                             </button>
@@ -726,7 +734,7 @@ export default function InventoryPage({ toast }) {
               {t("inv.currentQty")}
             </span>
             <span className="mono fw-800" style={{ fontSize: 16 }}>
-              {modal.sellable} dona
+              {fmtQty(modal.sellable, unitDecimals(modal.unit))} {unitLabel(modal.unit)}
             </span>
           </div>
 
@@ -845,7 +853,7 @@ export default function InventoryPage({ toast }) {
               {correct.expiryDate ? ` · ${correct.expiryDate}` : ` · ${t("inv.noExpiry")}`}
             </span>
             <span className="mono fw-800" style={{ fontSize: 16 }}>
-              {correct.quantity} dona
+              {fmtQty(correct.quantity, unitDecimals(correct.unit))} {unitLabel(correct.unit)}
             </span>
           </div>
 
