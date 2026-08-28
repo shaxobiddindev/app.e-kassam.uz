@@ -4,7 +4,7 @@ import { qrSvg, totpNow, secondsLeft } from "../lib/ek-qr";
 import { code128Svg } from "../lib/ek-barcode";
 import { useConfirm } from "../context/ConfirmProvider";
 import CodeZoom from "../components/CodeZoom";
-import { dateTime } from "../lib/ek-format";
+import { dateTime, groupDigits } from "../lib/ek-format";
 import Receipt from "./Receipt";
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -47,8 +47,12 @@ async function api(path, { method = "GET", body, token } = {}) {
   return json.data;
 }
 
-const money = (v) =>
-  new Intl.NumberFormat("uz-UZ", { maximumFractionDigits: 0 }).format(Number(v || 0));
+/* ⚠ AJRATGICH BUTUN MAHSULOTDA BIR XIL bo'lishi shart
+   (02-DESIGN-SYSTEM.md). Bu yerda `Intl.NumberFormat("uz-UZ")` ishlatilardi
+   va u brauzerga qarab vergul qaytarardi: mijoz SMS da «500 000 so'm»,
+   sahifada esa «500,000 so'm» ko'rib, ikkalasi bir xil summami deb
+   o'ylardi. `groupDigits` — tizimning yagona guruhlagichi. */
+const money = (v) => groupDigits(v || 0);
 
 /* ── 1. Ro'yxatdan o'tish (QR o'qilgandan keyin) ────────────────────────── */
 
@@ -133,6 +137,95 @@ function JoinScreen({ ref_, code, onDone }) {
         <p className="pt-fine">
           Ma'lumotlaringiz faqat shu do'konning mijozlar bazasida saqlanadi.
         </p>
+      </div>
+    </div>
+  );
+}
+
+/* ── 1b. QARZ TASDIG'I (V46) — SMS havolasi ortidagi sahifa ─────────────
+
+   ⚠ KABINET KALITI TALAB QILINMAYDI. SMS ni olgan odam qarzning egasi va
+   havoladagi imzo FAQAT shu bitta qatorni ochadi. Kalit talab qilinsa,
+   ro'yxatdan o'tmagan mijoz qarzini umuman tasdiqlay olmasdi — SMS esa
+   aynan o'shalar uchun (ilovasi ham, Telegrami ham yo'q).
+
+   ⚠ Sahifada mijozning ismi ham, telefoni ham YO'Q: havola boshqa
+   odamning qo'liga tushsa, u faqat summani va do'kon nomini ko'radi. */
+function DebtScreen({ id, sig }) {
+  const [debt, setDebt]   = useState(null);
+  const [error, setError] = useState("");
+  const [busy, setBusy]   = useState(false);
+  const confirm = useConfirm();
+
+  useEffect(() => {
+    api(`/debt/${id}?k=${encodeURIComponent(sig)}`)
+      .then(setDebt)
+      .catch((e) => setError(e.message));
+  }, [id, sig]);
+
+  const answer = async (confirmed) => {
+    if (!confirmed) {
+      const ok = await confirm({
+        title: "Men olmadim",
+        message: "Do'konga «bu qarzni men olmaganman» deb xabar boradi. Qarz o'chmaydi — do'kon buni ko'rib, siz bilan bog'lanadi. Davom etamizmi?",
+        type: "warning",
+        confirmText: "Ha, men olmadim",
+        cancelText: "Bekor qilish",
+      });
+      if (!ok) return;
+    }
+    setBusy(true);
+    try {
+      setDebt(await api(`/debt/${id}/answer?k=${encodeURIComponent(sig)}&confirmed=${confirmed}`,
+                        { method: "POST" }));
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (error) {
+    return (
+      <div className="pt-wrap">
+        <div className="pt-card pt-center">
+          <i className="fa-solid fa-circle-exclamation pt-icon-bad" aria-hidden="true" />
+          <h2>Ochilmadi</h2>
+          <p className="pt-muted">{error}</p>
+        </div>
+      </div>
+    );
+  }
+  if (!debt) return <div className="pt-wrap"><div className="pt-card pt-center">Yuklanmoqda…</div></div>;
+
+  const answered = debt.state === "CONFIRMED" || debt.state === "REJECTED";
+  return (
+    <div className="pt-wrap">
+      <div className="pt-card pt-center">
+        <div className="pt-shop">{debt.shopName}</div>
+        <p className="pt-muted">Sizga nasiya yozildi</p>
+        <div className="pt-debt-sum">{money(debt.amount)} so'm</div>
+        <p className="pt-muted">{dateTime(debt.createdAt)}</p>
+
+        {answered ? (
+          <p className={debt.state === "CONFIRMED" ? "pt-ok" : "pt-bad"}>
+            {debt.state === "CONFIRMED"
+              ? "Tasdiqladingiz. Rahmat!"
+              : "«Men olmadim» deb javob berdingiz — do'kon buni ko'radi."}
+          </p>
+        ) : (
+          <>
+            {/* ⚠ Tugmalar bir xil o'lchamda: birini kattaroq qilib
+                qo'yish mijozni bir tomonga undardi. */}
+            <div className="pt-debt-btns">
+              <button className="pt-btn" disabled={busy} onClick={() => answer(true)}>Ha, oldim</button>
+              <button className="pt-btn pt-btn--ghost" disabled={busy} onClick={() => answer(false)}>Men olmadim</button>
+            </div>
+            <p className="pt-muted" style={{ fontSize: 13 }}>
+              «Men olmadim» qarzni o'chirmaydi — javobingiz do'konga boradi.
+            </p>
+          </>
+        )}
       </div>
     </div>
   );
@@ -402,6 +495,14 @@ export default function CustomerPortal() {
   const signed = /^\/c\/(\d+)-([0-9a-f]+)$/i.exec(window.location.pathname);
   if (signed) {
     return <Receipt signedId={signed[1]} signature={signed[2]} onClose={() => window.history.back()} />;
+  }
+
+  /* ── QARZ TASDIG'I (V46): `/q/{id}-{imzo}` ────────────────────────────
+     ⚠ Chek havolasi bilan bir xil naqsh va bir xil sabab: SMS ga sig'ishi
+     kerak, ya'ni bitta qisqa segment. */
+  const debtLink = /^\/q\/(\d+)-([0-9a-f]+)$/i.exec(window.location.pathname);
+  if (debtLink) {
+    return <DebtScreen id={debtLink[1]} sig={debtLink[2]} />;
   }
 
   const finishJoin = useCallback(() => {

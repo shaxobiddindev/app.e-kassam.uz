@@ -1,6 +1,6 @@
 import "./styles.css";
 /* BUILD_ID: EMERGENCY_FIX_V3_0116 */
-import { useState, Suspense } from "react";
+import { useState, Suspense, lazy } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { LOGIN_URL } from "./config";
 import { initLang, withLang, useT } from "./lib/ek-i18n";
@@ -22,12 +22,16 @@ import { P } from "./lib/ek-pages";
 import { Progress } from "./components/ek/Loading";
 import { BadgeProvider } from "./context/BadgeProvider";
 import { KeyboardProvider } from "./context/KeyboardProvider";
-import CustomerPortal from "./portal/CustomerPortal";
+/* ⚠ MIJOZ DARAXTI KECHIKTIRIB YUKLANADI. Xodim ilovasi (kassa, ombor,
+   hisobotlar) bu ekranlarni HECH QACHON chizmaydi va aksincha — lekin
+   ular bitta kirish to'plamida turgani uchun kassir har ochilishda
+   mijoz kabinetini ham yuklab olardi. Do'kondagi internet esa sekin. */
+const CustomerPortal = lazy(() => import("./portal/CustomerPortal"));
 /* Mijoz ilovasi (V37) — telefon ilovasida kirish ekrani endi shu */
-import CustomerLogin from "./customer/CustomerLogin";
-import CustomerApp from "./customer/CustomerApp";
+const CustomerLogin = lazy(() => import("./customer/CustomerLogin"));
+const CustomerApp = lazy(() => import("./customer/CustomerApp"));
 /* Mijoz ilovasi BRAUZERDA (V40) — Telegram OIDC dan qaytish ham shu yerda */
-import CustomerWeb from "./customer/CustomerWeb";
+const CustomerWeb = lazy(() => import("./customer/CustomerWeb"));
 import { getAppToken } from "./customer/customerApi";
 
 // ⚠ Tilni URL dan olish MODUL TANASIDA, `replaceState` dan OLDIN bo'lishi
@@ -45,7 +49,9 @@ initLang();
    QR ni o'qigan xaridor to'g'ridan-to'g'ri kirish sahifasiga otilib
    ketardi va kartasini umuman ko'rmasdi.
    ══════════════════════════════════════════════════════════════════════════ */
-const IS_PORTAL = /^\/(qr|kabinet|c\/)(\/|$|\d)/.test(window.location.pathname);
+/* ⚠ `q/` ham shu yerda (V46): qarz tasdig'i sahifasi mijozniki va u
+   xodim daraxtiga umuman kirmasligi kerak. */
+const IS_PORTAL = /^\/(qr|kabinet|c\/|q\/)(\/|$|\d)/.test(window.location.pathname);
 
 /* ══════════════════════════════════════════════════════════════════════════
    MIJOZ ILOVASI BRAUZERDA (V40)
@@ -164,7 +170,7 @@ export default function App() {
     return (
       <ErrorBoundary>
         <ConfirmProvider>
-          <CustomerWeb />
+          <Suspense fallback={<Progress />}><CustomerWeb /></Suspense>
         </ConfirmProvider>
       </ErrorBoundary>
     );
@@ -177,7 +183,7 @@ export default function App() {
             bo'lmaydigan amal va u brauzerning `confirm` i bilan emas,
             ilovaning modali bilan so'raladi (butun tizimda shunday). */}
         <ConfirmProvider>
-          <CustomerPortal />
+          <Suspense fallback={<Progress />}><CustomerPortal /></Suspense>
         </ConfirmProvider>
       </ErrorBoundary>
     );
@@ -223,10 +229,12 @@ export default function App() {
         {/* ConfirmProvider kerak: hisobdan chiqish tasdig'i */}
         <ConfirmProvider>
           <Toast toasts={toasts} onDismiss={dismiss} />
-          {appToken
-            ? <CustomerApp onLoggedOut={() => setAppToken("")} />
-            : <CustomerLogin onLoggedIn={() => setAppToken(getAppToken())}
-                             onStaffLogin={() => setStaffMode(true)} />}
+          <Suspense fallback={<Progress />}>
+            {appToken
+              ? <CustomerApp onLoggedOut={() => setAppToken("")} />
+              : <CustomerLogin onLoggedIn={() => setAppToken(getAppToken())}
+                               onStaffLogin={() => setStaffMode(true)} />}
+          </Suspense>
           <AppUpdater loggedIn={false} toast={toast} />
         </ConfirmProvider>
       </ErrorBoundary>

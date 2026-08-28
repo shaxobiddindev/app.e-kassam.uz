@@ -83,7 +83,12 @@ export default function SettingsPage({ toast }) {
   const [tolerance, setTolerance] = useState("");
   const [discountLimit, setDiscountLimit] = useState("");
   const [returnDays, setReturnDays] = useState("");
-  const [creditLimit, setCreditLimit] = useState("");
+  /* Nasiya yoqilganmi (V46) — chegaraning o'rniga. */
+  const [creditOn, setCreditOn] = useState(false);
+  /* Muddat qaysi kundan sanaladi (V46): "EACH" · "FIRST". */
+  const [creditDueMode, setCreditDueMode] = useState("EACH");
+  /* Qarzni mijoz ham tasdiqlaydimi (V46). */
+  const [creditConfirm, setCreditConfirm] = useState(false);
   /* Nasiya muddati (V43), kunlarda. "0" — muddatsiz. */
   const [creditDueDays, setCreditDueDays] = useState("0");
   /* Mijozga qarz eslatmasi (V44). */
@@ -100,7 +105,9 @@ export default function SettingsPage({ toast }) {
         setTolerance(String(r?.data?.cashDiffTolerance ?? 0));
         setDiscountLimit(String(r?.data?.maxDiscountPercent ?? 0));
         setReturnDays(String(r?.data?.returnDays ?? 0));
-        setCreditLimit(String(r?.data?.defaultCreditLimit ?? 0));
+        setCreditOn(Boolean(r?.data?.creditEnabled));
+        setCreditDueMode(r?.data?.creditDueMode || "EACH");
+        setCreditConfirm(Boolean(r?.data?.creditConfirmEnabled));
         setCreditDueDays(String(r?.data?.creditDueDays ?? 0));
         setCreditRemind(Boolean(r?.data?.creditRemindEnabled));
         setBaseCashback(String(r?.data?.baseCashbackPercent ?? 0));
@@ -140,6 +147,42 @@ export default function SettingsPage({ toast }) {
     } catch (err) {
       toast?.error(err.message);
     }
+  };
+
+  /**
+   * Tugma/tanlov sozlamasi — saqlanmasa AVVALGI holatga qaytadi.
+   *
+   * ⚠ Ekranni oldin o'zgartirib, keyin saqlash noto'g'ri bo'lardi:
+   * server rad etsa (masalan huquq yo'q) ekranda yoqilgan, serverda esa
+   * o'chiq holat qolardi va egasi buni sezmasdi.
+   */
+  const saveToggle = async (fn, value, set) => {
+    try {
+      await fn(value);
+      set(value);
+      toast?.success(t("common.saved"));
+    } catch (err) {
+      toast?.error(err.message);
+    }
+  };
+
+  /**
+   * Mijoz tasdig'ini yoqish — TASDIQ SO'RALADI.
+   *
+   * ⚠ Yoqilgan ondan boshlab do'kon nomidan MIJOZLARGA xabar keta
+   * boshlaydi. Buni bilmay yoqib qo'yish do'konning obro'siga tegadi.
+   */
+  const toggleCreditConfirm = async () => {
+    const next = !creditConfirm;
+    if (next) {
+      const ok = await confirm({
+        title: t("settings.creditConfirm"),
+        message: t("settings.creditConfirmAsk"),
+        type: "warning",
+      });
+      if (!ok) return;
+    }
+    saveToggle(shopApi.setCreditConfirm, next, setCreditConfirm);
   };
 
   const saveField = (fn, value, fallback = 0) => async () => {
@@ -253,15 +296,28 @@ export default function SettingsPage({ toast }) {
                      onChange={(e) => setReturnDays(e.target.value)}
                      onBlur={saveField(shopApi.setReturnDays, returnDays)} />
             </Row>
-            {/* Nasiya chegarasi — do'kon STANDARTI. Har bir mijozga alohida
-                qiymat Mijozlar sahifasida qo'yiladi va u shu raqamdan
-                ustun turadi. */}
-            <Row label={t("settings.creditLimit")} hint={t("settings.creditLimitHint")}>
-              <Field kind="money" className="form-input ek-num"
-                     wrapStyle={{ width: 160 }}
-                     value={creditLimit}
-                     onChange={(e) => setCreditLimit(e.target.value)}
-                     onBlur={saveField(shopApi.setCreditLimit, creditLimit)} />
+            {/* ⚠ CHEGARA O'RNIGA YOQISH TUGMASI (V46). Ilgari nasiyani
+                ikkita raqam cheklardi (do'kon standarti va mijozniki),
+                lekin do'koncha qarzni raqamga qarab emas, ODAMGA qarab
+                beradi: qo'shnisiga million, notanishga umuman yo'q.
+                Chegara esa har safar yo'lni to'sib, uni oshirib
+                qo'yishga majburlardi — himoya emas, ortiqcha qadam edi.
+
+                O'chirish ESKI QARZNI TEGMAYDI: to'lovlar qabul
+                qilinaveradi, faqat yangi nasiya to'siladi. */}
+            <Row label={t("settings.creditEnabled")} hint={t("settings.creditEnabledHint")}>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={creditOn}
+                className={`ek-switch ${creditOn ? "on" : ""}`}
+                onClick={() => saveToggle(shopApi.setCreditEnabled, !creditOn, setCreditOn)}
+              >
+                <span className="ek-switch__knob" />
+                <span className="ek-switch__text">
+                  {creditOn ? t("common.yes") : t("common.no")}
+                </span>
+              </button>
             </Row>
             {/* ⚠ Muddat SAVDONI TO'SMAYDI — to'sish chegaraning ishi.
                 Muddat faqat «muddati o'tgan qarz» ko'rsatkichini yoqadi:
@@ -274,6 +330,40 @@ export default function SettingsPage({ toast }) {
                      value={creditDueDays}
                      onChange={(e) => setCreditDueDays(e.target.value)}
                      onBlur={saveField(shopApi.setCreditDueDays, creditDueDays)} />
+            </Row>
+            {/* ⚠ MUDDAT QAYSI KUNDAN SANALADI (V46). Do'konlar qarzni ikki
+                xil boshqaradi va ikkalasi ham to'g'ri: mahalla do'koni
+                «oyning oxirida hisoblashamiz» deydi (qarz bitta hisob),
+                ulgurji sotuvchi esa har yuk uchun alohida muddat beradi.
+                Bittasini majburlash ikkinchisiga yolg'on ko'rsatkich
+                berardi. */}
+            <Row label={t("settings.creditDueMode")} hint={t(`settings.creditDueMode.${creditDueMode}`)}>
+              <Select
+                value={creditDueMode}
+                onChange={(v) => saveToggle(shopApi.setCreditDueMode, v, setCreditDueMode)}
+                options={[
+                  { value: "EACH",  label: t("settings.creditDueMode.eachLabel"),  icon: "fa-layer-group" },
+                  { value: "FIRST", label: t("settings.creditDueMode.firstLabel"), icon: "fa-hourglass-start" },
+                ]}
+              />
+            </Row>
+            {/* ⚠⚠ MIJOZ TASDIG'I (V46) — KASSANI TO'SMAYDI. Chek darhol
+                yakunlanadi, so'rov esa mijozga keyin boradi (ilova ·
+                Telegram · SMS). Aks holda navbat mijozning telefoniga
+                bog'liq bo'lib qolardi. Tasdiq — DALIL, ruxsat emas. */}
+            <Row label={t("settings.creditConfirm")} hint={t("settings.creditConfirmHint")}>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={creditConfirm}
+                className={`ek-switch ${creditConfirm ? "on" : ""}`}
+                onClick={toggleCreditConfirm}
+              >
+                <span className="ek-switch__knob" />
+                <span className="ek-switch__text">
+                  {creditConfirm ? t("common.yes") : t("common.no")}
+                </span>
+              </button>
             </Row>
             {/* ⚠ ALOHIDA SOZLAMA, muddatning davomi emas. Muddat do'konning
                 ichki qoidasi, bu esa do'kon nomidan MIJOZGA boradigan

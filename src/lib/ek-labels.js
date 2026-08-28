@@ -52,6 +52,10 @@ export const PAYMENT_TYPE = dict("enum.payment", {
 export const SALE_STATUS = dict("enum.sale", {
   CREATED:   { tone: "info",    icon: "fa-clock" },
   PAID:      { tone: "success", icon: "fa-circle-check" },
+  /* ⚠ NASIYA CHEKI YASHIL EMAS (V46). Ilgari u ham `PAID` bo'lib, do'kon
+     egasining ko'zi oldida yashil «To'langan» yozuvi turardi — holbuki
+     kassaga bir tiyin tushmagan. Sariq: bu tugallanmagan ish. */
+  CREDIT:    { tone: "warning", icon: "fa-hand-holding-dollar" },
   CANCELLED: { tone: "danger",  icon: "fa-circle-xmark" },
 });
 

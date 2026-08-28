@@ -7,13 +7,12 @@ import Modal from "../components/Modal";
 import { Empty, Field, SearchBar, Avatar, FormGroup } from "../components/ui";
 import { useConfirm } from "../context/ConfirmProvider";
 import { paymentLabel } from "../lib/ek-labels";
-import { roleSet } from "../lib/ek-roles";
-import { useAuth } from "../hooks/useAuth";
+import { shortDate } from "../lib/ek-format";
 import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
 import { PhoneField } from "../components/ek/EkFields";
 
-const EMPTY_FORM = { fullName: "", phone: "998", creditLimit: "" };
+const EMPTY_FORM = { fullName: "", phone: "998" };
 
 /** Qarz necha kundan beri turibdi. `null` — jurnal bo'sh (eski ma'lumot). */
 const daysSince = (iso) => {
@@ -24,10 +23,8 @@ const daysSince = (iso) => {
 
 export default function CustomersPage({ toast }) {
   const confirm = useConfirm();
-  const { user } = useAuth();
   /* Chegarani egasi yoki do'kon administratori qo'yadi (2026-08-10, 5-qaror).
      Kassir uni ko'ra oladi, lekin o'zgartira olmaydi — backend ham shunday. */
-  const canSetLimit = [...roleSet(user?.role)].some((r) => r === "OWNER" || r === "SHOP_ADMIN");
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading]     = useState(true);
   // Ekranda ko'rsatiladigan holat: tez javobda skeleton UMUMAN chizilmaydi
@@ -100,12 +97,7 @@ export default function CustomersPage({ toast }) {
   };
 
   const openEdit = (customer) => {
-    setForm({
-      fullName: customer.fullName,
-      phone: customer.phone,
-      // Bo'sh — "do'kon standarti", `0` esa "bu mijozga nasiya yo'q".
-      creditLimit: customer.creditLimit == null ? "" : String(customer.creditLimit),
-    });
+    setForm({ fullName: customer.fullName, phone: customer.phone });
     setModal({ type: "edit", customer });
   };
 
@@ -118,7 +110,7 @@ export default function CustomersPage({ toast }) {
     }
     setSaving(true);
     try {
-      const { creditLimit, ...profile } = form;
+      const profile = form;
       let customerId;
       if (modal === "add") {
         const r = await customerApi.create(profile);
@@ -128,14 +120,6 @@ export default function CustomersPage({ toast }) {
         customerId = modal.customer.id;
         await customerApi.update(customerId, profile);
         toast.success(t("cust.updated"));
-      }
-
-      /* Chegara ALOHIDA endpoint bilan saqlanadi (`null` = do'kon standarti)
-         va faqat haqiqatan o'zgargan bo'lsa yuboriladi — kassir ismni
-         tuzatgan har safar chegarani ham qayta yozib yubormasin. */
-      const before = modal === "add" ? "" : (modal.customer.creditLimit == null ? "" : String(modal.customer.creditLimit));
-      if (canSetLimit && customerId && String(creditLimit).trim() !== before) {
-        await customerApi.setCreditLimit(customerId, String(creditLimit).trim() || null);
       }
 
       closeModal();
@@ -249,11 +233,12 @@ export default function CustomersPage({ toast }) {
                 <tr>
                   <th>{t("cust.col")}</th>
                   <th>{t("common.phone")}</th>
-                  {/* Qarzdorlar ro'yxatida "jami xarid" o'rniga chegara va
-                      qarz yoshi turadi — bu ekranda aynan shu ikkisi
-                      qaror qabul qilishga kerak. */}
+                  {/* ⚠ Chegara ustuni OLIB TASHLANDI (V46) va o'rniga
+                      «qachondan beri qarzdor» turadi. Chegara endi yo'q;
+                      qarzning YOSHI esa qaror uchun aynan kerak: bugungi
+                      300 ming va yarim yillik 300 ming boshqa gap. */}
                   {view === "debtors"
-                    ? <><th>{t("credit.limit")}</th><th>{t("credit.since")}</th>
+                    ? <><th>{t("credit.debtSince")}</th><th>{t("credit.since")}</th>
                         {/* Muddati o'tgan qism (V43) — do'kon muddat
                             qo'ymagan bo'lsa ustun umuman chizilmaydi:
                             har qatorda nol turgan ustun jadvalni
@@ -277,7 +262,11 @@ export default function CustomersPage({ toast }) {
                       <td className="mono" style={{ fontSize: 13 }}>{maskPhone(c.phone)}</td>
                       {view === "debtors" ? (
                         <>
-                          <td className="mono">{money(c.limit)}</td>
+                          <td className="mono" style={{ fontSize: 13 }}>
+                            {c.debtSince
+                              ? shortDate(c.debtSince)
+                              : <span className="text-muted">—</span>}
+                          </td>
                           {/* Qarz yoshi — kunlarda. Jurnalsiz eski qarzda
                               sana yo'q, shunda chiziqcha qo'yiladi: "0 kun"
                               yozilsa u yangi qarzdek ko'rinardi. */}
@@ -380,25 +369,6 @@ export default function CustomersPage({ toast }) {
               onChange={(e) => setForm(prev => ({ ...prev, phone: e.target.value }))}
             />
           </FormGroup>
-          {/* Shu mijozning ALOHIDA nasiya chegarasi. Bo'sh qoldirilsa
-              do'kon standarti ishlaydi — shuning uchun placeholder'da
-              amaldagi qiymat ko'rsatiladi. */}
-          {canSetLimit && (
-            <FormGroup label={t("credit.limit")}>
-              <Field
-                kind="money"
-                className="form-input ek-num"
-                value={form.creditLimit}
-                onChange={setField("creditLimit")}
-                placeholder={modal !== "add" && modal.customer?.effectiveLimit != null
-                  ? `${t("staff.shopDefault")}: ${money(modal.customer.effectiveLimit)}`
-                  : t("credit.limitHint")}
-              />
-              <div className="text-muted" style={{ fontSize: 12, marginTop: 4 }}>
-                {t("credit.limitHint")}
-              </div>
-            </FormGroup>
-          )}
         </Modal>
       )}
 
@@ -424,14 +394,15 @@ export default function CustomersPage({ toast }) {
             <span className="fw-700">{t("credit.balance")}</span>
             <span className="mono fw-800" style={{ color: "var(--fg-danger)" }}>{money(debt.customer.balance)}</span>
           </div>
-          {/* Chegara ham ko'rsatiladi: "yana nasiya berish mumkinmi" degan
-              savol aynan shu oynada tug'iladi. Qarzdorlar ro'yxatidan
-              kelgan qatorda maydon `limit`, mijozlar ro'yxatida
-              `effectiveLimit` deb ataladi. */}
-          <div className="row text-muted" style={{ display: "flex", justifyContent: "space-between", marginBottom: 12, fontSize: 13 }}>
-            <span>{t("credit.limit")}</span>
-            <span className="mono">{money(debt.customer.limit ?? debt.customer.effectiveLimit ?? 0)}</span>
-          </div>
+          {/* ⚠ Chegara O'RNIGA «qachondan beri qarzdor» (V46): «yana
+              nasiya berish mumkinmi» degan savolga endi raqam emas,
+              qarzning yoshi javob beradi. */}
+          {debt.customer.debtSince && (
+            <div className="row text-muted" style={{ display: "flex", justifyContent: "space-between", marginBottom: 12, fontSize: 13 }}>
+              <span>{t("credit.debtSince")}</span>
+              <span className="mono">{shortDate(debt.customer.debtSince)}</span>
+            </div>
+          )}
 
           <label className="form-label">{t("credit.payAmount")}</label>
           <Field kind="money" max={debt.customer.balance}
@@ -460,6 +431,20 @@ export default function CustomersPage({ toast }) {
                     <td style={{ fontSize: 12 }}>{t(`credit.type.${l.type}`)}</td>
                     <td className="mono" style={{ fontSize: 12 }}>
                       {l.saleId ? `#${l.saleId}` : (l.reason || "—")}
+                      {/* ⚠ MIJOZ TASDIG'I (V46) — aynan shu qatorda.
+                          Tortishuv «qaysi qarz?» degan savoldan
+                          boshlanadi: holat qarzdan ajralib, alohida
+                          ro'yxatda tursa, do'kon ularni o'zi
+                          solishtirishga majbur bo'lardi.
+                          `NONE` ko'rsatilmaydi: «so'ralmagan» — bu
+                          xabar emas, shovqin. */}
+                      {l.confirmState && l.confirmState !== "NONE" && (
+                        <div style={{ fontSize: 11, marginTop: 2 }}
+                             className={l.confirmState === "REJECTED" ? "text-danger" : "text-muted"}>
+                          {t(`debt.state.${l.confirmState}`)}
+                          {l.confirmNote ? ` — «${l.confirmNote}»` : ""}
+                        </div>
+                      )}
                     </td>
                     <td className="mono fw-700"
                         style={{ color: l.type === "PAYMENT" ? "var(--fg-success)" : "var(--fg-danger)" }}>

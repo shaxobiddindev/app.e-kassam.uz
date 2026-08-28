@@ -2100,6 +2100,19 @@ img.logo--dark { display: none; }
 }
 .pt-btn:disabled { opacity: .6; }
 .pt-btn--ghost { background: transparent; color: var(--fg-secondary); border: 1px solid var(--border-subtle); }
+
+/* ── Qarz tasdig'i sahifasi (V46) ─────────────────────────────────────── */
+.pt-debt-sum {
+  font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+  font-size: var(--fs-2xl); font-weight: 800; color: var(--fg-primary);
+  margin: 6px 0;
+}
+/* ⚠ Tugmalar BIR XIL o'lchamda: birini kattaroq qilib qo'yish mijozni
+   bir tomonga undardi va javobning qiymati tushardi. */
+.pt-debt-btns { display: flex; gap: 10px; width: 100%; margin-top: 4px; }
+.pt-debt-btns .pt-btn { flex: 1; }
+.pt-ok  { color: var(--success, #16a34a); font-weight: 600; }
+.pt-bad { color: var(--warning, #d97706); font-weight: 600; }
 .pt-logout { margin-top: 4px; min-height: 44px; font-size: var(--fs-sm); }
 .pt-error {
   margin-top: 14px; padding: 10px 14px; border-radius: var(--r-md);
@@ -2383,6 +2396,38 @@ img.logo--dark { display: none; }
   font-family: var(--font-mono); font-variant-numeric: tabular-nums;
   font-size: var(--fs-lg); color: var(--fg-primary);
 }
+
+/* ── QARZ TASDIG'I (V46) ────────────────────────────────────────────────
+   ⚠ Rang OGOHLANTIRISH (sariq), xavf (qizil) emas: qarz mijozning o'z
+   roziligi bilan olingan narsa va uni qizil bilan ko'rsatish odamni
+   ayblagandek bo'lardi. Lekin u e'tibor talab qiladi — shuning uchun
+   chapdagi qalin chiziq. */
+.cu-debt {
+  border-left: 4px solid var(--warning, #d97706);
+  gap: 12px; align-items: stretch; text-align: left;
+}
+.cu-debt__head {
+  display: flex; align-items: center; gap: 8px;
+  font-size: var(--fs-md); color: var(--fg-primary);
+}
+.cu-debt__row {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 12px; flex-wrap: wrap;
+  padding-top: 10px; border-top: 1px dashed var(--border-strong);
+}
+.cu-debt__shop { font-weight: 600; color: var(--fg-primary); }
+.cu-debt__sum {
+  font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+  font-size: var(--fs-lg); font-weight: 700; color: var(--fg-primary);
+}
+.cu-debt__date { font-size: var(--fs-xs); }
+/* ⚠ Tugmalar YONMA-YON va bir xil o'lchamda: «tasdiqlash» ni kattaroq
+   qilib qo'yish mijozni bir tomonga undardi va javobning qiymati
+   tushardi. */
+.cu-debt__btns { display: flex; gap: 8px; flex: 1 1 200px; }
+.cu-debt__btns .cu-btn { flex: 1; }
+.cu-btn--sm { min-height: 40px; padding: 8px 12px; font-size: var(--fs-sm); }
+.cu-debt__note { font-size: var(--fs-xs); margin: 0; }
 
 /* Do'kon tanlagich — ko'p do'konli mijoz uchun */
 .cu-chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; }

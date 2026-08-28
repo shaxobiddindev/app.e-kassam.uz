@@ -18,6 +18,7 @@ import ShiftBar from "../components/ShiftBar";
 import * as queue from "../lib/ek-offline";
 import * as cartStore from "../lib/ek-cart-store";
 import { PAYMENT_TYPE, paymentLabel } from "../lib/ek-labels";
+import { shortDate } from "../lib/ek-format";
 import { useLoading } from "../lib/use-loading";
 import Select from "../components/ek/Select";
 import { printReceipt, openDrawer } from "../lib/ek-hardware";
@@ -1039,12 +1040,12 @@ export default function KassaPage({ toast, refreshLowStock }) {
      bo'lmaydi: server ham rad etadi, lekin kassir buni to'lov tugmasini
      bosishdan OLDIN ko'rishi kerak. */
   const creditOk    = creditPart <= 0 || !!customer;
-  /* Chegarada qancha joy qolgani — kassir mijoz oldida rad javobini
-     olmasin. Chegara va qarz `customerTier` javobidan keladi. */
-  const creditLeft  = Math.max(0, (Number(tier?.creditLimit) || 0) - (Number(tier?.debtBalance) || 0));
-  const creditFits  = creditPart <= 0 || !tier || creditPart <= creditLeft;
+  /* ⚠ SUMMA CHEGARASI YO'Q (V46). Ilgari bu yerda «chegarada qancha joy
+     qolgani» hisoblanardi va to'lov tugmasi shunga qarab to'silardi.
+     Chegara olib tashlandi: do'koncha qarzni raqamga qarab emas, ODAMGA
+     qarab beradi. Qolgani — mijoz tanlanganmi degan savol. */
   const cashOk      = payType !== "CASH"  || !cashGiven || Number(cashGiven) >= total;
-  const canSubmit   = cart.length > 0 && !processing && mixedOk && cashOk && creditOk && creditFits;
+  const canSubmit   = cart.length > 0 && !processing && mixedOk && cashOk && creditOk;
 
   /* ── Sotuvni yakunlash ────────────────────────────────────── */
   const handleSubmit = async () => {
@@ -1647,9 +1648,15 @@ export default function KassaPage({ toast, refreshLowStock }) {
                       {t("credit.overdue")}: <b className="mono">{money(tier.overdueDebt)}</b></>
                   )}
                 </span>
-                <span className="text-muted mono" style={{ fontSize: 12 }}>
-                  {t("credit.limitFree")}: {money(Math.max(0, (Number(tier.creditLimit) || 0) - Number(tier.debtBalance)))}
-                </span>
+                {/* ⚠ «Qolgan chegara» O'RNIGA — QACHONDAN BERI qarzdor
+                    (V46). Chegara olib tashlandi, kassirga esa qarzning
+                    YOSHI kerak: bugungi 300 ming va yarim yillik 300 ming
+                    butunlay boshqa gap. */}
+                {tier.debtSince && (
+                  <span className="text-muted mono" style={{ fontSize: 12 }}>
+                    {t("credit.debtSince")} {shortDate(tier.debtSince)}
+                  </span>
+                )}
               </div>
             )}
 
@@ -1932,12 +1939,6 @@ export default function KassaPage({ toast, refreshLowStock }) {
               {/* Qarz chegarasi — tugmani jimgina o'chirib qo'yish o'rniga
                   QANCHA joy qolganini aytamiz: kassir summani o'zi
                   to'g'irlay oladi va mijozni kutdirmaydi. */}
-              {creditPart > 0 && customer && tier && !creditFits && (
-                <div className="pay-mixed-warn">
-                  <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />{" "}
-                  {t("credit.limitLeft", { amount: money(creditLeft) })}
-                </div>
-              )}
             </div>
 
             <div className="pay-modal-footer">

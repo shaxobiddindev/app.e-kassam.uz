@@ -5,7 +5,7 @@ import { qrSvg, totpNow, secondsLeft } from "../lib/ek-qr";
 import { code128Svg } from "../lib/ek-barcode";
 import { useConfirm } from "../context/ConfirmProvider";
 import CodeZoom from "../components/CodeZoom";
-import { dateTime } from "../lib/ek-format";
+import { dateTime, groupDigits } from "../lib/ek-format";
 import { registerPushIfPossible, getPushToken } from "../lib/ek-push";
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -19,8 +19,12 @@ import { registerPushIfPossible, getPushToken } from "../lib/ek-push";
    bo'lmaydi va interfeys buni yashirmasligi kerak.
    ══════════════════════════════════════════════════════════════════════════ */
 
-const money = (v) =>
-  new Intl.NumberFormat("uz-UZ", { maximumFractionDigits: 0 }).format(Number(v || 0));
+/* ⚠ AJRATGICH BUTUN MAHSULOTDA BIR XIL bo'lishi shart
+   (02-DESIGN-SYSTEM.md). Bu yerda `Intl.NumberFormat("uz-UZ")` ishlatilardi
+   va u brauzerga qarab vergul qaytarardi: mijoz SMS da «500 000 so'm»,
+   sahifada esa «500,000 so'm» ko'rib, ikkalasi bir xil summami deb
+   o'ylardi. `groupDigits` — tizimning yagona guruhlagichi. */
+const money = (v) => groupDigits(v || 0);
 
 const TABS = [
   { key: "card",     icon: "fa-id-card",  label: "Kartam" },
@@ -127,10 +131,92 @@ function Retry({ text, onRetry }) {
 
 /* ── 1. Karta: jami ball va kassada ko'rsatiladigan kod ──────────────── */
 
+/* ══════════════════════════════════════════════════════════════════════════
+   QARZLARIM — TASDIQ KUTAYOTGANLARI (V46)
+
+   ⚠ NEGA ALOHIDA VARAQ EMAS, BANNER. Bu ro'yxat odatda BO'SH bo'ladi, va
+   bo'sh varaq uchun doimiy tugma menyuni bekorga to'ldirardi. Qarz esa
+   paydo bo'lganda SHOSHILINCH: mijoz uni ko'rishi va javob berishi kerak
+   — shuning uchun u ochilgan zahoti, birinchi ekranning tepasida turadi.
+
+   ⚠ RAD ETISH QARZNI O'CHIRMAYDI. Bu do'konga «men olmadim» degan xabar,
+   hukm emas — do'kon buni ko'radi va o'zi hal qiladi. Mijozga ham shu
+   aytiladi, aks holda u tugmani «qarzni bekor qilish» deb tushunardi.
+   ══════════════════════════════════════════════════════════════════════════ */
+function DebtsBanner({ debts, onAnswer, busy }) {
+  if (!debts.length) return null;
+  return (
+    <div className="cu-card cu-debt">
+      <div className="cu-debt__head">
+        <i className="fa-solid fa-hand-holding-dollar" aria-hidden="true" />
+        <b>Nasiya tasdig'i</b>
+      </div>
+      {debts.map((d) => (
+        <div key={d.id} className="cu-debt__row">
+          <div>
+            <div className="cu-debt__shop">{d.shopName}</div>
+            <div className="cu-debt__sum">{money(d.amount)} so'm</div>
+            <div className="cu-muted cu-debt__date">{dateTime(d.createdAt)}</div>
+          </div>
+          <div className="cu-debt__btns">
+            <button type="button" className="cu-btn cu-btn--sm"
+                    disabled={busy === d.id}
+                    onClick={() => onAnswer(d, true)}>Ha, oldim</button>
+            <button type="button" className="cu-btn cu-btn--sm cu-btn--ghost"
+                    disabled={busy === d.id}
+                    onClick={() => onAnswer(d, false)}>Men olmadim</button>
+          </div>
+        </div>
+      ))}
+      <p className="cu-muted cu-debt__note">
+        «Men olmadim» qarzni o'chirmaydi — javobingiz do'konga boradi va
+        ular siz bilan bog'lanadi.
+      </p>
+    </div>
+  );
+}
+
 const PICKED_KEY = "ek_app_card_shop";
 
 function CardScreen({ me, shops }) {
   const items = shops?.items || [];
+
+  /* Tasdiq kutayotgan qarzlar (V46). Xato JIMGINA yutiladi: karta
+     ekranining o'zi bundan buzilmasligi kerak. */
+  const [debts, setDebts] = useState([]);
+  const [debtBusy, setDebtBusy] = useState(null);
+  const confirm = useConfirm();
+
+  useEffect(() => {
+    let alive = true;
+    appApi.debts().then((d) => { if (alive) setDebts(d || []); }).catch(() => {});
+    return () => { alive = false; };
+  }, []);
+
+  const answerDebt = async (d, confirmed) => {
+    /* ⚠ RAD ETISHDA TASDIQ SO'RALADI: bu do'kon bilan munosabatga
+       ta'sir qiladigan javob va uni tasodifan bosib yuborish mumkin
+       emas. Tasdiqlashda esa so'ralmaydi — u kutilgan harakat. */
+    if (!confirmed) {
+      const ok = await confirm({
+        title: "Men olmadim",
+        message: `${d.shopName}: ${money(d.amount)} so'm. Do'konga «bu qarzni men olmaganman» deb xabar boradi. Davom etamizmi?`,
+        type: "warning",
+        confirmText: "Ha, men olmadim",
+        cancelText: "Bekor qilish",
+      });
+      if (!ok) return;
+    }
+    setDebtBusy(d.id);
+    try {
+      await appApi.answerDebt(d.id, confirmed);
+      setDebts((prev) => prev.filter((x) => x.id !== d.id));
+    } catch (_) {
+      /* Javob ketmadi — qator joyida qoladi va mijoz qayta urinadi. */
+    } finally {
+      setDebtBusy(null);
+    }
+  };
 
   /* ⚠ Karta kodi DO'KONGA tegishli: bitta odamda har do'konda o'z kodi
      bor. Ilgari bu yerda DOIM BIRINCHI do'kon kartasi chizilardi va ikki
@@ -241,6 +327,9 @@ function CardScreen({ me, shops }) {
 
   return (
     <div className="cu-screen">
+      {/* ⚠ ENG TEPADA: qarz tasdig'i shoshilinch va uni pastga surib
+          qo'yish «ko'rmadim» degan javobga olib kelardi. */}
+      <DebtsBanner debts={debts} onAnswer={answerDebt} busy={debtBusy} />
       <div className="cu-hero">
         <span className="cu-hero__label">Jami ballaringiz</span>
         <b className="cu-hero__value">{money(me.totalBonus)}</b>

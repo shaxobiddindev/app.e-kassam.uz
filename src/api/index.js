@@ -543,9 +543,6 @@ export const customerApi = {
   /* Qarz eslatmalarini DARHOL yuborish (V44) — haftalik oyna baribir
      amal qiladi, ya'ni qayta bosish mijozga xabar yog'dirmaydi. */
   remindDebtors: () => request(`/customers/debt-remind`, { method: "POST" }),
-  setCreditLimit: (id, value) =>
-    request(`/customers/${id}/credit-limit${value == null || value === "" ? "" : `?value=${value}`}`,
-            { method: "PATCH" }),
 
   getAll:  (shopId)    => request(`/customers${shopId ? `?shopId=${shopId}` : ""}`),
   getById: (id)        => request(`/customers/${id}`),
@@ -631,7 +628,14 @@ export const shopApi = {
   /** Qaytarish muddati (kun). 0 — har safar rahbar tasdig'i. */
   setReturnDays: (days) => request(`/shop/return-days?days=${days}`, { method: "PATCH" }),
   /** Nasiya chegarasi — do'kon standarti. */
-  setCreditLimit: (value) => request(`/shop/credit-limit?value=${value}`, { method: "PATCH" }),
+  /* NASIYA YOQILGANMI (V46) — chegaraning o'rniga.
+     ⚠ Summa chegarasi olib tashlandi: do'koncha qarzni raqamga qarab
+     emas, ODAMGA qarab beradi. */
+  setCreditEnabled: (value) => request(`/shop/credit-enabled?value=${value}`, { method: "PATCH" }),
+  /* Muddat qaysi kundan sanaladi (V46): `EACH` · `FIRST`. */
+  setCreditDueMode: (value) => request(`/shop/credit-due-mode?value=${value}`, { method: "PATCH" }),
+  /* Qarzni mijoz ham tasdiqlaydimi (V46). */
+  setCreditConfirm: (value) => request(`/shop/credit-confirm?value=${value}`, { method: "PATCH" }),
   /** Naqdsiz yarashtiruvda tasdiqsiz o'tadigan farq. Standart 0. */
   setNonCashTolerance: (value) => request(`/shop/noncash-tolerance?value=${value}`, { method: "PATCH" }),
   /** Inventarizatsiya kamomadi chegarasi — SO'MDA (tannarx bo'yicha). */

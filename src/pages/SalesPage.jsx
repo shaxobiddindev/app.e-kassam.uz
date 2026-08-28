@@ -189,6 +189,7 @@ export default function SalesPage({ toast }) {
   const counts = {
     ALL:       byPeriod.length,
     PAID:      byPeriod.filter((s) => s.status === "PAID").length,
+    CREDIT:    byPeriod.filter((s) => s.status === "CREDIT").length,
     CANCELLED: byPeriod.filter((s) => s.status === "CANCELLED").length,
   };
 
@@ -286,6 +287,10 @@ export default function SalesPage({ toast }) {
             {[
               { key: "ALL",       label: t("common.all") },
               { key: "PAID",      label: saleStatus("PAID").label },
+              /* ⚠ Nasiya ALOHIDA filtr (V46): do'kon egasi kunni «kimga
+                 qarz berdik?» degan savol bilan yopadi va bu ro'yxatni
+                 to'langan cheklar orasidan izlashi kerak emas. */
+              { key: "CREDIT",    label: saleStatus("CREDIT").label },
               { key: "CANCELLED", label: saleStatus("CANCELLED").label },
             ].map((f) => (
               <button

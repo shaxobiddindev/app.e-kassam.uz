@@ -101,6 +101,15 @@ export const appApi = {
      TOTP talab qila boshlaydi. */
   cardSecret: (id)    => call(`/shops/${id}/card-secret`, { method: "POST" }),
 
+  /* ── Qarzlarim (V46) ──
+     ⚠ Ro'yxat PUSH DAN MUSTAQIL: push kelmasligi mumkin (tokeni yo'q,
+     telefon o'chiq, ruxsat berilmagan) — o'shanda ham mijoz ilovani
+     ochib qarzini ko'radi. */
+  debts:      ()      => call("/debts"),
+  answerDebt: (id, confirmed, note) =>
+    call(`/debts/${id}/answer?confirmed=${confirmed}`
+         + (note ? `&note=${encodeURIComponent(note)}` : ""), { method: "POST" }),
+
   /* ── Cheklar ──
      ⚠ Lenta HAMMA do'kon bo'yicha bitta ro'yxat (server qo'shib beradi),
      bitta chekni ochishda esa qaysi do'kondagi yozuv ekani ham

@@ -123,9 +123,14 @@ export default function DashboardPage({ toast }) {
       text: t("dash.sigStaleTransfer"), count: sig.staleTransfers,
       onClick: () => navigate("/transfers"),
     },
-    sig.overLimitDebtors > 0 && {
-      id: "overlimit", icon: "fa-user-lock", tone: "danger",
-      text: t("dash.sigOverLimit"), count: sig.overLimitDebtors,
+    /* ⚠ «Chegaradan oshgan qarzdorlar» O'RNIGA — mijoz RAD ETGAN
+       qarzlar (V46). Chegara olib tashlangach eski signal hech narsani
+       anglatmasdi; nizo esa haqiqiy shoshilinch xabar: mijoz «men
+       olmadim» degan bo'lsa, uni ko'rmasdan qoldirish qarzni ham,
+       mijozni ham yo'qotish demakdir. */
+    sig.disputedDebts > 0 && {
+      id: "disputed", icon: "fa-triangle-exclamation", tone: "danger",
+      text: t("dash.sigDisputed"), count: sig.disputedDebts,
       onClick: () => navigate("/customers"),
     },
     outOfStock.length && {
