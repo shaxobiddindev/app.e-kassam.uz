@@ -15,6 +15,7 @@ import { paymentEntry, saleStatus } from "../lib/ek-labels";
 import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
 import { printReceipt } from "../lib/ek-hardware";
+import SaleDetailModal from "../components/SaleDetailModal";
 import { topRole } from "../lib/ek-roles";
 import { useScanner } from "../hooks/useScanner";
 import { useOnline } from "../hooks/useOnline";
@@ -62,10 +63,8 @@ function PayLabel({ type }) {
 
 export default function SalesPage({ toast }) {
   const confirm                   = useConfirm();
-  // ⚠ `guard` — bekor qilishda server 428 qaytarsa bajik modalini ochadi.
-  // U olinmasa `handleCancel` da `ReferenceError` bo'lardi: `useBadge`
-  // import qilingan-u, CHAQIRILMAGAN edi — aynan yuqoridagi `Spinner`
-  // bilan bir xil tuzoq, faqat bu safar bekor qilish tugmasida.
+  // ⚠ `guard` — QAYTARISHDA server 428 qaytarsa bajik modalini ochadi va
+  // tasdiqdan keyin so'rovni o'zi qayta yuboradi.
   const { guard }                 = useBadge();
   const online                    = useOnline();
   const { user }                  = useAuth();
@@ -91,7 +90,6 @@ export default function SalesPage({ toast }) {
   // kerak, filtrni foydalanuvchi o'zi tanlaydi.
   const [status, setStatus]       = useState("ALL");
   const [detail, setDetail]       = useState(null);
-  const [cancelling, setCancelling] = useState(null);
   /* Qaytarish oynasi: { sale, lines: { [saleItemId]: miqdor }, reason } */
   const [ret, setRet] = useState(null);
   const [returning, setReturning] = useState(false);
@@ -150,29 +148,6 @@ export default function SalesPage({ toast }) {
     if (online) return true;
     toast.error(t("offline.actionBlocked"));
     return false;
-  };
-
-  const handleCancel = async (sale) => {
-    if (!requireOnline()) return;
-    const ok = await confirm({
-      title: t("sales.cancelTitle"),
-      message: `#${sale.id} raqamli sotuvni bekor qilishni tasdiqlaysizmi? Bu amalni ortga qaytarib bo'lmaydi.`,
-      type: "danger"
-    });
-    if (!ok) return;
-    setCancelling(sale.id);
-    try {
-      // Server 428 qaytarsa `guard` bajik modalini ochadi va tasdiqdan
-      // keyin bekor qilishni o'zi qayta yuboradi.
-      await guard(() => saleApi.cancel(sale.id));
-      toast.success(t("sales.cancelled"));
-      loadSales();
-      setDetail(null);
-    } catch (err) {
-      if (!err?.cancelled) toast.error(err.message);
-    } finally {
-      setCancelling(null);
-    }
   };
 
   // Holat filtri qidiruvdan OLDIN qo'llanadi, shunda chiplardagi sonlar
@@ -364,16 +339,6 @@ export default function SalesPage({ toast }) {
                               <i className="fa-solid fa-rotate-left" />
                             </button>
                           )}
-                          {sale.status !== "CANCELLED" && (
-                            <button
-                              className="btn-icon danger"
-                              title={t("common.cancel")}
-                              onClick={() => handleCancel(sale)}
-                              disabled={cancelling === sale.id}
-                            >
-                              {cancelling === sale.id ? <Spinner small /> : <i className="fa-solid fa-ban" />}
-                            </button>
-                          )}
                         </div>
                       </td>
                     </tr>
@@ -388,76 +353,11 @@ export default function SalesPage({ toast }) {
       </div>
 
       {/* ── Detail Modal ── */}
-      {detail && (
-        <Modal
-          title={`Sotuv #${detail.id}`}
-          onClose={() => setDetail(null)}
-          footer={
-            <>
-              {detail.status !== "CANCELLED" && (
-                <button
-                  className="btn btn-primary btn-sm"
-                  onClick={() => handleReprint(detail)}
-                  disabled={printing === detail.id}
-                >
-                  {printing === detail.id ? <Spinner small /> : <i className="fa-solid fa-print" />}
-                  {t("kassa.reprint")}
-                </button>
-              )}
-              {detail.status !== "CANCELLED" && (
-                <button
-                  className="btn btn-danger btn-sm"
-                  onClick={() => handleCancel(detail)}
-                  disabled={cancelling === detail.id}
-                >
-                  {cancelling === detail.id ? <Spinner small /> : <i className="fa-solid fa-ban" />}
-                  {t("common.cancel")}
-                </button>
-              )}
-              <button className="btn btn-outline btn-sm" onClick={() => setDetail(null)}>{t("common.close")}</button>
-            </>
-          }
-        >
-          {/* Asosiy info */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
-            {[
-              { label: t("sales.colCashier"),    value: detail.cashierName || "—" },
-              { label: t("cust.col"),     value: detail.customerName || "—" },
-              { label: t("sales.colPayment"),    value: <PayLabel type={detail.paymentType} /> },
-              { label: t("common.status"),    value: <Badge color={statusBadge(detail.status).color}>{statusBadge(detail.status).label}</Badge> },
-              { label: t("common.date"),      value: detail.createdAt ? new Date(detail.createdAt).toLocaleString("uz-UZ") : "—" },
-              { label: t("common.total"),      value: <span className="mono fw-700 text-blue">{money(detail.totalAmount)}</span> },
-            ].map((item, i) => (
-              <div key={i} style={{ background: "var(--bg)", borderRadius: 8, padding: "9px 12px" }}>
-                <div style={{ fontSize: 10, fontWeight: 800, color: "var(--text3)", textTransform: "uppercase", letterSpacing: ".5px", marginBottom: 4 }}>{item.label}</div>
-                <div style={{ fontSize: 13, fontWeight: 700 }}>{item.value}</div>
-              </div>
-            ))}
-          </div>
-
-          {/* Mahsulotlar */}
-          <div style={{ fontSize: 12, fontWeight: 800, color: "var(--text2)", textTransform: "uppercase", letterSpacing: ".5px", marginBottom: 8 }}>
-            Mahsulotlar ({detail.items?.length || 0})
-          </div>
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr><th>{t("products.col")}</th><th>{t("common.count")}</th><th>{t("sales.colPrice")}</th><th>{t("common.total")}</th></tr>
-              </thead>
-              <tbody>
-                {(detail.items || []).map((item, i) => (
-                  <tr key={i}>
-                    <td className="fw-700">{item.productName}</td>
-                    <td><Badge color="blue">{item.quantity}</Badge></td>
-                    <td className="mono">{money(item.price)}</td>
-                    <td className="mono fw-700 text-blue">{money(item.subtotal)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Modal>
-      )}
+      {/* ⚠ Umumiy komponent (V47): AYNAN shu oyna qarz jurnalidan ham
+          ochiladi. Ikki nusxa bo'lsa, ular vaqt o'tib bir-biridan
+          ajralib ketardi. */}
+      <SaleDetailModal sale={detail} onClose={() => setDetail(null)}
+                       onReprint={handleReprint} printing={printing === detail?.id} />
 
       {/* ── Qaytarish oynasi ─────────────────────────────────────────────
           Kassir QAYSI tovarni va NECHTASINI qaytarayotganini tanlaydi.

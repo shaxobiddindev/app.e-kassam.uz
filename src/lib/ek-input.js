@@ -120,7 +120,20 @@ export function displayNumber(raw, { decimals = 0 } = {}) {
  * na SMS ketadi, na qo'ng'iroq: mijoz bazasi jimgina buziladi.
  */
 export function phoneInput(input) {
-  let d = onlyDigits(input);
+  /* ⚠⚠ `+998` PREFIKSI ANIQ OLIB TASHLANADI (foydalanuvchi shikoyati:
+     «telefon raqamni o'zgartirmoqchi bo'lsa xato ishlayapti»).
+
+     Niqob o'z natijasini (`raw` = `+998` + raqamlar) qayta o'qiydi.
+     Ilgari kod FAQAT raqamlar soni 9 dan oshganda kesilardi — bu esa
+     raqam TO'LIQ bo'lganda to'g'ri ishlab, qisqarganda buzilardi:
+     abonent raqami 6 xonaga tushganda `+998901234` da atigi 9 ta raqam
+     qoladi, «998» kesilmaydi va u ABONENT raqamiga aylanib ketadi
+     («(99) 890-12-34»). Ya'ni odam raqamni o'chira boshlasa, u
+     qisqarish o'rniga O'ZGARIB ketardi. */
+  let str = String(input ?? "").trim();
+  if (str.startsWith("+998")) str = str.slice(4);
+
+  let d = onlyDigits(str);
   /* ⚠ Kod (`+998`) MAYDONNING O'ZIDA EMAS — u yonidagi o'zgarmas
      yorliqda (`PhoneField`). Shuning uchun bu yerda kod faqat odam uni
      O'ZI yozgan yoki to'liq raqamni joylashtirgan holda uchraydi, ya'ni

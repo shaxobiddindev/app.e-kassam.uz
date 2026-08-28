@@ -108,7 +108,8 @@ async function send(bytes) {
  * o'tib, haqiqiysi buzilib chiqishi mumkin edi.
  */
 export function buildReceipt({ saleId, serverSaleId, cart = [], total = 0, subtotal, discount = 0,
-                               payType, customer, offline, shopName, cashier, fiscal, receiptUrl }) {
+                               payType, customer, offline, shopName, cashier, fiscal, receiptUrl,
+                               credit }) {
   const s = getSettings();
   const r = new Receipt(s.width === 58 ? WIDTH_58 : WIDTH_80);
 
@@ -137,6 +138,23 @@ export function buildReceipt({ saleId, serverSaleId, cart = [], total = 0, subto
   r.bold().double().row(t("kassa.receiptTotal"), money(total)).double(false).bold(false);
   r.row(t("kassa.receiptPayment"), paymentLabel(payType));
   if (customer?.fullName) r.row(t("kassa.receiptCustomer"), customer.fullName);
+
+  /* ── NASIYA BLOKI (V47) ────────────────────────────────────────────
+     ⚠ Chek mijozning QO'LIDA qoladigan yagona hujjat. «Nasiya» degan
+     bitta so'z yetmaydi: mijoz uyiga borib «qancha qarzim bor edi?»
+     deb o'ylab qoladi va ertaga do'kon bilan tortishadi. Shu chek
+     qarzi, JAMI qarz va muddat — uchalasi ham shu yerda turadi. */
+  if (credit && Number(credit.amount) > 0) {
+    r.rule();
+    r.center().bold().line(t("kassa.receiptCredit")).bold(false).left();
+    r.row(t("kassa.receiptCreditThis"), money(credit.amount));
+    if (credit.balance != null) r.row(t("kassa.receiptCreditTotal"), money(credit.balance));
+    if (credit.dueDate) r.row(t("kassa.receiptCreditDue"), credit.dueDate);
+    /* ⚠ IMZO JOYI. Qog'ozdagi imzo — do'konning eng oddiy va eng
+       ishonchli dalili; ilova tasdig'i (V46) bo'lmagan mijozda esa
+       yagona dalil. */
+    r.feed().row(t("kassa.receiptCreditSign"), "______________");
+  }
 
   if (offline) {
     r.feed().center().line(t("kassa.receiptOffline")).line(t("kassa.receiptOfflineSub")).left();
@@ -217,6 +235,51 @@ export async function printReceipt(sale) {
 
   const r = buildReceipt(sale);
   if (s.openDrawer && sale.payType === "CASH") r.kick();
+  r.cut();
+  await send(r.build());
+}
+
+/**
+ * QARZ TO'LOVI CHEKI (V47).
+ *
+ * ⚠ NEGA ALOHIDA CHEK. Qarz to'lovi — bu SOTUV EMAS: tovar yo'q, qatorlar
+ * yo'q, QQS yo'q. Uni sotuv cheki qolipiga tiqish chalkashtirardi (bo'sh
+ * tovar ro'yxati, «jami 0»). Mijozga esa qog'oz kerak: u pul berdi va
+ * buning izini olishi kerak — aks holda «to'lagandim-ku» degan tortishuv
+ * yana do'konning so'ziga qarshi mijozning so'zi bo'lib qolardi.
+ */
+export function buildDebtReceipt({ customer, amount, balanceAfter, method,
+                                   shopName, cashier, date }) {
+  const s = getSettings();
+  const r = new Receipt(s.width === 58 ? WIDTH_58 : WIDTH_80);
+
+  r.center().double().line(shopName || "E-KASSAM.UZ").double(false);
+  r.line(t("kassa.receiptDebtPay"));
+  r.left().rule();
+
+  r.row(t("common.date"), (date || new Date()).toLocaleString("uz-UZ"));
+  if (cashier) r.row(t("kassa.receiptCashier"), cashier);
+  if (customer?.fullName) r.row(t("kassa.receiptCustomer"), customer.fullName);
+  r.rule();
+
+  r.bold().double().row(t("kassa.receiptPaid"), money(amount)).double(false).bold(false);
+  r.row(t("kassa.receiptPayment"), paymentLabel(method));
+  /* Qolgan qarz — mijoz aynan shuni so'raydi. Nol bo'lsa ham yoziladi:
+     «qarzingiz qolmadi» degan qator eng qimmatli qator. */
+  r.row(t("kassa.receiptDebtLeft"), money(balanceAfter ?? 0));
+
+  r.rule();
+  r.center().line(t("kassa.receiptThanks")).line("e-kassam.uz");
+  return r;
+}
+
+/** Qarz to'lovi chekini chiqaradi (naqdda pul yashigi ham ochiladi). */
+export async function printDebtReceipt(payment) {
+  const s = getSettings();
+  if (!isDesktop()) return printInBrowser({ ...payment, __debt: true });
+
+  const r = buildDebtReceipt(payment);
+  if (s.openDrawer && payment.method === "CASH") r.kick();
   r.cut();
   await send(r.build());
 }
@@ -450,7 +513,8 @@ export async function testPrint() {
  * chaqiriladi.
  */
 function printInBrowser({ saleId, serverSaleId, cart = [], total = 0, subtotal, discount = 0,
-                          payType, customer, offline, shopName, cashier, receiptUrl }) {
+                          payType, customer, offline, shopName, cashier, receiptUrl,
+                          credit, __debt, amount, balanceAfter, method, date }) {
   const win = window.open("", "_blank", "width=360,height=640,toolbar=no,menubar=no");
   if (!win) throw new Error(t("hw.errPopup"));
 
@@ -465,7 +529,23 @@ function printInBrowser({ saleId, serverSaleId, cart = [], total = 0, subtotal, 
     return `<div class="row"><span>${esc(i.name)} × ${esc(qtyText)}</span><span>${esc(money(i.salePrice * i.qty))}</span></div>`;
   }).join("");
 
-  win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(t("kassa.receiptNo"))} ${esc(saleId)}</title>
+  /* ⚠ QARZ TO'LOVI — BOSHQA HUJJAT: tovar qatorlari, QQS va chek raqami
+     yo'q. Uni sotuv qolipiga tiqish «jami 0» li bo'sh chek berardi. */
+  const debtBody = !__debt ? "" : `
+      <div class="c"><div class="logo">${esc(shopName || "E-KASSAM.UZ")}</div>
+        <small>${esc(t("kassa.receiptDebtPay"))}</small></div>
+      <div class="hr"></div>
+      <div class="row"><span>${esc(t("common.date"))}</span><span>${esc((date || new Date()).toLocaleString("uz-UZ"))}</span></div>
+      ${cashier ? `<div class="row"><span>${esc(t("kassa.receiptCashier"))}</span><span>${esc(cashier)}</span></div>` : ""}
+      ${customer?.fullName ? `<div class="row"><span>${esc(t("kassa.receiptCustomer"))}</span><span>${esc(customer.fullName)}</span></div>` : ""}
+      <div class="hr"></div>
+      <div class="row"><b>${esc(t("kassa.receiptPaid"))}</b><b>${esc(money(amount))}</b></div>
+      <div class="row"><span>${esc(t("kassa.receiptPayment"))}</span><span>${esc(paymentLabel(method))}</span></div>
+      <div class="row"><span>${esc(t("kassa.receiptDebtLeft"))}</span><span>${esc(money(balanceAfter ?? 0))}</span></div>
+      <div class="hr"></div>
+      <div class="c"><p>${esc(t("kassa.receiptThanks"))}</p><small>e-kassam.uz</small></div>`;
+
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(__debt ? t("kassa.receiptDebtPay") : t("kassa.receiptNo") + " " + saleId)}</title>
     <style>
       /* CHEK QOG'OZI - A4 EMAS.
          @page bo'lmasa brauzer chekni A4 sahifaga joylashtiradi, chetiga
@@ -495,6 +575,8 @@ function printInBrowser({ saleId, serverSaleId, cart = [], total = 0, subtotal, 
         body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       }
     </style></head><body>
+      ${debtBody}
+      ${__debt ? "" : `
       <div class="c"><div class="logo">${esc(shopName || "E-KASSAM.UZ")}</div>
         <small>${esc(t("kassa.receiptSystem"))}</small></div>
       <div class="hr"></div>
@@ -507,6 +589,12 @@ function printInBrowser({ saleId, serverSaleId, cart = [], total = 0, subtotal, 
       <div class="row"><b>${esc(t("kassa.receiptTotal"))}</b><b>${esc(money(total))}</b></div>
       <div class="row"><span>${esc(t("kassa.receiptPayment"))}</span><span>${esc(paymentLabel(payType))}</span></div>
       ${customer?.fullName ? `<div class="row"><span>${esc(t("kassa.receiptCustomer"))}</span><span>${esc(customer.fullName)}</span></div>` : ""}
+      ${credit && Number(credit.amount) > 0 ? `<div class="hr"></div>
+      <div class="c"><b>${esc(t("kassa.receiptCredit"))}</b></div>
+      <div class="row"><span>${esc(t("kassa.receiptCreditThis"))}</span><b>${esc(money(credit.amount))}</b></div>
+      ${credit.balance != null ? `<div class="row"><span>${esc(t("kassa.receiptCreditTotal"))}</span><span>${esc(money(credit.balance))}</span></div>` : ""}
+      ${credit.dueDate ? `<div class="row"><span>${esc(t("kassa.receiptCreditDue"))}</span><span>${esc(credit.dueDate)}</span></div>` : ""}
+      <div class="row" style="margin-top:10px"><span>${esc(t("kassa.receiptCreditSign"))}</span><span>______________</span></div>` : ""}
       ${offline ? `<div class="off">${esc(t("kassa.receiptOffline"))}<br>${esc(t("kassa.receiptOfflineSub"))}</div>` : ""}
       ${serverSaleId ? `<div class="c" style="margin-top:6px">
         ${code128Svg(saleCode(serverSaleId), { height: 12 })}
@@ -517,7 +605,7 @@ function printInBrowser({ saleId, serverSaleId, cart = [], total = 0, subtotal, 
         <small>${esc(t("kassa.receiptQrHint"))}</small>
       </div>` : ""}
       <div class="hr"></div>
-      <div class="c"><p>${esc(t("kassa.receiptThanks"))}</p><small>e-kassam.uz</small></div>
+      <div class="c"><p>${esc(t("kassa.receiptThanks"))}</p><small>e-kassam.uz</small></div>`}
     </body></html>`);
   win.document.close();
   /* Tizim shrifti ishlatilgani uchun kutish shart emas — bir kadr yetadi.

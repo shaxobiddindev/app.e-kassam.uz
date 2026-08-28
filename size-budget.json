@@ -2,6 +2,7 @@
   "_izoh": "08-ROADMAP.md dagi byudjet. Oshirish — ONGLI qaror: sababini commit xabarida yozing.",
   "_2026_08_27": "Marshrutlar React.lazy bilan bo'lindi. ⚠ O'LCHOV O'ZGARDI, chunki eskisi maqsadni o'lchamay qo'ydi. Bo'lingan ilovada chunklarning ko'pi birinchi ochilishda yuklanmaydi, ammo umumiy hajm bo'lish tufayli BIR OZ OSHADI (har chunkning o'z yuki bor) — ya'ni to'g'ri qilingan ish eski raqamda «yomonlashish» bo'lib ko'rinardi. Endi ikkita raqam: KIRISH (index.html so'raydigan JS+CSS — kassir har ochilishda aynan shuni kutadi) va JAMI JS (bo'lish kodni cheksiz ko'paytirishga bahona bo'lmasin). Birinchi chizish 254 → 193 KB tushdi (kassa uchun +13.7 KB o'z chunki); jami 234 → 256 ga chiqdi.",
   "entryKb": 200,
-  "jsKb": 270,
-  "cssKb": 40
+  "jsKb": 280,
+  "cssKb": 40,
+  "_2026_08_28": "JAMI JS 270 → 280. Sabab: nasiya oqimi to'ldirildi (qarz to'lovi kassa ko'rinishida, qarz cheki, chek tafsiloti qarz jurnalidan, kassadan mijoz qo'shish) va uchala tilga ~40 tadan yangi kalit qo'shildi. KIRISH byudjeti TEGILMADI (192/200) — birinchi chizish sekinlashmadi. ⚠ ANIQLANGAN HAQIQIY YECHIM, hali qilinmagan: `ek-locales.js` uchala tilni ham har foydalanuvchiga yuboradi (~75 KB xom), holbuki do'kon bitta tilda ishlaydi. Tilni ajratib, faqat tanlanganini yuborish jami hajmni sezilarli kamaytiradi — bu alohida ish sifatida qilinishi kerak, chunki u har bir `t()` chaqiruvini qamrab oladi."
 }

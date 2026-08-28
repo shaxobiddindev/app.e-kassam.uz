@@ -22,7 +22,27 @@ const REDUCED = () =>
 // "komponentda toLocaleString chaqirilmaydi" qoidasini buzardi va
 // razryad ajratgichini brauzerga qoldirardi — bir xil son turli
 // mashinada turlicha ko'rinardi.
-export function CountUp({ value, format = groupDigits, duration = 900 }) {
+/**
+ * ⚠ ANIMATSIYA VAQT BILAN CHEKLANGAN, raqam bilan emas.
+ *
+ * Tezlik sondan kelib chiqadi, davomiylik esa YO'Q: qancha katta son
+ * bo'lmasin, u belgilangan vaqtda to'xtaydi. Aks holda millionlik summa
+ * mayda raqamdan sezilarli uzoq «sanardi» va bosh sahifadagi beshta
+ * katak turli vaqtda tinchlanardi — ko'z qayerga qarashni bilmasdi.
+ *
+ * Xonalar soniga qarab biroz cho'ziladi (uzun songa ko'z ko'proq vaqt
+ * kerak), lekin `MAX_MS` dan oshmaydi.
+ */
+const MIN_MS = 420;
+const MAX_MS = 700;
+
+/** Son uzunligiga qarab davomiylik — lekin doim `MAX_MS` ichida. */
+function budget(value) {
+  const digits = String(Math.abs(Math.round(Number(value) || 0))).length;
+  return Math.min(MAX_MS, MIN_MS + Math.max(0, digits - 3) * 40);
+}
+
+export function CountUp({ value, format = groupDigits, duration }) {
   const [shown, setShown] = useState(REDUCED() ? value : 0);
   const ref = useRef(null);
   const done = useRef(false);
@@ -37,9 +57,10 @@ export function CountUp({ value, format = groupDigits, duration = 900 }) {
       if (done.current) { setShown(target); return; }
       done.current = true;
       const t0 = performance.now();
+      const ms = duration || budget(target);
       const ease = (t) => 1 - Math.pow(1 - t, 3);   // ease-out
       const tick = (now) => {
-        const p = Math.min(1, (now - t0) / duration);
+        const p = Math.min(1, (now - t0) / ms);
         setShown(Math.round(target * ease(p)));
         if (p < 1) requestAnimationFrame(tick);
       };

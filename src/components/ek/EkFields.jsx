@@ -142,12 +142,34 @@ const MaskedField = forwardRef(function MaskedField(
 
   function handle(e) {
     const el = e.target;
-    const pos = el.selectionStart ?? el.value.length;
-    const before = el.value.slice(0, pos);
-    const next = mask(el.value);
+    let pos = el.selectionStart ?? el.value.length;
+    let text = el.value;
+    let next = mask(text);
+
+    /* ⚠ AJRATGICHNI O'CHIRIB BO'LMASDI (foydalanuvchi shikoyati:
+       «telefon raqamni o'chirsa o'chmay qolyapti»).
+
+       Niqob matnni qaytadan yasaydi. Odam `)` yoki `-` ustida
+       «backspace» bossa, RAQAMLAR soni o'zgarmaydi va niqob o'sha
+       ajratgichni QAYTA QO'YADI — maydon o'zgarmagandek ko'rinadi va
+       odam tugmani bosaverib, «buzuq» deb o'ylaydi.
+
+       Yechim: o'chirish AMALDA hech narsani o'zgartirmagan bo'lsa,
+       kursordan oldingi belgini ham olib tashlaymiz — mazmunli belgi
+       (raqam/harf) o'chguncha. Faqat `deleteContent*` da ishlaydi,
+       ya'ni yozishga aralashmaydi. */
+    const deleting = String(e.nativeEvent?.inputType || "").startsWith("delete");
+    let guard = 0;
+    while (deleting && pos > 0 && next.raw === (value ?? "") && guard++ < 8) {
+      text = text.slice(0, pos - 1) + text.slice(pos);
+      pos -= 1;
+      next = mask(text);
+    }
+
     if (keepCaret) {
-      caret.current = pos >= el.value.length ? "end"
-                                             : Math.min(countDigits(before), countDigits(next.raw));
+      const before = text.slice(0, pos);
+      caret.current = pos >= text.length ? "end"
+                                         : Math.min(countDigits(before), countDigits(next.raw));
     }
     onChange?.({ target: { value: next.raw, name } });
   }

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { t } from "../lib/ek-i18n";
+import { useNavigate } from "react-router-dom";
 import { productApi, customerApi, saleApi, securityApi, shopApi, mediaApi, fiscalApi, loyaltyApi } from "../api";
 import { useBadge } from "../context/BadgeProvider";
 import { useConfirm } from "../context/ConfirmProvider";
@@ -20,6 +21,8 @@ import * as cartStore from "../lib/ek-cart-store";
 import { PAYMENT_TYPE, paymentLabel } from "../lib/ek-labels";
 import { shortDate } from "../lib/ek-format";
 import { useLoading } from "../lib/use-loading";
+import Modal from "../components/Modal";
+import { PhoneField } from "../components/ek/EkFields";
 import Select from "../components/ek/Select";
 import { printReceipt, openDrawer } from "../lib/ek-hardware";
 import { useScanner } from "../hooks/useScanner";
@@ -166,7 +169,13 @@ export default function KassaPage({ toast, refreshLowStock }) {
   const [tier, setTier]             = useState(null);
   /* Ball: kassir kiritgan summa + do'kon chegarasi (foizda). */
   const [bonusUse, setBonusUse]     = useState("");
+  const navigate = useNavigate();
+  /* Kassadan yangi mijoz qo'shish (V47) — `null` bo'lsa oyna yopiq. */
+  const [newCust, setNewCust] = useState(null);
+  const [savingCust, setSavingCust] = useState(false);
   const [bonusMaxPercent, setBonusMaxPercent] = useState(0);
+  /* Nasiya muddati, kunlarda (V43) — chekdagi «to'lash muddati» uchun. */
+  const [dueDays, setDueDays] = useState(0);
   const [processing, setProcessing] = useState(false);
   const [branchId]                  = useState(null);
   const [showPayModal, setShowPayModal] = useState(false);
@@ -308,12 +317,14 @@ export default function KassaPage({ toast, refreshLowStock }) {
     shopApi.getProfile()
       .then((r) => {
         setBonusMaxPercent(Number(r?.data?.bonusMaxPercent) || 0);
+        setDueDays(Number(r?.data?.creditDueDays) || 0);
         const bt = r?.data?.businessType;
         const auto = ["CLOTHING", "COSMETICS", "SERVICE", "ELECTRONICS"].includes(bt) ? "tiles" : "list";
         setView((cur) => cur || auto);
       })
       .catch(() => {
         setBonusMaxPercent(0);
+        setDueDays(0);
         setView((cur) => cur || "list");
       });
   }, []);
@@ -629,6 +640,33 @@ export default function KassaPage({ toast, refreshLowStock }) {
          Qolgani — karta bu do'konga tegishli emas yoki o'chirilgan. */
       if (err?.status === 400 && err.message) toast.error(err.message);
       else toast.info(t("kassa.cardNotFound"));
+    }
+  };
+
+  /**
+   * KASSADAN YANGI MIJOZ (V47).
+   *
+   * ⚠ Qo'shilgan zahoti SAVATGA biriktiriladi: kassir uni qo'shib,
+   * keyin ro'yxatdan qayta tanlashi ortiqcha qadam bo'lardi — mijoz esa
+   * kassa oldida turibdi.
+   */
+  const saveNewCustomer = async () => {
+    const name = (newCust?.fullName || "").trim();
+    if (!name || !newCust?.phone) return;
+    setSavingCust(true);
+    try {
+      const r = await customerApi.create({ fullName: name, phone: newCust.phone });
+      const c = r?.data;
+      if (c?.id) {
+        setCustomers((prev) => [c, ...prev]);
+        setCustomer(c);
+      }
+      setNewCust(null);
+      toast.success(t("cust.added"));
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setSavingCust(false);
     }
   };
 
@@ -1074,7 +1112,22 @@ export default function KassaPage({ toast, refreshLowStock }) {
     /* Chekka chegirma ham tushadi: mijoz "qancha chegirma oldim" degan
        savolga qog'ozdan javob topishi kerak, aks holda faqat yakuniy
        summa ko'rinib, chegirma ko'rinmay qolardi. */
-    const snapshot = { cart: [...cart], total, subtotal, discount: discountNum, payType, customer };
+    /* ⚠ NASIYA MA'LUMOTI CHEKKA (V47). «Nasiya» degan bitta so'z
+       yetmaydi: mijoz uyiga borib «qancha qarzim bor edi?» deb o'ylab
+       qoladi va ertaga do'kon bilan tortishadi. Shu chek qarzi, JAMI
+       qarz va muddat chekda turadi.
+
+       ⚠ Jami qarz — SOTUVDAN KEYINGI holat: `tier.debtBalance` sotuvdan
+       oldingi qoldiq, shuning uchun shu chek qarzi qo'shiladi. */
+    const creditInfo = creditPart > 0 ? {
+      amount: creditPart,
+      balance: (Number(tier?.debtBalance) || 0) + creditPart,
+      dueDate: dueDays > 0
+        ? shortDate(new Date(Date.now() + dueDays * 864e5).toISOString())
+        : null,
+    } : null;
+    const snapshot = { cart: [...cart], total, subtotal, discount: discountNum, payType, customer,
+                       credit: creditInfo };
 
     setShowPayModal(false);
     setFinish({ phase: "printing", total: money(total) });
@@ -1572,21 +1625,38 @@ export default function KassaPage({ toast, refreshLowStock }) {
                 va oraliq bo'shlig'i bilan ustundan 70+ piksel olardi va
                 o'sha piksellar savat ro'yxatidan yeyilardi. */}
             <div className="cart-cust">
-            <Select
-              block
-              ariaLabel={t("kassa.customer")}
-              placeholder={t("kassa.pickCustomer")}
-              value={customer?.id ? String(customer.id) : ""}
-              onChange={(v) => setCustomer(customers.find((c) => String(c.id) === v) || null)}
-              options={[
-                { value: "", label: t("kassa.noCustomer"), icon: "fa-user-slash" },
-                ...customers.map((c) => ({
-                  value: String(c.id),
-                  label: `${c.fullName} · ${c.phone}`,
-                  icon: "fa-user",
-                })),
-              ]}
-            />
+            {/* ⚠ MIJOZ QATORI — TANLASH + QO'SHISH + RO'YXAT (V47).
+                Ilgari bu yerda faqat tanlagich turardi: kassa oldida
+                turgan YANGI mijozni qo'shish uchun kassir savatni
+                tashlab «Mijozlar» sahifasiga o'tishi kerak edi. Endi
+                ikkalasi ham shu yerda va ko'zga tashlanadi. */}
+            <div className="cart-cust__row">
+              <Select
+                block
+                ariaLabel={t("kassa.customer")}
+                placeholder={t("kassa.pickCustomer")}
+                value={customer?.id ? String(customer.id) : ""}
+                onChange={(v) => setCustomer(customers.find((c) => String(c.id) === v) || null)}
+                options={[
+                  { value: "", label: t("kassa.noCustomer"), icon: "fa-user-slash" },
+                  ...customers.map((c) => ({
+                    value: String(c.id),
+                    label: `${c.fullName} · ${c.phone}`,
+                    icon: "fa-user",
+                  })),
+                ]}
+              />
+              <button type="button" className="btn-icon cart-cust__btn"
+                      title={t("kassa.newCustomer")} aria-label={t("kassa.newCustomer")}
+                      onClick={() => setNewCust({ fullName: "", phone: "" })}>
+                <i className="fa-solid fa-user-plus" aria-hidden="true" />
+              </button>
+              <button type="button" className="btn-icon cart-cust__btn"
+                      title={t("kassa.allCustomers")} aria-label={t("kassa.allCustomers")}
+                      onClick={() => navigate("/customers")}>
+                <i className="fa-solid fa-users" aria-hidden="true" />
+              </button>
+            </div>
 
             {/* ── Sodiqlik darajasi ────────────────────────────────────
                 Kassir mijozga aytishi uchun: chegirmasi qancha va keyingi
@@ -1751,6 +1821,33 @@ export default function KassaPage({ toast, refreshLowStock }) {
           <span>{undo.item.name} o'chirildi</span>
           <button onClick={restoreUndo}>{t("kassa.undo")}</button>
         </div>
+      )}
+
+      {/* ════ YANGI MIJOZ (V47) ════ */}
+      {newCust && (
+        <Modal
+          title={t("kassa.newCustomer")}
+          onClose={() => setNewCust(null)}
+          footer={
+            <>
+              <button className="btn btn-outline btn-sm" onClick={() => setNewCust(null)}>
+                {t("common.cancel")}
+              </button>
+              <button className="btn btn-primary btn-sm" onClick={saveNewCustomer}
+                      disabled={savingCust || !newCust.fullName.trim() || !newCust.phone}>
+                <i className="fa-solid fa-check" aria-hidden="true" /> {t("common.save")}
+              </button>
+            </>
+          }
+        >
+          <label className="form-label">{t("common.fullName")} *</label>
+          <input className="form-input" autoFocus value={newCust.fullName}
+                 onChange={(e) => setNewCust({ ...newCust, fullName: e.target.value })}
+                 placeholder="Abdullayev Ali" />
+          <label className="form-label" style={{ marginTop: 10 }}>{t("common.phone")} *</label>
+          <PhoneField className="form-input mono ek-num" value={newCust.phone}
+                      onChange={(e) => setNewCust({ ...newCust, phone: e.target.value })} />
+        </Modal>
       )}
 
       {/* ════ TO'LOV MODALI ════ */}

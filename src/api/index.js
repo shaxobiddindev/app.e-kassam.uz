@@ -528,6 +528,11 @@ export const loyaltyApi = {
 };
 
 export const customerApi = {
+  /* RO'YXATDAN OLIB TASHLASH (V47) — faqat rahbar.
+     ⚠ ARXIVLASH: yozuv bazada qoladi va eski cheklarida ko'rinadi,
+     lekin ro'yxatda, qidiruvda va kassada chiqmaydi. Haqiqiy o'chirish
+     sotuv tarixini buzardi. */
+  remove: (id) => request(`/customers/${id}`, { method: "DELETE" }),
   /** Karta kodi bo'yicha (V34) — kassada skanerlanganda. */
   byCard: (code) => request(`/customers/by-card/${encodeURIComponent(code)}`),
   /** Telefon bo'yicha — mijoz kartasini unutgan bo'lsa. */

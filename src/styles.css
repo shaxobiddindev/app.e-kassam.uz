@@ -436,7 +436,14 @@ select.form-input { cursor: pointer; }
 .search-bar i    { color: var(--text3); font-size: 14px; }
 
 /* ── MODAL ── */
-.modal-overlay   { position: fixed; inset: 0; background: var(--scrim); display: flex; align-items: center; justify-content: center; z-index: 500; padding: 20px; animation: fadeIn .2s ease; }
+/* ⚠ `padding` da xavfsiz zona, `overflow-y` va `margin: auto` — sabab
+   `.pay-modal-overlay` dagi bilan bir xil: telefonda oynaning tepasi
+   tizim holat qatori ostida qolardi, baland oynada esa umuman
+   yetib bo'lmasdi. */
+.modal-overlay   { position: fixed; inset: 0; background: var(--scrim); display: flex; align-items: center; justify-content: center; z-index: 500;
+                   padding: max(20px, env(safe-area-inset-top)) 20px max(20px, env(safe-area-inset-bottom));
+                   overflow-y: auto; animation: fadeIn .2s ease; }
+.modal-overlay > * { margin: auto; }
 .modal-box       { background: var(--bg-surface); border-radius: 18px; width: 100%; max-width: 460px; max-height: 90vh; overflow-y: auto; box-shadow: var(--sh3); animation: slideUp .3s ease; }
 .modal-header    { padding: 20px 22px 0; display: flex; align-items: center; justify-content: space-between; }
 .modal-title     { font-size: 16px; font-weight: 800; }
@@ -776,6 +783,29 @@ select.form-input { cursor: pointer; }
 .mono    { font-family: var(--mono); }
 .text-blue { color: var(--blue); }
 .text-muted { color: var(--text2); }
+
+/* Jadval ichidagi havola-tugma — chek raqami bosiladi (V47).
+   ⚠ `button`, `a` emas: bu yo'nalish emas, OYNA ochadi. Ko'rinishi esa
+   havoladek bo'lishi kerak, aks holda odam uni bosiladigan deb
+   o'ylamasdi. */
+.ek-linkbtn {
+  background: none; border: 0; padding: 0; cursor: pointer;
+  font: inherit; color: var(--fg-brand); font-weight: 700;
+  text-decoration: underline; text-underline-offset: 2px;
+}
+.ek-linkbtn:hover:not(:disabled) { color: var(--fg-brand-strong, var(--fg-brand)); }
+.ek-linkbtn:disabled { opacity: .6; cursor: progress; text-decoration: none; }
+
+/* Qarz to'lovidagi tez tugmalar («Hammasi», «Yarmi») — V47. */
+.debt-quick { display: flex; gap: 8px; margin-top: 10px; }
+.debt-quick .btn { flex: 1; }
+
+/* Kassadagi mijoz qatori (V47): tanlagich + qo'shish + ro'yxat.
+   ⚠ Tugmalar tanlagich BILAN BIR QATORDA: alohida qatorga tushsa,
+   savat ustunidan yana 40 piksel yeb qo'yardi. */
+.cart-cust__row { display: flex; align-items: stretch; gap: 6px; }
+.cart-cust__row > *:first-child { flex: 1; min-width: 0; }
+.cart-cust__btn { flex: 0 0 auto; width: 38px; }
 .fw-700  { font-weight: 700; }
 .fw-800  { font-weight: 800; }
 
@@ -839,9 +869,19 @@ select.form-input { cursor: pointer; }
   align-items: center;
   justify-content: center;
   z-index: 600;
-  padding: 20px;
+  /* ⚠ TEPADAGI XAVFSIZ ZONA HISOBGA OLINADI. Telefonda va planshetda
+     (Capacitor) tizim holat qatori ekranning tepasida turadi va oyna
+     `inset: 0` bilan uning OSTIGA chiqib ketardi: sarlavha ham,
+     yopish tugmasi ham holat qatori ostida qolardi. */
+  padding: max(20px, env(safe-area-inset-top)) 20px max(20px, env(safe-area-inset-bottom));
+  /* ⚠ Oyna ekrandan BALAND bo'lsa suriladi. `align-items: center` da
+     baland oynaning TEPASI ekrandan chiqib ketadi va unga yetib
+     bo'lmaydi — pastga surish ham yordam bermaydi. */
+  overflow-y: auto;
   animation: fadeIn .25s ease;
 }
+/* `margin: auto` — joy bo'lsa markazlaydi, bo'lmasa tepasini kesmaydi. */
+.pay-modal-overlay > * { margin: auto; }
 
 .pay-modal-box {
   background: var(--bg-surface);
