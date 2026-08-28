@@ -182,17 +182,22 @@ function CardScreen({ me, shops }) {
      IKKINCHI marta so'rardi. */
   const asked = useRef({});
 
+  /* ⚠ «ALIVE» BAYROG'I ATAYLAB YO'Q — u bu yerda TUZOQ edi. React ishlab
+     chiqish rejimida effektni ikki marta ishga tushiradi: 1-yurish sirni
+     so'raydi va `asked` ni belgilaydi, tozalash `alive = false` qiladi,
+     2-yurish esa `asked` tufayli qaytib ketadi. Natijada javob kelganda
+     uni QABUL QILADIGAN hech kim qolmasdi va karta hech qachon
+     aylanmasdi. Tugaganidan keyin holat o'zgartirish React 18 da
+     zararsiz (hech narsa qilmaydi), qo'riqchi esa `asked` ning o'zi. */
   useEffect(() => {
     const id = picked?.id;
-    if (!id || asked.current[id]) return undefined;
+    if (!id || asked.current[id]) return;
     asked.current[id] = true;
-    let alive = true;
     appApi.cardSecret(id)
       /* ⚠ `call()` JAVOB TANASINI EMAS, `data` ni qaytaradi. */
-      .then((r) => { if (alive) setSecrets((p) => ({ ...p, [id]: r || null })); })
+      .then((r) => setSecrets((p) => ({ ...p, [id]: r || null })))
       /* Xato JIMGINA yutiladi: karta qat'iy kod bilan baribir ishlaydi. */
-      .catch(() => { if (alive) setSecrets((p) => ({ ...p, [id]: null })); });
-    return () => { alive = false; };
+      .catch(() => setSecrets((p) => ({ ...p, [id]: null })));
   }, [picked?.id]);
 
   const cfg = picked?.id ? secrets[picked.id] : null;

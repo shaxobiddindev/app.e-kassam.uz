@@ -1,6 +1,6 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { API_BASE } from "../config";
-import { qrSvg } from "../lib/ek-qr";
+import { qrSvg, totpNow, secondsLeft } from "../lib/ek-qr";
 import { code128Svg } from "../lib/ek-barcode";
 import { useConfirm } from "../context/ConfirmProvider";
 import CodeZoom from "../components/CodeZoom";
@@ -172,6 +172,76 @@ function CabinetScreen({ token, onLogout }) {
     api("/receipts?limit=50", { token }).then(setReceipts).catch(() => {});
   }, [token]);
 
+  /* ══ AYLANMA KARTA (V45) ═══════════════════════════════════════════════
+
+     ⚠ ILOVADAGI BILAN BIR XIL bo'lishi SHART. Aynan bitta karta ikki
+     joyda ko'rsatiladi: telefon ilovasida va shu kabinetda. Ilova sirni
+     olgan ondan boshlab kassa TOTP ni talab qiladi — kabinet esa eski,
+     qat'iy kodni chizib turaversa, o'sha mijozning kabinetdagi kartasi
+     jimgina ishlamay qolardi.
+
+     ⚠ KOD SERVERDAN SO'RALMAYDI, SAHIFADA yasaladi: kassa navbatida
+     internet yo'qolishi oddiy hol va o'sha payt karta ishlamay qolsa,
+     mexanizm mijoz uchun ishonchsiz bo'lib qolardi.
+
+     ⚠ Sir olinmasa karta ESKICHA — qat'iy kod bilan — ishlayveradi. */
+  const [cfg, setCfg]   = useState(null);
+  const [otp, setOtp]   = useState("");
+  const [left, setLeft] = useState(30);
+  const asked = useRef(false);
+
+  /* ⚠ «ALIVE» BAYROG'I ATAYLAB YO'Q — u bu yerda TUZOQ edi. React ishlab
+     chiqish rejimida effektni ikki marta ishga tushiradi: 1-yurish sirni
+     so'raydi va `asked` ni belgilaydi, tozalash `alive = false` qiladi,
+     2-yurish esa `asked` tufayli qaytib ketadi. Natijada javob kelganda
+     uni QABUL QILADIGAN hech kim qolmasdi va karta hech qachon
+     aylanmasdi. Tugaganidan keyin holat o'zgartirish React 18 da
+     zararsiz (hech narsa qilmaydi), qo'riqchi esa `asked` ning o'zi. */
+  useEffect(() => {
+    if (!token || asked.current) return;
+    asked.current = true;
+    api("/card-secret", { method: "POST", token })
+      .then((d) => setCfg(d || null))
+      /* Xato JIMGINA yutiladi: karta qat'iy kod bilan baribir ishlaydi. */
+      .catch(() => {});
+  }, [token]);
+
+  useEffect(() => {
+    if (!cfg?.secret) { setOtp(""); return undefined; }
+    let stopped = false;
+    const period = cfg.periodSeconds || 30;
+
+    const tick = async () => {
+      try {
+        const code = await totpNow(cfg.secret, period);
+        if (!stopped) setOtp(code);
+      } catch (_) {
+        /* `crypto.subtle` yo'q (HTTPS bo'lmagan kontekst) — qat'iy kodga
+           tushamiz, karta baribir ishlaydi. */
+        if (!stopped) setOtp("");
+      }
+    };
+
+    tick();
+    const timer = setInterval(() => {
+      const s = secondsLeft(period);
+      setLeft(s);
+      if (s === period) tick();
+    }, 1000);
+    return () => { stopped = true; clearInterval(timer); };
+  }, [cfg]);
+
+  /* Skanerlanadigan qiymat: sir bo'lsa aylanma, bo'lmasa eskicha. */
+  const cardValue = me?.cardCode
+    ? CARD_PREFIX + me.cardCode + (otp ? "-" + otp : "")
+    : "";
+
+  /* ⚠ RASMLAR KESHLANADI. Orqa hisob har soniyada yangilanadi, ya'ni
+     ekran ham har soniyada qayta chiziladi — QR va shtrixni har safar
+     qaytadan yasash telefonni bekorga qizdirardi. */
+  const qrHtml  = useMemo(() => (cardValue ? qrSvg(cardValue, { size: 168, margin: 1 }) : ""), [cardValue]);
+  const barHtml = useMemo(() => (cardValue ? code128Svg(cardValue) : ""), [cardValue]);
+
   /* Telegramga ulash: server bir martalik kod beradi, biz esa botni
      ochamiz. Bot `/start <kod>` ni olgach chat kabinetga bog'lanadi.
      ⚠ Yangi oynada ochiladi: telefonda bu Telegram ilovasini ishga
@@ -231,16 +301,23 @@ function CabinetScreen({ token, onLogout }) {
         <div className="pt-codes">
           <button type="button" className="ek-code-btn pt-qr"
                   onClick={() => setZoom("qr")} aria-label="QR kodni kattalashtirish"
-                  dangerouslySetInnerHTML={{ __html: qrSvg(CARD_PREFIX + me.cardCode, { size: 168, margin: 1 }) }} />
+                  dangerouslySetInnerHTML={{ __html: qrHtml }} />
           <button type="button" className="ek-code-btn pt-bars"
                   onClick={() => setZoom("bar")} aria-label="Shtrix kodni kattalashtirish"
-                  dangerouslySetInnerHTML={{ __html: code128Svg(CARD_PREFIX + me.cardCode) }} />
+                  dangerouslySetInnerHTML={{ __html: barHtml }} />
           <div className="pt-cardcode">{me.cardCode}</div>
-          <p className="pt-muted">Kattalashtirish uchun kod ustiga bosing</p>
+          {/* ⚠ Orqa hisob KO'RINADI. Kod jimgina yangilansa, mijoz
+              skanerlanmagan kodni ushlab turib «buzuq» deb o'ylardi;
+              hisoblagich esa «hozir yangilanadi, kutib turing» deydi. */}
+          {otp ? (
+            <p className="pt-muted"><b>{left} s</b> dan keyin yangilanadi · kattalashtirish uchun bosing</p>
+          ) : (
+            <p className="pt-muted">Kattalashtirish uchun kod ustiga bosing</p>
+          )}
         </div>
 
         {zoom && (
-          <CodeZoom kind={zoom} value={CARD_PREFIX + me.cardCode}
+          <CodeZoom kind={zoom} value={cardValue}
                     caption={me.cardCode} onClose={() => setZoom(null)} />
         )}
 
