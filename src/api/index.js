@@ -174,7 +174,15 @@ async function request(path, options = {}, _retry = false) {
     throw new BadgeRequiredError(json.message || "Bajikni skanerlang", json.action, json.policy);
   }
 
-  if (!res.ok) throw new Error(json.message || `Xatolik: ${res.status}`);
+  if (!res.ok) {
+    /* ⚠ HOLAT KODI ham uzatiladi. Ba'zi joyda xatoning SABABI muhim:
+       masalan kassada karta topilmagani (404) va kod eskirgani (400)
+       kassir uchun butunlay boshqa ish — birinchisida mijozni qidirish,
+       ikkinchisida esa mijozdan ekranni qayta ko'rsatishni so'rash. */
+    const err = new Error(json.message || `Xatolik: ${res.status}`);
+    err.status = res.status;
+    throw err;
+  }
   return json;
 }
 
@@ -632,6 +640,9 @@ export const shopApi = {
   setBonusMaxPercent: (value) => request(`/shop/bonus-max-percent?value=${value}`, { method: "PATCH" }),
   /** Ball amal qilish muddati, kunlarda (V30). `0` = muddatsiz. */
   setBonusExpiryDays: (value) => request(`/shop/bonus-expiry-days?value=${value}`, { method: "PATCH" }),
+  /* Bazaviy keshbek foizi (V45) — darajasiz ham ishlaydi. `0` = yopiq.
+     Daraja bo'lsa ikkisining KATTAROG'I olinadi. */
+  setBaseCashback: (value) => request(`/shop/base-cashback?value=${value}`, { method: "PATCH" }),
   /** Omborda «muddati yaqin» oynasi, kunlarda (V41). 1..365. */
   setNearExpiryDays: (value) => request(`/shop/near-expiry-days?value=${value}`, { method: "PATCH" }),
   /* Daraja qaysi oynadagi xariddan hisoblanadi (V43). `0` — umrbod. */

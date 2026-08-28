@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { appApi, clearAppToken, getAppToken } from "./customerApi";
 import Receipt from "../portal/Receipt";
-import { qrSvg } from "../lib/ek-qr";
+import { qrSvg, totpNow, secondsLeft } from "../lib/ek-qr";
 import { code128Svg } from "../lib/ek-barcode";
 import { useConfirm } from "../context/ConfirmProvider";
 import CodeZoom from "../components/CodeZoom";
@@ -152,6 +152,88 @@ function CardScreen({ me, shops }) {
   /* Qaysi kod kattalashtirilgan: `null` · `"qr"` · `"bar"` */
   const [zoom, setZoom] = useState(null);
 
+  /* ══ AYLANMA KARTA (V45) ═══════════════════════════════════════════════
+
+     ⚠ MUAMMO. Karta QAT'IY kod edi: bu ekranni bir marta suratga olgan
+     odam uni cheksiz ishlatishi mumkin edi. Kassada karta skanerlanganda
+     mijoz TANLANADI, ya'ni nusxasi bo'lgan odam BEGONANING ballarini
+     ishlatib yuborishi mumkin — ball esa pulga teng.
+
+     Endi kod ikki qismdan: `EKC-K7M2P9QX-482915`. Birinchisi kimligini
+     aytadi, ikkinchisi har 30 soniyada yangilanadi (TOTP). Surat 30
+     soniyadan keyin ishlamaydi.
+
+     ⚠ KOD SERVERDAN SO'RALMAYDI, ILOVADA yasaladi. Sir bir marta olinadi
+     va kod undan oflayn hisoblanadi: kassa navbatida internet yo'qolishi
+     oddiy hol va o'sha payt karta ishlamay qolsa, mexanizm mijoz uchun
+     ishonchsiz bo'lib qolardi.
+
+     ⚠ Sir do'kon bo'yicha ALOHIDA (har do'konda o'z kartasi), shuning
+     uchun kesh `id` bo'yicha saqlanadi.
+
+     ⚠ Sir olinmasa karta ESKICHA — qat'iy kod bilan — ishlayveradi.
+     Bu ataylab: eski server yoki tarmoqsiz birinchi ochilish mijozni
+     kartasiz qoldirmasligi kerak. */
+  const [secrets, setSecrets] = useState({});
+  const [otp, setOtp] = useState("");
+  const [left, setLeft] = useState(30);
+  /* ⚠ SO'RALGANLAR RO'YXATI ALOHIDA (`ref`), holatda emas: holat
+     yangilangunicha effekt qayta ishga tushib, o'sha do'kon uchun sirni
+     IKKINCHI marta so'rardi. */
+  const asked = useRef({});
+
+  useEffect(() => {
+    const id = picked?.id;
+    if (!id || asked.current[id]) return undefined;
+    asked.current[id] = true;
+    let alive = true;
+    appApi.cardSecret(id)
+      /* ⚠ `call()` JAVOB TANASINI EMAS, `data` ni qaytaradi. */
+      .then((r) => { if (alive) setSecrets((p) => ({ ...p, [id]: r || null })); })
+      /* Xato JIMGINA yutiladi: karta qat'iy kod bilan baribir ishlaydi. */
+      .catch(() => { if (alive) setSecrets((p) => ({ ...p, [id]: null })); });
+    return () => { alive = false; };
+  }, [picked?.id]);
+
+  const cfg = picked?.id ? secrets[picked.id] : null;
+
+  useEffect(() => {
+    if (!cfg?.secret) { setOtp(""); return undefined; }
+    let stopped = false;
+    const period = cfg.periodSeconds || 30;
+
+    const tick = async () => {
+      try {
+        const code = await totpNow(cfg.secret, period);
+        if (!stopped) setOtp(code);
+      } catch (_) {
+        /* `crypto.subtle` yo'q (HTTPS bo'lmagan kontekst) — qat'iy kodga
+           tushamiz, karta baribir ishlaydi. */
+        if (!stopped) setOtp("");
+      }
+    };
+
+    tick();
+    const timer = setInterval(() => {
+      const s = secondsLeft(period);
+      setLeft(s);
+      if (s === period) tick();
+    }, 1000);
+    return () => { stopped = true; clearInterval(timer); };
+  }, [cfg]);
+
+  /* Skanerlanadigan qiymat: sir bo'lsa aylanma, bo'lmasa eskicha. */
+  const cardValue = picked
+    ? "EKC-" + picked.cardCode + (otp ? "-" + otp : "")
+    : "";
+
+  /* ⚠ RASMLAR KESHLANADI. Orqa hisob har soniyada yangilanadi, ya'ni
+     ekran ham har soniyada qayta chiziladi — QR va shtrixni har safar
+     qaytadan yasash telefonni bekorga qizdirardi. Ular faqat KOD
+     o'zgarganda (30 soniyada bir marta) yangilanadi. */
+  const qrHtml  = useMemo(() => (cardValue ? qrSvg(cardValue, { size: 180, margin: 1 }) : ""), [cardValue]);
+  const barHtml = useMemo(() => (cardValue ? code128Svg(cardValue) : ""), [cardValue]);
+
   return (
     <div className="cu-screen">
       <div className="cu-hero">
@@ -186,12 +268,21 @@ function CardScreen({ me, shops }) {
               Kartadagi kichik kodni xira telefondan skaner ololmasdi. */}
           <button type="button" className="ek-code-btn cu-code__qr"
                   onClick={() => setZoom("qr")} aria-label="QR kodni kattalashtirish"
-                  dangerouslySetInnerHTML={{ __html: qrSvg("EKC-" + picked.cardCode, { size: 180, margin: 1 }) }} />
+                  dangerouslySetInnerHTML={{ __html: qrHtml }} />
           <button type="button" className="ek-code-btn cu-code__bars"
                   onClick={() => setZoom("bar")} aria-label="Shtrix kodni kattalashtirish"
-                  dangerouslySetInnerHTML={{ __html: code128Svg("EKC-" + picked.cardCode) }} />
+                  dangerouslySetInnerHTML={{ __html: barHtml }} />
           <div className="cu-code__num">{picked.cardCode}</div>
-          <p className="cu-muted cu-center">Kassada shu kodni ko'rsating — kattalashtirish uchun bosing</p>
+          {/* ⚠ Orqa hisob KO'RINADI. Kod jimgina yangilansa, mijoz
+              skanerlanmagan kodni ushlab turib «buzuq» deb o'ylardi;
+              hisoblagich esa «hozir yangilanadi, kutib turing» deydi. */}
+          {otp ? (
+            <p className="cu-muted cu-center">
+              Kassada shu kodni ko'rsating · <b>{left} s</b> dan keyin yangilanadi
+            </p>
+          ) : (
+            <p className="cu-muted cu-center">Kassada shu kodni ko'rsating — kattalashtirish uchun bosing</p>
+          )}
           <div className="cu-code__bonus">
             <span>Shu do'kondagi ball</span><b>{money(picked.bonusBalance)}</b>
           </div>
@@ -216,7 +307,7 @@ function CardScreen({ me, shops }) {
       )}
 
       {zoom && picked && (
-        <CodeZoom kind={zoom} value={"EKC-" + picked.cardCode}
+        <CodeZoom kind={zoom} value={cardValue}
                   caption={picked.cardCode} onClose={() => setZoom(null)} />
       )}
     </div>

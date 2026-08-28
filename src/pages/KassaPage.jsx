@@ -620,9 +620,14 @@ export default function KassaPage({ toast, refreshLowStock }) {
       if (!c?.id) throw new Error("not found");
       setCustomer(c);
       toast.success(t("kassa.cardAttached", { name: c.fullName || c.phone || "" }));
-    } catch (_) {
-      // Karta bor, lekin bu do'konga tegishli emas yoki o'chirilgan.
-      toast.info(t("kassa.cardNotFound"));
+    } catch (err) {
+      /* ⚠ IKKI XIL XATO, ikki xil ish. 400 — kod ESKIRGAN (aylanma
+         karta, V45): mijozdan ilovadagi ekranni qayta ko'rsatishni
+         so'rash kerak, mijozni qidirish emas. Serverning matni aynan
+         shuni aytadi, shuning uchun u o'zgartirilmasdan ko'rsatiladi.
+         Qolgani — karta bu do'konga tegishli emas yoki o'chirilgan. */
+      if (err?.status === 400 && err.message) toast.error(err.message);
+      else toast.info(t("kassa.cardNotFound"));
     }
   };
 

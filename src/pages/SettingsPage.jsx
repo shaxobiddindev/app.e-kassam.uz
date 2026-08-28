@@ -11,7 +11,6 @@ import UpdatePanel from "../components/UpdatePanel";
 import TelegramPanel from "../components/TelegramPanel";
 import HardwareSettings from "../components/HardwareSettings";
 import ScaleSettings from "../components/ScaleSettings";
-import ShopQrPanel from "../components/ShopQrPanel";
 import Select from "../components/ek/Select";
 import { DEFAULT_NEAR_EXPIRY_DAYS } from "../lib/ek-expiry";
 import { Field } from "../components/ui";
@@ -89,6 +88,8 @@ export default function SettingsPage({ toast }) {
   const [creditDueDays, setCreditDueDays] = useState("0");
   /* Mijozga qarz eslatmasi (V44). */
   const [creditRemind, setCreditRemind] = useState(false);
+  /* Bazaviy keshbek foizi (V45). "0" — keshbek yopiq. */
+  const [baseCashback, setBaseCashback] = useState("0");
   const [nonCashTolerance, setNonCashTolerance] = useState("");
   const [stockTolerance, setStockTolerance] = useState("");
   const [nearExpiry, setNearExpiry] = useState("");
@@ -102,6 +103,7 @@ export default function SettingsPage({ toast }) {
         setCreditLimit(String(r?.data?.defaultCreditLimit ?? 0));
         setCreditDueDays(String(r?.data?.creditDueDays ?? 0));
         setCreditRemind(Boolean(r?.data?.creditRemindEnabled));
+        setBaseCashback(String(r?.data?.baseCashbackPercent ?? 0));
         setNonCashTolerance(String(r?.data?.nonCashDiffTolerance ?? 0));
         setStockTolerance(String(r?.data?.stockDiffTolerance ?? 0));
         /* ⚠ Bo'sh ustun — STANDART (7 kun), nol emas. Nol ko'rsatilsa egasi
@@ -192,14 +194,6 @@ export default function SettingsPage({ toast }) {
         </Row>
       </Section>
 
-      {/* ── Mijoz uchun QR ────────────────────────────────────────────
-          ⚠ Bo'lim KASSIRGA HAM ko'rinadi: QR ni mijoz kassada so'raydi va
-          uni ko'rsatadigan odam — kassir. Yoqish/o'chirish esa faqat
-          rahbarga (`canManage`) — serverdagi qoida bilan bir xil. */}
-      <Section icon="fa-qrcode" title={t("qr.title")} hint={t("qr.settingsHint")}>
-        <ShopQrPanel toast={toast} canManage={isManager} />
-      </Section>
-
       <Section icon="fa-sliders" title={t("settings.interface")}>
         {/* Uch holat — shuning uchun `Select`, tugma emas: "avtomatik"
             ham to'la huquqli holat va uni tugma bilan ifodalab bo'lmaydi. */}
@@ -286,6 +280,19 @@ export default function SettingsPage({ toast }) {
                 xabar — uni ongli ravishda yoqish kerak. Izohda mijoz
                 aynan nima olishi yozilgan: egasi nomidan ketadigan
                 matnni ko'rmasdan yoqishi to'g'ri bo'lmasdi. */}
+            {/* ⚠ BAZAVIY keshbek (V45) — sodiqlik darajasidan MUSTAQIL.
+                Ilgari keshbek faqat daraja jadvali orqali berilardi va
+                «hamma xaridga 1%» degan eng oddiy istak uchun ham do'kon
+                `minSpent = 0` li qator qo'shishi kerak edi — aksariyati
+                buni qilmasdi. Daraja bo'lsa ikkisining KATTAROG'I
+                olinadi: daraja faqat oshiradi. */}
+            <Row label={t("settings.baseCashback")} hint={t("settings.baseCashbackHint")}>
+              <Field kind="percent" className="form-input ek-num"
+                     wrapStyle={{ width: 100 }}
+                     value={baseCashback}
+                     onChange={(e) => setBaseCashback(e.target.value)}
+                     onBlur={saveField(shopApi.setBaseCashback, baseCashback)} />
+            </Row>
             <Row label={t("settings.creditRemind")} hint={t("settings.creditRemindHint")}>
               <button
                 type="button"

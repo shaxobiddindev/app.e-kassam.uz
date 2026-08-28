@@ -96,6 +96,10 @@ export const appApi = {
   me:         ()      => call("/me"),
   updateMe:   (data)  => call("/me", { method: "PUT", body: data }),
   shops:      ()      => call("/shops"),
+  /* Aylanma karta siri (V45) — bir marta olinadi, keyin kod ILOVADA,
+     oflaynda yasaladi. ⚠ Bu chaqiruvdan keyin server o'sha kartadan
+     TOTP talab qila boshlaydi. */
+  cardSecret: (id)    => call(`/shops/${id}/card-secret`, { method: "POST" }),
 
   /* ── Cheklar ──
      ⚠ Lenta HAMMA do'kon bo'yicha bitta ro'yxat (server qo'shib beradi),
