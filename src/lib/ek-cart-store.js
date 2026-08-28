@@ -124,9 +124,13 @@ export function describe(items) {
     .slice(0, 1000);
 }
 
-/** Savat jami summasi. */
+/** Savat jami summasi — qator chegirmalari AYRILGAN holda (V48).
+    Kassir savatda narxni tushirgan bo'lsa, savat yorlig'ida eski summa
+    turishi uni chalkashtirardi: yorliqda bir raqam, to'lov oynasida
+    boshqasi. */
 export function totalOf(items) {
-  return (items || []).reduce((sum, i) => sum + (Number(i.salePrice) || 0) * (Number(i.qty) || 0), 0);
+  return (items || []).reduce((sum, i) => sum + Math.max(0,
+    (Number(i.salePrice) || 0) * (Number(i.qty) || 0) - (Number(i.discount) || 0)), 0);
 }
 
 /** Barcha savatlardagi tovarlar — eskirgan savatni jurnalga yozish uchun. */

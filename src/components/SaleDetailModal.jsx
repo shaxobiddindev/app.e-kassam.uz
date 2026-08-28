@@ -25,6 +25,12 @@ function PayLabel({ type }) {
 export default function SaleDetailModal({ sale, onClose, onReprint, printing = false }) {
   if (!sale) return null;
   const st = saleStatus(sale.status);
+  /* ⚠ CHEGIRMA USTUNI FAQAT KERAK BO'LGANDA (V48). Server chek
+     chegirmasini, sodiqlik chegirmasini va ballni QATORLARGA taqsimlab
+     saqlaydi — «umumiy summadan 50 ming tushdi, qaysi tovarga qanchadan
+     tushdi?» degan savolning javobi shu yerda. Chegirmasiz chekda esa
+     bo'sh ustun jadvalni bekorga toraytirardi. */
+  const hasDiscount = (sale.items || []).some((i) => Number(i.discountAmount) > 0);
 
   return (
     <Modal
@@ -64,17 +70,36 @@ export default function SaleDetailModal({ sale, onClose, onReprint, printing = f
       <div className="table-wrap">
         <table>
           <thead>
-            <tr><th>{t("products.col")}</th><th>{t("common.count")}</th><th>{t("sales.colPrice")}</th><th>{t("common.total")}</th></tr>
+            <tr>
+              <th>{t("products.col")}</th>
+              <th>{t("common.count")}</th>
+              <th>{t("sales.colPrice")}</th>
+              {hasDiscount && <th>{t("kassa.discount")}</th>}
+              <th>{t("common.total")}</th>
+            </tr>
           </thead>
           <tbody>
-            {(sale.items || []).map((item, i) => (
-              <tr key={i}>
-                <td className="fw-700">{item.productName}</td>
-                <td><Badge color="blue">{item.quantity}</Badge></td>
-                <td className="mono">{money(item.price)}</td>
-                <td className="mono fw-700 text-blue">{money(item.subtotal)}</td>
-              </tr>
-            ))}
+            {(sale.items || []).map((item, i) => {
+              const disc = Number(item.discountAmount) || 0;
+              /* «Jami» — mijoz SHU qator uchun to'lagan summa: chegirma
+                 ayrilgandan keyingisi. Ilgari bu yerda chegirmadan
+                 OLDINGI summa turardi va qatorlar yig'indisi chekning
+                 jamisiga to'g'ri kelmasdi. */
+              const net = Math.max(0, (Number(item.subtotal) || 0) - disc);
+              return (
+                <tr key={i}>
+                  <td className="fw-700">{item.productName}</td>
+                  <td><Badge color="blue">{item.quantity}</Badge></td>
+                  <td className="mono">{money(item.price)}</td>
+                  {hasDiscount && (
+                    <td className="mono" style={{ color: disc > 0 ? "var(--red)" : "var(--text3)" }}>
+                      {disc > 0 ? `−${money(disc)}` : "—"}
+                    </td>
+                  )}
+                  <td className="mono fw-700 text-blue">{money(net)}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

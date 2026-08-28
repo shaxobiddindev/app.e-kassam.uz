@@ -38,8 +38,16 @@ function saleToReceipt(sale) {
       name:      i.productName,
       qty:       i.quantity,
       salePrice: i.price,
+      /* ⚠ QATOR CHEGIRMASI SERVERDAN OLINADI (V48). Server chek
+         chegirmasini ham, kassir tushirgan narxni ham qatorga yozib
+         qo'ygan — qayta chop etilgan chek dastlabkisi bilan bir xil
+         chiqishi uchun aynan shu raqam kerak. */
+      discount:  Number(i.discountAmount) || 0,
     })),
     total:    sale.totalAmount,
+    // Chegirmalar qatorlarda turadi, shuning uchun «Jami» ni hisoblab
+    // chiqarmasdan serverdagi qiymatni olamiz.
+    subtotal: sale.subtotalAmount,
     payType:  sale.paymentType,
     customer: sale.customerName ? { fullName: sale.customerName } : null,
     shopName: localStorage.getItem("ek_shopName") || localStorage.getItem("ek_shopCode") || "",

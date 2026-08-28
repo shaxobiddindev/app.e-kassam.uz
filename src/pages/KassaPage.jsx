@@ -8,6 +8,7 @@ import { money, quantity as fmtQty } from "../utils";
 import { unitLabel } from "../lib/ek-labels";
 import ProductTile from "../components/ProductTile";
 import QuantityModal from "../components/QuantityModal";
+import LinePriceModal from "../components/LinePriceModal";
 import MarkingScanModal from "../components/MarkingScanModal";
 import { Empty, ClearButton } from "../components/ui";
 import { useKeyboard } from "../context/KeyboardProvider";
@@ -25,6 +26,7 @@ import Modal from "../components/Modal";
 import { PhoneField } from "../components/ek/EkFields";
 import Select from "../components/ek/Select";
 import { printReceipt, openDrawer } from "../lib/ek-hardware";
+import { spreadDiscount } from "../lib/ek-discount";
 import { useScanner } from "../hooks/useScanner";
 import { isDesktop } from "../lib/ek-desktop";
 import { NumField } from "../components/ek/EkFields";
@@ -258,6 +260,8 @@ export default function KassaPage({ toast, refreshLowStock }) {
     });
   };
   const [qtyModal, setQtyModal]     = useState(null);   // { product, initial }
+  /* Qator narxini tushirish (V48) — `null` bo'lsa oyna yopiq. */
+  const [priceModal, setPriceModal] = useState(null);
   const [markModal, setMarkModal]   = useState(null);   // { product } — DataMatrix
 
   const barcodeRef  = useRef(null);
@@ -859,8 +863,11 @@ export default function KassaPage({ toast, refreshLowStock }) {
       const exists = prev.find((i) => i.id === product.id);
       // Bir xil tovar ikkinchi marta → miqdor oshadi, yangi satr yaratilmaydi
       if (exists) {
+        const next = round3(exists.qty + amount);
+        // Narxi tushirilgan qatorga yana bir dona qo'shilsa, chegirma
+        // ham o'sha DONA narxida qoladi — quyidagi izohga qarang.
         return prev.map((i) => (i.id === product.id
-          ? { ...i, qty: round3(i.qty + amount), _pulse: Date.now() }
+          ? { ...i, qty: next, ...rescaleDiscount(i, next), _pulse: Date.now() }
           : i));
       }
       return [...prev, { ...product, qty: round3(amount), _added: Date.now() }];
@@ -880,6 +887,21 @@ export default function KassaPage({ toast, refreshLowStock }) {
      Endi miqdor 0 ga TUSHMAYDI — 1 dan pastga urinish qo'riqlanadigan
      `removeFromCart` ga yo'naltiriladi. Shu bilan savatdan chiqishning
      YAGONA yo'li qoladi va uni yopib qo'yish yetarli. */
+  /* ⚠ QATOR CHEGIRMASI MIQDOR BILAN BIRGA QAYTA HISOBLANADI (V48).
+     Chegirma qator bo'yicha JAMI summa, miqdor esa keyin o'zgarishi
+     mumkin. Kassir 2 dona uchun narxni tushirib, keyin miqdorni 3 ga
+     oshirsa, eski jami chegirma uch donaga tarqalib, dona narxi o'zidan
+     o'zi yana arzonlashib ketardi. Shuning uchun kassir qo'ygan DONA
+     narxi saqlanadi, jami esa yangi miqdorga qarab qayta olinadi. */
+  const rescaleDiscount = (i, nextQty) => {
+    const d = Number(i.discount) || 0;
+    const q = Number(i.qty) || 0;
+    if (d <= 0 || q <= 0) return {};
+    // Chegirma qator jamisidan oshmasligi kerak — chek manfiyga tushmasin.
+    const scaled = Math.round((d / q) * nextQty * 100) / 100;
+    return { discount: Math.min(scaled, i.salePrice * nextQty) };
+  };
+
   const updateQty = (id, delta) => {
     const item = cart.find((i) => i.id === id);
     if (!item) return;
@@ -892,7 +914,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
       const rest = (item.markingCodes || []).slice(0, -1);
       if (rest.length === 0) { removeFromCart(id); return; }
       setCart((prev) => prev.map((i) => (i.id === id
-        ? { ...i, markingCodes: rest, qty: rest.length } : i)));
+        ? { ...i, markingCodes: rest, qty: rest.length, ...rescaleDiscount(i, rest.length) } : i)));
       return;
     }
 
@@ -904,7 +926,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
     if (next <= 0) { removeFromCart(id); return; }
     const shortage = stockError(item, next);
     if (shortage) { toast.error(shortage); return; }
-    setCart((prev) => prev.map((i) => (i.id === id ? { ...i, qty: next } : i)));
+    setCart((prev) => prev.map((i) => (i.id === id ? { ...i, qty: next, ...rescaleDiscount(i, next) } : i)));
   };
 
   /**
@@ -932,7 +954,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
     const exists = cart.find((i) => i.id === product.id);
     if (exists) {
       setCart((prev) => prev.map((i) => (i.id === product.id
-        ? { ...i, qty: round3(value), _pulse: Date.now() } : i)));
+        ? { ...i, qty: round3(value), ...rescaleDiscount(i, round3(value)), _pulse: Date.now() } : i)));
       return;
     }
     addToCart(product, value);
@@ -1007,12 +1029,39 @@ export default function KassaPage({ toast, refreshLowStock }) {
     setActiveId(rest[Math.min(idx, rest.length - 1)].id);
   };
 
+  /* Qatorning chegirmadan KEYINGI dona narxi — savatda shu ko'rinadi. */
+  const unitPriceOf = (i) => {
+    const q = Number(i.qty) || 0;
+    const d = Number(i.discount) || 0;
+    return q > 0 ? Math.max(0, i.salePrice - d / q) : i.salePrice;
+  };
+  /* ⚠ «Oraliq jami» — chegirmalardan OLDINGI summa (server ham shunday
+     hisoblaydi): chek chegirmasi foizini aynan shundan olish kerak. */
   const subtotal = cart.reduce((sum, i) => sum + i.salePrice * i.qty, 0);
+  /* Qator chegirmalari jami — to'lov oynasida alohida ko'rsatiladi. */
+  const lineDiscounts = cart.reduce((sum, i) => sum + (Number(i.discount) || 0), 0);
+  /* ⚠ QATOR CHEGIRMALARIDAN KEYINGI summa (V48) — chek chegirmasi
+     AYNAN shundan olinadi. Serverda ham tartib shunday: avval qator
+     chegirmalari, keyin chek chegirmasi. Aks holda ikkalasi bir xil
+     bazadan hisoblanib, jami manfiyga tushib ketishi mumkin edi. */
+  const afterLines = Math.max(0, subtotal - lineDiscounts);
   /* Chegirma savat jamidan oshib keta olmaydi — aks holda chek manfiy
      summaga aylanardi. Server ham buni rad etadi; bu yerdagi cheklov
      kassirga darhol ko'rinadigan javob berish uchun. */
-  const discountNum = Math.max(0, Math.min(Number(discount) || 0, subtotal));
-  const afterDiscount = subtotal - discountNum;
+  const discountNum = Math.max(0, Math.min(Number(discount) || 0, afterLines));
+  const afterDiscount = afterLines - discountNum;
+  /* ⚠ CHEGIRMA QAYSI TOVARGA QANCHADAN TUSHDI (V48).
+     «Umumiy summadan 50 ming tushiray» deyilganda savol darhol
+     tug'iladi: ertaga shu chekdan bitta tovar qaytarilsa, qancha pul
+     qaytariladi? Server chek chegirmasini qatorlarga taqsimlaydi
+     (`SaleService.distributeSaleDiscount`) va qaytarish AYNAN shu
+     taqsimotdan hisoblanadi. Shuning uchun bu yerdagi hisob — o'sha
+     qoidaning nusxasi (`ek-discount.js`): kassir uni to'lovdan OLDIN
+     ko'radi va chekdagi raqamlar bilan bir xil chiqadi. */
+  const discountSplit = useMemo(
+    () => spreadDiscount(cart, discountNum),
+    [cart, discountNum],
+  );
 
   /* ── Ball ─────────────────────────────────────────────────────────────
      ⚠ Chegara SERVERDA hisoblanadi va shu yerdagi raqam faqat kassirga
@@ -1098,6 +1147,10 @@ export default function KassaPage({ toast, refreshLowStock }) {
       items: cart.map((i) => ({
         productId: i.id,
         quantity: i.qty,
+        /* Qator chegirmasi — kassir narxni tushirgan bo'lsa (`LinePriceModal`).
+           Serverda ham aynan SUMMA saqlanadi: foiz saqlansa, keyin narx
+           o'zgarganda eski chek boshqacha o'qilardi. */
+        ...(i.discount > 0 ? { discountAmount: i.discount } : {}),
         // Markirovkasiz tovarda maydon umuman yuborilmaydi.
         ...(i.markingCodes?.length ? { markingCodes: i.markingCodes } : {}),
       })),
@@ -1587,11 +1640,22 @@ export default function KassaPage({ toast, refreshLowStock }) {
                       {/* Tarozili tovarda "0.35 kg × 95 000" — faqat jami
                           summani ko'rsatish kassirni ham, mijozni ham
                           tekshirish imkonidan mahrum qilardi. */}
-                      <div className="cart-item-price ek-num">
+                      {/* ⚠ NARX BOSILADI (V48): «belgilangan narxdan
+                          arzonroq berish» aynan shu yerda bo'ladi.
+                          Chegirma qo'yilgan bo'lsa, ESKI narx ustidan
+                          chizilgan holda qoladi — kassir ham, mijoz ham
+                          nima o'zgarganini ko'rishi kerak. */}
+                      <button type="button" className="cart-item-price ek-num cart-item-price--edit"
+                              onClick={() => setPriceModal(item)}
+                              title={t("kassa.linePrice")}
+                              aria-label={`${item.name} — ${t("kassa.linePrice")}`}>
+                        {item.discount > 0 && (
+                          <s className="cart-item-price__was">{money(item.salePrice)}</s>
+                        )}
                         {isDivisible(item)
-                          ? `${fmtQty(item.qty, item.unitDecimals)} ${unitLabel(item.unit)} × ${money(item.salePrice)}`
-                          : money(item.salePrice)}
-                      </div>
+                          ? `${fmtQty(item.qty, item.unitDecimals)} ${unitLabel(item.unit)} × ${money(unitPriceOf(item))}`
+                          : money(unitPriceOf(item))}
+                      </button>
                     </div>
                     <div className="qty-ctrl">
                       <button className="qty-btn" aria-label={t("kassa.decrease")} onClick={() => updateQty(item.id, -1)}>−</button>
@@ -1825,6 +1889,19 @@ export default function KassaPage({ toast, refreshLowStock }) {
         </div>
       )}
 
+      {/* ════ QATOR NARXI (V48) ════ */}
+      {priceModal && (
+        <LinePriceModal
+          item={priceModal}
+          onClose={() => setPriceModal(null)}
+          onApply={(discount) => {
+            setCart((prev) => prev.map((i) => (i.id === priceModal.id
+              ? { ...i, discount, _pulse: Date.now() } : i)));
+            setPriceModal(null);
+          }}
+        />
+      )}
+
       {/* ════ YANGI MIJOZ (V47) ════ */}
       {newCust && (
         <Modal
@@ -1882,16 +1959,44 @@ export default function KassaPage({ toast, refreshLowStock }) {
               <div className="pay-modal-section-label">
                 <i className="fa-solid fa-tag" aria-hidden="true" /> {t("kassa.discount")}
               </div>
-              <NumField kind="money" max={subtotal}
+              {/* ⚠ CHEGARA `afterLines` (V48): kassir savatda ayrim
+                  qatorlar narxini allaqachon tushirgan bo'lishi mumkin.
+                  Chek chegirmasi shundan KEYINGI summadan olinadi —
+                  serverdagi tartib ham shunday. */}
+              <NumField kind="money" max={afterLines}
                 className="form-input pay-mixed-input ek-num"
                 value={discount}
                 onChange={(e) => setDiscount(e.target.value)}
                 placeholder="0"
               />
+              {/* Qatorda tushirilgan narx ham chegirma — kassir uni
+                  ko'rmasa, chek chegirmasini yana ustiga qo'shib
+                  yuborardi. */}
+              {lineDiscounts > 0 && (
+                <div className="pay-modal-hint">
+                  <i className="fa-solid fa-tags" style={{ marginRight: 4 }} aria-hidden="true" />
+                  {t("kassa.lineDiscounts")}: −{money(lineDiscounts)}
+                </div>
+              )}
               {discountNum > 0 && (
                 <div className="pay-modal-hint">
-                  {money(subtotal)} − {money(discountNum)}
+                  {money(afterLines)} − {money(discountNum)}
                 </div>
+              )}
+              {/* Bitta tovarli chekda taqsimotni ko'rsatishning ma'nosi
+                  yo'q — hammasi o'sha bitta qatorga tushadi. */}
+              {discountNum > 0 && cart.length > 1 && (
+                <details className="disc-split">
+                  <summary>{t("kassa.discountSplit")}</summary>
+                  <ul className="disc-split__list">
+                    {cart.map((i, idx) => (
+                      <li key={i.id}>
+                        <span className="disc-split__name">{i.name}</span>
+                        <span className="disc-split__val">−{money(discountSplit[idx])}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
               )}
               {/* ⚠ Ball to'lov oynasida ham ko'rinadi: kassir yakuniy
                   summani aytishdan oldin nima hisobidan kamayganini

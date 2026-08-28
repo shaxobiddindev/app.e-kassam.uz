@@ -24,6 +24,7 @@ import { t } from "./ek-i18n";
 import { money, quantity } from "../utils";
 import { paymentLabel, unitLabel } from "./ek-labels";
 import { code128Svg, saleCode } from "./ek-barcode";
+import { spreadDiscount } from "./ek-discount";
 /* Brauzer cheki uchun QR (V34). ESC/POS printerda QR ni apparatning O'ZI
    chizadi (`Receipt.qr`), brauzerda esa SVG kerak. */
 import { qrSvg } from "./ek-qr";
@@ -121,19 +122,39 @@ export function buildReceipt({ saleId, serverSaleId, cart = [], total = 0, subto
   if (cashier) r.row(t("kassa.receiptCashier"), cashier);
   r.rule();
 
-  for (const i of cart) {
+  /* ⚠ CHEK CHEGIRMASI QATORLARGA TAQSIMLANADI (V48).
+     Chekda faqat «Chegirma −50 000» tursa, mijoz ham, do'kon ham
+     ertaga bitta tovarni qaytarganda qancha pul qaytishini bilmaydi.
+     Server chegirmani qatorlarga taqsimlab saqlaydi va qaytarish AYNAN
+     shundan hisoblanadi — chek ham xuddi o'sha raqamlarni ko'rsatishi
+     kerak (`ek-discount.js` — serverdagi qoidaning nusxasi). */
+  const shares = spreadDiscount(cart, discount);
+
+  cart.forEach((i, idx) => {
     // Tovar nomi ALOHIDA qatorda: uzun nomlar narx ustuniga bosim qilmasin.
     r.wrap(i.name);
     // Miqdor birligi bilan: "0.35 kg x 95 000". Birliksiz "0.35 x 95 000"
     // mijozga nima sotilganini aytmasdi.
     const qtyText = `${quantity(i.qty, i.unitDecimals)}${i.unit ? " " + unitLabel(i.unit) : ""}`;
     r.row(`  ${qtyText} x ${money(i.salePrice)}`, money(i.salePrice * i.qty));
-  }
+
+    /* Qator chegirmasi = kassir tushirgan narx + chek chegirmasidan
+       tushgan ulush. Chegirmasiz qatorda satr umuman chiqmaydi —
+       chekni bekorga uzaytirmaslik uchun. */
+    const lineDisc = (Number(i.discount) || 0) + (shares[idx] || 0);
+    if (lineDisc > 0) r.row(`    ${t("kassa.discount")}`, "-" + money(lineDisc));
+  });
 
   r.rule();
-  if (discount > 0) {
-    r.row(t("kassa.receiptSubtotal"), money(subtotal ?? (total + discount)));
-    r.row(t("kassa.discount"), "-" + money(discount));
+  /* ⚠ JAMI CHEGIRMA — qator chegirmalari BILAN birga (V48). Ilgari bu
+     yerda faqat chek chegirmasi turardi va kassir narxni qatorda
+     tushirgan bo'lsa, chekdagi «Jami − Chegirma» ayirmasi yakuniy
+     summaga to'g'ri kelmasdi. */
+  const lineDisc = cart.reduce((sum, i) => sum + (Number(i.discount) || 0), 0);
+  const discTotal = discount + lineDisc;
+  if (discTotal > 0) {
+    r.row(t("kassa.receiptSubtotal"), money(subtotal ?? (total + discTotal)));
+    r.row(t("kassa.discount"), "-" + money(discTotal));
   }
   r.bold().double().row(t("kassa.receiptTotal"), money(total)).double(false).bold(false);
   r.row(t("kassa.receiptPayment"), paymentLabel(payType));
@@ -524,9 +545,20 @@ function printInBrowser({ saleId, serverSaleId, cart = [], total = 0, subtotal, 
   const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
-  const rows = cart.map((i) => {
+  /* Chek chegirmasi qatorlarga taqsimlanadi — `buildReceipt` dagi bilan
+     BIR XIL qoida (`ek-discount.js`). Brauzer cheki apparat chekidan
+     boshqacha raqam ko'rsatsa, ikkalasi ham ishonchini yo'qotardi. */
+  const shares = spreadDiscount(cart, discount);
+  const lineDiscTotal = cart.reduce((sum, i) => sum + (Number(i.discount) || 0), 0);
+  const discTotal = discount + lineDiscTotal;
+
+  const rows = cart.map((i, idx) => {
     const qtyText = `${quantity(i.qty, i.unitDecimals)}${i.unit ? " " + unitLabel(i.unit) : ""}`;
-    return `<div class="row"><span>${esc(i.name)} × ${esc(qtyText)}</span><span>${esc(money(i.salePrice * i.qty))}</span></div>`;
+    const lineDisc = (Number(i.discount) || 0) + (shares[idx] || 0);
+    return `<div class="row"><span>${esc(i.name)} × ${esc(qtyText)}</span><span>${esc(money(i.salePrice * i.qty))}</span></div>`
+      + (lineDisc > 0
+          ? `<div class="row sub"><span>${esc(t("kassa.discount"))}</span><span>-${esc(money(lineDisc))}</span></div>`
+          : "");
   }).join("");
 
   /* ⚠ QARZ TO'LOVI — BOSHQA HUJJAT: tovar qatorlari, QQS va chek raqami
@@ -567,6 +599,8 @@ function printInBrowser({ saleId, serverSaleId, cart = [], total = 0, subtotal, 
       .hr { border:none; border-top:1px dashed #000; margin:6px 0; }
       .row { display:flex; justify-content:space-between; padding:2px 0; gap:8px; }
       .row span:last-child { white-space: nowrap; }
+      /* Qatorga tushgan chegirma — tovar ostida, ichkariroq surilgan. */
+      .row.sub { padding-left: 10px; font-size: 11px; }
       .logo { font-size:15px; font-weight:800; letter-spacing:.5px; }
       .off { margin-top:6px; padding:4px; border:1px dashed #000; font-size:10px; text-align:center; }
       .no { font-size:13px; font-weight:800; }
@@ -584,8 +618,8 @@ function printInBrowser({ saleId, serverSaleId, cart = [], total = 0, subtotal, 
       <div class="hr"></div>
       ${rows}
       <div class="hr"></div>
-      ${discount > 0 ? `<div class="row"><span>${esc(t("kassa.receiptSubtotal"))}</span><span>${esc(money(subtotal ?? (total + discount)))}</span></div>
-      <div class="row"><span>${esc(t("kassa.discount"))}</span><span>-${esc(money(discount))}</span></div>` : ""}
+      ${discTotal > 0 ? `<div class="row"><span>${esc(t("kassa.receiptSubtotal"))}</span><span>${esc(money(subtotal ?? (total + discTotal)))}</span></div>
+      <div class="row"><span>${esc(t("kassa.discount"))}</span><span>-${esc(money(discTotal))}</span></div>` : ""}
       <div class="row"><b>${esc(t("kassa.receiptTotal"))}</b><b>${esc(money(total))}</b></div>
       <div class="row"><span>${esc(t("kassa.receiptPayment"))}</span><span>${esc(paymentLabel(payType))}</span></div>
       ${customer?.fullName ? `<div class="row"><span>${esc(t("kassa.receiptCustomer"))}</span><span>${esc(customer.fullName)}</span></div>` : ""}

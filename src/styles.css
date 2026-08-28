@@ -660,6 +660,35 @@ select.form-input { cursor: pointer; }
 .cart-item-info  { flex: 1; min-width: 0; }
 .cart-item-name  { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cart-item-price { font-size: 12px; color: var(--text2); font-family: var(--mono); }
+/* Savatdagi NARX bosiladi — «belgilangan narxdan arzonroq berish» (V48).
+   Tugma ekani ko'rinib turishi kerak, aks holda kassir bu imkoniyat
+   borligini bilmasdi; shu bilan birga u oddiy matndek yengil qolishi
+   kerak — savatda asosiy narsa tovar nomi. */
+.cart-item-price--edit { display: block; width: 100%; text-align: left; padding: 1px 0;
+                         background: none; border: none; cursor: pointer; color: var(--text2);
+                         border-bottom: 1px dashed transparent; transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out); }
+.cart-item-price--edit:hover { color: var(--blue); border-bottom-color: var(--blue); }
+.cart-item-price--edit:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; border-radius: 4px; }
+/* Eski narx ustidan chizilgan holda QOLADI: kassir ham, mijoz ham
+   qanchadan qanchaga tushganini ko'rishi kerak. */
+.cart-item-price__was { color: var(--text3); text-decoration-thickness: 1px; margin-right: 6px; }
+
+/* ── Chegirma taqsimoti (V48) ──────────────────────────────────────────
+   «Umumiy summadan 50 ming tushiray» deyilganda darhol savol tug'iladi:
+   qaysi tovarga qanchadan tushdi? Javob to'lov oynasida, to'lovdan
+   OLDIN turadi va serverdagi taqsimot bilan bir xil. */
+.disc-split { margin: 8px 0 14px; font-size: 12px; }
+.disc-split > summary { cursor: pointer; color: var(--blue); font-weight: 700; list-style: none; padding: 4px 0; }
+.disc-split > summary::-webkit-details-marker { display: none; }
+/* Belgi — oddiy BELGI, Font Awesome emas: shrift kech yuklansa yoki
+   umuman kelmasa (oflayn kassa) bo'sh katakcha qolib ketardi. */
+.disc-split > summary::before { content: "\25B8"; display: inline-block; margin-right: 6px;
+                                transition: transform var(--dur-fast) var(--ease-out); }
+.disc-split[open] > summary::before { transform: rotate(90deg); }
+.disc-split__list { list-style: none; margin: 4px 0 0; padding: 8px 10px; background: var(--bg-sunken); border-radius: 8px; display: grid; gap: 5px; }
+.disc-split__list li { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.disc-split__name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text2); }
+.disc-split__val { font-family: var(--font-mono); font-weight: 700; color: var(--fg-danger, var(--red)); white-space: nowrap; }
 .qty-ctrl        { display: flex; align-items: center; gap: 7px; }
 /* 06-APP-KASSIR.md — miqdor tugmalari 40px */
 .qty-btn         { width: var(--hit-md); height: var(--hit-md); border-radius: 9px; border: 1.5px solid var(--border); background: var(--bg-surface); font-size: 17px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--text); line-height: 1;
