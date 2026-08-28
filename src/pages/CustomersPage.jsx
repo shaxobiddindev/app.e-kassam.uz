@@ -170,6 +170,11 @@ export default function CustomersPage({ toast }) {
     c.phone?.includes(search)
   );
 
+  /* Muddat qo'yilgan do'konda kamida bitta qarz kechikkanmi (V43).
+     Ustun shu holatda chiziladi: muddatsiz do'konda u har qatorda
+     chiziqcha ko'rsatib, jadvalni bekorga kengaytirardi. */
+  const hasOverdue = view === "debtors" && customers.some((c) => Number(c.overdue) > 0);
+
   return (
     <div>
       <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
@@ -215,7 +220,12 @@ export default function CustomersPage({ toast }) {
                       qarz yoshi turadi — bu ekranda aynan shu ikkisi
                       qaror qabul qilishga kerak. */}
                   {view === "debtors"
-                    ? <><th>{t("credit.limit")}</th><th>{t("credit.since")}</th></>
+                    ? <><th>{t("credit.limit")}</th><th>{t("credit.since")}</th>
+                        {/* Muddati o'tgan qism (V43) — do'kon muddat
+                            qo'ymagan bo'lsa ustun umuman chizilmaydi:
+                            har qatorda nol turgan ustun jadvalni
+                            kengaytiradi-yu, hech narsa aytmaydi. */}
+                        {hasOverdue && <th>{t("credit.overdue")}</th>}</>
                     : <th>{t("cust.totalSpent")}</th>}
                   <th>{t("credit.balance")}</th>
                   <th></th>
@@ -243,6 +253,13 @@ export default function CustomersPage({ toast }) {
                               ? <span className="text-muted">—</span>
                               : <span className="mono">{t("credit.daysAgo").replace("{n}", daysSince(c.lastChargeAt))}</span>}
                           </td>
+                          {hasOverdue && (
+                            <td>
+                              {Number(c.overdue) > 0
+                                ? <span className="mono fw-800" style={{ color: "var(--fg-danger)" }}>{money(c.overdue)}</span>
+                                : <span className="text-muted">—</span>}
+                            </td>
+                          )}
                         </>
                       ) : (
                         <td>

@@ -631,6 +631,10 @@ export const shopApi = {
   setBonusExpiryDays: (value) => request(`/shop/bonus-expiry-days?value=${value}`, { method: "PATCH" }),
   /** Omborda «muddati yaqin» oynasi, kunlarda (V41). 1..365. */
   setNearExpiryDays: (value) => request(`/shop/near-expiry-days?value=${value}`, { method: "PATCH" }),
+  /* Daraja qaysi oynadagi xariddan hisoblanadi (V43). `0` — umrbod. */
+  setLoyaltyWindowDays: (value) => request(`/shop/loyalty-window-days?value=${value}`, { method: "PATCH" }),
+  /* Nasiyani qaytarish muddati (V43). `0` — muddatsiz. */
+  setCreditDueDays: (value) => request(`/shop/credit-due-days?value=${value}`, { method: "PATCH" }),
   /** Do'kon jurnali. ⚠ `shopId` yuborilmaydi — server uni chaqiruvchining
       do'konidan oladi va so'rovdagisini e'tiborga olmaydi. */
   audit: ({ action, actor, page = 0, size = 50 } = {}) => {

@@ -85,6 +85,8 @@ export default function SettingsPage({ toast }) {
   const [discountLimit, setDiscountLimit] = useState("");
   const [returnDays, setReturnDays] = useState("");
   const [creditLimit, setCreditLimit] = useState("");
+  /* Nasiya muddati (V43), kunlarda. "0" — muddatsiz. */
+  const [creditDueDays, setCreditDueDays] = useState("0");
   const [nonCashTolerance, setNonCashTolerance] = useState("");
   const [stockTolerance, setStockTolerance] = useState("");
   const [nearExpiry, setNearExpiry] = useState("");
@@ -96,6 +98,7 @@ export default function SettingsPage({ toast }) {
         setDiscountLimit(String(r?.data?.maxDiscountPercent ?? 0));
         setReturnDays(String(r?.data?.returnDays ?? 0));
         setCreditLimit(String(r?.data?.defaultCreditLimit ?? 0));
+        setCreditDueDays(String(r?.data?.creditDueDays ?? 0));
         setNonCashTolerance(String(r?.data?.nonCashDiffTolerance ?? 0));
         setStockTolerance(String(r?.data?.stockDiffTolerance ?? 0));
         /* ⚠ Bo'sh ustun — STANDART (7 kun), nol emas. Nol ko'rsatilsa egasi
@@ -236,6 +239,18 @@ export default function SettingsPage({ toast }) {
                      value={creditLimit}
                      onChange={(e) => setCreditLimit(e.target.value)}
                      onBlur={saveField(shopApi.setCreditLimit, creditLimit)} />
+            </Row>
+            {/* ⚠ Muddat SAVDONI TO'SMAYDI — to'sish chegaraning ishi.
+                Muddat faqat «muddati o'tgan qarz» ko'rsatkichini yoqadi:
+                qarzdorlar ro'yxatida va bosh sahifada. Ikkalasini
+                aralashtirsak, kechikkan bitta chek butun mijozga savdoni
+                yopib qo'yardi va do'kon buni kutmasdi. */}
+            <Row label={t("settings.creditDueDays")} hint={t("settings.creditDueDaysHint")}>
+              <Field kind="int" className="form-input ek-num"
+                     wrapStyle={{ width: 100 }}
+                     value={creditDueDays}
+                     onChange={(e) => setCreditDueDays(e.target.value)}
+                     onBlur={saveField(shopApi.setCreditDueDays, creditDueDays)} />
             </Row>
           </>
         )}

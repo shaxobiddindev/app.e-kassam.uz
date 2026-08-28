@@ -150,6 +150,17 @@ export default function DashboardPage({ toast }) {
       count: money(sig.customerDebt.amount),
       onClick: () => navigate("/customers"),
     },
+    /* ⚠ MUDDATI O'TGAN qarz — umumiy qarzdan ALOHIDA va qizil. Mijoz
+       chegara ichida bo'lishi-yu, o'sha qarzni yarim yildan beri
+       to'lamayotgan bo'lishi mumkin; egasi uchun aynan shunisi
+       shoshilinch. Do'kon muddat qo'ymagan bo'lsa satr umuman
+       ko'rinmaydi. */
+    has(sig.overdueDebt) && {
+      id: "overdue", icon: "fa-clock", tone: "danger",
+      text: t("dash.sigOverdueDebt", { n: sig.overdueDebt.count }),
+      count: money(sig.overdueDebt.amount),
+      onClick: () => navigate("/customers"),
+    },
     !data?.totalSales && {
       id: "nosale", icon: "fa-cash-register", tone: "info",
       text: t("dash.noSales"), onClick: () => navigate("/sale"),

@@ -1597,7 +1597,16 @@ export default function KassaPage({ toast, refreshLowStock }) {
                   <i className="fa-solid fa-award" style={{ color: "var(--fg-warning)", marginRight: 6 }} />
                   {tier.tierName
                     ? <>{tier.tierName} · <b>{tier.discountPercent}%</b></>
-                    : <span className="text-muted">{t("loyalty.noTier")}</span>}
+                    : <span className="text-muted">{t("loyalty.noTier")}</span>}{" "}
+                  {/* ⚠ Daraja OYNADAN hisoblansa buni aytish shart (V43):
+                      aks holda mijoz «men bu do'kondan million so'mlik
+                      olganman, nega darajam yo'q?» deb so'raganda kassir
+                      javob topa olmasdi. */}
+                  {Number(tier.loyaltyWindowDays) > 0 && (
+                    <span className="text-muted" style={{ fontSize: 11, marginLeft: 6 }}>
+                      {t("loyalty.windowNote", { days: tier.loyaltyWindowDays })}
+                    </span>
+                  )}
                 </span>
                 {tier.toNextTier != null && (
                   <span className="text-muted mono" style={{ fontSize: 12 }}>
@@ -1625,6 +1634,13 @@ export default function KassaPage({ toast, refreshLowStock }) {
                 <span style={{ color: "var(--fg-danger)", fontWeight: 700 }}>
                   <i className="fa-solid fa-hand-holding-dollar" style={{ marginRight: 6 }} aria-hidden="true" />
                   {t("credit.balance")}: <b className="mono">{money(tier.debtBalance)}</b>
+                  {/* ⚠ MUDDATI O'TGAN qism alohida aytiladi (V43). Umumiy
+                      qarz «bor» degani, muddati o'tgani esa «so'rash
+                      kerak» degani — kassir uchun bu ikki xil holat. */}
+                  {Number(tier.overdueDebt) > 0 && (
+                    <> · <i className="fa-solid fa-clock" aria-hidden="true" />{" "}
+                      {t("credit.overdue")}: <b className="mono">{money(tier.overdueDebt)}</b></>
+                  )}
                 </span>
                 <span className="text-muted mono" style={{ fontSize: 12 }}>
                   {t("credit.limitFree")}: {money(Math.max(0, (Number(tier.creditLimit) || 0) - Number(tier.debtBalance)))}
