@@ -28,6 +28,7 @@ import { spreadDiscount } from "./ek-discount";
 /* Brauzer cheki uchun QR (V34). ESC/POS printerda QR ni apparatning O'ZI
    chizadi (`Receipt.qr`), brauzerda esa SVG kerak. */
 import { qrSvg } from "./ek-qr";
+import { shortDate } from "./ek-format";
 
 const KEY = "ek_hw";
 
@@ -500,6 +501,132 @@ export function buildPriceLabels(items = [], { copies = 1, shopName, width } = {
 
   r.cut();
   return r.build();
+}
+
+/* ── Muddat stikerlari (V48) ───────────────────────────────────────────── */
+/**
+ * MUDDATI YAQIN TOVARGA STIKER.
+ *
+ * ═══ NEGA ALOHIDA, NARX YORLIG'IDAN FARQLI ══════════════════════════════
+ *
+ * Narx yorlig'ida asosiy raqam — NARX; bu yerda esa SANA. Xodim javon
+ * oralab yurib, «bu qachon tugaydi?» degan savolga bir metr naridan
+ * javob topishi kerak. Shuning uchun sana ikki baravar shriftda, narx
+ * esa pastda kichik — ikkisi joyini almashsa, stikerning ma'nosi
+ * yo'qolardi.
+ *
+ * ⚠ QOG'OZ MASALASI. Chek lentasi YOPISHQOQ EMAS: uni tovarga yopishtirib
+ * bo'lmaydi, faqat javonga qo'yish mumkin. Shuning uchun brauzerda
+ * stikerlar A4 varaqqa KARTOCHKA bo'lib chiqadi — do'kon oddiy
+ * yopishqoq varaq oladi va oddiy printerda bosadi. Ish stolida
+ * (Tauri) esa chek printeri ham ishlatiladi: kimdadir shunisi bor.
+ *
+ * @param items [{ name, expiryDate, daysLeft, salePrice, barcode, qty, unit }]
+ */
+export async function printExpiryLabels(items = [], opts = {}) {
+  const list = (items || []).filter(Boolean);
+  if (!list.length) throw new Error(t("label.nothing"));
+  if (!isDesktop()) return printExpiryInBrowser(list, opts);
+  await send(buildExpiryLabels(list, opts));
+}
+
+/** Stiker lentasini ESC/POS baytlariga yig'adi (ish stoli yo'li). */
+export function buildExpiryLabels(items = [], { copies = 1, shopName, width } = {}) {
+  const list = (items || []).filter(Boolean);
+  if (!list.length) throw new Error(t("label.nothing"));
+
+  const s = getSettings();
+  const w = width ?? (s.width === 58 ? WIDTH_58 : WIDTH_80);
+  const r = new Receipt(w);
+  const n = Math.max(1, Math.min(20, Number(copies) || 1));
+
+  for (const item of list) {
+    for (let i = 0; i < n; i++) {
+      r.center();
+      if (shopName) r.line(shopName);
+      r.bold().line(t("label.expiryTitle")).bold(false);
+      r.bold().wrap(item.name || "-").bold(false);
+      r.feed();
+      // ⚠ SANA ikki baravar shriftda — stikerning butun ma'nosi shunda.
+      r.double().line(shortDate(item.expiryDate)).double(false);
+      if (item.daysLeft != null) {
+        r.line(item.daysLeft <= 0 ? t("label.expiryToday")
+                                  : t("inv.nearDays", { n: item.daysLeft }));
+      }
+      if (item.salePrice != null) r.line(money(item.salePrice, { withUnit: true }));
+      r.feed();
+      if (item.barcode) {
+        if (!r.barcodeEan13(item.barcode)) r.barcode128(item.barcode, { hri: true });
+        r.feed();
+      }
+      // Kesish chizig'i — sabab `buildPriceLabels` izohida.
+      r.left().line("- ".repeat(Math.floor(r.width / 2)).trimEnd()).center();
+    }
+  }
+  r.cut();
+  return r.build();
+}
+
+/**
+ * Brauzer yo'li: A4 varaqqa kartochkalar.
+ *
+ * ⚠ O'lcham 62×40 mm — sotuvdagi eng keng tarqalgan yopishqoq varaq
+ * kataklari shunga yaqin. Aniq mos kelmasa ham, kartochka chetidagi
+ * uzuq-uzuq chiziq bo'ylab qirqish har doim ishlaydi.
+ */
+function printExpiryInBrowser(items, { shopName } = {}) {
+  const win = window.open("", "_blank", "width=820,height=900");
+  if (!win) throw new Error(t("hw.errPopup"));
+
+  const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+  const cards = items.map((i) => {
+    const left = i.daysLeft;
+    const leftText = left == null ? ""
+      : left <= 0 ? t("label.expiryToday") : t("inv.nearDays", { n: left });
+    return `<div class="lbl">
+      <div class="hdr">${esc(t("label.expiryTitle"))}</div>
+      <div class="nm">${esc(i.name || "-")}</div>
+      <div class="dt">${esc(shortDate(i.expiryDate))}</div>
+      ${leftText ? `<div class="lf">${esc(leftText)}</div>` : ""}
+      ${i.salePrice != null ? `<div class="pr">${esc(money(i.salePrice, { withUnit: true }))}</div>` : ""}
+      ${i.barcode ? `<div class="bc">${code128Svg(String(i.barcode), { height: 22 })}</div>` : ""}
+      ${shopName ? `<div class="sh">${esc(shopName)}</div>` : ""}
+    </div>`;
+  }).join("");
+
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
+    <title>${esc(t("label.expiryTitle"))}</title>
+    <style>
+      @page { size: A4; margin: 8mm; }
+      * { margin:0; padding:0; box-sizing:border-box; }
+      body { font-family: ui-sans-serif, system-ui, "Segoe UI", Arial, sans-serif; color:#000;
+             display:flex; flex-wrap:wrap; gap:0; }
+      /* Uzuq-uzuq ramka — qirqish chizig'i. Kartochkalar yonma-yon
+         tursin deb chetlari birlashtirilmaydi: ikki chiziq orasidan
+         qirqish osonroq. */
+      .lbl { width:62mm; height:40mm; border:1px dashed #000; padding:2mm;
+             display:flex; flex-direction:column; align-items:center; justify-content:center;
+             text-align:center; overflow:hidden; }
+      .hdr { font-size:8pt; font-weight:800; letter-spacing:.5px; }
+      .nm  { font-size:10pt; font-weight:700; line-height:1.15; margin-top:1mm;
+             display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+      /* SANA — eng katta raqam: stiker aynan shu uchun yopishtiriladi. */
+      .dt  { font-size:19pt; font-weight:900; line-height:1.1; margin-top:1mm;
+             font-variant-numeric: tabular-nums; }
+      .lf  { font-size:9pt; font-weight:700; }
+      .pr  { font-size:10pt; font-weight:700; margin-top:.5mm; }
+      .bc  { margin-top:1mm; }
+      .bc svg { height:22px; }
+      .sh  { font-size:7pt; margin-top:auto; }
+      @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+    </style></head><body>${cards}</body></html>`);
+  win.document.close();
+  /* Chop etish dialogi RASMLAR chizilgandan keyin — `buildReceipt`
+     yo'lidagi bilan bir xil sabab. */
+  win.onload = () => { win.focus(); win.print(); };
+  return Promise.resolve();
 }
 
 /** Printer ulanganini tekshirish. */

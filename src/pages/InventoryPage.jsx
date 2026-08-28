@@ -14,6 +14,7 @@ import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
 import { NumField, DateField } from "../components/ek/EkFields";
 import { DEFAULT_NEAR_EXPIRY_DAYS, daysLeft } from "../lib/ek-expiry";
+import { printExpiryLabels } from "../lib/ek-hardware";
 
 /* Jurnal turlari — rang bilan: kirim yashil, chiqim qizil, to'g'irlash sariq.
    Omborchi ro'yxatga qarab o'qimasdan ham manzarani ko'rsin. */
@@ -322,6 +323,40 @@ export default function InventoryPage({ toast }) {
     low:     rows.filter((r) => needsOrder(r.f)).length,
   }), [rows]);
 
+  /* ── MUDDAT STIKERLARI (V48) ──────────────────────────────────────
+     ⚠ NEGA KERAK. Muddati yaqin tovarni ro'yxatda ko'rish yetmaydi:
+     u JAVONDA turibdi va sotuvchi ham, xaridor ham ro'yxatni emas,
+     javonni ko'radi. Xodim shu stikerlarni bosib chiqadi va tovarga
+     yopishtirib chiqadi — shundan keyin «muddati yaqin» ombor
+     hisoboti emas, javondagi ko'rinadigan belgi bo'ladi.
+
+     ⚠ Chiqadigan ro'yxat — EKRANDAGISI (`filtered`), hammasi emas:
+     omborchi «Muddati yaqin» filtrini bosib, aynan o'sha tovarlarga
+     stiker chiqaradi. Butun omborni stikerlash hech kimga kerak emas
+     va bir dasta qog'ozni yeydi. */
+  const [labeling, setLabeling] = useState(false);
+  const printLabels = async (list) => {
+    const items = list
+      .filter(({ g }) => g.nearest)          // muddatsiz tovarga stiker yo'q
+      .map(({ g, f }) => ({
+        name: g.productName,
+        expiryDate: g.nearest,
+        daysLeft: f.left,
+        salePrice: g.salePrice,
+        barcode: g.barcode,
+      }));
+    if (!items.length) { toast?.error(t("label.nothing")); return; }
+    setLabeling(true);
+    try {
+      await printExpiryLabels(items, { shopName: localStorage.getItem("ek_shopName") || "" });
+      toast?.success(t("label.sent", { n: items.length }));
+    } catch (err) {
+      toast?.error(err.message);
+    } finally {
+      setLabeling(false);
+    }
+  };
+
   const filtered = rows.filter(({ g, f }) => {
     const q = search.toLowerCase();
     const hit = g.productName?.toLowerCase().includes(q) || (g.barcode || "").includes(search);
@@ -576,6 +611,17 @@ export default function InventoryPage({ toast }) {
                       onClick={() => setFlt("near")}>
                 <i className="fa-solid fa-clock" aria-hidden="true" /> {t("inv.fltNear")}
                 <span className="badge badge-yellow tab-badge">{counts.near}</span>
+              </button>
+            )}
+            {/* ⚠ Stiker tugmasi FILTR YONIDA turadi: omborchi avval
+                «Muddati yaqin» ni bosadi, keyin darhol shu yerda
+                stikerni chiqaradi — sahifaning boshqa burchagiga
+                borish kerak emas. */}
+            {counts.near > 0 && (
+              <button type="button" className="btn btn-sm btn-outline" disabled={labeling}
+                      onClick={() => printLabels(rows.filter(({ f }) => f.near))}
+                      title={t("label.expiryHint")}>
+                <i className="fa-solid fa-tag" aria-hidden="true" /> {t("label.expiryPrint")}
               </button>
             )}
             {counts.low > 0 && (

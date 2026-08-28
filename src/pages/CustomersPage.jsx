@@ -11,6 +11,7 @@ import { useAuth } from "../hooks/useAuth";
 import { shortDate } from "../lib/ek-format";
 import SaleDetailModal from "../components/SaleDetailModal";
 import DebtPayModal from "../components/DebtPayModal";
+import ManualDebtModal from "../components/ManualDebtModal";
 import { printDebtReceipt } from "../lib/ek-hardware";
 import { saleApi } from "../api";
 import { SkeletonTable, Spinner } from "../components/ek/Loading";
@@ -240,6 +241,30 @@ export default function CustomersPage({ toast }) {
   const hasOverdue = view === "debtors" && customers.some((c) => Number(c.overdue) > 0);
 
   const [reminding, setReminding] = useState(false);
+  /* QO'LDA QARZDOR (V48) — daftardan ko'chirish. Serverda ham FAQAT
+     rahbarga ochiq: pul harakatisiz qarz tug'dirish `adjust` bilan bir
+     xil xavf. Tugmani kassirga ko'rsatib, keyin 403 berish esa
+     tushunarsiz bo'lardi. */
+  const [manualDebt, setManualDebt] = useState(false);
+  const [savingDebt, setSavingDebt] = useState(false);
+
+  const saveManualDebt = async (payload) => {
+    setSavingDebt(true);
+    try {
+      const r = await customerApi.addManualDebt(payload);
+      toast.success(r?.message || t("common.saved"));
+      setManualDebt(false);
+      /* Ro'yxat DARHOL yangilanadi: do'koncha endigina kiritgan
+         qarzdorni ko'rmasa, «yozildimi?» degan savol qolardi.
+         Tugma faqat qarzdorlar ro'yxatida turadi, ya'ni `loadData`
+         aynan shu ro'yxatni qayta o'qiydi. */
+      await loadData();
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setSavingDebt(false);
+    }
+  };
   /**
    * Qarz eslatmalarini darhol yuborish (V44).
    *
@@ -297,6 +322,14 @@ export default function CustomersPage({ toast }) {
           {hasOverdue && (
             <button className="btn btn-outline btn-sm" onClick={remindDebtors} disabled={reminding}>
               <i className="fa-solid fa-bell" /> {t("credit.remindNow")}
+            </button>
+          )}
+          {/* Qarzdorlar ro'yxatida asosiy amal — MIJOZ emas, QARZ
+              qo'shish: do'koncha bu ro'yxatga aynan daftarini
+              ko'chirish uchun kiradi. */}
+          {view === "debtors" && canDelete && (
+            <button className="btn btn-outline btn-sm" onClick={() => setManualDebt(true)}>
+              <i className="fa-solid fa-file-pen" /> {t("credit.manualAdd")}
             </button>
           )}
           <button className="btn btn-primary btn-sm" onClick={openAdd}>
@@ -459,6 +492,15 @@ export default function CustomersPage({ toast }) {
             />
           </FormGroup>
         </Modal>
+      )}
+
+      {/* ── QO'LDA QARZDOR (V48) ── */}
+      {manualDebt && (
+        <ManualDebtModal
+          onClose={() => setManualDebt(false)}
+          onSave={saveManualDebt}
+          saving={savingDebt}
+        />
       )}
 
       {/* ── QARZ OYNASI (V47): jurnal + KASSA KO'RINISHIDAGI to'lov ────
