@@ -344,6 +344,10 @@ export default function App() {
                 tovarni mashinaga ortadigan va tushiradigan odam omborchi.
                 Kassirga yopiq (server ham shuni qo'yadi). */}
             <Route path="/transfers" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><P.Transfers toast={toast} /></ProtectedRoute>} />
+            {/* OMBORDAN BERIB YUBORISH (V48). ⚠ KASSIR YO'Q: tovarni
+                chiqaruvchi bilan pulni oluvchi ajralgan bo'lishi kerak —
+                sabab `SecurityConfig` dagi izohda. */}
+            <Route path="/pickup" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><P.Pickup toast={toast} /></ProtectedRoute>} />
             {/* Narx — egasi va do'kon adminining ishi; omborchi narx
                 qo'ymaydi. */}
             <Route path="/prices" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><P.Prices toast={toast} /></ProtectedRoute>} />

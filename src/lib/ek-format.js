@@ -16,7 +16,7 @@
 import { t, getLang } from "./ek-i18n";
 
 const NNBSP = " ";           // tor bo'shliq — razryad ajratgichi
-/* Oy va hafta nomlari — TILGA BOG'LIQ (`ek-locales.js` dagi `fmt.*`).
+/* Oy va hafta nomlari — TILGA BOG'LIQ (`locales/*.js` dagi `fmt.*`).
    Massiv sifatida modul darajasida saqlanmaydi: til o'zgarganda eskirardi. */
 const months   = () => t("fmt.months").split(",");
 const weekdays = () => t("fmt.weekdays").split(",");

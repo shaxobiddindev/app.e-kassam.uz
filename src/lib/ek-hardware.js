@@ -629,6 +629,123 @@ function printExpiryInBrowser(items, { shopName } = {}) {
   return Promise.resolve();
 }
 
+/* ── Ombor varaqasi (V48) ──────────────────────────────────────────────── */
+/**
+ * OMBOR VARAQASI — omborchi qo'lidagi qog'oz.
+ *
+ * ═══ NEGA KERAK ════════════════════════════════════════════════════════
+ *
+ * Ekran omborchining stolida turadi, tovar esa hovlida. U ro'yxatni
+ * yodda saqlab, ikki qavat pastga tushib, keyin qaytib kelib tekshira
+ * olmaydi. Qog'oz — o'sha ro'yxatning qo'lda olib yuriladigan nusxasi
+ * va u mijozning chekiga MOS bo'lishi shart: ikkalasida bir xil raqam
+ * turadi va omborchi ularni yonma-yon qo'yib solishtiradi.
+ *
+ * ⚠ NARX YO'Q. Ombor varaqasi — TOVAR hujjati: nima, qancha va qaysi
+ * chek bo'yicha. Narxni omborchi bilishi shart emas va u mijoz bilan
+ * «narx boshqa edi-ku» degan keraksiz suhbatni ochardi; pul masalasi
+ * kassada allaqachon yopilgan.
+ *
+ * ⚠ IKKI IMZO joyi: omborchi berdi, mijoz oldi. Qog'ozdagi imzo —
+ * «men olmadim» degan tortishuvda do'konning yagona dalili.
+ */
+export async function printPickupSlip(order, opts = {}) {
+  if (!order) throw new Error(t("label.nothing"));
+  if (!isDesktop()) return printPickupInBrowser(order, opts);
+  await send(buildPickupSlip(order, opts));
+}
+
+/** Ombor varaqasini ESC/POS baytlariga yig'adi. */
+export function buildPickupSlip(order, { shopName, width } = {}) {
+  const s = getSettings();
+  const r = new Receipt(width ?? (s.width === 58 ? WIDTH_58 : WIDTH_80));
+
+  r.center().double().line(t("pickup.slipTitle")).double(false);
+  if (shopName) r.line(shopName);
+  r.left().rule();
+
+  r.row(`${t("kassa.receiptNo")} ${order.saleCode || "-"}`,
+        order.createdAt ? new Date(order.createdAt).toLocaleString("uz-UZ") : "");
+  if (order.cashierName) r.row(t("kassa.receiptCashier"), order.cashierName);
+  if (order.customerName) r.row(t("kassa.receiptCustomer"), order.customerName);
+  if (order.customerPhone) r.row(t("common.phone"), order.customerPhone);
+  r.rule();
+
+  for (const i of order.items || []) {
+    r.wrap(i.productName);
+    /* ⚠ MIQDOR ikki baravar shriftda: omborchi aynan shu raqamga qarab
+       tovar sanaydi va uni bir qarashda o'qishi kerak.
+       ⚠ `row` EMAS, `line`: qo'sh shriftda satrga ikki baravar kam
+       belgi sig'adi va `row` ning bo'shliq hisobi buzilib, o'ng ustun
+       qatorning tashqarisiga chiqib ketardi. */
+    r.double().line(`  ${quantity(i.quantity)} ${unitLabel(i.unit)}`).double(false);
+  }
+
+  r.rule();
+  /* Chek raqami barkodi — omborchi uni skanerlab ekranda ochadi.
+     Mijozning chekidagi barkod bilan AYNAN bir xil. */
+  if (order.saleId) {
+    const code = saleCode(order.saleId);
+    r.feed().center().barcode128(code).line(code).left();
+  }
+  r.feed();
+  r.row(t("pickup.signStore"), "______________");
+  r.feed().row(t("pickup.signCustomer"), "______________");
+  r.cut();
+  return r.build();
+}
+
+/** Brauzer yo'li — chek qog'ozi kengligidagi sahifa. */
+function printPickupInBrowser(order, { shopName } = {}) {
+  const win = window.open("", "_blank", "width=360,height=640");
+  if (!win) throw new Error(t("hw.errPopup"));
+  const mm = getSettings().width === 58 ? 58 : 80;
+  const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+  const rows = (order.items || []).map((i) =>
+    `<div class="it"><div class="nm">${esc(i.productName)}</div>
+     <div class="qt">${esc(quantity(i.quantity))} ${esc(unitLabel(i.unit))}</div></div>`).join("");
+
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
+    <title>${esc(t("pickup.slipTitle"))} ${esc(order.saleCode || "")}</title>
+    <style>
+      @page { size: ${mm}mm auto; margin: 0; }
+      * { margin:0; padding:0; box-sizing:border-box; }
+      body { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+             font-variant-numeric: tabular-nums; font-size:12px; line-height:1.35;
+             color:#000; width:${mm}mm; padding:3mm; }
+      .c { text-align:center; }
+      .hr { border:none; border-top:1px dashed #000; margin:6px 0; }
+      .row { display:flex; justify-content:space-between; gap:8px; padding:2px 0; }
+      .ttl { font-size:16px; font-weight:800; letter-spacing:.5px; }
+      .it { padding:4px 0; border-bottom:1px dotted #999; }
+      .nm { font-weight:700; }
+      /* Miqdor — eng katta raqam: omborchi shunga qarab sanaydi. */
+      .qt { font-size:18px; font-weight:900; text-align:right; }
+      @media print { body { -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
+    </style></head><body>
+      <div class="c"><div class="ttl">${esc(t("pickup.slipTitle"))}</div>
+        ${shopName ? `<small>${esc(shopName)}</small>` : ""}</div>
+      <div class="hr"></div>
+      <div class="row"><b>${esc(t("kassa.receiptNo"))} ${esc(order.saleCode || "-")}</b>
+        <span>${esc(order.createdAt ? new Date(order.createdAt).toLocaleString("uz-UZ") : "")}</span></div>
+      ${order.cashierName ? `<div class="row"><span>${esc(t("kassa.receiptCashier"))}</span><span>${esc(order.cashierName)}</span></div>` : ""}
+      ${order.customerName ? `<div class="row"><span>${esc(t("kassa.receiptCustomer"))}</span><span>${esc(order.customerName)}</span></div>` : ""}
+      ${order.customerPhone ? `<div class="row"><span>${esc(t("common.phone"))}</span><span>${esc(order.customerPhone)}</span></div>` : ""}
+      <div class="hr"></div>
+      ${rows}
+      <div class="hr"></div>
+      ${order.saleId ? `<div class="c">${code128Svg(saleCode(order.saleId), { height: 14 })}
+        <div><b>${esc(saleCode(order.saleId))}</b></div></div>` : ""}
+      <div class="row" style="margin-top:14px"><span>${esc(t("pickup.signStore"))}</span><span>______________</span></div>
+      <div class="row" style="margin-top:12px"><span>${esc(t("pickup.signCustomer"))}</span><span>______________</span></div>
+    </body></html>`);
+  win.document.close();
+  win.onload = () => { win.focus(); win.print(); };
+  return Promise.resolve();
+}
+
 /** Printer ulanganini tekshirish. */
 export async function testPrint() {
   const s = getSettings();

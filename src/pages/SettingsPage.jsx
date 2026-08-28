@@ -89,6 +89,7 @@ export default function SettingsPage({ toast }) {
   const [creditDueMode, setCreditDueMode] = useState("EACH");
   /* Qarzni mijoz ham tasdiqlaydimi (V46). */
   const [creditConfirm, setCreditConfirm] = useState(false);
+  const [pickupEnabled, setPickupEnabled] = useState(false);
   /* Nasiya muddati (V43), kunlarda. "0" — muddatsiz. */
   const [creditDueDays, setCreditDueDays] = useState("0");
   /* Mijozga qarz eslatmasi (V44). */
@@ -108,6 +109,7 @@ export default function SettingsPage({ toast }) {
         setCreditOn(Boolean(r?.data?.creditEnabled));
         setCreditDueMode(r?.data?.creditDueMode || "EACH");
         setCreditConfirm(Boolean(r?.data?.creditConfirmEnabled));
+        setPickupEnabled(Boolean(r?.data?.pickupEnabled));
         setCreditDueDays(String(r?.data?.creditDueDays ?? 0));
         setCreditRemind(Boolean(r?.data?.creditRemindEnabled));
         setBaseCashback(String(r?.data?.baseCashbackPercent ?? 0));
@@ -184,6 +186,11 @@ export default function SettingsPage({ toast }) {
     }
     saveToggle(shopApi.setCreditConfirm, next, setCreditConfirm);
   };
+
+  /* Ombordan berib yuborish (V48) — tasdiq so'ralmaydi: bu ichki
+     tashkiliy sozlama, mijozga hech qanday xabar yubormaydi. */
+  const togglePickup = () =>
+    saveToggle(shopApi.setPickupEnabled, !pickupEnabled, setPickupEnabled);
 
   const saveField = (fn, value, fallback = 0) => async () => {
     try {
@@ -362,6 +369,29 @@ export default function SettingsPage({ toast }) {
                 <span className="ek-switch__knob" />
                 <span className="ek-switch__text">
                   {creditConfirm ? t("common.yes") : t("common.no")}
+                </span>
+              </button>
+            </Row>
+            {/* ⚠⚠ OMBORDAN BERIB YUBORISH (V48). Mijoz kassaga to'laydi,
+                tovar esa kassadan uzoqda — omborda yoki hovlida.
+                Yoqilganda «ombordan beriladi» deb belgilangan tovarli
+                chek omborchining ekraniga tushadi.
+
+                ⚠ Qaysi tovar — TOVARNING o'zida belgilanadi: bitta
+                do'konda ham javondagi saqich, ham hovlidagi sement
+                bo'ladi va ikkinchisi uchun yoqilgan tizim birinchisini
+                ham navbatga tashlab, kassani sekinlashtirardi. */}
+            <Row label={t("settings.pickup")} hint={t("settings.pickupHint")}>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={pickupEnabled}
+                className={`ek-switch ${pickupEnabled ? "on" : ""}`}
+                onClick={togglePickup}
+              >
+                <span className="ek-switch__knob" />
+                <span className="ek-switch__text">
+                  {pickupEnabled ? t("common.yes") : t("common.no")}
                 </span>
               </button>
             </Row>

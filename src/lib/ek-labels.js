@@ -10,7 +10,7 @@
    obyektlar ham yangi tilni qaytaradi va hech qayerda "eski tildagi yorliq"
    qotib qolmaydi. Bu yerda faqat KO'RINISH metama'lumoti: tone, icon, color.
 
-   Yorliq matnini `packages/ui/ek-locales.js` da tahrirlang.
+   Yorliq matnini `packages/ui/locales/uz.js` da tahrirlang.
 
    MANBA FAYL — packages/ui/ da tahrirlanadi, sync-tokens.ps1 tarqatadi.
    ========================================================================== */

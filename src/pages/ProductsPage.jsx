@@ -32,6 +32,7 @@ const EMPTY_FORM = {
   type: "GOODS", unit: "DONA", minQuantity: "",
   mxikCode: "", packageCode: "", vatRate: "", priceIncludesVat: true,
   markingGroup: "", imageId: null, imageUrl: null, color: "", favorite: false,
+  pickupRequired: false,
   barcodes: [],
 };
 
@@ -109,6 +110,7 @@ export default function ProductsPage({ toast }) {
       imageUrl: p.thumbUrl || null,
       color: p.color || "",
       favorite: !!p.favorite,
+      pickupRequired: !!p.pickupRequired,
       barcodes: p.barcodes || [],
     });
     setModal({ type: "edit", product: p });
@@ -176,6 +178,7 @@ export default function ProductsPage({ toast }) {
         imageId: form.imageId,
         color: form.color || null,
         favorite: form.favorite,
+        pickupRequired: form.pickupRequired,
         barcodes: form.barcodes
           .filter((b) => b.barcode)
           .map((b) => ({ ...b, packQty: num(b.packQty) || 1 })),
@@ -635,6 +638,14 @@ export default function ProductsPage({ toast }) {
               <input type="checkbox" checked={form.favorite}
                      onChange={(e) => setForm((f) => ({ ...f, favorite: e.target.checked }))} />
               <i className="fa-solid fa-star" /> {t("products.favorite")}
+            </label>
+            {/* ⚠ OMBORDAN BERILADI (V48). Belgi TOVARDA, do'konda emas:
+                bitta do'konda ham javondagi mayda-chuyda (kassir o'zi
+                beradi), ham hovlidagi sement (omborchi beradi) bo'ladi. */}
+            <label className="cat-chip" style={{ marginTop: 10 }} title={t("products.pickupHint")}>
+              <input type="checkbox" checked={form.pickupRequired}
+                     onChange={(e) => setForm((f) => ({ ...f, pickupRequired: e.target.checked }))} />
+              <i className="fa-solid fa-dolly" /> {t("products.pickup")}
             </label>
           </div>
         </Modal>

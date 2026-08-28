@@ -52,6 +52,9 @@ const NAV = [
     { id: "stock-take", path: "/stock-take", key: "nav.stockTake", icon: "fa-clipboard-list", roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
     { id: "supply",     path: "/supply",     key: "nav.supply",    icon: "fa-truck-ramp-box", roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
     { id: "transfers",  path: "/transfers",  key: "nav.transfers", icon: "fa-truck-fast",     roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
+    /* Berib yuborish — omborchining KUNDALIK ekrani, shuning uchun
+       ombor guruhida turadi. */
+    { id: "pickup",     path: "/pickup",     key: "nav.pickup",    icon: "fa-dolly",          roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
   ]},
 
   /* SAVDO — bo'lib o'tgan xarid va uni kim qilgani. Kassirga ochiq yagona

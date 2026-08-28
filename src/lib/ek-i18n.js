@@ -21,9 +21,55 @@
    ========================================================================== */
 
 import { useCallback, useSyncExternalStore } from "react";
-import DICT from "./ek-locales";
+/* ⚠ O'ZBEKCHA STATIK, qolgani KECHIKTIRILGAN (V48).
+   Ilgari uchala til ham kirish to'plamiga tushardi (~75 KB xom matn),
+   holbuki do'kon bitta tilda ishlaydi. Endi faqat tanlangan til
+   yuklanadi. O'zbekcha esa DOIM birga keladi va bu ataylab:
+   1. u foydalanuvchilarning aksariyatining tili — ular uchun
+      qo'shimcha so'rov umuman bo'lmaydi;
+   2. u YETISHMAYOTGAN kalitlar uchun zaxira (`t()` quyida shundan
+      oladi) — kechiktirilsa, yangi kalit tarjima qilinmagan tilda
+      kalitning o'zi bo'lib chiqib qolardi. */
+import uz from "./locales/uz";
 
 const KEY = "ek_lang";
+
+/* Yuklangan lug'atlar. `uz` doim shu yerda; qolgani `loadLocale` bilan
+   qo'shiladi. */
+const DICT = { uz };
+
+const LOADERS = {
+  ru: () => import("./locales/ru"),
+  en: () => import("./locales/en"),
+};
+
+/* Bir tilni ikki marta tortmaslik uchun: so'rov ketgan bo'lsa, o'sha
+   va'da qaytariladi. */
+const pending = {};
+
+/**
+ * Tanlangan tilni yuklaydi.
+ *
+ * ⚠ `t()` SINXRON QOLADI. Bu shart: `t()` yuzlab joyda, shu jumladan
+ * render ichida chaqiriladi va uni `await` qilinadigan qilish butun
+ * ilovani qayta yozishni talab qilardi. Shuning uchun lug'at RENDERDAN
+ * OLDIN yuklanadi (`main.jsx`), kalit esa quyidagi zaxira zanjiri
+ * bo'yicha topiladi.
+ *
+ * ⚠ Xato YUTILADI: tarmoq uzilib chunk kelmasa ham ilova ishlashi
+ * kerak — matn o'zbekchada chiqadi, bu bo'sh ekrandan yaxshiroq.
+ */
+export function loadLocale(lang) {
+  const code = isValid(lang) ? lang : DEFAULT_LANG;
+  if (DICT[code]) return Promise.resolve(DICT[code]);
+  if (!LOADERS[code]) return Promise.resolve(DICT[DEFAULT_LANG]);
+  if (!pending[code]) {
+    pending[code] = LOADERS[code]()
+      .then((m) => { DICT[code] = m.default; emit(); return DICT[code]; })
+      .catch(() => DICT[DEFAULT_LANG]);
+  }
+  return pending[code];
+}
 
 /** Qo'llab-quvvatlanadigan tillar. UI shu ro'yxatdan quriladi. */
 export const LANGS = [
@@ -66,7 +112,28 @@ let current = detect();
 
 const listeners = new Set();
 const subscribe = (fn) => { listeners.add(fn); return () => listeners.delete(fn); };
-const emit = () => listeners.forEach((fn) => fn());
+
+/* ⚠ SUR'AT (`snapshot`) TIL KODIDAN KENGROQ (V48).
+   `useSyncExternalStore` sur'atni `Object.is` bilan solishtiradi va u
+   o'zgarmagan bo'lsa qayta chizmaydi. Ilgari sur'at TIL KODINING o'zi
+   edi va tillar bo'linganidan keyin bu xatoga aylandi:
+
+     1. `setLang("ru")` — kod uz→ru, ekran qayta chiziladi, LEKIN ruscha
+        lug'at hali yo'q (chunk yo'lda) va matn o'zbekcha chiqadi;
+     2. chunk keladi, `loadLocale` `emit()` qiladi — kod hamon "ru",
+        ya'ni sur'at O'ZGARMAGAN va React qayta chizmaydi.
+
+   Natijada til almashardi-yu, matn o'zbekcha qolib ketardi. Endi
+   sur'atga yuklangan lug'atlar soni ham kiradi: chunk kelishi uni
+   o'zgartiradi va ekran ruschaga o'tadi. Brauzerda aynan shu ushlandi. */
+let snapshot = `${current}:${Object.keys(DICT).length}`;
+const emit = () => {
+  snapshot = `${current}:${Object.keys(DICT).length}`;
+  listeners.forEach((fn) => fn());
+};
+/* ⚠ Har chaqiruvda YANGI qiymat qaytarmaydi: `useSyncExternalStore`
+   buni cheksiz sikl deb hisoblardi. */
+const getSnapshot = () => snapshot;
 
 /* ── Ommaviy API ───────────────────────────────────────────────────────── */
 
@@ -90,6 +157,11 @@ export function setLang(lang) {
   current = next;
   try { localStorage.setItem(KEY, next); } catch (_) { /* private mode */ }
   paint(next);
+  /* ⚠ Lug'at hali kelmagan bo'lishi mumkin — kutilmaydi. Interfeys
+     darhol o'zbekchada qayta chiziladi, chunk kelgach `loadLocale`
+     o'zi yana `emit()` qiladi va matn almashadi. Kutilsa, til tanlash
+     tugmasi bosilgach ekran bir necha yuz millisekund qotib turardi. */
+  loadLocale(next);
   emit();
   return next;
 }
@@ -153,11 +225,12 @@ export function plural(key, n, vars) {
  * va "yarmi eski tilda" holati bo'lmaydi.
  */
 export function useT() {
-  const lang = useSyncExternalStore(subscribe, getLang, () => DEFAULT_LANG);
-  // `lang` bog'liqlikda: til o'zgarsa `t` yangi havola oladi va
-  // uni memo ichida ishlatgan komponentlar ham qayta hisoblanadi.
-  const translate = useCallback((key, vars) => t(key, vars), [lang]);
-  return { t: translate, lang, setLang, langs: LANGS };
+  const snap = useSyncExternalStore(subscribe, getSnapshot, () => DEFAULT_LANG);
+  // Sur'at bog'liqlikda: til o'zgarsa HAM, lug'at kech kelsa HAM `t`
+  // yangi havola oladi va uni memo ichida ishlatgan komponentlar ham
+  // qayta hisoblanadi.
+  const translate = useCallback((key, vars) => t(key, vars), [snap]);
+  return { t: translate, lang: getLang(), setLang, langs: LANGS };
 }
 
 /* ── Ilovalararo uzatish ───────────────────────────────────────────────── */

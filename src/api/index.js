@@ -646,6 +646,8 @@ export const shopApi = {
   setCreditDueMode: (value) => request(`/shop/credit-due-mode?value=${value}`, { method: "PATCH" }),
   /* Qarzni mijoz ham tasdiqlaydimi (V46). */
   setCreditConfirm: (value) => request(`/shop/credit-confirm?value=${value}`, { method: "PATCH" }),
+  /* Ombordan berib yuborish tizimi (V48). */
+  setPickupEnabled: (value) => request(`/shop/pickup-enabled?value=${value}`, { method: "PATCH" }),
   /** Naqdsiz yarashtiruvda tasdiqsiz o'tadigan farq. Standart 0. */
   setNonCashTolerance: (value) => request(`/shop/noncash-tolerance?value=${value}`, { method: "PATCH" }),
   /** Inventarizatsiya kamomadi chegarasi — SO'MDA (tannarx bo'yicha). */
@@ -694,4 +696,24 @@ export const shopApi = {
   getBranches: () => request("/shop/branches"),
   createBranch: (data) => request("/shop/branches", { method: "POST", body: JSON.stringify(data) }),
   updateBranch: (id, data) => request(`/shop/branches/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+};
+
+/* ══════════════════════════════════════════════════════════════════════════
+   OMBOR NAVBATI (V48)
+
+   Mijoz kassaga to'laydi, tovarni esa omborchi beradi. Omborchi mijozning
+   chekidagi barkodni skanerlaydi va shu chaqiruvlar bilan ishlaydi.
+   Sabab — serverdagi `PickupService` izohida.
+   ══════════════════════════════════════════════════════════════════════════ */
+export const pickupApi = {
+  queue:    () => request("/pickup"),
+  history:  () => request("/pickup/history"),
+  /** Chek barkodidan olingan raqam bo'yicha (`S-000173` → 173). */
+  bySale:   (saleId) => request(`/pickup/by-sale/${saleId}`),
+  issue:    (id, note) => request(`/pickup/${id}/issue`,
+                                  { method: "POST", body: JSON.stringify({ note: note || null }) }),
+  /* Ombor printeriga chiqarilgani SERVERDA belgilanadi: ekran
+     yangilanganda yoki boshqa qurilmada ochilganda bir chek qayta-qayta
+     bosilib, omborchini chalg'itardi. */
+  markPrinted: (id) => request(`/pickup/${id}/printed`, { method: "POST" }),
 };

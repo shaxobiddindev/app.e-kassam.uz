@@ -2720,3 +2720,45 @@ img.logo--dark { display: none; }
 .inv-batch__qty    { font-size: 14px; font-weight: 800; color: var(--fg-primary); }
 .inv-batch__exp    { font-size: 11.5px; font-weight: 700; color: var(--fg-secondary); white-space: nowrap; }
 .inv-batch__side   { display: flex; align-items: center; gap: 8px; flex-shrink: 0; margin-left: auto; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   OMBORDAN BERIB YUBORISH (V48)
+
+   ⚠ EKRAN OMBORCHINIKI. U kassa ekranining kichraytirilgan nusxasi emas:
+   omborchi jadval o'qimaydi — u kartochkaga qaraydi, tovar nomini va
+   MIQDORNI ko'radi, keyin hovliga tushadi. Shuning uchun ro'yxat emas,
+   kartochka; miqdor esa nomdan ham yirikroq.
+   ══════════════════════════════════════════════════════════════════════════ */
+.pickup-list { display: grid; gap: 12px; padding: 14px; }
+@media (min-width: 900px) { .pickup-list { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 1400px) { .pickup-list { grid-template-columns: repeat(3, 1fr); } }
+
+.pickup-card { border: 1.5px solid var(--border); border-radius: 12px; padding: 12px 14px;
+               background: var(--bg-surface); display: flex; flex-direction: column; gap: 8px; }
+/* Kutayotgan chek ko'zga tashlanadi: navbat — ekrandagi asosiy narsa. */
+.pickup-card.is-pending { border-color: var(--blue); box-shadow: 0 0 0 3px color-mix(in srgb, var(--blue) 12%, transparent); }
+
+.pickup-card__head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pickup-card__no   { font-size: 15px; font-weight: 900; letter-spacing: .5px; }
+.pickup-card__cust { font-size: 13px; color: var(--text2); }
+
+.pickup-card__items { list-style: none; margin: 0; padding: 6px 0 0; display: grid; gap: 6px;
+                      border-top: 1px dashed var(--border); }
+.pickup-card__items li { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.pickup-card__name { font-weight: 700; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* ⚠ MIQDOR — eng yirik raqam: omborchi aynan shunga qarab tovar sanaydi. */
+.pickup-card__qty  { font-size: 17px; font-weight: 900; white-space: nowrap; color: var(--blue); }
+
+.pickup-card__done { font-size: 12px; color: var(--fg-success, var(--green)); }
+.pickup-card__foot { display: flex; gap: 8px; justify-content: flex-end; padding-top: 4px; }
+
+.pickup-modal__cust  { font-size: 14px; margin-bottom: 8px; }
+.pickup-modal__items { border-top: none; }
+
+/* Allaqachon berilgan yoki bekor qilingan chek — oynaning TEPASIDA va
+   ko'rinadigan holda: «topilmadi» deyilsa, omborchi tovarni ikkinchi
+   marta berib yuborardi. */
+.pickup-warn { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px;
+               border-radius: 10px; margin-bottom: 12px; font-size: 13px; font-weight: 700; }
+.pickup-warn.is-done   { background: var(--bg-success-subtle, #eaf7ee); color: var(--fg-success, #1a7f37); }
+.pickup-warn.is-cancel { background: var(--bg-danger-subtle, #fdecec); color: var(--fg-danger, #b42318); }

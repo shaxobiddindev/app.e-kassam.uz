@@ -36,6 +36,7 @@ const LOADERS = {
   Announcements:() => import("../pages/AnnouncementsPage"),
   Supply:       () => import("../pages/SupplyPage"),
   Transfers:    () => import("../pages/TransfersPage"),
+  Pickup:       () => import("../pages/PickupPage"),
   Prices:       () => import("../pages/PricesPage"),
   Customers:    () => import("../pages/CustomersPage"),
   Kassa:        () => import("../pages/KassaPage"),
