@@ -87,6 +87,8 @@ export default function SettingsPage({ toast }) {
   const [creditLimit, setCreditLimit] = useState("");
   /* Nasiya muddati (V43), kunlarda. "0" — muddatsiz. */
   const [creditDueDays, setCreditDueDays] = useState("0");
+  /* Mijozga qarz eslatmasi (V44). */
+  const [creditRemind, setCreditRemind] = useState(false);
   const [nonCashTolerance, setNonCashTolerance] = useState("");
   const [stockTolerance, setStockTolerance] = useState("");
   const [nearExpiry, setNearExpiry] = useState("");
@@ -99,6 +101,7 @@ export default function SettingsPage({ toast }) {
         setReturnDays(String(r?.data?.returnDays ?? 0));
         setCreditLimit(String(r?.data?.defaultCreditLimit ?? 0));
         setCreditDueDays(String(r?.data?.creditDueDays ?? 0));
+        setCreditRemind(Boolean(r?.data?.creditRemindEnabled));
         setNonCashTolerance(String(r?.data?.nonCashDiffTolerance ?? 0));
         setStockTolerance(String(r?.data?.stockDiffTolerance ?? 0));
         /* ⚠ Bo'sh ustun — STANDART (7 kun), nol emas. Nol ko'rsatilsa egasi
@@ -111,6 +114,32 @@ export default function SettingsPage({ toast }) {
   /* Har uchala sozlama bir xil yo'l bilan saqlanadi: maydondan chiqilganda.
      Alohida «Saqlash» tugmasi qo'yilmadi — bitta raqam uchun tugma bosish
      ortiqcha qadam, va u bosilmay qolsa sozlama jimgina yo'qolardi. */
+  /**
+   * Eslatmani yoqish/o'chirish (V44).
+   *
+   * ⚠ YOQISHDA TASDIQ SO'RALADI. Bu do'kon nomidan MIJOZLARGA boradigan
+   * xabar: xato yoqilsa ertaga ertalab yuzlab odam «qarzingiz bor»
+   * degan xabarni oladi va uni uzr bilan qaytarib bo'lmaydi.
+   */
+  const toggleCreditRemind = async () => {
+    const next = !creditRemind;
+    if (next) {
+      const ok = await confirm({
+        title: t("settings.creditRemind"),
+        message: t("settings.creditRemindConfirm"),
+        type: "warning",
+      });
+      if (!ok) return;
+    }
+    try {
+      await shopApi.setCreditRemind(next);
+      setCreditRemind(next);
+      toast?.success(t("common.saved"));
+    } catch (err) {
+      toast?.error(err.message);
+    }
+  };
+
   const saveField = (fn, value, fallback = 0) => async () => {
     try {
       await fn(Number(value) || fallback);
@@ -251,6 +280,25 @@ export default function SettingsPage({ toast }) {
                      value={creditDueDays}
                      onChange={(e) => setCreditDueDays(e.target.value)}
                      onBlur={saveField(shopApi.setCreditDueDays, creditDueDays)} />
+            </Row>
+            {/* ⚠ ALOHIDA SOZLAMA, muddatning davomi emas. Muddat do'konning
+                ichki qoidasi, bu esa do'kon nomidan MIJOZGA boradigan
+                xabar — uni ongli ravishda yoqish kerak. Izohda mijoz
+                aynan nima olishi yozilgan: egasi nomidan ketadigan
+                matnni ko'rmasdan yoqishi to'g'ri bo'lmasdi. */}
+            <Row label={t("settings.creditRemind")} hint={t("settings.creditRemindHint")}>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={creditRemind}
+                className={`ek-switch ${creditRemind ? "on" : ""}`}
+                onClick={toggleCreditRemind}
+              >
+                <span className="ek-switch__knob" />
+                <span className="ek-switch__text">
+                  {creditRemind ? t("common.yes") : t("common.no")}
+                </span>
+              </button>
             </Row>
           </>
         )}

@@ -175,6 +175,28 @@ export default function CustomersPage({ toast }) {
      chiziqcha ko'rsatib, jadvalni bekorga kengaytirardi. */
   const hasOverdue = view === "debtors" && customers.some((c) => Number(c.overdue) > 0);
 
+  const [reminding, setReminding] = useState(false);
+  /**
+   * Qarz eslatmalarini darhol yuborish (V44).
+   *
+   * ⚠ Natija ANIQ aytiladi: «0 ta» ham javob. Sozlama o'chiq bo'lsa yoki
+   * hammaga yaqinda yuborilgan bo'lsa hech narsa ketmaydi va egasi buni
+   * bilishi kerak — aks holda u tugmani qayta-qayta bosardi.
+   */
+  const remindDebtors = async () => {
+    setReminding(true);
+    try {
+      const r = await customerApi.remindDebtors();
+      const n = Number(r?.data) || 0;
+      if (n > 0) toast.success(t("credit.remindSent", { n }));
+      else toast.info(t("credit.remindNone"));
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setReminding(false);
+    }
+  };
+
   return (
     <div>
       <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
@@ -202,6 +224,17 @@ export default function CustomersPage({ toast }) {
               </button>
             ))}
           </div>
+          {/* Eslatma tugmasi FAQAT muddati o'tgan qarz bo'lganda (V44).
+              Yuboradigan narsa yo'q joyda turgan tugma bosiladi-yu,
+              «0 ta yuborildi» deydi — bu foydali emas, chalg'ituvchi.
+              Kunlik ish har kuni 10:30 da o'zi yuboradi; bu tugma
+              sozlamani endigina yoqqan egaga «ishlayaptimi?» degan
+              javobni beradi. Haftalik oyna bu yerda ham amal qiladi. */}
+          {hasOverdue && (
+            <button className="btn btn-outline btn-sm" onClick={remindDebtors} disabled={reminding}>
+              <i className="fa-solid fa-bell" /> {t("credit.remindNow")}
+            </button>
+          )}
           <button className="btn btn-primary btn-sm" onClick={openAdd}>
             <i className="fa-solid fa-plus" /> Mijoz qo'shish
           </button>

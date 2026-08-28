@@ -532,6 +532,9 @@ export const customerApi = {
   ledger:    (id) => request(`/customers/${id}/ledger`),
   debtors:   () => request("/customers/debtors"),
   /** `value` bo'sh bo'lsa do'kon standartiga qaytadi. */
+  /* Qarz eslatmalarini DARHOL yuborish (V44) — haftalik oyna baribir
+     amal qiladi, ya'ni qayta bosish mijozga xabar yog'dirmaydi. */
+  remindDebtors: () => request(`/customers/debt-remind`, { method: "POST" }),
   setCreditLimit: (id, value) =>
     request(`/customers/${id}/credit-limit${value == null || value === "" ? "" : `?value=${value}`}`,
             { method: "PATCH" }),
@@ -635,6 +638,8 @@ export const shopApi = {
   setLoyaltyWindowDays: (value) => request(`/shop/loyalty-window-days?value=${value}`, { method: "PATCH" }),
   /* Nasiyani qaytarish muddati (V43). `0` — muddatsiz. */
   setCreditDueDays: (value) => request(`/shop/credit-due-days?value=${value}`, { method: "PATCH" }),
+  /* Mijozga qarz eslatmasi yuborilsinmi (V44). */
+  setCreditRemind: (value) => request(`/shop/credit-remind?value=${value}`, { method: "PATCH" }),
   /** Do'kon jurnali. ⚠ `shopId` yuborilmaydi — server uni chaqiruvchining
       do'konidan oladi va so'rovdagisini e'tiborga olmaydi. */
   audit: ({ action, actor, page = 0, size = 50 } = {}) => {
