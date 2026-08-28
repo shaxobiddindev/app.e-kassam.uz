@@ -662,7 +662,9 @@ export default function KassaPage({ toast, refreshLowStock }) {
         setCustomer(c);
       }
       setNewCust(null);
-      toast.success(t("cust.added"));
+      /* ⚠ Serverning xabari ustun: arxivlangan mijoz qaytarilgan bo'lsa
+         kassir buni bilishi kerak (izohi `CustomersPage` da). */
+      toast.success(r?.message || t("cust.added"));
     } catch (err) {
       toast.error(err.message);
     } finally {

@@ -176,7 +176,12 @@ export default function CustomersPage({ toast }) {
       if (modal === "add") {
         const r = await customerApi.create(profile);
         customerId = r?.data?.id;
-        toast.success(t("cust.added"));
+        /* ⚠ SERVERNING XABARI USTUN (V47). Arxivlangan mijoz qayta
+           qo'shilganda server «ro'yxatga qaytarildi — eski xaridlari va
+           ballari joyida» deydi. Bu yerda doim «qo'shildi» yozilsa,
+           do'kon YANGI yozuv ochilgan deb o'ylardi va o'sha mijozning
+           eski ballari qayerdan chiqqanini tushunmasdi. */
+        toast.success(r?.message || t("cust.added"));
       } else {
         customerId = modal.customer.id;
         await customerApi.update(customerId, profile);
