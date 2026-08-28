@@ -55,7 +55,12 @@ const payItem = (key) => {
    e'tibor talab qiladigan tur. Boshida tursa kassir tasodifan bosib,
    pulni olmasdan tovar berib yuborardi. */
 const PAY_METHODS  = ["CASH", "CARD", "CLICK", "PAYME", "MIXED", "CREDIT"].map(payItem);
-const MIXED_SECOND = ["CARD", "CLICK", "PAYME"].map(payItem);
+/* ⚠ NASIYA ham ikkinchi tur bo'la oladi: «600 000 hozir berdi, 400 000
+   nasiya» — do'konda eng ko'p uchraydigan holat va ilgari uni yozishning
+   iloji yo'q edi (kassir yo hammasini nasiyaga yozardi, yo mijozni
+   qaytarardi). Server tomonda ham shu ro'yxat bor va u yagona
+   qo'riqchi — bu yerdagisi qulaylik uchun. */
+const MIXED_SECOND = ["CARD", "CLICK", "PAYME", "CREDIT"].map(payItem);
 
 const REFOCUS_MS = 3000;   // fokus yo'qolsa shuncha vaqtdan keyin qaytadi
 const UNDO_MS    = 5000;   // o'chirishni bekor qilish oynasi
@@ -1021,12 +1026,20 @@ export default function KassaPage({ toast, refreshLowStock }) {
   const change      = Math.max(0, (Number(cashGiven) || 0) - total);
   const mixedSum    = (Number(cashAmount) || 0) + (Number(cardAmount) || 0);
   const mixedOk     = payType !== "MIXED" || mixedSum === total;
+  /* Nasiyaga yoziladigan qism — yalang'och nasiyada butun chek, aralash
+     to'lovda esa faqat ikkinchi qism. */
+  const creditPart  = payType === "CREDIT" ? total
+                    : (payType === "MIXED" && mixedSecondType === "CREDIT" ? (Number(cardAmount) || 0) : 0);
   /* Nasiya — MIJOZGA beriladigan qarz. Kimga berilganini bilmasdan yozib
      bo'lmaydi: server ham rad etadi, lekin kassir buni to'lov tugmasini
      bosishdan OLDIN ko'rishi kerak. */
-  const creditOk    = payType !== "CREDIT" || !!customer;
+  const creditOk    = creditPart <= 0 || !!customer;
+  /* Chegarada qancha joy qolgani — kassir mijoz oldida rad javobini
+     olmasin. Chegara va qarz `customerTier` javobidan keladi. */
+  const creditLeft  = Math.max(0, (Number(tier?.creditLimit) || 0) - (Number(tier?.debtBalance) || 0));
+  const creditFits  = creditPart <= 0 || !tier || creditPart <= creditLeft;
   const cashOk      = payType !== "CASH"  || !cashGiven || Number(cashGiven) >= total;
-  const canSubmit   = cart.length > 0 && !processing && mixedOk && cashOk && creditOk;
+  const canSubmit   = cart.length > 0 && !processing && mixedOk && cashOk && creditOk && creditFits;
 
   /* ── Sotuvni yakunlash ────────────────────────────────────── */
   const handleSubmit = async () => {
@@ -1594,6 +1607,31 @@ export default function KassaPage({ toast, refreshLowStock }) {
               </div>
             )}
 
+            {/* ── Mijozning QARZI ──────────────────────────────────────
+
+                ⚠ Kassir buni KO'RMASDI. U nasiyaga sotishga urinib,
+                chegaradan oshganini faqat serverdan qaytgan xatodan —
+                mijoz oldida — bilardi. Endi qarz ham, chegarada qancha
+                joy qolgani ham savat ustunida turadi.
+
+                Faqat QARZI BOR mijozda ko'rinadi: nol qarzli qator
+                foydali ma'lumot bermaydi va kartochkani cho'zardi. */}
+            {customer && tier && Number(tier.debtBalance) > 0 && (
+              <div style={{
+                marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--border-subtle)",
+                display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8,
+                fontSize: 13,
+              }}>
+                <span style={{ color: "var(--fg-danger)", fontWeight: 700 }}>
+                  <i className="fa-solid fa-hand-holding-dollar" style={{ marginRight: 6 }} aria-hidden="true" />
+                  {t("credit.balance")}: <b className="mono">{money(tier.debtBalance)}</b>
+                </span>
+                <span className="text-muted mono" style={{ fontSize: 12 }}>
+                  {t("credit.limitFree")}: {money(Math.max(0, (Number(tier.creditLimit) || 0) - Number(tier.debtBalance)))}
+                </span>
+              </div>
+            )}
+
             {/* ── Ball ishlatish ──────────────────────────────────────
                 Faqat balans ham, chegara ham noldan katta bo'lganda
                 ko'rinadi: bo'sh maydon kassirni «nega ishlamayapti»
@@ -1864,10 +1902,19 @@ export default function KassaPage({ toast, refreshLowStock }) {
               {/* Nasiyada mijoz tanlanmagan bo'lsa — nima qilish kerakligini
                   AYTAMIZ. Tugmani jimgina o'chirib qo'yish kassirni
                   "nega ishlamayapti" deb qidirishga majbur qilardi. */}
-              {payType === "CREDIT" && !customer && (
+              {creditPart > 0 && !customer && (
                 <div className="pay-mixed-warn">
                   <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />{" "}
                   {t("credit.customerRequired")}
+                </div>
+              )}
+              {/* Qarz chegarasi — tugmani jimgina o'chirib qo'yish o'rniga
+                  QANCHA joy qolganini aytamiz: kassir summani o'zi
+                  to'g'irlay oladi va mijozni kutdirmaydi. */}
+              {creditPart > 0 && customer && tier && !creditFits && (
+                <div className="pay-mixed-warn">
+                  <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />{" "}
+                  {t("credit.limitLeft", { amount: money(creditLeft) })}
                 </div>
               )}
             </div>

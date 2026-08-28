@@ -404,6 +404,7 @@ const BONUS_LABEL = {
   EARN:   { text: "Xariddan yig'ildi",        icon: "fa-plus" },
   SPEND:  { text: "Xaridda ishlatildi",       icon: "fa-minus" },
   REVOKE: { text: "Qaytarish tufayli olindi", icon: "fa-rotate-left" },
+  RESTORE:{ text: "Qaytarishda qaytarildi",   icon: "fa-rotate-left" },
   ADJUST: { text: "Do'kon to'g'irladi",       icon: "fa-pen" },
   EXPIRE: { text: "Muddati o'tdi",            icon: "fa-clock" },
 };

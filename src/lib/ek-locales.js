@@ -1041,6 +1041,10 @@ const uz = {
   "credit.payAmount": "To'lov summasi",
   "credit.method": "To'lov turi",
   "credit.left": "Qolgan qarz",
+  /* Chegarada qancha JOY qolgani (qarz emas) — kassir nasiyaga
+     yozishdan oldin ko'radi va mijoz oldida rad javobini olmaydi. */
+  "credit.limitFree": "Chegarada qoldi",
+  "credit.limitLeft": "Nasiyaga eng ko'pi {amount} yozish mumkin",
   "credit.ledger": "Qarz jurnali",
   "credit.debtors": "Qarzdorlar",
   "credit.noDebt": "Qarzi yo'q",
@@ -2576,6 +2580,8 @@ const ru = {
   "credit.payAmount": "Сумма оплаты",
   "credit.method": "Способ оплаты",
   "credit.left": "Остаток долга",
+  "credit.limitFree": "Свободно по лимиту",
+  "credit.limitLeft": "В долг можно записать не более {amount}",
   "credit.ledger": "История долга",
   "credit.debtors": "Должники",
   "credit.noDebt": "Долга нет",
@@ -4083,6 +4089,8 @@ const en = {
   "credit.payAmount": "Payment amount",
   "credit.method": "Payment method",
   "credit.left": "Remaining debt",
+  "credit.limitFree": "Limit available",
+  "credit.limitLeft": "At most {amount} can go on credit",
   "credit.ledger": "Debt history",
   "credit.debtors": "Debtors",
   "credit.noDebt": "No debt",
