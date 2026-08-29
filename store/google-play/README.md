@@ -61,12 +61,19 @@ reliz to'xtaydi. Sabablari `EKRAN-JAVOBLARI.md` ning 5- va 6-bo'limida.
 ## 1. AAB faylni olish  *(siz)*
 
 ```
-git tag android-v1.0.0
-git push origin android-v1.0.0
+git tag android-v1.4.0
+git push origin android-v1.4.0
 ```
 
 Keyin **GitHub → Actions → «Android ilova» → oxirgi run → Artifacts →
 `e-kassam-aab`** dan `e-kassam.aab` ni yuklab oling.
+
+⚠ **Eski qurilish yaramaydi.** Oxirgi Android qurilishi —
+`android-v1.3.14` (20-avgust). Undan keyin Play uchun HAL QILUVCHI
+ikki narsa qo'shildi: **hisobni o'chirish** tugmasi va **demo rejim**.
+Eski AAB yuklansa, tekshiruvchi ilovaga kira olmaydi va hisob
+o'chirish yo'li topilmaydi — ikkalasi ham rad etish sababi. Shuning
+uchun yangi teg majburiy.
 
 > `.apk` ham chiqadi, lekin u **saytdan o'rnatish uchun**. Play faqat
 > `.aab` qabul qiladi.
@@ -327,7 +334,7 @@ Turga qarab:
 
 ## 8. Keyingi relizlar
 
-`git tag android-v1.0.1 && git push origin android-v1.0.1` → Actions →
+`git tag android-v1.4.1 && git push origin android-v1.4.1` → Actions →
 `e-kassam-aab` → Play Console'ga yuklash.
 
 `versionCode` avtomatik o'sadi (epoch-daqiqa), ya'ni qo'lda hech narsa
