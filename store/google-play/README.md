@@ -68,12 +68,16 @@ git push origin android-v1.4.0
 Keyin **GitHub → Actions → «Android ilova» → oxirgi run → Artifacts →
 `e-kassam-aab`** dan `e-kassam.aab` ni yuklab oling.
 
-⚠ **Eski qurilish yaramaydi.** Oxirgi Android qurilishi —
-`android-v1.3.14` (20-avgust). Undan keyin Play uchun HAL QILUVCHI
-ikki narsa qo'shildi: **hisobni o'chirish** tugmasi va **demo rejim**.
-Eski AAB yuklansa, tekshiruvchi ilovaga kira olmaydi va hisob
-o'chirish yo'li topilmaydi — ikkalasi ham rad etish sababi. Shuning
-uchun yangi teg majburiy.
+⚠ **Eski qurilish yaramaydi.** `android-v1.3.14` gacha bo'lgan
+qurilishlarda Play uchun HAL QILUVCHI ikki narsa yo'q: **hisobni
+o'chirish** tugmasi va **demo rejim**. Eski AAB yuklansa, tekshiruvchi
+ilovaga kira olmaydi va hisob o'chirish yo'li topilmaydi — ikkalasi
+ham rad etish sababi.
+
+**Play uchun AAB tayyor:** `main` dan qurilgan **#34-run**
+(`workflow_dispatch`, 29-avgust) — Actions'dan `e-kassam-aab` ni oling.
+Teg emas, qo'lda ishga tushirilgan: teg qo'shimcha ravishda saytdagi
+`.apk` ni ham yangilaydi, AAB uchun esa shart emas.
 
 > `.apk` ham chiqadi, lekin u **saytdan o'rnatish uchun**. Play faqat
 > `.aab` qabul qiladi.
