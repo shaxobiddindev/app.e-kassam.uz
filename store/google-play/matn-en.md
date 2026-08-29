@@ -83,5 +83,5 @@ Available in Uzbek, Russian and English.
 To use it as a shop you need to register at e-kassam.uz. To sign in as a
 customer, your phone number is enough.
 
-Questions and feedback: __EMAIL__
+Questions and feedback: ekassam.uz@gmail.com
 ```

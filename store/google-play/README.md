@@ -99,9 +99,12 @@ Skrinshot tartibi (mijoz birinchi — ilova aynan shunday ochiladi):
 > va Netlify'ga push bilan chiqadi. Play havolani TEKSHIRADI — ochilmasa
 > reliz rad etiladi.
 >
-> ⚠ Ikkala sahifada `__TASHKILOT_NOMI__`, `__MANZIL__`, `__EMAIL__`,
-> `__TELEFON__` o'rin egallovchilari bor. **Ularni to'ldirmasdan
-> chiqarmang** — bu huquqiy hujjat.
+> ✅ Ikkala sahifa TO'LDIRILGAN: aloqa `ekassam.uz@gmail.com`, ma'lumot
+> boshqaruvchisi — «e-Kassam». Manzil va telefon ataylab yo'q: sahifa
+> uchun ular shart emas, ishlaydigan pochta yetadi.
+>
+> ⚠ Pochta ISHLAYDIGAN bo'lishi shart: Play ham, hisobini o'chirmoqchi
+> bo'lgan mijoz ham aynan shu manzilga yozadi.
 
 ---
 

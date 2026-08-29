@@ -88,7 +88,7 @@ Ilova uch tilda: o'zbek, rus va ingliz.
 Do'kon sifatida ishlash uchun e-kassam.uz da ro'yxatdan o'tish kerak.
 Mijoz sifatida kirish uchun esa faqat telefon raqamingiz yetarli.
 
-Savol va takliflar: __EMAIL__
+Savol va takliflar: ekassam.uz@gmail.com
 ```
 
 ---
@@ -101,7 +101,6 @@ Savol va takliflar: __EMAIL__
 | Bepul yoki pullik | **Bepul** |
 | Kategoriya | **Business** (Biznes) |
 | Teglar | kassa, POS, savdo, ombor, sodiqlik |
-| Aloqa e-pochtasi | `__EMAIL__` |
-| Telefon | `__TELEFON__` *(ixtiyoriy, ammo ishonch qo'shadi)* |
+| Aloqa e-pochtasi | `ekassam.uz@gmail.com` |
 | Veb-sayt | `https://e-kassam.uz` |
 | Maxfiylik siyosati | `https://app.e-kassam.uz/legal/maxfiylik.html` |
