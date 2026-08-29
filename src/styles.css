@@ -2399,6 +2399,19 @@ img.logo--dark { display: none; }
 .cu-otp .cu-label { margin-top: 0; }
 
 /* Xodim havolasi — ko'rinadi, lekin e'tiborni tortmaydi */
+/* NAMOYISH BLOKI (V50). Kirish usullaridan chiziq bilan ajratiladi:
+   bu boshqa TOIFA — hisob ochish emas, ilovani ko'rib chiqish. Izoh
+   tugma ostida turadi va u ATAYLAB o'chirilmaydi: odam ballarini
+   haqiqiy deb o'ylab qolmasligi kerak. */
+.cu-demo {
+  margin-top: 18px; padding-top: 16px;
+  border-top: 1px solid var(--border-subtle);
+}
+.cu-demo__note {
+  margin: 8px 2px 0; font-size: var(--fs-xs, 12px); line-height: 1.45;
+  color: var(--fg-tertiary); text-align: center;
+}
+
 .cu-staff {
   background: none; border: 0; cursor: pointer; padding: 12px;
   color: var(--fg-tertiary); font-family: var(--font-sans);

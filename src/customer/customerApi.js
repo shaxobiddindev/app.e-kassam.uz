@@ -61,6 +61,11 @@ export const appApi = {
      usulni ko'rsatib qo'yish odamni ishlamaydigan yo'lga boshlaydi. */
   methods:      ()             => call("/auth/methods", { auth: false }),
 
+  /* NAMOYISH HISOBIGA KIRISH (V50) — Google Play tekshiruvchisi uchun.
+     ⚠ Serverda yoqilgan bo'lsagina ishlaydi va FAQAT namoyish hisobini
+     ochadi; boshqa hech qaysi hisobga bu yo'l bilan kirib bo'lmaydi. */
+  demoLogin:    ()             => call("/auth/demo", { method: "POST", auth: false }),
+
   emailStart:   (email)        => call("/auth/email/start",
                                        { method: "POST", body: { email }, auth: false }),
   emailVerify:  (email, code)  => call("/auth/email/verify",

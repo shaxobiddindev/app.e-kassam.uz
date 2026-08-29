@@ -52,6 +52,23 @@ export default function CustomerLogin({ onLoggedIn, onStaffLogin }) {
     return () => clearInterval(poller.current);
   }, []);
 
+  /* ── Namoyish hisobi (V50) ────────────────────────────────────────
+     Sabab yuqoridagi tugma izohida. Bu yerda kod so'ralmaydi: server
+     to'g'ridan-to'g'ri namoyish hisobining kalitini beradi. */
+  const startDemo = async () => {
+    setError("");
+    setMode("demo");
+    try {
+      const r = await appApi.demoLogin();
+      if (!r?.token) throw new Error("Namoyish hisobi topilmadi");
+      setAppToken(r.token);
+      onLoggedIn();
+    } catch (e) {
+      setMode("idle");
+      setError(e.message || "Namoyish rejimini ochib bo'lmadi");
+    }
+  };
+
   /* ── 1. Bot orqali ────────────────────────────────────────────────── */
   const startBot = async () => {
     setError("");
@@ -243,6 +260,26 @@ export default function CustomerLogin({ onLoggedIn, onStaffLogin }) {
               <i className="fa-solid fa-envelope" aria-hidden="true" /> Pochta orqali
             </button>
           )}
+        </div>
+      )}
+
+      {/* ══ NAMOYISH (V50) ══════════════════════════════════════════════
+          ⚠ FAQAT server yoqib qo'ygan bo'lsa chiziladi. Mijoz ilovasiga
+          kirishning uchala yo'li ham bir martalik kod talab qiladi va
+          Google Play tekshiruvchisi ularning hech birini o'tolmaydi —
+          bu tugmasiz ilova do'konga qo'yilmasdi.
+
+          ⚠ Ma'lumot O'YLAB TOPILGAN va bu yerda ochiq aytiladi: odam
+          «demo» tugmasini bosib, ballarini haqiqiy deb o'ylamasin. */}
+      {methods.demo && (
+        <div className="cu-demo">
+          <button className="cu-btn cu-btn--ghost" onClick={startDemo} disabled={mode === "demo"}>
+            <i className="fa-solid fa-circle-play" aria-hidden="true" />{" "}
+            {mode === "demo" ? "Ochilmoqda…" : "Demo rejimida ko'rish"}
+          </button>
+          <p className="cu-demo__note">
+            Namoyish hisobi — ma'lumotlar o'ylab topilgan. Telefon raqami talab qilinmaydi.
+          </p>
         </div>
       )}
 

@@ -108,6 +108,75 @@ Skrinshot tartibi (mijoz birinchi — ilova aynan shunday ochiladi):
 
 ---
 
+## 4b. App access — tekshiruvchi qanday kiradi  *(siz)*
+
+**App content → App access → «All or some functionality is restricted»**
+
+⚠ Bu bo'lim eng ko'p rad javob keltiradi: Google ilovani QO'LDA
+tekshiradi va tekshiruvchi ichiga KIRA OLMASA, ilova rad etiladi. Bizda
+uchala mijoz kirishi ham bir martalik kod talab qilardi (Telegram · SMS
+· pochta) — tekshiruvchi ularning hech birini o'tolmasdi. Shu sababdan
+**namoyish rejimi** qo'shildi.
+
+**Avval VPS'da yoqing** (`.env` yoki `docker-compose` muhit
+o'zgaruvchilari), so'ng konteynerni qayta ishga tushiring:
+
+```
+APP_DEMO_ENABLED=true
+APP_DEMO_PASSWORD=<kuchli parol>
+```
+
+Server o'zi yaratadi: `demo` kodli do'kon, `demo` xodimi, namoyish
+mijozi, 5 ta tovar va 3 ta chek. Qayta ishga tushirilganda takrorlamaydi.
+
+Keyin **+ Add details** bilan IKKITA yozuv qo'shing:
+
+**1) Customer side**
+
+| Maydon | Qiymat |
+|---|---|
+| Username | `demo` |
+| Password | `demo` *(ishlatilmaydi — pastdagi izohga qarang)* |
+
+```
+No credentials are needed for the customer side.
+
+On the first screen, tap "Demo rejimida ko'rish" (View in demo mode).
+It opens a demonstration account instantly - no phone number, no SMS
+and no one-time code. All data in it is fictional.
+
+This shows the loyalty card (rotating QR/barcode), points, receipts
+and shop list.
+```
+
+**2) Staff side (point of sale)**
+
+| Maydon | Qiymat |
+|---|---|
+| Username | `demo` |
+| Password | `<APP_DEMO_PASSWORD>` |
+
+```
+On the first screen, tap "Do'kon xodimiman" (I am a shop employee)
+at the bottom, then enter:
+
+  Shop code (Do'kon kodi): demo
+  Username:                demo
+  Password:                <APP_DEMO_PASSWORD>
+
+This account has owner access: till, stock, credit, warehouse pickup
+and reports.
+```
+
+⚠ Namoyish xodimida **pochta ataylab yo'q**: pochtali hisob yangi
+qurilmadan kirganda pochtaga tasdiq kodi kutadi va tekshiruvchi uni
+o'qiy olmasdi. Buni o'zgartirmang.
+
+⚠ Tekshiruv tugagach namoyishni o'chirmang: Google har yangilanishda
+qayta tekshiradi.
+
+---
+
 ## 5. Data safety anketasi  *(siz — javoblar tayyor)*
 
 **App content → Data safety**. Quyidagi javoblar ilovaning HAQIQIY
