@@ -366,9 +366,35 @@ qo'shiladi: `POST_NOTIFICATIONS`, `WAKE_LOCK`, `VIBRATE`,
 BO'LMASLIGI kerak. Bo'lsa — Data safety javoblari bilan zid bo'ladi
 (u yerda «Location 0/2» deb aytilgan) va tekshiruvchi savol beradi.
 
-Reliz yaratilgach: **Testers** yorlig'ida kamida **12 ta** tester
-(e-pochta ro'yxati yoki Google Group), keyin **Preview and confirm →
-Start rollout**. 14 kunlik hisob shu paytdan boshlanadi.
+Reliz yaratilgach: **Testers** yorlig'ida testerlar (e-pochta ro'yxati
+yoki Google Group), keyin **Preview and confirm → Start rollout**.
+
+### Testerlar: 12 raqami nimani anglatadi
+
+⚠ **Ro'yxatga e-pochta qo'shish YETARLI EMAS.** Google **opt-in
+qilganlarni** sanaydi: tester havolani ochib «Become a tester» ni
+bosishi kerak. Ya'ni 20 ta pochta kiritib, 5 tasi havolaga
+kirmasa — hisob 5 ta emas, 15 ta bo'ladi.
+
+⚠ **14 kun UZLUKSIZ.** Son bir kunga ham 12 dan tushsa (kimdir chiqib
+ketsa yoki boshqa Google hisobiga o'tsa), sanoq **noldan** boshlanadi.
+
+Shuning uchun aniq 12 ta bilan ishlamang — **20–25 ta** taklif qiling.
+Zaxira bo'lsin: kimdir havolani ochmaydi, kimdir telefonini
+almashtiradi.
+
+Testerga aytiladigan uch qadam:
+
+1. Havolani **taklif kelgan Google hisobi bilan** oching (boshqa
+   hisobda ochilsa sanalmaydi).
+2. «Become a tester» → Play'dan o'rnating.
+3. Ikki hafta davomida ishlatib turing — production'ga ariza berganda
+   Google sinov qanday o'tgani haqida savol beradi.
+
+Google Group ishlatgan ma'qul: keyin tester qo'shish uchun relizga
+tegish shart bo'lmaydi.
+
+Console'dagi hisoblagichning o'zi hakam — har kuni bir qarab qo'ying.
 
 ---
 
