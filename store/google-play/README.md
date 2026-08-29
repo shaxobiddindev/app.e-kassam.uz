@@ -231,19 +231,48 @@ Sentry ham, Bugsnag ham; xatoni serverga yuboradigan kod ham yo'q).
 | App info and performance | ❌ | Nosozlik hisoboti SDK'si yo'q |
 | Health · Messages · Audio · Files · Calendar · Contacts · Web browsing | ❌ | Ilova bularga umuman tegmaydi |
 
-**Har bir tanlangan tur uchun**
+**4-qadam — Data usage and handling**
 
-| Tur | Shared | Majburiy | Maqsad |
-|---|---|---|---|
-| Name | ❌ | ✅ | App functionality, Account management |
-| Phone number | ✅ SMS operatori | ✅ | Account management |
-| Email address | ❌ | ❌ | Account management |
-| User IDs | ✅ Telegram | ❌ | Account management |
-| Purchase history | ❌ | ✅ | App functionality |
-| Other financial info | ❌ | ✅ | App functionality |
-| Device or other IDs | ✅ Google FCM | ❌ | App functionality |
-| Photos | ❌ | ❌ | App functionality |
-| Other user-generated content | ❌ | ❌ | App functionality |
+⚠ TUZATILDI: ilgari bu jadvalda telefon, User ID va Device ID uchun
+«Shared ✅» turgan edi — XATO. Google ta'rifi bo'yicha **sizning
+nomingizdan ish bajaradigan xizmat ko'rsatuvchiga** (service provider)
+uzatish «sharing» HISOBLANMAYDI va bu uning rasmiy istisnolari
+ro'yxatida turadi. FCM, SMS operatori va hosting aynan shunday.
+Ortiqcha belgilash bu yerda ZARARLI: do'kon sahifasida «ma'lumot
+uchinchi tomonlarga beriladi» degan yozuv chiqadi, holbuki berilmaydi.
+
+Hamma turda bir xil:
+
+| Savol | Javob |
+|---|---|
+| Is this data collected, shared, or both? | faqat **Collected** — Shared emas |
+| Is this data processed ephemerally? | **No** — hammasi bazada saqlanadi |
+
+Turga qarab:
+
+| Tur | Required / Optional | Why — maqsad |
+|---|---|---|
+| Name | Required | App functionality · Account management |
+| Email address | **Optional** | Account management · Fraud prevention, security, and compliance |
+| User IDs | Required | Account management · App functionality |
+| Phone number | Required | Account management · App functionality |
+| Purchase history | Required | App functionality |
+| Other financial info | Required | App functionality |
+| Device or other IDs | Required | App functionality · Fraud prevention, security, and compliance |
+| Photos | **Optional** | App functionality |
+| Other user-generated content | Required | App functionality |
+
+> **Email — yagona «Optional»**: mijoz uni faqat xohlasa qo'shadi,
+> Telegramsiz kirishning zaxira yo'li sifatida.
+>
+> **Email va Device ID da «Fraud prevention»**: yangi qurilmadan
+> kirganda pochtaga tasdiq kodi yuboriladi va qurilma identifikatori
+> begona kirishni aniqlash uchun ishlatiladi.
+>
+> **Hech qayerda belgilanmaydi**: Analytics (SDK yo'q), Advertising or
+> marketing (reklama yo'q), Personalization (tavsiya tizimi yo'q),
+> Developer communications (bildirishnomalar mijozning O'Z ballari va
+> qarzi haqida — bu App functionality).
 
 > ⚠ ENG KO'P UCHRAYDIGAN XATO — **Location** ni belgilab qo'yish. Ilova
 > joylashuvni yig'a OLMAYDI: bunday ruxsat umuman so'ralmagan. Yig'a
