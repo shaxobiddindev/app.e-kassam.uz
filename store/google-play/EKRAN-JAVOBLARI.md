@@ -179,14 +179,51 @@ emas — kassa har qanday tovarni qayd etadi.
 
 ---
 
-## 8 · App category va aloqa
+## 8 · Store settings — App category va aloqa
 
 | Maydon | Qiymat |
 |---|---|
-| App or game | App |
+| App or game | **App** |
 | Category | **Business** |
-| Email | `ekassam.uz@gmail.com` |
+| Tags | tayyor ro'yxatdan, ko'pi bilan 5 ta (pastda) |
+| Email address | `ekassam.uz@gmail.com` |
+| Phone number | majburiy emas — bo'sh qoldirsa ham bo'ladi |
 | Website | `https://e-kassam.uz` |
+| External marketing | **yoqilgan holda qoldiriladi** |
+
+**Category — nega Business, Finance emas.** Finance toifasi bank, to'lov
+va kredit ilovalari uchun. Uni tanlash Financial features'dagi «hech
+qanday moliyaviy funksiya yo'q» javobiga zid ko'rinadi va tekshiruvchida
+ortiqcha savol tug'diradi. e-Kassam — do'kon uchun ish quroli: Business.
+
+**Tags — erkin matn EMAS.** «Manage tags» Google'ning tayyor ro'yxatini
+ochadi, ko'pi bilan **5 ta** belgilanadi. Ma'nosi bo'yicha eng yaqinini
+shu tartibda oling:
+
+1. kassa / sotuv nuqtasi (point of sale)
+2. ombor va zaxira (inventory)
+3. kichik biznesni boshqarish
+4. mijozlar bilan ishlash (CRM)
+5. hisobot va tahlil
+
+⚠ «Banking», «Payments», «Loans» kabi teglarni **olmang** — Financial
+features javobiga zid bo'ladi. Teglar keyin ham o'zgartiriladi, buning
+uchun yangi reliz kerak emas.
+
+**Email** do'kon sahifasida hammaga ko'rinadi va uni kuzatib turish
+kerak: hisobni o'chirish so'rovi ham shu manzilga keladi.
+
+**Phone number** ham hammaga ko'rinadi, lekin **majburiy emas**. Shaxsiy
+raqamni chop etishni istamasangiz bo'sh qoldiring; yozsangiz xalqaro
+formatda — `+998 …`.
+
+**Website** havolasi ochilishiga ishonch hosil qiling: maxfiylik siyosati
+ham shu domenda turadi, domen ochilmasa tekshiruv shu yerda to'xtaydi.
+Sayt hali tayyor bo'lmasa, o'lik havoladan ko'ra bo'sh maydon yaxshi.
+
+**External marketing** yoqilgan qoladi. O'chirish faqat Google'ning
+Play'dan tashqaridagi reklamasini to'xtatadi — ko'rinish kamayadi,
+siyosiy foydasi yo'q.
 
 ---
 
