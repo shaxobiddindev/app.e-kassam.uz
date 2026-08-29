@@ -439,6 +439,11 @@ ishlamasa reliz shu yerda to'xtaydi:
 domen. Manzilni qisqartirib yozish ham ishlamaydi: fayl nomi
 `.html` bilan tugaydi va `/legal/` papkasida.
 
+**Yuborgandan keyin nima bo'ladi:** yangi ilovaning birinchi relizi
+qo'lda tekshiriladi — odatda bir necha kun, Google 7 kungacha deydi.
+Tasdiqlangach reliz testerlarga chiqadi va **14 kunlik sanoq
+o'shandan** boshlanadi, «Submit» bosilgan kundan emas.
+
 ⚠ **Store listing tili va matn tili bir xil bo'lsin.** Ro'yxatda
 «Russian – ru-RU · Default store listing» tursa-yu, ichida o'zbekcha
 matn bo'lsa — Metadata siyosati buzilgan hisoblanadi. To'g'ri yo'l:
