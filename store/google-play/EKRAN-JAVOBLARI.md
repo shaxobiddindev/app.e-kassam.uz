@@ -243,6 +243,29 @@ siyosiy foydasi yo'q.
 
 Matn va rasm — shu papkada: `matn-{uz,ru,en}.md`, `grafika/`, `skrinshot/`.
 
+| Maydon | Nima qo'yiladi |
+|---|---|
+| App icon | `grafika/ikonka-512.png` — 512×512 |
+| Feature graphic | `grafika/feature-1024x500.png` — 1024×500 |
+| Video | **bo'sh** |
+| Phone screenshots | 7 ta `skrinshot/phone-*.png` — 1080×1920 |
+| 7-inch tablet | 4 ta `skrinshot/tab-*.png` — 2560×1440 |
+| 10-inch tablet | **o'sha 4 ta fayl** |
+| Chromebook | **bo'sh** — Play planshet rasmlarini oladi |
+| Android XR | **bo'sh** — VR qurilma uchun ilova emas |
+| Spatial / Non-spatial XR video | **bo'sh** |
+
+⚠ **Play faqat 16:9 yoki 9:16 qabul qiladi.** Planshet rasmlari avval
+2560×1600 (16:10) edi — yuklovchi rad etadi. Kesib bo'lmaydi: tepada
+logotip, pastda «To'lovga o'tish» tugmasi bor. Shuning uchun rasm
+balandligi bo'yicha sig'dirilib, yon tomonlar ilovaning o'z fon rangi
+(`#F6F8FB`) bilan to'ldirildi — natija 2560×1440. Yon chiziq rangi
+hamma rasmda bir xil: karuselda to'rttasi yonma-yon turadi.
+
+Bitta to'plam ikkala planshet bo'limiga ham yaraydi: 7-inch 320–3840 px
+oralig'ini, 10-inch 1080–7680 px oralig'ini talab qiladi, 2560×1440
+ikkoviga ham tushadi.
+
 ⚠ Planshet skrinshotlarini albatta qo'ying, aks holda Play «planshet
 uchun moslashtirilmagan» deb ogohlantiradi.
 
