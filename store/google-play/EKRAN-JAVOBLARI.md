@@ -174,10 +174,29 @@ ombor va savdo hisobi.
 | **Content rating** | Kategoriya: Utility, Productivity, Communication, or Other. Hamma savolga «yo'q». Natija: **3+ / Everyone** |
 | **Target audience** | ⚠ **faqat 18+**. 18 dan kichik guruh belgilansa ilova Families siyosatiga tushadi va ko'p hollarda rad etiladi |
 | **Government apps** | Yo'q |
+| **Advertising ID** | ⚠ **«No»** — ilova reklama identifikatoridan foydalanmaydi |
 
 ⚠ **Content rating — tamaki va alkogol** savoliga «yo'q»: ilova ularni
 sotmaydi va reklama qilmaydi. Do'kon nima sotishi ilovaning mazmuni
 emas — kassa har qanday tovarni qayd etadi.
+
+⚠ **Advertising ID anketasi Android 13+ uchun MAJBURIY** va to'ldirilmasa
+Play hech qanday o'zgarishni tekshiruvga yubormaydi («Incomplete
+advertising ID declaration»). Bizda javob **«No»**: reklama yo'q,
+analitika SDK yo'q, atribusiya yo'q. Yagona Google kutubxonasi —
+`firebase-messaging` (push), u reklama ID sini ishlatmaydi.
+
+Javobni yuborishdan oldin bir tekshiring: **paket → Permissions → Show
+detail** da `com.google.android.gms.permission.AD_ID` **bo'lmasligi**
+kerak. Agar biror kutubxona uni olib kirgan bo'lsa, «No» javobi bilan
+zid bo'ladi; unda manifestga qo'shiladi:
+
+```xml
+<uses-permission android:name="com.google.android.gms.permission.AD_ID"
+    tools:node="remove" />
+```
+
+va paket qayta quriladi.
 
 ---
 
