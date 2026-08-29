@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 12+ uchun zaxiralash va QURILMALARARO KO'CHIRISH qoidalari.
+
+  Ikkalasi ham butunlay yopiq: ilova saqlaydigan yagona qimmatli narsa —
+  kirish tokenlari, va ular qurilmadan chiqmasligi kerak. `allowBackup`
+  ni `false` qilishning o'zi Android 12 dan boshlab yetarli emas —
+  qurilma almashtirish oqimi alohida qoidaga qaraydi.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="root" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="external" />
+        <exclude domain="file" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="root" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="external" />
+        <exclude domain="file" />
+    </device-transfer>
+</data-extraction-rules>
