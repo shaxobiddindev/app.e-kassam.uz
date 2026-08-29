@@ -134,7 +134,37 @@ Ikkita bahsli band va nega belgilanmaydi:
 
 ---
 
-## 6 · Qolgan anketalar
+## 6 · Health apps
+
+**1-qadam «Health features in your app»** — eng pastdagi **«My app does
+not have any health features»**. Yuqoridagi hech bir katakcha
+belgilanmaydi. Shundan keyin **2-qadam «Regional requirements» o'zi
+yopiladi** — to'ldiradigan narsa qolmaydi.
+
+⚠ **Financial features bilan bir xil: «ikkilansang belgila» qoidasi bu
+yerda ham ISHLAMAYDI.** Belgilangan har bir band 2-qadamni ochadi va
+mintaqaviy talab qo'yadi: AQShda HIPAA, Yevropada tibbiy qurilma (MDR)
+hujjatlari, ayrim davlatlarda sog'liqni saqlash litsenziyasi. Hujjatsiz
+reliz to'xtaydi.
+
+Nega hech biri belgilanmaydi:
+
+- sog'liq ma'lumoti yig'ilmaydi, saqlanmaydi, ko'rsatilmaydi;
+- tadqiqot va klinik sinov (Human subjects research) yo'q;
+- fitnes, ovqatlanish, uyqu, ruhiy holat funksiyalari yo'q.
+
+⚠ **Do'kon dorixona bo'lsa ham javob o'zgarmaydi.** Ilova **tovar
+sotuvini** qayd etadi — nomi, narxi, miqdori. Dori tavsiya qilmaydi,
+retsept bilan ishlamaydi, dozani hisoblamaydi va mijozning kasalligi
+haqida hech nima bilmaydi. Sotilgan tovar nomi dori bo'lishi ilovaning
+funksiyasi emas.
+
+**Yaroqlilik muddati stikerlari** ham sog'liq funksiyasi emas — bu
+ombor va savdo hisobi.
+
+---
+
+## 7 · Qolgan anketalar
 
 | Anketa | Javob |
 |---|---|
@@ -142,7 +172,6 @@ Ikkita bahsli band va nega belgilanmaydi:
 | **Content rating** | Kategoriya: Utility, Productivity, Communication, or Other. Hamma savolga «yo'q». Natija: **3+ / Everyone** |
 | **Target audience** | ⚠ **faqat 18+**. 18 dan kichik guruh belgilansa ilova Families siyosatiga tushadi va ko'p hollarda rad etiladi |
 | **Government apps** | Yo'q |
-| **Health** | Yo'q |
 
 ⚠ **Content rating — tamaki va alkogol** savoliga «yo'q»: ilova ularni
 sotmaydi va reklama qilmaydi. Do'kon nima sotishi ilovaning mazmuni
@@ -150,7 +179,7 @@ emas — kassa har qanday tovarni qayd etadi.
 
 ---
 
-## 7 · App category va aloqa
+## 8 · App category va aloqa
 
 | Maydon | Qiymat |
 |---|---|
@@ -161,7 +190,7 @@ emas — kassa har qanday tovarni qayd etadi.
 
 ---
 
-## 8 · Store listing
+## 9 · Store listing
 
 Matn va rasm — shu papkada: `matn-{uz,ru,en}.md`, `grafika/`, `skrinshot/`.
 
@@ -181,3 +210,5 @@ tekshiring** — javoblar aynan shularga bog'liq:
 4. Ilova to'lovni O'ZI qabul qiladimi (agar ha — Financial features va
    Payments butunlay boshqacha bo'ladi)
 5. Hisob yaratish usullari o'zgardimi
+6. Sog'liq, fitnes yoki tibbiy ma'lumot bilan ishlaydimi (agar ha —
+   Health apps ochiladi va mintaqaviy hujjatlar so'raladi)

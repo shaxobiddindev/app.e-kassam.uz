@@ -16,14 +16,20 @@ bandlarni O'Z tartibida ko'rsatadi:
   **Store presence** — App category va aloqa · Store listing
 
 Console'dagi tartib bo'yicha yurish qulayroq; sahifadagi versiya aynan
-shunday tuzilgan. Quyidagi ikki band bu faylda YO'Q, faqat sahifada bor:
+shunday tuzilgan. Quyidagi uch band bu faylda qisqa, to'lig'i
+`EKRAN-JAVOBLARI.md` da:
 
   · **Government apps** → yo'q (xususiy tijorat dasturi)
-  · **Health** → yo'q (tibbiy ma'lumot, tadqiqot, fitnes yo'q)
+  · **Health apps** → «My app does not have any health features»;
+    boshqa hech narsa belgilanmaydi, shunda 2-qadam «Regional
+    requirements» o'zi yopiladi
   · **Financial features** → «doesn't provide any financial features»,
-    LEKIN ekrandagi ta'riflarni o'qing: ilovada nasiya bor va Google
-    «personal loans» ta'rifini o'zgartirib turadi. Yashirgandan ko'ra
-    ortiqcha e'lon qilgan xavfsizroq.
+    boshqa hech narsa.
+
+⚠ Oxirgi ikki ekranda **«ikkilansang belgila» qoidasi ISHLAMAYDI**:
+belgilangan har bir band Google'dan **hujjat** (litsenziya, guvohnoma)
+yoki mintaqaviy talab (HIPAA, MDR) keltirib chiqaradi va hujjatsiz
+reliz to'xtaydi. Sabablari `EKRAN-JAVOBLARI.md` ning 5- va 6-bo'limida.
 
 > ⚠ **Vaqt haqida ochiq gap.** Shaxsiy (individual) Play akkaunti bilan
 > ilova do'konga DARHOL chiqmaydi: Google yangi shaxsiy akkauntlardan
