@@ -273,6 +273,75 @@ uchun moslashtirilmagan» deb ogohlantiradi.
 
 ---
 
+## 10 · Closed testing relizi
+
+AAB shu yerga yuklanadi: **Testing → Closed testing → Create new
+release → Upload**.
+
+| Maydon | Qiymat |
+|---|---|
+| App bundles | `e-kassam.aab` (Actions artifaktidan) |
+| Release name | Play o'zi taklif qiladi (`versionName`) — o'zgartirish shart emas, mijozga ko'rinmaydi |
+| Release notes | quyidagi matn, HAR TIL uchun |
+
+⚠ **«Releases are signed by Google Play»** — shunday qolsin. Bu Play App
+Signing: Google o'z kalitini saqlaydi, bizning kalit esa faqat yuklash
+uchun. Kalit yo'qolsa ilova o'lmaydi.
+
+**Release notes (500 belgigacha, har til uchun alohida):**
+
+```
+<ru-RU>
+Первый выпуск e-Kassam.
+
+Для клиента: карта лояльности с QR-кодом, баллы, история чеков,
+подтверждение долга и акции магазина.
+
+Для магазина: касса со сканером и весами, склад, рассрочка, выдача
+товара со склада, отчёты и работа без интернета.
+</ru-RU>
+```
+
+```
+<uz>
+e-Kassam birinchi relizi.
+
+Mijoz uchun: QR bilan sodiqlik kartasi, ballar, cheklar tarixi, qarzni
+tasdiqlash va aksiyalar.
+
+Do'kon uchun: skaner va tarozili kassa, ombor, nasiya, ombordan berish,
+hisobotlar va oflayn ishlash.
+</uz>
+```
+
+```
+<en-US>
+First release of e-Kassam.
+
+For customers: loyalty card with QR, points, receipt history, debt
+confirmation and shop promotions.
+
+For shops: POS with scanner and scales, stock, credit ledger, warehouse
+pickup, reports and offline mode.
+</en-US>
+```
+
+⚠ **Qaysi til teglari chiqishini do'kon sahifasi belgilaydi.** Agar bu
+yerda faqat `<ru-RU>` ko'rinsa — demak ilovaning do'kon sahifasi
+hozircha faqat rus tilida. Unda avval **Main store listing → Manage
+translations** dan o'zbek va ingliz tillarini qo'shing; shundan keyin
+bu yerda uchala teg chiqadi.
+
+⚠ O'zbekcha matnni rus tilidagi sahifaga joylashtirib qo'ymang — matn
+va til bir-biriga mos bo'lishi kerak, aks holda Metadata siyosati
+buzilgan hisoblanadi.
+
+Reliz yaratilgach: **Testers** yorlig'ida kamida **12 ta** tester
+(e-pochta ro'yxati yoki Google Group), keyin **Preview and confirm →
+Start rollout**. 14 kunlik hisob shu paytdan boshlanadi.
+
+---
+
 ## Keyingi ilova uchun nima o'zgaradi
 
 Yangi ilovada shu fayldan boshlang, lekin quyidagilarni **qayta
