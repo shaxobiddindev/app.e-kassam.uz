@@ -157,16 +157,17 @@ uchala mijoz kirishi ham bir martalik kod talab qilardi (Telegram · SMS
 · pochta) — tekshiruvchi ularning hech birini o'tolmasdi. Shu sababdan
 **namoyish rejimi** qo'shildi.
 
-**Avval VPS'da yoqing** (`.env` yoki `docker-compose` muhit
-o'zgaruvchilari), so'ng konteynerni qayta ishga tushiring:
+✅ **Serverda YOQILGAN** (29-avgust). `APP_DEMO_ENABLED` va
+`APP_DEMO_PASSWORD` deploy yozadigan qat'iy ro'yxatga kiritildi, ya'ni
+har chiqishda o'zi qo'yiladi va qo'lda hech narsa qilish shart emas.
+Parol serverdagi `.env` ichida — o'zingiz belgilamoqchi bo'lsangiz,
+GitHub'da `APP_DEMO_PASSWORD` secret'ini qo'ying.
 
-```
-APP_DEMO_ENABLED=true
-APP_DEMO_PASSWORD=<kuchli parol>
-```
-
-Server o'zi yaratadi: `demo` kodli do'kon, `demo` xodimi, namoyish
+Server o'zi yaratdi: `demo` kodli do'kon, `demo` xodimi, namoyish
 mijozi, 5 ta tovar va 3 ta chek. Qayta ishga tushirilganda takrorlamaydi.
+
+⚠ Bu qiymatlarni serverdagi `.env` ga QO'LDA qo'shmang: deploy faylni
+har safar qayta yozadi va qo'lda qo'shilgani jimgina yo'qolardi.
 
 Keyin **+ Add details** bilan IKKITA yozuv qo'shing:
 

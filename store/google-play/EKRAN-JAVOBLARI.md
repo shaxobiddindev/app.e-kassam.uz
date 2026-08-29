@@ -55,7 +55,9 @@ at the bottom, then enter:
   Password:                <APP_DEMO_PASSWORD>
 ```
 
-⚠ VPS'da `APP_DEMO_ENABLED=true` va `APP_DEMO_PASSWORD` bo'lishi SHART.
+✅ VPS'da yoqilgan: bu ikkovini deploy `.env` ga o'zi yozadi (parolni
+eski fayldan ko'chiradi yoki yangisini yaratadi). Qo'lda qo'shmang —
+deploy faylni qayta yozadi va qo'lda qo'yilgani yo'qoladi.
 ⚠ Namoyish xodimida **pochta bo'lmasin** — pochtali hisob yangi
 qurilmadan kirganda tasdiq kodi kutadi va tekshiruvchi to'xtab qoladi.
 
