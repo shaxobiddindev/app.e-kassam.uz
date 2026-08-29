@@ -100,7 +100,7 @@ Savol va takliflar: ekassam.uz@gmail.com
 | Ilova yoki o'yin | **Ilova** |
 | Bepul yoki pullik | **Bepul** |
 | Kategoriya | **Business** (Biznes) |
-| Teglar | kassa, POS, savdo, ombor, sodiqlik |
+| Teglar | Google ro'yxatidan, ko'pi bilan 5 ta; mos kelmasa bo'sh (ixtiyoriy) |
 | Aloqa e-pochtasi | `ekassam.uz@gmail.com` |
 | Veb-sayt | `https://e-kassam.uz` |
 | Maxfiylik siyosati | `https://app.e-kassam.uz/legal/maxfiylik.html` |

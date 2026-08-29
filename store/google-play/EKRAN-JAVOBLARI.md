@@ -224,9 +224,14 @@ kerak: hisobni o'chirish so'rovi ham shu manzilga keladi.
 raqamni chop etishni istamasangiz bo'sh qoldiring; yozsangiz xalqaro
 formatda — `+998 …`.
 
-**Website** havolasi ochilishiga ishonch hosil qiling: maxfiylik siyosati
-ham shu domenda turadi, domen ochilmasa tekshiruv shu yerda to'xtaydi.
-Sayt hali tayyor bo'lmasa, o'lik havoladan ko'ra bo'sh maydon yaxshi.
+**Website** — bu maydon **ixtiyoriy** va u tanishtiruv sayti
+(`e-kassam.uz`). Havola ochilmasa, bo'sh qoldiring: o'lik havola
+tekshiruvchini bezovta qiladi.
+
+⚠ Maxfiylik siyosati **boshqa domenda** — `app.e-kassam.uz/legal/…`.
+U esa **majburiy** va albatta ochilishi shart (App content → Privacy
+policy). Ikkovini aralashtirmang: Website ochilmasa reliz to'xtamaydi,
+maxfiylik havolasi ochilmasa — to'xtaydi.
 
 **External marketing** yoqilgan qoladi. O'chirish faqat Google'ning
 Play'dan tashqaridagi reklamasini to'xtatadi — ko'rinish kamayadi,
