@@ -95,6 +95,11 @@ export const appApi = {
   /* ── Profil va do'konlar ── */
   me:         ()      => call("/me"),
   updateMe:   (data)  => call("/me", { method: "PUT", body: data }),
+  /* HISOBNI O'CHIRISH (V49) — Google Play talabi.
+     ⚠ Do'konning mijoz yozuvi (qarz, ball, xarid tarixi) O'CHMAYDI, faqat
+     bog'lanish uziladi — sabab serverdagi `deleteAccount` izohida va
+     foydalanuvchiga oynada ochiq aytiladi. */
+  deleteMe:   ()      => call("/me", { method: "DELETE" }),
   shops:      ()      => call("/shops"),
   /* Aylanma karta siri (V45) — bir marta olinadi, keyin kod ILOVADA,
      oflaynda yasaladi. ⚠ Bu chaqiruvdan keyin server o'sha kartadan

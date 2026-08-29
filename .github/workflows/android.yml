@@ -1,6 +1,11 @@
-name: Android ilova (.apk)
+name: Android ilova (.apk + .aab)
 
-# Kassa ilovasining Android APK'si — Capacitor qobig'ida.
+# Kassa ilovasining Android paketlari — Capacitor qobig'ida.
+#
+# Ikkita fayl chiqadi va ular BOSHQA-BOSHQA joyga ketadi:
+#   · `e-kassam.apk` → GitHub relizi (saytdagi «Android» tugmasi)
+#   · `e-kassam.aab` → Actions artifakti (Google Play Console'ga qo'lda)
+# Sabab quyida, qurilish qadamining izohida.
 #
 # ⚠ RELIZ HAR DOIM `prerelease` VA DOIMIY `android-latest` TEGI BILAN.
 # Sabab: `releases/latest` allaqachon DESKTOPNIKI — u yerda `latest.json`
@@ -61,9 +66,23 @@ jobs:
           fi
           echo "Kalit joyida."
 
-      # versionCode — epoch-daqiqa: har APK avvalgisidan katta raqam bilan
-      # chiqadi va o'rnatilganining USTIGA tushadi (build-apk.sh bilan bir xil).
-      - name: Gradle assembleRelease (imzolangan)
+      # versionCode — epoch-daqiqa: har qurilish avvalgisidan katta raqam
+      # bilan chiqadi va o'rnatilganining USTIGA tushadi (build-apk.sh bilan
+      # bir xil).
+      #
+      # ⚠ IKKI XIL FAYL, IKKI XIL MANZIL — bu ataylab:
+      #
+      #   · `.apk`  → SAYTDAN to'g'ridan-to'g'ri o'rnatish uchun. Play'da
+      #               yo'q do'konlar (va sinov qurilmalari) shundan oladi.
+      #   · `.aab`  → GOOGLE PLAY uchun. Play 2021-yildan beri yangi
+      #               ilovadan FAQAT App Bundle qabul qiladi va `.apk`
+      #               yuklashga umuman ruxsat bermaydi.
+      #
+      # ⚠ IKKALASI HAM BIR XIL `versionCode` VA BIR XIL KALIT bilan
+      # chiqadi: aks holda saytdan o'rnatgan foydalanuvchi Play'dagi
+      # yangilanishni ololmasdi (Android boshqa imzoli paketni yangilanish
+      # deb qabul qilmaydi).
+      - name: Gradle release (APK + AAB, imzolangan)
         env:
           KS: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -71,17 +90,30 @@ jobs:
           echo "$KS" | base64 -d > /tmp/ekassam.keystore
           VCODE=$(( $(date +%s) / 60 ))
           VNAME="$(date -u +%Y.%m.%d-%H%M)"
+          echo "versionCode=$VCODE versionName=$VNAME" >> "$GITHUB_STEP_SUMMARY"
           cd android
-          ./gradlew --console=plain assembleRelease \
+          ./gradlew --console=plain assembleRelease bundleRelease \
             -PappVersionCode="$VCODE" -PappVersionName="$VNAME" \
             -PsignKeystore=/tmp/ekassam.keystore -PsignPassword="$KS_PASS"
           cp app/build/outputs/apk/release/app-release.apk ../e-kassam.apk
+          cp app/build/outputs/bundle/release/app-release.aab ../e-kassam.aab
 
       - name: APK artifakti (ishlab chiquvchi uchun)
         uses: actions/upload-artifact@v4
         with:
           name: e-kassam-apk
           path: e-kassam.apk
+          if-no-files-found: error
+
+      # ⚠ AAB FAQAT ARTIFAKT, relizga QO'YILMAYDI. Sabab: `.aab` ni
+      # telefonga o'rnatib bo'lmaydi va uni relizga qo'yish «yuklab olib
+      # o'rnataman» degan odamni chalg'itardi. Play'ga yuklash uchun uni
+      # Actions sahifasidan olib tushish kerak.
+      - name: AAB artifakti (Google Play uchun)
+        uses: actions/upload-artifact@v4
+        with:
+          name: e-kassam-aab
+          path: e-kassam.aab
           if-no-files-found: error
 
       # Doimiy `android-latest` relizi: bo'lsa faqat APK yangilanadi

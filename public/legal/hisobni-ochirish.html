@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hisobni o'chirish — e-Kassam</title>
+<meta name="description" content="e-Kassam ilovasidagi hisobni qanday o'chirish mumkin va o'chirilgandan keyin qaysi ma'lumot qoladi.">
+<style>
+  :root { --bg:#fff; --fg:#111827; --fg2:#4b5563; --border:#e5e7eb; --brand:#1d4ed8; --card:#f9fafb; --danger:#b42318; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#0b1220; --fg:#e5e7eb; --fg2:#9ca3af; --border:#1f2937; --brand:#60a5fa; --card:#111827; --danger:#f87171; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg);
+         font-family: ui-sans-serif, system-ui, "Segoe UI", Roboto, Arial, sans-serif; line-height:1.65; }
+  .wrap { max-width:720px; margin:0 auto; padding:32px 20px 64px; }
+  h1 { font-size:26px; margin:0 0 6px; }
+  h2 { font-size:18px; margin:28px 0 8px; }
+  p, li { color:var(--fg2); }
+  a { color:var(--brand); }
+  .meta { font-size:13px; color:var(--fg2); border-bottom:1px solid var(--border); padding-bottom:16px; margin-bottom:22px; }
+  ol { padding-left: 20px; }
+  ol li { margin-bottom: 6px; }
+  .box { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:14px 16px; margin:16px 0; }
+  .box--warn { border-left:3px solid var(--danger); }
+  table { border-collapse:collapse; width:100%; margin:10px 0; font-size:14px; }
+  th, td { border:1px solid var(--border); padding:8px 10px; text-align:left; vertical-align:top; }
+  th { background:var(--card); font-size:13px; }
+  .ok { color:#15803d; font-weight:700; }
+  .keep { color:var(--danger); font-weight:700; }
+  footer { margin-top:44px; padding-top:16px; border-top:1px solid var(--border); font-size:13px; }
+  section[lang] h2:first-of-type { margin-top:40px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Hisobni o'chirish</h1>
+<div class="meta">e-Kassam (<code>uz.ekassam.app</code>) · Oxirgi yangilanish: 2026-yil 29-avgust</div>
+
+<section lang="uz">
+
+<h2>Ilova ichidan o'chirish</h2>
+<ol>
+  <li>Ilovani oching va hisobingizga kiring.</li>
+  <li>Pastdagi <b>Profil</b> bo'limiga o'ting.</li>
+  <li>Sahifaning eng pastidagi <b>«Hisobni o'chirish»</b> tugmasini bosing.</li>
+  <li>Chiqqan oynada <b>«Ha, o'chirilsin»</b> ni tanlang.</li>
+</ol>
+<p>Hisob <b>darhol</b> o'chiriladi — kutish yoki tasdiq kutish shart emas.</p>
+
+<h2>Ilovaga kira olmasangiz</h2>
+<p>Telefoningizni yo'qotgan yoki kira olmayotgan bo'lsangiz,
+<a href="mailto:__EMAIL__">__EMAIL__</a> manziliga xat yozing. Xatda telefon raqamingizni
+ko'rsating (hisob aynan shunga bog'langan). Biz shaxsingizni tasdiqlagach hisobni
+o'chiramiz — bunga <b>30 kungacha</b> vaqt ketishi mumkin.</p>
+
+<h2>Nima o'chadi va nima qoladi</h2>
+<table>
+  <tr><th>Ma'lumot</th><th>Holati</th></tr>
+  <tr><td>Telefon raqamingiz, ismingiz</td><td class="ok">O'chadi</td></tr>
+  <tr><td>Telegram va pochta bog'lanishi</td><td class="ok">O'chadi</td></tr>
+  <tr><td>Barcha seanslar (boshqa qurilmalardagisi ham)</td><td class="ok">O'chadi</td></tr>
+  <tr><td>Bildirishnoma (push) tokenlari</td><td class="ok">O'chadi</td></tr>
+  <tr><td>Do'kondagi xarid tarixi, ballar, <b>qarz qoldig'i</b></td><td class="keep">Do'konda qoladi</td></tr>
+</table>
+
+<div class="box box--warn">
+  <p style="margin:0"><b>Nega qarz va xarid tarixi qoladi?</b> Ular <b>do'konning</b> buxgalteriya
+  yozuvi, sizning ilova hisobingizniki emas. Do'kon ularni qonun talabiga muvofiq saqlashi shart
+  va <b>qarzingiz bo'lsa, u hisobni o'chirish bilan bekor bo'lmaydi</b>. Aks holda ilovani
+  o'chirish qarzdan qutulishning eng oson yo'liga aylanardi.</p>
+  <p style="margin:10px 0 0">O'chirishdan keyin bu yozuvlar sizning ilova hisobingizga
+  <b>bog'lanmagan</b> holda qoladi. Do'kondagi o'z yozuvingizni o'chirishni so'rash uchun
+  to'g'ridan-to'g'ri <b>o'sha do'konga</b> murojaat qiling.</p>
+</div>
+
+<h2>Qayta kirsam nima bo'ladi?</h2>
+<p>Xohlagan payt yangi hisob ochishingiz mumkin. Bir xil telefon raqami bilan kirsangiz,
+do'kondagi eski yozuvingiz (ballar va qarz bilan) yangi hisobga <b>avtomatik bog'lanadi</b>.</p>
+
+</section>
+
+<section lang="ru">
+<h2>Удаление аккаунта (кратко)</h2>
+<p><b>В приложении:</b> откройте <b>Профиль</b> → внизу страницы нажмите
+<b>«Hisobni o'chirish»</b> (Удалить аккаунт) → подтвердите. Аккаунт удаляется сразу.</p>
+<p><b>Если нет доступа к приложению:</b> напишите на <a href="mailto:__EMAIL__">__EMAIL__</a>,
+указав номер телефона. Ответим в течение 30 дней.</p>
+<p><b>Что удаляется:</b> номер телефона, имя, привязка Telegram и e-mail, все сессии, токены
+push-уведомлений.</p>
+<p><b>Что остаётся:</b> история покупок, бонусы и <b>остаток долга</b> в магазине — это
+бухгалтерская запись <b>магазина</b>, а не вашего аккаунта. Долг не аннулируется удалением
+аккаунта. Эти записи остаются <b>не связанными</b> с вашим аккаунтом; для их удаления
+обращайтесь напрямую в магазин.</p>
+</section>
+
+<section lang="en">
+<h2>Account deletion (summary)</h2>
+<p><b>In the app:</b> open <b>Profil</b> (Profile) → at the bottom of the page tap
+<b>“Hisobni o'chirish”</b> (Delete account) → confirm. The account is deleted immediately.</p>
+<p><b>If you cannot access the app:</b> email <a href="mailto:__EMAIL__">__EMAIL__</a> with your
+phone number. We respond within 30 days.</p>
+<p><b>What is deleted:</b> phone number, name, Telegram and e-mail links, all sessions, push
+notification tokens.</p>
+<p><b>What is retained:</b> purchase history, bonus points and <b>outstanding debt</b> at the
+shop — these are the <b>shop's</b> accounting records, not your account's. Deleting the account
+does not cancel a debt. These records remain <b>unlinked</b> from your account; to have them
+removed, contact the shop directly.</p>
+</section>
+
+<footer>
+  <p>e-Kassam · <a href="https://app.e-kassam.uz">app.e-kassam.uz</a> ·
+     <a href="/legal/maxfiylik.html">Maxfiylik siyosati</a></p>
+</footer>
+
+</div>
+</body>
+</html>

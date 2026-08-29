@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maxfiylik siyosati — e-Kassam</title>
+<meta name="description" content="e-Kassam ilovasining maxfiylik siyosati: qanday ma'lumot yig'iladi, nima uchun va kim bilan bo'lishiladi.">
+<style>
+  :root {
+    --bg: #ffffff; --fg: #111827; --fg2: #4b5563; --border: #e5e7eb;
+    --brand: #1d4ed8; --card: #f9fafb;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0b1220; --fg: #e5e7eb; --fg2: #9ca3af; --border: #1f2937;
+            --brand: #60a5fa; --card: #111827; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg);
+         font-family: ui-sans-serif, system-ui, "Segoe UI", Roboto, Arial, sans-serif;
+         line-height: 1.65; }
+  .wrap { max-width: 780px; margin: 0 auto; padding: 32px 20px 64px; }
+  header { border-bottom: 1px solid var(--border); padding-bottom: 18px; margin-bottom: 26px; }
+  h1 { font-size: 27px; margin: 0 0 6px; letter-spacing: -.3px; }
+  h2 { font-size: 19px; margin: 30px 0 8px; }
+  h3 { font-size: 15px; margin: 20px 0 6px; }
+  p, li { color: var(--fg2); }
+  li { margin-bottom: 5px; }
+  a { color: var(--brand); }
+  .meta { font-size: 13px; color: var(--fg2); }
+  .langs { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+  .langs a { display: inline-block; padding: 5px 12px; border: 1px solid var(--border);
+             border-radius: 999px; text-decoration: none; font-size: 13px; font-weight: 600; }
+  table { border-collapse: collapse; width: 100%; margin: 10px 0 4px; font-size: 14px; }
+  th, td { border: 1px solid var(--border); padding: 8px 10px; text-align: left; vertical-align: top; }
+  th { background: var(--card); font-size: 13px; }
+  .note { background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--brand);
+          border-radius: 8px; padding: 12px 14px; margin: 16px 0; font-size: 14px; }
+  footer { margin-top: 48px; padding-top: 18px; border-top: 1px solid var(--border); font-size: 13px; }
+  section[lang] { scroll-margin-top: 20px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Maxfiylik siyosati</h1>
+  <div class="meta">e-Kassam — kassa va CRM tizimi · Oxirgi yangilanish: 2026-yil 29-avgust</div>
+  <div class="langs">
+    <a href="#uz">O'zbekcha</a><a href="#ru">Русский</a><a href="#en">English</a>
+  </div>
+</header>
+
+<!-- ══════════════════════════ O'ZBEKCHA ══════════════════════════ -->
+<section id="uz" lang="uz">
+
+<p>Ushbu siyosat <b>e-Kassam</b> mobil ilovasi va <a href="https://app.e-kassam.uz">app.e-kassam.uz</a>
+veb-ilovasiga tegishli. Unda qanday ma'lumot yig'ilishi, nima uchun ishlatilishi va kim bilan
+bo'lishilishi tushuntiriladi.</p>
+
+<div class="note">
+  <b>Ilovaning ikki xil foydalanuvchisi bor</b> va ular haqida turli ma'lumot saqlanadi:
+  <b>do'kon xodimi</b> (egasi, kassir, omborchi) va <b>do'kon mijozi</b> (sodiqlik kartasi
+  egasi). Quyida ikkalasi ham alohida ko'rsatilgan.
+</div>
+
+<h2>1. Ma'lumotlarni kim boshqaradi</h2>
+<p><b>__TASHKILOT_NOMI__</b>, __MANZIL__.<br>
+Aloqa: <a href="mailto:__EMAIL__">__EMAIL__</a>, telefon: __TELEFON__.</p>
+<p>Har bir do'kon o'z mijozlarining ma'lumoti bo'yicha mustaqil javobgardir; e-Kassam esa
+ularning nomidan ma'lumotni qayta ishlaydigan texnik xizmat ko'rsatuvchi hisoblanadi.</p>
+
+<h2>2. Qanday ma'lumot yig'iladi</h2>
+
+<h3>Do'kon xodimi haqida</h3>
+<table>
+  <tr><th>Ma'lumot</th><th>Nima uchun</th></tr>
+  <tr><td>Login va parol (parol qaytarib bo'lmaydigan shaklda saqlanadi)</td><td>Tizimga kirish</td></tr>
+  <tr><td>Ism-familiya, roli, do'kon kodi</td><td>Kim qanday amal qilganini ko'rsatish</td></tr>
+  <tr><td>Qurilma identifikatori va kirish vaqti</td><td>Xavfsizlik: begona qurilmadan kirishni aniqlash</td></tr>
+  <tr><td>Amallar jurnali (sotuv, chegirma, bekor qilish, qarz yozish)</td><td>Do'kon ichidagi nazorat va tortishuvlarni hal qilish</td></tr>
+</table>
+
+<h3>Do'kon mijozi haqida</h3>
+<table>
+  <tr><th>Ma'lumot</th><th>Nima uchun</th></tr>
+  <tr><td>Telefon raqami</td><td>Mijozni tanish, kirish kodi, qarz eslatmasi</td></tr>
+  <tr><td>Ism-familiya (do'kon kiritadi)</td><td>Chek va qarz daftarida ko'rsatish</td></tr>
+  <tr><td>Xarid tarixi, bonus balansi, qarz qoldig'i</td><td>Sodiqlik dasturi va nasiya hisobi</td></tr>
+  <tr><td>Telegram identifikatori (agar Telegram orqali kirilsa)</td><td>Kirish va xabar yuborish</td></tr>
+</table>
+
+<h3>Texnik ma'lumot</h3>
+<ul>
+  <li><b>Push-bildirishnoma tokeni</b> — telefon uchun Google FCM beradigan identifikator.
+      Usiz xabar yuborib bo'lmaydi.</li>
+  <li><b>Ilova versiyasi va xato xabarlari</b> — nosozlikni topish uchun.</li>
+</ul>
+
+<h2>3. Nima YIG'ILMAYDI</h2>
+<ul>
+  <li><b>Joylashuv</b> — ilova GPS yoki tarmoq orqali joylashuvni umuman so'ramaydi.</li>
+  <li><b>Kontaktlar, suratlar, fayllar, mikrofon, kamera</b> — bu ruxsatlarning hech biri
+      so'ralmaydi. Android ilovasi <b>faqat internetga ulanish</b> ruxsatini oladi.</li>
+  <li><b>Reklama identifikatori</b> — ilovada reklama yo'q va reklama tarmoqlariga
+      ma'lumot berilmaydi.</li>
+  <li><b>Bank kartasi raqami</b> — to'lov ma'lumotlari ilovada saqlanmaydi.</li>
+</ul>
+
+<h2>4. Ma'lumot kim bilan bo'lishiladi</h2>
+<p>Ma'lumot <b>sotilmaydi</b> va reklama uchun ishlatilmaydi. U faqat quyidagi xizmatlarga —
+va faqat o'z vazifasini bajarish uchun zarur hajmda — uzatiladi:</p>
+<table>
+  <tr><th>Kim</th><th>Nima uchun</th><th>Nima uzatiladi</th></tr>
+  <tr><td>Google (Firebase Cloud Messaging)</td><td>Push-bildirishnoma yetkazish</td><td>Qurilma tokeni va xabar matni</td></tr>
+  <tr><td>SMS operatori</td><td>Kirish kodi va qarz eslatmasi</td><td>Telefon raqami va xabar matni</td></tr>
+  <tr><td>Telegram</td><td>Faqat foydalanuvchi Telegram orqali kirishni tanlasa</td><td>Telegram identifikatori</td></tr>
+  <tr><td>Server joylashgan markaz</td><td>Ma'lumotni saqlash</td><td>Yuqoridagi ma'lumotlar</td></tr>
+</table>
+<p>Qonun talab qilgan hollarda vakolatli organlarga ma'lumot berilishi mumkin.</p>
+
+<h2>5. Qancha vaqt saqlanadi</h2>
+<ul>
+  <li>Sotuv va moliyaviy yozuvlar — buxgalteriya talabiga muvofiq, kamida <b>5 yil</b>.</li>
+  <li>Mijoz ma'lumoti — do'kon uni o'chirgunga qadar. Qarzi bor mijozni o'chirib bo'lmaydi.</li>
+  <li>Push tokeni — ilova o'chirilgach yoki token yaroqsiz bo'lgach o'chiriladi.</li>
+</ul>
+
+<h2>6. Sizning huquqlaringiz</h2>
+<p>Siz o'zingiz haqingizdagi ma'lumotni ko'rish, tuzatish yoki o'chirishni so'rashingiz mumkin.
+Buning uchun avval <b>o'zingiz xarid qilgan do'konga</b> murojaat qiling — mijoz ma'lumotining
+egasi o'sha do'kon. Agar do'kon javob bermasa, bizga yozing:
+<a href="mailto:__EMAIL__">__EMAIL__</a>. Murojaatga <b>30 kun</b> ichida javob beramiz.</p>
+<p>Ilovadagi hisobingizni o'chirish uchun: ilovada <b>Profil → Hisobni o'chirish</b>, yoki
+yuqoridagi manzilga xat yuboring. To'liq tartib va o'chirilgandan keyin nima qolishi
+<a href="/legal/hisobni-ochirish.html">alohida sahifada</a> yozilgan.</p>
+
+<h2>7. Bolalar</h2>
+<p>Ilova biznes uchun mo'ljallangan va <b>13 yoshgacha bo'lgan bolalarga qaratilmagan</b>.
+Biz bilib turib ulardan ma'lumot yig'maymiz.</p>
+
+<h2>8. Xavfsizlik</h2>
+<p>Ma'lumot HTTPS orqali uzatiladi, parollar qaytarib bo'lmaydigan shaklda saqlanadi,
+tizimga kirish rol bo'yicha cheklanadi va muhim amallar jurnalga yoziladi. Shunga qaramay,
+internetdagi hech bir uzatish yoki saqlash usuli 100% xavfsiz emasligini ochiq aytamiz.</p>
+
+<h2>9. O'zgarishlar</h2>
+<p>Siyosat o'zgarsa, shu sahifadagi sana yangilanadi. Jiddiy o'zgarishlar haqida ilova orqali
+xabar beramiz.</p>
+
+</section>
+
+<!-- ══════════════════════════ РУССКИЙ ══════════════════════════ -->
+<section id="ru" lang="ru">
+<h2 style="margin-top:44px">Политика конфиденциальности (кратко)</h2>
+<p>Настоящая политика относится к мобильному приложению <b>e-Kassam</b> и веб-приложению
+<a href="https://app.e-kassam.uz">app.e-kassam.uz</a>.</p>
+<p><b>Оператор:</b> __TASHKILOT_NOMI__, __MANZIL__. Контакт: <a href="mailto:__EMAIL__">__EMAIL__</a>.</p>
+<p><b>Что собирается.</b> О сотруднике магазина: логин, имя, роль, идентификатор устройства,
+журнал действий. О клиенте магазина: номер телефона, имя, история покупок, баланс бонусов и
+долга, идентификатор Telegram (если вход через Telegram). Технически: токен push-уведомлений
+(Google FCM), версия приложения и сообщения об ошибках.</p>
+<p><b>Что НЕ собирается.</b> Местоположение, контакты, фотографии, файлы, микрофон, камера,
+рекламный идентификатор, номера банковских карт. Приложение Android запрашивает
+<b>только доступ в интернет</b>.</p>
+<p><b>Передача.</b> Данные не продаются и не используются для рекламы. Передаются только:
+Google FCM (доставка уведомлений), SMS-оператору (код входа, напоминание о долге), Telegram
+(только при входе через Telegram), центру обработки данных (хранение).</p>
+<p><b>Хранение.</b> Финансовые записи — не менее 5 лет. Данные клиента — до удаления магазином.
+Клиента с непогашенным долгом удалить нельзя.</p>
+<p><b>Ваши права.</b> Вы можете запросить доступ, исправление или удаление своих данных.
+Сначала обратитесь в магазин, где вы совершали покупки, — владелец данных клиента именно он.
+Если магазин не отвечает, напишите нам: <a href="mailto:__EMAIL__">__EMAIL__</a>. Ответим в
+течение 30 дней. Удалить аккаунт: <b>Профиль → Hisobni o'chirish</b> в приложении, подробнее — на
+<a href="/legal/hisobni-ochirish.html">отдельной странице</a>.</p>
+<p><b>Дети.</b> Приложение предназначено для бизнеса и не адресовано детям младше 13 лет.</p>
+</section>
+
+<!-- ══════════════════════════ ENGLISH ══════════════════════════ -->
+<section id="en" lang="en">
+<h2 style="margin-top:44px">Privacy Policy (summary)</h2>
+<p>This policy covers the <b>e-Kassam</b> mobile app and the
+<a href="https://app.e-kassam.uz">app.e-kassam.uz</a> web app.</p>
+<p><b>Controller:</b> __TASHKILOT_NOMI__, __MANZIL__. Contact: <a href="mailto:__EMAIL__">__EMAIL__</a>.</p>
+<p><b>What we collect.</b> About shop staff: username, name, role, device identifier, action log.
+About shop customers: phone number, name, purchase history, bonus and debt balance, Telegram ID
+(only if Telegram sign-in is used). Technical: push notification token (Google FCM), app version
+and error reports.</p>
+<p><b>What we do NOT collect.</b> Location, contacts, photos, files, microphone, camera,
+advertising ID, or payment card numbers. The Android app requests <b>internet access only</b>.</p>
+<p><b>Sharing.</b> We do not sell data and do not use it for advertising. Data is shared only
+with: Google FCM (notification delivery), an SMS operator (sign-in code, debt reminder),
+Telegram (only if the user chooses Telegram sign-in), and our hosting provider (storage).</p>
+<p><b>Retention.</b> Financial records: at least 5 years. Customer data: until the shop deletes
+it. A customer with outstanding debt cannot be deleted.</p>
+<p><b>Your rights.</b> You may request access to, correction of, or deletion of your data.
+Contact the shop where you made your purchases first — that shop is the owner of customer data.
+If the shop does not respond, write to <a href="mailto:__EMAIL__">__EMAIL__</a>. We answer within
+30 days. To delete your account: <b>Profil → Hisobni o'chirish</b> in the app; see the
+<a href="/legal/hisobni-ochirish.html">account deletion page</a> for details.</p>
+<p><b>Children.</b> The app is intended for business use and is not directed at children
+under 13.</p>
+</section>
+
+<footer>
+  <p>e-Kassam · <a href="https://app.e-kassam.uz">app.e-kassam.uz</a></p>
+</footer>
+
+</div>
+</body>
+</html>

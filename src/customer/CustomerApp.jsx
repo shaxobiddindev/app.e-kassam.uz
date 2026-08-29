@@ -680,12 +680,43 @@ function ProfileScreen({ me, onSaved, onLogout }) {
   const [name, setName] = useState(me.fullName || "");
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const confirm = useConfirm();
 
   /* ⚠ Chiqish TASDIQSIZ edi: tasodifan bosilgan tugma mijozni kirish
      ekraniga otib yuborardi va u qayta kirish uchun Telegramga borishi
      kerak bo'lardi. Tasdiq brauzerning `confirm` oynasi emas, ILOVANING
      modali — qolgan hamma joyda ham shunday. */
+  /* ⚠ NIMA O'CHIB, NIMA QOLISHI OCHIQ AYTILADI. «Hammasi o'chirildi»
+     deb aytib, keyin do'kon qarzni ko'rsatishi aldov bo'lardi — qarz
+     do'konning buxgalteriya yozuvi va u qonun bo'yicha saqlanadi.
+     Shuning uchun matn uzun: bu yerda qisqalik yolg'onga aylanadi. */
+  const askDelete = async () => {
+    const ok = await confirm({
+      title: "Hisobni o'chirish",
+      message: "Ilova hisobingiz butunlay o'chiriladi: telefon, ismingiz, "
+             + "Telegram va pochta bog'lanishi, barcha seanslar va "
+             + "bildirishnomalar.\n\n"
+             + "⚠ Do'konlardagi xarid tarixingiz, ballaringiz va QARZ "
+             + "QOLDIG'INGIZ o'chmaydi — bu do'konning o'z hisob yozuvi va "
+             + "u qonun bo'yicha saqlanadi. Qarzingiz bo'lsa, u o'z "
+             + "kuchida qoladi.\n\n"
+             + "Bu amalni qaytarib bo'lmaydi.",
+      type: "danger",
+      confirmText: "Ha, o'chirilsin",
+      cancelText: "Bekor qilish",
+    });
+    if (!ok) return;
+    setDeleting(true);
+    try {
+      await appApi.deleteMe();
+      onLogout();
+    } catch (err) {
+      setDeleting(false);
+      alert(err.message);
+    }
+  };
+
   const askLogout = async () => {
     const ok = await confirm({
       title: "Chiqish",
@@ -749,6 +780,18 @@ function ProfileScreen({ me, onSaved, onLogout }) {
       </div>
 
       <button className="cu-btn cu-btn--ghost" onClick={askLogout}>Chiqish</button>
+
+      {/* ══ HISOBNI O'CHIRISH (V49) ══════════════════════════════════════
+          ⚠ GOOGLE PLAY TALABI: hisob ochishga ruxsat beradigan ilova uni
+          o'chirish yo'lini ham berishi shart. Usiz ilova do'konga
+          umuman qo'yilmaydi.
+
+          ⚠ Eng pastda va bo'sh tugma sifatida — bu qaytarib bo'lmaydigan
+          amal va u «Chiqish» bilan yonma-yon bir xil ko'rinishda tursa,
+          xato bosilishi mumkin edi. */}
+      <button className="cu-btn cu-btn--danger cu-delete" onClick={askDelete} disabled={deleting}>
+        {deleting ? "O'chirilmoqda…" : "Hisobni o'chirish"}
+      </button>
     </div>
   );
 }

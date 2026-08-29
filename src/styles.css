@@ -2374,6 +2374,19 @@ img.logo--dark { display: none; }
   background: transparent; color: var(--fg-secondary);
   border: 1px solid var(--border-subtle); min-height: 46px; font-size: var(--fs-md);
 }
+/* HISOBNI O'CHIRISH (V49) — Google Play talab qiladigan tugma.
+   ⚠ Qizil, lekin TO'LDIRILMAGAN: to'ldirilgan qizil tugma ekranning eng
+   ko'zga tashlanadigan elementi bo'lib qolardi, holbuki bu odam kuniga
+   bir marta ham bosmaydigan amal. Yuqorida bo'sh joy — «Chiqish» bilan
+   yonma-yon turib xato bosilmasin. */
+.cu-btn--danger {
+  background: transparent; color: var(--fg-danger, #dc2626);
+  border: 1px solid var(--border-danger, color-mix(in srgb, #dc2626 40%, transparent));
+  min-height: 46px; font-size: var(--fs-md); font-weight: 600;
+}
+.cu-btn--danger:hover:not(:disabled) { background: var(--bg-danger-subtle, rgba(220, 38, 38, .08)); }
+.cu-delete { margin-top: 22px; }
+
 /* Kirish usullari ro'yxati (V40) — birinchisi asosiy, qolgani zaxira */
 .cu-methods { display: grid; gap: 10px; }
 
