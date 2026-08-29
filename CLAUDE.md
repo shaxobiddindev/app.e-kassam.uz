@@ -43,10 +43,15 @@ kutadi.
 ⚠ **Yangi ilova chiqarayotgan bo'lsangiz yoki Play Console anketasiga
 javob kerak bo'lsa — avval shu ikki faylni o'qing:**
 
+- **`store/google-play/PLAY-YORIQNOMA.md`** — HAR QANDAY ilova uchun
+  umumiy yo'riqnoma: konsolni ochishdan oldin kodda bajarilishi shart
+  bo'lgan ishlar, anketalar mantiqi va e-Kassam'da aynan qaysi xato
+  bo'lgani. **Yangi ilovada shu fayldan boshlang.**
 - **`store/google-play/EKRAN-JAVOBLARI.md`** — Play Console'ning HAR
-  ekrani va unga berilgan javob, kodga qarab tekshirilgan. Keyingi
-  ilovalarda ham shu yerdan boshlang.
-- `store/google-play/README.md` — qadamba-qadam chiqarish yo'riqnomasi.
+  ekrani va e-Kassam uchun berilgan aniq javob, kodga qarab
+  tekshirilgan. Namuna sifatida ishlating.
+- `store/google-play/README.md` — e-Kassam'ni chiqarishning qadamba-qadam
+  yo'riqnomasi.
 
 Bu fayllar ATAYLAB repoda: Claude seanslar orasida hech narsani
 eslamaydi, repo esa eslaydi. Yangi javob aniqlansa — o'sha yerga
