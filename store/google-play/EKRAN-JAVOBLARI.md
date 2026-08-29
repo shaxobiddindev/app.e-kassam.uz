@@ -196,19 +196,26 @@ va kredit ilovalari uchun. Uni tanlash Financial features'dagi «hech
 qanday moliyaviy funksiya yo'q» javobiga zid ko'rinadi va tekshiruvchida
 ortiqcha savol tug'diradi. e-Kassam — do'kon uchun ish quroli: Business.
 
-**Tags — erkin matn EMAS.** «Manage tags» Google'ning tayyor ro'yxatini
-ochadi, ko'pi bilan **5 ta** belgilanadi. Ma'nosi bo'yicha eng yaqinini
-shu tartibda oling:
+**Tags — erkin matn EMAS va MAJBURIY EMAS.** «Manage tags» Google'ning
+tayyor ro'yxatini ochadi, ko'pi bilan **5 ta** belgilanadi.
 
-1. kassa / sotuv nuqtasi (point of sale)
-2. ombor va zaxira (inventory)
-3. kichik biznesni boshqarish
-4. mijozlar bilan ishlash (CRM)
-5. hisobot va tahlil
+⚠ **Ro'yxat Category'ga bog'liq.** Category «Not selected» turganda tag
+ro'yxati bo'sh yoki begona chiqadi. Shuning uchun tartib qat'iy:
+avval **Category = Business** → Save → keyin «Manage tags».
+
+Ro'yxatdan qidiriladigan inglizcha so'zlar: `Point of Sale`, `Retail`,
+`Inventory`, `Sales`, `Small Business`, `Business Management`,
+`Invoicing`, `Accounting`, `Customer Management`, `Barcode`,
+`Reporting`, `Analytics`.
+
+**Mos tag topilmasa — hech nima belgilamang va Save bosing.** Tag
+majburiy emas, relizni to'xtatmaydi va tekshiruvga ta'sir qilmaydi; u
+faqat Play ichidagi ko'rinishga xizmat qiladi. Keyin istalgan payt
+qo'shiladi, yangi reliz kerak emas. Nomuvofiq tegni «bo'sh qolmasin»
+deb belgilash zarar: Google uni o'zi olib tashlaydi.
 
 ⚠ «Banking», «Payments», «Loans» kabi teglarni **olmang** — Financial
-features javobiga zid bo'ladi. Teglar keyin ham o'zgartiriladi, buning
-uchun yangi reliz kerak emas.
+features javobiga zid bo'ladi.
 
 **Email** do'kon sahifasida hammaga ko'rinadi va uni kuzatib turish
 kerak: hisobni o'chirish so'rovi ham shu manzilga keladi.
