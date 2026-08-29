@@ -336,6 +336,36 @@ bu yerda uchala teg chiqadi.
 va til bir-biriga mos bo'lishi kerak, aks holda Metadata siyosati
 buzilgan hisoblanadi.
 
+### AAB «Details» paneli — nimasiga qarash kerak
+
+Yuklangach Play paketni tahlil qilib ko'rsatadi. **Majburiy** shartlar
+(bularsiz reliz o'tmaydi) va shunchaki **maslahat** aralash chiqadi:
+
+| Ko'rsatkich | Bizda | Ma'nosi |
+|---|---|---|
+| Target SDK | **36** | ✅ majburiy — Play yangi ilovadan eng so'nggi darajani talab qiladi |
+| API levels | **24+** | ✅ Android 7.0 dan yuqorisi |
+| Native platforms | arm64-v8a, armeabi-v7a, x86, x86_64 | ✅ 64-bit bor — 2019-yildan majburiy |
+| Memory page size | **Supports 16 KB** | ✅ majburiy — 2025-yil noyabridan yangi ilovalar uchun shart |
+| Releases | 0 | reliz hali chiqarilmagan, **Start rollout** dan keyin 1 bo'ladi |
+| Localizations | 85 | AndroidX va Firebase kutubxonalaridan keladi, bizning matnlar emas |
+| App optimization | Low | ⚠ **faqat maslahat**, to'siq emas — pastga qarang |
+
+⚠ **«App optimization: Low» ni tuzatishga urinmang.** Play R8 bilan
+kodni qisqartirishni taklif qiladi, lekin bizda Java qatlami — Capacitor
+ko'prigi, ya'ni ilovaning o'zi web ichida. R8 to'liq rejimi Capacitor
+plaginlarining refleksiyasini buzishi mumkin, yutuq esa 4.5 MB dan bir
+necha yuz kilobayt. Birinchi relizdan oldin tegmaslik xavfsizroq.
+
+**Permissions → Show detail** ni ochib ko'ring. Bizning manifestda
+faqat bittasi bor — `INTERNET`; qolganlari FCM (push) kutubxonasidan
+qo'shiladi: `POST_NOTIFICATIONS`, `WAKE_LOCK`, `VIBRATE`,
+`ACCESS_NETWORK_STATE`, `c2dm.permission.RECEIVE` kabi.
+
+⚠ Ro'yxatda **joylashuv, kamera, kontaktlar, SMS yoki xotira** ruxsati
+BO'LMASLIGI kerak. Bo'lsa — Data safety javoblari bilan zid bo'ladi
+(u yerda «Location 0/2» deb aytilgan) va tekshiruvchi savol beradi.
+
 Reliz yaratilgach: **Testers** yorlig'ida kamida **12 ta** tester
 (e-pochta ro'yxati yoki Google Group), keyin **Preview and confirm →
 Start rollout**. 14 kunlik hisob shu paytdan boshlanadi.
