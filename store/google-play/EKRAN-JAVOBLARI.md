@@ -398,6 +398,36 @@ Console'dagi hisoblagichning o'zi hakam — har kuni bir qarab qo'ying.
 
 ---
 
+## 11 · Publishing overview — yuborishdan oldingi tekshiruv
+
+Hamma o'zgarish shu yerda to'planadi va **bittada** yuboriladi
+(«Submit N changes for review»). Tugma «Running quick checks» tugaguncha
+kutadi — 14 daqiqagacha.
+
+⚠ **«View N issues» ni albatta oching.** Bu Google'ning avtomatik
+tekshiruvi: topilgan muammo yuborishdan OLDIN tuzatilsa, tekshiruv
+navbatida turmaysiz.
+
+Yuborishdan oldin brauzerda ochib ko'riladigan ikki havola — ular
+ishlamasa reliz shu yerda to'xtaydi:
+
+| Maydon | To'g'ri manzil |
+|---|---|
+| Privacy policy | `https://app.e-kassam.uz/legal/maxfiylik.html` |
+| Delete account (Data safety) | `https://app.e-kassam.uz/legal/hisobni-ochirish.html` |
+
+⚠ Sahifalar `app.e-kassam.uz` da, `e-kassam.uz` da EMAS — ikkovi boshqa
+domen. Manzilni qisqartirib yozish ham ishlamaydi: fayl nomi
+`.html` bilan tugaydi va `/legal/` papkasida.
+
+⚠ **Store listing tili va matn tili bir xil bo'lsin.** Ro'yxatda
+«Russian – ru-RU · Default store listing» tursa-yu, ichida o'zbekcha
+matn bo'lsa — Metadata siyosati buzilgan hisoblanadi. To'g'ri yo'l:
+ru-RU ga `matn-ru.md`, keyin **Manage translations** dan o'zbek qo'shib
+unga `matn-uz.md`, xohlasangiz inglizcha ham.
+
+---
+
 ## Keyingi ilova uchun nima o'zgaradi
 
 Yangi ilovada shu fayldan boshlang, lekin quyidagilarni **qayta
