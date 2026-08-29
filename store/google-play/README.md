@@ -1,7 +1,29 @@
 # Google Play'ga chiqarish — to'liq yo'riqnoma
 
-Bu papkada Play Console'ga qo'yiladigan HAMMA narsa bor. Tartib bo'yicha
-yuring; har qadamda **kim qilishi** ko'rsatilgan.
+Bu papkada Play Console'ga qo'yiladigan HAMMA narsa bor.
+
+> **Ochiladigan sahifa:** https://claude.ai/code/artifact/8196dd42-0f12-4d7d-8266-72caedc9e607
+> — bosqichlar Play Console ekranidagi TARTIBDA, matnlar nusxa tugmasi
+> bilan. Telefonda Console yonida ochib ishlash uchun.
+
+⚠ TARTIB. Quyidagi bo'limlar mantiqiy guruhlangan, Play Console esa
+bandlarni O'Z tartibida ko'rsatadi:
+
+  **App content** — Set privacy policy · Sign in details · Ads ·
+  Content rating · Target audience · Data safety · Government apps ·
+  Financial features · Health
+
+  **Store presence** — App category va aloqa · Store listing
+
+Console'dagi tartib bo'yicha yurish qulayroq; sahifadagi versiya aynan
+shunday tuzilgan. Quyidagi ikki band bu faylda YO'Q, faqat sahifada bor:
+
+  · **Government apps** → yo'q (xususiy tijorat dasturi)
+  · **Health** → yo'q (tibbiy ma'lumot, tadqiqot, fitnes yo'q)
+  · **Financial features** → «doesn't provide any financial features»,
+    LEKIN ekrandagi ta'riflarni o'qing: ilovada nasiya bor va Google
+    «personal loans» ta'rifini o'zgartirib turadi. Yashirgandan ko'ra
+    ortiqcha e'lon qilgan xavfsizroq.
 
 > ⚠ **Vaqt haqida ochiq gap.** Shaxsiy (individual) Play akkaunti bilan
 > ilova do'konga DARHOL chiqmaydi: Google yangi shaxsiy akkauntlardan
