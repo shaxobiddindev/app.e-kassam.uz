@@ -213,19 +213,48 @@ xatti-harakatiga mos (kod bo'yicha tekshirilgan):
 
 **Yig'iladigan turlar**
 
-| Tur | Yig'iladi | Ulashiladi | Majburiy | Maqsad |
-|---|---|---|---|---|
-| Ism | ✅ | ❌ | ✅ | Ilova ishlashi, hisob boshqaruvi |
-| Telefon raqami | ✅ | ✅ (SMS operatori) | ✅ | Hisob boshqaruvi, kirish |
-| E-pochta | ✅ | ❌ | ❌ | Kirishning zaxira usuli |
-| Xarid tarixi | ✅ | ❌ | ✅ | Ilova ishlashi (ball, chek, qarz) |
-| Foydalanuvchi ID | ✅ | ✅ (Telegram — tanlansa) | ❌ | Hisob boshqaruvi |
-| Qurilma ID | ✅ | ✅ (Google FCM) | ❌ | Bildirishnoma yuborish |
-| Xato jurnali (crash) | ✅ | ❌ | ❌ | Nosozlikni topish |
+⚠ TUZATILDI 2026-08-29: ilgari bu ro'yxatda **«Xato jurnali (crash)»**
+turgan edi — XATO. Kodda nosozlik hisoboti SDK'si yo'q (Crashlytics ham,
+Sentry ham, Bugsnag ham; xatoni serverga yuboradigan kod ham yo'q).
+**App info and performance → hech narsa belgilanmaydi.**
 
-**Yig'ilMAYDI** (anketada belgilamang): joylashuv, kontaktlar, suratlar,
-fayllar, mikrofon, kamera, kalendar, sog'liq, moliyaviy (karta raqami),
-reklama identifikatori.
+**Kategoriya bo'yicha**
+
+| Kategoriya | Tanlanadi | Nega |
+|---|---|---|
+| **Location** | ❌ hech narsa | Ilovada joylashuv YO'Q — manifestda faqat `INTERNET` |
+| **Personal info** | Name · Email address · User IDs · Phone number | Address emas — mijozdan manzil so'ralmaydi |
+| **Financial info** | Purchase history · Other financial info | Ikkinchisi — nasiya qarzi (Google ta'rifida «debts»). ⚠ **User payment info EMAS** |
+| **Device or other IDs** | ✅ | Firebase FCM qurilma tokeni |
+| **Photos and videos** | Photos | Katalogda tovar rasmi yuklanadi — ixtiyoriy, belgilash xavfsizroq |
+| **App activity** | Other user-generated content | Tovar nomi, izohlar, qarzni rad etish sababi — ixtiyoriy |
+| App info and performance | ❌ | Nosozlik hisoboti SDK'si yo'q |
+| Health · Messages · Audio · Files · Calendar · Contacts · Web browsing | ❌ | Ilova bularga umuman tegmaydi |
+
+**Har bir tanlangan tur uchun**
+
+| Tur | Shared | Majburiy | Maqsad |
+|---|---|---|---|
+| Name | ❌ | ✅ | App functionality, Account management |
+| Phone number | ✅ SMS operatori | ✅ | Account management |
+| Email address | ❌ | ❌ | Account management |
+| User IDs | ✅ Telegram | ❌ | Account management |
+| Purchase history | ❌ | ✅ | App functionality |
+| Other financial info | ❌ | ✅ | App functionality |
+| Device or other IDs | ✅ Google FCM | ❌ | App functionality |
+| Photos | ❌ | ❌ | App functionality |
+| Other user-generated content | ❌ | ❌ | App functionality |
+
+> ⚠ ENG KO'P UCHRAYDIGAN XATO — **Location** ni belgilab qo'yish. Ilova
+> joylashuvni yig'a OLMAYDI: bunday ruxsat umuman so'ralmagan. Yig'a
+> olmaydigan narsani «yig'aman» deb e'lon qilish ham qoidabuzarlik.
+>
+> Ikkinchisi — **User payment info**. Karta raqami saqlanmaydi: naqd va
+> terminal do'konning o'zida, ilova faqat to'lov TURINI qayd etadi.
+>
+> Ikkilansangiz — belgilang. Jazo assimetrik: kam ko'rsatish
+> qoidabuzarlik va ilovani o'chirish, ortiqcha ko'rsatish esa hech
+> qanday oqibatga olib kelmaydi.
 
 > ⚠ **Anketani ilovaga qarab to'ldiring, menga ishonib emas.** Yolg'on
 > javob — Play qoidalarini buzish va ilova o'chirilishiga olib keladi.
