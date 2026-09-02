@@ -7,6 +7,7 @@ import { isMobileApp } from "../lib/ek-desktop";
 import { useT } from "../lib/ek-i18n";
 import { weekdayDate } from "../lib/ek-format";
 import { useSuspiciousCount } from "../hooks/useSuspiciousCount";
+import { useShopFeatures } from "../hooks/useShopFeatures";
 
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -48,26 +49,26 @@ const NAV = [
      yerda: u tovarni jismonan yuradigan kundalik ish, filial sozlamasi
      emas (filiali yo'q do'konda sahifa o'zi shuni aytadi). */
   { id: "warehouse", key: "nav.group.warehouse", icon: "fa-warehouse", children: [
-    { id: "inventory",  path: "/inventory",  key: "nav.stock",     icon: "fa-warehouse",      roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
-    { id: "stock-take", path: "/stock-take", key: "nav.stockTake", icon: "fa-clipboard-list", roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
-    { id: "supply",     path: "/supply",     key: "nav.supply",    icon: "fa-truck-ramp-box", roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
-    { id: "transfers",  path: "/transfers",  key: "nav.transfers", icon: "fa-truck-fast",     roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
+    { id: "inventory",  path: "/inventory",  key: "nav.stock",     icon: "fa-warehouse",      roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"], feature: "INVENTORY" },
+    { id: "stock-take", path: "/stock-take", key: "nav.stockTake", icon: "fa-clipboard-list", roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"], feature: "STOCK_TAKE" },
+    { id: "supply",     path: "/supply",     key: "nav.supply",    icon: "fa-truck-ramp-box", roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"], feature: "SUPPLY" },
+    { id: "transfers",  path: "/transfers",  key: "nav.transfers", icon: "fa-truck-fast",     roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"], feature: "TRANSFER" },
     /* Berib yuborish — omborchining KUNDALIK ekrani, shuning uchun
        ombor guruhida turadi. */
-    { id: "pickup",     path: "/pickup",     key: "nav.pickup",    icon: "fa-dolly",          roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
+    { id: "pickup",     path: "/pickup",     key: "nav.pickup",    icon: "fa-dolly",          roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"], feature: "PICKUP" },
   ]},
 
   /* SAVDO — bo'lib o'tgan xarid va uni kim qilgani. Kassirga ochiq yagona
      guruh: u chekni qaytadan chiqaradi va mijozni qidiradi. */
   { id: "trade", key: "nav.group.trade", icon: "fa-receipt", children: [
     { id: "sales",     path: "/sales",     key: "nav.sales",     icon: "fa-receipt", roles: ["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"] },
-    { id: "customers", path: "/customers", key: "nav.customers", icon: "fa-users",   roles: ["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"] },
+    { id: "customers", path: "/customers", key: "nav.customers", icon: "fa-users",   roles: ["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"], feature: "CUSTOMERS" },
   ]},
 
   { id: "reports", key: "nav.reports", icon: "fa-chart-bar", children: [
-    { id: "reports-main",  path: "/reports",       key: "nav.overview",     icon: "fa-chart-bar",       roles: ["ADMIN", "SHOP_ADMIN", "OWNER"] },
-    { id: "expenses",      path: "/expenses",      key: "nav.expenses",     icon: "fa-money-bill-wave", roles: ["ADMIN", "SHOP_ADMIN", "OWNER"] },
-    { id: "custom-report", path: "/custom-report", key: "nav.customReport", icon: "fa-calendar-days",   roles: ["ADMIN", "SHOP_ADMIN", "OWNER"] },
+    { id: "reports-main",  path: "/reports",       key: "nav.overview",     icon: "fa-chart-bar",       roles: ["ADMIN", "SHOP_ADMIN", "OWNER"], feature: "REPORTS" },
+    { id: "expenses",      path: "/expenses",      key: "nav.expenses",     icon: "fa-money-bill-wave", roles: ["ADMIN", "SHOP_ADMIN", "OWNER"], feature: "EXPENSES" },
+    { id: "custom-report", path: "/custom-report", key: "nav.customReport", icon: "fa-calendar-days",   roles: ["ADMIN", "SHOP_ADMIN", "OWNER"], feature: "REPORTS" },
   ]},
 
   /* BOSHQARUV — DO'KONNI boshqarish, egasi va do'kon admini uchun.
@@ -83,8 +84,8 @@ const NAV = [
   { id: "manage", key: "nav.group.manage", icon: "fa-users-gear", children: [
     { id: "shop-users",    path: "/shop-users",    key: "nav.staff",         icon: "fa-users-gear",        roles: ["ADMIN", "SHOP_ADMIN", "OWNER"] },
     { id: "branches",      path: "/branches",      key: "nav.branches",      icon: "fa-store",             roles: ["OWNER"] },
-    { id: "loyalty",       path: "/loyalty",       key: "nav.loyalty",       icon: "fa-award",             roles: ["ADMIN", "SHOP_ADMIN", "OWNER"] },
-    { id: "announcements", path: "/announcements", key: "nav.announcements", icon: "fa-bullhorn",          roles: ["ADMIN", "SHOP_ADMIN", "OWNER"] },
+    { id: "loyalty",       path: "/loyalty",       key: "nav.loyalty",       icon: "fa-award",             roles: ["ADMIN", "SHOP_ADMIN", "OWNER"], feature: "LOYALTY" },
+    { id: "announcements", path: "/announcements", key: "nav.announcements", icon: "fa-bullhorn",          roles: ["ADMIN", "SHOP_ADMIN", "OWNER"], feature: "ANNOUNCEMENTS" },
     { id: "security",      path: "/security",      key: "nav.security",      icon: "fa-shield-halved",     roles: ["SHOP_ADMIN", "OWNER"] },
     { id: "audit",         path: "/audit",         key: "nav.audit",         icon: "fa-clock-rotate-left", roles: ["SHOP_ADMIN", "OWNER"] },
   ]},
@@ -97,8 +98,25 @@ const NAV = [
 /** Guruhning bolalari; oddiy band — o'zi bitta bola. */
 const childrenOf = (item) => item.children || [item];
 
-/** Rol bo'yicha ko'rinadigan bolalar. */
-const visibleChildren = (item, role) => childrenOf(item).filter((c) => hasRole(role, c.roles));
+/* ══════════════════════════════════════════════════════════════════════════
+   IKKI FILTR: ROL va MODUL (V49)
+
+   Ular BOSHQA-BOSHQA savolga javob beradi va ikkalasi ham kerak:
+
+     `roles`   — SHU ODAM qila oladimi. Kassir «Xarajatlar» ni ko'rmaydi,
+                 chunki bu rahbarning ma'lumoti.
+     `feature` — BU DO'KONDA bunday ish umuman bormi. Sartaroshxonada
+                 «Inventarizatsiya» yo'q — u yerda hech kimga ko'rinmaydi,
+                 egasiga ham.
+
+   ⚠ `feature` siz bandlar HAR DOIM ko'rinadi: kassa, mahsulotlar,
+   sotuvlar tarixi, xodimlar, sozlamalar. Ularsiz ilova ilova bo'lmaydi.
+
+   ⚠ Modul ro'yxati kelmagan bo'lsa hammasi ko'rinadi — sabab
+   `useShopFeatures` da: bu ro'yxat himoya emas, haqiqiy to'siq serverda.
+   ══════════════════════════════════════════════════════════════════════════ */
+const visibleChildren = (item, role, hasFeature = () => true) =>
+  childrenOf(item).filter((c) => hasRole(role, c.roles) && hasFeature(c.feature));
 
 /**
  * Manzil qaysi guruhning qaysi sahifasi.
@@ -186,6 +204,9 @@ function LowStockBadge({ items, count, onGoInventory }) {
 
 function Sidebar({ user, open, onClose, isCollapsed, onToggleCollapse, lowStockCount, suspiciousCount }) {
   const { t } = useT();
+  /* Do'konda qaysi bo'limlar borligi (V49). Ro'yxat kelmaguncha
+     `has()` hamma narsaga `true` qaytaradi — menyu bo'sh ko'rinmaydi. */
+  const { has: hasFeature } = useShopFeatures();
   /* Guruh bandi o'z bolalaridan birortasida turgan bo'lsa yonadi — shuning
      uchun bu yerda joriy manzil kerak (NavLink ning isActive i yetmaydi). */
   const { pathname } = useLocation();
@@ -226,7 +247,7 @@ function Sidebar({ user, open, onClose, isCollapsed, onToggleCollapse, lowStockC
           // BUTUN satr. Xodimda ikkita rol bo'lsa u `"SHOP_ADMIN,CASHIER"`
           // bo'lardi, hech bir ro'yxatga mos kelmasdi va yon menyuda faqat
           // «Sozlamalar» qolardi. OWNER uchun istisno `hasRole` ichida.
-          const kids = visibleChildren(item, user?.role);
+          const kids = visibleChildren(item, user?.role, hasFeature);
           if (kids.length === 0) return null;
 
           /* Guruh havolasi — ko'rinadigan BIRINCHI bola. Guruhning o'z
@@ -278,6 +299,11 @@ function Sidebar({ user, open, onClose, isCollapsed, onToggleCollapse, lowStockC
 }
 
 export default function Layout({ user, isAdmin, lowStockItems, lowStockCount, children }) {
+  /* ⚠ Sidebar bilan BIR XIL manba: hook natijani keshlaydi, ya'ni
+     ikkinchi chaqiruv yangi so'rov yubormaydi. Tab qatori va yon menyu
+     bir xil ro'yxatdan chizilishi shart — aks holda menyuda yo'q
+     sahifa tab'da paydo bo'lardi. */
+  const { has: hasFeature } = useShopFeatures();
   const { t } = useT();
   const [open, setOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(() => localStorage.getItem("sb_collapsed") === "1");
@@ -307,7 +333,7 @@ export default function Layout({ user, isAdmin, lowStockItems, lowStockCount, ch
      ilgari buning uchun alohida `PAGE_TITLES` jadvali bor edi va u
      ro'yxat bilan qo'lda sinxron turishi kerak edi. */
   const { group, child } = findPlace(location.pathname);
-  const tabs = visibleChildren(group, user?.role);
+  const tabs = visibleChildren(group, user?.role, hasFeature);
 
   // Children ga kassaFullscreen props ni uzatish
   const enhancedChildren = isKassaPage

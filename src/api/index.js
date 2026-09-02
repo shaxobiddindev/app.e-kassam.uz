@@ -623,6 +623,16 @@ export async function downloadScaleExport() {
 export const shopApi = {
   getProfile: () => request("/shop/profile"),
 
+  /* DO'KONDA QAYSI BO'LIMLAR BOR (V49) — menyu shu javobdan quriladi.
+     Har qanday xodimga ochiq: menyuni chizish uchun kassirga ham,
+     omborchiga ham shu ro'yxat kerak.
+
+     ⚠ ROLNI ALMASHTIRMAYDI. Modul ochiq bo'lsa ham, unga kirish
+     huquqi rol bilan hal qilinadi. Klient ikkalasini ham hisobga
+     olishi kerak: modul ro'yxatidan menyu, roldan esa o'sha
+     menyuning qaysi qismi ochiqligi. */
+  getFeatures: () => request("/shop/features"),
+
   /* Tarozi barkodi formati (V42) — BUTUN TANA bilan.
      Boshqa sozlamalar bittalab saqlanadi, bu esa bir butun: prefiks, PLU
      va qiymat xonalari birgalikda 13 ga yig'ilishi kerak. Bo'sh tana —

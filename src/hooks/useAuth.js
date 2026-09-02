@@ -2,6 +2,7 @@ import { LOGIN_URL } from "../config";
 import { t, withLang } from "../lib/ek-i18n";
 import { isNativeShell } from "../lib/ek-desktop";
 import { useState, useCallback } from "react";
+import { resetShopFeatures } from "./useShopFeatures";
 
 function ls(...keys) {
   for (const k of keys) {
@@ -54,6 +55,10 @@ export function useAuth() {
     ["ek_token","ek_type","ek_username","ek_fullName","ek_role",
      "ek_user","ek_name","ek_shop","ek_shopCode","ek_refresh","ek_deviceId"
     ].forEach((k) => localStorage.removeItem(k));
+    /* ⚠ Modul keshini tozalash (V49): keyingi xodim BOSHQA do'konga
+       kirishi mumkin (filial almashtirish, umumiy kompyuter). Kesh
+       qolib ketsa, u oldingi do'konning menyusini ko'rardi. */
+    resetShopFeatures();
     // Til brauzerga tegishli — `ek_lang` o'chirilmaydi.
 
     // Desktop'da chiqish oynani TASHLAB KETMAYDI: holat tozalanadi va

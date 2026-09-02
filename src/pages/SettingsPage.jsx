@@ -17,6 +17,7 @@ import { Field } from "../components/ui";
 import { shopApi } from "../api";
 import { getTouchMode, setTouchMode } from "../lib/ek-touch";
 import { appVersion } from "../lib/ek-update";
+import { useShopFeatures } from "../hooks/useShopFeatures";
 
 /* ══════════════════════════════════════════════════════════════════════════
    Sozlamalar — BARCHA sozlamalar uchun YAGONA joy.
@@ -68,6 +69,12 @@ function Section({ icon, title, hint, children }) {
 }
 
 export default function SettingsPage({ toast }) {
+  /* ══ MODULI YO'Q SOZLAMA KO'RSATILMAYDI (V49) ══════════════════════
+     ⚠ Bu bezak emas. Yopilgan modulning sozlamasini server ham
+     to'sadi (403), ya'ni tugmani bosgan ega tushunarsiz xato olardi:
+     «nega nasiyani yoqolmayapman?». Sozlama modul bilan birga
+     yo'qolishi kerak — shunda savolning o'zi tug'ilmaydi. */
+  const { has: hasFeature } = useShopFeatures();
   const { t } = useT();
   const confirm = useConfirm();
   const { user, logout } = useAuth();
@@ -272,23 +279,29 @@ export default function SettingsPage({ toast }) {
             {/* Inventarizatsiya kamomadi — SO'MDA (tannarx bo'yicha), donada
                 emas: 3 dona konfet va 3 dona muzlatgich bir xil ko'rinsa,
                 chegara ma'nosini yo'qotardi. */}
-            <Row label={t("settings.stockTolerance")} hint={t("settings.stockToleranceHint")}>
+                        {/* Sanoq chegarasi — inventarizatsiya moduli bilan birga */}
+            {hasFeature("STOCK_TAKE") && (
+<Row label={t("settings.stockTolerance")} hint={t("settings.stockToleranceHint")}>
               <Field kind="money" className="form-input ek-num"
                      wrapStyle={{ width: 160 }}
                      value={stockTolerance}
                      onChange={(e) => setStockTolerance(e.target.value)}
                      onBlur={saveField(shopApi.setStockTolerance, stockTolerance)} />
             </Row>
+            )}
             {/* «Muddati yaqin» oynasi (V41) — chegaralar yonida, chunki u
                 ham do'kon bo'ylab ishlaydigan va faqat egasi qo'yadigan
                 raqam. Sut do'koniga 7 kun uzoq, dorixonaga qisqa. */}
-            <Row label={t("settings.nearExpiry")} hint={t("settings.nearExpiryHint")}>
+                        {/* «Muddati yaqin» oynasi — muddat nazorati moduli bilan birga */}
+            {hasFeature("EXPIRY") && (
+<Row label={t("settings.nearExpiry")} hint={t("settings.nearExpiryHint")}>
               <Field kind="int" className="form-input ek-num"
                      wrapStyle={{ width: 160 }}
                      value={nearExpiry}
                      onChange={(e) => setNearExpiry(e.target.value)}
                      onBlur={saveField(shopApi.setNearExpiryDays, nearExpiry, DEFAULT_NEAR_EXPIRY_DAYS)} />
             </Row>
+            )}
             <Row label={t("settings.discountLimit")} hint={t("settings.discountLimitHint")}>
               <Field kind="percent" className="form-input ek-num"
                      wrapStyle={{ width: 160 }}
@@ -312,7 +325,9 @@ export default function SettingsPage({ toast }) {
 
                 O'chirish ESKI QARZNI TEGMAYDI: to'lovlar qabul
                 qilinaveradi, faqat yangi nasiya to'siladi. */}
-            <Row label={t("settings.creditEnabled")} hint={t("settings.creditEnabledHint")}>
+                        {/* Nasiya sozlamalari — nasiya moduli bilan birga */}
+            {hasFeature("CREDIT") && (
+<Row label={t("settings.creditEnabled")} hint={t("settings.creditEnabledHint")}>
               <button
                 type="button"
                 role="switch"
@@ -326,25 +341,31 @@ export default function SettingsPage({ toast }) {
                 </span>
               </button>
             </Row>
+            )}
             {/* ⚠ Muddat SAVDONI TO'SMAYDI — to'sish chegaraning ishi.
                 Muddat faqat «muddati o'tgan qarz» ko'rsatkichini yoqadi:
                 qarzdorlar ro'yxatida va bosh sahifada. Ikkalasini
                 aralashtirsak, kechikkan bitta chek butun mijozga savdoni
                 yopib qo'yardi va do'kon buni kutmasdi. */}
-            <Row label={t("settings.creditDueDays")} hint={t("settings.creditDueDaysHint")}>
+                        {/*  */}
+            {hasFeature("CREDIT") && (
+<Row label={t("settings.creditDueDays")} hint={t("settings.creditDueDaysHint")}>
               <Field kind="int" className="form-input ek-num"
                      wrapStyle={{ width: 100 }}
                      value={creditDueDays}
                      onChange={(e) => setCreditDueDays(e.target.value)}
                      onBlur={saveField(shopApi.setCreditDueDays, creditDueDays)} />
             </Row>
+            )}
             {/* ⚠ MUDDAT QAYSI KUNDAN SANALADI (V46). Do'konlar qarzni ikki
                 xil boshqaradi va ikkalasi ham to'g'ri: mahalla do'koni
                 «oyning oxirida hisoblashamiz» deydi (qarz bitta hisob),
                 ulgurji sotuvchi esa har yuk uchun alohida muddat beradi.
                 Bittasini majburlash ikkinchisiga yolg'on ko'rsatkich
                 berardi. */}
-            <Row label={t("settings.creditDueMode")} hint={t(`settings.creditDueMode.${creditDueMode}`)}>
+                        {/*  */}
+            {hasFeature("CREDIT") && (
+<Row label={t("settings.creditDueMode")} hint={t(`settings.creditDueMode.${creditDueMode}`)}>
               <Select
                 value={creditDueMode}
                 onChange={(v) => saveToggle(shopApi.setCreditDueMode, v, setCreditDueMode)}
@@ -354,11 +375,14 @@ export default function SettingsPage({ toast }) {
                 ]}
               />
             </Row>
+            )}
             {/* ⚠⚠ MIJOZ TASDIG'I (V46) — KASSANI TO'SMAYDI. Chek darhol
                 yakunlanadi, so'rov esa mijozga keyin boradi (ilova ·
                 Telegram · SMS). Aks holda navbat mijozning telefoniga
                 bog'liq bo'lib qolardi. Tasdiq — DALIL, ruxsat emas. */}
-            <Row label={t("settings.creditConfirm")} hint={t("settings.creditConfirmHint")}>
+                        {/*  */}
+            {hasFeature("CREDIT") && (
+<Row label={t("settings.creditConfirm")} hint={t("settings.creditConfirmHint")}>
               <button
                 type="button"
                 role="switch"
@@ -372,6 +396,7 @@ export default function SettingsPage({ toast }) {
                 </span>
               </button>
             </Row>
+            )}
             {/* ⚠⚠ OMBORDAN BERIB YUBORISH (V48). Mijoz kassaga to'laydi,
                 tovar esa kassadan uzoqda — omborda yoki hovlida.
                 Yoqilganda «ombordan beriladi» deb belgilangan tovarli
@@ -381,7 +406,9 @@ export default function SettingsPage({ toast }) {
                 do'konda ham javondagi saqich, ham hovlidagi sement
                 bo'ladi va ikkinchisi uchun yoqilgan tizim birinchisini
                 ham navbatga tashlab, kassani sekinlashtirardi. */}
-            <Row label={t("settings.pickup")} hint={t("settings.pickupHint")}>
+                        {/* Ombordan berish — o'z moduli bilan birga */}
+            {hasFeature("PICKUP") && (
+<Row label={t("settings.pickup")} hint={t("settings.pickupHint")}>
               <button
                 type="button"
                 role="switch"
@@ -395,6 +422,7 @@ export default function SettingsPage({ toast }) {
                 </span>
               </button>
             </Row>
+            )}
             {/* ⚠ ALOHIDA SOZLAMA, muddatning davomi emas. Muddat do'konning
                 ichki qoidasi, bu esa do'kon nomidan MIJOZGA boradigan
                 xabar — uni ongli ravishda yoqish kerak. Izohda mijoz
@@ -406,14 +434,19 @@ export default function SettingsPage({ toast }) {
                 `minSpent = 0` li qator qo'shishi kerak edi — aksariyati
                 buni qilmasdi. Daraja bo'lsa ikkisining KATTAROG'I
                 olinadi: daraja faqat oshiradi. */}
-            <Row label={t("settings.baseCashback")} hint={t("settings.baseCashbackHint")}>
+                        {/* Bazaviy keshbek — sodiqlik moduli bilan birga */}
+            {hasFeature("LOYALTY") && (
+<Row label={t("settings.baseCashback")} hint={t("settings.baseCashbackHint")}>
               <Field kind="percent" className="form-input ek-num"
                      wrapStyle={{ width: 100 }}
                      value={baseCashback}
                      onChange={(e) => setBaseCashback(e.target.value)}
                      onBlur={saveField(shopApi.setBaseCashback, baseCashback)} />
             </Row>
-            <Row label={t("settings.creditRemind")} hint={t("settings.creditRemindHint")}>
+            )}
+                        {/*  */}
+            {hasFeature("CREDIT") && (
+<Row label={t("settings.creditRemind")} hint={t("settings.creditRemindHint")}>
               <button
                 type="button"
                 role="switch"
@@ -427,6 +460,7 @@ export default function SettingsPage({ toast }) {
                 </span>
               </button>
             </Row>
+            )}
           </>
         )}
         <Row label={t("touch.label")} hint={t("touch.hint")}>
@@ -465,7 +499,10 @@ export default function SettingsPage({ toast }) {
       {/* Tarozi formati — faqat EGAGA: server ham shu yo'lni egaga
           cheklaydi (`/shop/scale`), bo'limni kassirga ko'rsatib qo'yish
           esa faqat umid uyg'otib, keyin 403 bilan tugardi. */}
-      {isOwner && <ScaleSettings toast={toast} />}
+      {/* ⚠ Tarozi sozlamasi ham MODULGA bog'liq (V49): kiyim
+          do'konida bu blokning mavjudligi noto'g'ri taassurot
+          beradi — «demak bu yerda tarozi ishlaydi». */}
+      {isOwner && hasFeature("SCALE") && <ScaleSettings toast={toast} />}
 
       <Section
         icon="fa-user"
