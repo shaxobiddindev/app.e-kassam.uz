@@ -5,6 +5,8 @@ import { code128Svg } from "../lib/ek-barcode";
 import { useConfirm } from "../context/ConfirmProvider";
 import CodeZoom from "../components/CodeZoom";
 import { dateTime, groupDigits } from "../lib/ek-format";
+import { MaskedField } from "../components/ek/EkFields";
+import { phoneInput } from "../lib/ek-input";
 import Receipt from "./Receipt";
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -123,10 +125,15 @@ function JoinScreen({ ref_, code, onDone }) {
               (landing va kassa formalarida ushlangan xato). */}
           <div className="pt-phone">
             <span className="pt-phone__cc">+998</span>
-            <input id="pt-phone" className="pt-input" type="tel" inputMode="tel"
-                   autoComplete="tel" placeholder="90 123 45 67"
-                   value={form.phone}
-                   onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))} />
+            {/* ⚠ NIQOB ORQALI — kassadagi maydon bilan bir xil qoidada.
+                Ilgari bu oddiy matn maydoni edi va mijoz raqamni
+                xohlagan ko'rinishda yozardi; bazada esa u kassirniki
+                bilan solishtiriladi. */}
+            <MaskedField id="pt-phone" className="pt-input" mask={phoneInput}
+                         type="tel" inputMode="tel"
+                         autoComplete="tel" placeholder="90 123 45 67"
+                         value={form.phone}
+                         onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))} />
           </div>
 
           <button className="pt-btn" type="submit" disabled={busy}>

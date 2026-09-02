@@ -3,6 +3,8 @@ import { appApi, setAppToken } from "./customerApi";
 import { LOGO_URL, LOGO_DARK_URL } from "../config";
 import { isNativeShell } from "../lib/ek-desktop";
 import { nativeTelegramAvailable, loginWithTelegramApp } from "../lib/ek-tglogin";
+import { MaskedField } from "../components/ek/EkFields";
+import { phoneInput } from "../lib/ek-input";
 
 /* ══════════════════════════════════════════════════════════════════════════
    MIJOZ KIRISHI (V37 · V40)
@@ -348,10 +350,15 @@ function OtpForm({ kind, onBack, onDone }) {
            to'liq raqam yozadi va u abonent raqami bo'lib tushadi. */
         <div className="pt-phone">
           <span className="pt-phone__cc">+998</span>
-          <input id="cu-otp-target" className="cu-input" type="tel" inputMode="tel"
-                 autoComplete="tel" placeholder="90 123 45 67" value={target}
-                 disabled={sent}
-                 onChange={(e) => setTarget(e.target.value)} />
+          {/* ⚠ NIQOB ORQALI. Ilgari bu oddiy matn maydoni edi: harf ham,
+              cheksiz raqam ham yozilaverardi va serverga tozalanmagan
+              matn ketardi. Endi u kassadagi maydon bilan bir xil
+              qoidada ishlaydi — `target` doim «+998901234567». */}
+          <MaskedField id="cu-otp-target" className="cu-input" mask={phoneInput}
+                       type="tel" inputMode="tel"
+                       autoComplete="tel" placeholder="90 123 45 67" value={target}
+                       disabled={sent}
+                       onChange={(e) => setTarget(e.target.value)} />
         </div>
       )}
 

@@ -132,7 +132,18 @@ export const NumField = forwardRef(function NumField({
 
 /* ── Niqobli matn maydonlari ─────────────────────────────────────────── */
 
-const MaskedField = forwardRef(function MaskedField(
+/**
+ * ⚠ EKSPORT QILINGAN — mijoz sahifalari uchun (`CustomerLogin`,
+ * `CustomerPortal`). Ular o'z ko'rinishiga ega (`pt-phone` ramkasi,
+ * kattaroq maydon) va `PhoneField` ning o'ramini ishlatolmaydi, lekin
+ * NIQOB ular uchun ham AYNAN SHU bo'lishi kerak.
+ *
+ * Ilgari o'sha ikkita maydon umuman niqobsiz edi: harf ham, cheksiz
+ * raqam ham yozilaverardi va serverga tozalanmagan matn ketardi. Yangi
+ * niqob yozish o'rniga mavjudi ochildi — ikkinchi nusxa yana bir kun
+ * kelib boshqacha ishlab qolardi.
+ */
+export const MaskedField = forwardRef(function MaskedField(
   { mask, value, onChange, name, className = "form-input", keepCaret = true, ...rest }, fwdRef
 ) {
   const ref = useRef(null);
