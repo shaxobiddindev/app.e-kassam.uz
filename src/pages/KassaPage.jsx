@@ -28,6 +28,7 @@ import Select from "../components/ek/Select";
 import { printReceipt, openDrawer } from "../lib/ek-hardware";
 import { spreadDiscount } from "../lib/ek-discount";
 import { useScanner } from "../hooks/useScanner";
+import { useTileMetrics } from "../hooks/useTileMetrics";
 import { isDesktop } from "../lib/ek-desktop";
 import { NumField } from "../components/ek/EkFields";
 
@@ -224,6 +225,8 @@ export default function KassaPage({ toast, refreshLowStock }) {
     return Number.isFinite(saved) && saved >= MIN_RIGHT_W ? saved : 360;
   });
   const layoutRef = useRef(null);
+  /* Tovar to'ri — rasm nisbatini saqlash uchun o'lchanadi. */
+  const gridRef   = useRef(null);
 
   /** Chegarani surish. Piksel emas, CHETDAN masofa hisoblanadi. */
   const dragSplit = (e) => {
@@ -748,6 +751,9 @@ export default function KassaPage({ toast, refreshLowStock }) {
 
      To'lov oynasi ochiq bo'lganda O'CHADI: u yerda summa kiritiladi va
      tasodifiy skanerlash summani buzib yuborardi. */
+  /* Rasm nisbatini saqlash — o'lchov `useTileMetrics` izohida. */
+  useTileMetrics(gridRef, view === "tiles", [products.length, view]);
+
   useScanner(addByBarcode, { enabled: !showPayModal && !finish && !qtyModal && !markModal });
 
   /* ── Savat ────────────────────────────────────────────────── */
@@ -1576,7 +1582,8 @@ export default function KassaPage({ toast, refreshLowStock }) {
             {tilesBusy && products.length === 0 ? (
               <SkeletonTiles count={12} />
             ) : (
-            <div className={`product-grid ${view === "list" ? "product-grid--list" : ""}`}
+            <div ref={gridRef}
+                 className={`product-grid ${view === "list" ? "product-grid--list" : ""}`}
                  style={{ position: "relative" }}>
               {searching && products.length > 0 && (
                 <div style={{ position: "absolute", top: 8, right: 8, zIndex: 10, fontSize: 11, color: "var(--fg-brand)", fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>

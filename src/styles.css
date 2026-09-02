@@ -568,7 +568,15 @@ select.form-input { cursor: pointer; }
    so'ragan natijani beradi: katakchalar BIR XIL BO'YDA bo'ladi,
    ro'yxat baravar ko'rinadi va hech narsa siqilmaydi. Ichkarida
    o'lcham bo'lishi: rasm 104px, qolgani nom, narx va miqdorga. */
-.product-grid:not(.product-grid--list) { grid-auto-rows: 186px; }
+/* ⚠ QIYMATLARNI JS YOZADI (`useTileMetrics`) — sabab o'sha faylda
+   batafsil. Qisqasi: grid qatori rasm nisbatini o'zi hisoblay olmaydi
+   (`aspect-ratio` ham, foizli `padding` ham qator o'lchamiga
+   qo'shilmaydi), shuning uchun ustun kengligi o'lchanib, balandlik
+   nisbat bo'yicha shu yerga beriladi.
+
+   Zaxira qiymatlar — JS hali ishlamagan birinchi kadr uchun: ularsiz
+   katakcha bir zumga siqilib, ro'yxat sakrab ketardi. */
+.product-grid:not(.product-grid--list) { grid-auto-rows: var(--tile-row-h, 186px); }
 .product-grid:not(.product-grid--list) .product-card { height: 100%; overflow: hidden; }
 /* Kassir katakchasi — 06-APP-KASSIR.md: kassir ekranida hech narsa 56px dan past emas */
 .product-card    { min-height: var(--hit-pos); border: 1.5px solid var(--border); border-radius: 10px; padding: 12px; cursor: pointer; background: var(--bg-surface);
@@ -632,8 +640,9 @@ select.form-input { cursor: pointer; }
 
    `object-fit: cover` — rasm har doim bir xil kvadratga KESILADI:
    turli o'lchamdagi suratlar to'rda bir xil ko'rinadi. */
-/* ⚠ RASM BALANDLIGI — ANIQ PIKSELDA. Uchta yo'l sinaldi va faqat shu
-   ishonchli chiqdi:
+/* ⚠ RASM BALANDLIGI — USTUN KENGLIGIDAN, NISBAT BO'YICHA hisoblanadi
+   va uni JS beradi (`useTileMetrics`). Sof CSS bilan uchta yo'l
+   sinaldi va uchalasi ham ishlamadi:
 
      · `aspect-ratio` — katakcha BALANDLIGI hisoblanayotganda
        e'tiborga olinmasdi (u kenglikdan keyin aniqlanadi, ya'ni juda
@@ -643,9 +652,10 @@ select.form-input { cursor: pointer; }
        (foizli padding ichki o'lcham hisobida nolga tenglashtiriladi);
      · blok joylashuviga o'tkazish ham yordam bermadi.
 
-   Aniq balandlik esa hamma joyda bir xil ishlaydi VA katakchalarni
-   BIR XIL BO'YGA keltiradi — foydalanuvchi aynan shuni so'ragan
-   («shunda chiroyli, bir xil ko'rinadi»).
+   Shuning uchun o'lchov JS ga o'tkazildi: ustun kengligi o'qiladi,
+   balandlik undan nisbat bo'yicha chiqadi. Ekran kengaysa rasm eni
+   bilan BIRGA bo'yiga ham o'sadi, va to'rdagi hamma katakcha bir xil
+   bo'yda qoladi — foydalanuvchi ikkalasini ham so'ragan.
 
    ⚠ Rasm CHO'ZILMAYDI: `object-fit: cover` uni nisbatini saqlagan
    holda qutiga to'ldiradi va ortiqchasini KESADI. Ya'ni turli
@@ -658,7 +668,8 @@ select.form-input { cursor: pointer; }
    sonini keskin kamaytirardi — «rasmli bo'lsin, lekin zich emas»
    ikkalasi ham kerak. */
 .product-thumb   { display: block; position: relative; flex: 0 0 auto;
-                   width: 100%; height: 104px; border-radius: 8px; overflow: hidden; }
+                   width: 100%; height: var(--tile-thumb-h, 104px);
+                   border-radius: 8px; overflow: hidden; }
 .product-thumb img,
 .product-thumb__letters { position: absolute; inset: 0; }
 .product-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
