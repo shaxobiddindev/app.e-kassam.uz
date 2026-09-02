@@ -32,7 +32,19 @@ const num = (v) => {
   return Number.isFinite(n) ? n : 0;
 };
 
-export default function ShiftBar({ toast }) {
+/**
+ * @param compact  Smena OCHIQ bo'lganda bitta ixcham tugmaga siqiladi.
+ *
+ * ⚠ NEGA FAQAT OCHIQ HOLATDA. Yopiq smena — TO'SIQ: bajik ishlamaydi va
+ * kassir birinchi muhim amalda «xodim smenada emas» degan tushunarsiz
+ * xatoga uriladi. Uni kichkina tugmaga siqish o'sha xatoni qaytarardi.
+ * Ochiq smena esa shunchaki HOLAT: uni har doim butun qator egallab
+ * turishi kerak emas va o'sha qator kassaning eng qimmatli joyidan —
+ * tovarlar ro'yxatidan — balandlik o'g'irlardi.
+ *
+ * Ya'ni: baland ovoz faqat baland ovoz kerak bo'lganda.
+ */
+export default function ShiftBar({ toast, compact = false }) {
   // Naqd amallari 428 qaytarishi mumkin (kamomad, inkassatsiya) — bajik
   // modalini shu ochadi va tasdiqdan keyin amalni O'ZI qayta yuboradi.
   const { guard } = useBadge();
@@ -45,6 +57,8 @@ export default function ShiftBar({ toast }) {
      `types` serverdan keladi: qaysi naqdsiz turlar bo'yicha sotuv bo'lgan.
      ⚠ SUMMALAR kelmaydi — kassir ularni terminal chekidan ko'chiradi. */
   const [closeForm, setCloseForm] = useState(null);
+  /** Ixcham tugma ostidagi smena oynasi. */
+  const [panel, setPanel] = useState(false);
   const [cashForm, setCashForm]   = useState(null); // { type, amount, reason }
 
   const load = useCallback(async () => {
@@ -163,40 +177,11 @@ export default function ShiftBar({ toast }) {
 
   if (shift === undefined) return null;
 
-  return (
+  /* ⚠ Modallar IKKALA ko'rinishda ham kerak: ixchamida ham X hisobot,
+     naqd harakati va yopish oynalari o'sha-o'sha. Nusxa ko'chirish
+     o'rniga bir marta yig'ib, ikkalasiga ham qo'yiladi. */
+  const modals = (
     <>
-      <div style={{
-        display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10,
-        padding: "8px 14px", borderRadius: 10, marginBottom: 10,
-        background: shift ? "var(--green-l, #dcfce7)" : "#fef3c7",
-        border: `1px solid ${shift ? "var(--green, #16a34a)" : "#f59e0b"}`,
-      }}>
-        <span style={{ fontSize: 13, fontWeight: 700, color: shift ? "var(--green-d, #166534)" : "#92400e" }}>
-          <i className={`fa-solid ${shift ? "fa-circle-check" : "fa-triangle-exclamation"}`} aria-hidden="true" />{" "}
-          {shift
-            ? `${t("shift.openSince")} ${new Date(shift.openedAt).toLocaleTimeString("uz-UZ", { hour: "2-digit", minute: "2-digit" })}`
-            : t("shift.closedWarn")}
-        </span>
-        <span style={{ display: "flex", gap: 8 }}>
-          {shift && (
-            <button className="btn btn-outline btn-sm" onClick={showX} title={t("shift.viewXHint")}>
-              <i className="fa-solid fa-chart-simple" aria-hidden="true" /> {t("shift.viewX")}
-            </button>
-          )}
-          {shift && (
-            <button className="btn btn-outline btn-sm" onClick={() => setCashForm({ type: "COLLECTION", amount: "", reason: "" })}
-                    title={t("cash.title")}>
-              <i className="fa-solid fa-money-bill-transfer" aria-hidden="true" /> {t("cash.title")}
-            </button>
-          )}
-          <button className={`btn btn-sm ${shift ? "btn-outline" : "btn-primary"}`}
-                  onClick={() => (shift ? askClose() : askOpen())} disabled={busy}>
-            <i className={`fa-solid ${shift ? "fa-right-from-bracket" : "fa-right-to-bracket"}`} aria-hidden="true" />{" "}
-            {shift ? t("shift.close") : t("shift.open")}
-          </button>
-        </span>
-      </div>
-
       {/* ── X/Z hisobot modali ── */}
       {report && (
         <Modal
@@ -380,6 +365,84 @@ export default function ShiftBar({ toast }) {
                  onChange={(e) => setCashForm({ ...cashForm, reason: e.target.value })} />
         </Modal>
       )}
+    </>
+  );
+
+  /* Ixcham holat: smena ochiq — bitta tugma, ustidagi barcha amallar
+     shu tugma ostidagi oynada. */
+  if (compact && shift) {
+    const at = new Date(shift.openedAt)
+      .toLocaleTimeString("uz-UZ", { hour: "2-digit", minute: "2-digit" });
+    return (
+      <>
+        <button type="button" className="shift-chip" onClick={() => setPanel(true)}
+                title={`${t("shift.openSince")} ${at}`}
+                aria-label={`${t("shift.openSince")} ${at}`}>
+          <i className="fa-solid fa-circle-check" aria-hidden="true" />
+          <span className="ek-num">{at}</span>
+        </button>
+
+        {panel && (
+          <Modal title={t("shift.title")} onClose={() => setPanel(false)}
+                 footer={<button className="btn btn-outline btn-sm" onClick={() => setPanel(false)}>
+                           {t("common.close")}
+                         </button>}>
+            <div style={{ display: "grid", gap: 10 }}>
+              <Row k={t("shift.openSince")} v={at} strong />
+              <button className="btn btn-outline btn-full" onClick={() => { setPanel(false); showX(); }}>
+                <i className="fa-solid fa-chart-simple" aria-hidden="true" /> {t("shift.viewX")}
+              </button>
+              <button className="btn btn-outline btn-full"
+                      onClick={() => { setPanel(false); setCashForm({ type: "COLLECTION", amount: "", reason: "" }); }}>
+                <i className="fa-solid fa-money-bill-transfer" aria-hidden="true" /> {t("cash.title")}
+              </button>
+              <button className="btn btn-danger btn-full" disabled={busy}
+                      onClick={() => { setPanel(false); askClose(); }}>
+                <i className="fa-solid fa-right-from-bracket" aria-hidden="true" /> {t("shift.close")}
+              </button>
+            </div>
+          </Modal>
+        )}
+        {modals}
+      </>
+    );
+  }
+
+  return (
+    <>
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10,
+        padding: "8px 14px", borderRadius: 10, marginBottom: 10,
+        background: shift ? "var(--green-l, #dcfce7)" : "#fef3c7",
+        border: `1px solid ${shift ? "var(--green, #16a34a)" : "#f59e0b"}`,
+      }}>
+        <span style={{ fontSize: 13, fontWeight: 700, color: shift ? "var(--green-d, #166534)" : "#92400e" }}>
+          <i className={`fa-solid ${shift ? "fa-circle-check" : "fa-triangle-exclamation"}`} aria-hidden="true" />{" "}
+          {shift
+            ? `${t("shift.openSince")} ${new Date(shift.openedAt).toLocaleTimeString("uz-UZ", { hour: "2-digit", minute: "2-digit" })}`
+            : t("shift.closedWarn")}
+        </span>
+        <span style={{ display: "flex", gap: 8 }}>
+          {shift && (
+            <button className="btn btn-outline btn-sm" onClick={showX} title={t("shift.viewXHint")}>
+              <i className="fa-solid fa-chart-simple" aria-hidden="true" /> {t("shift.viewX")}
+            </button>
+          )}
+          {shift && (
+            <button className="btn btn-outline btn-sm" onClick={() => setCashForm({ type: "COLLECTION", amount: "", reason: "" })}
+                    title={t("cash.title")}>
+              <i className="fa-solid fa-money-bill-transfer" aria-hidden="true" /> {t("cash.title")}
+            </button>
+          )}
+          <button className={`btn btn-sm ${shift ? "btn-outline" : "btn-primary"}`}
+                  onClick={() => (shift ? askClose() : askOpen())} disabled={busy}>
+            <i className={`fa-solid ${shift ? "fa-right-from-bracket" : "fa-right-to-bracket"}`} aria-hidden="true" />{" "}
+            {shift ? t("shift.close") : t("shift.open")}
+          </button>
+        </span>
+      </div>
+
+      {modals}
     </>
   );
 }

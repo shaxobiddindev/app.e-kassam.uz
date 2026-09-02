@@ -197,6 +197,7 @@ export default {
   "badge.onceWarn": "Bajik kodi FAQAT HOZIR mavjud - oyna yopilsa qayta ko'rib bo'lmaydi. Chop eting; kerak bo'lsa keyin qayta chiqarasiz.",
   "badge.print": "Chop etish",
   "badge.desktopOnly": "Chop etish faqat desktop ilovada ishlaydi (printer u yerga ulangan). Bu oynani yopib, desktop ilovada qayta chiqaring.",
+  "shift.title": "Smena",
   "shift.openSince": "Smena ochiq:",
   "shift.closedWarn": "Smena yopiq - bajigingiz ishlamaydi, muhim amallar tasdiqlanmaydi",
   "shift.open": "Smenani ochish",

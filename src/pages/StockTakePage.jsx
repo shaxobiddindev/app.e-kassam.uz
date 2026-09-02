@@ -308,7 +308,7 @@ export default function StockTakePage({ toast }) {
           }
         >
           <label className="form-label">{t("stocktake.countedQty")}</label>
-          <Field kind="qty"
+          <Field kind="qty" unit={countFor.product?.unit}
                  className="form-input ek-num" autoFocus
                  value={countFor.quantity}
                  onKeyDown={(e) => e.key === "Enter" && countFor.quantity !== "" && submitCount()}

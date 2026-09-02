@@ -30,6 +30,7 @@ import {
   dateDisplayInput, isoToDisplayDate, displayDateToIso, dateInputError,
 } from "../../lib/ek-input";   // ⚠ ilova ichidagi yo'l (sync-tokens `src/lib/` ga qo'yadi)
 import { t } from "../../lib/ek-i18n";
+import { unitDecimals } from "../../lib/ek-labels";
 
 /* Kursorni raqam indeksiga qarab tiklaydi. */
 function useCaret(ref) {
@@ -73,6 +74,16 @@ const KINDS = {
 /**
  * `kind`: "money" | "qty" | "percent" | "int" | "signed".
  *
+ * ⚠ MIQDOR MAYDONIGA `unit` BERING — `kind="qty"` YOLG'IZ YETMAYDI.
+ * Uning `decimals` i 3 ga qotib qolgan, ya'ni DONA tovarda ham `0.6`
+ * yozib bo'lardi. Kassada aynan shu bo'ldi: yarim dona non savatga
+ * tushar, server esa uni jimgina `1` ga yaxlitlab, mijozdan butun dona
+ * uchun pul olardi (foydalanuvchi shikoyati).
+ *
+ * `unit` berilganda kasr xonalari birlikdan olinadi va bo'linmaydigan
+ * tovarda nuqtani UMUMAN yozib bo'lmaydi — xato xabar bilan emas,
+ * MAYDONNING O'ZI bilan to'siladi.
+ *
  * ⚠ `type="number"` ATAYLAB ISHLATILMAYDI. Sabablari:
  *   1. `min="0"` kiritishni to'smaydi — `-500` bemalol yoziladi;
  *   2. brauzer "e", "+", "-" belgilarini qabul qiladi ("1e5" — son emas);
@@ -80,12 +91,13 @@ const KINDS = {
  *   4. razryadlarga ajratib bo'lmaydi (1 240 000 o'qilishi kerak).
  */
 export const NumField = forwardRef(function NumField({
-  kind = "money", value, onChange, name,
+  kind = "money", value, onChange, name, unit,
   decimals, min, max, className = "form-input ek-num", onBlur, ...rest
 }, fwdRef) {
   const preset = KINDS[kind] || KINDS.money;
   const opts = {
-    decimals: decimals ?? preset.decimals,
+    /* Ustunlik: aniq berilgan `decimals` → birlik → tur qoidasi. */
+    decimals: decimals ?? (unit != null ? unitDecimals(unit) : preset.decimals),
     /* ⚠ `??` EMAS: `signed` turida `preset.min` ATAYLAB `null` (minus
        ruxsat etilgan), `??` esa uni 0 ga almashtirib qo'yardi. */
     min: min !== undefined ? min : preset.min,

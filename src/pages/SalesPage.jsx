@@ -412,7 +412,7 @@ export default function SalesPage({ toast }) {
                       <td><Badge color={left > 0 ? "blue" : "gray"}>{left}</Badge></td>
                       <td style={{ width: 150 }}>
                         <Field
-                          kind="qty" max={left}
+                          kind="qty" unit={it.unit} max={left}
                           className="form-input ek-num"
                           disabled={left <= 0}
                           value={ret.lines[it.id] ?? ""}

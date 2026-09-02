@@ -533,7 +533,7 @@ select.form-input { cursor: pointer; }
 /* ⚠ Uchta ustun: chap · CHEGARA · o'ng. Oraliq 6+4+6 = 16px, ya'ni
    ilgarigi `gap: 16px` bilan bir xil — chegara qo'shilgani bilan
    ekran ko'rinishi siljimadi. */
-.kassa-layout    { display: grid; grid-template-columns: 1fr 4px var(--kassa-right-w, 360px);
+.kassa-layout    { display: grid; grid-template-columns: 1fr 4px var(--kassa-right-w, 420px);
                    gap: 6px; flex: 1; min-height: 0; }
 /* Chegara ingichka, LEKIN bosish maydoni keng (`::before`): 4px lik
    chiziqni sichqoncha bilan ushlash azob, barmoq bilan esa umuman
@@ -548,7 +548,28 @@ select.form-input { cursor: pointer; }
 .kassa-split:focus-visible { outline: none; }
 .kassa-left      { display: flex; flex-direction: column; gap: 12px; overflow: hidden; min-height: 0; }
 .kassa-right     { display: flex; flex-direction: column; gap: 11px; overflow: hidden; min-height: 0; }
-.product-grid    { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 10px; overflow-y: auto; padding: 12px; }
+/* ⚠ `align-content: start` SHART. Ilgari qatorlar mavjud balandlikka
+   CHO'ZILARDI: bir necha tovar qolganda katakchalar cho'zilib ketar,
+   ro'yxat surilganda esa ular tepa-pastdan siqilardi (foydalanuvchi
+   shikoyati). Endi katakcha o'z balandligini saqlaydi va ortiqcha joy
+   pastda qoladi — bu to'g'ri: to'r yuqoridan to'ladi. */
+.product-grid    { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+                   align-content: start; gap: 10px; overflow-y: auto; padding: 12px; }
+
+/* ⚠ RASMLI KO'RINISHDA QATOR BALANDLIGI QAT'IY.
+
+   Uzoq izlanishdan keyingi xulosa: grid qatori katakchaning haqiqiy
+   balandligini o'lchay olmadi — na `aspect-ratio`, na foizli
+   `padding`, na blok joylashuvi yordam berdi (qator 129px deb
+   hisoblanar, kontent esa 185px bo'lib tashqariga chiqib ketardi va
+   pastdagi qatorni yopardi: nom ham, narx ham ko'rinmasdi).
+
+   Qat'iy balandlik bu muammoni butunlay yopadi VA foydalanuvchi
+   so'ragan natijani beradi: katakchalar BIR XIL BO'YDA bo'ladi,
+   ro'yxat baravar ko'rinadi va hech narsa siqilmaydi. Ichkarida
+   o'lcham bo'lishi: rasm 104px, qolgani nom, narx va miqdorga. */
+.product-grid:not(.product-grid--list) { grid-auto-rows: 186px; }
+.product-grid:not(.product-grid--list) .product-card { height: 100%; overflow: hidden; }
 /* Kassir katakchasi — 06-APP-KASSIR.md: kassir ekranida hech narsa 56px dan past emas */
 .product-card    { min-height: var(--hit-pos); border: 1.5px solid var(--border); border-radius: 10px; padding: 12px; cursor: pointer; background: var(--bg-surface);
                    transition: border-color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out), transform var(--dur-instant) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out); }
@@ -572,17 +593,80 @@ select.form-input { cursor: pointer; }
 .cat-tab:hover   { border-color: var(--border-brand); color: var(--fg-brand); }
 .cat-tab.active  { background: var(--bg-brand); border-color: var(--bg-brand); color: var(--fg-on-brand); }
 
+/* Kategoriya tanlagichi — qidiruv yonida, o'zining aniq kengligida.
+   Cho'zilib ketmasin: qidiruv maydoni undan muhimroq. */
+.kassa-cat       { flex: 0 0 auto; width: clamp(130px, 22%, 200px); }
+
+/* Smena ixcham tugmasi — qidiruv qatorida, yashil holat belgisi. */
+.shift-chip      { flex: 0 0 auto; display: flex; align-items: center; gap: 6px;
+                   height: var(--hit-md); padding: 0 10px; border-radius: 9px; cursor: pointer;
+                   background: var(--bg-success-subtle); border: 1.5px solid var(--border-success);
+                   color: var(--fg-success); font-family: var(--font); font-size: 12px; font-weight: 800; }
+.shift-chip:hover { background: var(--bg-surface); }
+
 .view-switch     { display: flex; gap: 3px; background: var(--bg-sunken); border-radius: 9px; padding: 3px; flex: 0 0 auto; }
 .view-switch button { width: var(--hit-md); height: var(--hit-md); border: none; border-radius: 7px; background: transparent;
                       color: var(--fg-secondary); cursor: pointer; font-size: 14px; }
 .view-switch button.active { background: var(--bg-surface); color: var(--fg-brand); box-shadow: var(--sh1); }
 
 /* Rasmli ko'rinish: katakcha vertikal, rasm tepada */
-.product-card--tile { display: flex; flex-direction: column; gap: 8px; padding: 10px; text-align: left; }
-.product-thumb   { display: block; width: 100%; aspect-ratio: 1 / 1; border-radius: 8px; overflow: hidden;
-                   display: flex; align-items: center; justify-content: center; }
+/* ⚠ `block`, `flex` EMAS — va bu ataylab. Rasm nisbati foizli
+   `padding` bilan berilgan (izohi pastda), FLEX esa foizli paddingni
+   katakcha balandligini hisoblashda E'TIBORGA OLMAYDI: qator 129px
+   deb o'lchanar, ichidagi rasm esa 114px + matn bo'lib tashqariga
+   chiqib ketardi va pastdagi qatorni yopardi. Blok joylashuvi foizni
+   to'g'ri hisoblaydi va katakcha o'z bo'yiga ega bo'ladi.
+
+   Oraliqlar `gap` o'rniga `margin` bilan — blokda `gap` ishlamaydi. */
+.product-card--tile { display: block; padding: 10px; text-align: left;
+                      container: product-card / inline-size; }
+.product-card--tile .product-thumb { margin-bottom: 8px; }
+/* ⚠ `flex-shrink: 0` — ENG MUHIM QATOR. Katakcha ustun-flex va rasm
+   uning bolasi: joy tanqis bo'lganda flex uni SIQARDI va kvadrat rasm
+   yupqa chiziqqa aylanardi (foydalanuvchi shikoyati: «rasm o'lchami
+   bo'y va eni mos ravishda o'zgarishi kerak»). `aspect-ratio` bunga
+   to'sqinlik qilmaydi — u faqat BO'SH joyda ishlaydi.
+
+   ⚠ Ilgari `display` IKKI MARTA yozilgan edi (`block`, keyin `flex`) —
+   ikkinchisi kuchga kirardi va birinchisi chalg'ituvchi qoldiq edi.
+
+   `object-fit: cover` — rasm har doim bir xil kvadratga KESILADI:
+   turli o'lchamdagi suratlar to'rda bir xil ko'rinadi. */
+/* ⚠ RASM BALANDLIGI — ANIQ PIKSELDA. Uchta yo'l sinaldi va faqat shu
+   ishonchli chiqdi:
+
+     · `aspect-ratio` — katakcha BALANDLIGI hisoblanayotganda
+       e'tiborga olinmasdi (u kenglikdan keyin aniqlanadi, ya'ni juda
+       kech): qator 129px deb o'lchanar, rasm esa tashqariga chiqib,
+       pastdagi qatorni yopardi va nom bilan narx umuman ko'rinmasdi;
+     · foizli `padding-top` — grid qatori uni ham hisobga olmadi
+       (foizli padding ichki o'lcham hisobida nolga tenglashtiriladi);
+     · blok joylashuviga o'tkazish ham yordam bermadi.
+
+   Aniq balandlik esa hamma joyda bir xil ishlaydi VA katakchalarni
+   BIR XIL BO'YGA keltiradi — foydalanuvchi aynan shuni so'ragan
+   («shunda chiroyli, bir xil ko'rinadi»).
+
+   ⚠ Rasm CHO'ZILMAYDI: `object-fit: cover` uni nisbatini saqlagan
+   holda qutiga to'ldiradi va ortiqchasini KESADI. Ya'ni turli
+   o'lchamdagi suratlar to'rda bir xil ko'rinadi va hech biri
+   yassilanmaydi — «yuklanayotganda bir xil formatda kesilsin»
+   talabi shu bilan bajariladi.
+
+   ⚠ Balandlik kenglikdan KICHIK (kvadrat emas): kvadrat rasm
+   katakchaning yarmidan ko'pini egallab, ekranga sig'adigan tovar
+   sonini keskin kamaytirardi — «rasmli bo'lsin, lekin zich emas»
+   ikkalasi ham kerak. */
+.product-thumb   { display: block; position: relative; flex: 0 0 auto;
+                   width: 100%; height: 104px; border-radius: 8px; overflow: hidden; }
+.product-thumb img,
+.product-thumb__letters { position: absolute; inset: 0; }
 .product-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.product-thumb__letters { font-size: 26px; font-weight: 900; color: var(--fg-on-brand); letter-spacing: 1px; }
+/* Harfli o'rinbosar — rasm yo'q tovarlar uchun. Markazda, biroz
+   shaffof: to'q rangli katta kvadrat ro'yxatni og'irlashtirardi. */
+.product-thumb__letters { display: flex; align-items: center; justify-content: center;
+                          font-size: 22px; font-weight: 900; color: var(--fg-on-brand);
+                          letter-spacing: 1px; opacity: .92; }
 
 /* Zich ko'rinish: bir qatorda ko'proq tovar, rasm yo'q */
 .product-grid--list { grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 8px; }
@@ -590,7 +674,25 @@ select.form-input { cursor: pointer; }
 
 .product-body    { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .product-attrs   { font-size: 11px; color: var(--fg-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.product-meta    { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+/* ⚠ NARX VA MIQDOR BIRGA HARAKATLANADI (foydalanuvchi shikoyati:
+   «faqat miqdor nomi pastga tushib qolyapti, bu hunuk; agar bittasi
+   tushsa qolganlari ham tushsin»).
+
+   Ikkita qoida bilan hal qilindi:
+     1. ikkalasi ham `nowrap` — «18.299» va «litr» hech qachon
+        ajralmaydi, ya'ni birlik yolg'iz pastga tushmaydi;
+     2. sig'masa IKKALASI ham ustun bo'lib tushadi (`@container`).
+
+   ⚠ `@container` ATAYLAB, `@media` emas: katakcha kengligi ekran
+   kengligidan emas, TO'R USTUNIDAN kelib chiqadi. To'rdagi hamma
+   katakcha bir xil kenglikda, demak ular BIR VAQTDA bir xil holatga
+   o'tadi — ro'yxat baravar ko'rinadi. */
+.product-meta    { display: flex; align-items: baseline; justify-content: space-between; gap: 2px 8px; }
+.product-price, .product-stock { white-space: nowrap; }
+
+@container product-card (max-width: 172px) {
+  .product-meta { flex-direction: column; align-items: flex-start; }
+}
 /* ⚠ Qoldiq soni KATTA va ASOSIY matn rangida. 11px `--fg-secondary` da u
    narx yonida ikkinchi darajali maydaroq yozuvga o'xshardi, holbuki
    kassir aynan shu songa qarab «yetadimi?» degan qarorni qabul qiladi. */
@@ -673,9 +775,16 @@ select.form-input { cursor: pointer; }
 
    ⚠ Yon-tomonga suriladi, qatorga tushmaydi: ikkinchi qator paydo
    bo'lganda savat ro'yxati sakrab pastga surilardi. */
+/* ⚠ SAVAT TABLARI CHAP USTUNDA (foydalanuvchi so'rovi). Ular endi
+   kartochka ichida emas — o'z chekkasi bilan alohida qator. */
 .cart-head       { display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+                   background: var(--bg-surface); border: 1px solid var(--border-subtle);
+                   border-radius: var(--radius); flex: 0 0 auto;
                    border-bottom: 1px solid var(--border-subtle); flex-shrink: 0; }
-.cart-head__clear{ flex-shrink: 0; background: var(--bg-danger-subtle); color: var(--fg-danger); }
+.cart-head__add  { flex-shrink: 0; }
+/* Savatni tozalash — ro'yxat OSTIDA, jami summaning ustida. */
+.cart-clear      { flex: 0 0 auto; margin: 6px 10px 8px; align-self: flex-start;
+                   background: var(--bg-danger-subtle); color: var(--fg-danger); }
 .cart-tabs       { display: flex; gap: 6px; overflow-x: auto; flex: 1; min-width: 0; }
 .cart-tab        { display: flex; align-items: stretch; flex-shrink: 0;
                    border: 1.5px solid var(--border-subtle); border-radius: 10px;
@@ -1359,22 +1468,43 @@ select.form-input { cursor: pointer; }
   width: 100vw;
 }
 
+/* ⚠ BALANDLIK ENDI FLEX BILAN, ARIFMETIKA BILAN EMAS.
+
+   Ilgari har qatlam o'z sehrli sonini ayirardi: `100vh - 40px`, keyin
+   yana `- 40px` «sarlavha balandligi» uchun. O'sha sarlavha esa
+   allaqachon olib tashlangan edi va ayirma joyida qolgan — natijada
+   to'liq ekranda pastda taxminan 40 piksel bo'sh joy isrof bo'lardi
+   (foydalanuvchi shikoyati). Har qo'shilgan yoki olib tashlangan
+   element bu sonlarni yana eskirtirardi.
+
+   Endi zanjir o'zi cho'ziladi: `page-content` — ustun-flex, ichidagi
+   ikkala qatlam esa `flex: 1`. Nima qo'shilsa ham, qolgan joyni oxirgi
+   element to'liq egallaydi.
+
+   ⚠ Ichki chekka ham kichraytirildi (20px → 10px): to'liq ekran aynan
+   joydan maksimal foydalanish uchun yoqiladi. */
 .app-layout.kassa-fullscreen .page-content {
-  padding: 20px;
+  padding: 10px;
   height: 100vh;
   max-height: 100vh;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
-/* Kassa sahifasining wrapper div (inline height ni override) */
+/* Kassa sahifasining wrapper div (inline `height` ni bosib o'tadi) */
 .app-layout.kassa-fullscreen .page-content > div {
-  height: calc(100vh - 40px) !important;
-  max-height: calc(100vh - 40px) !important;
+  height: auto !important;
+  max-height: none !important;
+  flex: 1;
+  min-height: 0;
 }
 
 .app-layout.kassa-fullscreen .kassa-layout {
-  height: calc(100vh - 40px - 40px) !important; /* 40px padding + header height */
-  max-height: calc(100vh - 40px - 40px) !important;
+  height: auto !important;
+  max-height: none !important;
+  flex: 1;
+  min-height: 0;
 }
 
 /* Fullscreen dan chiqish tugmasi */
@@ -1441,7 +1571,6 @@ select.form-input { cursor: pointer; }
 }
 .bc-field input::placeholder { font-family: var(--font-sans); font-weight: 500; color: var(--fg-tertiary); }
 /* Fokus yo'qolganda ogohlantirish — kassir buni darhol ko'rishi kerak */
-.bc-field[data-unfocused="true"] { border-color: var(--border-warning); background: var(--bg-warning-subtle); }
 
 /* Klaviatura yorlig'i chipi — tugmada ko'rsatiladi, alohida o'rgatish kerak emas */
 .kbd {

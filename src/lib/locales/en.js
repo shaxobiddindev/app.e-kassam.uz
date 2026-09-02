@@ -187,6 +187,7 @@ export default {
   "badge.onceWarn": "The badge code is available ONLY NOW - once this window closes it cannot be viewed again. Print it; reissue later if needed.",
   "badge.print": "Print",
   "badge.desktopOnly": "Printing works only in the desktop app (the printer is attached there). Close this window and reissue the badge from the desktop app.",
+  "shift.title": "Shift",
   "shift.openSince": "Shift open since:",
   "shift.closedWarn": "Shift is closed - your badge will not work, critical actions cannot be confirmed",
   "shift.open": "Open shift",

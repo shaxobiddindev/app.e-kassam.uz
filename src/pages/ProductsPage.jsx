@@ -582,7 +582,7 @@ export default function ProductsPage({ toast }) {
               <div className="form-section__title"><i className="fa-solid fa-boxes-stacked" /> {t("products.section.stock")}</div>
 
               <FormGroup label={t("products.minQuantity")}>
-                <Field className="form-input ek-num" kind="qty"
+                <Field className="form-input ek-num" kind="qty" unit={form.unit}
                        value={form.minQuantity} onChange={setField("minQuantity")} placeholder="5" />
               </FormGroup>
 
@@ -594,7 +594,10 @@ export default function ProductsPage({ toast }) {
                 <div key={idx} style={{ display: "flex", gap: 8, marginBottom: 8 }}>
                   <BarcodeField className="form-input ek-num" style={{ flex: 2 }} placeholder="4780001111128"
                          value={b.barcode} onChange={(e) => setPackBarcode(idx, "barcode", e.target.value)} />
-                  <NumField className="form-input ek-num" style={{ flex: 1 }} kind="qty" placeholder="12"
+                  {/* ⚠ Bu MIQDOR emas, SANOQ: «quti ichida nechta dona».
+                      Kasr bo'lishi mumkin emas, tovarning birligidan ham
+                      qat'i nazar — yarim dona quti ichiga solinmaydi. */}
+                  <NumField className="form-input ek-num" style={{ flex: 1 }} kind="int" placeholder="12"
                          value={b.packQty} onChange={(e) => setPackBarcode(idx, "packQty", e.target.value)} />
                   <input className="form-input" style={{ flex: 1 }} placeholder={t("products.packLabel")}
                          value={b.label || ""} onChange={(e) => setPackBarcode(idx, "label", e.target.value)} />

@@ -445,7 +445,7 @@ export default function TransfersPage({ toast }) {
                           <i className="fa-solid fa-barcode" /> {l.codes?.length || 0} {t("marking.pcs")}
                         </button>
                       ) : (
-                        <Field className="form-input mono" kind="qty"
+                        <Field className="form-input mono" kind="qty" unit={l.unit}
                                value={l.quantity} onChange={(e) => setLine(i, e.target.value)} />
                       )}
                     </td>
@@ -523,7 +523,7 @@ export default function TransfersPage({ toast }) {
                                 : `${row.received} ${t("marking.pcs")}`}
                             </button>
                           ) : (
-                            <Field className="form-input mono" kind="qty"
+                            <Field className="form-input mono" kind="qty" unit={l.unit}
                                    max={String(l.quantity)}
                                    value={row.received}
                                    onChange={(e) => setAcceptLine(l.id, "received", e.target.value)} />

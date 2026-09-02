@@ -24,6 +24,24 @@ import { getSettings } from "../lib/ek-hardware";
 const MAX_GAP  = 35;   // ms — belgilar orasidagi eng katta tanaffus
 const MIN_LEN  = 4;    // shundan qisqasi barkod emas (tasodifiy bosish)
 
+/**
+ * Nechta belgidan keyin «bu skaner» deb ishonch hosil qilinadi.
+ *
+ * ⚠ Shundan KEYINGI belgilar maydonga UMUMAN tushmaydi
+ * (`preventDefault`). Ilgari butun kod maydonga yozilib, keyin
+ * matndan «kesib olinardi» — va aynan shu buzilardi: barkod maydonida
+ * niqob bor (faqat raqam, 14 belgigacha), shuning uchun uzun yoki
+ * harfli kod maydonda O'ZGARIB qolardi va «oxiri kodga teng» sharti
+ * bajarilmasdi. Qoldiq tozalanmay qolar, keyingi skaner uning ustiga
+ * yozilar edi — foydalanuvchi shikoyati: «ketma-ket skaner qilinganda
+ * barkodlar ham ketma-ket yozilib ketyapti».
+ *
+ * Ikkita ataylab: bitta belgidan skanerni odamdan ajratib bo'lmaydi
+ * (tanaffus hali o'lchanmagan), uchtasi esa maydonga ko'proq belgi
+ * o'tkazib yuborardi.
+ */
+const SURE_LEN = 2;
+
 export function useScanner(onScan, { enabled = true } = {}) {
   // `onScan` har render'da yangi funksiya bo'ladi; uni ref'da saqlaymiz,
   // aks holda hodisa tinglovchisi har safar qayta ulanardi.
@@ -36,8 +54,9 @@ export function useScanner(onScan, { enabled = true } = {}) {
     let buf = "";
     let last = 0;
     let target = null;   // belgilar qaysi maydonga tushayotgani
+    let leaked = "";     // maydonga TUSHIB ULGURGAN belgilar (ko'pi bilan `SURE_LEN`)
 
-    const reset = () => { buf = ""; target = null; };
+    const reset = () => { buf = ""; target = null; leaked = ""; };
 
     const onKeyDown = (e) => {
       if (!getSettings().scanner) return;
@@ -52,10 +71,11 @@ export function useScanner(onScan, { enabled = true } = {}) {
         reset();
         if (code.length < MIN_LEN) return;
 
-        // Skaner maydonga yozib ulgurgan bo'lsa — tozalaymiz, aks holda
-        // barkod tovar nomi yoki qidiruv maydonida qolib ketardi.
-        if (target && typeof target.value === "string" && target.value.endsWith(code)) {
-          const rest = target.value.slice(0, -code.length);
+        /* Maydonga tushib ulgurgan bir-ikki belgi tozalanadi.
+           ⚠ Butun kod EMAS, faqat `leaked`: qolgani `preventDefault`
+           bilan to'silgan va maydonga umuman yetib bormagan. */
+        if (leaked && target && typeof target.value === "string" && target.value.endsWith(leaked)) {
+          const rest = target.value.slice(0, -leaked.length);
           const setter = Object.getOwnPropertyDescriptor(
             target instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype,
             "value"
@@ -76,9 +96,15 @@ export function useScanner(onScan, { enabled = true } = {}) {
       if (e.key.length !== 1) return;
 
       // Tanaffus uzun bo'lsa — bu yangi ketma-ketlikning boshi
-      if (gap > MAX_GAP) buf = "";
+      if (gap > MAX_GAP) { buf = ""; leaked = ""; }
       buf += e.key;
       target = e.target;
+
+      /* Skaner ekani aniqlangach belgilar maydonga o'tkazilmaydi.
+         Shu paytgacha tushganlari `leaked` da qayd etiladi va Enter'da
+         aynan o'shalar olib tashlanadi. */
+      if (buf.length > SURE_LEN) e.preventDefault();
+      else leaked += e.key;
     };
 
     // `capture: true` — sahifadagi maydonlar hodisani to'xtatib qo'ysa ham

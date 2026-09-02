@@ -126,6 +126,11 @@ export default function QuantityModal({ product, initial, stock: stockProp, onCo
           <NumField
             ref={inputRef}
             kind="qty"
+            /* ⚠ BIRLIK BERILADI. Ilgari maydon `kind="qty"` ning uch
+               kasr xonasini olardi va DONA tovarga ham `0.6` yozib
+               bo'lardi: klaviaturadagi «.» o'chirilgan bo'lsa-da,
+               matn maydoniga qo'lda yozish ochiq qolgan edi. */
+            unit={product?.unit}
             className="form-input qty-modal__input ek-num"
             value={value}
             onChange={(e) => setValue(e.target.value)}

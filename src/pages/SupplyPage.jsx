@@ -81,6 +81,9 @@ export default function SupplyPage({ toast }) {
         code: "",
         lines: [...f.lines, {
           productId: p.id, productName: p.name,
+          /* Miqdor maydoni birlikni bilishi kerak: DONA tovarga 0.5
+             yozib bo'lmasin (`NumField` izohiga qarang). */
+          unit: p.unit,
           quantity: "1",
           // Tannarx oxirgi ma'lum qiymatdan boshlanadi — ko'p hollarda
           // o'zgarmaydi va har safar qayta yozish ortiqcha ish bo'lardi.
@@ -322,7 +325,7 @@ export default function SupplyPage({ toast }) {
                 {form.lines.length ? form.lines.map((l, i) => (
                   <tr key={i}>
                     <td className="fw-700" style={{ fontSize: 13 }}>{l.productName}</td>
-                    <td><NumField kind="qty" className="form-input ek-num" style={{ width: 90 }}
+                    <td><NumField kind="qty" unit={l.unit} className="form-input ek-num" style={{ width: 90 }}
                                value={l.quantity} onChange={(e) => setLine(i, "quantity", e.target.value)} /></td>
                     <td><NumField kind="money" className="form-input ek-num" style={{ width: 120 }}
                                value={l.costPrice} onChange={(e) => setLine(i, "costPrice", e.target.value)} /></td>
