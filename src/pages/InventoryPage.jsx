@@ -1112,7 +1112,7 @@ export default function InventoryPage({ toast }) {
 
           <div className="form-group">
             <label className="form-label">{`${t("inv.correctQty")} *`}</label>
-            <NumField kind="qty" unit={modal.unit}
+            <NumField kind="qty" unit={correct.unit}
               className="form-input ek-num"
               value={qty}
               onChange={(e) => setQty(e.target.value)}

@@ -989,7 +989,7 @@ export default {
   "kassa.scanHint": "Barkodni skanerlang yoki kiriting…",
   "kassa.scanTitle": "Barkod skanerlash",
   "kassa.searchByName": "Mahsulot nomi bo'yicha qidirish…",
-  "kassa.searchOrScan": "Nom yoki barkod…",
+  "kassa.searchOrScan": "Qidirish: Nom yoki barkod…",
   "kassa.backToSearch": "Qidiruv maydoniga qaytish",
   "kassa.searching": "Qidirilmoqda…",
   "kassa.scanPrompt": "Barkodni skanerlang",
