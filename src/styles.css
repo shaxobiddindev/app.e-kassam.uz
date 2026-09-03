@@ -1021,6 +1021,59 @@ select.form-input { cursor: pointer; }
 .cart-cust__row { display: flex; align-items: stretch; gap: 6px; }
 .cart-cust__row > *:first-child { flex: 1; min-width: 0; }
 .cart-cust__btn { flex: 0 0 auto; width: 38px; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   «MIJOZNI TANLANG» — ISHORA TANLAGICHNING O'ZIDA (V58)
+
+   Do'kon egasining talabi: «mijoz tanlash majburiy bo'lganda mijoz
+   tanlash oynasi ishora qilib tursin».
+
+   ⚠ NEGA KERAK EDI. Nasiya qoldig'i chiqqanda ogohlantirish TO'LOV
+   ustunida — mijoz tanlagichdan ikki ustun narida — chiqardi.
+   Kassir «mijozni tanlang» ni o'qir, lekin uni QAYERDAN tanlashni
+   ekrandan qidirib qolardi. Endi belgi aynan bosilishi kerak bo'lgan
+   joyda: tanlagich sariq halqa bilan yonib turadi.
+
+   ⚠ RANG YOLG'IZ SIGNAL EMAS (CLAUDE.md #6): tagida yozuv ham bor,
+   strelka ham tanlagichni ko'rsatadi.
+   ══════════════════════════════════════════════════════════════════════════ */
+.cart-cust.is-needed .ek-select__btn {
+  border-color: var(--border-warning, rgba(245, 158, 11, .55));
+  background: var(--bg-warning-subtle, rgba(245, 158, 11, .08));
+  animation: custNeed 1.8s ease-in-out infinite;
+}
+
+@keyframes custNeed {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--fg-warning) 34%, transparent); }
+  50%      { box-shadow: 0 0 0 5px color-mix(in srgb, var(--fg-warning) 0%, transparent); }
+}
+
+/* ⚠ Harakat KERAK BO'LMAGANLARGA — o'chadi. Doimiy pulsatsiya
+   diqqati chalg'iydigan foydalanuvchi uchun to'siq bo'ladi; halqa
+   esa harakatsiz ham ko'rinib turadi. */
+@media (prefers-reduced-motion: reduce) {
+  .cart-cust.is-needed .ek-select__btn {
+    animation: none;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--fg-warning) 26%, transparent);
+  }
+}
+
+.cart-cust__need {
+  display: flex; align-items: center; gap: 7px;
+  margin-top: 7px;
+  font-size: 12px; font-weight: 700;
+  color: var(--fg-warning);
+}
+.cart-cust__need i { flex: none; }
+
+/* To'lov ustunidagi ogohlantirish endi TUGMA — bosilsa tanlagich ochiladi. */
+.pay-warn-btn {
+  width: 100%;
+  cursor: pointer;
+  font-family: var(--font);
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+}
+.pay-warn-btn:hover { filter: brightness(.97); }
 .fw-700  { font-weight: 700; }
 .fw-800  { font-weight: 800; }
 
@@ -1688,6 +1741,17 @@ select.form-input { cursor: pointer; }
 .ek-finish__title { font-family: var(--font-display); font-size: var(--fs-lg); font-weight: 700; }
 .ek-finish__sub   { font-size: var(--fs-sm); color: var(--fg-secondary); text-align: center; }
 .ek-finish__amount { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: var(--fs-3xl); font-weight: 700; color: var(--fg-success); }
+/* Qolgan sekundlar — tugmaning ichida, yumaloq belgi.
+   ⚠ Rang yolg'iz signal emas: raqamning o'zi ma'noni aytadi. */
+.ek-finish__count {
+  display: inline-grid; place-items: center;
+  min-width: 20px; height: 20px; padding: 0 5px;
+  margin: 0 6px 0 4px;
+  border-radius: 999px;
+  background: var(--bg-sunken); color: var(--fg-secondary);
+  font-family: var(--mono); font-size: 11px; font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
 
 /* ── Qaytim — katta ko'rsatiladi (06-APP-KASSIR.md, "Naqd") ───────────────── */
 .ek-change {

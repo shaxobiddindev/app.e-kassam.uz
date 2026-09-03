@@ -14,6 +14,7 @@
    MANBA FAYL — packages/ui/components/ da tahrirlanadi, sync-tokens.ps1 tarqatadi.
    ========================================================================== */
 
+import { useEffect, useState } from "react";
 import { t } from "../../lib/ek-i18n";
 
 /* ── Asos ─────────────────────────────────────────────────────────────────
@@ -208,7 +209,42 @@ export function Spinner({ small = false }) {
    SOTUV YAKUNLASH — chek chiqmoqda → ✓ chizildi
    06-APP-KASSIR.md: yakunlashda `.ek-printing` → yashil ✓ → toast.
    ══════════════════════════════════════════════════════════════════════════ */
-export function FinishOverlay({ phase, total, receiptNo, onClose }) {
+/**
+ * Sotuv yakunlangandan keyingi oyna.
+ *
+ * ⚠ O'ZI YOPILADI (do'kon egasining talabi: «5 sekundda avtomatik
+ * yopilsin, Esc ham qolaversin»). Ilgari yopish uchun tugmani bosish
+ * SHART edi va navbat oldida kassir har chekdan keyin qo'lini
+ * klaviaturadan olib, sichqonchani izlardi.
+ *
+ * ⚠ «Esc» YOZUVI AVVAL YOLG'ON EDI: tugmada u chizilgan, lekin hech
+ * qayerda ushlanmagan — bosilganda hech narsa bo'lmasdi. Endi
+ * haqiqatan ishlaydi.
+ *
+ * ⚠ SANOQ KO'RINIB TURADI. Oynaning o'zi yo'qolib qolishi kassirni
+ * cho'chitardi: «men bosdimmi, o'zi ketdimi?». Tugmada qolgan
+ * sekundlar yozilib turadi.
+ */
+export function FinishOverlay({ phase, total, receiptNo, onClose, closeIn = 5 }) {
+  const [left, setLeft] = useState(closeIn);
+
+  useEffect(() => {
+    if (!onClose) return undefined;
+    setLeft(closeIn);
+    const esc = (e) => { if (e.key === "Escape") { e.preventDefault(); onClose(); } };
+    window.addEventListener("keydown", esc);
+    /* ⚠ Sanoq bitta joyda: `left` noldan o'tganda YOPAMIZ. Alohida
+       `setTimeout` qo'yilsa, ikkalasi bir-biridan qochib, oyna
+       sanoqdagi raqamdan oldin yoki keyin yopilardi. */
+    const tick = setInterval(() => {
+      setLeft((v) => {
+        if (v <= 1) { clearInterval(tick); onClose(); return 0; }
+        return v - 1;
+      });
+    }, 1000);
+    return () => { window.removeEventListener("keydown", esc); clearInterval(tick); };
+  }, [onClose, closeIn]);
+
   return (
     <div className="ek-finish ek-overlay" role="status" aria-live="polite">
       <div className="ek-finish__box ek-dialog">
@@ -226,7 +262,9 @@ export function FinishOverlay({ phase, total, receiptNo, onClose }) {
             {receiptNo && <div className="ek-finish__sub">{t("finish.receiptNo", { n: receiptNo })}</div>}
             {onClose && (
               <button className="btn btn-outline" onClick={onClose} autoFocus>
-                {t("common.close")} <span className="kbd">Esc</span>
+                {t("common.close")}
+                {left > 0 && <span className="ek-finish__count ek-num">{left}</span>}
+                <span className="kbd">Esc</span>
               </button>
             )}
           </>

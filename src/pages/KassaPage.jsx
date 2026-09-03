@@ -30,7 +30,7 @@ import Select from "../components/ek/Select";
 import { printReceipt, openDrawer } from "../lib/ek-hardware";
 import FacetFilter from "../components/ek/FacetFilter";
 import { KASSA_KEYS, keyLabel, resolve as resolveKey } from "../lib/ek-kassa-keys";
-import { settle, payType as payTypeOf, restFor } from "../lib/ek-payment";
+import { settle, payType as payTypeOf, restFor, effective } from "../lib/ek-payment";
 import { spreadDiscount, roundingOffers, budgetOffers, cartRoom,
          cartLossRoom, discountVerdict } from "../lib/ek-discount";
 import { useScanner } from "../hooks/useScanner";
@@ -1404,7 +1404,21 @@ export default function KassaPage({ toast, refreshLowStock }) {
      sinov bilan qulflangan (`test/payment.test.mjs`). Sabab: bu
      raqamlar CHEKKA va KASSAGA tushadi, bir tiyin xato smena oxirida
      hisobni buzadi. */
-  const pay = useMemo(() => settle(paid, total), [paid, total]);
+  const pay = useMemo(() => settle(effective(paid, total), total), [paid, total]);
+
+  /**
+   * Hech qayerga hech narsa yozilmaganmi.
+   *
+   * ⚠ BU HOLAT ALOHIDA. Do'kon egasining talabi bilan maydon BO'SH
+   * ochiladi — kassir «108 000» ni o'chirib o'tirmaydi. Lekin bo'sh
+   * maydon «to'lanmadi» degani emas: hech narsa yozilmasa chek to'liq
+   * naqd bo'ladi (`effective`). Shu holatda placeholder o'sha summani
+   * ko'rsatadi va tugmada ham o'sha turadi.
+   */
+  const payUntouched = Object.keys(paid).length === 0;
+
+  /** Tugmalarda ko'rsatiladigan summalar. */
+  const payShown = payUntouched ? { CASH: total } : paid;
 
   /** Tanlangan usulning maydondagi qiymati. */
   const payValue = paid[payFocus] ?? "";
@@ -1439,14 +1453,21 @@ export default function KassaPage({ toast, refreshLowStock }) {
       return next;
     });
 
+  /** Mijoz tanlagichini ochadi (yorliq ham, ogohlantirish ham shuni chaqiradi). */
+  const pickCustomer = () => document.querySelector(".cart-cust .ek-select__btn")?.click();
+
   const openPayModal = () => {
     if (!cart.length) return;
-    /* ⚠ OYNA «NAQD — BUTUN SUMMA» BILAN OCHILADI. Bo'sh ochilsa,
-       yozilmagan chek BUTUNLAY nasiya bo'lardi va chalg'igan kassir
-       «Sotish» ni bosib butun chekni qarzga yozib qo'yardi. Nasiya
-       KAMAYTIRISH orqali paydo bo'lishi kerak — ataylab qilingan
-       harakat bilan. */
-    setPaid({ CASH: String(total) });
+    /* ⚠ MAYDON BO'SH OCHILADI (do'kon egasining talabi). Ilgari unga
+       butun summa yozilgan turardi va mijoz boshqa summa uzatganda
+       kassir avval o'sha raqamni O'CHIRISHI kerak edi — navbat
+       oldida ortiqcha ish.
+
+       ⚠ Bo'sh maydon «to'lanmadi» DEGANI EMAS: hech narsa
+       yozilmasa chek to'liq naqd bo'ladi (`effective`), placeholder
+       esa o'sha summani ko'rsatib turadi. Aks holda chalg'igan
+       kassir «Sotish» ni bosib butun chekni qarzga yozib qo'yardi. */
+    setPaid({});
     setPayFocus("CASH");
     setDiscount("");
     setShowPayModal(true);
@@ -1464,6 +1485,13 @@ export default function KassaPage({ toast, refreshLowStock }) {
      bo'lmasdi — «Aralash» da qoldiq nolga tenglashtirilardi. */
   const creditBlocked = creditPart > 0 && !creditEnabled;
 
+  /* ⚠ MIJOZ TANLAGICHNING O'ZI ISHORA QILADI (do'kon egasining
+     talabi). Ilgari ogohlantirish to'lov ustunida — mijoz tanlagichdan
+     ikki ustun narida — chiqardi va kassir «nima qilishim kerak?» deb
+     ekranni qidirardi. Endi belgi aynan bosilishi kerak bo'lgan
+     joyda turadi. */
+  const needCustomer = creditPart > 0 && !creditBlocked && !customer;
+
   /* ⚠ NAQDSIZ USULDA ORTIQCHA — XATO, qaytim emas: terminal aynan
      so'ralgan summani oladi. */
   const overOk = pay.over === 0;
@@ -1472,10 +1500,8 @@ export default function KassaPage({ toast, refreshLowStock }) {
                     && creditOk && !creditBlocked && overOk;
 
   /* ── Sotuvni yakunlash ────────────────────────────────────── */
-  const handleSubmit = async () => {
-    if (!canSubmit) return;
-    setProcessing(true);
-
+  /** Sotuvning O'ZI — tugmaning holati pastdagi `handleSubmit` da. */
+  const runSale = async () => {
     /* Chekning turi — hisobot uchun bitta so'z. */
     const saleType = payTypeOf(pay.parts);
 
@@ -1624,15 +1650,52 @@ export default function KassaPage({ toast, refreshLowStock }) {
     doSearch(search);
 
     closeSoldCart();
-    setCashGiven(""); setCashAmount(""); setCardAmount(""); setDiscount("");
+    /* ⚠ BU YERDA V58 GACHA `setCashGiven`, `setCashAmount`,
+       `setCardAmount` va `setPayType` chaqirilardi. To'lov qayta
+       yozilganda o'sha holat o'chdi, chaqiruvlar esa QOLIB KETDI va
+       har sotuvdan keyin `ReferenceError` berardi. Xato aynan shu
+       qatorda tushgani uchun undan keyingi `setProcessing(false)`
+       hech qachon bajarilmasdi: sotuv o'tar, lekin tugma abadiy
+       «Bajarilmoqda…» bo'lib qolardi va kassir boshqa sota olmasdi
+       (do'kon egasi shuni ko'rsatdi).
+
+       Endi tozalash faqat MAVJUD holatga tegadi, ustiga pastdagi
+       `finally` har qanday holatda tugmani ochib qo'yadi. */
+    setPaid({});
+    setPayFocus("CASH");
+    setDiscount("");
+    setDiscBudget("");
     /* ⚠ Ball ham tozalanadi. Usiz keyingi mijozning chekiga oldingi
        mijozning ball summasi tushib qolardi — va u boshqa odamning
        balansidan yechilardi. */
     setBonusUse("");
-    setPayType("CASH");
-    setProcessing(false);
+  };
 
-    setTimeout(() => { setFinish(null); focusSearch(); }, 2200);
+  /**
+   * «Sotish va Chek» tugmasi.
+   *
+   * ⚠ `finally` SHART. Sotuvdan keyingi ishlar uzun: chek chiqarish,
+   * qidiruvni yangilash, savatni yopish, maydonlarni tozalash.
+   * Ularning BIRIDA xato chiqsa ham tugma ochilishi kerak — aks holda
+   * sotuv o'tgan bo'ladi-yu, tugma «Bajarilmoqda…» da qotib qoladi va
+   * kassa butunlay to'xtaydi. Aynan shu bo'lgan edi: tozalash qatorida
+   * to'lov qayta yozilganda o'chgan funksiyalar chaqirilib qolgan,
+   * `ReferenceError` esa `setProcessing(false)` ga yetkazmasdi.
+   */
+  const handleSubmit = async () => {
+    if (!canSubmit) return;
+    setProcessing(true);
+    try {
+      await runSale();
+    } catch (err) {
+      /* ⚠ Bu yerga tushgan xato SOTUVNI bekor qilmaydi — u serverda
+         allaqachon qayd etilgan bo'lishi mumkin. Shuning uchun faqat
+         aytamiz; kassir chekni Ctrl+P bilan qayta chiqara oladi. */
+      console.error("sotuvdan keyingi xato:", err);
+      toast.error(err?.message || String(err));
+    } finally {
+      setProcessing(false);
+    }
   };
 
   const reprint = () => {
@@ -1760,7 +1823,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
         payCard:   () => focusMethod("CARD"),
         payClick:  () => focusMethod("CLICK"),
         payPayme:  () => focusMethod("PAYME"),
-        customer:  () => document.querySelector(".cart-cust .ek-select__btn")?.click(),
+        customer:  pickCustomer,
         newCust:   () => setNewCust({ fullName: "", phone: "" }),
         discount:  () => document.getElementById("disc-budget")?.focus(),
         help:      () => setKeysOpen((v) => !v),
@@ -2380,7 +2443,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
               <div className="pay-modal-section-label">
                 <i className="fa-solid fa-user" aria-hidden="true" /> {t("kassa.customer")}
               </div>
-              <div className="cart-cust">
+              <div className={`cart-cust ${needCustomer ? "is-needed" : ""}`}>
               {/* ⚠ MIJOZ QATORI — TANLASH + QO'SHISH + RO'YXAT (V47).
                   Ilgari bu yerda faqat tanlagich turardi: kassa oldida
                   turgan YANGI mijozni qo'shish uchun kassir savatni
@@ -2433,6 +2496,18 @@ export default function KassaPage({ toast, refreshLowStock }) {
                     Ehtiyoj ham qolmadi: yuqoridagi tanlagichda
                     qidiruv bor va u butun ro'yxatni ko'rsatadi. */}
               </div>
+
+              {/* ⚠ ISHORA AYNAN SHU YERDA. Nasiya qoldig'i chiqqanda
+                  bajarilishi kerak bo'lgan ish bitta: mijozni tanlash.
+                  Shuning uchun yozuv o'sha tanlagichning tagida —
+                  to'lov ustunidagi ogohlantirish esa uni takrorlaydi
+                  va bosilganda shu yerga olib keladi. */}
+              {needCustomer && (
+                <div className="cart-cust__need" role="status">
+                  <i className="fa-solid fa-arrow-turn-up fa-flip-horizontal" aria-hidden="true" />
+                  {t("credit.customerRequired")}
+                </div>
+              )}
 
               {/* ── Sodiqlik darajasi ────────────────────────────────────
                   Kassir mijozga aytishi uchun: chegirmasi qancha va keyingi
@@ -2721,7 +2796,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
                   <button
                     key={key}
                     className={`pay-type-btn ${payFocus === key ? "active" : ""}${
-                      paid[key] ? " has-amount" : ""}`}
+                      payShown[key] ? " has-amount" : ""}`}
                     style={{ "--pay-color": color }}
                     aria-pressed={payFocus === key}
                     onClick={() => focusMethod(key)}
@@ -2741,7 +2816,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
                         boshqalaridan baland bo'lib, 2×2 to'r
                         qiyshayardi. */}
                     <span className="pay-type-btn__sum ek-num">
-                      {paid[key] ? money(paid[key]) : "\u00a0"}
+                      {payShown[key] ? money(payShown[key]) : "\u00a0"}
                     </span>
                   </button>
                 ))}
@@ -2761,8 +2836,21 @@ export default function KassaPage({ toast, refreshLowStock }) {
                 value={payValue}
                 autoFocus
                 onChange={(e) => setPayValue(e.target.value)}
-                placeholder="0"
+                /* ⚠ PLACEHOLDER — BO'SH MAYDONNING MA'NOSI. Hech narsa
+                   yozilmagan bo'lsa, chek to'liq naqd bo'ladi va bu
+                   yerda aynan o'sha summa turadi. Kassir yozgan
+                   zahoti ma'no o'zgaradi: bo'sh maydon endi nol. */
+                placeholder={payUntouched ? total.toLocaleString("uz-UZ") : "0"}
               />
+              {/* Bo'sh maydonning ma'nosini BIR GAPDA aytamiz —
+                  ro'yxatda «Naqd 108 000» chiqqanida kassir «men-ku
+                  hech narsa yozmadim» deb qolmasin. */}
+              {payUntouched && (
+                <div className="pay-modal-hint">
+                  <i className="fa-solid fa-circle-info" style={{ marginRight: 4 }} aria-hidden="true" />
+                  {t("kassa.emptyIsCash")}
+                </div>
+              )}
               <div className="ek-quick-cash">
                 {[50000, 100000, 200000].map((v) => (
                   <button key={v} type="button" onClick={() => setPayValue(String(v))}>
@@ -2842,11 +2930,15 @@ export default function KassaPage({ toast, refreshLowStock }) {
                   kerakligini AYTAMIZ. Tugmani jimgina o'chirib qo'yish
                   kassirni «nega ishlamayapti» deb qidirishga majbur
                   qilardi. */}
-              {creditPart > 0 && !creditBlocked && !customer && (
-                <div className="pay-mixed-warn">
-                  <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />{" "}
+              {needCustomer && (
+                /* ⚠ TUGMA, oddiy yozuv emas: bosilganda mijoz
+                   tanlagichi ochiladi. Kassir «mijozni tanlang» ni
+                   o'qib, uni QAYERDAN tanlashni qidirib qolmasin. */
+                <button type="button" className="pay-mixed-warn pay-warn-btn"
+                        onClick={pickCustomer}>
+                  <i className="fa-solid fa-user-plus" aria-hidden="true" />{" "}
                   {t("credit.customerRequired")}
-                </div>
+                </button>
               )}
               {/* Qarz chegarasi — tugmani jimgina o'chirib qo'yish o'rniga
                   QANCHA joy qolganini aytamiz: kassir summani o'zi
@@ -2880,6 +2972,11 @@ export default function KassaPage({ toast, refreshLowStock }) {
           phase={finish.phase}
           total={finish.total}
           receiptNo={finish.receiptNo}
+          /* ⚠ `setTimeout` bu yerdan OLIB TASHLANDI (V58). U
+             `handleSubmit` ichida turardi va o'sha funksiya xatoga
+             uchraganda umuman qo'yilmasdi — oyna abadiy osilib
+             qolardi. Endi sanoq oynaning O'ZIDA va u har doim
+             ishlaydi (`FinishOverlay`). */
           onClose={finish.phase === "done" ? () => { setFinish(null); focusSearch(); } : undefined}
         />
       )}

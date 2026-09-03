@@ -56,6 +56,28 @@ const rank = (t) => {
   return i < 0 ? ORDER.length : i;
 };
 
+/**
+ * Hech narsa yozilmagan chek — TO'LIQ NAQD.
+ *
+ * ⚠ NEGA SHUNDAY. Do'kon egasining talabi bilan summa maydoni endi
+ * BO'SH ochiladi: kassir «108 000» ni avval o'chirib, keyin o'zining
+ * raqamini yozishi kerak emas. Lekin bo'sh maydon «hech kim hech
+ * narsa to'lamadi» degani EMAS: odatiy chekda mijoz butun summani
+ * naqd beradi va kassir hech narsa yozmasdan «Sotish» ni bosadi.
+ *
+ * Agar bo'sh maydon nol deb olinsa, o'sha odatiy chek BUTUNLAY
+ * NASIYAGA yozilardi — kassir buni sezmasdi ham. Shuning uchun:
+ * hech qayerga hech narsa yozilmagan bo'lsa, chek to'liq naqd.
+ * Maydonning placeholder'i aynan shu summani ko'rsatib turadi.
+ *
+ * ⚠ TO'LIQ NASIYA baribir mumkin: naqdga `0` yoziladi. Shunda
+ * ro'yxat bo'sh emas va bu qoida ishlamaydi.
+ */
+export function effective(entered, total) {
+  if (entered && Object.keys(entered).length > 0) return entered;
+  return { [CASH]: Math.max(0, Math.round(Number(total) || 0)) };
+}
+
 const num = (v) => {
   const n = Number(v);
   return Number.isFinite(n) && n > 0 ? n : 0;

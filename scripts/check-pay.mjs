@@ -82,11 +82,14 @@ const cors = (req) => ({
   "Access-Control-Allow-Methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
 });
 
+/** Sahifada tushgan JS xatolari — oxirida hisobga olinadi. */
+const pageErrors = [];
+
 /* Bitta tovar — mantiqni tekshirish uchun; scrol bo'limi o'z ro'yxatini beradi. */
 const ONE = [{ id: 1, name: "Kurtka", salePrice: 100000, qty: 1, unit: "DONA", stockQuantity: 9 }];
 
 /** Tayyor sahifa: soxta API, soxta sessiya va savat bilan. */
-async function openKassa({ w = 1600, h = 950, items = ONE } = {}) {
+async function openKassa({ w = 1600, h = 950, items = ONE, carts = null } = {}) {
   const page = await browser.newPage();
   await page.setViewport({ width: w, height: h });
   await page.setRequestInterception(true);
@@ -96,27 +99,41 @@ async function openKassa({ w = 1600, h = 950, items = ONE } = {}) {
     if (r.method() === "OPTIONS") return r.respond({ status: 204, headers: CORS });
     const body = r.url().includes("/shop/profile")
       ? { success: true, data: PROFILE }
-      : { success: true, data: [] };
+      : /\/sales\b/.test(r.url()) && r.method() === "POST"
+        ? { success: true, data: { id: 777, receiptUrl: null } }
+        : { success: true, data: [] };
     return r.respond({ status: 200, contentType: "application/json",
                        headers: CORS, body: JSON.stringify(body) });
   });
-  page.on("pageerror", (e) => console.log("  ⚠ sahifa xatosi:", e.message));
-  await page.evaluateOnNewDocument((cart) => {
+  /* ⚠ SAHIFA XATOSI — SINOVNI YIQITADI. Ilgari u faqat yozib
+     qo'yilardi va aynan shu sabab «Bajarilmoqda…» da qotib qolish
+     xatosi tekshiruvdan o'tib ketgan edi: sotuvdan keyin
+     `ReferenceError` tushar, ekranda esa hech narsa qizarmasdi. */
+  page.on("pageerror", (e) => { pageErrors.push(e.message); });
+  const seed = carts || [{ id: 1, discount: "", bonusUse: "", customer: null, items }];
+  await page.evaluateOnNewDocument((cartList) => {
     for (const [k, v] of Object.entries({
       ek_token: "v", ek_type: "user", ek_role: "OWNER", ek_username: "v",
       ek_fullName: "V", ek_shopCode: "v", ek_deviceId: "v", ek_lang: "uz", ek_theme: "light",
     })) localStorage.setItem(k, v);
     localStorage.setItem("ek_cart_v_v", JSON.stringify({
-      savedAt: Date.now(), v: 3, activeId: 1,
-      carts: [{ id: 1, discount: "", bonusUse: "", customer: null, items: cart }],
+      savedAt: Date.now(), v: 3, activeId: 1, carts: cartList,
     }));
-  }, items);
+  }, seed);
   await page.goto(`http://127.0.0.1:${PORT}/sale`, { waitUntil: "networkidle2", timeout: 30_000 });
   await new Promise((r) => setTimeout(r, 1200));
   return page;
 }
 
-const page = await openKassa();
+/* ⚠ IKKI SAVAT. Birinchisi sotiladi va yopiladi; ikkinchisi esa
+   sotuvdan KEYIN kassa ishlayotganini tekshirish uchun qoladi —
+   bo'sh savatda to'lov oynasi umuman ochilmaydi va «ikkinchi sotuv»
+   tekshiruvi ma'nosini yo'qotardi. */
+const page = await openKassa({ carts: [
+  { id: 1, discount: "", bonusUse: "", customer: null, items: ONE },
+  { id: 2, discount: "", bonusUse: "", customer: null,
+    items: [{ id: 2, name: "Shim", salePrice: 50000, qty: 1, unit: "DONA", stockQuantity: 9 }] },
+] });
 
 let bad = 0;
 const ok = (m) => console.log("  ✅ " + m);
@@ -124,6 +141,10 @@ const no = (m, got) => { bad++; console.log(`  ❌ ${m}  →  ${got}`); };
 
 const state = () => page.evaluate(() => ({
   input: document.querySelector("#pay-amount")?.value ?? null,
+  hold: document.querySelector("#pay-amount")?.placeholder ?? null,
+  custNeed: !!document.querySelector(".cart-cust.is-needed"),
+  custHint: document.querySelector(".cart-cust__need")?.textContent.trim() || null,
+  warnBtn: !!document.querySelector(".pay-warn-btn"),
   label: document.querySelector('label[for="pay-amount"]')?.textContent.trim() ?? null,
   rows: [...document.querySelectorAll(".pay-sum__row")].map((r) => ({
     name: r.querySelector(".pay-sum__name")?.textContent.trim(),
@@ -171,12 +192,33 @@ await page.evaluate(() => [...document.querySelectorAll("button")]
   .find((b) => /Sotish|To'lov|Tolov/i.test(b.textContent))?.click());
 await new Promise((r) => setTimeout(r, 700));
 let s = await state();
-if (s.input === null) { console.log("  ❌ to'lov oynasi ochilmadi"); await browser.close(); server.close(); process.exit(1); }
+if (s.input === null) { console.log("  ❌ to'lov oynasi ochilmadi"); await browser.close(); server.close();
 
-console.log("\n── 1. Oyna «Naqd = butun summa» bilan ochiladi ──");
-s.input.replace(/\D/g, "") === "100000" ? ok(`maydonda ${s.input}`) : no("naqd = 100 000 bo'lishi kerak", s.input);
+if (pageErrors.length) {
+  bad += pageErrors.length;
+  console.log("\n  ❌ Sahifada JS xatolari tushdi:");
+  for (const e of [...new Set(pageErrors)].slice(0, 6)) console.log("       " + e);
+} else {
+  console.log("\n  ✅ Sahifada birorta JS xatosi tushmadi");
+} process.exit(1); }
+
+console.log("\n── 1. Maydon BO'SH ochiladi, lekin chek naqd ──");
+/* ⚠ Do'kon egasining talabi: «inputda summa yozilib turmasin, bo'sh
+   tursin, lekin placeholder bo'lishi mumkin». Bo'sh maydon esa
+   «to'lanmadi» degani emas — odatiy chek to'liq naqd. */
+s.input === "" ? ok("maydon bo'sh") : no("maydon bo'sh bo'lishi kerak", `«${s.input}»`);
+(s.hold || "").replace(/\D/g, "") === "100000"
+  ? ok(`placeholder: ${s.hold}`) : no("placeholder 100 000 ko'rsatishi kerak", s.hold);
+{
+  const naqd = s.rows.find((r) => /Naqd/i.test(r.name || ""));
+  (naqd?.val || "").replace(/\D/g, "") === "100000"
+    ? ok(`hisobda naqd ${naqd.val}`) : no("hisobda naqd 100 000 bo'lishi kerak", naqd?.val ?? "yo'q");
+}
+s.btns.find((b) => b.txt.includes("Naqd"))?.has
+  ? ok("Naqd tugmasida summa ko'rinadi") : no("Naqd tugmasi belgilanishi kerak", "yo'q");
 s.rows.some((r) => r.credit) ? no("nasiya bo'lmasligi kerak", "bor") : ok("nasiya yo'q");
-s.submit ? ok("«Sotish» ochiq") : no("«Sotish» ochiq bo'lishi kerak", "yopiq");
+s.custNeed ? no("mijoz so'ralmasligi kerak", "ishora bor") : ok("mijoz so'ralmaydi");
+s.submit ? ok("«Sotish» ochiq — hech narsa yozmasdan sotiladi") : no("«Sotish» ochiq bo'lishi kerak", "yopiq");
 s.btns.length === 4 ? ok("to'rt usul: " + s.btns.map((b) => b.txt.split(" ")[0]).join(", "))
                     : no("to'rtta usul bo'lishi kerak", s.btns.length);
 /Aralash|Nasiya/i.test(s.btns.map((b) => b.txt).join(" "))
@@ -223,11 +265,46 @@ console.log("\n── 4b. Nasiya matni va mijoz talabi ──");
     : no("«Qolgani nasiyaga» deyilishi kerak", row?.name);
   st.warns.length ? ok("mijoz talab qilinadi: " + st.warns[0]) : no("mijoz so'ralishi kerak", "yo'q");
   st.submit ? no("mijozsiz «Sotish» yopiq bo'lishi kerak", "ochiq") : ok("mijozsiz «Sotish» yopiq");
+  /* ⚠ Do'kon egasining talabi: «mijoz tanlash majburiy bo'lganda
+     mijoz tanlash oynasi ishora qilib tursin». */
+  st.custNeed ? ok("mijoz tanlagichi ishora qilyapti") : no("tanlagich ishora qilishi kerak", "belgi yo'q");
+  st.custHint ? ok(`tanlagich tagida: «${st.custHint}»`) : no("tanlagich tagida yozuv kerak", "yo'q");
+  st.warnBtn ? ok("ogohlantirish bosiladigan — tanlagichni ochadi") : no("ogohlantirish tugma bo'lishi kerak", "oddiy yozuv");
+  {
+    /* Bosilsa — ro'yxat ochilsin. */
+    await page.click(".pay-warn-btn");
+    await new Promise((r) => setTimeout(r, 350));
+    const open = await page.evaluate(() => !!document.querySelector(".ek-select__menu, .ek-select__pop, [role='listbox']"));
+    open ? ok("bosilganda mijoz ro'yxati ochildi") : no("ro'yxat ochilishi kerak", "ochilmadi");
+    /* ⚠ `Escape` ISHLATILMAYDI: ro'yxat o'zi yopilib ulgursa, tugma
+       to'lov OYNASIGA borib tegadi va u yopilib ketardi (shu yerda
+       tutildi). Tanlagichni o'z tugmasi bilan yopamiz. */
+    await page.click(".cart-cust .ek-select__btn");
+    await new Promise((r) => setTimeout(r, 300));
+    (await page.$("#pay-amount"))
+      ? ok("to'lov oynasi ochiq qoldi") : no("to'lov oynasi ochiq qolishi kerak", "yopildi");
+  }
+}
+
+console.log("\n── 4c. Naqdga 0 — to'liq nasiya ──");
+{
+  await pick("Click"); await type("");
+  await pick("Naqd");  await type("0");
+  const st = await state();
+  const c = st.rows.find((r) => r.credit)?.val;
+  (c || "").replace(/\D/g, "") === "100000"
+    ? ok(`to'liq nasiya ${c}`) : no("to'liq nasiya 100 000 bo'lishi kerak", c ?? "yo'q");
+  st.hold === "0" ? ok("yozilgach placeholder «0» bo'ladi") : no("placeholder «0» bo'lishi kerak", st.hold);
 }
 
 console.log("\n── 5. Uchinchi usul ham qo'shiladi (cheksiz) ──");
-await pick("Karta");
-await type("30000");
+/* ⚠ HOLAT SHU YERDA QAYTA QURILADI. Ilgari bu bo'lim o'zidan
+   oldingi bo'limlar qoldirgan qiymatlarga tayanardi va yuqoriga
+   yangi bo'lim qo'shilishi bilan kutilmalar «o'z-o'zidan» noto'g'ri
+   bo'lib qoldi. Har bo'lim o'z holatini o'zi qo'yadi. */
+await pick("Naqd");  await type("20000");
+await pick("Click"); await type("15000");
+await pick("Karta"); await type("30000");
 s = await state();
 c = s.rows.find((r) => r.credit)?.val;
 (c || "").replace(/\D/g, "") === "35000" ? ok(`nasiya ${c}`) : no("nasiya 35 000 bo'lishi kerak", c ?? "yo'q");
@@ -272,6 +349,60 @@ console.log("\n── 8b. Qatorlar tartibi surilmaydi ──");
   const names = st.rows.filter((r) => !r.credit && !r.change).map((r) => r.name.trim());
   /Naqd/.test(names[0] || "") ? ok("Naqd birinchi qatorda: " + names.join(" · "))
     : no("Naqd birinchi bo'lishi kerak", names.join(" · "));
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   8c. SOTUVNI OXIRIGACHA O'TKAZISH
+
+   ⚠ BU BO'LIM YO'Q EDI VA BAHOSI QIMMAT BO'LDI. Tekshiruv to'lov
+   oynasini har tomondan qarardi, lekin «Sotish» ni HECH QACHON
+   bosmasdi. Shu sabab sotuvdan KEYINGI kod umuman ishga tushmasdi va
+   u yerda to'lov qayta yozilganda o'chgan funksiyalarning chaqiruvlari
+   qolib ketgani bilinmadi: sotuv o'tar, `ReferenceError` esa
+   `setProcessing(false)` ga yetkazmasdi va tugma abadiy
+   «Bajarilmoqda…» bo'lib qolardi — kassa butunlay to'xtardi.
+   Buni tekshiruv emas, do'kon egasi topdi.
+   ══════════════════════════════════════════════════════════════════════ */
+console.log("\n── 8c. Sotuv oxirigacha o'tadi ──");
+{
+  await pick("Karta"); await type("");
+  await pick("Click"); await type("");
+  await pick("Naqd");  await type("");        // hammasi naqd
+  await page.click(".pay-modal-submit");
+  await new Promise((r) => setTimeout(r, 1600));
+
+  const after = await page.evaluate(() => ({
+    finish: !!document.querySelector(".ek-finish"),
+    modal:  !!document.querySelector("#pay-amount"),
+    busy:   !!document.querySelector('.pay-modal-submit[data-loading]'),
+    count:  document.querySelector(".ek-finish__count")?.textContent || null,
+  }));
+  after.finish ? ok("yakunlash oynasi chiqdi") : no("yakunlash oynasi chiqishi kerak", "yo'q");
+  after.modal ? no("to'lov oynasi yopilishi kerak", "ochiq") : ok("to'lov oynasi yopildi");
+  after.busy ? no("tugma «Bajarilmoqda» da qolmasligi kerak", "qotib qoldi") : ok("tugma qotib qolmadi");
+  after.count ? ok(`sanoq ko'rinadi: ${after.count}`) : no("qolgan sekundlar ko'rinishi kerak", "yo'q");
+
+  /* Esc — yozuvda bor edi, lekin hech qayerda ushlanmagan edi. */
+  await page.keyboard.press("Escape");
+  await new Promise((r) => setTimeout(r, 400));
+  (await page.$(".ek-finish"))
+    ? no("Esc yakunlash oynasini yopishi kerak", "yopilmadi") : ok("Esc oynani yopdi");
+
+  /* ⚠ IKKINCHI SOTUV — asosiy tekshiruv. Do'kon egasining so'zi:
+     «bir marta sotuv qilgandan keyin shunday bajarilmoqda bo'lib
+     qolyapti». Ya'ni birinchi sotuv o'tadi, ikkinchisi to'xtaydi. */
+  await page.evaluate(() => [...document.querySelectorAll("button")]
+    .find((b) => /Sotish|To'lov|Tolov/i.test(b.textContent))?.click());
+  await new Promise((r) => setTimeout(r, 800));
+  const again = await page.evaluate(() => ({
+    modal: !!document.querySelector("#pay-amount"),
+    can:   !document.querySelector(".pay-modal-submit")?.disabled,
+    busy:  !!document.querySelector('.pay-modal-submit[data-loading]'),
+  }));
+  again.modal ? ok("keyingi chek uchun to'lov oynasi yana ochildi")
+              : no("to'lov oynasi ochilishi kerak", "ochilmadi");
+  again.busy ? no("tugma bo'sh bo'lishi kerak", "«Bajarilmoqda»") : ok("tugma bo'sh");
+  again.can ? ok("ikkinchi sotuv ham qilinadi") : no("ikkinchi sotuv qilinishi kerak", "tugma yopiq");
 }
 
 await page.close();
@@ -340,5 +471,13 @@ for (const [w, h] of SCREENS) {
 }
 
 await browser.close(); server.close();
+
+if (pageErrors.length) {
+  bad += pageErrors.length;
+  console.log("\n  ❌ Sahifada JS xatolari tushdi:");
+  for (const e of [...new Set(pageErrors)].slice(0, 6)) console.log("       " + e);
+} else {
+  console.log("\n  ✅ Sahifada birorta JS xatosi tushmadi");
+}
 console.log(bad ? `\n  ${bad} ta xato — to'lov oynasi buzilgan.\n` : "\n  ✅ To'lov oynasi: hammasi o'tdi\n");
 process.exit(bad ? 1 : 0);

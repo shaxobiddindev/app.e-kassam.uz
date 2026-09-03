@@ -12,7 +12,7 @@
    Ishga tushirish:  node test/payment.test.mjs
    ══════════════════════════════════════════════════════════════════════════ */
 
-const { settle, payType, restFor } = await import("../src/lib/ek-payment.js");
+const { settle, payType, restFor, effective } = await import("../src/lib/ek-payment.js");
 
 let pass = 0, fail = 0;
 const ok  = (m) => { pass++; console.log("  ✅ " + m); };
@@ -86,6 +86,25 @@ eq(restFor({ CASH: 20000 }, 100000, "CASH"), 100000, "naqdning o'zi hisobga olin
 eq(restFor({ CASH: 20000 }, 100000, "CLICK"), 80000, "Click uchun qolgani 80 000");
 eq(restFor({ CASH: 20000, CLICK: 15000 }, 100000, "CARD"), 65000, "kartaga qolgani 65 000");
 eq(restFor({ CASH: 200000 }, 100000, "CARD"), 0, "ortiqcha to'langanda — nol");
+
+console.log("\n── Bo'sh maydon: hammasi naqd ──");
+
+/* ⚠ Do'kon egasining talabi: maydon BO'SH ochilsin, unga summa
+   yozilmasin. Lekin bo'sh maydon «to'lanmadi» degani EMAS — odatiy
+   chekda mijoz butun summani naqd beradi va kassir hech narsa
+   yozmasdan «Sotish» ni bosadi. Bo'sh = nol deb olinsa, o'sha odatiy
+   chek BUTUNLAY nasiyaga yozilardi. */
+eqArr(effective({}, 100000), { CASH: 100000 }, "hech narsa yozilmadi — hammasi naqd");
+eqArr(effective(null, 100000), { CASH: 100000 }, "kirish yo'q — hammasi naqd");
+eqArr(effective({ CLICK: 15000 }, 100000), { CLICK: 15000 }, "yozilgan bo'lsa — tegilmaydi");
+/* ⚠ NOL — «yozilgan» hisoblanadi: to'liq nasiya shu yo'l bilan
+   qilinadi va qoida uni bosib ketmasligi kerak. */
+eqArr(effective({ CASH: "0" }, 100000), { CASH: "0" }, "nol ham yozuv — bosib ketilmaydi");
+eq(settle(effective({}, 100000), 100000).credit, 0, "bo'sh chekda nasiya yo'q");
+eq(settle(effective({}, 100000), 100000).parts[0].type, "CASH", "chekka naqd tushadi");
+eq(payType(settle(effective({}, 100000), 100000).parts), "CASH", "turi — naqd");
+eq(settle(effective({ CASH: "0" }, 100000), 100000).credit, 100000, "naqdga 0 — to'liq nasiya");
+eqArr(effective({}, 0), { CASH: 0 }, "jami nol — nol naqd");
 
 console.log("\n── Qatorlar tartibi ──");
 

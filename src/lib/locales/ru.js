@@ -1650,6 +1650,7 @@ export default {
 
   /* ── To'lov: bitta maydon, qolgani nasiyaga (V58) ── */
   "kassa.amountFor": "Сумма для «{method}»",
+  "kassa.emptyIsCash": "Оставите пустым — всё наличными.",
   "kassa.fillRest": "Остаток",
   "kassa.toCredit": "Остаток в долг",
   "kassa.unpaid": "Не оплачено",
