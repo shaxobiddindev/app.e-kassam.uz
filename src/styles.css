@@ -1112,7 +1112,9 @@ select.form-input { cursor: pointer; }
      surishga majbur bo'lardi. Kenglik esa bo'sh turardi — 1400px
      ekranda oyna atigi 720px edi. Endi ikki ustun: chapda chek,
      o'ngda to'lov. */
-  max-width: 1040px;
+  /* ⚠ 1040 → 1300px (V57): uchinchi ustun (tovarlar ro'yxati) qo'shildi.
+     Kenglik hamon bo'sh: 1440px ekranda oyna chetiga 70px dan qoladi. */
+  max-width: 1300px;
   max-height: 90vh;
   box-shadow:
     0 8px 40px rgba(1, 54, 141, 0.12),
@@ -3117,18 +3119,127 @@ img.logo--dark { display: none; }
    ══════════════════════════════════════════════════════════════════════════ */
 .pay-modal-body {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0 28px;
+  /* ⚠ UCH USTUN (V57). Tovarlar ro'yxati qo'shilgach ikki ustun yana
+     balandlab ketardi — kenglik esa hamon bo'sh turardi. Endi:
+     chapda CHEK (jami + tovarlar), o'rtada CHEGIRMA, o'ngda TO'LOV. */
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0 26px;
   align-items: start;
 }
 .pay-col { min-width: 0; }
-/* Chap ustunning tepasidagi jami — o'ng ustun bilan bir sathda boshlansin */
+/* Ustunlar tepasi bir sathda boshlansin */
+.pay-col--left  > .pay-modal-section-label:first-child,
 .pay-col--right > .pay-modal-section-label:first-child { margin-top: 0; }
+
+/* ⚠ Uch ustun 1200px dan pastda siqiladi — ro'yxat chek ustuni bilan
+   birga qoladi, to'lov o'z ustunida. */
+@media (max-width: 1200px) {
+  .pay-modal-body { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .pay-col--list { grid-column: 1; }
+  .pay-col--left { grid-column: 1; }
+  .pay-col--right { grid-column: 2; grid-row: 1 / span 2; }
+}
 
 /* ⚠ Tor ekranda BITTA ustun. Ikki ustun 900px dan pastda siqilib,
    raqamlar bir-biriga yopishib qolardi — bu scroldan ham yomon. */
 @media (max-width: 900px) {
   .pay-modal-body { grid-template-columns: 1fr; gap: 0; }
+  .pay-col--list, .pay-col--left, .pay-col--right {
+    grid-column: 1; grid-row: auto;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   TO'LOV OYNASIDAGI TOVARLAR RO'YXATI (V57)
+
+   ⚠ NEGA KERAK: kassir chegirma bermoqchi bo'lganda «nima sotilyapti va
+   qaysi qatorga qancha tushdi?» degan savolga javob kerak. Ilgari buning
+   uchun oynani yopib savatga qaytish kerak edi — mijoz oldida.
+
+   ⚠ SURILADIGANI — RO'YXATNING O'ZI, oyna emas. 40 qatorli chekni
+   butunlay sig'dirib bo'lmaydi; muhimi — jami, chegirma va to'lov
+   tugmalari JOYIDA qolishi.
+   ══════════════════════════════════════════════════════════════════════════ */
+.pay-items {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  background: var(--bg);
+  /* ⚠ 6 QATOR. Ko'p chekda shuncha yoki undan kam tovar bo'ladi va
+     ro'yxat butunlay ko'rinadi; uzunrog'ida esa oxirgi qator ataylab
+     YARIM ko'rinib turadi — «pastda yana bor» degan belgi shu. */
+  max-height: 302px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.pay-items__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "name sum" "qty sum";
+  align-items: center;
+  gap: 0 10px;
+  padding: 7px 12px;
+  font-size: 12.5px;
+}
+.pay-items__row + .pay-items__row { border-top: 1px solid var(--border-subtle); }
+.pay-items__name {
+  grid-area: name;
+  font-weight: 600;
+  color: var(--text);
+  /* Uzun nom ustunni kengaytirib yubormasin */
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.pay-items__qty {
+  grid-area: qty;
+  font-size: 11.5px;
+  color: var(--text2);
+}
+.pay-items__sum {
+  grid-area: sum;
+  text-align: right;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+}
+/* Qatorga tushgan chegirma — summaning ostida, qizil */
+.pay-items__cut {
+  display: block;
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--red);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   CHEGIRMA OGOHLANTIRISHI (V57)
+
+   Ikki daraja, ikki rang: sariq — rahbar tasdig'i bilan MUMKIN;
+   qizil — do'kon ZARAR ko'radi. Bitta xabar bo'lsa, kassir ularning
+   farqini bilmasdi.
+   ══════════════════════════════════════════════════════════════════════════ */
+.disc-warn {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 8px 0 4px;
+  padding: 8px 11px;
+  border-radius: 10px;
+  font-size: 12px;
+  line-height: 1.45;
+  border: 1px solid transparent;
+}
+.disc-warn i { margin-top: 1px; flex: none; }
+.disc-warn--over {
+  background: var(--bg-warning-subtle, rgba(245, 158, 11, .10));
+  border-color: var(--border-warning, rgba(245, 158, 11, .35));
+  color: var(--fg-warning, #92400e);
+}
+.disc-warn--loss {
+  background: var(--bg-danger-subtle, rgba(239, 68, 68, .10));
+  border-color: var(--border-danger, rgba(239, 68, 68, .35));
+  color: var(--fg-danger, #991b1b);
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -3161,3 +3272,60 @@ img.logo--dark { display: none; }
 /* Chegirma summasi ikkinchi darajali: kassir avval NATIJANI ko'radi —
    mijozga aytadigan raqam o'sha. */
 .round-offers__cut { font-size: 11px; font-weight: 700; color: var(--fg-danger); }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   KLAVIATURA YORLIQLARI (V57)
+
+   ⚠ Sensorsiz monoblokda kassirning ikkala qo'li klaviaturada bo'lishi
+   kerak. Yorliqning O'ZI yetmaydi — u KO'RINISHI ham shart: bilinmagan
+   yorliq yo'q bilan barobar.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Klaviatura bilan tanlangan savat qatori */
+.cart-item.is-picked {
+  /* ⚠ Fon emas, CHAP CHEKKA: fon `ek-row-in` / `ek-pop` animatsiyalari
+     bilan urishib qolardi va yangi qo'shilgan qator «tanlangan» bo'lib
+     ko'rinardi. */
+  box-shadow: inset 3px 0 0 var(--blue);
+  background: var(--bg-brand-subtle, rgba(1, 54, 141, .05));
+}
+
+.kbd-help {
+  background: var(--bg-surface);
+  border-radius: 22px;
+  width: 100%;
+  max-width: 860px;
+  max-height: 90vh;
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 8px 40px rgba(1, 54, 141, .12);
+  display: flex;
+  flex-direction: column;
+}
+.kbd-help__body {
+  padding: 8px 26px 24px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 28px;
+  align-items: start;
+  overflow-y: auto;
+}
+.kbd-help__col { min-width: 0; }
+.kbd-help__list { list-style: none; margin: 0; padding: 0; }
+.kbd-help__list li {
+  display: grid;
+  /* ⚠ Belgi ustuni QAT'IY kenglikda: yorliqlar turli uzunlikda
+     («/» va «Ctrl+P») va oqim bo'yicha joylashtirilsa, vazifalar
+     har qatorda boshqa joydan boshlanib, ro'yxatni ko'z bilan
+     kuzatib o'qib bo'lmasdi. */
+  grid-template-columns: 82px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 5px 0;
+  font-size: 13px;
+}
+.kbd-help__list li + li { border-top: 1px solid var(--border-subtle); }
+.kbd-help__list .kbd { justify-self: start; }
+
+@media (max-width: 720px) {
+  .kbd-help__body { grid-template-columns: 1fr; }
+}

@@ -144,6 +144,19 @@ export default function Receipt({ token, appToken, customerId, id, signedId, sig
                   </span>
                   <span>{money(l.sum)}</span>
                 </div>
+                {/* ⚠ QATOR CHEGIRMASI — QOG'OZ CHEK BILAN BIR XIL (V57).
+                    Qog'ozda u allaqachon chiqardi (`buildReceipt`), bu
+                    yerda esa yo'q edi: mijoz ikkalasini yonma-yon qo'yib
+                    solishtiradi va farq ishonchni yo'qotadi. Undan ham
+                    yomoni — chegirma ko'rinmasa, tushirilgan narx XATO
+                    bo'lib tuyuladi: mijoz e'lon narxini eslaydi, chekda
+                    esa boshqa raqam turadi. */}
+                {Number(l.discount) > 0 && (
+                  <div className="pt-tape__row pt-line__cut">
+                    <span>Chegirma</span>
+                    <span>−{money(l.discount)}</span>
+                  </div>
+                )}
               </div>
             ))}
 

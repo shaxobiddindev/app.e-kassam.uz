@@ -63,6 +63,9 @@ body {
 .pt-tape__row > span:last-child { white-space: nowrap; }
 .pt-line { padding: 3px 0; }
 .pt-line__name { font-weight: 700; }
+/* Qator chegirmasi — qog'oz chekdagi bilan bir xil, ichkariroq va
+   so'nikroq: u qatorning IZOHI, alohida qator emas. */
+.pt-line__cut { padding-left: 10px; opacity: .75; }
 .pt-total { font-size: 14px; font-weight: 800; padding: 6px 0; border-top: 1px solid #111111; margin-top: 4px; }
 .pt-earn { font-weight: 700; }
 .pt-returned {

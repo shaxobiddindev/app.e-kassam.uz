@@ -18,7 +18,8 @@
    Ishga tushirish:  node test/discount.test.mjs
    ══════════════════════════════════════════════════════════════════════════ */
 
-const { lineNet, spreadDiscount, lineRoom, cartRoom, roundingOffers, spreadByRoom }
+const { lineNet, spreadDiscount, lineRoom, cartRoom, roundingOffers, spreadByRoom,
+        budgetOffers, lineLossRoom, cartLossRoom, discountVerdict }
   = await import("../src/lib/ek-discount.js");
 
 let pass = 0, fail = 0;
@@ -140,6 +141,67 @@ const fullSpread = spreadByRoom(CART, 7210);
 eq(fullSpread.reduce((a, b) => a + b, 0), 7210, "to'liq bo'sh joy taqsimlanadi");
 eqArr(spreadByRoom(CART, 0), [0, 0, 0], "nol chegirma — nol taqsimot");
 eqArr(spreadByRoom([], 400), [], "bo'sh savat — yiqilmaydi");
+
+/* ══════════════════════════════════════════════════════════════════════
+   BYUDJETLI TAKLIFLAR (V57)
+
+   Do'kon egasining AYNAN o'sha misoli. «Eng arzon yechim» bu yerda
+   noto'g'ri javob: kassir 20 000 bermoqchi ekanini o'zi aytdi.
+   ══════════════════════════════════════════════════════════════════ */
+console.log("\n── Byudjetli takliflar ──");
+
+/* Piyoz 45 500 · Kartoshka 15 700 · Kola 80 000 → jami 141 200 */
+const SHOP = [
+  { name: "Piyoz",     salePrice: 45500, qty: 1, minPrice: 30000, costPrice: 28000 },
+  { name: "Kartoshka", salePrice: 15700, qty: 1, minPrice: 11000, costPrice: 10000 },
+  { name: "Kola",      salePrice: 80000, qty: 1, minPrice: 79900, costPrice: 70000 },
+];
+const SHOP_TOTAL = 141200;
+
+const bo = budgetOffers(SHOP, SHOP_TOTAL, 20000);
+eq(bo.length, 3, "uchta taklif — har yaxlitlik darajasidan bittadan");
+eqArr(bo.map((o) => o.target),   [130000, 125000, 122000], "maqsadlar yaxlitligi bo'yicha");
+eqArr(bo.map((o) => o.discount), [11200, 16200, 19200],    "chegirmalar");
+bo.forEach((o) => yes(o.discount <= 20000, `${o.target}: byudjetdan oshmadi`));
+bo.forEach((o) => yes(o.target % 500 === 0, `${o.target}: 500/700 qoldiq YO'Q`));
+
+/* ⚠ Bo'sh joy byudjetdan kichik bo'lsa — kesadi. Aks holda taklifni
+   bosgan kassir darhol bajik so'raladigan holatga tushardi. */
+const tight = budgetOffers(SHOP, SHOP_TOTAL, 100000);
+yes(tight.every((o) => o.discount <= cartRoom(SHOP)),
+    "bo'sh joydan oshgan taklif yo'q");
+
+eqArr(budgetOffers(SHOP, SHOP_TOTAL, 0), [], "byudjet 0 — taklif yo'q");
+eqArr(budgetOffers(SHOP, SHOP_TOTAL, 100), [], "100 so'mga yaxlit son yo'q");
+eqArr(budgetOffers([], 141200, 20000), [], "bo'sh savat — yiqilmaydi");
+
+/* ⚠ `roundingOffers` dan FARQI: jami yaxlit bo'lsa ham taklif chiqadi,
+   chunki chegirma bermoqchi ekanini kassir O'ZI aytdi. */
+const RND = [{ salePrice: 140000, qty: 1, minPrice: 100000, costPrice: 90000 }];
+eqArr(roundingOffers(RND, 140000), [], "yaxlit chekka yaxlitlash taklifi YO'Q");
+yes(budgetOffers(RND, 140000, 20000).length > 0, "yaxlit chekka byudjetli taklif BOR");
+
+/* ══════════════════════════════════════════════════════════════════════
+   IKKI CHEGARA — QOIDA va ZARAR
+   ══════════════════════════════════════════════════════════════════ */
+console.log("\n── Chegirma bahosi ──");
+
+eq(lineLossRoom(SHOP[0]), 17500, "piyoz: tan narxgacha 17 500");
+eq(cartRoom(SHOP), 20300, "qoida chegarasi");
+eq(cartLossRoom(SHOP), 33200, "zarar chegarasi — qoidadan KENG (17 500+5 700+10 000)");
+yes(cartLossRoom(SHOP) >= cartRoom(SHOP), "zarar chegarasi hech qachon torroq emas");
+
+eq(discountVerdict(SHOP, 0),      "ok",   "chegirmasiz");
+eq(discountVerdict(SHOP, 20300),  "ok",   "qoida chegarasida — aynan");
+eq(discountVerdict(SHOP, 20301),  "over", "qoidadan oshdi — rahbar tasdig'i");
+eq(discountVerdict(SHOP, 33200),  "over", "zarar chegarasida — hali zarar emas");
+eq(discountVerdict(SHOP, 33201),  "loss", "tan narxdan past — ZARAR");
+
+/* ⚠ Tan narxi NOMA'LUM qator «zararsiz» deb hisoblanmaydi: bilmagan
+   narsani xavfsiz deb aytish — eng qimmat xato turi. */
+const NOCOST = [{ salePrice: 10000, qty: 1, minPrice: 9000 }];
+eq(lineLossRoom(NOCOST[0]), lineRoom(NOCOST[0]),
+   "tan narxsiz qator qoida chegarasidan oshmaydi");
 
 console.log(`  ${pass} o'tdi, ${fail} yiqildi`);
 process.exit(fail ? 1 : 0);

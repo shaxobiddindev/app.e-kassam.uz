@@ -48,9 +48,19 @@ function keyFor() {
   return `${PREFIX}${shop}_${user}`;
 }
 
-/** Bo'sh savat. `id` — faqat brauzer ichida, serverga hech qachon ketmaydi. */
+/**
+ * Bo'sh savat. `id` — faqat brauzer ichida, serverga hech qachon ketmaydi.
+ *
+ * ⚠ CHEGIRMA VA BALL HAM SAVATNING O'ZIDA (V57). Ilgari ular sahifa
+ * holatida turardi va bu ikkita xatoni bergan edi:
+ *
+ *   · savat tabini almashtirgan kassir chegirmani MEROS qilib olardi —
+ *     ikkinchi mijozga birinchisining chegirmasi tushardi;
+ *   · F5 bosilganda savat tiklanardi-yu, chegirma yo'qolardi va kassir
+ *     uni qaytadan yozishi kerak edi (ko'pincha esdan chiqardi).
+ */
 export function blank(id) {
-  return { id, items: [], customer: null };
+  return { id, items: [], customer: null, discount: "", bonusUse: "" };
 }
 
 /** Savatlar ro'yxatini saqlaydi. Hammasi bo'sh bo'lsa — yozuvni o'chiradi. */
@@ -62,7 +72,7 @@ export function save(carts, activeId) {
       localStorage.removeItem(key);
       return;
     }
-    localStorage.setItem(key, JSON.stringify({ savedAt: Date.now(), v: 2, carts: full, activeId }));
+    localStorage.setItem(key, JSON.stringify({ savedAt: Date.now(), v: 3, carts: full, activeId }));
   } catch (_) {
     /* Xotira to'lgan yoki shaxsiy rejim — saqlanmasa ham kassa ishlaydi.
        Bu qatlam qulaylik va iz uchun, sotuvning sharti emas. */
@@ -102,6 +112,11 @@ export function take() {
         id: Number(c?.id) || i + 1,
         items: Array.isArray(c?.items) ? c.items : [],
         customer: c?.customer || null,
+        /* ⚠ ESKI YOZUVDA (v2) bu maydonlar YO'Q — bo'sh qiymat bilan
+           to'ldiriladi, aks holda `undefined` boshqariladigan maydonni
+           boshqarilmaydiganga aylantirib, React ogohlantirish berardi. */
+        discount: typeof c?.discount === "string" ? c.discount : "",
+        bonusUse: typeof c?.bonusUse === "string" ? c.bonusUse : "",
       }))
       .filter((c) => c.items.length > 0)
       .slice(0, MAX_CARTS);

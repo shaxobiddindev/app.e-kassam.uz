@@ -177,3 +177,137 @@ export function spreadByRoom(lines, total) {
   if (rest > 0) out[biggest] = Math.min(rooms[biggest], out[biggest] + rest);
   return out;
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   BYUDJETLI TAKLIFLAR (V57)
+
+   ═══ NEGA YUQORIDAGISI YETMADI ═════════════════════════════════════════
+
+   `roundingOffers` savolni «shu chekdagi noqulay qoldiqni eng arzonga
+   qanday yo'qotaman?» deb qo'yadi va 141 200 uchun «−200» deb javob
+   beradi. Do'kon egasining savoli esa BOSHQA edi:
+
+     «20 000 chegirma qilmoqchiman. Shundan oshmaydigan, lekin piyoz va
+      kartoshkadagi 500 va 700 ni yo'qotadigan summa taklif qilsin.»
+
+   Ya'ni boshlang'ich nuqta — KASSIR BERMOQCHI BO'LGAN SUMMA, chekning
+   qoldig'i emas. «Eng arzon» javob bu yerda noto'g'ri: kassir 20 000
+   bermoqchi, tizim esa unga 200 taklif qilardi.
+
+   ═══ QOIDA ═══════════════════════════════════════════════════════════
+
+   Byudjet B va jami T berilganda, erishish mumkin bo'lgan jamilar
+   oralig'i [T − B, T]. Shu oraliqdagi YAXLIT sonlar qidiriladi va har
+   yaxlitlik darajasidan (10 000 · 5 000 · 1 000 · 500) BITTADAN,
+   eng CHUQURI (ya'ni byudjetni eng to'la ishlatadigani) olinadi.
+
+   Misol: T = 141 200, B = 20 000 → oraliq [121 200, 141 200]
+
+     10 000 →  130 000  (−11 200)
+      5 000 →  125 000  (−16 200)
+      1 000 →  122 000  (−19 200)
+
+   Uchalasi ham 500/700 qoldiqni yo'qotadi, uchalasi ham byudjetdan
+   oshmaydi, lekin har biri BOSHQACHA murosa: birinchisi do'konga
+   arzon, oxirgisi mijozga shirin. Tanlashni kassirga qoldiramiz.
+
+   ⚠ HAR DARAJADAN BITTADAN — aks holda ro'yxat 130 000, 140 000,
+   135 000, 125 000 … bo'lib ketardi va kassir o'qib chiqolmasdi.
+
+   ⚠ QAYTIM MULOHAZASI. O'zbekistonda amaldagi eng kichik qulay pul
+   birligi — 1 000 so'm. Shuning uchun 1 000 ga karrali jami «qaytim
+   muammosi yo'q» degani; 500 — eng past daraja va ro'yxatda ham
+   oxirgi o'rinda turadi.
+
+   ⚠ JAMI YAXLIT BO'LSA HAM TAKLIF CHIQADI — `roundingOffers` dan
+   farqi shu. U yerda maqsad qoldiqni yo'qotish edi va yaxlit chekka
+   taklif berish do'konni bekorga puldan qilardi. Bu yerda esa kassir
+   chegirma bermoqchi ekanini O'ZI aytdi.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * Byudjetdan oshmaydigan yaxlitlash takliflari.
+ *
+ * @param lines  savat qatorlari
+ * @param total  joriy jami (berilgan chegirmalardan keyin)
+ * @param budget kassir bermoqchi bo'lgan ENG KO'P chegirma
+ * @param limit  nechta taklif
+ * @returns `[{ target, discount, step }]` — yaxlitligi bo'yicha kamayib
+ */
+export function budgetOffers(lines, total, budget, limit = 3) {
+  const t = Math.round(Number(total) || 0);
+  /* ⚠ BO'SH JOY BILAN KESILADI. Byudjet — kassirning XOHISHI, bo'sh
+     joy esa QOIDA (tovar foizi, optom narx, tan narx). Taklif qoidadan
+     oshsa, uni bosgan kassir darhol bajik so'raladigan holatga tushardi
+     — ya'ni tizim uni o'zi tuzoqqa boshlagan bo'lardi. */
+  const cap = Math.min(Math.round(Number(budget) || 0), cartRoom(lines));
+  if (t <= 0 || cap <= 0) return [];
+
+  const floorTotal = t - cap;
+  const out = [];
+  const seen = new Set();
+  for (const step of ROUND_STEPS) {
+    /* Oraliqdagi ENG PAST yaxlit son — byudjetni eng to'la ishlatadi. */
+    const target = Math.ceil(floorTotal / step) * step;
+    if (target <= 0 || target > t) continue;
+    const discount = t - target;
+    if (discount <= 0 || discount > cap) continue;
+    if (seen.has(target)) continue;
+    seen.add(target);
+    out.push({ target, discount, step });
+    if (out.length >= limit) break;
+  }
+  return out;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   IKKI XIL CHEGARA — VA ULARNING FARQI
+
+   Chegirmaning ikkita butunlay boshqa chegarasi bor va ularni chalkashtirish
+   kassirga yolg'on gapirish bo'lardi:
+
+     · BO'SH JOY (`cartRoom`)      — do'kon QOIDASI. Undan oshgan chegirma
+       mumkin, lekin RAHBAR TASDIG'I bilan (bajik). Do'kon hali ham
+       foydada.
+     · ZARAR CHEGARASI (`cartLossRoom`) — TAN NARX. Undan oshgan chegirma
+       do'konni ZARARGA sotdiradi.
+
+   Kassir «ortiqcha yozdim» degan bir xil ogohlantirishni ikkala holatda
+   ham ko'rsa, ikkinchisining og'irligini bilmasdi.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * Qatorning TAN NARXIGACHA bo'lgan joyi — undan pastda zarar boshlanadi.
+ *
+ * ⚠ `costPrice` bo'lmasa (xizmat, eski javob) — cheksiz emas, `lineRoom`
+ * ning o'zi qaytadi: bilmagan narsamizni «zarar emas» deb aytish
+ * mumkin emas.
+ */
+export function lineLossRoom(l) {
+  const price = Number(l.salePrice) || 0;
+  const qty = Number(l.qty) || 0;
+  const cost = l.costPrice == null ? null : Number(l.costPrice);
+  if (cost == null || !Number.isFinite(cost)) return lineRoom(l);
+
+  const room = (price - cost) * qty - (Number(l.discount) || 0);
+  return room > 0 ? Math.floor(room) : 0;
+}
+
+/** Butun savatning zararsiz chegarasi. */
+export const cartLossRoom = (lines) =>
+  (lines || []).reduce((s, l) => s + lineLossRoom(l), 0);
+
+/**
+ * Kiritilgan chegirma qanday baholanadi.
+ *
+ * @returns `"ok"`   — qoida ichida;
+ *          `"over"` — qoidadan oshdi, rahbar tasdig'i kerak;
+ *          `"loss"` — tan narxdan past, do'kon zarar ko'radi.
+ */
+export function discountVerdict(lines, amount) {
+  const d = Math.round(Number(amount) || 0);
+  if (d <= 0) return "ok";
+  if (d > cartLossRoom(lines)) return "loss";
+  if (d > cartRoom(lines)) return "over";
+  return "ok";
+}
