@@ -1656,4 +1656,13 @@ export default {
   "kassa.creditNeedCustomer": "Pick a customer for a debt",
   "kassa.searchCustomer": "Name or phone…",
   "common.searchShort": "Search…",
+  "products.maxDiscount": "Largest discount, %",
+  "products.maxDiscountHint": "Measured against profit. Empty — shop default, 0 — no discount",
+  "products.maxDiscountDefault": "Shop default",
+  "products.minPrice": "Lowest price",
+  "products.minPriceHint": "The cashier can go down to this without a badge",
+  "kassa.priceTooLow": "Cannot go below this",
+  "kassa.lowestPrice": "Lowest price",
+  "kassa.roundOffer": "Round off",
+  "kassa.roundHint": "Removes the change problem",
 };

@@ -1107,7 +1107,12 @@ select.form-input { cursor: pointer; }
   background: var(--bg-surface);
   border-radius: 22px;
   width: 100%;
-  max-width: 720px;
+  /* ⚠ 720 → 1040px (V56). Ilgari mazmun bitta ustunda edi va oyna
+     810px balandlikka SIG'MASDI: kassir to'lov turini ko'rish uchun
+     surishga majbur bo'lardi. Kenglik esa bo'sh turardi — 1400px
+     ekranda oyna atigi 720px edi. Endi ikki ustun: chapda chek,
+     o'ngda to'lov. */
+  max-width: 1040px;
   max-height: 90vh;
   box-shadow:
     0 8px 40px rgba(1, 54, 141, 0.12),
@@ -3070,3 +3075,89 @@ img.logo--dark { display: none; }
                border-radius: 10px; margin-bottom: 12px; font-size: 13px; font-weight: 700; }
 .pickup-warn.is-done   { background: var(--bg-success-subtle, #eaf7ee); color: var(--fg-success, #1a7f37); }
 .pickup-warn.is-cancel { background: var(--bg-danger-subtle, #fdecec); color: var(--fg-danger, #b42318); }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   QATOR NARXI: CHEGARA va TAYYOR NARXLAR (V56)
+
+   ⚠ Chegara HAR DOIM ko'rinadi, xato bo'lganda emas: kassir narxni
+   MIJOZGA AYTISHDAN oldin bilishi kerak. «22 mingga beraman» deb aytib,
+   keyin «bo'lmadi» deyish — do'kon uchun eng noqulay holat.
+   ══════════════════════════════════════════════════════════════════════════ */
+.line-limit {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  margin-top: 10px; padding: 8px 12px;
+  border-radius: 10px; background: var(--bg-sunken);
+  font-size: 13px; font-weight: 700; color: var(--fg-secondary);
+}
+.line-limit b { font-size: 15px; color: var(--fg-primary); }
+
+.line-quick { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.line-quick__btn {
+  flex: 1 1 auto; min-width: 78px; height: 36px; padding: 0 10px;
+  border-radius: 9px; cursor: pointer;
+  border: 1px solid var(--border-subtle); background: var(--bg-surface);
+  font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums;
+  color: var(--fg-secondary);
+}
+.line-quick__btn:hover { border-color: var(--border-brand); color: var(--fg-brand); }
+.line-quick__btn.is-on {
+  border-color: var(--border-brand); background: var(--bg-brand-subtle); color: var(--fg-brand);
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   TO'LOV OYNASI — IKKI USTUN (V56)
+
+   ⚠ MAQSAD: SCROL BUTUNLAY BO'LMASIN. Mijoz oldida har surish
+   sekundlarni yeydi va kassir tugmani qidirib qoladi.
+
+   Chapda CHEK (jami, mijoz, chegirma, yaxlitlash), o'ngda TO'LOV
+   (turi, taqsimot, olingan summa). Ikkalasi mustaqil o'qiladi va
+   balandlik ikki barobar kamayadi.
+   ══════════════════════════════════════════════════════════════════════════ */
+.pay-modal-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 28px;
+  align-items: start;
+}
+.pay-col { min-width: 0; }
+/* Chap ustunning tepasidagi jami — o'ng ustun bilan bir sathda boshlansin */
+.pay-col--right > .pay-modal-section-label:first-child { margin-top: 0; }
+
+/* ⚠ Tor ekranda BITTA ustun. Ikki ustun 900px dan pastda siqilib,
+   raqamlar bir-biriga yopishib qolardi — bu scroldan ham yomon. */
+@media (max-width: 900px) {
+  .pay-modal-body { grid-template-columns: 1fr; gap: 0; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   YAXLITLASH TAKLIFLARI (V56)
+
+   ⚠ Chek 141 200 chiqdi, mijoz 142 000 beradi, kassir 800 qaytaradi —
+   maydasi yo'q, navbat kutadi va o'sha 800 hisobsiz ketadi. Tizim
+   qoldiqni o'zi ko'rib chegirma qilib taklif qiladi.
+   ══════════════════════════════════════════════════════════════════════════ */
+.round-offers { margin-top: 10px; }
+.round-offers__label {
+  display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
+  font-size: 12px; font-weight: 800; letter-spacing: .02em;
+  color: var(--fg-secondary); margin-bottom: 6px;
+}
+.round-offers__hint { font-size: 11px; font-weight: 600; color: var(--fg-tertiary); }
+.round-offers__row { display: flex; gap: 6px; }
+.round-offers__btn {
+  flex: 1; min-width: 0; padding: 7px 8px; border-radius: 10px; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
+  border: 1px solid var(--border-subtle); background: var(--bg-surface);
+}
+.round-offers__btn:hover {
+  border-color: var(--border-brand); background: var(--bg-brand-subtle);
+}
+.round-offers__target {
+  font-size: 14px; font-weight: 800; color: var(--fg-primary);
+  font-variant-numeric: tabular-nums;
+}
+/* Chegirma summasi ikkinchi darajali: kassir avval NATIJANI ko'radi —
+   mijozga aytadigan raqam o'sha. */
+.round-offers__cut { font-size: 11px; font-weight: 700; color: var(--fg-danger); }

@@ -1750,4 +1750,13 @@ export default {
   "kassa.creditNeedCustomer": "Nasiya uchun mijoz tanlanishi kerak",
   "kassa.searchCustomer": "Ism yoki telefon…",
   "common.searchShort": "Qidirish…",
+  "products.maxDiscount": "Eng katta chegirma, %",
+  "products.maxDiscountHint": "Foydadan hisoblanadi. Bo'sh — do'kon standarti, 0 — chegirma yo'q",
+  "products.maxDiscountDefault": "Do'kon standarti",
+  "products.minPrice": "Eng past narx",
+  "products.minPriceHint": "Kassir bajiksiz shu narxgacha tushira oladi",
+  "kassa.priceTooLow": "Bundan past tushib bo'lmaydi",
+  "kassa.lowestPrice": "Eng past narx",
+  "kassa.roundOffer": "Yaxlitlash",
+  "kassa.roundHint": "Qaytim muammosini yo'qotadi",
 };

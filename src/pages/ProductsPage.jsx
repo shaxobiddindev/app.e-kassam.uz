@@ -33,7 +33,7 @@ import { rankItems, PRODUCT_SPEC } from "../lib/ek-search";
 
 const EMPTY_FORM = {
   name: "", barcode: "", sku: "", plu: "", salePrice: "", costPrice: "",
-  wholesalePrice: "", discountAllowed: true, categoryId: "",
+  wholesalePrice: "", discountAllowed: true, maxDiscountPercent: "", categoryId: "",
   type: "GOODS", unit: "DONA", minQuantity: "",
   mxikCode: "", packageCode: "", vatRate: "", priceIncludesVat: true,
   markingGroup: "", imageId: null, imageUrl: null, color: "", favorite: false,
@@ -67,6 +67,22 @@ export default function ProductsPage({ toast }) {
       [VIOLATION.WHOLESALE_ABOVE_SALE]: t("price.wholesaleAboveSale"),
       [VIOLATION.SALE_BELOW_COST]:      t("price.saleBelowCost"),
     }[v];
+  })();
+
+  /* ⚠ Eng past narx SHU YERDA ham hisoblanadi — do'kon egasi foizni
+     yozayotganda natijani darhol ko'rsin. Kassa esa SERVER bergan
+     qiymatni ishlatadi (`ProductResponse.minPrice`): u yerda kassirning
+     shaxsiy chegarasi ham qo'shiladi va formula bitta joyda qolishi
+     kerak. */
+  const minPriceText = (() => {
+    const cost = Number(form.costPrice);
+    const sale = Number(form.salePrice);
+    const pct  = form.maxDiscountPercent === "" ? null : Number(form.maxDiscountPercent);
+    if (!Number.isFinite(cost) || !Number.isFinite(sale) || sale <= 0) return "—";
+    if (pct == null) return t("products.maxDiscountDefault");
+    const profit = sale - cost;
+    if (profit <= 0) return money(sale);
+    return money(Math.max(cost, Math.round(sale - (profit * pct) / 100)));
   })();
 
   const marginText = (() => {
@@ -125,6 +141,7 @@ export default function ProductsPage({ toast }) {
       costPrice: p.costPrice ?? "",
       wholesalePrice: p.wholesalePrice ?? "",
       discountAllowed: p.discountAllowed !== false,
+      maxDiscountPercent: p.maxDiscountPercent ?? "",
       // ⚠ `categoryId` javobda ILGARI YO'Q EDI va bu yerda doim `undefined`
       // bo'lardi: tahrirlash oynasi kategoriyani har safar bo'sh ko'rsatib,
       // saqlanganda uni jimgina yo'qotardi.
@@ -204,6 +221,11 @@ export default function ProductsPage({ toast }) {
            to'xtatgan yaxshi. */
         wholesalePrice: num(form.wholesalePrice) || null,
         discountAllowed: form.discountAllowed,
+        /* ⚠ Bo'sh maydon `-1` bo'lib ketadi — serverda bu «do'kon
+           standartiga qaytar» degani. `null` yuborilsa «tegilmasin»
+           bo'lardi va qo'yilgan foizni olib tashlashning yo'li
+           qolmasdi. */
+        maxDiscountPercent: form.maxDiscountPercent === "" ? -1 : num(form.maxDiscountPercent),
         categoryId: form.categoryId || null,
         type: form.type,
         unit: form.unit,
@@ -733,6 +755,27 @@ export default function ProductsPage({ toast }) {
                      onChange={(e) => setForm((f) => ({ ...f, discountAllowed: e.target.checked }))} />
               <i className="fa-solid fa-percent" /> {t("products.discountAllowed")}
             </label>
+
+            {/* ⚠ SHU TOVARNING chegirma chegarasi (V56). Do'kon foizini
+                ALMASHTIRADI, `min` olinmaydi: «bu tovarni tezroq
+                tozala, 100% gacha ruxsat» degan buyruq do'kon
+                foizidan oshib ketishi kerak. Kassirning shaxsiy
+                chegarasi baribir cheklaydi. */}
+            {form.discountAllowed && (
+              <div className="grid-2" style={{ marginTop: 10 }}>
+                <FormGroup label={t("products.maxDiscount")}>
+                  <Field className="form-input ek-num" kind="percent"
+                         value={form.maxDiscountPercent}
+                         onChange={setField("maxDiscountPercent")}
+                         placeholder={t("products.maxDiscountDefault")} />
+                  <div className="form-hint">{t("products.maxDiscountHint")}</div>
+                </FormGroup>
+                <FormGroup label={t("products.minPrice")}>
+                  <div className="ek-margin">{minPriceText}</div>
+                  <div className="form-hint">{t("products.minPriceHint")}</div>
+                </FormGroup>
+              </div>
+            )}
             {/* ⚠ OMBORDAN BERILADI (V48). Belgi TOVARDA, do'konda emas:
                 bitta do'konda ham javondagi mayda-chuyda (kassir o'zi
                 beradi), ham hovlidagi sement (omborchi beradi) bo'ladi. */}

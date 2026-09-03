@@ -1656,4 +1656,13 @@ export default {
   "kassa.creditNeedCustomer": "Для долга нужно выбрать клиента",
   "kassa.searchCustomer": "Имя или телефон…",
   "common.searchShort": "Поиск…",
+  "products.maxDiscount": "Максимальная скидка, %",
+  "products.maxDiscountHint": "Считается от прибыли. Пусто — как в магазине, 0 — скидки нет",
+  "products.maxDiscountDefault": "Как в магазине",
+  "products.minPrice": "Минимальная цена",
+  "products.minPriceHint": "До неё кассир может опустить цену без бейджа",
+  "kassa.priceTooLow": "Ниже опускать нельзя",
+  "kassa.lowestPrice": "Минимальная цена",
+  "kassa.roundOffer": "Округлить",
+  "kassa.roundHint": "Убирает проблему со сдачей",
 };

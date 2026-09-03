@@ -30,10 +30,34 @@ export default function LinePriceModal({ item, onClose, onApply }) {
   const [price, setPrice] = useState(String(Math.round(current)));
 
   const num = Number(String(price).replace(/\D/g, "")) || 0;
+
+  /* ⚠ ENG PAST NARXNI SERVER BERADI (`ProductResponse.minPrice`).
+     Front uni O'ZI hisoblamaydi va bu ataylab: hisobda tovar foizi,
+     do'kon foizi va kassirning shaxsiy chegarasi qatnashadi, ya'ni
+     formula ikki joyda yozilsa ular ajralib ketishi va kassir
+     «ekranda ruxsat edi, saqlaganda rad etildi» degan holatga
+     tushishi mumkin edi. Eski serverda maydon yo'q — bunda chegara
+     ko'rsatilmaydi va tekshiruv faqat serverda qoladi. */
+  const minPrice = item?.minPrice == null ? null : Math.ceil(Number(item.minPrice));
+  const hasLimit = minPrice != null && Number.isFinite(minPrice) && minPrice < base;
+
   const tooHigh = num > base;
-  const ok = num > 0 && !tooHigh;
+  const tooLow  = minPrice != null && num > 0 && num < minPrice;
+  const ok = num > 0 && !tooHigh && !tooLow;
   /* Chegirma — QATOR bo'yicha jami summa (server aynan shuni kutadi). */
   const discount = ok ? Math.max(0, Math.round((base - num) * qty * 100) / 100) : 0;
+
+  /* Yaxlit narx tugmalari — eng past narxdan e'lon narxigacha.
+     ⚠ Kassir raqam yozmasdan bosadi: mijoz oldida har soniya sanaladi. */
+  const quickPrices = (() => {
+    if (!hasLimit) return [];
+    const step = base >= 100000 ? 5000 : base >= 20000 ? 1000 : 500;
+    const out = [];
+    for (let v = Math.floor(base / step) * step; v >= minPrice && out.length < 4; v -= step) {
+      if (v < base && v > 0) out.push(v);
+    }
+    return out;
+  })();
 
   return (
     <Overlay className="pay-modal-overlay ek-overlay" role="dialog" aria-modal="true"
@@ -63,11 +87,37 @@ export default function LinePriceModal({ item, onClose, onApply }) {
 
           {/* ⚠ NATIJA DARHOL KO'RINADI: kassir mijozga aytadigan raqam —
               qatorning yangi jamisi, chegirma esa uning izohi. */}
-          <div className={`qty-modal__total ${tooHigh ? "is-over" : ""}`}>
-            {tooHigh
-              ? t("kassa.priceTooHigh")
+          <div className={`qty-modal__total ${tooHigh || tooLow ? "is-over" : ""}`}>
+            {tooHigh ? t("kassa.priceTooHigh")
+              : tooLow ? `${t("kassa.priceTooLow")}: ${money(minPrice)}`
               : <>{money(num * qty)}{discount > 0 && <> · −{money(discount)}</>}</>}
           </div>
+
+          {/* ⚠ CHEGARA HAR DOIM KO'RINADI, xato bo'lganda emas. Kassir
+              narxni AYTISHDAN oldin bilishi kerak: mijozga «22 mingga
+              beraman» deb aytib, keyin «bo'lmadi» deyish — do'kon
+              uchun eng noqulay holat. */}
+          {hasLimit && (
+            <div className="line-limit">
+              <span>
+                <i className="fa-solid fa-arrow-down-short-wide" aria-hidden="true" />{" "}
+                {t("kassa.lowestPrice")}
+              </span>
+              <b className="ek-num">{money(minPrice)}</b>
+            </div>
+          )}
+
+          {quickPrices.length > 0 && (
+            <div className="line-quick">
+              {quickPrices.map((v) => (
+                <button key={v} type="button"
+                        className={`line-quick__btn ${num === v ? "is-on" : ""}`}
+                        onClick={() => setPrice(String(v))}>
+                  {money(v)}
+                </button>
+              ))}
+            </div>
+          )}
 
           <div className="qty-modal__keys">
             <button type="button" className="btn btn-outline qty-modal__clear"

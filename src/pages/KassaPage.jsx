@@ -29,7 +29,7 @@ import Modal from "../components/Modal";
 import { PhoneField } from "../components/ek/EkFields";
 import Select from "../components/ek/Select";
 import { printReceipt, openDrawer } from "../lib/ek-hardware";
-import { spreadDiscount } from "../lib/ek-discount";
+import { spreadDiscount, roundingOffers } from "../lib/ek-discount";
 import { useScanner } from "../hooks/useScanner";
 import { rankLocal, looksLikeCode } from "../lib/ek-search";
 import { useTileMetrics } from "../hooks/useTileMetrics";
@@ -1174,6 +1174,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
     [cart, discountNum],
   );
 
+
   /* ── Ball ─────────────────────────────────────────────────────────────
      ⚠ Chegara SERVERDA hisoblanadi va shu yerdagi raqam faqat kassirga
      darhol ko'rsatish uchun. Server yuborilgan summani qayta tekshiradi
@@ -1187,6 +1188,18 @@ export default function KassaPage({ toast, refreshLowStock }) {
   const bonusCap = Math.floor(afterDiscount * (Number(bonusMaxPercent) || 0) / 100);
   const bonusAvail = Math.min(Number(tier?.bonusBalance) || 0, bonusCap);
   const bonusNum = Math.max(0, Math.min(Number(bonusUse) || 0, bonusAvail));
+  /* ── Yaxlitlash takliflari (V56) ──────────────────────────────────────
+     ⚠ ALLAQACHON BERILGAN chegirmadan KEYINGI summadan hisoblanadi:
+     kassir chegirma yozib, keyin yaxlitlashni bossa, ikkalasi
+     qo'shilishi kerak. Bo'sh joy ham shu chegirmani hisobga oladi —
+     aks holda taklif chegaradan oshib, bajik so'ratardi. */
+  const roundOffers = useMemo(() => {
+    const afterDisc = cart.map((i, idx) => ({
+      ...i,
+      discount: (Number(i.discount) || 0) + (discountSplit[idx] || 0),
+    }));
+    return roundingOffers(afterDisc, Math.max(0, afterLines - discountNum - bonusNum));
+  }, [cart, discountSplit, afterLines, discountNum, bonusNum]);
 
   const total    = afterDiscount - bonusNum;
   const totalQty = cart.reduce((sum, i) => sum + i.qty, 0);
@@ -1981,7 +1994,18 @@ export default function KassaPage({ toast, refreshLowStock }) {
               </button>
             </div>
 
+            {/* ══ IKKI USTUN — SCROL BO'LMASIN (V56) ═══════════════════
+                ⚠ Ilgari hammasi BITTA ustunda edi va oyna 810px ga
+                sig'masdi: kassir to'lov turini ko'rish uchun
+                surishga majbur bo'lardi. Mijoz oldida har surish
+                sekundlarni yeydi va kassir tugmani qidirib qoladi.
+
+                Kenglik bo'sh turgan edi (oyna 720px, ekran 1400px) —
+                shuning uchun mazmun ikki ustunga bo'lindi: chapda
+                CHEK (jami, mijoz, chegirma), o'ngda TO'LOV. Tor
+                ekranda ustunlar o'z-o'zidan bittaga qaytadi (CSS). */}
             <div className="pay-modal-body">
+              <div className="pay-col pay-col--left">
               <div className="pay-modal-total">
                 <div className="pay-modal-total-label">{t("kassa.grandTotal")}</div>
                 <div className="pay-modal-total-value ek-num">{money(total)}</div>
@@ -2192,6 +2216,38 @@ export default function KassaPage({ toast, refreshLowStock }) {
                   {money(afterLines)} − {money(discountNum)}
                 </div>
               )}
+
+              {/* ══ YAXLITLASH TAKLIFLARI (V56) ═══════════════════════
+                  ⚠ Do'kon egasining so'rovi: chek 141 200 chiqdi, mijoz
+                  142 000 beradi, kassir 800 qaytaradi — maydasi yo'q,
+                  navbat kutadi va oxir-oqibat o'sha 800 hisobsiz ketadi.
+
+                  Tizim shu qoldiqni O'ZI ko'rib chegirma qilib taklif
+                  qiladi. Har taklif SIG'ADIGANI tekshirilgan: bo'sh joy
+                  har qatorning tovar foizi, tannarxi va kassir
+                  chegarasidan kelib chiqadi (`lib/ek-discount.js`).
+
+                  ⚠ Jami allaqachon yaxlit bo'lsa taklif CHIQMAYDI:
+                  maqsad — noqulay qoldiqni yo'qotish, «yaxlit chegirma
+                  berish» emas. */}
+              {roundOffers.length > 0 && (
+                <div className="round-offers">
+                  <div className="round-offers__label">
+                    <i className="fa-solid fa-wand-magic-sparkles" aria-hidden="true" />{" "}
+                    {t("kassa.roundOffer")}
+                    <span className="round-offers__hint">{t("kassa.roundHint")}</span>
+                  </div>
+                  <div className="round-offers__row">
+                    {roundOffers.map((o) => (
+                      <button key={o.target} type="button" className="round-offers__btn"
+                              onClick={() => setDiscount(String(discountNum + o.discount))}>
+                        <span className="round-offers__target ek-num">{money(o.target)}</span>
+                        <span className="round-offers__cut ek-num">−{money(o.discount)}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               {/* Bitta tovarli chekda taqsimotni ko'rsatishning ma'nosi
                   yo'q — hammasi o'sha bitta qatorga tushadi. */}
               {discountNum > 0 && cart.length > 1 && (
@@ -2217,6 +2273,9 @@ export default function KassaPage({ toast, refreshLowStock }) {
                 </div>
               )}
 
+              </div>
+
+              <div className="pay-col pay-col--right">
               <div className="pay-modal-section-label">
                 <i className="fa-solid fa-credit-card" aria-hidden="true" /> To'lov turini tanlang
               </div>
@@ -2382,6 +2441,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
               {/* Qarz chegarasi — tugmani jimgina o'chirib qo'yish o'rniga
                   QANCHA joy qolganini aytamiz: kassir summani o'zi
                   to'g'irlay oladi va mijozni kutdirmaydi. */}
+              </div>
             </div>
 
             <div className="pay-modal-footer">
