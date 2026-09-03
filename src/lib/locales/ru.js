@@ -1713,12 +1713,17 @@ export default {
   "clothing.model": "Модель",
   "clothing.generate": "Создать варианты",
   "clothing.generateHint": "Отметьте размеры и цвета — карточки создадутся сами",
-  "clothing.generated": "Создано {{created}}, уже было {{skipped}}",
+  "clothing.generated": "Создано {created}, уже было {skipped}",
   "clothing.totalLeft": "Всего остаток",
   "clothing.noStock": "нет",
   "clothing.addSize": "Добавить размер",
   "clothing.addColor": "Добавить цвет",
   "clothing.colorName": "Название цвета",
+  /* ── Замена в смешанной оплате (V57) ──────────────────────────────── */
+  "kassa.splitSwapHint": "Вся сумма в «{method}». Другой способ ЗАМЕНИТ его.",
+  "kassa.splitSplitHint": "Чтобы разделить оплату, сначала уменьшите эту сумму.",
+  "kassa.splitSwapTitle": "Заменить на «{method}»",
+  "kbd.payCredit": "В долг",
   "kassa.roundOffer": "Округлить",
   "kassa.roundHint": "Убирает проблему со сдачей",
 };

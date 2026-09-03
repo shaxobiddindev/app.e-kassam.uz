@@ -1713,12 +1713,17 @@ export default {
   "clothing.model": "Model",
   "clothing.generate": "Create variants",
   "clothing.generateHint": "Tick the sizes and colours — the cards create themselves",
-  "clothing.generated": "{{created}} created, {{skipped}} already existed",
+  "clothing.generated": "{created} created, {skipped} already existed",
   "clothing.totalLeft": "Total stock",
   "clothing.noStock": "none",
   "clothing.addSize": "Add a size",
   "clothing.addColor": "Add a colour",
   "clothing.colorName": "Colour name",
+  /* ── Swap in mixed payment (V57) ──────────────────────────────────── */
+  "kassa.splitSwapHint": "The full amount is on «{method}». Another method will REPLACE it.",
+  "kassa.splitSplitHint": "To split the payment, lower this amount first.",
+  "kassa.splitSwapTitle": "Replace with «{method}»",
+  "kbd.payCredit": "Credit",
   "kassa.roundOffer": "Round off",
   "kassa.roundHint": "Removes the change problem",
 };

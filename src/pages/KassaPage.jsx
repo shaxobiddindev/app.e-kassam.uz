@@ -59,20 +59,32 @@ import { NumField } from "../components/ek/EkFields";
    shuning uchun ular bu yerda qo'shiladi. */
 /* ⚠ Jadvaldan olinadi, qo'lda yozilmaydi — yorliq o'zgarsa tugmadagi
    belgi ham o'zi o'zgaradi. */
-const PAY_KBD = { CASH: keyLabel("payCash"), CARD: keyLabel("payCard"), MIXED: keyLabel("payMixed") };
+/* ⚠ NASIYA — F4, F3 EMAS. Ro'yxatda u «Aralash» dan oldin tursa ham,
+   yorliqlar SILJITILMADI: kassirlarning barmog'i F3 ni «Aralash» deb
+   yod biladi va uni almashtirish har kuni yuzlab chekda xato berardi.
+   Click va Payme allaqachon yorliqsiz — «joyi bo'yicha emas, harakati
+   bo'yicha» qoidasi bu ekranda yangi emas. */
+const PAY_KBD = {
+  CASH: keyLabel("payCash"), CARD: keyLabel("payCard"),
+  CREDIT: keyLabel("payCredit"), MIXED: keyLabel("payMixed"),
+};
 const payItem = (key) => {
   const p = PAYMENT_TYPE[key];
   return { key, label: p.label, icon: p.icon, color: p.color, kbd: PAY_KBD[key] };
 };
-/* ⚠ NASIYA BU RO'YXATDA YO'Q (V53). U «Aralash» ichiga ko'chdi va
-   ikkita yo'l qolishi chalkashlik edi: bitta ish uchun ikki tugma
-   bo'lsa, kassir qaysi birini bosishini o'ylab qoladi va ikkalasi
-   turlicha ishlaydi deb gumon qiladi.
+/* ⚠ NASIYA QAYTARILDI (foydalanuvchi so'rovi) va u ARALASHDAN OLDIN
+   turadi.
 
-   Yalang'och nasiya (butun chek qarzga) hamon bir necha bosishda:
-   «Aralash» → «Nasiya» chipi — chip bosilganda tegilmagan yagona
-   qator ALMASHTIRILADI, ya'ni butun summa qarzga tushadi (`addPart`). */
-const PAY_METHODS  = ["CASH", "CARD", "CLICK", "PAYME", "MIXED"].map(payItem);
+   Bir muddat u faqat «Aralash» ichida edi: butun chekni qarzga yozish
+   uchun «Aralash» → «Nasiya» chipi kerak bo'lardi. Amalda bu ikki
+   bosish va bitta o'ylash edi — holbuki «hammasini qarzga» do'konchada
+   eng ko'p uchraydigan yo'llardan biri va u BEVOSITA tugma bo'lishi
+   kerak.
+
+   ⚠ TARTIB MUHIM: Nasiya «Aralash» dan OLDIN. «Aralash» — eng murakkab
+   va eng kam ishlatiladigan tur; ro'yxat oxirida turishi to'g'ri.
+   Nasiya esa oddiy to'lov turlari qatoriga qo'shiladi. */
+const PAY_METHODS  = ["CASH", "CARD", "CLICK", "PAYME", "CREDIT", "MIXED"].map(payItem);
 /* ⚠ NASIYA ham ikkinchi tur bo'la oladi: «600 000 hozir berdi, 400 000
    nasiya» — do'konda eng ko'p uchraydigan holat va ilgari uni yozishning
    iloji yo'q edi (kassir yo hammasini nasiyaga yozardi, yo mijozni
@@ -208,6 +220,10 @@ export default function KassaPage({ toast, refreshLowStock }) {
   const [newCust, setNewCust] = useState(null);
   const [savingCust, setSavingCust] = useState(false);
   const [bonusMaxPercent, setBonusMaxPercent] = useState(0);
+  /* ⚠ NASIYA YOQILGANMI. Do'kon uni butunlay o'chirib qo'ygan bo'lishi
+     mumkin; tugmani baribir ko'rsatish kassirni serverdan rad javob
+     oladigan yo'lga boshlardi — u esa sababini ekranda ko'rmasdi. */
+  const [creditEnabled, setCreditEnabled] = useState(true);
   /* Nasiya muddati, kunlarda (V43) — chekdagi «to'lash muddati» uchun.
      ⚠ SAHIFA holatida: bu DO'KON sozlamasi (`creditDueDays`), savatning
      xususiyati emas — kassir uni tahrirlamaydi. */
@@ -478,6 +494,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
       .then((r) => {
         setBonusMaxPercent(Number(r?.data?.bonusMaxPercent) || 0);
         setDueDays(Number(r?.data?.creditDueDays) || 0);
+        setCreditEnabled(r?.data?.creditEnabled !== false);
         /* ⚠ STANDART KO'RINISH — RASMLI (foydalanuvchi qarori: «asosiy
            ko'rinish rasmli bo'lsin, zich emas»). Ilgari faqat kiyim va
            kosmetika do'konlariga rasmli berilardi, qolganiga zich
@@ -491,6 +508,9 @@ export default function KassaPage({ toast, refreshLowStock }) {
       .catch(() => {
         setBonusMaxPercent(0);
         setDueDays(0);
+        /* ⚠ Xatoda nasiya YOPIQ deb hisoblanadi: bilmagan holatda
+           qarz yozdirishga yo'l ochish, ochmaslikdan qimmatroq. */
+        setCreditEnabled(false);
         setView((cur) => cur || "tiles");
       });
   }, []);
@@ -1392,6 +1412,15 @@ export default function KassaPage({ toast, refreshLowStock }) {
 
   /* ── Aralash to'lov qismlari ──────────────────────────────────────── */
 
+  /**
+   * Keyingi chip bosilsa QO'SHILADIMI yoki ALMASHADIMI.
+   *
+   * ⚠ `addPart` dagi shart bilan AYNAN bir xil bo'lishi shart: ekranda
+   * bir narsa yozilib, bosilganda boshqasi bo'lsa, yozuvning o'zi
+   * zararga aylanardi.
+   */
+  const replaceMode = split.length === 1 && (Number(split[0].amount) || 0) === total;
+
   const splitSum  = split.reduce((a, p) => a + (Number(p.amount) || 0), 0);
   /** Taqsimlanmagan qoldiq. Manfiy — ortiqcha kiritilgan. */
   const splitRest = total - splitSum;
@@ -1408,11 +1437,27 @@ export default function KassaPage({ toast, refreshLowStock }) {
    * qo'shilardi — ya'ni foydasiz. Aslida u «hammasi nasiyaga»
    * demoqchi. Nasiya tugmasi alohida turgan paytda bu holat
    * bo'lmasdi; endi u shu yerda hal qilinadi. */
+  /**
+   * ══ USUL QO'SHISH — VA U QACHON ALMASHTIRISHGA AYLANADI ═════════════
+   *
+   * Bitta qatorda TO'LIQ summa turgan bo'lsa (kassir hech narsani
+   * o'zgartirmagan), yangi usul qo'shilmaydi — mavjud qator
+   * ALMASHTIRILADI. Sabab: o'sha paytda kassirning niyati deyarli
+   * doim «aslida hammasi karta ekan», «bo'lib to'laymiz» emas —
+   * ikkinchi qator esa 0 so'm bilan ochilib, ikkala maydonni ham
+   * qayta yozishga majbur qilardi.
+   *
+   * ⚠ LEKIN BU JIM BO'LMASLIGI KERAK (foydalanuvchi so'rovi). Kassir
+   * chipni bosadi, ekranda qator SONI o'zgarmaydi va u tizimni
+   * «bosmadi» deb o'ylab, chipni yana bosadi. Shuning uchun:
+   *   · almashish SHARTI oldindan aytiladi (`replaceMode` izohi);
+   *   · almashgan qator BIR LAHZA yonib qo'yadi (`_swap`).
+   */
   const addPart = (type) =>
     setSplit((prev) => {
       if (prev.some((p) => p.type === type)) return prev;
       const untouched = prev.length === 1 && (Number(prev[0].amount) || 0) === total;
-      if (untouched) return [{ type, amount: String(total) }];
+      if (untouched) return [{ type, amount: String(total), _swap: Date.now() }];
       const rest = total - prev.reduce((a, p) => a + (Number(p.amount) || 0), 0);
       return [...prev, { type, amount: String(Math.max(0, rest)) }];
     });
@@ -1441,9 +1486,12 @@ export default function KassaPage({ toast, refreshLowStock }) {
   /* Nasiyaga yoziladigan qism — yalang'och nasiyada butun chek, aralash
      to'lovda esa NASIYA qatorining summasi (nechanchi qator ekani
      muhim emas: ilgari u faqat «ikkinchi» bo'la olardi). */
-  /* ⚠ Nasiya endi FAQAT aralash to'lov qatorlarida bo'ladi: alohida
-     «Nasiya» tugmasi olib tashlangan (yuqoridagi `PAY_METHODS`). */
-  const creditPart  = payType === "MIXED"
+  /* ⚠ IKKI YO'L HAM HISOBGA OLINADI: yalang'och nasiyada butun chek,
+     aralash to'lovda esa NASIYA qatorining summasi (nechanchi qator
+     ekani muhim emas). Ilgari bu yerda faqat aralash yo'l hisoblanardi
+     va «Nasiya» tugmasi qaytarilganda chek qarzga yozilmay qolardi. */
+  const creditPart  = payType === "CREDIT" ? total
+                    : payType === "MIXED"
                     ? (Number(split.find((p) => p.type === "CREDIT")?.amount) || 0)
                     : 0;
   /* Nasiya — MIJOZGA beriladigan qarz. Kimga berilganini bilmasdan yozib
@@ -2691,7 +2739,8 @@ export default function KassaPage({ toast, refreshLowStock }) {
                 <i className="fa-solid fa-credit-card" aria-hidden="true" /> To'lov turini tanlang
               </div>
               <div className="pay-modal-types">
-                {PAY_METHODS.map(({ key, label, icon, color, kbd }) => (
+                {PAY_METHODS.filter((m) => m.key !== "CREDIT" || creditEnabled)
+                            .map(({ key, label, icon, color, kbd }) => (
                   <button
                     key={key}
                     className={`pay-type-btn ${payType === key ? "active" : ""}`}
@@ -2769,7 +2818,13 @@ export default function KassaPage({ toast, refreshLowStock }) {
                     const m = SPLIT_METHODS.find((x) => x.key === part.type);
                     const isCredit = part.type === "CREDIT";
                     return (
-                      <div className="pay-split__row" key={part.type}
+                      /* ⚠ `key` ichida `_swap`: almashgan qator YANGI
+                         tugun bo'lib chiziladi va animatsiya qayta
+                         ishga tushadi. Usul nomi bir xil qolganda React
+                         tugunni QAYTA ISHLATARDI va yonish umuman
+                         ko'rinmasdi. */
+                      <div className={`pay-split__row ${part._swap ? "ek-pop" : ""}`}
+                           key={`${part.type}-${part._swap || 0}`}
                            style={{ "--pay-color": m?.color }}>
                         <span className="pay-split__name">
                           <i className={`fa-solid ${m?.icon}`} aria-hidden="true" />
@@ -2800,12 +2855,40 @@ export default function KassaPage({ toast, refreshLowStock }) {
                     );
                   })}
 
-                  {/* Qo'shilmagan usullar — bitta bosishda qo'shiladi */}
+                  {/* ══ ALMASHISH OGOHLANTIRISHI (foydalanuvchi so'rovi) ══
+                      Kassir chipni bosadi, qatorlar soni o'zgarmaydi va
+                      u «bosilmadi» deb o'ylab yana bosadi. Endi nima
+                      bo'lishi OLDINDAN yozib turadi — va, eng muhimi,
+                      BO'LIB TO'LASH uchun nima qilish kerakligi ham. */}
+                  {replaceMode && (
+                    <div className="pay-split__swap" role="status">
+                      <i className="fa-solid fa-right-left" aria-hidden="true" />
+                      <span>
+                        {t("kassa.splitSwapHint", {
+                          method: SPLIT_METHODS.find((m) => m.key === split[0].type)?.label
+                                  || split[0].type,
+                        })}
+                        <em>{t("kassa.splitSplitHint")}</em>
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Qo'shilmagan usullar — bitta bosishda qo'shiladi
+                      yoki (yuqoridagi holatda) mavjudini almashtiradi. */}
                   <div className="pay-split__add">
-                    {SPLIT_METHODS.filter((m) => !split.some((p) => p.type === m.key)).map((m) => (
-                      <button key={m.key} type="button" className="pay-split__chip"
+                    {SPLIT_METHODS
+                      .filter((m) => m.key !== "CREDIT" || creditEnabled)
+                      .filter((m) => !split.some((p) => p.type === m.key)).map((m) => (
+                      <button key={m.key} type="button"
+                              className={`pay-split__chip ${replaceMode ? "is-swap" : ""}`}
                               style={{ "--pay-color": m.color }}
+                              /* ⚠ Belgi ham o'zgaradi: «+» qo'shish,
+                                 «⇄» almashtirish. Kassir yozuvni
+                                 o'qimasa ham, belgini ko'radi. */
+                              title={replaceMode ? t("kassa.splitSwapTitle", { method: m.label }) : undefined}
                               onClick={() => addPart(m.key)}>
+                        <i className={`fa-solid ${replaceMode ? "fa-right-left" : "fa-plus"}`}
+                           aria-hidden="true" style={{ opacity: .55, fontSize: 10 }} />
                         <i className={`fa-solid ${m.icon}`} aria-hidden="true" /> {m.label}
                       </button>
                     ))}

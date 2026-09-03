@@ -1253,21 +1253,25 @@ select.form-input { cursor: pointer; }
 /* ── To'lov turlari grid ── */
 .pay-modal-types {
   display: grid;
-  /* ⚠ OLTITA USUL — OLTITA USTUN. Ilgari beshta ustun turardi va
-     oltinchisi («Nasiya») YOLG'IZ ikkinchi qatorga tushib, oynada
-     ~110px bo'sh joy yeb ketardi. To'lov oynasi esa kassaning eng
-     ko'p ochiladigan oynasi: u yerdagi har ortiqcha piksel har
-     chekda takrorlanadi. */
-  /* ⚠ Beshta: «Nasiya» V53 da aralash to'lov ichiga ko'chdi va bu
-     yerdan olib tashlandi — bitta ish uchun ikki tugma bo'lishi
-     chalkashlik edi. */
-  grid-template-columns: repeat(5, 1fr);
+  /* ⚠ UCH USTUN, 3×2 — OLTITA yoki BESHTA ustun EMAS.
+     «Nasiya» qaytarilgach usullar oltita bo'ldi (foydalanuvchi
+     so'rovi). Tarix shu yerda ikki marta yozilgan:
+
+       · beshta ustun — oltinchisi YOLG'IZ ikkinchi qatorga tushib,
+         oynada ~110px bo'sh joy yeb ketardi;
+       · oltita ustun — har katakcha 130px dan torayib, «Aralash»
+         so'zi ikki qatorga sinardi.
+
+     3×2 esa ikkalasini ham yopadi: katakchalar keng, qatorlar to'la
+     va oyna balandligi o'zgarmaydi (uchinchi ustun endi yo'q —
+     to'lov oynasi allaqachon uch ustunli). */
+  grid-template-columns: repeat(3, 1fr);
   gap: 8px;
   margin-bottom: 8px;
 }
-/* Tor ekranda oltita katakcha siqilib ketadi — u yerda uch ustun. */
+/* Tor ekranda uchtasi ham siqiladi — u yerda ikkita. */
 @media (max-width: 560px) {
-  .pay-modal-types { grid-template-columns: repeat(3, 1fr); }
+  .pay-modal-types { grid-template-columns: repeat(2, 1fr); }
 }
 
 .pay-type-btn {
@@ -3499,3 +3503,41 @@ img.logo--dark { display: none; }
 }
 .inv-attrs__color { display: inline-flex; align-items: center; gap: 5px; }
 .btn-icon--xs { width: 24px; height: 24px; font-size: 11px; padding: 0; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ARALASH TO'LOVDA «ALMASHADI» OGOHLANTIRISHI (V57)
+
+   ⚠ Bitta qatorda to'liq summa turganda yangi usul QO'SHILMAYDI, mavjudi
+   ALMASHTIRILADI. Bu qoida to'g'ri (aks holda ikkinchi qator 0 so'm bilan
+   ochilib, ikkala maydonni ham qayta yozishga majbur qilardi), lekin JIM
+   edi: kassir chipni bosar, qatorlar soni o'zgarmas va u «bosilmadi» deb
+   o'ylab yana bosardi.
+   ══════════════════════════════════════════════════════════════════════════ */
+.pay-split__swap {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 8px 0 6px;
+  padding: 8px 11px;
+  border-radius: 10px;
+  font-size: 12px;
+  line-height: 1.45;
+  background: var(--bg-warning-subtle, rgba(245, 158, 11, .10));
+  border: 1px solid var(--border-warning, rgba(245, 158, 11, .35));
+  color: var(--fg-warning, #92400e);
+}
+.pay-split__swap i { margin-top: 2px; flex: none; }
+/* ⚠ «Nima qilish kerak» — ALOHIDA qatorda. Ogohlantirish bilan bir
+   qatorga qo'shilganda u ko'zga tashlanmasdi, holbuki kassirga aynan
+   shu qism kerak: bo'lib to'lashning yo'li. */
+.pay-split__swap em {
+  display: block;
+  font-style: normal;
+  font-weight: 700;
+  margin-top: 2px;
+}
+
+/* Almashtiradigan holatda chip ham boshqacha ko'rinadi */
+.pay-split__chip.is-swap {
+  border-style: dashed;
+}

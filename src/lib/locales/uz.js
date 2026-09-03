@@ -1807,12 +1807,17 @@ export default {
   "clothing.model": "Model",
   "clothing.generate": "Variantlarni yaratish",
   "clothing.generateHint": "O'lcham va ranglarni belgilang — kartochkalar o'zi yaratiladi",
-  "clothing.generated": "{{created}} ta yaratildi, {{skipped}} tasi allaqachon bor edi",
+  "clothing.generated": "{created} ta yaratildi, {skipped} tasi allaqachon bor edi",
   "clothing.totalLeft": "Jami qoldiq",
   "clothing.noStock": "qolmagan",
   "clothing.addSize": "O'lcham qo'shish",
   "clothing.addColor": "Rang qo'shish",
   "clothing.colorName": "Rang nomi",
+  /* ── Aralash to'lovdagi almashish (V57) ───────────────────────────── */
+  "kassa.splitSwapHint": "To'liq summa «{method}»da. Boshqa usulni bossangiz u ALMASHADI.",
+  "kassa.splitSplitHint": "Bo'lib to'lash uchun avval shu summani kamaytiring.",
+  "kassa.splitSwapTitle": "«{method}»ga almashtirish",
+  "kbd.payCredit": "Nasiya",
   "kassa.roundOffer": "Yaxlitlash",
   "kassa.roundHint": "Qaytim muammosini yo'qotadi",
 };

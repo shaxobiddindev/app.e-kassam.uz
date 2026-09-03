@@ -74,6 +74,10 @@ export const KASSA_KEYS = [
   { id: "payCash",   combo: "F1",       scope: "pay",  label: "kbd.payCash" },
   { id: "payCard",   combo: "F2",       scope: "pay",  label: "kbd.payCard" },
   { id: "payMixed",  combo: "F3",       scope: "pay",  label: "kbd.payMixed" },
+  /* ⚠ Nasiya — F4. Ro'yxatda u «Aralash» dan oldin tursa ham, F3 ni
+     «Aralash» dan olib qo'yish kassirlarning yod bilgan harakatini
+     buzardi. */
+  { id: "payCredit", combo: "F4",       scope: "pay",  label: "kbd.payCredit" },
   { id: "customer",  combo: "Alt+M",    scope: "pay",  label: "kbd.customer" },
   { id: "newCust",   combo: "Alt+Y",    scope: "pay",  label: "kbd.newCust" },
   { id: "discount",  combo: "Alt+C",    scope: "pay",  label: "kbd.discount" },
