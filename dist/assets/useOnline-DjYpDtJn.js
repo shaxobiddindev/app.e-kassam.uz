@@ -1,0 +1,1 @@
+import{r as o}from"./index-Bbzw41v1.js";function s(){const[i,e]=o.useState(()=>typeof navigator>"u"?!0:navigator.onLine);return o.useEffect(()=>{const n=()=>e(!0),t=()=>e(!1);return window.addEventListener("online",n),window.addEventListener("offline",t),()=>{window.removeEventListener("online",n),window.removeEventListener("offline",t)}},[]),i}export{s as u};

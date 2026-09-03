@@ -30,6 +30,7 @@ const LOADERS = {
   Dashboard:    () => import("../pages/DashboardPage"),
   Products:     () => import("../pages/ProductsPage"),
   Inventory:    () => import("../pages/InventoryPage"),
+  Batches:      () => import("../pages/BatchesPage"),
   StockTake:    () => import("../pages/StockTakePage"),
   Expenses:     () => import("../pages/ExpensesPage"),
   Loyalty:      () => import("../pages/LoyaltyPage"),

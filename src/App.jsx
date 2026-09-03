@@ -334,6 +334,14 @@ export default function App() {
             <Route path="/products" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><P.Products toast={toast} /></ProtectedRoute>} />
             <Route path="/categories" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><P.Categories toast={toast} /></ProtectedRoute>} />
             <Route path="/inventory" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><P.Inventory toast={toast} refreshLowStock={refreshLowStock} /></ProtectedRoute>} />
+            {/* ⚠ BITTA TOVARNING PARTIYALARI — alohida SAHIFA (V60).
+                Ilgari bu modal edi va uchta bo'lim (faol, muddati o'tgan,
+                arxiv) uni scrolga majbur qilardi. Sahifada havola ham
+                bo'ladi va brauzerning «orqaga» tugmasi ishlaydi. */}
+            <Route path="/inventory/:productId" element={
+              <ProtectedRoute user={user} roles={["OWNER", "SHOP_ADMIN", "STOREKEEPER"]}>
+                <P.Batches toast={toast} />
+              </ProtectedRoute>} />
             {/* Inventarizatsiya — omborchi va yuqorisi; kassirning bu
                 yerda ishi yo'q (backend ham shu cheklovni qo'yadi). */}
             <Route path="/stock-take" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><P.StockTake toast={toast} /></ProtectedRoute>} />

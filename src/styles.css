@@ -3560,3 +3560,124 @@ img.logo--dark { display: none; }
 .inv-attrs__color { display: inline-flex; align-items: center; gap: 5px; }
 .btn-icon--xs { width: 24px; height: 24px; font-size: 11px; padding: 0; }
 
+
+/* ══════════════════════════════════════════════════════════════════════════
+   PARTIYALAR SAHIFASI (V60)
+
+   ⚠ MODAL EMAS, SAHIFA. Do'kon egasining savoli: «shunga o'xshash
+   oynalarni modaldan ko'ra page sifatida qilgan maqulmi?». Partiyalar
+   uchta bo'limga bo'lingach — javob aniq bo'ldi: modal ichida bo'limlar
+   oynani balandlatib, scrol chaqirardi, sahifada esa havola bo'ladi va
+   brauzerning «orqaga» tugmasi ishlaydi.
+   ══════════════════════════════════════════════════════════════════════════ */
+.batch-summary {
+  display: flex; align-items: center; gap: 16px;
+  margin: 14px 0;
+  padding: 14px 18px;
+  background: var(--bg-sunken);
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+}
+.batch-summary__label {
+  font-size: 11px; font-weight: 800; letter-spacing: 1px;
+  text-transform: uppercase; color: var(--fg-secondary);
+}
+.batch-summary__value {
+  font-size: 22px; font-weight: 900; font-family: var(--mono);
+}
+.batch-summary .btn { margin-left: auto; }
+
+/* ── Bo'limlar ─────────────────────────────────────────────────────── */
+.batch-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+
+.batch-tab {
+  display: inline-flex; align-items: center; gap: 8px;
+  height: 40px; padding: 0 14px;
+  border-radius: 10px;
+  border: 1.5px solid var(--border);
+  background: var(--bg-surface);
+  color: var(--fg-secondary);
+  font-family: var(--font); font-size: 13px; font-weight: 700;
+  cursor: pointer;
+}
+.batch-tab:hover { border-color: var(--border-brand); }
+.batch-tab.is-on {
+  border-color: var(--border-brand);
+  background: var(--bg-brand-subtle, color-mix(in srgb, var(--fg-brand) 8%, var(--bg-surface)));
+  color: var(--fg-brand);
+}
+/* ⚠ Son HAR DOIM ko'rinadi: bo'limni ochmasdan ham u yerda nima
+   borligi bilinsin — «muddati o'tgan: 3» degani ochib ko'rish uchun
+   sabab. */
+.batch-tab__n {
+  min-width: 20px; height: 20px; padding: 0 6px;
+  display: inline-grid; place-items: center;
+  border-radius: 999px;
+  background: var(--bg-sunken); color: var(--fg-secondary);
+  font-size: 11px; font-weight: 800; font-variant-numeric: tabular-nums;
+}
+/* Muddati o'tgani BOR bo'lsa, bo'lim yopiq turganda ham ko'zga tashlanadi. */
+.batch-tab.has-warn .batch-tab__n {
+  background: var(--bg-danger-subtle); color: var(--fg-danger);
+}
+
+/* ── Ogohlantirish ─────────────────────────────────────────────────── */
+/* ⚠ «Yaqqol ogohlantirish berib tursin» — do'kon egasining talabi.
+   Shuning uchun u ro'yxatning USTIDA va nima qilish kerakligini
+   AYTADI: «diqqat» deyish yetarli emas. */
+.batch-warn, .batch-note {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 12px; padding: 11px 14px;
+  border-radius: 12px;
+  font-size: 13px; font-weight: 700;
+}
+.batch-warn {
+  background: var(--bg-danger-subtle);
+  border: 1.5px solid var(--border-danger);
+  color: var(--fg-danger);
+}
+.batch-note {
+  background: var(--bg-sunken);
+  border: 1.5px solid var(--border);
+  color: var(--fg-secondary);
+  font-weight: 600;
+}
+
+/* ── Qatorlar ──────────────────────────────────────────────────────── */
+.batch-list { display: flex; flex-direction: column; gap: 8px; }
+
+.batch-row {
+  display: flex; align-items: center; gap: 14px;
+  padding: 12px 16px;
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-surface);
+}
+.batch-row.is-expired { border-color: var(--border-danger); background: var(--bg-danger-subtle); }
+/* Tugagan partiya — kulrang: u yerda tovar YO'Q va uni javondagi bilan
+   bir xil ko'rsatish ro'yxatni yolg'on to'ldirib turardi. */
+.batch-row.is-empty { opacity: .72; }
+
+.batch-row__main { flex: 1; min-width: 0; }
+.batch-row__qty { font-size: 17px; font-weight: 900; font-family: var(--mono); }
+.batch-row__meta {
+  display: flex; flex-wrap: wrap; gap: 14px;
+  margin-top: 4px;
+  font-size: 12px; color: var(--fg-secondary);
+}
+.batch-row__meta i { opacity: .7; }
+.batch-row__flags { display: flex; gap: 6px; flex-wrap: wrap; flex: none; }
+.batch-row__act { flex: none; }
+
+.batch-correct__now {
+  background: var(--bg); border-radius: 10px;
+  padding: 12px 16px; margin-bottom: 14px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+
+/* Tor ekranda qator ustunga aylanadi — raqamlar bir-biriga yopishmasin. */
+@media (max-width: 720px) {
+  .batch-row { flex-wrap: wrap; }
+  .batch-row__act { width: 100%; }
+  .batch-row__act .btn { width: 100%; }
+}

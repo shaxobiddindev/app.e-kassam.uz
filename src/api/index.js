@@ -370,6 +370,20 @@ export const inventoryApi = {
         writeOffReason: writeOffReason || null,
       }),
     }),
+  /* ── PARTIYALAR VA ARXIV (V60) ───────────────────────────────────────
+     ⚠ Arxiv ALOHIDA so'raladi. Uni asosiy ro'yxatga qo'shish javonda
+     nima borligini ko'rsatmay qo'yardi: bir yildan keyin ko'p
+     sotiladigan tovarda o'nlab bo'sh partiya yig'iladi. */
+  batches: (productId, archived = false) =>
+    request(`/inventory/product/${productId}${archived ? "?archived=true" : ""}`),
+
+  /* ⚠ `PATCH`, `DELETE` emas: partiya bazadan o'chirilmaydi. Unga
+     harakatlar jurnali va sotuvlar bog'langan va o'chirish tarixni
+     buzardi — arxiv ko'rinishni o'zgartiradi, yozuvni emas. */
+  archiveBatch:   (inventoryId) => request(`/inventory/batch/${inventoryId}/archive`,   { method: "PATCH" }),
+  unarchiveBatch: (inventoryId) => request(`/inventory/batch/${inventoryId}/unarchive`, { method: "PATCH" }),
+  archiveEmpty:   (productId)   => request(`/inventory/product/${productId}/archive-empty`, { method: "PATCH" }),
+
   // Kirim-chiqim jurnali
   getMovements: (productId, page = 0, size = 50) =>
     request(`/inventory/movements?page=${page}&size=${size}${productId ? `&productId=${productId}` : ""}`),

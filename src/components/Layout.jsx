@@ -131,6 +131,23 @@ function findPlace(pathname) {
     const child = childrenOf(item).find((c) => c.path === pathname);
     if (child) return { group: item, child };
   }
+
+  /* ⚠ ICHKI SAHIFALAR (V60). `/inventory/5` kabi yo'llar `NAV` da yo'q va
+     ilgari ular BOSH SAHIFA deb hisoblanardi: partiyalar sahifasi
+     ochilganda sarlavhada «Dashboard» yozilib, menyuda ham boshqa band
+     yonardi. Endi eng UZUN mos keluvchi ota-yo'l olinadi. */
+  let best = null;
+  for (const item of NAV) {
+    for (const c of childrenOf(item)) {
+      if (!c.path || c.path === "/") continue;
+      if (pathname.startsWith(c.path + "/")
+          && (!best || c.path.length > best.child.path.length)) {
+        best = { group: item, child: c };
+      }
+    }
+  }
+  if (best) return best;
+
   /* Noma'lum yo'l — bosh sahifa (eski xatti-harakat) */
   return { group: NAV[0], child: NAV[0] };
 }

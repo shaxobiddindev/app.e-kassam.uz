@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { t } from "../lib/ek-i18n";
 import { inventoryApi, shopApi } from "../api";
 import { BranchSelector, Modal } from "../components";
@@ -173,6 +174,7 @@ function groupByProduct(items) {
 }
 
 export default function InventoryPage({ toast }) {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { guard } = useBadge();
   const [items, setItems]     = useState([]);
@@ -861,7 +863,13 @@ export default function InventoryPage({ toast }) {
                       key={`p-${g.productId}`}
                       className={rowClass(f)}
                       style={{ cursor: "pointer" }}
-                      onClick={() => setDetailId(g.productId)}
+                      /* ⚠ MODAL EMAS, SAHIFA (V60). Partiyalar uchta
+                         bo'limga bo'lindi (faol, muddati o'tgan, arxiv) va
+                         modal ichida ular oynani scrolga majbur qilardi.
+                         Sahifada havola bo'ladi, brauzerning «orqaga»
+                         tugmasi ishlaydi va omborchi uni ochiq qoldirib
+                         boshqa ishga o'ta oladi. */
+                      onClick={() => navigate(`/inventory/${g.productId}`)}
                       title={t("inv.openDetails")}
                     >
                       <td>
