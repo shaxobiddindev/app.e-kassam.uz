@@ -190,6 +190,7 @@ export default {
   "shift.title": "Смена",
   "shift.openSince": "Смена открыта:",
   "shift.closedWarn": "Смена закрыта - ваш бейдж не работает, важные действия не подтверждаются",
+  "shift.closedShort": "Смена закрыта",
   "shift.open": "Открыть смену",
   "shift.close": "Закрыть смену",
   "shift.viewX": "Состояние",

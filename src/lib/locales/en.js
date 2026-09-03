@@ -190,6 +190,7 @@ export default {
   "shift.title": "Shift",
   "shift.openSince": "Shift open since:",
   "shift.closedWarn": "Shift is closed - your badge will not work, critical actions cannot be confirmed",
+  "shift.closedShort": "Shift closed",
   "shift.open": "Open shift",
   "shift.close": "Close shift",
   "shift.viewX": "Status",

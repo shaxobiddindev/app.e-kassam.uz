@@ -224,6 +224,11 @@ export default function KassaPage({ toast, refreshLowStock }) {
     const saved = Number(localStorage.getItem("ek_kassaRightW"));
     return Number.isFinite(saved) && saved >= MIN_RIGHT_W ? saved : 360;
   });
+  /* Smena ochiqmi — `ShiftBar` xabar beradi. To'lov tugmasi yonidagi
+     ogohlantirish shunga qarab chiziladi (`ShiftBar` izohiga qarang). */
+  const [shiftOpen, setShiftOpen] = useState(true);
+  const onShiftState = useCallback(({ open }) => setShiftOpen(open), []);
+
   const layoutRef = useRef(null);
   /* Tovar to'ri — rasm nisbatini saqlash uchun o'lchanadi. */
   const gridRef   = useRef(null);
@@ -1459,11 +1464,6 @@ export default function KassaPage({ toast, refreshLowStock }) {
         {/* ════ CHAP: Barkod + Mahsulotlar ════ */}
         <div className="kassa-left">
           <OfflineBar />
-          {/* ⚠ SMENA YOPIQ bo'lsa — TO'LIQ ogohlantirish (bu to'siq:
-              bajik ishlamaydi). Ochiq bo'lsa u qidiruv qatoridagi
-              ixcham tugmaga siqiladi va bu yerda umuman joy olmaydi. */}
-          <ShiftBar toast={toast} compact />
-
           {/* ⚠ SAVAT TABLARI CHAP USTUNGA ko'chdi (foydalanuvchi
               so'rovi). Ilgari ular savat ustunining tepasida turardi va
               o'sha tor ustundan balandlik yeyardi — savat esa endi
@@ -1600,6 +1600,13 @@ export default function KassaPage({ toast, refreshLowStock }) {
                   <i className="fa-solid fa-list" aria-hidden="true" />
                 </button>
               </div>
+
+              {/* ⚠ SMENA SHU YERDA — bitta tugma, na ochiq, na yopiq
+                  holatda alohida qator egallamaydi (foydalanuvchi
+                  so'rovi: «yuqoridan joyni egallab turibdi»).
+                  Ogohlantirishning O'ZI esa to'lov tugmasi yoniga
+                  ko'chdi — u aslida to'sadigan joyga. */}
+              <ShiftBar toast={toast} compact onState={onShiftState} />
 
               {/* Apparat tugmalari FAQAT desktop'da. Brauzerda ular bosilganda
                   hech nima qilmasdi va kassirni chalg'itardi.
@@ -1760,6 +1767,19 @@ export default function KassaPage({ toast, refreshLowStock }) {
               <span>{t("common.total").toUpperCase()}</span>
               <span className="ek-num">{money(total)}</span>
             </div>
+
+            {/* ⚠ OGOHLANTIRISH AYNAN SHU YERDA (foydalanuvchi so'rovi).
+                Ilgari u sahifaning tepasida butun kenglikdagi sariq
+                qator edi: joy egallar, kassir esa uni har kuni ko'rib
+                o'qimay qo'yardi. Endi u to'lov tugmasining ustida —
+                yopiq smena aynan shu tugmani to'sadi va kassir
+                ogohlantirishni aynan kerak bo'lgan daqiqada ko'radi. */}
+            {!shiftOpen && (
+              <div className="total-warn" role="status">
+                <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />
+                <span>{t("shift.closedWarn")}</span>
+              </div>
+            )}
 
             <button className="btn btn-green btn-full btn-pos" style={{ marginTop: 10 }} onClick={openPayModal} disabled={!cart.length}>
               <i className="fa-solid fa-wallet" aria-hidden="true" />

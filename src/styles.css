@@ -611,6 +611,17 @@ select.form-input { cursor: pointer; }
                    background: var(--bg-success-subtle); border: 1.5px solid var(--border-success);
                    color: var(--fg-success); font-family: var(--font); font-size: 12px; font-weight: 800; }
 .shift-chip:hover { background: var(--bg-surface); }
+/* Yopiq smena — sariq. Rang yolg'iz signal emas: ikonka ham boshqa
+   (`fa-triangle-exclamation`) va matn yoziladi (CLAUDE.md #6). */
+.shift-chip--off { background: var(--bg-warning-subtle); border-color: var(--border-warning);
+                   color: var(--fg-warning); }
+
+/* Jami kartochkasidagi ogohlantirish — to'lov tugmasining ustida.
+   ⚠ Fon YORUG': kartochka o'zi to'q ko'k va oddiy matn u yerda
+   yo'qolib ketardi. */
+.total-warn      { display: flex; align-items: center; gap: 8px; margin-top: 10px;
+                   padding: 8px 10px; border-radius: 9px; font-size: 12.5px; font-weight: 700;
+                   background: var(--bg-warning-subtle); color: var(--fg-warning); }
 
 .view-switch     { display: flex; gap: 3px; background: var(--bg-sunken); border-radius: 9px; padding: 3px; flex: 0 0 auto; }
 .view-switch button { width: var(--hit-md); height: var(--hit-md); border: none; border-radius: 7px; background: transparent;

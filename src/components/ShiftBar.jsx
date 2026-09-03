@@ -33,18 +33,26 @@ const num = (v) => {
 };
 
 /**
- * @param compact  Smena OCHIQ bo'lganda bitta ixcham tugmaga siqiladi.
+ * @param compact  Bitta ixcham tugmaga siqiladi — IKKALA holatda ham.
+ * @param onState  Holat o'zgarganda ota-onaga xabar beradi:
+ *                 `{ open: boolean }`.
  *
- * ⚠ NEGA FAQAT OCHIQ HOLATDA. Yopiq smena — TO'SIQ: bajik ishlamaydi va
- * kassir birinchi muhim amalda «xodim smenada emas» degan tushunarsiz
- * xatoga uriladi. Uni kichkina tugmaga siqish o'sha xatoni qaytarardi.
- * Ochiq smena esa shunchaki HOLAT: uni har doim butun qator egallab
- * turishi kerak emas va o'sha qator kassaning eng qimmatli joyidan —
- * tovarlar ro'yxatidan — balandlik o'g'irlardi.
+ * ⚠ YOPIQ SMENA HAM ENDI IXCHAM (foydalanuvchi so'rovi: «smena oynasi
+ * yuqoridan joyni egallab turibdi»). Ilgari u butun kenglikdagi sariq
+ * qator edi va kassaning eng qimmatli joyidan — tovarlar ro'yxatidan —
+ * balandlik o'g'irlardi.
  *
- * Ya'ni: baland ovoz faqat baland ovoz kerak bo'lganda.
+ * ⚠ OGOHLANTIRISH YO'QOLMADI, KO'CHDI. Yopiq smena — TO'SIQ: bajik
+ * ishlamaydi va kassir muhim amalda «xodim smenada emas» degan
+ * tushunarsiz xatoga uriladi. Shuning uchun ogohlantirish endi
+ * TO'LOV TUGMASINING YONIDA turadi (`onState` orqali) — ya'ni aynan u
+ * to'sadigan joyda va aynan to'sadigan daqiqada. Tepadagi banner esa
+ * ish boshlanishidan oldin ko'rinar, keyin esa unutilardi: kassir uni
+ * har kuni ko'rib, o'qimay qo'yadi.
+ *
+ * Ya'ni ogohlik kuchaydi, egallagan joyi esa nolga tushdi.
  */
-export default function ShiftBar({ toast, compact = false }) {
+export default function ShiftBar({ toast, compact = false, onState }) {
   // Naqd amallari 428 qaytarishi mumkin (kamomad, inkassatsiya) — bajik
   // modalini shu ochadi va tasdiqdan keyin amalni O'ZI qayta yuboradi.
   const { guard } = useBadge();
@@ -73,6 +81,14 @@ export default function ShiftBar({ toast, compact = false }) {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  /* ⚠ `shift` — obyekt, `onState` esa faqat OCHIQ/YOPIQ ni biladi.
+     Butun obyektni uzatsak, har yangilanishda ota-ona qayta chizilardi
+     (nusxa har safar boshqa havola bo'ladi). */
+  const isOpen = !!shift;
+  useEffect(() => {
+    if (shift !== undefined) onState?.({ open: isOpen });
+  }, [isOpen, shift, onState]);
 
   /* Ochish/yopish endi BIR BOSISHDA emas: ikkalasi ham naqd summa so'raydi.
      Ochishda — boshlang'ich qoldiq, yopishda — kassir SANAGAN summa. */
@@ -368,21 +384,34 @@ export default function ShiftBar({ toast, compact = false }) {
     </>
   );
 
-  /* Ixcham holat: smena ochiq — bitta tugma, ustidagi barcha amallar
-     shu tugma ostidagi oynada. */
-  if (compact && shift) {
-    const at = new Date(shift.openedAt)
-      .toLocaleTimeString("uz-UZ", { hour: "2-digit", minute: "2-digit" });
+  /* ══════════════════════════════════════════════════════════════════
+     IXCHAM KO'RINISH — ikkala holat ham bitta tugmada.
+
+     ⚠ Yopiq smenada tugma SARIQ va matnli («Smena yopiq»), ochiqda esa
+     yashil va faqat vaqtni ko'rsatadi. Ya'ni holat rangdan bir
+     qarashda bilinadi, joy esa ikkalasida ham bir qator EMAS, bir
+     tugma.
+     ══════════════════════════════════════════════════════════════════ */
+  if (compact) {
+    const at = shift
+      ? new Date(shift.openedAt).toLocaleTimeString("uz-UZ", { hour: "2-digit", minute: "2-digit" })
+      : null;
+    const label = shift ? `${t("shift.openSince")} ${at}` : t("shift.closedShort");
+
     return (
       <>
-        <button type="button" className="shift-chip" onClick={() => setPanel(true)}
-                title={`${t("shift.openSince")} ${at}`}
-                aria-label={`${t("shift.openSince")} ${at}`}>
-          <i className="fa-solid fa-circle-check" aria-hidden="true" />
-          <span className="ek-num">{at}</span>
+        <button type="button"
+                className={`shift-chip ${shift ? "" : "shift-chip--off"}`}
+                onClick={() => (shift ? setPanel(true) : askOpen())}
+                disabled={busy}
+                title={shift ? label : t("shift.closedWarn")}
+                aria-label={label}>
+          <i className={`fa-solid ${shift ? "fa-circle-check" : "fa-triangle-exclamation"}`}
+             aria-hidden="true" />
+          <span className={shift ? "ek-num" : ""}>{shift ? at : t("shift.closedShort")}</span>
         </button>
 
-        {panel && (
+        {panel && shift && (
           <Modal title={t("shift.title")} onClose={() => setPanel(false)}
                  footer={<button className="btn btn-outline btn-sm" onClick={() => setPanel(false)}>
                            {t("common.close")}

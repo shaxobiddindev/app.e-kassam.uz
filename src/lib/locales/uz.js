@@ -200,6 +200,7 @@ export default {
   "shift.title": "Smena",
   "shift.openSince": "Smena ochiq:",
   "shift.closedWarn": "Smena yopiq - bajigingiz ishlamaydi, muhim amallar tasdiqlanmaydi",
+  "shift.closedShort": "Smena yopiq",
   "shift.open": "Smenani ochish",
   "shift.close": "Smenani yopish",
   "shift.viewX": "Holat",
