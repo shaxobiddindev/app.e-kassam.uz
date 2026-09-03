@@ -60,23 +60,20 @@ const browser = await puppeteer.launch({
   executablePath: CHROME, headless: "new",
   args: ["--no-sandbox", "--disable-dev-shm-usage", "--hide-scrollbars", "--no-proxy-server"],
 });
-const page = await browser.newPage();
-await page.setViewport({ width: 1600, height: 950 });
-await page.setRequestInterception(true);
 /* ⚠ `/shop/profile` ALOHIDA javob beradi. Bo'sh ro'yxat qaytarilsa
    `getProfile()` yiqiladi va `.catch` NASIYANI YOPIQ deb belgilaydi —
    birinchi tekshirishda aynan shu bo'lgan va do'kon egasi so'ragan
    holat (nasiya ochiq) umuman sinalmagan edi. */
 const PROFILE = { creditEnabled: true, creditDueDays: 30, bonusMaxPercent: 0, creditLimit: 0 };
+
 /* ⚠ CORS SARLAVHALARI SHART. So'rov `https://api.e-kassam.uz` ga
    (boshqa manba) va `credentials: "include"` bilan ketadi. Sarlavhasiz
    javobni brauzer O'ZI rad etadi — `fetch` «Failed to fetch» beradi va
-   ilova xuddi server yiqilgandek ishlaydi. Aynan shu sabab birinchi
-   ikki tekshirishda nasiya YOPIQ chiqqan edi. */
-/* ⚠ `Allow-Headers: *` ISHLAMAYDI. `credentials: "include"` bo'lgan
-   so'rovda brauzer yulduzchani qabul qilmaydi va `Authorization` ni
-   «ruxsat etilmagan» deb rad etadi. Shuning uchun preflight so'ragan
-   sarlavhalar QAYTARIB beriladi. */
+   ilova xuddi server yiqilgandek ishlaydi.
+
+   ⚠ `Allow-Headers: *` ISHLAMAYDI: credentialli so'rovda brauzer
+   yulduzchani qabul qilmaydi va `Authorization` ni rad etadi. Shuning
+   uchun preflight so'ragan sarlavhalar QAYTARIB beriladi. */
 const cors = (req) => ({
   "Access-Control-Allow-Origin": `http://127.0.0.1:${PORT}`,
   "Access-Control-Allow-Credentials": "true",
@@ -84,32 +81,42 @@ const cors = (req) => ({
     req.headers()["access-control-request-headers"] || "authorization,content-type",
   "Access-Control-Allow-Methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
 });
-page.on("request", (r) => {
-  if (!r.url().includes("/api/")) return r.continue();
-  const CORS = cors(r);
-  if (r.method() === "OPTIONS") return r.respond({ status: 204, headers: CORS });
-  const body = r.url().includes("/shop/profile")
-    ? { success: true, data: PROFILE }
-    : { success: true, data: [] };
-  return r.respond({ status: 200, contentType: "application/json",
-                     headers: CORS, body: JSON.stringify(body) });
-});
-page.on("pageerror", (e) => console.log("  ⚠ sahifa xatosi:", e.message));
 
-await page.evaluateOnNewDocument(() => {
-  for (const [k, v] of Object.entries({
-    ek_token: "v", ek_type: "user", ek_role: "OWNER", ek_username: "v",
-    ek_fullName: "V", ek_shopCode: "v", ek_deviceId: "v", ek_lang: "uz", ek_theme: "light",
-  })) localStorage.setItem(k, v);
-  localStorage.setItem("ek_cart_v_v", JSON.stringify({
-    savedAt: Date.now(), v: 3, activeId: 1,
-    carts: [{ id: 1, discount: "", bonusUse: "", customer: null, items: [
-      { id: 1, name: "Kurtka", salePrice: 100000, qty: 1, unit: "DONA", stockQuantity: 9 },
-    ] }],
-  }));
-});
-await page.goto(`http://127.0.0.1:${PORT}/sale`, { waitUntil: "networkidle2", timeout: 30_000 });
-await new Promise((r) => setTimeout(r, 1500));
+/* Bitta tovar — mantiqni tekshirish uchun; scrol bo'limi o'z ro'yxatini beradi. */
+const ONE = [{ id: 1, name: "Kurtka", salePrice: 100000, qty: 1, unit: "DONA", stockQuantity: 9 }];
+
+/** Tayyor sahifa: soxta API, soxta sessiya va savat bilan. */
+async function openKassa({ w = 1600, h = 950, items = ONE } = {}) {
+  const page = await browser.newPage();
+  await page.setViewport({ width: w, height: h });
+  await page.setRequestInterception(true);
+  page.on("request", (r) => {
+    if (!r.url().includes("/api/")) return r.continue();
+    const CORS = cors(r);
+    if (r.method() === "OPTIONS") return r.respond({ status: 204, headers: CORS });
+    const body = r.url().includes("/shop/profile")
+      ? { success: true, data: PROFILE }
+      : { success: true, data: [] };
+    return r.respond({ status: 200, contentType: "application/json",
+                       headers: CORS, body: JSON.stringify(body) });
+  });
+  page.on("pageerror", (e) => console.log("  ⚠ sahifa xatosi:", e.message));
+  await page.evaluateOnNewDocument((cart) => {
+    for (const [k, v] of Object.entries({
+      ek_token: "v", ek_type: "user", ek_role: "OWNER", ek_username: "v",
+      ek_fullName: "V", ek_shopCode: "v", ek_deviceId: "v", ek_lang: "uz", ek_theme: "light",
+    })) localStorage.setItem(k, v);
+    localStorage.setItem("ek_cart_v_v", JSON.stringify({
+      savedAt: Date.now(), v: 3, activeId: 1,
+      carts: [{ id: 1, discount: "", bonusUse: "", customer: null, items: cart }],
+    }));
+  }, items);
+  await page.goto(`http://127.0.0.1:${PORT}/sale`, { waitUntil: "networkidle2", timeout: 30_000 });
+  await new Promise((r) => setTimeout(r, 1200));
+  return page;
+}
+
+const page = await openKassa();
 
 let bad = 0;
 const ok = (m) => console.log("  ✅ " + m);
@@ -267,10 +274,70 @@ console.log("\n── 8b. Qatorlar tartibi surilmaydi ──");
     : no("Naqd birinchi bo'lishi kerak", names.join(" · "));
 }
 
-console.log("\n── 9. Oyna scrol bo'lmasin ──");
-await page.keyboard.press("F1"); await type("20000");
-s = await state();
-s.scroll <= 2 ? ok(`scrol yo'q (${s.scroll}px)`) : no("scrol paydo bo'ldi", s.scroll + "px");
+await page.close();
+
+/* ══════════════════════════════════════════════════════════════════════
+   9. SCROL BO'LMASIN — HAR EKRANDA
+
+   Do'kon egasining so'zi: «bu oynada scrol bo'lishi mumkin emas!!!».
+
+   ⚠ ILGARI BU TEKSHIRUV YOLG'ON XOTIRJAMLIK BERARDI. U bitta katta
+   ekranda (1600×950) va faqat BITTA elementda (`.pay-modal-body`)
+   o'lchardi. Kassa monobloklari esa 768px yoki 720px balandlikda —
+   aynan o'sha yerda oyna sig'masdi va do'kon egasi buni ekrandan
+   ko'rsatdi. Endi:
+
+     · bir nechta HAQIQIY monoblok o'lchamida tekshiriladi;
+     · oynaning HAMMA bolasi qaraladi, bittasi emas;
+     · savatda 9 ta tovar — ro'yxat eng uzun holatida;
+     · ogohlantirishlar ham chiqarilgan (nasiya + mijoz kerak).
+
+   ⚠ `.pay-items` HISOBGA OLINMAYDI: tovarlar ro'yxatining O'ZI ichida
+   aylanishi TO'G'RI — 30 ta tovarni ekranga sig'dirib bo'lmaydi.
+   To'silishi kerak bo'lgani — OYNANING aylanishi.
+   ══════════════════════════════════════════════════════════════════════ */
+console.log("\n── 9. Scrol bo'lmasin — har ekranda ──");
+
+const MANY = Array.from({ length: 9 }, (_, i) => ({
+  id: i + 1, name: "Kiyim nomi uzunroq " + (i + 1),
+  salePrice: 45000 + i * 1000, qty: (i % 3) + 1, unit: "DONA", stockQuantity: 99,
+}));
+/* Haqiqiy monobloklar va noutbuklar. 1024×768 — eng past kafolat. */
+const SCREENS = [[1920, 1080], [1600, 900], [1366, 768], [1280, 720], [1024, 768], [980, 700]];
+
+for (const [w, h] of SCREENS) {
+  const pg = await openKassa({ w, h, items: MANY });
+  await pg.evaluate(() => [...document.querySelectorAll("button")]
+    .find((b) => /Sotish|To'lov|Tolov/i.test(b.textContent))?.click());
+  await new Promise((r) => setTimeout(r, 700));
+  /* Qisman to'lov — nasiya qatori va «mijozni tanlang» ogohlantirishi
+     chiqsin: oyna eng BALAND holatida o'lchansin. */
+  await pg.focus("#pay-amount");
+  for (let i = 0; i < 30; i++) {
+    if (await pg.$eval("#pay-amount", (el) => el.value === "")) break;
+    await pg.keyboard.press("End"); await pg.keyboard.press("Backspace");
+  }
+  await pg.type("#pay-amount", "20000", { delay: 8 });
+  await new Promise((r) => setTimeout(r, 250));
+
+  const worst = await pg.evaluate(() => {
+    const box = document.querySelector(".pay-modal-box");
+    if (!box) return { sel: "oyna ochilmadi", y: 9999 };
+    let out = { sel: "-", y: 0 };
+    for (const el of [box, ...box.querySelectorAll("*")]) {
+      if (el.closest(".pay-items")) continue;          // ro'yxatning o'zi — mumkin
+      const y = el.scrollHeight - el.clientHeight;
+      /* `overflow: hidden` bo'lgan blok ATAYLAB qirqadi (bezak
+         doiralari) — u aylanmaydi va ota-onasini ham cho'zmaydi. */
+      if (getComputedStyle(el).overflowY === "hidden") continue;
+      if (y > out.y) out = { sel: (el.className || el.tagName).toString().trim().slice(0, 40), y };
+    }
+    return out;
+  });
+  worst.y <= 1 ? ok(`${w}×${h} — scrol yo'q`)
+               : no(`${w}×${h} — scrol paydo bo'ldi`, `${worst.sel} +${worst.y}px`);
+  await pg.close();
+}
 
 await browser.close(); server.close();
 console.log(bad ? `\n  ${bad} ta xato — to'lov oynasi buzilgan.\n` : "\n  ✅ To'lov oynasi: hammasi o'tdi\n");

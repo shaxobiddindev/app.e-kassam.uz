@@ -2727,14 +2727,22 @@ export default function KassaPage({ toast, refreshLowStock }) {
                     onClick={() => focusMethod(key)}
                   >
                     <span className="pay-type-icon"><i className={`fa-solid ${icon}`} aria-hidden="true" /></span>
-                    {label}
+                    {/* ⚠ Nom SPAN ichida — yalang'och matn emas. Tugma
+                        endi grid va yalang'och matn anonim katakka
+                        tushib, joyini boshqarib bo'lmasdi. */}
+                    <span className="pay-type-label">{label}</span>
                     {kbd && <span className="kbd">{kbd}</span>}
                     {/* Kiritilgan summa TUGMANING O'ZIDA: kassir qaysi
                         usulga qancha yozganini pastdagi ro'yxatga
-                        qaramasdan ko'radi. */}
-                    {paid[key] && (
-                      <span className="pay-type-btn__sum ek-num">{money(paid[key])}</span>
-                    )}
+                        qaramasdan ko'radi.
+
+                        ⚠ Summa BO'LMAGANDA ham qator bo'sh turadi
+                        (`&nbsp;`): aks holda pul yozilgan tugma
+                        boshqalaridan baland bo'lib, 2×2 to'r
+                        qiyshayardi. */}
+                    <span className="pay-type-btn__sum ek-num">
+                      {paid[key] ? money(paid[key]) : "\u00a0"}
+                    </span>
                   </button>
                 ))}
               </div>

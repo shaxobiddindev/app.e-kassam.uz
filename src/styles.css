@@ -1263,13 +1263,30 @@ select.form-input { cursor: pointer; }
   gap: 8px;
   margin-bottom: 8px;
 }
+/* ══════════════════════════════════════════════════════════════════════════
+   TUGMA IXCHAM — YOTIQ (V58)
+
+   ⚠ SCROL BO'LMASIN degan qoida buzilgan edi. Tugma tik edi (ikonka
+   ustida, nomi ostida, yorlig'i undan ham pastda) va bittasi ~170px
+   egallardi — 2×2 to'r ~350px. 1280×720 monoblokda to'lov oynasi
+   82px ga sig'may, do'kon egasi aynan shuni ko'rsatdi.
+
+   Endi yotiq: ikkonka CHAPDA, nomi va yorlig'i o'ng tepada, summa
+   ularning ostida. Bittasi ~56px, to'r ~120px — 230px tejaldi va
+   scrol 1024×768 gacha yo'qoldi.
+
+   ⚠ SUMMA QATORI DOIM BOR (bo'sh bo'lsa `&nbsp;`). Faqat pul yozilgan
+   tugmada chiqarilsa, o'sha tugma balandroq bo'lib to'r qiyshayardi.
+   ══════════════════════════════════════════════════════════════════════════ */
 .pay-type-btn {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 6px;
-  padding: 16px 10px 12px;
-  border-radius: 14px;
+  gap: 1px 9px;
+  padding: 7px 11px;
+  min-height: 56px;
+  text-align: left;
+  border-radius: 12px;
   border: 2px solid var(--border);
   background: var(--bg-surface);
   cursor: pointer;
@@ -1278,6 +1295,11 @@ select.form-input { cursor: pointer; }
   position: relative;
   overflow: hidden;
 }
+/* Ikonka ikkala qatorni ham egallaydi — nomi va summasi uning o'ngida. */
+.pay-type-btn > .pay-type-icon  { grid-area: 1 / 1 / 3 / 2; }
+.pay-type-btn > .pay-type-label { grid-area: 1 / 2 / 2 / 3; }
+.pay-type-btn > .kbd            { grid-area: 1 / 3 / 2 / 4; }
+.pay-type-btn > .pay-type-btn__sum { grid-area: 2 / 2 / 3 / 4; }
 
 .pay-type-btn::before {
   content: '';
@@ -1290,8 +1312,7 @@ select.form-input { cursor: pointer; }
 
 .pay-type-btn:hover {
   border-color: var(--pay-color);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.06);
 }
 
 .pay-type-btn.active {
@@ -1310,9 +1331,6 @@ select.form-input { cursor: pointer; }
   color: var(--fg-on-brand);
 }
 
-.pay-type-btn.active .pay-type-sub {
-  color: rgba(255,255,255,0.75);
-}
 
 /* ══════════════════════════════════════════════════════════════════════════
    TUGMADAGI SUMMA (V58)
@@ -1343,15 +1361,17 @@ select.form-input { cursor: pointer; }
 }
 
 .pay-type-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
+  /* 40 → 34px: yotiq tugmada ikonka baland bo'lsa, u tugmaning
+     balandligini yozuvdan emas, O'ZIDAN belgilardi. */
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
   background: color-mix(in srgb, var(--pay-color) 10%, transparent);
   color: var(--pay-color);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 17px;
+  font-size: 15px;
   transition: .25s;
   position: relative;
   z-index: 1;
@@ -1366,14 +1386,6 @@ select.form-input { cursor: pointer; }
   transition: .25s;
 }
 
-.pay-type-sub {
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--text3);
-  position: relative;
-  z-index: 1;
-  transition: .25s;
-}
 
 /* ══════════════════════════════════════════════════════════════════════════
    TO'LOV HISOBI — «PAY-SUM» (V58)
@@ -3053,20 +3065,55 @@ img.logo--dark { display: none; }
      chapda CHEK (jami + tovarlar), o'rtada CHEGIRMA, o'ngda TO'LOV. */
   grid-template-columns: minmax(0, 0.9fr) minmax(0, 1fr) minmax(0, 1fr);
   gap: 0 26px;
-  align-items: start;
+  /* ⚠ `start` EMAS, `stretch` (V58). `start` da har ustun o'z
+     bo'yicha qolar va tovarlar ro'yxati ostida ~125px oq joy turardi:
+     ro'yxat ichida aylanib, «yana 5 ta tovar bor» deb turgan paytda
+     uning tagida bo'sh joy — kassir uchun tushunarsiz. Endi ustun
+     qatorning butun balandligini oladi va ro'yxat o'sha joyni
+     to'ldiradi (pastdagi `flex: 1`). */
+  align-items: stretch;
 }
 .pay-col { min-width: 0; }
+/* Chek ustuni — ustunli flex, ro'yxat qolgan joyni egallashi uchun. */
+.pay-col--list { display: flex; flex-direction: column; min-height: 0; }
 /* Ustunlar tepasi bir sathda boshlansin */
 .pay-col--left  > .pay-modal-section-label:first-child,
 .pay-col--right > .pay-modal-section-label:first-child { margin-top: 0; }
 
-/* ⚠ Uch ustun 1200px dan pastda siqiladi — ro'yxat chek ustuni bilan
-   birga qoladi, to'lov o'z ustunida. */
-@media (max-width: 1200px) {
+/* ⚠ 1200 → 980px (V58). IKKI USTUN BALANDROQ, uch ustun emas: chap
+   ustunga chek KARTASI, tovarlar RO'YXATI va chegirma birga tushadi
+   va ular qo'shilib 580px dan oshardi. 1024×768 monoblokda to'lov
+   oynasi aynan shundan sig'may qolgan edi (do'kon egasi ko'rsatdi).
+   1024 da oyna ~984px keladi, ya'ni uch ustun hamon ~300px dan — bu
+   to'lov tugmalari uchun yetarli. Ikki ustunga o'tish endi faqat
+   haqiqatan tor ekranda. */
+@media (max-width: 980px) {
   .pay-modal-body { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .pay-col--list { grid-column: 1; }
   .pay-col--left { grid-column: 1; }
   .pay-col--right { grid-column: 2; grid-row: 1 / span 2; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   PAST EKRAN — BO'SHLIQLAR QISQARADI (V58)
+
+   ⚠ Kassa monobloklarining ko'pi 768px yoki 720px balandlikda. Ular
+   uchun oyna «biroz sig'maydi» degan holat bo'lmasligi kerak: do'kon
+   egasining talabi — «bu oynada scrol bo'lishi mumkin emas».
+
+   Shuning uchun past ekranda bo'shliqlar va jami raqami kichrayadi,
+   oynaning o'zi esa ekranning 94% ini oladi (90% emas). Mazmun
+   YASHIRILMAYDI — faqat havo kamayadi.
+   ══════════════════════════════════════════════════════════════════════════ */
+@media (max-height: 800px) {
+  .pay-modal-box       { max-height: 94vh; }
+  .pay-modal-body      { padding: 14px 22px; }
+  .pay-modal-header    { padding: 16px 22px 0; }
+  .pay-modal-footer    { padding: 0 22px 16px; }
+  .pay-modal-total     { padding: 14px 18px; margin-bottom: 14px; border-radius: 14px; }
+  .pay-modal-total-value { font-size: 26px; }
+  .pay-modal-total-label { margin-bottom: 3px; }
+  .pay-modal-total-qty   { margin-top: 3px; }
 }
 
 /* ⚠ Tor ekranda BITTA ustun. Ikki ustun 900px dan pastda siqilib,
@@ -3099,9 +3146,29 @@ img.logo--dark { display: none; }
   /* ⚠ 6 QATOR. Ko'p chekda shuncha yoki undan kam tovar bo'ladi va
      ro'yxat butunlay ko'rinadi; uzunrog'ida esa oxirgi qator ataylab
      YARIM ko'rinib turadi — «pastda yana bor» degan belgi shu. */
-  max-height: 302px;
+  /* ⚠ QOLGAN JOYNI EGALLAYDI. Ro'yxat — oynadagi YAGONA cho'ziluvchi
+     qism: qolgan hamma narsa (jami, chegirma, to'lov) qat'iy o'lchamda.
+     Shuning uchun ekran balandligining farqini aynan u yutadi.
+
+     ⚠ CHEGARA HAM BOR. Cheksiz o'ssa, 30 tovarli chekda ro'yxat
+     oynani ekrandan chiqarib yuborardi — o'sha scrolning o'zi.
+     `34vh`: 768px monoblokda ~261px (6 qator), 1080px da 302px. */
+  flex: 1 1 auto;
+  min-height: 96px;
+  max-height: min(302px, 34vh);
   overflow-y: auto;
   overscroll-behavior: contain;
+}
+
+/* ⚠ IKKI USTUNLI ko'rinishda (980px dan tor) chap ustunga IKKI blok
+   tushadi: chek va chegirma. Ro'yxat shuning uchun bu yerda qisqaroq.
+
+   ⚠ QOIDA `.pay-items` DAN KEYIN turishi SHART. Ilgari u yuqoridagi
+   media blokda edi va umuman ishlamasdi: bir xil kuchdagi ikki
+   qoidadan faylda KEYINGISI g'olib chiqadi, ya'ni uni asosiy qoida
+   bosib ketardi. */
+@media (max-width: 980px) {
+  .pay-items { max-height: min(190px, 16vh); margin-bottom: 6px; }
 }
 .pay-items__row {
   display: grid;
