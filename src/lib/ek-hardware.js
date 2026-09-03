@@ -29,37 +29,17 @@ import { spreadDiscount } from "./ek-discount";
    chizadi (`Receipt.qr`), brauzerda esa SVG kerak. */
 import { qrSvg } from "./ek-qr";
 import { shortDate } from "./ek-format";
+import { DEFAULTS, getSettings, saveSettings } from "./ek-hw-settings";
 
-const KEY = "ek_hw";
+/* ── Sozlamalar ────────────────────────────────────────────────────────
+   ⚠ ULAR ENDI `ek-hw-settings.js` DA va bu yerdan QAYTA EKSPORT
+   qilinadi. Sabab: sozlamani o'qish uchun shu butun modulni import
+   qilish kerak edi, u esa `qrcode-generator` ni ham (51 KB) o'zi bilan
+   olib kelardi — «skaner yoqilganmi?» degan bitta savol uchun.
 
-const DEFAULTS = {
-  transport:   "windows",  // "windows" | "tcp" | "browser"
-  printerName: "",         // windows: drayver nomi
-  host:        "",         // tcp: IP
-  port:        9100,
-  width:       80,         // 80 | 58 (mm)
-  autoPrint:   true,       // sotuv yakunlanganda chek o'zi chiqsin
-  openDrawer:  true,       // naqd to'lovda yashik ochilsin
-  scanner:     true,       // global barkod tutish
-};
-
-/* ── Sozlamalar ────────────────────────────────────────────────────────── */
-export function getSettings() {
-  try {
-    return { ...DEFAULTS, ...JSON.parse(localStorage.getItem(KEY) || "{}") };
-  } catch (_) {
-    return { ...DEFAULTS };
-  }
-}
-
-export function saveSettings(patch) {
-  const next = { ...getSettings(), ...patch };
-  localStorage.setItem(KEY, JSON.stringify(next));
-  // Sozlama o'zgarishi ochiq ekranlarga yetib borsin (Sozlamalar va Kassa
-  // bir vaqtda ochiq bo'lishi mumkin).
-  window.dispatchEvent(new CustomEvent("ek:hw", { detail: next }));
-  return next;
-}
+   Qayta eksport eski importlarni ishlaydigan qoldiradi va ikki manba
+   paydo bo'lishiga yo'l qo'ymaydi. */
+export { DEFAULTS, getSettings, saveSettings } from "./ek-hw-settings";
 
 /** Windows drayverlari ro'yxati. Brauzerda — bo'sh massiv. */
 export async function listPrinters() {

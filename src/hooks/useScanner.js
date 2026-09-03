@@ -1,5 +1,7 @@
 import { useEffect, useRef } from "react";
-import { getSettings } from "../lib/ek-hardware";
+/* ⚠ YENGIL moduldan: `ek-hardware` chek chizish va QR ni ham olib
+   kelardi va skaner uchun bitta sozlama o'qish 90 KB ga tushardi. */
+import { getSettings } from "../lib/ek-hw-settings";
 
 /* ══════════════════════════════════════════════════════════════════════════
    Global barkod tutish
