@@ -12,6 +12,7 @@ import Select from "../components/ek/Select";
 import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
 import { isDesktop } from "../lib/ek-desktop";
+import { FISCAL_UI } from "../config";
 import { printPriceLabels } from "../lib/ek-hardware";
 import {
   UNIT, PRODUCT_TYPE, MARKING_GROUP, options, unitLabel, unitDecimals,
@@ -105,7 +106,10 @@ export default function ProductsPage({ toast }) {
      xatosi asosiy ro'yxatni yiqitmasin. */
   useEffect(() => {
     if (branchId) return;
-    productApi.fiscalReadiness().then((r) => setFiscal(r.data)).catch(() => {});
+    /* ⚠ MVP da SO'ROV HAM YUBORILMAYDI: banner yashirilgan bo'lsa,
+       uni to'ldirish uchun har sahifa ochilishida serverga chiqishning
+       ma'nosi yo'q. */
+    if (FISCAL_UI) productApi.fiscalReadiness().then((r) => setFiscal(r.data)).catch(() => {});
   }, [branchId, products.length]);
 
   // ── Modal ochish ───────────────────────────────────────────
@@ -342,7 +346,7 @@ export default function ProductsPage({ toast }) {
           Fiskal chekda har satr uchun MXIK va QQS majburiy. 800 ta tovarni
           ulanish kunida to'ldirishga urinish — bir haftalik ish; ro'yxat
           hoziroq ko'rinib tursa, egasi uni asta-sekin to'ldiradi. */}
-      {fiscal && fiscal.totalProducts > 0 && (
+      {FISCAL_UI && fiscal && fiscal.totalProducts > 0 && (
         <div className={`ek-note ${fiscal.incompleteProducts ? "ek-note--warn" : ""}`} style={{ marginBottom: 14 }}>
           <i className={`fa-solid ${fiscal.incompleteProducts ? "fa-triangle-exclamation" : "fa-circle-check"}`} />
           <div>
@@ -612,28 +616,36 @@ export default function ProductsPage({ toast }) {
               </div>
             )}
 
-            <div className="grid-2">
-              <FormGroup label={t("products.vatRate")}>
-                <Field className="form-input ek-num" kind="percent" value={form.vatRate} onChange={setField("vatRate")} placeholder="12" />
-              </FormGroup>
-              <FormGroup label={t("products.packageCode")}>
-                <Field kind="barcode" className="form-input ek-num" value={form.packageCode} onChange={setField("packageCode")} placeholder="1234567" />
-              </FormGroup>
-            </div>
+            {/* ⚠ SOLIQ MAYDONLARI MVP DA YASHIRIN (`FISCAL_UI`). Ular
+                do'kon egasini fiskal modul hali ulanmagan turib ham
+                to'ldirishga majburlar va formani ikki barobar
+                uzaytirardi. Qiymatlar SAQLANADI — izohi `config.js` da. */}
+            {FISCAL_UI && (
+              <>
+                <div className="grid-2">
+                  <FormGroup label={t("products.vatRate")}>
+                    <Field className="form-input ek-num" kind="percent" value={form.vatRate} onChange={setField("vatRate")} placeholder="12" />
+                  </FormGroup>
+                  <FormGroup label={t("products.packageCode")}>
+                    <Field kind="barcode" className="form-input ek-num" value={form.packageCode} onChange={setField("packageCode")} placeholder="1234567" />
+                  </FormGroup>
+                </div>
 
-            <FormGroup label={t("products.mxik")}>
-              <Field className="form-input ek-num" kind="mxik" value={form.mxikCode} onChange={setField("mxikCode")} placeholder="00000000000000000" maxLength={17} />
-              <div className="form-hint">
-                {t("products.mxikHint")}{" "}
-                <a href="https://tasnif.soliq.uz/classifier" target="_blank" rel="noreferrer">tasnif.soliq.uz</a>
-              </div>
-            </FormGroup>
+                <FormGroup label={t("products.mxik")}>
+                  <Field className="form-input ek-num" kind="mxik" value={form.mxikCode} onChange={setField("mxikCode")} placeholder="00000000000000000" maxLength={17} />
+                  <div className="form-hint">
+                    {t("products.mxikHint")}{" "}
+                    <a href="https://tasnif.soliq.uz/classifier" target="_blank" rel="noreferrer">tasnif.soliq.uz</a>
+                  </div>
+                </FormGroup>
 
-            <label className="cat-chip" style={{ marginBottom: 12 }}>
-              <input type="checkbox" checked={form.priceIncludesVat}
-                     onChange={(e) => setForm((f) => ({ ...f, priceIncludesVat: e.target.checked }))} />
-              {t("products.priceIncludesVat")}
-            </label>
+                <label className="cat-chip" style={{ marginBottom: 12 }}>
+                  <input type="checkbox" checked={form.priceIncludesVat}
+                         onChange={(e) => setForm((f) => ({ ...f, priceIncludesVat: e.target.checked }))} />
+                  {t("products.priceIncludesVat")}
+                </label>
+              </>
+            )}
 
             <FormGroup label={t("products.markingGroup")}>
               <Select block variant="field" ariaLabel={t("products.markingGroup")}

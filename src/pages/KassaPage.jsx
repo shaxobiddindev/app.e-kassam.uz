@@ -17,6 +17,7 @@ import { isTouch } from "../lib/ek-touch";
 import { FinishOverlay, SkeletonTiles, Spinner } from "../components/ek/Loading";
 import Overlay from "../components/ek/Overlay";
 import { layerCount } from "../lib/modal-stack";
+import { FISCAL_UI } from "../config";
 import OfflineBar from "../components/OfflineBar";
 import ShiftBar from "../components/ShiftBar";
 import * as queue from "../lib/ek-offline";
@@ -1403,7 +1404,10 @@ export default function KassaPage({ toast, refreshLowStock }) {
        bilan qayta chop etiladi. Kassa hech qachon fiskal modulni
        kutib turmaydi. */
     let fiscal = null;
-    if (!offline && res_saleId) {
+    /* ⚠ MVP da fiskal belgi SO'RALMAYDI (`FISCAL_UI`): modul ulanmagan
+       bo'lsa bu so'rov har chekda bekorga ketar va javobi baribir
+       bo'sh bo'lardi. Chek belgisiz chiqadi — izohi `config.js` da. */
+    if (FISCAL_UI && !offline && res_saleId) {
       try {
         const fr = await fiscalApi.bySale(res_saleId);
         if (fr?.data?.fiscalSign) fiscal = fr.data;

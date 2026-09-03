@@ -75,3 +75,26 @@ export const cleanPhone = (val) => {
   if (v.length < 3) v = "998";
   return v.slice(0, 12);
 };
+
+/* ══════════════════════════════════════════════════════════════════════════
+   FISKAL MODUL — MVP DA YASHIRIN
+
+   ⚠ NEGA BAYROQ, NEGA O'CHIRISH EMAS. Soliq bilan bog'liq maydonlar
+   (QQS stavkasi, MXIK/IKPU, qadoq kodi, «narx QQS bilan») MVP da
+   kerak emas: ular do'kon egasini fiskal modul hali ulanmagan turib
+   ham to'ldirishga majburlaydi va formani ikki barobar uzaytiradi.
+
+   Lekin kod O'CHIRILMAYDI va ustunlar BAZADA QOLADI:
+
+     · ular allaqachon ishlaydi va fiskal modul ulanganda kerak bo'ladi;
+     · o'chirilsa, qaytadan yozish bir necha kunlik ish bo'lardi;
+     · to'ldirilgan tovarlarning ma'lumoti YO'QOLMASLIGI kerak — bugun
+       yashirilgan maydon ertaga o'sha qiymati bilan qaytadi.
+
+   ⚠ QIYMATLAR SAQLANADI: forma yashirilgan maydonlarni ham serverga
+   bor holicha yuboradi. Aks holda tovarni tahrirlash uni jimgina
+   fiskal jihatdan «to'ldirilmagan» holatga o'tkazib qo'yardi.
+
+   Yoqish uchun: shu qiymatni `true` qiling.
+   ══════════════════════════════════════════════════════════════════════════ */
+export const FISCAL_UI = false;
