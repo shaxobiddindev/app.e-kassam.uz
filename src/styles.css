@@ -1253,27 +1253,16 @@ select.form-input { cursor: pointer; }
 /* ── To'lov turlari grid ── */
 .pay-modal-types {
   display: grid;
-  /* ⚠ UCH USTUN, 3×2 — OLTITA yoki BESHTA ustun EMAS.
-     «Nasiya» qaytarilgach usullar oltita bo'ldi (foydalanuvchi
-     so'rovi). Tarix shu yerda ikki marta yozilgan:
-
-       · beshta ustun — oltinchisi YOLG'IZ ikkinchi qatorga tushib,
-         oynada ~110px bo'sh joy yeb ketardi;
-       · oltita ustun — har katakcha 130px dan torayib, «Aralash»
-         so'zi ikki qatorga sinardi.
-
-     3×2 esa ikkalasini ham yopadi: katakchalar keng, qatorlar to'la
-     va oyna balandligi o'zgarmaydi (uchinchi ustun endi yo'q —
-     to'lov oynasi allaqachon uch ustunli). */
-  grid-template-columns: repeat(3, 1fr);
+  /* ⚠ IKKI USTUN, 2×2 — uchta EMAS. Usullar to'rtta: Naqd, Karta,
+     Click, Payme («Aralash» ham, «Nasiya» ham endi tugma emas —
+     `ek-payment.js` ga qarang). Uch ustunda to'rtinchisi YOLG'IZ
+     ikkinchi qatorga tushib, o'ng ustunda bo'sh joy yeb ketardi
+     (brouzerda ko'rildi). 2×2 da ikkala qator ham to'la va katakcha
+     kengroq — tugmada endi SUMMA ham yoziladi, unga joy kerak. */
+  grid-template-columns: repeat(2, 1fr);
   gap: 8px;
   margin-bottom: 8px;
 }
-/* Tor ekranda uchtasi ham siqiladi — u yerda ikkita. */
-@media (max-width: 560px) {
-  .pay-modal-types { grid-template-columns: repeat(2, 1fr); }
-}
-
 .pay-type-btn {
   display: flex;
   flex-direction: column;
@@ -1325,6 +1314,34 @@ select.form-input { cursor: pointer; }
   color: rgba(255,255,255,0.75);
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   TUGMADAGI SUMMA (V58)
+
+   ⚠ Tugma endi to'lov TURINI emas, tahrirlanadigan USULni tanlaydi va
+   bir chekda bir nechtasida pul bo'lishi mumkin. Shuning uchun har
+   tugma O'ZIGA yozilgan summani ko'rsatadi: kassir «Click da qancha
+   bor edi?» deb pastdagi ro'yxatga qaramaydi.
+
+   ⚠ `has-amount` — TANLANGANIDAN boshqa narsa. Tanlangani bitta
+   (maydon o'shani tahrirlaydi), pul yozilgani esa bir nechta bo'ladi.
+   Ikkalasi bir xil ko'rinsa, kassir qaysi biriga yozayotganini
+   adashtirardi.
+   ══════════════════════════════════════════════════════════════════════════ */
+.pay-type-btn__sum {
+  position: relative; z-index: 1;
+  font-size: 12px; font-weight: 800;
+  font-family: var(--mono);
+  color: var(--pay-color);
+  line-height: 1;
+}
+.pay-type-btn.active .pay-type-btn__sum { color: var(--fg-on-brand); }
+
+/* Pul yozilgan, lekin hozir tanlanmagan tugma — yumshoq belgi. */
+.pay-type-btn.has-amount:not(.active) {
+  border-color: color-mix(in srgb, var(--pay-color) 55%, var(--border));
+  background: color-mix(in srgb, var(--pay-color) 7%, var(--bg-surface));
+}
+
 .pay-type-icon {
   width: 40px;
   height: 40px;
@@ -1358,166 +1375,74 @@ select.form-input { cursor: pointer; }
   transition: .25s;
 }
 
-/* ── Aralash to'lov inputlari ── */
 /* ══════════════════════════════════════════════════════════════════════════
-   ARALASH TO'LOV — ISTALGANCHA USUL (V53)
+   TO'LOV HISOBI — «PAY-SUM» (V58)
 
-   ⚠ ASOSIY TALAB: SCROL O'SMASIN. Qatorlar BIR SATRLI (44px) va faqat
-   QO'SHILGAN usullar chiziladi. Ikki usulli odatiy to'lovda balandlik
-   88px + chiplar — eski ikki maydonlik ko'rinishdan (yorliq + input
-   × 2 ≈ 150px) PAST.
+   Ilgari bu yerda ARALASH TO'LOVning qatorlari turardi: har usul o'z
+   maydonini ochar, ro'yxat o'sar va oyna scrol bo'lardi. Endi maydon
+   BITTA (`#pay-amount`), bu blok esa faqat NATIJANI ko'rsatadi:
+   qaysi usuldan qancha olindi, qaytim qancha, qolgani qancha.
+
+   ⚠ QATORLAR BIR SATRLI (36px) va faqat PUL YOZILGAN usul chiziladi.
+   Odatiy chek — bitta qator; naqd + nasiya — ikkita. Oyna o'smaydi.
    ══════════════════════════════════════════════════════════════════════════ */
-.pay-split {
-  margin-top: 16px;
-  padding: 12px;
+.pay-sum {
+  margin-top: 14px;
+  padding: 10px 12px;
   background: var(--bg-sunken);
   border-radius: 14px;
   border: 1.5px solid var(--border);
-  animation: slideUp .3s ease;
 }
 
-.pay-split__row {
+.pay-sum__row {
   display: flex; align-items: center; gap: 8px;
-  height: 44px;
+  height: 36px;
 }
-.pay-split__row + .pay-split__row { margin-top: 6px; }
+.pay-sum__row + .pay-sum__row { border-top: 1px dashed var(--border); }
 
-.pay-split__name {
+.pay-sum__name {
   display: flex; align-items: center; gap: 7px;
-  /* Yorliq ustuni QAT'IY kenglikda: aks holda «Naqd» va «Click»
-     qatorlarining maydonlari turli joydan boshlanib, ustun sifatida
-     o'qilmasdi. */
-  flex: 0 0 108px; min-width: 0;
+  flex: 1; min-width: 0;
   font-size: 13px; font-weight: 700;
   color: var(--pay-color, var(--fg-secondary));
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.pay-split__name i { flex: none; }
+.pay-sum__name i { flex: none; }
+.pay-sum__row b { font-size: 15px; font-weight: 800; }
 
-.pay-split__input {
-  flex: 1; min-width: 0; height: 40px;
-  text-align: right; font-weight: 800;
-  border-color: color-mix(in srgb, var(--pay-color, var(--border)) 40%, var(--border));
-}
+/* Qaytim — mijozga QAYTADIGAN pul, olingan puldan boshqa rangda. */
+.pay-sum__row--change { color: var(--fg-warning); }
+.pay-sum__row--change b { color: var(--fg-warning); }
+/* Nasiya — do'kon HALI OLMAGAN pul. */
+.pay-sum__row--credit { color: var(--fg-brand); }
+.pay-sum__row--credit b { color: var(--fg-brand); }
+/* Nasiya o'chirilgan do'konda qoldiq — xato, ogohlantirish emas. */
+.pay-sum__row--credit.is-blocked,
+.pay-sum__row--credit.is-blocked b { color: var(--fg-danger); }
 
-.pay-split__x {
-  flex: none; width: 32px; height: 32px; border-radius: 8px;
+.pay-sum__x {
+  flex: none; width: 30px; height: 30px; border-radius: 8px;
   display: grid; place-items: center;
   background: transparent; border: none; cursor: pointer;
   color: var(--fg-muted);
 }
-.pay-split__x:hover { background: var(--bg-danger-subtle); color: var(--fg-danger); }
+.pay-sum__x:hover { background: var(--bg-danger-subtle); color: var(--fg-danger); }
 
-.pay-split__warn { flex: none; color: var(--fg-warning); }
-
-.pay-split__add {
-  display: flex; flex-wrap: wrap; gap: 6px;
-  margin-top: 10px;
-}
-.pay-split__chip {
-  display: inline-flex; align-items: center; gap: 6px;
-  height: 32px; padding: 0 12px; border-radius: 999px;
-  font-size: 12px; font-weight: 700; cursor: pointer;
-  background: var(--bg-surface);
-  border: 1px dashed color-mix(in srgb, var(--pay-color, var(--border)) 55%, var(--border));
-  color: var(--pay-color, var(--fg-secondary));
-}
-.pay-split__chip:hover {
-  border-style: solid;
-  background: color-mix(in srgb, var(--pay-color, var(--bg-surface)) 10%, var(--bg-surface));
+.pay-sum__empty {
+  height: 36px; display: grid; place-items: center;
+  font-size: 12px; font-weight: 600; color: var(--fg-muted);
 }
 
-.pay-split__rest {
-  display: flex; align-items: center; gap: 10px;
-  margin-top: 10px; padding-top: 10px;
-  border-top: 1px dashed var(--border);
-  font-size: 13px; font-weight: 700;
-  color: var(--fg-secondary);
-}
-.pay-split__rest b { margin-left: auto; font-size: 15px; }
-.pay-split__rest .btn { margin-left: 0; }
-/* Ortiqcha kiritilgan summa — XATO, qoldiqdan boshqa rangda: kassir
-   ikkalasini bir qarashda ajratishi kerak. */
-.pay-split__rest.over { color: var(--fg-danger); }
 
-.pay-mixed-section {
-  margin-top: 16px;
-  padding: 18px;
-  background: var(--bg-sunken);
-  border-radius: 14px;
-  border: 1.5px solid var(--border);
-  animation: slideUp .3s ease;
-}
 
-/* Aralash ikkinchi to'lov turi tanlash */
-.pay-mixed-second-types {
-  display: flex;
-  gap: 8px;
-}
 
-.pay-mixed-second-btn {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  padding: 10px 14px;
-  border-radius: 10px;
-  border: 2px solid var(--border);
-  background: var(--bg-surface);
-  cursor: pointer;
-  font-family: var(--font);
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text);
-  transition: all .2s ease;
-}
 
-.pay-mixed-second-btn i {
-  font-size: 14px;
-  color: var(--pay-color);
-  transition: .2s;
-}
 
-.pay-mixed-second-btn:hover {
-  border-color: var(--pay-color);
-  background: color-mix(in srgb, var(--pay-color) 6%, transparent);
-}
 
-.pay-mixed-second-btn.active {
-  border-color: var(--pay-color);
-  background: var(--pay-color);
-  color: var(--fg-on-brand);
-  box-shadow: 0 3px 12px color-mix(in srgb, var(--pay-color) 35%, transparent);
-}
 
-.pay-mixed-second-btn.active i {
-  color: var(--fg-on-brand);
-}
 
-.pay-mixed-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
 
-.pay-mixed-field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
 
-.pay-mixed-label {
-  font-size: 11px;
-  font-weight: 800;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.pay-mixed-label i {
-  font-size: 12px;
-}
 
 .pay-mixed-input {
   text-align: right;
@@ -3504,40 +3429,3 @@ img.logo--dark { display: none; }
 .inv-attrs__color { display: inline-flex; align-items: center; gap: 5px; }
 .btn-icon--xs { width: 24px; height: 24px; font-size: 11px; padding: 0; }
 
-/* ══════════════════════════════════════════════════════════════════════════
-   ARALASH TO'LOVDA «ALMASHADI» OGOHLANTIRISHI (V57)
-
-   ⚠ Bitta qatorda to'liq summa turganda yangi usul QO'SHILMAYDI, mavjudi
-   ALMASHTIRILADI. Bu qoida to'g'ri (aks holda ikkinchi qator 0 so'm bilan
-   ochilib, ikkala maydonni ham qayta yozishga majbur qilardi), lekin JIM
-   edi: kassir chipni bosar, qatorlar soni o'zgarmas va u «bosilmadi» deb
-   o'ylab yana bosardi.
-   ══════════════════════════════════════════════════════════════════════════ */
-.pay-split__swap {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  margin: 8px 0 6px;
-  padding: 8px 11px;
-  border-radius: 10px;
-  font-size: 12px;
-  line-height: 1.45;
-  background: var(--bg-warning-subtle, rgba(245, 158, 11, .10));
-  border: 1px solid var(--border-warning, rgba(245, 158, 11, .35));
-  color: var(--fg-warning, #92400e);
-}
-.pay-split__swap i { margin-top: 2px; flex: none; }
-/* ⚠ «Nima qilish kerak» — ALOHIDA qatorda. Ogohlantirish bilan bir
-   qatorga qo'shilganda u ko'zga tashlanmasdi, holbuki kassirga aynan
-   shu qism kerak: bo'lib to'lashning yo'li. */
-.pay-split__swap em {
-  display: block;
-  font-style: normal;
-  font-weight: 700;
-  margin-top: 2px;
-}
-
-/* Almashtiradigan holatda chip ham boshqacha ko'rinadi */
-.pay-split__chip.is-swap {
-  border-style: dashed;
-}

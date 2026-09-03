@@ -59,6 +59,11 @@
 
   /* ===== SEMANTIC ===== */
   --ek-success-50:  #E9F9EF;  --ek-success-500: #23B851;  --ek-success-600: #1FAE4C;  --ek-success-700: #16883A;
+  /* ⚠ 800 — YOZUV uchun. 700 (#16883A) o'zining yorug' foni
+     (#E9F9EF) ustida 4.17 beradi, talab esa 4.5. Smena belgisidagi
+     raqam aynan shu juftlikda chiqadi va o'qilishi qiyin edi. 800
+     o'sha fonda 5.0, oq fonda 5.45 — ikkalasida ham zaxira bilan. */
+  --ek-success-800: #117A31;
   --ek-danger-50:   #FEF3F2;  --ek-danger-500:  #F04438;  --ek-danger-600:  #D92D20;  --ek-danger-700:  #B42318;
   --ek-warning-50:  #FFF4ED;  --ek-warning-500: #FB7A2A;  --ek-warning-600: #F76B15;  --ek-warning-700: #C4500A;
   --ek-info-50:     #EAF6FE;  --ek-info-500:    #17A0E8;  --ek-info-600:    #0B84D6;  --ek-info-700:    #0764A8;
@@ -268,7 +273,7 @@ body {
   /* ── Holat ranglari (brenddagi semantic shkalalardan) ───────────────── */
   --bg-success:        var(--ek-success-600);
   --bg-success-subtle: var(--ek-success-50);
-  --fg-success:        var(--ek-success-700);
+  --fg-success:        var(--ek-success-800);
   --border-success:    var(--ek-green-200);
 
   --bg-danger:         var(--ek-danger-600);

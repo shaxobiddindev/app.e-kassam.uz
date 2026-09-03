@@ -29,7 +29,7 @@
    bo'lardi. Ctrl+P va Ctrl+O esa ATAYLAB olingan va `preventDefault`
    bilan to'siladi: chop etish va ochish oynalari bu yerda keraksiz.
 
-   ⚠ F1/F2/F3 TO'LOV OYNASIDA boshqa ma'noda — bu tarixiy va ataylab
+   ⚠ F1..F4 TO'LOV OYNASIDA boshqa ma'noda — bu tarixiy va ataylab
    saqlangan: kassirlarning barmog'i uni yod biladi. Shuning uchun har
    qatorda `scope` bor va ishlovchi faqat o'z sohasidagini bajaradi.
    ══════════════════════════════════════════════════════════════════════════ */
@@ -71,13 +71,14 @@ export const KASSA_KEYS = [
 
   /* ── To'lov ──────────────────────────────────────────────────────── */
   { id: "pay",       combo: "F9",       scope: "any",  label: "kbd.pay" },
+  /* ⚠ F1..F4 — TO'LOV USULINI TANLAYDI, uni yakunlamaydi. Bosilganda
+     kursor summa maydoniga o'tadi va o'sha usulning oldingi qiymati
+     ko'rinadi. Nasiya uchun tugma YO'Q: to'lanmagan qoldiq o'zi
+     nasiyaga yoziladi. */
   { id: "payCash",   combo: "F1",       scope: "pay",  label: "kbd.payCash" },
   { id: "payCard",   combo: "F2",       scope: "pay",  label: "kbd.payCard" },
-  { id: "payMixed",  combo: "F3",       scope: "pay",  label: "kbd.payMixed" },
-  /* ⚠ Nasiya — F4. Ro'yxatda u «Aralash» dan oldin tursa ham, F3 ni
-     «Aralash» dan olib qo'yish kassirlarning yod bilgan harakatini
-     buzardi. */
-  { id: "payCredit", combo: "F4",       scope: "pay",  label: "kbd.payCredit" },
+  { id: "payClick",  combo: "F3",       scope: "pay",  label: "kbd.payClick" },
+  { id: "payPayme",  combo: "F4",       scope: "pay",  label: "kbd.payPayme" },
   { id: "customer",  combo: "Alt+M",    scope: "pay",  label: "kbd.customer" },
   { id: "newCust",   combo: "Alt+Y",    scope: "pay",  label: "kbd.newCust" },
   { id: "discount",  combo: "Alt+C",    scope: "pay",  label: "kbd.discount" },
