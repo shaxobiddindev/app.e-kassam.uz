@@ -118,6 +118,7 @@ export default function PricesPage({ toast }) {
           <div className="grid-2">
             <FormGroup label={t("price.scope")}>
               <Select block variant="field" ariaLabel={t("price.scope")}
+                      searchable searchPlaceholder={t("common.searchShort")}
                       value={form.categoryId}
                       onChange={(v) => { setForm({ ...form, categoryId: v }); setPreview(null); }}
                       options={[{ value: "", label: t("price.allProducts"), icon: "fa-boxes-stacked" },

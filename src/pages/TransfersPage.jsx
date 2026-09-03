@@ -389,6 +389,7 @@ export default function TransfersPage({ toast }) {
         >
           <FormGroup label={t("transfer.to")}>
             <Select block variant="field" ariaLabel={t("transfer.to")}
+                    searchable searchPlaceholder={t("common.searchShort")}
                     value={form.toShopId}
                     onChange={(v) => setForm({ ...form, toShopId: v })}
                     options={targets.map((s) => ({ value: String(s.id), label: s.name, icon: "fa-store" }))} />

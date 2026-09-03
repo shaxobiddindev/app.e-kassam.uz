@@ -220,6 +220,7 @@ export default function ExpensesPage({ toast }) {
         >
           <FormGroup label={t("expense.category")}>
             <Select block variant="field" ariaLabel={t("expense.category")}
+                    searchable searchPlaceholder={t("common.searchShort")}
                     value={String(form.categoryId)}
                     onChange={(v) => setForm({ ...form, categoryId: v })}
                     options={cats.filter((c) => c.active)

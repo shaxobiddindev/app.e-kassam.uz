@@ -1655,4 +1655,5 @@ export default {
   "kassa.splitEmpty": "Добавьте способ оплаты",
   "kassa.creditNeedCustomer": "Для долга нужно выбрать клиента",
   "kassa.searchCustomer": "Имя или телефон…",
+  "common.searchShort": "Поиск…",
 };

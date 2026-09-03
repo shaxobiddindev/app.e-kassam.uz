@@ -30,6 +30,8 @@ export default function BranchSelector({ selectedId, onSelect, style = {} }) {
   return (
     <div style={{ display: "flex", alignItems: "center", ...style }}>
       <Select
+        /* Filiallar ham MA'LUMOT ro'yxati — o'sib boradi. */
+        searchable
         value={selectedId ? String(selectedId) : ""}
         onChange={(v) => onSelect(v || null)}
         options={options}

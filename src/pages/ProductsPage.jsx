@@ -559,6 +559,15 @@ export default function ProductsPage({ toast }) {
             <FormGroup label={t("products.category")}>
               <Select
                 block variant="field" ariaLabel={t("products.category")} placeholder={t("products.noCategory")}
+                /* ⚠ QIDIRUV MAJBURIY, avtomatik emas. Avtomatik qoida
+                   bandlar soni 8 dan oshganda ishlaydi, kategoriyalar
+                   esa MA'LUMOT ro'yxati: bugun beshta bo'lsa ham
+                   ertaga o'ttizta bo'ladi va o'sha kuni do'kon egasi
+                   ro'yxatni aylantirib qidirishga majbur qolardi.
+                   Farq shunda: qat'iy ro'yxatda (to'lov turi, o'lchov
+                   birligi) qidiruv ortiqcha bosqich — u hech qachon
+                   o'smaydi va joylashuvi yodda qoladi. */
+                searchable searchPlaceholder={t("common.searchShort")}
                 value={form.categoryId ? String(form.categoryId) : ""}
                 onChange={(v) => setForm((f) => ({ ...f, categoryId: v }))}
                 options={[

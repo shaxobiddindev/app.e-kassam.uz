@@ -1749,4 +1749,5 @@ export default {
   "kassa.splitEmpty": "To'lov usulini qo'shing",
   "kassa.creditNeedCustomer": "Nasiya uchun mijoz tanlanishi kerak",
   "kassa.searchCustomer": "Ism yoki telefon…",
+  "common.searchShort": "Qidirish…",
 };

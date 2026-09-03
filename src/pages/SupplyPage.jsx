@@ -287,6 +287,7 @@ export default function SupplyPage({ toast }) {
           <div className="grid-2">
             <FormGroup label={t("supply.supplier")}>
               <Select block variant="field" ariaLabel={t("supply.supplier")}
+                      searchable searchPlaceholder={t("common.searchShort")}
                       value={form.supplierId}
                       onChange={(v) => setForm({ ...form, supplierId: v })}
                       options={suppliers.filter((s) => s.active)

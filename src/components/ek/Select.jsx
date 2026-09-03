@@ -41,14 +41,26 @@ export default function Select({
   /**
    * QIDIRUV maydoni ro'yxat tepasida.
    *
+   * ⚠ QOIDA: MA'LUMOT ro'yxatida — HAR DOIM yoqiladi, QAT'IY
+   * ro'yxatda — yo'q.
+   *
+   *   · ma'lumot (kategoriya, mijoz, yetkazib beruvchi, filial):
+   *     bugun beshta bo'lsa ham ertaga o'ttizta bo'ladi va o'sha kuni
+   *     foydalanuvchi ro'yxatni aylantirib qidirishga majbur qoladi —
+   *     `searchable` ni ANIQ yozing;
+   *   · qat'iy (to'lov turi, o'lchov birligi, QQS stavkasi): ro'yxat
+   *     hech qachon o'smaydi va joylashuvi yodda qoladi — qidiruv
+   *     u yerda ortiqcha bosqich.
+   *
    * ⚠ Standarti — `null`, ya'ni AVTOMATIK: bandlar soni 8 dan oshsa
-   * qidiruv o'zi paydo bo'ladi. Sabab: uchta variantli selektda
-   * qidiruv ortiqcha bosqich, yuz mijozli ro'yxatda esa usiz
-   * ishlab bo'lmaydi — va bu qarorni har chaqiruv joyida qo'lda
-   * takrorlash unutilishi aniq edi.
+   * qidiruv o'zi paydo bo'ladi. Bu — ESLATIB QO'YILMAGAN joylar
+   * uchun himoya to'ri, qoidaning o'rnini bosmaydi: uzun qat'iy
+   * ro'yxat (masalan jurnal amallari) ham shu yo'l bilan qidiruv
+   * oladi.
    *
    * Qidiruv KASSADAGI algoritm bilan ishlaydi (`lib/ek-search.js`):
-   * kirillcha yozuv, apostrof va xato yozilgan harf ham topiladi.
+   * kirillcha yozuv, apostrof, «x»/«h» farqi va xato yozilgan harf
+   * ham topiladi.
    */
   searchable = null,
   searchPlaceholder = "Qidirish…",

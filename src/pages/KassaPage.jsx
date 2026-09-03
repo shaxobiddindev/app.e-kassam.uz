@@ -1661,6 +1661,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
               <Select
                 className="kassa-cat"
                 ariaLabel={t("products.category")}
+                searchable searchPlaceholder={t("common.searchShort")}
                 value={favOnly ? "fav" : (categoryId ? String(categoryId) : "")}
                 onChange={(v) => {
                   setFavOnly(v === "fav");
