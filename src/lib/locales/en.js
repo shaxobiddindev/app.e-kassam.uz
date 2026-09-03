@@ -937,7 +937,7 @@ export default {
   "kassa.scanHint": "Scan or type a barcode…",
   "kassa.scanTitle": "Scan barcode",
   "kassa.searchByName": "Search by product name…",
-  "kassa.searchOrScan": "Search by name or scan a barcode…",
+  "kassa.searchOrScan": "Name or barcode…",
   "kassa.backToSearch": "Back to the search field",
   "kassa.searching": "Searching…",
   "kassa.scanPrompt": "Scan a barcode",

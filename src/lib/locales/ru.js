@@ -937,7 +937,7 @@ export default {
   "kassa.scanHint": "Отсканируйте или введите штрихкод…",
   "kassa.scanTitle": "Сканирование штрихкода",
   "kassa.searchByName": "Поиск по названию товара…",
-  "kassa.searchOrScan": "Найдите по названию или отсканируйте штрихкод…",
+  "kassa.searchOrScan": "Название или штрихкод…",
   "kassa.backToSearch": "Вернуться к полю поиска",
   "kassa.searching": "Поиск…",
   "kassa.scanPrompt": "Отсканируйте штрихкод",
