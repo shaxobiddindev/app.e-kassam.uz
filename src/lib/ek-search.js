@@ -43,7 +43,7 @@
 const CYR = {
   а:"a", б:"b", в:"v", г:"g", д:"d", е:"e", ё:"yo", ж:"j", з:"z", и:"i",
   й:"y", к:"k", л:"l", м:"m", н:"n", о:"o", п:"p", р:"r", с:"s", т:"t",
-  у:"u", ф:"f", х:"x", ц:"ts", ч:"ch", ш:"sh", щ:"sh", ъ:"", ы:"i", ь:"",
+  у:"u", ф:"f", х:"h", ц:"ts", ч:"ch", ш:"sh", щ:"sh", ъ:"", ы:"i", ь:"",
   э:"e", ю:"yu", я:"ya", ў:"o", қ:"q", ғ:"g", ҳ:"h",
 };
 
@@ -62,6 +62,21 @@ export function normSearch(s) {
     .toLowerCase()
     .replace(/[ʻʼ‘’`´'']/g, "")          // apostrof — barcha variantda tashlanadi
     .replace(/[\u0400-\u04FF]/g, (ch) => CYR[ch] ?? ch)
+    /* ⚠ «x» va «h» BITTA harf deb qaraladi (V55).
+       Kirillcha «х» yuqorida «h» ga o'tdi, bu satr esa LOTINCHA «x» ni
+       ham unga qo'shadi.
+
+       Sabab imloda: o'sha tovushni lotinchada odamlar goh «x», goh «h»
+       bilan yozadi va bitta ism bazada «Shohruh», qidiruvda esa
+       «shoxrux» bo'lib chiqardi — ikkalasi hech qachon uchrashmasdi.
+       Trigramm o'xshashligi ham yetmasdi (0.19, chegara 0.3).
+
+       Bu — apostrof qoidasining aynan davomi: odam qaysi belgi
+       to'g'ri ekanini bilmaydi, farqni qidiruv o'zi yopishi kerak.
+
+       ⚠ SERVER HAM SHUNDAY QILADI (`ek_search_norm`, V55). Biri
+       qolib ketsa, kassir yozayotganda ro'yxat SAKRAB ketardi. */
+    .replace(/x/g, "h")
     .replace(/[^\p{L}\p{N}]+/gu, " ")     // tinish belgilari — ajratgich
     .trim()
     .replace(/\s+/g, " ");

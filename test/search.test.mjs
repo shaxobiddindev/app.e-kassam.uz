@@ -111,6 +111,29 @@ eq(rankLocal(list, "").length, list.length, "bo'sh so'rovda ro'yxat o'zgarmaydi"
    Endi qoida bitta joyda. Bu blok o'sha umumiy qoidani qamrab oladi.
    ══════════════════════════════════════════════════════════════════════════ */
 
+console.log("\n═══ 7b. «x» va «h» — bitta harf (V55) ═══");
+/* ⚠ HAQIQIY XATO ustiga yozilgan (foydalanuvchi topdi): kirillcha
+   «шохрух» so'rovi bazadagi lotincha «Shohruhbek» ni TOPMASDI.
+
+   Kirillcha «х» standart bo'yicha «x» ga o'girilardi, lekin o'sha
+   tovushni lotinchada odamlar ko'pincha «h» bilan yozadi. Trigramm
+   o'xshashligi ham yetmasdi: ball 0.19, chegara esa 0.3.
+
+   ⚠ Kutilgan qiymatlar SERVERNIKI bilan bir xil (`ek_search_norm`,
+   `ProductService.searchNorm`). Biri o'zgarsa ro'yxat kassir
+   yozayotganda SAKRAB ketardi. */
+eq(normSearch("шохрух"), "shohruh", "kirillcha «х» → «h»");
+eq(normSearch("Shohruhbek"), "shohruhbek", "lotincha «h» o'z holicha");
+yes(normSearch("Shohruhbek").startsWith(normSearch("шохрух")),
+    "kirillcha so'rov lotincha nomni topadi");
+eq(normSearch("Xolodilnik"), "holodilnik", "lotincha «x» → «h»");
+eq(normSearch("Holodilnik"), "holodilnik", "ikkala imlo bir xil shaklga keladi");
+eq(normSearch("Қаймоқ"), "qaymoq", "«қ» tegilmaydi — u «q»");
+eq(normSearch("Чой"), "choy", "«ч» ichidagi «h» ga tegilmaydi");
+eq(normSearch("Шоколад"), "shokolad", "«ш» ichidagi «h» ga tegilmaydi");
+yes(scoreText("шохрух", "Abdurahmonov Shohruhbek") > 0,
+    "kirillcha so'rov to'liq ismni topadi");
+
 console.log("\n═══ 8. Umumiy matn bahosi ═══");
 yes(scoreText("suv", "Suv 1L") > scoreText("suv", "Ichimlik suvi gazsiz"),
     "aniq nom o'xshashidan yuqori turadi");
