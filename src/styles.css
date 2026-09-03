@@ -440,7 +440,7 @@ select.form-input { cursor: pointer; }
    `.pay-modal-overlay` dagi bilan bir xil: telefonda oynaning tepasi
    tizim holat qatori ostida qolardi, baland oynada esa umuman
    yetib bo'lmasdi. */
-.modal-overlay   { position: fixed; inset: 0; background: var(--scrim); display: flex; align-items: center; justify-content: center; z-index: 500;
+.modal-overlay   { position: fixed; inset: 0; background: var(--scrim); display: flex; align-items: center; justify-content: center; z-index: var(--z-modal);
                    padding: max(20px, env(safe-area-inset-top)) 20px max(20px, env(safe-area-inset-bottom));
                    overflow-y: auto; animation: fadeIn .2s ease; }
 .modal-overlay > * { margin: auto; }
@@ -1072,7 +1072,12 @@ select.form-input { cursor: pointer; }
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 600;
+  /* ⚠ TO'LOV OYNASI ALOHIDA QATLAM EMAS. Ilgari bu yerda 600 turardi,
+     oddiy oynada esa 500 — ya'ni «kim ustida turadi» degan savolga CSS
+     javob berardi va to'lovdan ochilgan «yangi mijoz» oynasi orqada
+     qolib ketardi. Endi hamma oyna bir xil qatlamda, tartibni esa
+     ochilish ketma-ketligi hal qiladi (`lib/modal-stack.js`). */
+  z-index: var(--z-modal);
   /* ⚠ TEPADAGI XAVFSIZ ZONA HISOBGA OLINADI. Telefonda va planshetda
      (Capacitor) tizim holat qatori ekranning tepasida turadi va oyna
      `inset: 0` bilan uning OSTIGA chiqib ketardi: sarlavha ham,
@@ -1988,7 +1993,7 @@ img.logo--dark { display: none; }
 
 /* ── Ekran klaviaturasi ───────────────────────────────────────────────── */
 .osk {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 900;
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: var(--z-osk);
   background: var(--bg-surface);
   border-top: 1px solid var(--border-subtle);
   box-shadow: 0 -8px 24px rgb(0 0 0 / .14);

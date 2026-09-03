@@ -1,4 +1,4 @@
-import { createPortal } from "react-dom";
+import Overlay from "./ek/Overlay";
 
 /**
  * ⚠ `dismissible={false}` — ORQA FONGA bosish oynani YOPMAYDI.
@@ -8,23 +8,16 @@ import { createPortal } from "react-dom";
  * so'ralayotgan oyna tasodifiy teginish bilan ketmasligi kerak; chiqish
  * yo'li baribir bor — ✕ va tugmalar.
  *
- * ⚠ OYNA `document.body` GA CHIZILADI (portal), sahifa ichiga EMAS.
- *
- * Sabab — haqiqiy xato (foydalanuvchi shikoyati: «modal katta bo'lsa
- * header tagiga kirib qolyapti»). Oyna sahifa daraxti ichida chizilganda
- * uning `z-index` i eng yaqin «stacking context» ICHIDA hisoblanadi.
- * `.page` esa kirish animatsiyasi tufayli aynan shunday quticha ochib
- * qo'yardi va tashqaridagi sarlavha paneli oynadan YUQORIDA chizilardi.
- *
- * Animatsiya tuzatildi (`ek-motion.css` §15), lekin oynaning to'g'ri
- * ishlashi kelajakdagi har qanday `transform`/`filter`/`opacity` ga
- * BOG'LIQ BO'LMASLIGI kerak: bugun tuzatilgan narsa ertaga boshqa
- * sahifada qaytadan buzilishi mumkin va buni yana faqat foydalanuvchi
- * topardi. Portal bu bog'liqlikni butunlay uzadi.
+ * ⚠ OYNA `document.body` GA CHIZILADI va oxirgi ochilgani ustida turadi —
+ * buning uchun `Overlay` javob beradi, izohi o'sha yerda.
  */
 export default function Modal({ title, onClose, children, footer, maxWidth = 460, dismissible = true }) {
-  return createPortal(
-    <div className="modal-overlay" onClick={dismissible ? onClose : undefined}>
+  return (
+    <Overlay
+      className="modal-overlay"
+      onClick={dismissible ? onClose : undefined}
+      onEscape={dismissible ? onClose : undefined}
+    >
       <div
         className="modal-box"
         style={{ maxWidth }}
@@ -41,7 +34,6 @@ export default function Modal({ title, onClose, children, footer, maxWidth = 460
 
         {footer && <div className="modal-footer">{footer}</div>}
       </div>
-    </div>,
-    document.body
+    </Overlay>
   );
 }

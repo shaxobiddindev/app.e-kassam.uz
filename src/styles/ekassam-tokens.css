@@ -143,7 +143,11 @@
   --dur-fast: 120ms; --dur-base: 180ms; --dur-slow: 260ms;
 
   /* ===== Z-QATLAM ===== */
-  --z-sticky: 100; --z-drawer: 200; --z-modal: 300; --z-toast: 400;
+  /* ⚠ QATLAMLAR. `--z-modal` HAR QANDAY oyna uchun YAGONA qiymat: ikki
+     oyna orasidagi tartibni raqam emas, ochilish ketma-ketligi hal
+     qiladi (`lib/modal-stack.js`). Ekran klaviaturasi oyna USTIDA
+     bo'lishi shart — u aynan oynadagi maydonga yozish uchun ochiladi. */
+  --z-sticky: 100; --z-drawer: 200; --z-modal: 600; --z-osk: 900; --z-toast: 1000;
 }
 
 /* --- QORONGʻI REJIM ------------------------------------------------------

@@ -3,6 +3,7 @@ import { t } from "../lib/ek-i18n";
 import { markingApi } from "../api";
 import { markingGroup } from "../lib/ek-labels";
 import { Spinner } from "./ek/Loading";
+import Overlay from "./ek/Overlay";
 
 /* ══════════════════════════════════════════════════════════════════════════
    Markirovka yorliqlarini skanerlash — kassada ham, omborda ham.
@@ -78,9 +79,9 @@ export default function MarkingScanModal({ product, mode = "sale", onDone, onClo
   };
 
   return (
-    <div className="pay-modal-overlay ek-overlay" role="dialog" aria-modal="true"
+    <Overlay className="pay-modal-overlay ek-overlay" role="dialog" aria-modal="true"
          aria-label={t("marking.scanTitle")}
-         onKeyDown={(e) => { if (e.key === "Escape") { e.preventDefault(); onClose(); } }}>
+         onEscape={onClose}>
       <div className="ek-dialog mark-modal">
         <div className="pay-modal-header">
           <div className="pay-modal-title">
@@ -149,6 +150,6 @@ export default function MarkingScanModal({ product, mode = "sale", onDone, onClo
           </button>
         </div>
       </div>
-    </div>
+    </Overlay>
   );
 }

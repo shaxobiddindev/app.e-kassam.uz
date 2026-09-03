@@ -15,6 +15,8 @@ import { useKeyboard } from "../context/KeyboardProvider";
 import { clear as clearField } from "../lib/ek-keys";
 import { isTouch } from "../lib/ek-touch";
 import { FinishOverlay, SkeletonTiles, Spinner } from "../components/ek/Loading";
+import Overlay from "../components/ek/Overlay";
+import { layerCount } from "../lib/modal-stack";
 import OfflineBar from "../components/OfflineBar";
 import ShiftBar from "../components/ShiftBar";
 import * as queue from "../lib/ek-offline";
@@ -1286,7 +1288,13 @@ export default function KassaPage({ toast, refreshLowStock }) {
 
     try {
       if (!navigator.onLine) throw new Error("OFFLINE");
-      const res = await saleApi.create(payload);
+      /* ⚠ `guard` — CHEGARADAN OSHGAN CHEGIRMADA server bajik so'raydi
+         (428). Usiz chek «Bajikni skanerlang» xatosi bilan rad etilardi,
+         lekin skanerlash oynasi OCHILMASDI: kassir xabarni o'qir-u,
+         nima qilishni bilmasdi va chegirmani qo'lda kamaytirishga
+         majbur bo'lardi. Chegara ichidagi chegirmada server bajik
+         so'ramaydi — oddiy chek sekinlashmaydi. */
+      const res = await guard(() => saleApi.create(payload));
       res_saleId = res?.data?.id ?? null;
       receiptNo = res_saleId != null ? `A-${res_saleId}` : null;
       /* Elektron chek havolasi (V34) — chekka QR bo'lib bosiladi.
@@ -1302,7 +1310,10 @@ export default function KassaPage({ toast, refreshLowStock }) {
         setFinish(null);
         setProcessing(false);
         setShowPayModal(true);
-        toast.error(err.message);
+        /* Bajik oynasi bekor qilingan bo'lsa — bu xato emas, kassirning
+           o'z tanlovi: to'lov oynasi qaytadi va u chegirmani
+           o'zgartirishi mumkin. */
+        if (!err?.cancelled) toast.error(err.message);
         return;
       }
       await queue.enqueue(payload, { itemCount: cart.length, total });
@@ -1392,9 +1403,15 @@ export default function KassaPage({ toast, refreshLowStock }) {
 
       if (e.key === "Escape") {
         if (finish)       { setFinish(null); focusSearch(); return; }
-        if (qtyModal)     { setQtyModal(null); focusSearch(); return; }
-        if (markModal)    { setMarkModal(null); focusSearch(); return; }
-        if (showPayModal) { closePayModal(); return; }
+        /* ⚠ OCHIQ OYNA BO'LSA — Esc O'SHA OYNANIKI, bu yerdagi ro'yxatniki
+           emas. Har oyna o'zini `Overlay` orqali yopadi va faqat ENG
+           USTIDAGISI javob beradi (`modal-stack.js`).
+
+           Ilgari bu ro'yxat birinchi bo'lib ishlardi va u faqat kassa
+           bilgan oynalarni bilardi: to'lov oynasi ustidan ochilgan «yangi
+           mijoz» oynasida Esc yangi mijozni emas, TO'LOVNI yopib
+           yuborardi — kassir yozganini yo'qotardi. */
+        if (layerCount() > 0) return;
         /* ⚠ `window.confirm` EMAS: brauzerning o'z oynasi ilova temasidan
            tashqarida chiqadi va `.exe` da butun oynani bloklaydi. */
         if (cart.length && !clearAsk.current) {
@@ -1863,7 +1880,8 @@ export default function KassaPage({ toast, refreshLowStock }) {
 
       {/* ════ TO'LOV MODALI ════ */}
       {showPayModal && (
-        <div className="pay-modal-overlay ek-overlay" role="dialog" aria-modal="true" aria-label={t("kassa.pay")}>
+        <Overlay className="pay-modal-overlay ek-overlay" role="dialog" aria-modal="true"
+                 aria-label={t("kassa.pay")} onEscape={closePayModal}>
           <div className="pay-modal-box ek-dialog">
             <div className="pay-modal-header">
               <div className="pay-modal-title">
@@ -2249,7 +2267,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
               </button>
             </div>
           </div>
-        </div>
+        </Overlay>
       )}
 
       {/* ════ YAKUNLASH: chek chiqmoqda → ✓ ════ */}

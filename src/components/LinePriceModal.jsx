@@ -4,6 +4,7 @@ import { money } from "../config";
 import { quantity as fmtQty } from "../utils";
 import { unitLabel } from "../lib/ek-labels";
 import { NumField } from "./ek/EkFields";
+import Overlay from "./ek/Overlay";
 
 /* ══════════════════════════════════════════════════════════════════════════
    QATOR NARXINI TUSHIRISH (V48)
@@ -35,8 +36,9 @@ export default function LinePriceModal({ item, onClose, onApply }) {
   const discount = ok ? Math.max(0, Math.round((base - num) * qty * 100) / 100) : 0;
 
   return (
-    <div className="pay-modal-overlay ek-overlay" role="dialog" aria-modal="true"
+    <Overlay className="pay-modal-overlay ek-overlay" role="dialog" aria-modal="true"
          aria-label={t("kassa.linePrice")}
+         onEscape={onClose}
          onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="ek-dialog qty-modal">
         <div className="pay-modal-header">
@@ -93,6 +95,6 @@ export default function LinePriceModal({ item, onClose, onApply }) {
           </button>
         </div>
       </div>
-    </div>
+    </Overlay>
   );
 }

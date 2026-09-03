@@ -3,6 +3,7 @@ import { t } from "../lib/ek-i18n";
 import { unitLabel } from "../lib/ek-labels";
 import { money, quantity as fmtQty } from "../utils";
 import { NumField } from "./ek/EkFields";
+import Overlay from "./ek/Overlay";
 
 /* ══════════════════════════════════════════════════════════════════════════
    Miqdor kiritish — FAQAT bo'linadigan birliklar uchun (kg, litr, metr).
@@ -22,6 +23,8 @@ const KEYS = ["7", "8", "9", "4", "5", "6", "1", "2", "3", ".", "0", "⌫"];
 
 export default function QuantityModal({ product, initial, stock: stockProp, onConfirm, onClose }) {
   const decimals = product?.unitDecimals ?? 3;
+  const boxRef = useRef(null);
+
   const [value, setValue] = useState(
     initial != null ? String(Number(initial)) : ""
   );
@@ -82,7 +85,11 @@ export default function QuantityModal({ product, initial, stock: stockProp, onCo
      da turibdi va Esc ni savatni tozalash so'roviga olib ketishi mumkin. */
   useEffect(() => {
     const onKey = (e) => {
-      if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); onClose(); return; }
+      /* ⚠ Faqat ENG USTIDAGI oyna javob beradi. `Overlay` ustki qatlamga
+         `data-ek-top` qo'yadi; bu oyna boshqasining ostida qolgan bo'lsa
+         Enter uning tugmasini bosib yuborardi. Esc ni esa `Overlay` ning
+         o'zi hal qiladi — pastdagi oynalarga o'tkazmaydi. */
+      if (!boxRef.current?.closest("[data-ek-top]")) return;
       if (e.key === "Enter")  { e.preventDefault(); e.stopPropagation(); if (valid) onConfirm(num); return; }
       if (e.key === "Delete") { e.preventDefault(); clearAll(); }
     };
@@ -91,9 +98,9 @@ export default function QuantityModal({ product, initial, stock: stockProp, onCo
   });   // har renderda yangilanadi — `valid`/`num` yangi bo'lishi shart
 
   return (
-    <div className="pay-modal-overlay ek-overlay" role="dialog" aria-modal="true"
-         aria-label={t("kassa.enterQuantity")}>
-      <div className="ek-dialog qty-modal">
+    <Overlay className="pay-modal-overlay ek-overlay" role="dialog" aria-modal="true"
+         aria-label={t("kassa.enterQuantity")} onEscape={onClose}>
+      <div className="ek-dialog qty-modal" ref={boxRef}>
         <div className="pay-modal-header">
           <div className="pay-modal-title">
             <i className="fa-solid fa-scale-balanced" aria-hidden="true" />
@@ -196,6 +203,6 @@ export default function QuantityModal({ product, initial, stock: stockProp, onCo
           </button>
         </div>
       </div>
-    </div>
+    </Overlay>
   );
 }

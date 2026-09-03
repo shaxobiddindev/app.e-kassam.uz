@@ -4,6 +4,7 @@ import { money } from "../config";
 import { paymentEntry } from "../lib/ek-labels";
 import { NumField } from "./ek/EkFields";
 import { Spinner } from "./ek/Loading";
+import Overlay from "./ek/Overlay";
 
 /* ══════════════════════════════════════════════════════════════════════════
    QARZ TO'LOVI — KASSA OYNASI KO'RINISHIDA (V47)
@@ -42,8 +43,9 @@ export default function DebtPayModal({ customer, onClose, onSubmit, paying }) {
   };
 
   return (
-    <div className="pay-modal-overlay ek-overlay" role="dialog" aria-modal="true"
-         aria-label={t("credit.payTitle")}>
+    <Overlay className="pay-modal-overlay ek-overlay" role="dialog" aria-modal="true"
+         aria-label={t("credit.payTitle")}
+         onEscape={onClose}>
       <div className="pay-modal-box ek-dialog">
         <div className="pay-modal-header">
           <div className="pay-modal-title">
@@ -124,6 +126,6 @@ export default function DebtPayModal({ customer, onClose, onSubmit, paying }) {
           </button>
         </div>
       </div>
-    </div>
+    </Overlay>
   );
 }

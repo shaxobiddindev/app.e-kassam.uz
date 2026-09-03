@@ -6,6 +6,7 @@ import CatalogWizard from "../components/CatalogWizard";
 import { Empty, Field, SearchBar, FormGroup } from "../components/ui";
 import { useConfirm } from "../context/ConfirmProvider";
 import { useAuth } from "../hooks/useAuth";
+import { useBadge } from "../context/BadgeProvider";
 import { money, quantity as fmtQty } from "../utils";
 import Select from "../components/ek/Select";
 import { SkeletonTable, Spinner } from "../components/ek/Loading";
@@ -38,6 +39,7 @@ const EMPTY_FORM = {
 
 export default function ProductsPage({ toast }) {
   const { user } = useAuth();
+  const { guard } = useBadge();
   const confirm = useConfirm();
   const [products, setProducts]     = useState([]);
   const [categories, setCategories] = useState([]);
@@ -187,7 +189,12 @@ export default function ProductsPage({ toast }) {
         await productApi.create(body);
         toast.success(t("products.added"));
       } else {
-        await productApi.update(modal.product.id, body);
+        /* ⚠ `guard` — NARX O'ZGARSA server bajik so'raydi (428).
+           Usiz saqlash «Bajikni skanerlang» degan xato bilan tugardi,
+           lekin skanerlash OYNASI ochilmasdi: xabar bor, yo'l yo'q edi.
+           Narx o'zgarmagan tahrirda server bajik so'ramaydi, ya'ni bu
+           o'ram oddiy tahrirni sekinlashtirmaydi. */
+        await guard(() => productApi.update(modal.product.id, body));
         toast.success(t("products.updated"));
       }
       closeModal();
