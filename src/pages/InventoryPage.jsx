@@ -171,6 +171,13 @@ export default function InventoryPage({ toast }) {
   const [qty, setQty]         = useState("");
   const [expiryDate, setExpiryDate] = useState("");
   const [reason, setReason]   = useState("");
+  /* Kirim narxi — PARTIYAGA yoziladi (V53). Bo'sh qoldirilsa tovarning
+     joriy tan narxi olinadi, ya'ni eski xatti-harakat. */
+  const [costPrice, setCostPrice] = useState("");
+  /* Serverdan kelgan narx tavsiyasi — kirimdan keyin ko'rsatiladi.
+     ⚠ Hech narsani MAJBURLAMAYDI: bozor narxi tan narxga har doim ham
+     ergashavermaydi va buni faqat do'kon egasi biladi. */
+  const [advice, setAdvice] = useState(null);
   /* Chiqit turkumi — faqat to'g'irlashda va faqat qoldiq kamayganda. */
   const [woReason, setWoReason] = useState("");
   /* Markirovkali tovar kirimida skanerlangan yorliqlar. Miqdor shu
@@ -396,6 +403,12 @@ export default function InventoryPage({ toast }) {
     setExpiryDate("");
     setReason("");
     setMarkCodes([]);
+    /* ⚠ Tan narx OLDINDAN to'ldirilmaydi. Ilgari to'ldirilsa omborchi
+       uni o'zgartirmasdan o'taverar va har kirim «narx o'zgarmadi»
+       bo'lib qolardi — ya'ni partiya tannarxi hech qachon yangilanmasdi.
+       Bo'sh maydon savol beradi: «bu partiya qanchaga tushdi?» */
+    setCostPrice("");
+    setAdvice(null);
   };
 
   const openCorrect = (batch) => {
@@ -433,13 +446,21 @@ export default function InventoryPage({ toast }) {
     try {
       const amount = marked ? markCodes.length : Number(qty);
       const res = await inventoryApi.addStock(
-        modal.productId, amount, expiryDate || null, reason, marked ? markCodes : null);
+        modal.productId, amount, expiryDate || null, reason,
+        marked ? markCodes : null, costPrice);
       toast.success(res?.message
         || `${fmtQty(amount, unitDecimals(modal.unit))} ${unitLabel(modal.unit)} kirim qilindi`);
       /* ⚠ Muvaffaqiyatdan keyin ham TAFSILOTGA qaytiladi (agar undan
          kelingan bo'lsa): omborchi kiritgan miqdorining partiyalar
          ro'yxatida paydo bo'lganini o'sha zahoti ko'radi. */
-      if (backTo != null) goBack(); else setModal(null);
+      /* ⚠ TAVSIYA BO'LSA OYNA YOPILMAYDI. Aks holda omborchi
+         «tan narx sotuv narxidan oshib ketdi» degan eng muhim xabarni
+         ko'rmay qolardi: toast bir necha soniyada yo'qoladi va uni
+         qaytarib bo'lmasdi. */
+      const adv = res?.data?.priceAdvice || null;
+      if (adv) {
+        setAdvice(adv);
+      } else if (backTo != null) { goBack(); } else { setModal(null); }
       loadData();
     } catch (err) {
       toast.error(err.message);
@@ -1023,6 +1044,21 @@ export default function InventoryPage({ toast }) {
             </div>
           )}
 
+          {/* ⚠ KIRIM NARXI (V53) — PARTIYAGA yoziladi, tovarga emas.
+              Ilgari tan narx faqat tovarda turardi: yangi kirim narxi
+              ko'tarilsa javondagi ESKI arzon tovar ham qimmat tannarxda
+              sotilgan deb hisoblanardi va hisobotdagi foyda haqiqiy emas edi. */}
+          <div className="form-group" style={{ marginTop: 14 }}>
+            <label className="form-label">{t("inv.costPrice")}</label>
+            <NumField kind="money" className="form-input ek-num"
+                      value={costPrice}
+                      onChange={(e) => setCostPrice(e.target.value)}
+                      placeholder={modal.costPrice != null ? String(modal.costPrice) : "0"} />
+            <div className="text-muted" style={{ fontSize: 12, marginTop: 4 }}>
+              {t("inv.costPriceHint")}
+            </div>
+          </div>
+
           {/* Muddat: mahsulot ilgari muddat bilan kiritilgan bo'lsa MAJBURIY
               (yulduzcha + hint yo'q), aks holda ixtiyoriy — muddatsiz
               tovarlar (idish, kanstovar) uchun bo'sh qoldiriladi. */}
@@ -1065,6 +1101,65 @@ export default function InventoryPage({ toast }) {
           onDone={(codes) => { setMarkCodes(codes); setMarkScan(false); }}
           onClose={() => setMarkScan(false)}
         />
+      )}
+
+      {/* ══ NARX TAVSIYASI (V53) ══════════════════════════════════════
+          Kirimda tan narx o'zgargan bo'lsa chiqadi.
+
+          ⚠ HECH NARSANI MAJBURLAMAYDI va hech narsani o'zgartirmaydi:
+          bozor narxi tan narxga har doim ham ergashavermaydi va buni
+          faqat do'kon egasi biladi. Shuning uchun bu yerda «qo'llash»
+          tugmasi ham YO'Q — narx Katalogdan, bajik bilan o'zgaradi.
+
+          ⚠ TOAST BILAN KO'RSATILMAYDI: «sotuv narxi tan narxdan past
+          bo'lib qoldi» degan xabar bir necha soniyada yo'qolib ketsa,
+          omborchi uni ko'rmay qolardi va do'kon har sotuvda zarar
+          ko'raverardi. */}
+      {advice && (
+        <Modal
+          title={t("inv.priceAdvice")}
+          onClose={() => { setAdvice(null); if (backTo != null) goBack(); else setModal(null); }}
+          maxWidth={420}
+          footer={
+            <button className="btn btn-primary btn-sm"
+                    onClick={() => { setAdvice(null); if (backTo != null) goBack(); else setModal(null); }}>
+              <i className="fa-solid fa-check" aria-hidden="true" /> {t("common.ok")}
+            </button>
+          }
+        >
+          {advice.belowCost && (
+            <div className="ek-note ek-note--warn" style={{ marginBottom: 12 }}>
+              <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />
+              <div>{t("inv.adviceBelowCost")}</div>
+            </div>
+          )}
+
+          <div className="inv-detail__row">
+            <span className="inv-detail__label">{t("products.costPrice")}</span>
+            <span className="inv-detail__value ek-num">
+              {money(advice.oldCost)} → <b>{money(advice.newCost)}</b>
+            </span>
+          </div>
+          <div className="inv-detail__row">
+            <span className="inv-detail__label">{t("products.salePrice")}</span>
+            <span className="inv-detail__value ek-num">{money(advice.salePrice)}</span>
+          </div>
+          <div className="inv-detail__row">
+            <span className="inv-detail__label">{t("inv.adviceMargin")}</span>
+            <span className="inv-detail__value ek-num"
+                  style={{ color: advice.belowCost ? "var(--fg-danger)" : undefined }}>
+              {advice.marginPercent == null ? "—" : `${Number(advice.marginPercent).toFixed(1)}%`}
+            </span>
+          </div>
+          {advice.recommendedSale != null && (
+            <div className="inv-detail__row">
+              <span className="inv-detail__label">{t("inv.adviceRecommend")}</span>
+              <span className="inv-detail__value ek-num fw-800 text-blue">
+                {money(advice.recommendedSale)}
+              </span>
+            </div>
+          )}
+        </Modal>
       )}
 
       {/* ── To'g'irlash Modal ── */}

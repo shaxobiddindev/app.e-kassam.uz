@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "test": "node test/escpos.test.mjs && node test/input-format.test.mjs && node test/cart-store.test.mjs && node test/discount.test.mjs && node test/search.test.mjs && node test/badge-guard.test.mjs",
+    "test": "node test/escpos.test.mjs && node test/input-format.test.mjs && node test/cart-store.test.mjs && node test/discount.test.mjs && node test/search.test.mjs && node test/badge-guard.test.mjs && node test/prices.test.mjs",
     "check": "npm run build && node scripts/check-budget.mjs && node scripts/check-a11y.mjs",
     "build": "node node_modules/vite/bin/vite.js build",
     "preview": "vite preview",

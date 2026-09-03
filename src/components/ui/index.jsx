@@ -62,7 +62,16 @@ export function FormGroup({ label, children }) {
  * u bilan bo'yash barcha mavjud kartochkalarning ko'rinishini o'zgartirib
  * yuborardi.
  */
-export function StatCard({ label, value, icon, bg, color, change, hint, valueColor }) {
+/**
+ * `sub` — qiymat ostidagi qo'shimcha qator (V53).
+ *
+ * ⚠ `change` dan farqi: `change` o'sish/tushishni ko'rsatadi va yuqoriga
+ * qaragan strelka bilan keladi. `sub` esa shunchaki IKKINCHI o'lchov:
+ * «500 000 so'm zarar» yonida «12 ta chek» — bular butunlay boshqa
+ * hodisani anglatadi (bitta katta chekmi yoki o'nlab maydami) va
+ * ularsiz raqamdan xulosa chiqarib bo'lmaydi.
+ */
+export function StatCard({ label, value, icon, bg, color, change, hint, valueColor, sub }) {
   return (
     <div className="stat-card">
       <div className="stat-icon" style={{ background: bg, color }}>
@@ -78,6 +87,7 @@ export function StatCard({ label, value, icon, bg, color, change, hint, valueCol
             </span>
           )}
         </div>
+        {sub && <div className="stat-sub">{sub}</div>}
         {change && (
           <div className="stat-change">
             <i className="fa-solid fa-caret-up" /> {change}

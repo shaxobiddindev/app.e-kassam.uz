@@ -322,13 +322,17 @@ export const inventoryApi = {
   // expiryDate ixtiyoriy — bo'sh bo'lsa muddatsiz partiya (idish, kanstovar)
   // `markingCodes` — faqat markirovkali tovarda. Server kirim miqdorini
   // qabul qilingan yorliqlar soniga tenglashtiradi.
-  addStock: (productId, qty, expiryDate, reason, markingCodes = null) =>
+  // `costPrice` — SHU PARTIYANING tan narxi (V53). Bo'sh bo'lsa tovarning
+  // joriy tan narxi olinadi. Server javobida `priceAdvice` qaytishi
+  // mumkin: tan narx o'zgargan bo'lsa narx tavsiyasi.
+  addStock: (productId, qty, expiryDate, reason, markingCodes = null, costPrice = null) =>
     request(`/inventory/product/${productId}/add`, {
       method: "PATCH",
       body: JSON.stringify({
         quantity: Number(qty),
         expiryDate: expiryDate || null,
         reason: reason || null,
+        costPrice: costPrice === "" || costPrice == null ? null : Number(costPrice),
         ...(markingCodes ? { markingCodes } : {}),
       }),
     }),
@@ -644,7 +648,21 @@ export const shopApi = {
   /** Kamomad chegarasi — faqat egasi. */
   setCashTolerance: (value) => request(`/shop/cash-tolerance?value=${value}`, { method: "PATCH" }),
   /** Do'kon bo'yicha eng katta chegirma foizi. */
-  setDiscountLimit: (percent) => request(`/shop/discount-limit?percent=${percent}`, { method: "PATCH" }),
+  /**
+   * Chegirma siyosati (V53): foiz + baza + pul shifti — BITTA so'rovda.
+   *
+   * ⚠ `amount` da manfiy qiymat «shiftni OLIB TASHLA» degani, `null`
+   * esa «tegilmasin». Ikkalasi farqlanmasa shiftni o'chirishning yo'li
+   * qolmasdi.
+   */
+  setDiscountLimit: (percent, basis, amount) => {
+    const q = new URLSearchParams({ percent: String(percent) });
+    if (basis) q.set("basis", basis);
+    if (amount != null) q.set("amount", String(amount));
+    return request(`/shop/discount-limit?${q}`, { method: "PATCH" });
+  },
+  /** Zarariga sotishga ruxsat (V53) — faqat egasi. */
+  setLossSale: (enabled) => request(`/shop/loss-sale?enabled=${enabled}`, { method: "PATCH" }),
   /** Qaytarish muddati (kun). 0 — har safar rahbar tasdig'i. */
   setReturnDays: (days) => request(`/shop/return-days?days=${days}`, { method: "PATCH" }),
   /** Nasiya chegarasi — do'kon standarti. */
@@ -695,10 +713,12 @@ export const shopApi = {
    * olib tashlanadi va do'kon chegarasi ishlaydi — shuning uchun `0` bilan
    * adashtirmaslik kerak: `0` = "bu xodim umuman chegirma bera olmaydi".
    */
-  setUserDiscountLimit: (userId, percent, shopId) => {
+  setUserDiscountLimit: (userId, percent, shopId, amount = null) => {
     const p = new URLSearchParams();
     if (shopId) p.set("shopId", shopId);
     if (percent !== null && percent !== "") p.set("percent", percent);
+    // ⚠ Manfiy `amount` — «shiftni OLIB TASHLA»; yuborilmasa «tegilmasin».
+    if (amount !== null && amount !== "") p.set("amount", amount);
     const q = p.toString();
     return request(`/shop/users/${userId}/discount-limit${q ? `?${q}` : ""}`, { method: "PATCH" });
   },

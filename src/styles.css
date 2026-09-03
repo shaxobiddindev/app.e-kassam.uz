@@ -277,6 +277,17 @@ h1, h2, h3, .page-title, .card-title, .modal-title {
 .stat-hint:hover,
 .stat-hint:focus-visible { opacity: 1; color: var(--blue, #017dca); outline: none; }
 .stat-change     { font-size: 11px; font-weight: 700; margin-top: 4px; color: var(--green); }
+/* Qiymat ostidagi ikkinchi o'lchov — «12 ta chek» kabi (V53). Rangsiz
+   va kichik: u asosiy raqam bilan RAQOBAT QILMASLIGI kerak. */
+.stat-sub        { font-size: 11px; font-weight: 600; margin-top: 3px; color: var(--fg-muted); }
+
+/* Tovar formasidagi marja ko'rsatkichi (V53) — maydon bo'yi bilan bir
+   xil balandlikda, aks holda yonidagi input bilan tekislanmasdi. */
+.ek-margin {
+  display: flex; align-items: center; min-height: 42px;
+  font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums;
+  color: var(--fg-muted);
+}
 
 /* ── TABLE ── */
 .table-wrap      { overflow-x: auto; }

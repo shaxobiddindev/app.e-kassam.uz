@@ -153,7 +153,7 @@ export default function PricesPage({ toast }) {
               {saving ? <Spinner /> : <i className="fa-solid fa-eye" />} {t("price.preview")}
             </button>
             <button className="btn btn-primary btn-sm" onClick={apply}
-                    disabled={saving || !preview || !preview.count}>
+                    disabled={saving || !preview || preview.count <= (preview.blockedCount || 0)}>
               <i className="fa-solid fa-check" /> {t("price.apply")}
             </button>
           </div>
@@ -168,6 +168,17 @@ export default function PricesPage({ toast }) {
               <i className="fa-solid fa-eye text-blue" /> {t("price.preview")} ({preview.count})
             </span>
           </div>
+          {/* ⚠ O'TKAZIB YUBORILGAN TOVARLAR (V53). Yangi narx tan yoki
+              optom narxdan past bo'lib qolsa, o'sha tovar O'ZGARMAYDI.
+              Buni JIMGINA qilish mumkin emas edi: do'kon egasi
+              «hammasiga −20%» deb qo'yib, bir necha tovar o'zgarmaganini
+              faqat oy oxirida bilib qolardi. */}
+          {preview.blockedCount > 0 && (
+            <div className="ek-note ek-note--warn" style={{ margin: "0 16px 12px" }}>
+              <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />
+              <div>{t("price.blockedCount").replace("{n}", preview.blockedCount)}</div>
+            </div>
+          )}
           <div className="table-wrap" style={{ maxHeight: 320, overflowY: "auto" }}>
             <table>
               <thead>
@@ -179,13 +190,20 @@ export default function PricesPage({ toast }) {
               </thead>
               <tbody>
                 {preview.lines.map((l) => (
-                  <tr key={l.productId}>
+                  <tr key={l.productId} style={l.blocked ? { opacity: .65 } : undefined}>
                     <td className="fw-700">{l.productName}</td>
                     <td className="mono text-muted">{money(l.oldPrice)}</td>
-                    <td className="mono fw-800"
-                        style={{ color: Number(l.newPrice) >= Number(l.oldPrice) ? "var(--fg-success)" : "var(--fg-danger)" }}>
-                      {money(l.newPrice)}
-                    </td>
+                    {l.blocked ? (
+                      <td className="text-muted" style={{ fontSize: 12 }}>
+                        <i className="fa-solid fa-ban" aria-hidden="true" />{" "}
+                        {l.blockReason || t("price.blocked")}
+                      </td>
+                    ) : (
+                      <td className="mono fw-800"
+                          style={{ color: Number(l.newPrice) >= Number(l.oldPrice) ? "var(--fg-success)" : "var(--fg-danger)" }}>
+                        {money(l.newPrice)}
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

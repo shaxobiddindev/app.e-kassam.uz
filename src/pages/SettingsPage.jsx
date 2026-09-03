@@ -89,6 +89,14 @@ export default function SettingsPage({ toast }) {
   // Kamomad chegarasi — do'kon profilidan keladi (server saqlaydi).
   const [tolerance, setTolerance] = useState("");
   const [discountLimit, setDiscountLimit] = useState("");
+  /* ── Chegirma siyosati (V53) ────────────────────────────────────────
+     Foiz NIMADAN hisoblanishi va pul birligidagi shift. Ikkalasi
+     bitta so'rov bilan saqlanadi (`/shop/discount-limit`), chunki ular
+     BITTA qoidaning qismlari va alohida saqlanganda oraliq holat
+     yuzaga kelardi: foiz yangi, baza esa hali eski. */
+  const [discountBasis, setDiscountBasis]   = useState("PROFIT");
+  const [discountAmount, setDiscountAmount] = useState("");
+  const [lossSale, setLossSale]             = useState(false);
   const [returnDays, setReturnDays] = useState("");
   /* Nasiya yoqilganmi (V46) — chegaraning o'rniga. */
   const [creditOn, setCreditOn] = useState(false);
@@ -112,6 +120,9 @@ export default function SettingsPage({ toast }) {
       .then((r) => {
         setTolerance(String(r?.data?.cashDiffTolerance ?? 0));
         setDiscountLimit(String(r?.data?.maxDiscountPercent ?? 0));
+        setDiscountBasis(r?.data?.discountBasis || "PROFIT");
+        setDiscountAmount(r?.data?.maxDiscountAmount == null ? "" : String(r.data.maxDiscountAmount));
+        setLossSale(Boolean(r?.data?.allowLossSale));
         setReturnDays(String(r?.data?.returnDays ?? 0));
         setCreditOn(Boolean(r?.data?.creditEnabled));
         setCreditDueMode(r?.data?.creditDueMode || "EACH");
@@ -208,6 +219,32 @@ export default function SettingsPage({ toast }) {
     }
   };
   const saveTolerance = saveField(shopApi.setCashTolerance, tolerance);
+
+  /**
+   * Chegirma siyosati — UCHALA qiymat BIRGA saqlanadi.
+   *
+   * ⚠ Alohida saqlanganda oraliq holat yuzaga kelardi: foiz yangi
+   * qiymatda, baza esa hali eski — ya'ni bir necha soniya davomida
+   * chegara mutlaqo boshqa narsani anglatardi va o'sha paytda o'tgan
+   * chek noto'g'ri tekshirilardi.
+   *
+   * `basisNow` — Select `onChange` da holat hali yangilanmagan bo'ladi.
+   */
+  const saveDiscount = async (basisNow) => {
+    try {
+      await shopApi.setDiscountLimit(
+        Number(discountLimit) || 0,
+        basisNow || discountBasis,
+        /* Bo'sh maydon — «shiftni olib tashla». Server buni manfiy
+           qiymatdan biladi: `null` yuborilsa «tegilmasin» degani
+           bo'lardi va shiftni o'chirishning yo'li qolmasdi. */
+        discountAmount === "" ? -1 : Number(discountAmount) || 0,
+      );
+      toast?.success(t("common.saved"));
+    } catch (err) {
+      toast?.error(err.message);
+    }
+  };
   // Ilova versiyasi — faqat `.exe` da bor (brauzerda `null` qaytadi).
   const [version, setVersion] = useState(null);
   useEffect(() => { appVersion().then(setVersion).catch(() => {}); }, []);
@@ -307,7 +344,52 @@ export default function SettingsPage({ toast }) {
                      wrapStyle={{ width: 160 }}
                      value={discountLimit}
                      onChange={(e) => setDiscountLimit(e.target.value)}
-                     onBlur={saveField(shopApi.setDiscountLimit, discountLimit)} />
+                     onBlur={() => saveDiscount()} />
+            </Row>
+
+            {/* ⚠ FOIZ NIMADAN (V53). Ilgari chegara faqat NARXDAN
+                hisoblanardi va bu noto'g'ri o'lchov edi: 10% chegirma
+                marjasi 50% bo'lgan tovarda arzimas, marjasi 8%
+                bo'lganida esa do'konni ZARARGA olib kirardi — bitta
+                foiz ikki tovarda ikki xil ma'no anglatardi. */}
+            <Row label={t("settings.discountBasis")} hint={t("settings.basisHint")}>
+              <Select
+                value={discountBasis}
+                onChange={(v) => { setDiscountBasis(v); saveDiscount(v); }}
+                variant="field"
+                ariaLabel={t("settings.discountBasis")}
+                options={[
+                  { value: "PROFIT", icon: "fa-arrow-trend-up", label: t("settings.basisProfit") },
+                  { value: "PRICE",  icon: "fa-tag",            label: t("settings.basisPrice") },
+                ]}
+              />
+            </Row>
+
+            <Row label={t("settings.discountAmount")} hint={t("settings.discountAmountHint")}>
+              <Field kind="money" className="form-input ek-num"
+                     wrapStyle={{ width: 180 }}
+                     value={discountAmount}
+                     onChange={(e) => setDiscountAmount(e.target.value)}
+                     onBlur={() => saveDiscount()} />
+            </Row>
+
+            {/* ⚠ ZARARIGA SOTISH (V53). Yoqilganda ham har bunday chek
+                rahbar bajigi bilan o'tadi va hisobotda alohida «zarar»
+                qatorida ko'rinadi — bu sozlama uni YASHIRMAYDI, faqat
+                MUMKIN qiladi. */}
+            <Row label={t("settings.lossSale")} hint={t("settings.lossSaleHint")}>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={lossSale}
+                className={`ek-switch ${lossSale ? "on" : ""}`}
+                onClick={() => saveToggle(shopApi.setLossSale, !lossSale, setLossSale)}
+              >
+                <span className="ek-switch__knob" />
+                <span className="ek-switch__text">
+                  {lossSale ? t("common.yes") : t("common.no")}
+                </span>
+              </button>
             </Row>
             <Row label={t("settings.returnDays")} hint={t("settings.returnDaysHint")}>
               <Field kind="int" className="form-input ek-num"

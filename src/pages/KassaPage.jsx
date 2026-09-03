@@ -1725,7 +1725,15 @@ export default function KassaPage({ toast, refreshLowStock }) {
                           Chegirma qo'yilgan bo'lsa, ESKI narx ustidan
                           chizilgan holda qoladi — kassir ham, mijoz ham
                           nima o'zgarganini ko'rishi kerak. */}
-                      <button type="button" className="cart-item-price ek-num cart-item-price--edit"
+                      {/* ⚠ CHEGIRMA BERILMAYDIGAN TOVAR (V53) — narx
+                          maydoni umuman ochilmaydi. Server ham rad etadi,
+                          lekin kassir buni narxni yozib, tugmani bosib,
+                          xato olgandan KEYIN emas, OLDIN bilishi kerak:
+                          mijoz oldida bunday urinish noqulay. */}
+                      <button type="button"
+                              className={`cart-item-price ek-num${item.discountAllowed === false ? "" : " cart-item-price--edit"}`}
+                              disabled={item.discountAllowed === false}
+                              title={item.discountAllowed === false ? t("products.discountHint") : undefined}
                               onClick={() => setPriceModal(item)}
                               title={t("kassa.linePrice")}
                               aria-label={`${item.name} — ${t("kassa.linePrice")}`}>

@@ -143,7 +143,12 @@ export default function ShopUsersPage({ toast }) {
     setSavingLimit(true);
     try {
       const raw = String(limitFor.value).trim();
-      await guard(() => shopApi.setUserDiscountLimit(limitFor.user.id, raw === "" ? null : raw, branchId));
+      const amt = String(limitFor.amount ?? "").trim();
+      /* ⚠ Bo'sh summa `-1` bo'lib ketadi — bu serverda «shiftni OLIB
+         TASHLA» degani. `null` yuborilsa «tegilmasin» degani bo'lardi
+         va shiftni o'chirishning yo'li qolmasdi. */
+      await guard(() => shopApi.setUserDiscountLimit(
+        limitFor.user.id, raw === "" ? null : raw, branchId, amt === "" ? -1 : amt));
       toast.success(t("staff.saved"));
       setLimitFor(null);
       loadUsers();
@@ -218,7 +223,11 @@ export default function ShopUsersPage({ toast }) {
                     {isOwner && (
                       <td>
                         <button className="btn btn-outline btn-sm"
-                                onClick={() => setLimitFor({ user: u, value: u.maxDiscountPercent ?? "" })}>
+                                onClick={() => setLimitFor({
+                                  user: u,
+                                  value: u.maxDiscountPercent ?? "",
+                                  amount: u.maxDiscountAmount ?? "",
+                                })}>
                           {u.maxDiscountPercent == null
                             ? <span className="text-muted">{t("staff.shopDefault")}</span>
                             : <span className="mono fw-700">{u.maxDiscountPercent}%</span>}
@@ -336,11 +345,26 @@ export default function ShopUsersPage({ toast }) {
           <p className="text-muted" style={{ fontSize: 13, marginTop: -4 }}>
             {t("staff.discountLimitHint")}
           </p>
+
+          {/* ⚠ PUL BIRLIGIDAGI SHIFT (V53) — foiz bilan BIRGA ishlaydi va
+              qat'iyrog'i qo'llanadi. Foiz ulushni saqlaydi, summa esa
+              katta chekdagi MUTLAQ yo'qotishni cheklaydi: «foydaning
+              80% i» 10 mln lik chekda juda katta pul bo'lishi mumkin. */}
+          <FormGroup label={t("settings.discountAmount")}>
+            <Field kind="money"
+                   className="form-input ek-num"
+                   placeholder={t("staff.shopDefault")}
+                   value={limitFor.amount}
+                   onChange={(e) => setLimitFor({ ...limitFor, amount: e.target.value })} />
+          </FormGroup>
+          <p className="text-muted" style={{ fontSize: 13, marginTop: -4 }}>
+            {t("settings.discountAmountHint")}
+          </p>
           {/* Bo'shatish alohida tugma: maydonni tozalash ham shu ishni
               qiladi, lekin "0 yozsam bo'ladimi?" degan savol tug'ilmasin. */}
-          {limitFor.value !== "" && (
+          {(limitFor.value !== "" || limitFor.amount !== "") && (
             <button className="btn btn-outline btn-sm" style={{ marginTop: 8 }}
-                    onClick={() => setLimitFor({ ...limitFor, value: "" })}>
+                    onClick={() => setLimitFor({ ...limitFor, value: "", amount: "" })}>
               <i className="fa-solid fa-rotate-left" /> {t("staff.useShopDefault")}
             </button>
           )}

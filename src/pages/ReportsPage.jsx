@@ -27,6 +27,16 @@ const STATS_CONFIG = [
      Usiz egasi «foyda tushib ketibdi» deb, sababini qidirib yurardi. */
   { key: "inventoryLoss", label: t("rpt.inventoryLoss"),  icon: "fa-trash-can",       bg: "#fff7ed",              color: "#f97316", hint: t("rpt.inventoryLossHint") },
   { key: "netProfit",     label: t("rpt.netProfit"),      icon: "fa-wallet",          bg: "#eff6ff",              color: "#3b82f6", hint: t("rpt.netProfitHint") },
+  /* ⚠ ZARARIGA SOTISH (V53) — SOF FOYDADAN KEYIN, chunki u undan
+     AYIRILMAYDI: zarar allaqachon tannarx orqali yalpi foydaga
+     tushgan. Ombor yo'qotishi bilan yonma-yon qo'yilsa, ikkalasi ham
+     ayiriladigan raqam bo'lib ko'rinardi va egasi ikki karra
+     yo'qotgandek hisoblardi.
+
+     Alohida qator kerak, chunki foyda tushganda egasi «sotuv
+     kamaydimi, tannarx oshdimi yoki zarariga sotdikmi?» degan
+     savolga javob topa olmasdi. */
+  { key: "lossAmount",    label: t("report.lossAmount"),  icon: "fa-arrow-trend-down", bg: "#fef2f2",             color: "#dc2626", hint: t("report.lossHint"), danger: true },
   { key: "totalSales",    label: t("dash.salesCount"),    icon: "fa-cart-shopping",   bg: "#fffbeb",              color: "#f59e0b" },
   { key: "totalCost",     label: t("dash.costPrice"),     icon: "fa-coins",           bg: "#fdf4ff",              color: "#9333ea" },
 ];
@@ -152,13 +162,24 @@ export default function ReportsPage({ toast }) {
                 key={cfg.key}
                 label={cfg.label}
                 value={cfg.key === "totalSales" ? (data[cfg.key] || 0) : money(data[cfg.key])}
+                /* Zararda summadan tashqari CHEK SONI ham kerak: 500 000
+                   bitta katta chekdanmi yoki 50 ta mayda chekdanmi —
+                   bular butunlay boshqa hodisa va boshqa qaror talab
+                   qiladi. */
+                sub={cfg.key === "lossAmount" && data.lossSales
+                  ? `${data.lossSales} ${t("report.lossSales")}`
+                  : undefined}
                 icon={cfg.icon}
                 bg={cfg.bg}
                 color={cfg.color}
                 /* Sof foyda MANFIY bo'lishi mumkin va aynan shunda ko'zga
                    tashlanishi kerak — oy zarar bilan ketayotgani eng muhim
                    xabar. */
-                valueColor={cfg.key === "netProfit" && Number(data.netProfit) < 0 ? "var(--fg-danger)" : undefined}
+                valueColor={
+                  (cfg.key === "netProfit" && Number(data.netProfit) < 0)
+                  || (cfg.danger && Number(data[cfg.key]) > 0)
+                    ? "var(--fg-danger)" : undefined
+                }
                 hint={cfg.hint}
               />
             ))}

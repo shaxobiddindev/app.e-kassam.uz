@@ -17,6 +17,7 @@ import {
   UNIT, PRODUCT_TYPE, MARKING_GROUP, options, unitLabel, unitDecimals,
 } from "../lib/ek-labels";
 import { NumField, BarcodeField } from "../components/ek/EkFields";
+import { checkPrices, marginPercent, VIOLATION } from "../lib/ek-prices";
 
 /* ══════════════════════════════════════════════════════════════════════════
    Tovarlar.
@@ -29,7 +30,8 @@ import { NumField, BarcodeField } from "../components/ek/EkFields";
    ══════════════════════════════════════════════════════════════════════════ */
 
 const EMPTY_FORM = {
-  name: "", barcode: "", sku: "", plu: "", salePrice: "", costPrice: "", categoryId: "",
+  name: "", barcode: "", sku: "", plu: "", salePrice: "", costPrice: "",
+  wholesalePrice: "", discountAllowed: true, categoryId: "",
   type: "GOODS", unit: "DONA", minQuantity: "",
   mxikCode: "", packageCode: "", vatRate: "", priceIncludesVat: true,
   markingGroup: "", imageId: null, imageUrl: null, color: "", favorite: false,
@@ -50,6 +52,26 @@ export default function ProductsPage({ toast }) {
   const [search, setSearch]         = useState("");
   const [modal, setModal]           = useState(null); // null | "add" | { type:"edit", product }
   const [form, setForm]             = useState(EMPTY_FORM);
+
+  /* ── Narx tartibi va marja (V53) ────────────────────────────────────
+     ⚠ Bu HIMOYA EMAS — server baribir tekshiradi. Bu yerdagisi
+     qulaylik: do'kon egasi xatoni saqlash tugmasini bosishdan OLDIN
+     ko'radi. Qoida serverdagining nusxasi (`lib/ek-prices.js`). */
+  const priceWarning = (() => {
+    const v = checkPrices(form.costPrice, form.wholesalePrice, form.salePrice);
+    if (!v) return null;
+    return {
+      [VIOLATION.WHOLESALE_BELOW_COST]: t("price.wholesaleBelowCost"),
+      [VIOLATION.WHOLESALE_ABOVE_SALE]: t("price.wholesaleAboveSale"),
+      [VIOLATION.SALE_BELOW_COST]:      t("price.saleBelowCost"),
+    }[v];
+  })();
+
+  const marginText = (() => {
+    const m = marginPercent(form.costPrice, form.salePrice);
+    if (m == null) return "—";
+    return `${m.toFixed(1)}%`;
+  })();
   const [saving, setSaving]         = useState(false);
   const [uploading, setUploading]   = useState(false);
   const [branchId, setBranchId]     = useState(null);
@@ -96,6 +118,8 @@ export default function ProductsPage({ toast }) {
       plu: p.plu || "",
       salePrice: p.salePrice ?? "",
       costPrice: p.costPrice ?? "",
+      wholesalePrice: p.wholesalePrice ?? "",
+      discountAllowed: p.discountAllowed !== false,
       // ⚠ `categoryId` javobda ILGARI YO'Q EDI va bu yerda doim `undefined`
       // bo'lardi: tahrirlash oynasi kategoriyani har safar bo'sh ko'rsatib,
       // saqlanganda uni jimgina yo'qotardi.
@@ -168,6 +192,13 @@ export default function ProductsPage({ toast }) {
         plu: form.plu || "",
         salePrice: num(form.salePrice),
         costPrice: num(form.costPrice),
+        /* ⚠ Bo'sh optom narx `0` emas, `null` bo'lib ketishi kerak:
+           `0` tannarxdan past bo'lib qolar va har saqlashda «optom
+           tannarxdan past» xatosi chiqaverardi. Server ham shuni
+           qiladi (`zeroToNull`), lekin xatoni SO'RAMASDAN OLDIN
+           to'xtatgan yaxshi. */
+        wholesalePrice: num(form.wholesalePrice) || null,
+        discountAllowed: form.discountAllowed,
         categoryId: form.categoryId || null,
         type: form.type,
         unit: form.unit,
@@ -550,6 +581,27 @@ export default function ProductsPage({ toast }) {
               </FormGroup>
             </div>
 
+            {/* ⚠ OPTOM NARX (V53) — uchinchi narx. Tartib QAT'IY:
+                tan ≤ optom ≤ sotuv. Server ham tekshiradi; bu yerdagi
+                ogohlantirish faqat QULAYLIK — xatoni saqlashdan oldin
+                ko'rsatadi, himoya emas. */}
+            <div className="grid-2">
+              <FormGroup label={t("products.wholesalePrice")}>
+                <Field className="form-input ek-num" kind="money" value={form.wholesalePrice}
+                       onChange={setField("wholesalePrice")} placeholder="0" />
+                <div className="form-hint">{t("products.wholesaleHint")}</div>
+              </FormGroup>
+              <FormGroup label={t("products.margin")}>
+                <div className="ek-margin">{marginText}</div>
+              </FormGroup>
+            </div>
+            {priceWarning && (
+              <div className="ek-note ek-note--warn" style={{ marginTop: 4 }}>
+                <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />
+                <div>{priceWarning}</div>
+              </div>
+            )}
+
             <div className="grid-2">
               <FormGroup label={t("products.vatRate")}>
                 <Field className="form-input ek-num" kind="percent" value={form.vatRate} onChange={setField("vatRate")} placeholder="12" />
@@ -648,6 +700,16 @@ export default function ProductsPage({ toast }) {
               <input type="checkbox" checked={form.favorite}
                      onChange={(e) => setForm((f) => ({ ...f, favorite: e.target.checked }))} />
               <i className="fa-solid fa-star" /> {t("products.favorite")}
+            </label>
+            {/* ⚠ CHEGIRMA BERILADIMI (V53). Bu CHEGARA emas, TAQIQ:
+                o'chirilgan tovarga chegirma umuman berilmaydi va uni
+                rahbar bajigi ham ochmaydi. Shartnoma yoki davlat
+                narxidagi tovarlar uchun (dori, sigaret, kommunal
+                karta) — chegirma u yerda hujjatni buzardi. */}
+            <label className="cat-chip" style={{ marginTop: 10 }} title={t("products.discountHint")}>
+              <input type="checkbox" checked={form.discountAllowed}
+                     onChange={(e) => setForm((f) => ({ ...f, discountAllowed: e.target.checked }))} />
+              <i className="fa-solid fa-percent" /> {t("products.discountAllowed")}
             </label>
             {/* ⚠ OMBORDAN BERILADI (V48). Belgi TOVARDA, do'konda emas:
                 bitta do'konda ham javondagi mayda-chuyda (kassir o'zi
