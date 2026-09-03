@@ -61,10 +61,15 @@ const payItem = (key) => {
   const p = PAYMENT_TYPE[key];
   return { key, label: p.label, icon: p.icon, color: p.color, kbd: PAY_KBD[key] };
 };
-/* ⚠ Nasiya ro'yxatning OXIRIDA: u eng kam ishlatiladigan va eng
-   e'tibor talab qiladigan tur. Boshida tursa kassir tasodifan bosib,
-   pulni olmasdan tovar berib yuborardi. */
-const PAY_METHODS  = ["CASH", "CARD", "CLICK", "PAYME", "MIXED", "CREDIT"].map(payItem);
+/* ⚠ NASIYA BU RO'YXATDA YO'Q (V53). U «Aralash» ichiga ko'chdi va
+   ikkita yo'l qolishi chalkashlik edi: bitta ish uchun ikki tugma
+   bo'lsa, kassir qaysi birini bosishini o'ylab qoladi va ikkalasi
+   turlicha ishlaydi deb gumon qiladi.
+
+   Yalang'och nasiya (butun chek qarzga) hamon bir necha bosishda:
+   «Aralash» → «Nasiya» chipi — chip bosilganda tegilmagan yagona
+   qator ALMASHTIRILADI, ya'ni butun summa qarzga tushadi (`addPart`). */
+const PAY_METHODS  = ["CASH", "CARD", "CLICK", "PAYME", "MIXED"].map(payItem);
 /* ⚠ NASIYA ham ikkinchi tur bo'la oladi: «600 000 hozir berdi, 400 000
    nasiya» — do'konda eng ko'p uchraydigan holat va ilgari uni yozishning
    iloji yo'q edi (kassir yo hammasini nasiyaga yozardi, yo mijozni
@@ -1221,11 +1226,23 @@ export default function KassaPage({ toast, refreshLowStock }) {
   const setPart = (type, amount) =>
     setSplit((prev) => prev.map((p) => (p.type === type ? { ...p, amount } : p)));
 
-  /** Usul qo'shiladi va QOLGAN SUMMA bilan to'ladi — kassir yozmaydi. */
+  /**
+   * Usul qo'shiladi va QOLGAN SUMMA bilan to'ladi — kassir yozmaydi.
+   *
+   * ⚠ TEGILMAGAN YAGONA QATOR ALMASHTIRILADI. Oyna «Naqd — butun
+   * summa» bilan ochiladi; kassir hech narsa yozmasdan «Nasiya» ni
+   * bossa, qoldiq nol bo'lgani uchun unga NOL summali qator
+   * qo'shilardi — ya'ni foydasiz. Aslida u «hammasi nasiyaga»
+   * demoqchi. Nasiya tugmasi alohida turgan paytda bu holat
+   * bo'lmasdi; endi u shu yerda hal qilinadi. */
   const addPart = (type) =>
-    setSplit((prev) => prev.some((p) => p.type === type)
-      ? prev
-      : [...prev, { type, amount: String(Math.max(0, total - prev.reduce((a, p) => a + (Number(p.amount) || 0), 0))) }]);
+    setSplit((prev) => {
+      if (prev.some((p) => p.type === type)) return prev;
+      const untouched = prev.length === 1 && (Number(prev[0].amount) || 0) === total;
+      if (untouched) return [{ type, amount: String(total) }];
+      const rest = total - prev.reduce((a, p) => a + (Number(p.amount) || 0), 0);
+      return [...prev, { type, amount: String(Math.max(0, rest)) }];
+    });
 
   const dropPart = (type) => setSplit((prev) => prev.filter((p) => p.type !== type));
 
@@ -1251,10 +1268,11 @@ export default function KassaPage({ toast, refreshLowStock }) {
   /* Nasiyaga yoziladigan qism — yalang'och nasiyada butun chek, aralash
      to'lovda esa NASIYA qatorining summasi (nechanchi qator ekani
      muhim emas: ilgari u faqat «ikkinchi» bo'la olardi). */
-  const creditPart  = payType === "CREDIT" ? total
-                    : (payType === "MIXED"
-                        ? (Number(split.find((p) => p.type === "CREDIT")?.amount) || 0)
-                        : 0);
+  /* ⚠ Nasiya endi FAQAT aralash to'lov qatorlarida bo'ladi: alohida
+     «Nasiya» tugmasi olib tashlangan (yuqoridagi `PAY_METHODS`). */
+  const creditPart  = payType === "MIXED"
+                    ? (Number(split.find((p) => p.type === "CREDIT")?.amount) || 0)
+                    : 0;
   /* Nasiya — MIJOZGA beriladigan qarz. Kimga berilganini bilmasdan yozib
      bo'lmaydi: server ham rad etadi, lekin kassir buni to'lov tugmasini
      bosishdan OLDIN ko'rishi kerak. */
@@ -1989,13 +2007,29 @@ export default function KassaPage({ toast, refreshLowStock }) {
                   block
                   ariaLabel={t("kassa.customer")}
                   placeholder={t("kassa.pickCustomer")}
+                  /* ⚠ QIDIRUV MAJBURIY YOQILGAN, avtomatik emas: mijozlar
+                     soni bugun oltita bo'lsa ham ertaga yuzta bo'ladi va
+                     kassir o'sha kuni ro'yxatni aylantirib qidirishga
+                     majbur qolardi. Qidiruv kassa qidiruvi bilan bir xil
+                     algoritmda ishlaydi (`lib/ek-search.js`). */
+                  searchable
+                  searchPlaceholder={t("kassa.searchCustomer")}
+                  /* ✕ — tanlangan mijozni olib tashlash. Ilgari buning
+                     uchun ro'yxatni ochib «Mijozsiz» ni topish kerak edi. */
+                  clearable
+                  clearLabel={t("kassa.noCustomer")}
                   value={customer?.id ? String(customer.id) : ""}
                   onChange={(v) => setCustomer(customers.find((c) => String(c.id) === v) || null)}
                   options={[
                     { value: "", label: t("kassa.noCustomer"), icon: "fa-user-slash" },
                     ...customers.map((c) => ({
                       value: String(c.id),
-                      label: `${c.fullName} · ${c.phone}`,
+                      label: c.fullName,
+                      /* ⚠ Telefon YORLIQQA QO'SHILMAYDI, o'z ustunida
+                         turadi: ismlar uzunligi turlicha bo'lgani uchun
+                         raqamlar har qatorda boshqa joydan boshlanar va
+                         ro'yxatni ko'z bilan kuzatib o'qib bo'lmasdi. */
+                      hint: c.phone,
                       icon: "fa-user",
                     })),
                   ]}

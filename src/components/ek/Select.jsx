@@ -1,4 +1,5 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { rankItems } from "../../lib/ek-search";
 
 /* ==========================================================================
    e-Kassam — SELECT
@@ -36,6 +37,24 @@ export default function Select({
   id,
   className = "",
   emptyText = "Variant yo'q",
+
+  /**
+   * QIDIRUV maydoni ro'yxat tepasida.
+   *
+   * ⚠ Standarti — `null`, ya'ni AVTOMATIK: bandlar soni 8 dan oshsa
+   * qidiruv o'zi paydo bo'ladi. Sabab: uchta variantli selektda
+   * qidiruv ortiqcha bosqich, yuz mijozli ro'yxatda esa usiz
+   * ishlab bo'lmaydi — va bu qarorni har chaqiruv joyida qo'lda
+   * takrorlash unutilishi aniq edi.
+   *
+   * Qidiruv KASSADAGI algoritm bilan ishlaydi (`lib/ek-search.js`):
+   * kirillcha yozuv, apostrof va xato yozilgan harf ham topiladi.
+   */
+  searchable = null,
+  searchPlaceholder = "Qidirish…",
+  /** Tanlovni bekor qilish — maydon ichidagi ✕ tugmasi. */
+  clearable = false,
+  clearLabel = "Tozalash",
 }) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);   // klaviatura bilan yurilgan band
@@ -49,9 +68,26 @@ export default function Select({
 
   const autoId = useId();
   const listId = `${id || autoId}-list`;
+  const [query, setQuery] = useState("");
+  const searchRef = useRef(null);
 
-  const selectedIndex = options.findIndex((o) => String(o.value) === String(value));
-  const selected = selectedIndex >= 0 ? options[selectedIndex] : null;
+  /* Qidiruv KO'RSATILADIMI — aniq aytilmagan bo'lsa bandlar soniga qarab. */
+  const showSearch = searchable == null ? options.length > 8 : !!searchable;
+
+  /* ⚠ `useMemo` — reyting har bosishda emas, so'rov O'ZGARGANDA
+     hisoblanadi. Usiz yuz bandli ro'yxatda har harakat (sichqoncha
+     ustiga kelish ham) butun ro'yxatni qaytadan saralardi. */
+  const shown = useMemo(
+    () => (showSearch && query
+      ? rankItems(options, query, { texts: (o) => [o.label, o.hint] })
+      : options),
+    [options, query, showSearch],
+  );
+
+  /* ⚠ Tanlangan band QIDIRILMAGAN ro'yxatdan izlanadi: u so'rovga mos
+     kelmasa ham maydonda ko'rinib turishi kerak. */
+  const selected = options.find((o) => String(o.value) === String(value)) || null;
+  const selectedIndex = shown.findIndex((o) => String(o.value) === String(value));
 
   /* ── Ochilganda: tanlangan bandga turamiz va uni ko'rinishga suramiz ──── */
   useLayoutEffect(() => {
@@ -87,11 +123,24 @@ export default function Select({
 
   const close = ({ focusBtn = true } = {}) => {
     setOpen(false);
+    /* ⚠ So'rov YOPILGANDA tozalanadi. Ilgari saqlansa, keyingi safar
+       ro'yxat filtrlangan holda ochilar va foydalanuvchi «bandlar
+       yo'qolib qolibdi» deb o'ylardi. */
+    setQuery("");
     if (focusBtn) btnRef.current?.focus();
   };
 
+  /* Ochilishi bilan qidiruvga fokus — foydalanuvchi darhol yoza oladi.
+     ⚠ Sensorli ekranda ATAYLAB emas: u yerda ekran klaviaturasi
+     o'zi ochilib, ro'yxatning yarmini yopib qo'yardi. */
+  useEffect(() => {
+    if (!open || !showSearch) return;
+    if (window.matchMedia?.("(pointer: coarse)").matches) return;
+    searchRef.current?.focus();
+  }, [open, showSearch]);
+
   const pick = (i) => {
-    const opt = options[i];
+    const opt = shown[i];
     if (!opt || opt.disabled) return;
     onChange?.(opt.value, opt);
     close();
@@ -99,7 +148,7 @@ export default function Select({
 
   /* ── Klaviatura ───────────────────────────────────────────────────────── */
   const onKeyDown = (e) => {
-    const last = options.length - 1;
+    const last = shown.length - 1;
 
     if (!open) {
       if (["ArrowDown", "ArrowUp", "Enter", " "].includes(e.key)) {
@@ -127,7 +176,7 @@ export default function Select({
       t.text = now - t.at > 800 ? e.key : t.text + e.key;
       t.at = now;
       const q = t.text.toLowerCase();
-      const found = options.findIndex((o) => String(o.label).toLowerCase().startsWith(q));
+      const found = shown.findIndex((o) => String(o.label).toLowerCase().startsWith(q));
       if (found >= 0) setActive(found);
     }
   };
@@ -167,6 +216,29 @@ export default function Select({
         </span>
       </button>
 
+      {/* ⚠ ✕ TUGMASI — tugmaning ICHIDA emas, YONIDA joylashgan.
+          Ichida bo'lsa u `<button>` ichidagi `<button>` bo'lib qolardi:
+          HTML da bunday ichma-ichlik taqiqlangan va brauzer uni o'zi
+          ajratib tashlab, ✕ ni selektdan TASHQARIGA chiqarib
+          yuborardi. Shuning uchun u mutlaq joylashuvda ustiga
+          qo'yiladi (`position: absolute`, CSS da). */}
+      {/* ⚠ `selected` YETMAYDI. Ro'yxatda qiymati BO'SH band bo'lishi
+          mumkin («Mijozsiz») va u ham «tanlangan» deb hisoblanardi —
+          ✕ tozalagandan keyin ham ekranda qolib turardi va uni yana
+          bosish mumkin edi. Tozalash faqat HAQIQIY qiymat bor
+          paytda ma'noga ega. */}
+      {clearable && selected && value !== "" && value != null && !disabled && (
+        <button
+          type="button"
+          className="ek-select__clear"
+          title={clearLabel}
+          aria-label={clearLabel}
+          onClick={(e) => { e.stopPropagation(); onChange?.("", null); }}
+        >
+          <i className="fa-solid fa-xmark" aria-hidden="true" />
+        </button>
+      )}
+
       {open && (
         <div
           className="ek-select__list"
@@ -176,8 +248,28 @@ export default function Select({
           aria-label={ariaLabel}
           tabIndex={-1}
         >
-          {options.length === 0 && <div className="ek-select__empty">{emptyText}</div>}
-          {options.map((o, i) => (
+          {showSearch && (
+            <div className="ek-select__search">
+              <i className="fa-solid fa-magnifying-glass" aria-hidden="true" />
+              <input
+                ref={searchRef}
+                type="text"
+                value={query}
+                placeholder={searchPlaceholder}
+                aria-label={searchPlaceholder}
+                onChange={(e) => { setQuery(e.target.value); setActive(0); }}
+                /* ⚠ Klaviatura BOSHQARUVI tugmadagi bilan bir xil
+                   ishlovchiga boradi: ↑ ↓ Enter Esc qidiruv maydonida
+                   ham ishlashi kerak, aks holda foydalanuvchi yozib
+                   bo'lgach sichqonchaga o'tishga majbur bo'lardi. */
+                onKeyDown={onKeyDown}
+              />
+            </div>
+          )}
+          {shown.length === 0 && (
+            <div className="ek-select__empty">{query ? searchPlaceholder : emptyText}</div>
+          )}
+          {shown.map((o, i) => (
             <button
               key={o.value ?? i}
               type="button"
@@ -195,6 +287,13 @@ export default function Select({
             >
               {o.icon && <i className={`fa-solid ${o.icon} ek-select__opt-icon`} aria-hidden="true" />}
               <span className="ek-select__opt-label">{o.label}</span>
+              {/* ⚠ `hint` — O'Z USTUNIDA (telefon, kod, summa).
+                  Ilgari u yorliqqa qo'shib yuborilardi («Ali · +998…»)
+                  va ismlar uzunligi turlicha bo'lgani uchun raqamlar
+                  har qatorda boshqa joydan boshlanardi — ro'yxatni
+                  ko'z bilan kuzatib o'qib bo'lmasdi. Endi u o'ngga
+                  tekislanadi va raqamlar bitta ustunda turadi. */}
+              {o.hint && <span className="ek-select__opt-hint">{o.hint}</span>}
               <i className="fa-solid fa-check ek-select__opt-check" aria-hidden="true" />
             </button>
           ))}

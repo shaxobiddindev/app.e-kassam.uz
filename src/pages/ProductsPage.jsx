@@ -18,6 +18,7 @@ import {
 } from "../lib/ek-labels";
 import { NumField, BarcodeField } from "../components/ek/EkFields";
 import { checkPrices, marginPercent, VIOLATION } from "../lib/ek-prices";
+import { rankItems, PRODUCT_SPEC } from "../lib/ek-search";
 
 /* ══════════════════════════════════════════════════════════════════════════
    Tovarlar.
@@ -254,12 +255,12 @@ export default function ProductsPage({ toast }) {
     }
   };
 
-  // ── Filter ─────────────────────────────────────────────────
-  const filtered = products.filter((p) =>
-    p.name?.toLowerCase().includes(search.toLowerCase()) ||
-    (p.barcode || "").includes(search) ||
-    (p.sku || "").toLowerCase().includes(search.toLowerCase())
-  );
+  /* ── Qidiruv ────────────────────────────────────────────────
+     ⚠ KASSADAGI BILAN AYNAN BIR XIL (`PRODUCT_SPEC`). Ilgari bu yerda
+     oddiy `includes` turardi va Katalog kassadan boshqacha javob
+     berardi: kassada topilgan tovar Katalogda topilmasdi va do'kon
+     egasi «tovar yo'qolib qoldi» deb o'ylardi. */
+  const filtered = rankItems(products, search, PRODUCT_SPEC);
 
   const setField = (key) => (e) => setForm((prev) => ({ ...prev, [key]: e.target.value }));
   const setValue = (key) => (v) => setForm((prev) => ({ ...prev, [key]: v }));

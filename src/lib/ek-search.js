@@ -101,12 +101,7 @@ export function trigrams(s) {
 
 /** Jaccard o'xshashligi: umumiy bo'laklar / jami bo'laklar (0…1). */
 export function trigramSimilarity(a, b) {
-  const A = trigrams(a);
-  const B = trigrams(b);
-  if (A.size === 0 || B.size === 0) return 0;
-  let shared = 0;
-  for (const g of A) if (B.has(g)) shared++;
-  return shared / (A.size + B.size - shared);
+  return jaccard(trigrams(a), trigrams(b));
 }
 
 /**
@@ -124,12 +119,25 @@ export function trigramSimilarity(a, b) {
  * matnning eng o'xshash SO'ZI bilan taqqoslanadi. Server ham shu
  * funksiyani ishlatadi — ikki tomon bir xil hisoblashi shart.
  */
-export function wordSimilarity(query, text) {
-  let best = trigramSimilarity(query, text);        // butun nom — ko'p so'zli so'rov uchun
+export function wordSimilarity(query, text, queryGrams) {
+  /* ⚠ `queryGrams` — TAYYOR to'plam (ixtiyoriy). Usiz so'rovning
+     trigrammlari HAR TOVAR uchun qaytadan qurilardi: 5000 tovarli
+     katalogda bu 5000 marta ortiqcha ish va qidiruv sezilarli
+     sekinlashardi. Natijaga ta'sir qilmaydi — bir xil to'plam. */
+  const Q = queryGrams || trigrams(query);
+  let best = jaccard(Q, trigrams(text));            // butun nom — ko'p so'zli so'rov uchun
   for (const w of normSearch(text).split(" ")) {
-    if (w) best = Math.max(best, trigramSimilarity(query, w));
+    if (w) best = Math.max(best, jaccard(Q, trigrams(w)));
   }
   return best;
+}
+
+/** Ikki tayyor to'plam orasidagi Jaccard — `trigramSimilarity` ning yadrosi. */
+function jaccard(A, B) {
+  if (A.size === 0 || B.size === 0) return 0;
+  let shared = 0;
+  for (const g of A) if (B.has(g)) shared++;
+  return shared / (A.size + B.size - shared);
 }
 
 /* ── Reyting ─────────────────────────────────────────────────────────── */
@@ -172,18 +180,14 @@ export const FUZZY_MIN = 0.3;
  * tovardan qisqarog'i odatda aynan qidirilgani bo'ladi: «Suv 1L»
  * «Ichimlik suvi gazsiz 1.5L» dan oldin turishi kerak.
  */
-export function scoreProduct(product, query) {
+export function scoreText(query, text, queryGrams) {
   const q = normSearch(query);
-  if (!q) return 0;
+  const name = normSearch(text);
+  if (!q || !name) return 0;
 
-  const raw = String(query).trim();
-  if (raw && (product.barcode === raw || product.sku === raw || product.plu === raw)) {
-    return RANK.CODE_EXACT;
-  }
-
-  const name = normSearch(product.name);
-  if (!name) return 0;
-
+  /* ⚠ UZUN NOM JARIMA OLADI. Bir xil bosqichdagi ikki tovardan
+     qisqarog'i odatda aynan qidirilgani bo'ladi: «Suv 1L» «Ichimlik
+     suvi gazsiz 1.5L» dan oldin turishi kerak. */
   const penalty = name.length / 1000;
   let base = 0;
 
@@ -197,12 +201,121 @@ export function scoreProduct(product, query) {
     else {
       /* Oxirgi imkoniyat — o'xshashlik. Xato yozilgan yoki apostrofi
          boshqacha nom aynan shu yerda topiladi. */
-      const sim = wordSimilarity(q, name);
+      const sim = wordSimilarity(q, name, queryGrams);
       if (sim < FUZZY_MIN) return 0;
       base = RANK.FUZZY + sim * 300;
     }
   }
   return base - penalty;
+}
+
+/**
+ * RAQAMLI maydon: telefon, chek raqami, hisob raqami.
+ *
+ * ⚠ NEGA MATNDAN ALOHIDA. Telefonni hech kim to'liq yozmaydi — odam
+ * OXIRGI raqamlarni eslaydi («…45 67») yoki operator kodini
+ * («90»). Matn qoidasi bunda ishlamaydi: «4567» so'rovi
+ * «+998901234567» ning na boshi, na so'zi bilan mos tushadi va
+ * trigramm o'xshashligi ham chegaradan o'tmaydi.
+ *
+ * Shuning uchun ikkala tomondan ham RAQAM BO'LMAGAN belgilar
+ * tashlanadi va bo'lak bo'yicha qidiriladi.
+ */
+export function scoreDigits(query, value) {
+  const q = String(query ?? "").replace(/\D/g, "");
+  const v = String(value ?? "").replace(/\D/g, "");
+  if (!q || !v) return 0;
+
+  if (v === q) return RANK.CODE_EXACT;
+  /* Boshi ham, OXIRI ham bir xil vaznda: «90» bilan boshlanadigan
+     raqam ham, «4567» bilan tugaydigani ham bir xil darajada
+     qidirilgan bo'lishi mumkin. */
+  if (v.startsWith(q) || v.endsWith(q)) return RANK.NAME_PREFIX;
+  if (v.includes(q)) return RANK.CONTAINS;
+  return 0;
+}
+
+/**
+ * UMUMIY BAHOLASH — istalgan yozuv uchun.
+ *
+ * ═══ NEGA UMUMIY ═══════════════════════════════════════════════════════
+ *
+ * Ilgari tizimda OLTITA alohida qidiruv bor edi va har biri
+ * `nom.toLowerCase().includes(so'rov)` deb yozilgan edi. Bu — eng sodda
+ * va eng yomon qidiruv: u apostrofni ham, kirillcha yozuvni ham, xato
+ * yozilgan harfni ham topa olmasdi. Kassada bu tuzatilgan edi, qolgan
+ * beshta sahifada esa eski holicha qolgan.
+ *
+ * Endi qoida BITTA joyda. Har sahifa faqat QAYSI MAYDONLAR qidirilishini
+ * aytadi:
+ *
+ *     rankItems(customers, q, {
+ *       texts:  (c) => [c.fullName],
+ *       digits: (c) => [c.phone],
+ *     })
+ *
+ * @param spec.codes  aynan mos kelishi kerak (barkod, artikul)
+ * @param spec.digits raqamli maydon — bo'lak bo'yicha ham topiladi
+ * @param spec.texts  nomlar — to'liq reyting bosqichlari
+ */
+export function scoreItem(item, query, spec, queryGrams) {
+  const raw = String(query ?? "").trim();
+  if (!raw) return 0;
+
+  /* ⚠ KODLAR BIRINCHI va AYNAN mos kelishi shart. Skanerlangan barkod
+     nomdan har doim ustun turishi kerak — aks holda «Coca-Cola 1L»
+     so'rovi bilan skanerlangan kod bir xil vaznda bo'lib qolardi. */
+  for (const code of spec.codes?.(item) || []) {
+    if (code && String(code) === raw) return RANK.CODE_EXACT;
+  }
+
+  let best = 0;
+  for (const value of spec.digits?.(item) || []) {
+    best = Math.max(best, scoreDigits(raw, value));
+  }
+  const texts = spec.texts?.(item) || [];
+  for (let i = 0; i < texts.length; i++) {
+    /* ⚠ Maydon tartibi ARZIMAS jarima oladi (`i/10000`): ismi mos
+       kelgan mijoz, familiyasi mos kelganidan oldin tursin. Jarima
+       nom uzunligi jarimasidan ham kichik, ya'ni bosqichlarni
+       aralashtirib yubormaydi. */
+    const s = scoreText(raw, texts[i], queryGrams);
+    if (s > 0) best = Math.max(best, s - i / 10000);
+  }
+  return best;
+}
+
+/**
+ * Ro'yxatni so'rov bo'yicha saralaydi va mos kelmaganini tashlaydi.
+ *
+ * ⚠ So'rovning trigrammlari BIR MARTA quriladi va hamma yozuvga
+ * uzatiladi — 5000 tovarli katalogda bu 5000 marta ortiqcha ishni
+ * yo'q qiladi.
+ *
+ * ⚠ Bo'sh so'rovda ro'yxat O'ZGARMASDAN qaytadi: filtr yo'q paytda
+ * sahifa o'z tartibini (masalan sotuv sanasi) saqlab qolishi kerak.
+ */
+export function rankItems(items, query, spec, limit = 0) {
+  if (!query || !Array.isArray(items)) return items || [];
+  const grams = trigrams(query);
+  const scored = items
+    .map((it) => ({ it, s: scoreItem(it, query, spec, grams) }))
+    .filter((x) => x.s > 0)
+    .sort((a, b) => b.s - a.s);
+  return (limit > 0 ? scored.slice(0, limit) : scored).map((x) => x.it);
+}
+
+/* ── Tovar (kassa) ───────────────────────────────────────────────────── */
+
+/** Tovar maydonlari — `scoreProduct` va `rankLocal` uchun. */
+export const PRODUCT_SPEC = {
+  codes: (p) => [p.barcode, p.sku, p.plu],
+  texts: (p) => [p.name],
+};
+
+/** Tovarning so'rovga mosligi. `0` — umuman mos emas. */
+export function scoreProduct(product, query, queryGrams) {
+  return scoreItem(product, query, PRODUCT_SPEC, queryGrams);
 }
 
 /**
@@ -214,11 +327,5 @@ export function scoreProduct(product, query) {
  * ishlagandek bo'ladi, holbuki to'liqligi baribir serverdan keladi.
  */
 export function rankLocal(products, query, limit = 60) {
-  if (!query || !Array.isArray(products)) return products || [];
-  return products
-    .map((p) => ({ p, s: scoreProduct(p, query) }))
-    .filter((x) => x.s > 0)
-    .sort((a, b) => b.s - a.s)
-    .slice(0, limit)
-    .map((x) => x.p);
+  return rankItems(products, query, PRODUCT_SPEC, limit);
 }

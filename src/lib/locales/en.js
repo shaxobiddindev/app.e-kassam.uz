@@ -1654,4 +1654,5 @@ export default {
   "kassa.splitFill": "Put the rest here",
   "kassa.splitEmpty": "Add a payment method",
   "kassa.creditNeedCustomer": "Pick a customer for a debt",
+  "kassa.searchCustomer": "Name or phone…",
 };

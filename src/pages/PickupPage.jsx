@@ -10,6 +10,7 @@ import { useScanner } from "../hooks/useScanner";
 import { parseSaleCode } from "../lib/ek-barcode";
 import { printPickupSlip } from "../lib/ek-hardware";
 import Modal from "../components/Modal";
+import { rankItems } from "../lib/ek-search";
 
 /* ══════════════════════════════════════════════════════════════════════════
    OMBORDAN BERIB YUBORISH (V48)
@@ -234,10 +235,12 @@ export default function PickupPage({ toast }) {
                  text={view === "history" ? t("pickup.noHistory") : t("pickup.empty")} />
         ) : (
           <div className="pickup-list">
-            {orders
-              .filter((o) => !search.trim() ||
-                (o.saleCode || "").toLowerCase().includes(search.trim().toLowerCase()) ||
-                (o.customerName || "").toLowerCase().includes(search.trim().toLowerCase()))
+            {/* ⚠ Chek kodi RAQAMLI maydon sifatida: omborchi «…347» deb
+                oxirgi raqamlarni eslaydi, to'liq kodni emas. */}
+            {rankItems(orders, search, {
+              digits: (o) => [o.saleCode],
+              texts:  (o) => [o.customerName, o.saleCode],
+            })
               .map((o) => (
               <div key={o.id} className={`pickup-card ${o.status === "PENDING" ? "is-pending" : ""}`}>
                 <div className="pickup-card__head">

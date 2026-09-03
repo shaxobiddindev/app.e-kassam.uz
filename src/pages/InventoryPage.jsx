@@ -15,6 +15,7 @@ import { useLoading } from "../lib/use-loading";
 import { NumField, DateField } from "../components/ek/EkFields";
 import { DEFAULT_NEAR_EXPIRY_DAYS, daysLeft } from "../lib/ek-expiry";
 import { printExpiryLabels } from "../lib/ek-hardware";
+import { rankItems } from "../lib/ek-search";
 
 /* Jurnal turlari — rang bilan: kirim yashil, chiqim qizil, to'g'irlash sariq.
    Omborchi ro'yxatga qarab o'qimasdan ham manzarani ko'rsin. */
@@ -364,14 +365,19 @@ export default function InventoryPage({ toast }) {
     }
   };
 
-  const filtered = rows.filter(({ g, f }) => {
-    const q = search.toLowerCase();
-    const hit = g.productName?.toLowerCase().includes(q) || (g.barcode || "").includes(search);
-    if (!hit) return false;
+  /* ⚠ Avval HOLAT bo'yicha filtrlanadi, keyin qidiruv REYTINGLAYDI.
+     Tartib muhim: qidiruv natijani mosligiga qarab saralaydi va
+     undan keyin filtrlash saralashni buzardi. Algoritm kassadagi
+     bilan bir xil (`lib/ek-search.js`). */
+  const byState = rows.filter(({ f }) => {
     if (flt === "expired") return f.expired;
     if (flt === "near")    return f.near;
     if (flt === "low")     return needsOrder(f);
     return true;
+  });
+  const filtered = rankItems(byState, search, {
+    codes: ({ g }) => [g.barcode],
+    texts: ({ g }) => [g.productName],
   });
 
 

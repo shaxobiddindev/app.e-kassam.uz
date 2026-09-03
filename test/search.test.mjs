@@ -15,6 +15,7 @@
 import {
   normSearch, looksLikeCode, trigrams, trigramSimilarity,
   wordSimilarity, scoreProduct, rankLocal, RANK,
+  scoreText, scoreDigits, scoreItem, rankItems,
 } from "../src/lib/ek-search.js";
 
 let pass = 0, fail = 0;
@@ -96,6 +97,75 @@ eq(ranked[0], "Suv", "eng mos tovar birinchi");
 eq(ranked[1], "Suv 1L", "keyin prefiks bo'yicha");
 yes(!ranked.includes("Sovun"), "mos kelmagan tovar ro'yxatga kirmaydi");
 eq(rankLocal(list, "").length, list.length, "bo'sh so'rovda ro'yxat o'zgarmaydi");
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   UMUMIY QIDIRUV — tizimning HAMMA joyi uchun
+
+   ⚠ Ilgari tizimda TO'QQIZTA alohida qidiruv bor edi va har biri
+   `nom.toLowerCase().includes(so'rov)` deb yozilgan edi. Kassada
+   algoritm tuzatilgan, qolgan sakkiztasida esa eski holicha qolgan:
+   kassada topilgan tovar Katalogda topilmasdi va do'kon egasi «tovar
+   yo'qolib qoldi» deb o'ylardi.
+
+   Endi qoida bitta joyda. Bu blok o'sha umumiy qoidani qamrab oladi.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+console.log("\n═══ 8. Umumiy matn bahosi ═══");
+yes(scoreText("suv", "Suv 1L") > scoreText("suv", "Ichimlik suvi gazsiz"),
+    "aniq nom o'xshashidan yuqori turadi");
+eq(scoreText("", "Suv"), 0, "bo'sh so'rov — nol");
+eq(scoreText("suv", ""), 0, "bo'sh matn — nol");
+yes(scoreText("сув", "Suv 1L") > 0, "kirillcha so'rov lotincha nomni topadi");
+yes(scoreText("oq yog", "Oq yog'") > 0, "apostrofsiz so'rov apostrofli nomni topadi");
+
+console.log("\n═══ 9. Raqamli maydon (telefon, chek raqami) ═══");
+eq(scoreDigits("+998901234567", "+998 90 123-45-67"), RANK.CODE_EXACT,
+   "boshqacha yozilgan bir xil raqam — aynan mos");
+eq(scoreDigits("4567", "+998901234567"), RANK.NAME_PREFIX,
+   "OXIRGI raqamlar bo'yicha topiladi — odam shuni eslaydi");
+eq(scoreDigits("998", "+998901234567"), RANK.NAME_PREFIX,
+   "boshi bo'yicha ham topiladi");
+eq(scoreDigits("0123", "+998901234567"), RANK.CONTAINS,
+   "o'rtasidan ham topiladi, lekin pastroq vaznda");
+eq(scoreDigits("777", "+998901234567"), 0, "mos kelmasa — nol");
+eq(scoreDigits("", "+998901234567"), 0, "bo'sh so'rov — nol");
+
+console.log("\n═══ 10. Yozuv bahosi (kodlar + raqamlar + matnlar) ═══");
+const CUST = { texts: (c) => [c.fullName], digits: (c) => [c.phone] };
+const ali = { fullName: "Abdullayev Ali", phone: "+998901234567" };
+yes(scoreItem(ali, "abdullayev", CUST) > 0, "ism bo'yicha topiladi");
+yes(scoreItem(ali, "4567", CUST) > 0, "telefon oxiri bo'yicha topiladi");
+eq(scoreItem(ali, "zzz", CUST), 0, "mos kelmasa — nol");
+eq(scoreItem(ali, "", CUST), 0, "bo'sh so'rov — nol");
+
+const SPEC = { codes: (p) => [p.barcode], texts: (p) => [p.name] };
+eq(scoreItem({ name: "Suv", barcode: "4780000000011" }, "4780000000011", SPEC),
+   RANK.CODE_EXACT, "aynan barkod — eng yuqori");
+
+console.log("\n═══ 11. Ro'yxatni saralash ═══");
+const people = [
+  { fullName: "Botirov Bek",     phone: "+998901112233" },
+  { fullName: "Abdullayev Ali",  phone: "+998907654321" },
+  { fullName: "Aliyev Sardor",   phone: "+998935554433" },
+];
+const byName = rankItems(people, "ali", CUST).map((c) => c.fullName);
+yes(byName[0] === "Aliyev Sardor", "so'z boshidagi mos oldin turadi (olindi: " + byName[0] + ")");
+yes(byName.includes("Abdullayev Ali"), "ichida uchragani ham kiradi");
+yes(!byName.includes("Botirov Bek"), "mos kelmagani chiqmaydi");
+
+eq(rankItems(people, "4433", CUST).length, 1, "telefon bo'yicha aniq bitta");
+eq(rankItems(people, "", CUST).length, 3, "bo'sh so'rovda ro'yxat o'zgarmaydi");
+eq(rankItems(null, "ali", CUST).length, 0, "ro'yxat yo'q — yiqilmaydi");
+eq(rankItems(people, "ali", CUST, 1).length, 1, "chegara hurmat qilinadi");
+
+console.log("\n═══ 12. Tovar qidiruvi umumiy qoidaning ustida qurilgan ═══");
+/* ⚠ Refaktordan keyin natija O'ZGARMAGANINI qayd etadi: foydalanuvchi
+   talabi aynan shu edi — «natijaga ta'sir qilmasa». */
+const prods = [P("Suv 1L", { barcode: "111111" }), P("Ichimlik suvi gazsiz 1.5L")];
+eq(scoreProduct(prods[0], "111111"), RANK.CODE_EXACT, "barkod aynan mos — o'zgarmadi");
+yes(scoreProduct(prods[0], "suv") > scoreProduct(prods[1], "suv"),
+    "qisqa nom uzun nomdan oldin — o'zgarmadi");
 
 console.log(`\n${fail === 0 ? "✅" : "❌"}  ${pass} ta o'tdi, ${fail} ta yiqildi\n`);
 process.exit(fail === 0 ? 0 : 1);

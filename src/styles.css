@@ -1251,7 +1251,10 @@ select.form-input { cursor: pointer; }
      ~110px bo'sh joy yeb ketardi. To'lov oynasi esa kassaning eng
      ko'p ochiladigan oynasi: u yerdagi har ortiqcha piksel har
      chekda takrorlanadi. */
-  grid-template-columns: repeat(6, 1fr);
+  /* ⚠ Beshta: «Nasiya» V53 da aralash to'lov ichiga ko'chdi va bu
+     yerdan olib tashlandi — bitta ish uchun ikki tugma bo'lishi
+     chalkashlik edi. */
+  grid-template-columns: repeat(5, 1fr);
   gap: 8px;
   margin-bottom: 8px;
 }

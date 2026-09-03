@@ -101,6 +101,69 @@
 
 .ek-select__empty { padding: 14px 10px; text-align: center; color: var(--fg-tertiary); font-size: var(--fs-sm); }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   IKKINCHI USTUN — telefon, kod, summa
+
+   ⚠ MUAMMO (foydalanuvchi shikoyati): raqam yorliqqa qo'shib
+   yuborilardi («Abdullayev Ali · +998901234567») va ismlar uzunligi
+   turlicha bo'lgani uchun raqamlar HAR QATORDA BOSHQA JOYDAN
+   boshlanardi. Ro'yxatni ko'z bilan pastga kuzatib o'qib bo'lmasdi —
+   har raqamni alohida qidirishga to'g'ri kelardi.
+
+   Yechim: raqam o'z ustunida, O'NGGA tekislangan va `tabular-nums`
+   bilan — bir xil kenglikdagi raqamlar bitta vertikal chiziqda turadi.
+   ══════════════════════════════════════════════════════════════════════════ */
+.ek-select__opt-hint {
+  flex-shrink: 0;
+  margin-left: auto;
+  padding-left: 12px;
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-tertiary);
+  white-space: nowrap;
+}
+/* Yorliq uzun bo'lsa QISQARADI, raqam esa hech qachon kesilmaydi:
+   «…» bilan tugagan ism baribir o'qiladi, yarim raqam esa yo'q. */
+.ek-select__opt-label { overflow: hidden; text-overflow: ellipsis; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   RO'YXAT ICHIDAGI QIDIRUV
+   ══════════════════════════════════════════════════════════════════════════ */
+.ek-select__search {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border-subtle);
+  /* ⚠ Yopishqoq: uzun ro'yxat surilganda ham qidiruv ko'rinib turadi —
+     aks holda foydalanuvchi yozish uchun tepaga qaytishga majbur. */
+  position: sticky; top: 0; z-index: 1;
+  background: var(--bg-surface);
+}
+.ek-select__search i { flex: none; font-size: 12px; color: var(--fg-tertiary); }
+.ek-select__search input {
+  flex: 1; min-width: 0;
+  border: none; outline: none; background: transparent;
+  font-family: var(--font-sans); font-size: var(--fs-md); color: var(--fg-primary);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   TOZALASH (✕)
+
+   ⚠ Tugmaning USTIGA qo'yiladi, ichiga emas: `<button>` ichida
+   `<button>` bo'lmaydi (HTML taqiqi) va brauzer uni selektdan
+   tashqariga chiqarib yuborardi.
+   ══════════════════════════════════════════════════════════════════════════ */
+.ek-select__clear {
+  position: absolute; top: 50%; right: 30px; transform: translateY(-50%);
+  width: 24px; height: 24px; border-radius: 6px;
+  display: grid; place-items: center;
+  border: none; background: transparent; cursor: pointer;
+  color: var(--fg-tertiary); font-size: 12px;
+}
+.ek-select__clear:hover { background: var(--bg-danger-subtle); color: var(--fg-danger); }
+/* ✕ bor paytda matn uning ostiga kirib ketmasin */
+.ek-select__clear ~ .ek-select__btn .ek-select__value,
+.ek-select:has(.ek-select__clear) .ek-select__value { padding-right: 22px; }
+
 /* ── Variantlar ──────────────────────────────────────────────────────────── */
 /* Forma maydoni sifatida — `.form-input` / `.fi` bilan bir xil balandlik */
 .ek-select--field .ek-select__btn { min-height: var(--hit-lg); font-size: var(--fs-md); }

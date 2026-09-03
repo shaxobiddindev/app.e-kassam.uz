@@ -17,6 +17,7 @@ import { saleApi } from "../api";
 import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
 import { PhoneField } from "../components/ek/EkFields";
+import { rankItems } from "../lib/ek-search";
 
 /* Yangi mijozda telefon BO'SH boshlanadi. Ilgari bu yerda `"998"` turardi
    va maydon «(99) 8» bilan to'ldirilgan holda ochilardi: odam uni
@@ -230,10 +231,15 @@ export default function CustomersPage({ toast }) {
 
   const setField = (key) => (e) => setForm((prev) => ({ ...prev, [key]: e.target.value }));
 
-  const filtered = customers.filter((c) =>
-    c.fullName?.toLowerCase().includes(search.toLowerCase()) ||
-    c.phone?.includes(search)
-  );
+  /* ⚠ QIDIRUV — kassadagi bilan BIR XIL algoritm (`lib/ek-search.js`).
+     Ilgari bu yerda oddiy `includes` turardi: «Абдулла» deb kiritilgan
+     mijozni «abdulla» deb qidirgan kassir TOPA OLMASDI, xato yozilgan
+     harf esa umuman natija bermasdi. Telefon raqami maxsus ishlanadi —
+     odam oxirgi raqamlarni eslaydi, to'liq raqamni emas. */
+  const filtered = rankItems(customers, search, {
+    texts:  (c) => [c.fullName],
+    digits: (c) => [c.phone],
+  });
 
   /* Muddat qo'yilgan do'konda kamida bitta qarz kechikkanmi (V43).
      Ustun shu holatda chiziladi: muddatsiz do'konda u har qatorda

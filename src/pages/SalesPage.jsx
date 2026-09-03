@@ -20,6 +20,7 @@ import { topRole } from "../lib/ek-roles";
 import { useScanner } from "../hooks/useScanner";
 import { useOnline } from "../hooks/useOnline";
 import { parseSaleCode } from "../lib/ek-barcode";
+import { rankItems } from "../lib/ek-search";
 
 /* ── Chekni qayta chiqarish ────────────────────────────────────────────────
    Kassa ekranidagi Ctrl+P faqat OXIRGI chekni chiqaradi. Amalda esa mijoz
@@ -223,16 +224,16 @@ export default function SalesPage({ toast }) {
     }
   };
 
-  const filtered = byPeriod
-    .filter((s) => {
-      if (status !== "ALL" && s.status !== status) return false;
-      // Qidiruv
-      if (!search) return true;
-      const q = search.toLowerCase();
-      return String(s.id).includes(q) ||
-        s.cashierName?.toLowerCase().includes(q) ||
-        s.customerName?.toLowerCase().includes(q);
-    });
+  /* ⚠ Avval HOLAT, keyin qidiruv: qidiruv natijani mosligiga qarab
+     saralaydi va undan keyin filtrlash saralashni buzardi. */
+  const byStatus = byPeriod.filter((s) => status === "ALL" || s.status === status);
+  /* Chek raqami RAQAMLI maydon sifatida: do'koncha «…347» deb oxirgi
+     raqamlarni eslaydi, to'liq raqamni emas — matn qoidasi bunda
+     ishlamasdi. */
+  const filtered = rankItems(byStatus, search, {
+    digits: (s) => [String(s.id)],
+    texts:  (s) => [s.customerName, s.cashierName],
+  });
 
   return (
     <div>
