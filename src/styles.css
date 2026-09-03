@@ -1560,27 +1560,6 @@ select.form-input { cursor: pointer; }
 
 /* ── Barkod maydoni — ekranning eng muhim detali ──────────────────────────
    Doim fokusda turadi, monoshriftda yoziladi (bu raqam, matn emas). */
-.bc-field {
-  display: flex; align-items: center; gap: 10px;
-  min-height: var(--hit-pos);
-  padding: 0 14px;
-  background: var(--bg-surface);
-  border: 2px solid var(--border-subtle);
-  border-radius: var(--r-lg);
-  transition: border-color var(--dur-fast) var(--ease-out),
-              box-shadow var(--dur-fast) var(--ease-out);
-}
-.bc-field:focus-within { border-color: var(--border-brand); box-shadow: var(--ring-brand); }
-.bc-field > i { font-size: 18px; color: var(--fg-tertiary); flex-shrink: 0; }
-.bc-field input {
-  flex: 1; min-width: 0;
-  border: 0; background: none; outline: none;
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  font-size: 16px; font-weight: 500;
-  color: var(--fg-primary);
-}
-.bc-field input::placeholder { font-family: var(--font-sans); font-weight: 500; color: var(--fg-tertiary); }
 /* Fokus yo'qolganda ogohlantirish — kassir buni darhol ko'rishi kerak */
 
 /* Klaviatura yorlig'i chipi — tugmada ko'rsatiladi, alohida o'rgatish kerak emas */
@@ -2066,16 +2045,16 @@ img.logo--dark { display: none; }
 /* Barkod maydonidagi klaviatura tugmasi — faqat teginish rejimida chiqadi.
    Maydon doim fokusda bo'lgani uchun klaviatura o'zi ochilmaydi, shu tugma
    uni ataylab so'raganda ochadi. */
-.bc-field { position: relative; }
-.bc-field__pad {
-  width: 40px; height: 40px; flex-shrink: 0;
-  border: 1px solid var(--border-subtle); border-radius: 9px;
-  background: var(--bg); color: var(--fg-secondary);
-  cursor: pointer; font-size: 15px;
+/* ⚠ `.bc-field` QOIDALARI OLIB TASHLANDI: alohida barkod maydoni endi
+   yo'q, uning vazifasini qidiruv maydoni bajaradi. Ekran klaviaturasi
+   tugmasi ham o'sha yerga ko'chdi. */
+.search-bar__pad {
+  width: 34px; height: 34px; flex-shrink: 0;
+  border: 1px solid var(--border-subtle); border-radius: 8px;
+  background: var(--bg-surface); color: var(--fg-secondary);
+  cursor: pointer; font-size: 14px;
 }
-.bc-field__pad:active { transform: scale(.94); }
-.bc-field .field-clear { position: static; transform: none; flex-shrink: 0; }
-.bc-field .field-clear:active { transform: scale(.9); }
+.search-bar__pad:active { transform: scale(.94); }
 
 /* Tab tugmasidagi belgi — yon menyudagi bilan bir xil ma'no: shu bo'limda
    e'tibor talab qiladigan yozuv bor. Tugma ichida, matndan keyin. */

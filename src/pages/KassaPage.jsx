@@ -28,6 +28,7 @@ import Select from "../components/ek/Select";
 import { printReceipt, openDrawer } from "../lib/ek-hardware";
 import { spreadDiscount } from "../lib/ek-discount";
 import { useScanner } from "../hooks/useScanner";
+import { rankLocal, looksLikeCode } from "../lib/ek-search";
 import { useTileMetrics } from "../hooks/useTileMetrics";
 import { isDesktop } from "../lib/ek-desktop";
 import { NumField } from "../components/ek/EkFields";
@@ -192,7 +193,6 @@ export default function KassaPage({ toast, refreshLowStock }) {
   /* Barkod maydoni boshqarilmaydi (skaner unga to'g'ridan-to'g'ri yozadi va
      Enter'da o'zi tozalanadi). «×» tugmasi esa qiymat BORLIGINI bilishi
      kerak — shuning uchun faqat shu bayroq holatda saqlanadi. */
-  const [bcValue, setBcValue]       = useState("");
   /* Chek chegirmasi — SUMMA. Kassir foizni emas, summani kiritadi:
      "5 000 so'm chegirma" mijoz bilan gaplashishda tabiiyroq va chekda
      ham summa turadi. Server chegarani foizga aylantirib tekshiradi. */
@@ -270,7 +270,6 @@ export default function KassaPage({ toast, refreshLowStock }) {
   const [priceModal, setPriceModal] = useState(null);
   const [markModal, setMarkModal]   = useState(null);   // { product } — DataMatrix
 
-  const barcodeRef  = useRef(null);
   const searchRef   = useRef(null);
   const debounceRef = useRef(null);
   const undoRef     = useRef(null);
@@ -467,10 +466,70 @@ export default function KassaPage({ toast, refreshLowStock }) {
 
   useEffect(() => { doSearch(search); }, [doSearch]);   // kategoriya almashsa ham
 
+  /* ══════════════════════════════════════════════════════════════════
+     UCH BOSQICHLI QIDIRUV
+
+     ⚠ NEGA BOSQICHLAR. Ilgari har harfda 350 ms kutilar, keyin serverga
+     so'rov ketardi — ya'ni kassir yozib bo'lgach ham ro'yxat yarim
+     soniya eski holatda turardi. Sekin tarmoqda bu bir necha soniyaga
+     cho'zilardi va kassir mijoz oldida kutib qolardi.
+
+       0-bosqich (0 ms) — ANIQ KOD. Yozilgani yuklangan tovarlardan
+         birining barkodi yoki artikuliga aynan teng bo'lsa, u DARHOL
+         savatga tushadi. Skaner aynan shu yo'ldan o'tadi.
+
+       1-bosqich (0 ms) — MAHALLIY REYTING. Ekranda allaqachon turgan
+         katalog `ek-search.js` qoidasi bilan saralanadi va shu zahoti
+         ko'rsatiladi. Kassir uchun qidiruv «bir zumda» ishlaydi.
+
+       2-bosqich (180 ms) — SERVER. To'liq katalog bo'yicha reytingli
+         qidiruv (`pg_trgm`), natija mahalliysini almashtiradi.
+
+     ⚠ Kutish 350 → 180 ms ga tushirildi: mahalliy javob bor ekan,
+     server javobini uzoq kutib turishning ma'nosi qolmadi.
+     ══════════════════════════════════════════════════════════════════ */
   const handleSearchChange = (val) => {
     setSearch(val);
+
+    /* 1-bosqich: server javobini kutmasdan mahalliy saralash. Bo'sh
+       so'rovda keshdagi to'liq ro'yxat qaytariladi. */
+    const base = baseProducts.current;
+    if (base) setProducts(val ? rankLocal(base, val) : base);
+
     clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => doSearch(val), 350);
+    debounceRef.current = setTimeout(() => doSearch(val), 180);
+  };
+
+  /**
+   * Qidiruv maydonida Enter — BARKOD yoki TOVAR.
+   *
+   * ⚠ Bitta maydon ikkala vazifani bajaradi (alohida barkod maydoni
+   * olib tashlangan). Ajratish mezoni — matnning O'ZI:
+   *
+   *   · faqat raqam va 6 tadan uzun → KOD (`addByBarcode`): u tarozi
+   *     va qadoq barkodlarini ham biladi, oddiy qidiruv esa bilmaydi;
+   *   · aks holda ro'yxatdagi ENG MOS tovar savatga tushadi.
+   *
+   * ⚠ Kod yo'lida maydon TOZALANADI: skanerdan keyin oldingi kod
+   * qolib, keyingisi uning ustiga yozilib ketmasin.
+   */
+  const onSearchEnter = (e) => {
+    if (e.key !== "Enter") return;
+    const value = e.currentTarget.value.trim();
+    if (!value) return;
+    e.preventDefault();
+
+    if (looksLikeCode(value)) {
+      handleSearchChange("");
+      addByBarcode(value);
+      return;
+    }
+    /* ⚠ BIRINCHISI, «faqat bitta bo'lsa» EMAS. Ilgari Enter faqat
+       ro'yxatda AYNAN BITTA tovar qolgandagina ishlardi — ya'ni
+       kassir kerakli tovar birinchi turgan bo'lsa ham yozishda davom
+       etishga majbur edi. Endi reyting bor va birinchi qator aynan
+       eng mos tovar. */
+    if (products.length > 0) pickProduct(products[0]);
   };
 
   /* ══ SAVATNI SAQLASH ═══════════════════════════════════════
@@ -532,7 +591,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
     const id = ++cartSeq.current;
     setCarts((prev) => [...prev, cartStore.blank(id)]);
     setActiveId(id);
-    focusBarcode();
+    focusSearch();
   };
 
   /**
@@ -580,10 +639,10 @@ export default function KassaPage({ toast, refreshLowStock }) {
     if (carts.length < 2) return;
     const i = carts.findIndex((c) => c.id === activeId);
     setActiveId(carts[(i + 1) % carts.length].id);
-    focusBarcode();
+    focusSearch();
   };
 
-  const switchCart = (id) => { setActiveId(id); focusBarcode(); };
+  const switchCart = (id) => { setActiveId(id); focusSearch(); };
 
   /* ── Oflayn navbat: yuborish funksiyasini ulaymiz ─────────── */
   useEffect(() => {
@@ -596,8 +655,11 @@ export default function KassaPage({ toast, refreshLowStock }) {
      Boshqa joyni bosganda 3 soniyadan keyin fokus qaytadi —
      lekin modal ochiq bo'lsa yoki foydalanuvchi boshqa maydonga
      yozayotgan bo'lsa TEGILMAYDI (aks holda yozib bo'lmaydi). */
-  const focusBarcode = useCallback(() => {
-    barcodeRef.current?.focus();
+  /* ⚠ Nomi `focusSearch`: barkod maydoni yo'q, qidiruv ikkalasini ham
+     bajaradi. Fokus FAQAT odam so'raganda beriladi (Ctrl+B yoki «/»)
+     yoki modal yopilganda — avto-fokus olib tashlangan. */
+  const focusSearch = useCallback(() => {
+    searchRef.current?.focus();
   }, []);
 
   /* ⚠ AVTO-FOKUS OLIB TASHLANDI (foydalanuvchi qarori: «unga skaner
@@ -1285,7 +1347,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
     setPayType("CASH");
     setProcessing(false);
 
-    setTimeout(() => { setFinish(null); focusBarcode(); }, 2200);
+    setTimeout(() => { setFinish(null); focusSearch(); }, 2200);
   };
 
   const reprint = () => {
@@ -1315,15 +1377,18 @@ export default function KassaPage({ toast, refreshLowStock }) {
       const el = e.target;
       const typing = el?.tagName === "INPUT" || el?.tagName === "TEXTAREA" || el?.tagName === "SELECT";
 
-      if (e.ctrlKey && (e.key === "b" || e.key === "B")) { e.preventDefault(); focusBarcode(); return; }
+      /* Ctrl+B — tarixiy yorliq: ilgari «barkod maydoniga qaytish»
+         degani edi, endi qidiruvni fokuslaydi. Saqlab qolindi:
+         kassirlar barmog'i uni yod biladi. */
+      if (e.ctrlKey && (e.key === "b" || e.key === "B")) { e.preventDefault(); focusSearch(); return; }
       if (e.ctrlKey && (e.key === "p" || e.key === "P")) { e.preventDefault(); reprint(); return; }
 
       if (e.key === "/" && !typing) { e.preventDefault(); searchRef.current?.focus(); return; }
 
       if (e.key === "Escape") {
-        if (finish)       { setFinish(null); focusBarcode(); return; }
-        if (qtyModal)     { setQtyModal(null); focusBarcode(); return; }
-        if (markModal)    { setMarkModal(null); focusBarcode(); return; }
+        if (finish)       { setFinish(null); focusSearch(); return; }
+        if (qtyModal)     { setQtyModal(null); focusSearch(); return; }
+        if (markModal)    { setMarkModal(null); focusSearch(); return; }
         if (showPayModal) { closePayModal(); return; }
         /* ⚠ `window.confirm` EMAS: brauzerning o'z oynasi ilova temasidan
            tashqarida chiqadi va `.exe` da butun oynani bloklaydi. */
@@ -1337,7 +1402,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
           }).then((ok) => {
             clearAsk.current = false;
             if (ok) handleClearCart();
-            focusBarcode();
+            focusSearch();
           });
         }
         return;
@@ -1444,56 +1509,21 @@ export default function KassaPage({ toast, refreshLowStock }) {
               <span className="kbd">F2</span>
             </button>
           </div>
-          {/* Barkod maydoni — QO'LDA kiritish uchun (monoshriftda: bu raqam).
-              Skaner bunga muhtoj emas: u hujjat darajasida tutiladi. */}
-          <div className="bc-field">
-            <i className="fa-solid fa-barcode" aria-hidden="true" />
-            <label htmlFor="bc" className="ek-sr-only">{t("kassa.scanTitle")}</label>
-            <input
-              id="bc"
-              ref={barcodeRef}
-              data-scanner="true"
-              /* ⚠ Ekran klaviaturasi bu maydonda O'ZI OCHILMAYDI. Maydon
-                 doim fokusda turadi (skaner shu yerga yozadi), demak
-                 avtomatik ochilsa klaviatura Kassa ekranidan hech qachon
-                 ketmasdi. Kerak bo'lganda yonidagi tugma bilan ochiladi. */
-              data-osk="off"
-              inputMode="numeric"
-              autoComplete="off"
-              placeholder={t("kassa.scanHint")}
-              onChange={(e) => setBcValue(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key !== "Enter") return;
-                e.preventDefault();
-                const code = e.currentTarget.value.trim();
-                e.currentTarget.value = "";       // skanerdan keyin maydon tozalanadi
-                setBcValue("");
-                if (code.length > 2) addByBarcode(code);
-              }}
-            />
-            {bcValue && (
-              <ClearButton
-                label={t("osk.clear")}
-                onClear={() => {
-                  if (barcodeRef.current) clearField(barcodeRef.current);
-                  setBcValue("");
-                }}
-              />
-            )}
-            {touchOn && (
-              <button
-                type="button"
-                className="bc-field__pad"
-                title={t("osk.title")}
-                aria-label={t("osk.title")}
-                onPointerDown={(e) => e.preventDefault()}
-                onClick={() => keyboard.open(barcodeRef.current)}
-              >
-                <i className="fa-solid fa-calculator" aria-hidden="true" />
-              </button>
-            )}
-            <span className="kbd" title={t("kassa.backToBarcode")}>Ctrl+B</span>
-          </div>
+          {/* ⚠ ALOHIDA BARKOD MAYDONI OLIB TASHLANDI (foydalanuvchi
+              so'rovi: «barkod skaner inputini to'liq olib tashlab uni
+              qidirish ichiga qo'shib yuborsa bo'ladimi»).
+
+              Bo'ladi va shunday to'g'riroq: skaner maydonga muhtoj
+              emas — u hujjat darajasida tutiladi (`useScanner`) va
+              fokus qayerda bo'lishidan qat'i nazar ishlaydi. Maydon
+              faqat QO'LDA kiritish uchun kerak edi, qo'lda kiritish
+              esa qidiruvdan farq qilmaydi: ikkalasida ham odam matn
+              yozib Enter bosadi.
+
+              Endi bitta maydon ikkalasini ham qiladi: raqamli kod
+              yozilsa barkod sifatida, aks holda nom sifatida
+              qidiriladi. Ekrandan bir qator bo'shadi va kassir
+              «qaysi maydonga yozay?» degan savoldan qutuladi. */}
 
           <div className="card" style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflow: "hidden" }}>
             <div style={{ padding: "11px 14px", borderBottom: "1px solid var(--border-subtle)", flexShrink: 0,
@@ -1502,12 +1532,31 @@ export default function KassaPage({ toast, refreshLowStock }) {
                 <i className="fa-solid fa-magnifying-glass" aria-hidden="true" />
                 <input
                   ref={searchRef}
-                  placeholder={t("kassa.searchByName")}
+                  data-scanner="true"
+                  /* ⚠ Ekran klaviaturasi O'ZI OCHILMAYDI: bu maydon
+                     kassa ekranining asosiy maydoni va klaviatura
+                     ochilib qolsa, u yerdan hech qachon ketmasdi.
+                     Kerak bo'lganda yonidagi tugma bilan ochiladi. */
+                  data-osk="off"
+                  autoComplete="off"
+                  placeholder={t("kassa.searchOrScan")}
                   value={search}
                   onChange={(e) => handleSearchChange(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter" && products.length === 1) addToCart(products[0]); }}
+                  onKeyDown={onSearchEnter}
                 />
                 {search && <ClearButton label={t("osk.clear")} onClear={() => handleSearchChange("")} />}
+                {touchOn && (
+                  <button
+                    type="button"
+                    className="search-bar__pad"
+                    title={t("osk.title")}
+                    aria-label={t("osk.title")}
+                    onPointerDown={(e) => e.preventDefault()}
+                    onClick={() => keyboard.open(searchRef.current)}
+                  >
+                    <i className="fa-solid fa-calculator" aria-hidden="true" />
+                  </button>
+                )}
                 <span className="kbd">/</span>
               </div>
 
@@ -1726,7 +1775,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
           product={markModal.product}
           mode="sale"
           onDone={applyMarkingCodes}
-          onClose={() => { setMarkModal(null); focusBarcode(); }}
+          onClose={() => { setMarkModal(null); focusSearch(); }}
         />
       )}
 
@@ -1740,7 +1789,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
           stock={freeStock(qtyModal.product)}
           initial={qtyModal.initial}
           onConfirm={applyQuantity}
-          onClose={() => { setQtyModal(null); focusBarcode(); }}
+          onClose={() => { setQtyModal(null); focusSearch(); }}
         />
       )}
 
@@ -2189,7 +2238,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
           phase={finish.phase}
           total={finish.total}
           receiptNo={finish.receiptNo}
-          onClose={finish.phase === "done" ? () => { setFinish(null); focusBarcode(); } : undefined}
+          onClose={finish.phase === "done" ? () => { setFinish(null); focusSearch(); } : undefined}
         />
       )}
     </div>
