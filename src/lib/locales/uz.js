@@ -1741,4 +1741,11 @@ export default {
   "report.lossSales": "Zarariga sotilgan cheklar",
   "report.lossAmount": "Zarar summasi",
   "report.lossHint": "Bu summa yalpi foydada allaqachon hisobga olingan — sof foydadan yana ayirilmaydi",
+
+  /* ── V53: aralash to'lov qismlari ── */
+  "kassa.splitRest": "Taqsimlanmagan",
+  "kassa.splitOver": "Ortiqcha kiritildi",
+  "kassa.splitFill": "Qolganini shu yerga",
+  "kassa.splitEmpty": "To'lov usulini qo'shing",
+  "kassa.creditNeedCustomer": "Nasiya uchun mijoz tanlanishi kerak",
 };

@@ -110,7 +110,7 @@ async function send(bytes) {
  * o'tib, haqiqiysi buzilib chiqishi mumkin edi.
  */
 export function buildReceipt({ saleId, serverSaleId, cart = [], total = 0, subtotal, discount = 0,
-                               payType, customer, offline, shopName, cashier, fiscal, receiptUrl,
+                               payType, payments, customer, offline, shopName, cashier, fiscal, receiptUrl,
                                credit }) {
   const s = getSettings();
   const r = new Receipt(s.width === 58 ? WIDTH_58 : WIDTH_80);
@@ -159,6 +159,15 @@ export function buildReceipt({ saleId, serverSaleId, cart = [], total = 0, subto
   }
   r.bold().double().row(t("kassa.receiptTotal"), money(total)).double(false).bold(false);
   r.row(t("kassa.receiptPayment"), paymentLabel(payType));
+  /* ⚠ ARALASH TO'LOVDA TAQSIMOT HAM CHIQADI (V53). «Aralash» degan
+     bitta so'z mijozga hech narsa aytmaydi: u uyiga borib «karta bilan
+     qancha to'lagan edim?» deb o'ylab qoladi va ertaga do'kon bilan
+     tortishadi — nasiya blokidagi bilan aynan bir xil sabab. */
+  if (Array.isArray(payments) && payments.length > 1) {
+    for (const part of payments) {
+      r.row("  " + paymentLabel(part.type), money(part.amount));
+    }
+  }
   if (customer?.fullName) r.row(t("kassa.receiptCustomer"), customer.fullName);
 
   /* ── NASIYA BLOKI (V47) ────────────────────────────────────────────
@@ -778,7 +787,7 @@ export async function testPrint() {
  * chaqiriladi.
  */
 function printInBrowser({ saleId, serverSaleId, cart = [], total = 0, subtotal, discount = 0,
-                          payType, customer, offline, shopName, cashier, receiptUrl,
+                          payType, payments, customer, offline, shopName, cashier, receiptUrl,
                           credit, __debt, amount, balanceAfter, method, date }) {
   const win = window.open("", "_blank", "width=360,height=640,toolbar=no,menubar=no");
   if (!win) throw new Error(t("hw.errPopup"));
@@ -866,6 +875,9 @@ function printInBrowser({ saleId, serverSaleId, cart = [], total = 0, subtotal, 
       <div class="row"><span>${esc(t("kassa.discount"))}</span><span>-${esc(money(discTotal))}</span></div>` : ""}
       <div class="row"><b>${esc(t("kassa.receiptTotal"))}</b><b>${esc(money(total))}</b></div>
       <div class="row"><span>${esc(t("kassa.receiptPayment"))}</span><span>${esc(paymentLabel(payType))}</span></div>
+      ${Array.isArray(payments) && payments.length > 1
+        ? payments.map((p) => `<div class="row"><span>&nbsp;&nbsp;${esc(paymentLabel(p.type))}</span><span>${esc(money(p.amount))}</span></div>`).join("")
+        : ""}
       ${customer?.fullName ? `<div class="row"><span>${esc(t("kassa.receiptCustomer"))}</span><span>${esc(customer.fullName)}</span></div>` : ""}
       ${credit && Number(credit.amount) > 0 ? `<div class="hr"></div>
       <div class="c"><b>${esc(t("kassa.receiptCredit"))}</b></div>

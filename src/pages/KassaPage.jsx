@@ -70,7 +70,13 @@ const PAY_METHODS  = ["CASH", "CARD", "CLICK", "PAYME", "MIXED", "CREDIT"].map(p
    iloji yo'q edi (kassir yo hammasini nasiyaga yozardi, yo mijozni
    qaytarardi). Server tomonda ham shu ro'yxat bor va u yagona
    qo'riqchi — bu yerdagisi qulaylik uchun. */
-const MIXED_SECOND = ["CARD", "CLICK", "PAYME", "CREDIT"].map(payItem);
+/* ⚠ ARALASH TO'LOVDA ISHLATILADIGAN USULLAR (V53).
+   Ilgari bu «IKKINCHI tur» ro'yxati edi: aralash to'lov aniq ikki
+   qismdan iborat bo'lardi (naqd + bittasi). Hayotda esa uchtasi ham
+   bo'ladi — «bir qismini karta bilan to'ladi, bir qismini naqd berdi,
+   qolganini qarzga yozdirdi». Kassir buni yoza olmay IKKITA chek
+   ochardi va bitta xarid hisobotda ikkita bo'lib ko'rinardi. */
+const SPLIT_METHODS = ["CASH", "CARD", "CLICK", "PAYME", "CREDIT"].map(payItem);
 
 const UNDO_MS    = 5000;   // o'chirishni bekor qilish oynasi
 
@@ -168,8 +174,14 @@ export default function KassaPage({ toast, refreshLowStock }) {
   const tilesBusy = useLoading(searching);
   const [payType, setPayType]       = useState("CASH");
   const [cashGiven, setCashGiven]   = useState("");     // naqdda berilgan summa
-  const [cashAmount, setCashAmount] = useState("");     // aralash: naqd qismi
-  const [cardAmount, setCardAmount] = useState("");     // aralash: ikkinchi qism
+  /* Aralash to'lov qismlari — TARTIBLI ro'yxat (V53).
+     `[{ type: "CASH", amount: "50000" }, { type: "CREDIT", amount: "20000" }]`
+
+     ⚠ Obyekt emas, ro'yxat: kassir qaysi usulni oldin kiritganini
+     ko'rib turishi kerak va qatorlar har renderda joyini
+     almashtirmasligi kerak — obyekt kalitlarining tartibi esa
+     kafolatlanmaydi. */
+  const [split, setSplit] = useState([]);
   const customer = active.customer;
   const setCustomer = (c) => patchCart(active.id, { customer: c });
   /* Mijozning sodiqlik darajasi — faqat KO'RSATISH uchun. Chegirmani
@@ -189,7 +201,6 @@ export default function KassaPage({ toast, refreshLowStock }) {
   const [processing, setProcessing] = useState(false);
   const [branchId]                  = useState(null);
   const [showPayModal, setShowPayModal] = useState(false);
-  const [mixedSecondType, setMixedSecondType] = useState("CARD");
   const [finish, setFinish]         = useState(null);   // { phase, total, receiptNo }
   const [undo, setUndo]             = useState(null);   // { item, index }
   /* Barkod maydoni boshqarilmaydi (skaner unga to'g'ridan-to'g'ri yozadi va
@@ -1193,32 +1204,57 @@ export default function KassaPage({ toast, refreshLowStock }) {
   /* ── To'lov ───────────────────────────────────────────────── */
   const handlePayTypeChange = (type) => {
     setPayType(type);
-    if (type === "MIXED") {
-      const half = Math.round(total / 2);
-      setCashAmount(String(half));
-      setCardAmount(String(total - half));
-      setMixedSecondType("CARD");
-    } else {
-      setCashAmount(""); setCardAmount("");
-    }
+    /* ⚠ Aralashga o'tganda BITTA qator — naqd, to'liq summa bilan.
+       Ilgari summa ikkiga TENG bo'linardi va kassir ikkala maydonni
+       ham qayta yozishga majbur bo'lardi. Endi u faqat birinchi
+       qismni tuzatadi, qolgani esa keyingi usul qo'shilganda O'ZI
+       to'ladi — ya'ni odatiy holatda bitta raqam va bitta bosish. */
+    setSplit(type === "MIXED" ? [{ type: "CASH", amount: String(total) }] : []);
   };
+
+  /* ── Aralash to'lov qismlari ──────────────────────────────────────── */
+
+  const splitSum  = split.reduce((a, p) => a + (Number(p.amount) || 0), 0);
+  /** Taqsimlanmagan qoldiq. Manfiy — ortiqcha kiritilgan. */
+  const splitRest = total - splitSum;
+
+  const setPart = (type, amount) =>
+    setSplit((prev) => prev.map((p) => (p.type === type ? { ...p, amount } : p)));
+
+  /** Usul qo'shiladi va QOLGAN SUMMA bilan to'ladi — kassir yozmaydi. */
+  const addPart = (type) =>
+    setSplit((prev) => prev.some((p) => p.type === type)
+      ? prev
+      : [...prev, { type, amount: String(Math.max(0, total - prev.reduce((a, p) => a + (Number(p.amount) || 0), 0))) }]);
+
+  const dropPart = (type) => setSplit((prev) => prev.filter((p) => p.type !== type));
+
+  /** Qolgan summani shu usulga beradi — «qolganini qarzga» tugmasi. */
+  const fillRest = (type) =>
+    setSplit((prev) => {
+      const rest = total - prev.reduce((a, p) => a + (Number(p.amount) || 0), 0);
+      return prev.map((p) => (p.type === type
+        ? { ...p, amount: String(Math.max(0, (Number(p.amount) || 0) + rest)) }
+        : p));
+    });
 
   const openPayModal = () => {
     if (!cart.length) return;
     setPayType("CASH");
-    setCashGiven(""); setCashAmount(""); setCardAmount(""); setDiscount("");
-    setMixedSecondType("CARD");
+    setCashGiven(""); setSplit([]); setDiscount("");
     setShowPayModal(true);
   };
   const closePayModal = () => setShowPayModal(false);
 
   const change      = Math.max(0, (Number(cashGiven) || 0) - total);
-  const mixedSum    = (Number(cashAmount) || 0) + (Number(cardAmount) || 0);
-  const mixedOk     = payType !== "MIXED" || mixedSum === total;
+  const mixedOk     = payType !== "MIXED" || (splitRest === 0 && split.length > 0);
   /* Nasiyaga yoziladigan qism — yalang'och nasiyada butun chek, aralash
-     to'lovda esa faqat ikkinchi qism. */
+     to'lovda esa NASIYA qatorining summasi (nechanchi qator ekani
+     muhim emas: ilgari u faqat «ikkinchi» bo'la olardi). */
   const creditPart  = payType === "CREDIT" ? total
-                    : (payType === "MIXED" && mixedSecondType === "CREDIT" ? (Number(cardAmount) || 0) : 0);
+                    : (payType === "MIXED"
+                        ? (Number(split.find((p) => p.type === "CREDIT")?.amount) || 0)
+                        : 0);
   /* Nasiya — MIJOZGA beriladigan qarz. Kimga berilganini bilmasdan yozib
      bo'lmaydi: server ham rad etadi, lekin kassir buni to'lov tugmasini
      bosishdan OLDIN ko'rishi kerak. */
@@ -1253,10 +1289,28 @@ export default function KassaPage({ toast, refreshLowStock }) {
       // ⚠ Ball — chegirma, to'lov turi emas: `cashAmount` allaqachon
       // balldan KEYINGI summani ko'rsatadi va kassaga aynan shu tushadi.
       bonusAmount: bonusNum,
-      mixedSecondType: payType === "MIXED" ? mixedSecondType : undefined,
-      cashAmount: payType === "CASH" ? total : payType === "MIXED" ? Number(cashAmount) || 0 : 0,
+      /* ⚠ TO'LOV QISMLARI (V53) — server aynan shu ro'yxatni oladi.
+         Bitta usulda ham ro'yxat yuboriladi: shunda serverda bitta yo'l
+         qoladi va «bitta usul» bilan «aralash» boshqa-boshqa kod
+         bo'lib ajralib ketmaydi. */
+      payments: payType === "MIXED"
+        ? split.filter((p) => Number(p.amount) > 0)
+               .map((p) => ({ type: p.type, amount: Number(p.amount) }))
+        : [{ type: payType, amount: total }],
+      /* ⚠ ESKI MAYDONLAR HAM YUBORILADI. Sabab bosqichma-bosqich
+         yangilanish: server hali eski bo'lsa (yoki oflayn navbatdagi
+         chek eski serverga tushsa) chek baribir yozilishi kerak.
+         Yangi server ro'yxatni afzal ko'radi va bularni e'tiborsiz
+         qoldiradi. Eski shakl faqat IKKI qismni ko'tara oladi —
+         shuning uchun undan ortig'i bo'lsa birinchi ikkitasi
+         yuboriladi va bu ATAYLAB: eski server uchdan birini baribir
+         qabul qila olmasdi. */
+      mixedSecondType: payType === "MIXED"
+        ? (split.find((p) => p.type !== "CASH")?.type || "CARD") : undefined,
+      cashAmount: payType === "CASH" ? total
+                : payType === "MIXED" ? (Number(split.find((p) => p.type === "CASH")?.amount) || 0) : 0,
       cardAmount: ["CARD", "CLICK", "PAYME"].includes(payType) ? total
-                : payType === "MIXED" ? Number(cardAmount) || 0 : 0,
+                : payType === "MIXED" ? (Number(split.find((p) => p.type !== "CASH")?.amount) || 0) : 0,
     };
     /* Chekka chegirma ham tushadi: mijoz "qancha chegirma oldim" degan
        savolga qog'ozdan javob topishi kerak, aks holda faqat yakuniy
@@ -1275,8 +1329,11 @@ export default function KassaPage({ toast, refreshLowStock }) {
         ? shortDate(new Date(Date.now() + dueDays * 864e5).toISOString())
         : null,
     } : null;
+    /* ⚠ Chekka TAQSIMOT ham tushadi (V53): «Aralash» degan bitta so'z
+       mijozga hech narsa aytmaydi va u ertaga «karta bilan qancha
+       to'lagan edim?» deb do'kon bilan tortishadi. */
     const snapshot = { cart: [...cart], total, subtotal, discount: discountNum, payType, customer,
-                       credit: creditInfo };
+                       payments: payload.payments, credit: creditInfo };
 
     setShowPayModal(false);
     setFinish({ phase: "printing", total: money(total) });
@@ -2182,64 +2239,94 @@ export default function KassaPage({ toast, refreshLowStock }) {
                 </div>
               )}
 
-              {/* ── ARALASH ── */}
+              {/* ══ ARALASH TO'LOV (V53) ══════════════════════════════
+                  ⚠ Ilgari bu yer ANIQ IKKI qismdan iborat edi: naqd +
+                  bittasi. Hayotda esa uchtasi ham bo'ladi — «bir qismini
+                  karta bilan to'ladi, bir qismini naqd berdi, qolganini
+                  qarzga yozdirdi». Kassir buni yoza olmay IKKITA chek
+                  ochardi: bitta xarid hisobotda ikkita bo'lib ko'rinar,
+                  qarz esa boshqa chekka bog'lanib qolardi.
+
+                  ⚠ SCROL O'SMASIN: qatorlar BIR SATRLI (44px) va faqat
+                  QO'SHILGAN usullar ko'rinadi. Odatiy ikki usulli
+                  to'lovda balandlik eski ikki maydonlik ko'rinishdan
+                  past bo'ladi.
+
+                  ⚠ Yangi usul qo'shilganda u QOLGAN SUMMA bilan
+                  to'ladi — kassir raqamni ikkinchi marta yozmaydi. */}
               {payType === "MIXED" && (
-                <div className="pay-mixed-section">
-                  <div className="pay-mixed-label" style={{ color: "var(--fg-secondary)", marginBottom: 10 }}>
-                    <i className="fa-solid fa-shuffle" aria-hidden="true" /> Naqd + qolgan qismi:
-                  </div>
-                  <div className="pay-mixed-second-types">
-                    {MIXED_SECOND.map(({ key, label, icon, color }) => (
-                      <button
-                        key={key}
-                        className={`pay-mixed-second-btn ${mixedSecondType === key ? "active" : ""}`}
-                        onClick={() => setMixedSecondType(key)}
-                        aria-pressed={mixedSecondType === key}
-                        style={{ "--pay-color": color }}
-                      >
-                        <i className={`fa-solid ${icon}`} aria-hidden="true" />{label}
+                <div className="pay-split">
+                  {split.map((part, idx) => {
+                    const m = SPLIT_METHODS.find((x) => x.key === part.type);
+                    const isCredit = part.type === "CREDIT";
+                    return (
+                      <div className="pay-split__row" key={part.type}
+                           style={{ "--pay-color": m?.color }}>
+                        <span className="pay-split__name">
+                          <i className={`fa-solid ${m?.icon}`} aria-hidden="true" />
+                          {m?.label}
+                        </span>
+                        <NumField kind="money"
+                          className="form-input ek-num pay-split__input"
+                          value={part.amount}
+                          autoFocus={idx === 0}
+                          onChange={(e) => setPart(part.type, e.target.value)}
+                          aria-label={m?.label}
+                        />
+                        {/* ⚠ Birinchi qatorni ham o'chirsa bo'ladi: kassir
+                            «naqd emas, karta + qarz» deyishi mumkin va
+                            naqdni majburan qoldirish uni nolga yozishga
+                            majbur qilardi. */}
+                        <button type="button" className="pay-split__x"
+                                title={t("common.delete")} aria-label={t("common.delete")}
+                                onClick={() => dropPart(part.type)}>
+                          <i className="fa-solid fa-xmark" aria-hidden="true" />
+                        </button>
+                        {isCredit && !customer && (
+                          <span className="pay-split__warn" title={t("kassa.creditNeedCustomer")}>
+                            <i className="fa-solid fa-user-slash" aria-hidden="true" />
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {/* Qo'shilmagan usullar — bitta bosishda qo'shiladi */}
+                  <div className="pay-split__add">
+                    {SPLIT_METHODS.filter((m) => !split.some((p) => p.type === m.key)).map((m) => (
+                      <button key={m.key} type="button" className="pay-split__chip"
+                              style={{ "--pay-color": m.color }}
+                              onClick={() => addPart(m.key)}>
+                        <i className={`fa-solid ${m.icon}`} aria-hidden="true" /> {m.label}
                       </button>
                     ))}
                   </div>
 
-                  <div className="pay-mixed-row" style={{ marginTop: 14 }}>
-                    <div className="pay-mixed-field">
-                      <label className="pay-mixed-label" htmlFor="mx-cash" style={{ color: "var(--fg-success)" }}>
-                        <i className="fa-solid fa-money-bill-1" aria-hidden="true" /> Naqd (so'm)
-                      </label>
-                      <NumField kind="money"
-                        id="mx-cash"
-                        className="form-input pay-mixed-input"
-                        style={{ borderColor: "var(--border-success)", color: "var(--fg-success)" }}
-                        value={cashAmount}
-                        onChange={(e) => {
-                          setCashAmount(e.target.value);
-                          setCardAmount(String(Math.max(0, total - (Number(e.target.value) || 0))));
-                        }}
-                      />
+                  {/* ⚠ QOLDIQ — eng muhim raqam. Ilgari «yig'indi jamiga
+                      teng emas» degan xabar bor edi, lekin QANCHA
+                      yetishmayotganini kassir o'zi hisoblardi. */}
+                  {splitRest !== 0 && (
+                    <div className={`pay-split__rest ${splitRest < 0 ? "over" : ""}`}>
+                      <span>
+                        <i className={`fa-solid ${splitRest < 0 ? "fa-triangle-exclamation" : "fa-circle-info"}`}
+                           aria-hidden="true" />{" "}
+                        {splitRest > 0 ? t("kassa.splitRest") : t("kassa.splitOver")}
+                      </span>
+                      <b className="ek-num">{money(Math.abs(splitRest))}</b>
+                      {/* Qolganini bitta bosishda oxirgi qatorga beradi.
+                          Kassir uchun eng ko'p uchraydigan amal aynan shu:
+                          «qolganini qarzga yoz». */}
+                      {splitRest > 0 && split.length > 0 && (
+                        <button type="button" className="btn btn-outline btn-sm"
+                                onClick={() => fillRest(split[split.length - 1].type)}>
+                          {t("kassa.splitFill")}
+                        </button>
+                      )}
                     </div>
-                    <div className="pay-mixed-field">
-                      <label className="pay-mixed-label" htmlFor="mx-card" style={{ color: "var(--fg-brand)" }}>
-                        <i className="fa-solid fa-credit-card" aria-hidden="true" />
-                        {paymentLabel(mixedSecondType)} (so'm)
-                      </label>
-                      <NumField kind="money"
-                        id="mx-card"
-                        className="form-input pay-mixed-input"
-                        style={{ borderColor: "var(--border-brand)", color: "var(--fg-brand)" }}
-                        value={cardAmount}
-                        onChange={(e) => {
-                          setCardAmount(e.target.value);
-                          setCashAmount(String(Math.max(0, total - (Number(e.target.value) || 0))));
-                        }}
-                      />
-                    </div>
-                  </div>
-                  {!mixedOk && total > 0 && (
-                    <div className="pay-mixed-warn">
-                      <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />{" "}
-                      Yig'indi <span className="ek-num">{mixedSum.toLocaleString("uz-UZ")}</span> —
-                      jami <span className="ek-num">{total.toLocaleString("uz-UZ")}</span> bilan teng bo'lishi kerak
+                  )}
+                  {split.length === 0 && (
+                    <div className="pay-split__rest">
+                      <span><i className="fa-solid fa-circle-info" aria-hidden="true" /> {t("kassa.splitEmpty")}</span>
                     </div>
                   )}
                 </div>

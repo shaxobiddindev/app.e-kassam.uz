@@ -662,7 +662,7 @@ export const shopApi = {
     return request(`/shop/discount-limit?${q}`, { method: "PATCH" });
   },
   /** Zarariga sotishga ruxsat (V53) — faqat egasi. */
-  setLossSale: (enabled) => request(`/shop/loss-sale?enabled=${enabled}`, { method: "PATCH" }),
+  setLossSale: (enabled) => request(`/shop/loss-sale?value=${enabled}`, { method: "PATCH" }),
   /** Qaytarish muddati (kun). 0 — har safar rahbar tasdig'i. */
   setReturnDays: (days) => request(`/shop/return-days?days=${days}`, { method: "PATCH" }),
   /** Nasiya chegarasi — do'kon standarti. */

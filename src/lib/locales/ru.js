@@ -1647,4 +1647,11 @@ export default {
   "report.lossSales": "Чеков продано в убыток",
   "report.lossAmount": "Сумма убытка",
   "report.lossHint": "Эта сумма уже учтена в валовой прибыли — из чистой прибыли повторно не вычитается",
+
+  /* ── V53: aralash to'lov qismlari ── */
+  "kassa.splitRest": "Не распределено",
+  "kassa.splitOver": "Введено больше суммы",
+  "kassa.splitFill": "Остаток сюда",
+  "kassa.splitEmpty": "Добавьте способ оплаты",
+  "kassa.creditNeedCustomer": "Для долга нужно выбрать клиента",
 };

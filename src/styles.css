@@ -1246,9 +1246,18 @@ select.form-input { cursor: pointer; }
 /* ── To'lov turlari grid ── */
 .pay-modal-types {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 10px;
+  /* ⚠ OLTITA USUL — OLTITA USTUN. Ilgari beshta ustun turardi va
+     oltinchisi («Nasiya») YOLG'IZ ikkinchi qatorga tushib, oynada
+     ~110px bo'sh joy yeb ketardi. To'lov oynasi esa kassaning eng
+     ko'p ochiladigan oynasi: u yerdagi har ortiqcha piksel har
+     chekda takrorlanadi. */
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
   margin-bottom: 8px;
+}
+/* Tor ekranda oltita katakcha siqilib ketadi — u yerda uch ustun. */
+@media (max-width: 560px) {
+  .pay-modal-types { grid-template-columns: repeat(3, 1fr); }
 }
 
 .pay-type-btn {
@@ -1336,6 +1345,87 @@ select.form-input { cursor: pointer; }
 }
 
 /* ── Aralash to'lov inputlari ── */
+/* ══════════════════════════════════════════════════════════════════════════
+   ARALASH TO'LOV — ISTALGANCHA USUL (V53)
+
+   ⚠ ASOSIY TALAB: SCROL O'SMASIN. Qatorlar BIR SATRLI (44px) va faqat
+   QO'SHILGAN usullar chiziladi. Ikki usulli odatiy to'lovda balandlik
+   88px + chiplar — eski ikki maydonlik ko'rinishdan (yorliq + input
+   × 2 ≈ 150px) PAST.
+   ══════════════════════════════════════════════════════════════════════════ */
+.pay-split {
+  margin-top: 16px;
+  padding: 12px;
+  background: var(--bg-sunken);
+  border-radius: 14px;
+  border: 1.5px solid var(--border);
+  animation: slideUp .3s ease;
+}
+
+.pay-split__row {
+  display: flex; align-items: center; gap: 8px;
+  height: 44px;
+}
+.pay-split__row + .pay-split__row { margin-top: 6px; }
+
+.pay-split__name {
+  display: flex; align-items: center; gap: 7px;
+  /* Yorliq ustuni QAT'IY kenglikda: aks holda «Naqd» va «Click»
+     qatorlarining maydonlari turli joydan boshlanib, ustun sifatida
+     o'qilmasdi. */
+  flex: 0 0 108px; min-width: 0;
+  font-size: 13px; font-weight: 700;
+  color: var(--pay-color, var(--fg-secondary));
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.pay-split__name i { flex: none; }
+
+.pay-split__input {
+  flex: 1; min-width: 0; height: 40px;
+  text-align: right; font-weight: 800;
+  border-color: color-mix(in srgb, var(--pay-color, var(--border)) 40%, var(--border));
+}
+
+.pay-split__x {
+  flex: none; width: 32px; height: 32px; border-radius: 8px;
+  display: grid; place-items: center;
+  background: transparent; border: none; cursor: pointer;
+  color: var(--fg-muted);
+}
+.pay-split__x:hover { background: var(--bg-danger-subtle); color: var(--fg-danger); }
+
+.pay-split__warn { flex: none; color: var(--fg-warning); }
+
+.pay-split__add {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  margin-top: 10px;
+}
+.pay-split__chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 32px; padding: 0 12px; border-radius: 999px;
+  font-size: 12px; font-weight: 700; cursor: pointer;
+  background: var(--bg-surface);
+  border: 1px dashed color-mix(in srgb, var(--pay-color, var(--border)) 55%, var(--border));
+  color: var(--pay-color, var(--fg-secondary));
+}
+.pay-split__chip:hover {
+  border-style: solid;
+  background: color-mix(in srgb, var(--pay-color, var(--bg-surface)) 10%, var(--bg-surface));
+}
+
+.pay-split__rest {
+  display: flex; align-items: center; gap: 10px;
+  margin-top: 10px; padding-top: 10px;
+  border-top: 1px dashed var(--border);
+  font-size: 13px; font-weight: 700;
+  color: var(--fg-secondary);
+}
+.pay-split__rest b { margin-left: auto; font-size: 15px; }
+.pay-split__rest .btn { margin-left: 0; }
+/* Ortiqcha kiritilgan summa — XATO, qoldiqdan boshqa rangda: kassir
+   ikkalasini bir qarashda ajratishi kerak. */
+.pay-split__rest.over { color: var(--fg-danger); }
+
 .pay-mixed-section {
   margin-top: 16px;
   padding: 18px;

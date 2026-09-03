@@ -1647,4 +1647,11 @@ export default {
   "report.lossSales": "Receipts sold below cost",
   "report.lossAmount": "Loss amount",
   "report.lossHint": "Already reflected in gross profit — not subtracted from net profit again",
+
+  /* ── V53: aralash to'lov qismlari ── */
+  "kassa.splitRest": "Unallocated",
+  "kassa.splitOver": "More than the total",
+  "kassa.splitFill": "Put the rest here",
+  "kassa.splitEmpty": "Add a payment method",
+  "kassa.creditNeedCustomer": "Pick a customer for a debt",
 };
