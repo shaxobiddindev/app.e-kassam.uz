@@ -4,6 +4,8 @@ import { inventoryApi, shopApi } from "../api";
 import { BranchSelector, Modal } from "../components";
 import MarkingScanModal from "../components/MarkingScanModal";
 import { Empty, SearchBar } from "../components/ui";
+import FacetFilter from "../components/ek/FacetFilter";
+import VariantMatrixModal from "../components/VariantMatrixModal";
 import Select from "../components/ek/Select";
 import { useAuth } from "../hooks/useAuth";
 import { useBadge } from "../context/BadgeProvider";
@@ -148,6 +150,18 @@ function groupByProduct(items) {
       /* Birlik — «Kam qoldi: 3 dona» yozuvi uchun. Partiyalar bitta
          mahsulotniki, shuning uchun birinchisiniki hammasiga yetadi. */
       unit: f.unit,
+      /* Kiyim atributlari (V57) — partiyalar bitta tovarniki, shuning
+         uchun birinchisiniki hammasiga yetadi. Filtr ham, jadvaldagi
+         «M / qora» yozuvi ham shulardan. */
+      brand: f.brand,
+      targetGroup: f.targetGroup,
+      sizeLabel: f.sizeLabel,
+      sizeSort: f.sizeSort,
+      colorName: f.colorName,
+      colorHex: f.colorHex,
+      season: f.season,
+      variantGroupId: f.variantGroupId,
+      variantGroupName: f.variantGroupName,
       batches: sorted,
       sellable,
       minQ,
@@ -265,6 +279,12 @@ export default function InventoryPage({ toast }) {
      Ref ishlatilgan, holat emas — aks holda har modal ochilib-yopilganda
      taymer noldan boshlanardi va uzoq ishlaganda yangilanish umuman
      kechikib ketishi mumkin edi. */
+  /* ══ KIYIM FILTRI VA MODEL JADVALI (V57) ═══════════════════════════ */
+  const [clothFilter, setClothFilter] = useState({});
+  const [filterOpen, setFilterOpen]   = useState(false);
+  /* Ochilgan model guruhi — `null` bo'lsa jadval yopiq. */
+  const [matrixGroup, setMatrixGroup] = useState(null);
+
   const pausedRef = useRef(false);
   useEffect(() => {
     pausedRef.current = modal !== null || correct !== null || markScan;
@@ -365,15 +385,74 @@ export default function InventoryPage({ toast }) {
     }
   };
 
+  /* ══ KIYIM FILTRI (V57) ═══════════════════════════════════════════════
+     ⚠ MIJOZ TOMONIDA, serverda emas. Ombor jadvali qoldiqlar bo'yicha
+     KELIB BO'LGAN (`inventoryApi.getAll`) va u allaqachon xotirada.
+     Serverga qayta murojaat qilish javobni kutishni va jonli
+     yangilanish bilan poygani qo'shardi — natija esa AYNAN o'sha.
+
+     ⚠ Katakchalar ham SHU RO'YXATDAN olinadi: sanoq omborchi
+     ko'rayotgan jadvalga to'g'ri keladi. Server `facets` i butun
+     katalogni sanardi va «Zara (40)» deb turgan katakcha bosilganda
+     omborda 3 tasi chiqib, omborchi tizimni buzuq deb o'ylardi. */
+  const invFacets = useMemo(() => {
+    const bucket = { brands: new Map(), sizes: new Map(), colors: new Map(),
+                     targets: new Map(), seasons: new Map() };
+    const add = (map, value, label, hex, ord) => {
+      if (!value) return;
+      const cur = map.get(value) || { value, label: label || value, count: 0, hex, ord };
+      cur.count++;
+      map.set(value, cur);
+    };
+    for (const { g } of rows) {
+      add(bucket.brands,  g.brand, g.brand, null, 0);
+      add(bucket.sizes,   g.sizeLabel, g.sizeLabel, null, g.sizeSort ?? 9999);
+      add(bucket.colors,  g.colorName, g.colorName, g.colorHex, 0);
+      add(bucket.targets, g.targetGroup, t(`target.${(g.targetGroup || "").toLowerCase()}`), null, 0);
+      add(bucket.seasons, g.season, t(`season.${(g.season || "").toLowerCase()}`), null, 0);
+    }
+    const out = (map, byOrd) => {
+      const list = [...map.values()];
+      /* O'lchamlar TARTIB RAQAMI bo'yicha — alifboda «L, M, S» chiqardi. */
+      list.sort((a, b) => (byOrd ? a.ord - b.ord : 0) || a.label.localeCompare(b.label));
+      return list;
+    };
+    return {
+      categories: [],
+      brands: out(bucket.brands), sizes: out(bucket.sizes, true),
+      colors: out(bucket.colors), targets: out(bucket.targets),
+      seasons: out(bucket.seasons),
+    };
+  }, [rows]);
+
+  /** Filtr umuman kerakmi — kiyimsiz omborda tugma ham chiqmaydi. */
+  const hasClothing = invFacets.brands.length || invFacets.sizes.length
+    || invFacets.colors.length || invFacets.targets.length || invFacets.seasons.length;
+
+  const filterCount = useMemo(
+    () => Object.values(clothFilter).reduce((n, a) => n + (Array.isArray(a) ? a.length : 0), 0),
+    [clothFilter],
+  );
+
   /* ⚠ Avval HOLAT bo'yicha filtrlanadi, keyin qidiruv REYTINGLAYDI.
      Tartib muhim: qidiruv natijani mosligiga qarab saralaydi va
      undan keyin filtrlash saralashni buzardi. Algoritm kassadagi
      bilan bir xil (`lib/ek-search.js`). */
-  const byState = rows.filter(({ f }) => {
-    if (flt === "expired") return f.expired;
-    if (flt === "near")    return f.near;
-    if (flt === "low")     return needsOrder(f);
-    return true;
+  const byState = rows.filter(({ f, g }) => {
+    if (flt === "expired" && !f.expired) return false;
+    if (flt === "near"    && !f.near)    return false;
+    if (flt === "low"     && !needsOrder(f)) return false;
+
+    /* ⚠ HAR O'Q ICHIDA «YOKI», O'QLAR ORASIDA «VA». «M + L» ikkala
+       o'lchamni ham beradi, «M + qora» esa faqat qora M ni. Boshqacha
+       bo'lsa filtr toraytirmasdi, kengaytirardi — checkbox dan
+       kutiladigan narsa esa aynan toraytirish. */
+    const ok = (sel, v) => !sel?.length || sel.includes(v);
+    return ok(clothFilter.brands,  g.brand)
+        && ok(clothFilter.sizes,   g.sizeLabel)
+        && ok(clothFilter.colors,  g.colorName)
+        && ok(clothFilter.targets, g.targetGroup)
+        && ok(clothFilter.seasons, g.season);
   });
   const filtered = rankItems(byState, search, {
     codes: ({ g }) => [g.barcode],
@@ -676,6 +755,16 @@ export default function InventoryPage({ toast }) {
             style={{ width: 320 }}
           />
           <div style={{ display: "flex", gap: 8 }}>
+            {/* ⚠ Filtr tugmasi FAQAT kiyim atributlari bo'lsa. Oziq-ovqat
+                omborida u bosilganda bo'sh oyna ochilardi va omborchi
+                nimadir yuklanmagan deb o'ylardi. */}
+            {!showHistory && hasClothing && (
+              <button className={`btn btn-sm btn-outline filter-btn ${filterCount > 0 ? "is-on" : ""}`}
+                      onClick={() => setFilterOpen(true)}>
+                <i className="fa-solid fa-filter" /> {t("common.filter")}
+                {filterCount > 0 && <span className="facet__badge ek-num">{filterCount}</span>}
+              </button>
+            )}
             <button
               className={`btn btn-sm ${showHistory ? "btn-primary" : "btn-outline"}`}
               onClick={() => setShowHistory(!showHistory)}
@@ -780,7 +869,37 @@ export default function InventoryPage({ toast }) {
                           <i className="fa-solid fa-chevron-right"
                              style={{ fontSize: 11, opacity: 0.55, width: 12 }} aria-hidden="true" />
                           {g.productName}
+                          {/* ⚠ MODEL JADVALI TUGMASI (V57) — «qaysi
+                              o'lchamdan qancha qoldi?». Ilgari omborchi
+                              variantlarni jadvaldan ko'z bilan yig'ardi:
+                              «Ko'ylak — S», «Ko'ylak — M» … alohida
+                              qatorlarda sochilib yotardi.
+
+                              ⚠ `stopPropagation`: qator bosilganda
+                              tafsilot ochiladi va usiz ikkala oyna
+                              birdan ochilardi. */}
+                          {g.variantGroupId && (
+                            <button type="button" className="btn-icon btn-icon--xs"
+                                    title={t("clothing.matrix")}
+                                    aria-label={t("clothing.matrix")}
+                                    onClick={(e) => { e.stopPropagation(); setMatrixGroup(g.variantGroupId); }}>
+                              <i className="fa-solid fa-table-cells" aria-hidden="true" />
+                            </button>
+                          )}
                         </div>
+                        {/* O'lcham va rang — nom ostida, kichik yozuvda:
+                            ular qatorni ajratadigan YAGONA belgi. */}
+                        {(g.sizeLabel || g.colorName) && (
+                          <div className="inv-attrs">
+                            {g.sizeLabel && <span className="inv-attrs__size">{g.sizeLabel}</span>}
+                            {g.colorName && (
+                              <span className="inv-attrs__color">
+                                {g.colorHex && <span className="facet__dot" style={{ background: g.colorHex }} aria-hidden="true" />}
+                                {g.colorName}
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </td>
                       <td><code className="mono">{g.barcode || "-"}</code></td>
                       <td>
@@ -1262,6 +1381,26 @@ export default function InventoryPage({ toast }) {
             />
           </div>
         </Modal>
+      )}
+
+      {filterOpen && (
+        <FacetFilter
+          facets={invFacets}
+          value={clothFilter}
+          onChange={setClothFilter}
+          onClose={() => setFilterOpen(false)}
+        />
+      )}
+
+      {/* ⚠ MODEL JADVALI — «qaysi o'lchamdan qancha qoldi?». Ilgari
+          omborchi variantlarni jadvaldan ko'z bilan yig'ardi. */}
+      {matrixGroup && (
+        <VariantMatrixModal
+          groupId={matrixGroup}
+          shopId={branchId}
+          toast={toast}
+          onClose={() => setMatrixGroup(null)}
+        />
       )}
     </div>
   );

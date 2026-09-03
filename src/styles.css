@@ -3329,3 +3329,173 @@ img.logo--dark { display: none; }
 @media (max-width: 720px) {
   .kbd-help__body { grid-template-columns: 1fr; }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   KO'P TANLOVLI FILTR (V57)
+
+   ⚠ Kassada kategoriya TANLAGICHDA edi va u bitta qiymat beradi. Kiyim
+   do'konida savol deyarli har doim bir nechta: «ayollar VA bolalar»,
+   «M VA L». Tanlagich bilan buni qilishning yo'li yo'q edi.
+   ══════════════════════════════════════════════════════════════════════════ */
+.facet-box {
+  background: var(--bg-surface);
+  border-radius: 22px;
+  width: 100%;
+  max-width: 1080px;
+  max-height: 90vh;
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 8px 40px rgba(1, 54, 141, .12);
+  display: flex;
+  flex-direction: column;
+}
+.facet-box__body {
+  padding: 6px 26px 18px;
+  display: grid;
+  /* ⚠ `auto-fill` + minmax: bo'limlar soni do'konga qarab o'zgaradi
+     (oziq-ovqatda faqat kategoriya, kiyimda oltitasi ham). Qat'iy ustun
+     soni birinchi holatda ekranning uchdan ikkisini bo'sh qoldirardi. */
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 16px 22px;
+  overflow-y: auto;
+}
+.facet-box__foot {
+  padding: 14px 26px 20px;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.facet { min-width: 0; }
+.facet__title {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 11.5px; font-weight: 800; letter-spacing: .04em;
+  text-transform: uppercase; color: var(--text2);
+  margin: 10px 0 7px;
+}
+.facet__badge {
+  min-width: 18px; height: 18px; padding: 0 5px;
+  border-radius: 9px; background: var(--blue); color: #fff;
+  font-size: 11px; font-weight: 800; line-height: 18px; text-align: center;
+}
+.facet__search { margin-bottom: 6px; font-size: 12.5px; padding: 6px 9px; }
+
+.facet__list {
+  /* ⚠ Ichida suriladi, OYNA emas: brendlar yuzta bo'lishi mumkin va
+     ular butun oynani cho'zib yuborardi. */
+  max-height: 208px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+}
+.facet__row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 10px; cursor: pointer; font-size: 13px;
+  transition: background .15s;
+}
+.facet__row + .facet__row { border-top: 1px solid var(--border-subtle); }
+.facet__row:hover { background: var(--bg); }
+.facet__row.is-on { background: var(--bg-brand-subtle, rgba(1, 54, 141, .06)); font-weight: 700; }
+.facet__row input { accent-color: var(--blue); cursor: pointer; }
+.facet__label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Sanoq — «Qora (0)» ni bosgan kassir bo'sh ekran ko'rmasin */
+.facet__count { color: var(--text2); font-size: 11.5px; }
+.facet__dot {
+  width: 13px; height: 13px; border-radius: 50%;
+  border: 1px solid var(--border); flex: none;
+}
+.facet__empty { padding: 10px; font-size: 12px; color: var(--text2); text-align: center; }
+
+/* Filtr yoqilganini tugmada KO'RSATISH — aks holda kassir bo'sh
+   natijani «tovar yo'q» deb tushunardi. */
+.filter-btn.is-on {
+  border-color: var(--border-brand);
+  background: var(--bg-brand-subtle, rgba(1, 54, 141, .08));
+  color: var(--fg-brand, var(--blue));
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   O'LCHAM × RANG MATRITSASI (V57)
+
+   ⚠ «Qaysi o'lchamdan qancha qoldi?» — kiyim do'konining eng ko'p
+   beriladigan savoli. Ilgari har variant alohida kartochka bo'lib
+   ro'yxatda sochilib yotardi va omborchi ularni ko'z bilan yig'ardi.
+   ══════════════════════════════════════════════════════════════════════════ */
+.vmx {
+  background: var(--bg-surface);
+  border-radius: 22px;
+  width: 100%;
+  max-width: 900px;
+  max-height: 90vh;
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 8px 40px rgba(1, 54, 141, .12);
+  display: flex;
+  flex-direction: column;
+}
+.vmx__body { padding: 6px 26px 12px; min-height: 0; }
+.vmx__scroll { overflow: auto; max-height: 60vh; border-radius: 12px; border: 1px solid var(--border-subtle); }
+.vmx__empty { padding: 30px; text-align: center; color: var(--text2); font-size: 13px; }
+
+.vmx__table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.vmx__table th, .vmx__table td { padding: 8px 10px; text-align: center; }
+.vmx__table thead th {
+  /* ⚠ Sarlavha YOPISHIB turadi: 12 o'lchamli jadvalda pastga surilganda
+     qaysi ustun qaysi rang ekani ko'rinmay qolardi. */
+  position: sticky; top: 0; z-index: 1;
+  background: var(--bg); font-size: 11.5px; font-weight: 800;
+  text-transform: uppercase; letter-spacing: .03em; color: var(--text2);
+  border-bottom: 1px solid var(--border);
+}
+.vmx__corner, .vmx__size {
+  position: sticky; left: 0; z-index: 2;
+  background: var(--bg); font-weight: 800; text-align: left;
+}
+.vmx__table thead .vmx__corner { z-index: 3; }
+.vmx__table tbody tr + tr td, .vmx__table tbody tr + tr th { border-top: 1px solid var(--border-subtle); }
+
+.vmx__cell { line-height: 1.25; }
+.vmx__qty { font-weight: 700; display: block; }
+.vmx__sku { display: block; font-size: 10.5px; color: var(--text2); }
+
+/* ⚠ NOL QOLDIQ va YARATILMAGAN variant BOSHQA narsa va shunday
+   ko'rinadi ham: birinchisi «tugagan» (buyurtma kerak), ikkinchisi
+   «kiritilmagan» (kartochka to'liq emas). */
+.vmx__cell.is-empty { background: var(--bg-danger-subtle, rgba(239,68,68,.08)); }
+.vmx__cell.is-empty .vmx__qty { color: var(--red); font-weight: 800; }
+.vmx__cell.is-missing { color: var(--text2); opacity: .45; }
+.vmx__cell.is-pickable { cursor: pointer; }
+.vmx__cell.is-pickable:hover { background: var(--bg-brand-subtle, rgba(1,54,141,.07)); }
+
+.vmx__foot {
+  padding: 12px 26px 18px;
+  display: flex; justify-content: space-between; align-items: center;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 13px;
+}
+
+/* Rang nomi + rangning O'ZI yonma-yon (V57). «Ko'k» va «moviy» mijoz
+   uchun boshqa rang, kassir uchun ikkalasi ham «ko'k» — doiracha
+   savolni bir qarashda yopadi. */
+.color-pair { display: flex; gap: 8px; align-items: center; }
+.color-pair .form-input { flex: 1; min-width: 0; }
+.color-pair__dot {
+  width: 42px; height: 38px; padding: 2px; flex: none;
+  border: 1.5px solid var(--border); border-radius: 10px;
+  background: var(--bg); cursor: pointer;
+}
+
+/* Ombor jadvalida o'lcham va rang — nom ostida (V57). Bir modelning
+   variantlari faqat SHU bilan farqlanadi: nomlari deyarli bir xil. */
+.inv-attrs {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 2px; padding-left: 20px;
+  font-size: 11.5px; color: var(--text2);
+}
+.inv-attrs__size {
+  font-weight: 800; color: var(--text);
+  background: var(--bg); border: 1px solid var(--border-subtle);
+  border-radius: 6px; padding: 0 6px;
+}
+.inv-attrs__color { display: inline-flex; align-items: center; gap: 5px; }
+.btn-icon--xs { width: 24px; height: 24px; font-size: 11px; padding: 0; }

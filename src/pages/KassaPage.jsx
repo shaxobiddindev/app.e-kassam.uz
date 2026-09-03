@@ -28,6 +28,7 @@ import Modal from "../components/Modal";
 import { PhoneField } from "../components/ek/EkFields";
 import Select from "../components/ek/Select";
 import { printReceipt, openDrawer } from "../lib/ek-hardware";
+import FacetFilter from "../components/ek/FacetFilter";
 import { KASSA_KEYS, keyLabel, resolve as resolveKey } from "../lib/ek-kassa-keys";
 import { spreadDiscount, roundingOffers, budgetOffers, cartRoom,
          cartLossRoom, discountVerdict } from "../lib/ek-discount";
@@ -243,6 +244,45 @@ export default function KassaPage({ toast, refreshLowStock }) {
   const [pickedId, setPickedId] = useState(null);
   /* Yorliqlar ro'yxati (`?`) — `null` bo'lsa yopiq. */
   const [keysOpen, setKeysOpen] = useState(false);
+
+  /* ══ KO'P TANLOVLI FILTR (V57) ═══════════════════════════════════════
+     ⚠ QURILMADA SAQLANADI — kategoriya tabi bilan bir xil sabab: kassir
+     kun bo'yi bitta bo'limda ishlaydi («ayollar, qishki») va har
+     qaytganda uni qaytadan belgilash kuniga o'nlab ortiqcha bosish edi.
+
+     ⚠ Buzuq yozuvda BO'SH filtr: eski yoki qo'lda o'zgartirilgan
+     yozuv butun katalogni ko'rinmas qilib qo'yardi va kassir sababini
+     topa olmasdi. */
+  const [filter, setFilter] = useState(() => {
+    try {
+      const raw = localStorage.getItem("ek_kassaFilter");
+      const v = raw ? JSON.parse(raw) : null;
+      return v && typeof v === "object" && !Array.isArray(v) ? v : {};
+    } catch (_) { return {}; }
+  });
+  const [facets, setFacets] = useState(null);
+  const [filterOpen, setFilterOpen] = useState(false);
+
+  /** Nechta katakcha belgilangan — tugmadagi belgi uchun. */
+  const filterCount = useMemo(
+    () => Object.values(filter).reduce((s, a) => s + (Array.isArray(a) ? a.length : 0), 0),
+    [filter],
+  );
+
+  useEffect(() => {
+    try {
+      if (filterCount > 0) localStorage.setItem("ek_kassaFilter", JSON.stringify(filter));
+      else localStorage.removeItem("ek_kassaFilter");
+    } catch (_) { /* shaxsiy rejim — saqlanmasa ham kassa ishlaydi */ }
+  }, [filter, filterCount]);
+
+  /* Filtr katakchalari — do'konda haqiqatan mavjud qiymatlar.
+     Xatosi JIM yutiladi: filtr — qulaylik, sotuvning sharti emas. */
+  useEffect(() => {
+    productApi.getFacets(branchId)
+      .then((r) => setFacets(r.data || null))
+      .catch(() => setFacets(null));
+  }, [branchId]);
   const keyboard                    = useKeyboard();
   const touchOn                     = isTouch();
   const confirm                     = useConfirm();
@@ -512,7 +552,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
     if (!silent) setSearching(true);
     try {
       const res = await productApi.search(q, 0, 60, branchId,
-        { categoryId, favorites: favOnly });
+        { categoryId, favorites: favOnly, ...filter });
       const list = res.data || [];
       if (!q) baseProducts.current = list;
       /* ⚠ FAQAT FON yangilanishida belgilanadi. Kassirning o'z sotuvidan
@@ -523,10 +563,10 @@ export default function KassaPage({ toast, refreshLowStock }) {
       setProducts(list);
     } catch (_) { /* oflaynda katalog eskicha qoladi */ }
     finally { if (!silent) setSearching(false); }
-  }, [branchId, categoryId, favOnly, flagChanges]);
+  }, [branchId, categoryId, favOnly, filter, flagChanges]);
 
-  /* Kategoriya yoki filial almashsa kesh yaroqsiz — ro'yxat boshqa. */
-  useEffect(() => { baseProducts.current = null; }, [branchId, categoryId, favOnly]);
+  /* Kategoriya, filtr yoki filial almashsa kesh yaroqsiz — ro'yxat boshqa. */
+  useEffect(() => { baseProducts.current = null; }, [branchId, categoryId, favOnly, filter]);
 
   /* ══ JONLI QOLDIQ ══════════════════════════════════════════
      Katakchadagi son boshqa kassadagi sotuvdan ham o'zgaradi, lekin
@@ -1685,6 +1725,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
         category:  () => document.querySelector(".kassa-cat .ek-select__btn")?.click(),
         favorites: () => { setFavOnly((v) => !v); setCategoryId(null); },
         view:      () => setViewMode(view === "tiles" ? "list" : "tiles"),
+        filter:    () => facets && setFilterOpen((v) => !v),
         linePrev:  () => moveLine(-1),
         lineNext:  () => moveLine(+1),
         linePlus:  () => picked && updateQty(picked.id, +1),
@@ -1856,6 +1897,26 @@ export default function KassaPage({ toast, refreshLowStock }) {
                   })),
                 ]}
               />
+
+              {/* ⚠ FILTR TUGMASI — TANLAGICH YONIDA (V57). Tanlagich bitta
+                  kategoriya beradi, filtr esa bir nechtasini va kiyim
+                  atributlarini. Ikkalasi yonma-yon turadi va ular
+                  BIRGA ishlaydi: tab toraytiradi, filtr yana
+                  toraytiradi.
+
+                  ⚠ Belgilangan katakchalar soni TUGMADA ko'rinadi —
+                  aks holda kassir bo'sh natijani «tovar yo'q» deb
+                  tushunardi, holbuki sabab kechagi filtr edi. */}
+              {facets && (
+                <button type="button"
+                        className={`btn-icon filter-btn ${filterCount > 0 ? "is-on" : ""}`}
+                        title={`${t("common.filter")} (${keyLabel("filter")})`}
+                        aria-label={t("common.filter")}
+                        onClick={() => setFilterOpen(true)}>
+                  <i className="fa-solid fa-filter" aria-hidden="true" />
+                  {filterCount > 0 && <span className="facet__badge ek-num">{filterCount}</span>}
+                </button>
+              )}
 
               {/* ⚠ KO'RINISH TUGMALARI SHU YERDA (foydalanuvchi so'rovi):
                   ilgari ular kategoriya qatorining o'ng chetida turardi
@@ -2125,6 +2186,15 @@ export default function KassaPage({ toast, refreshLowStock }) {
           ⚠ Ro'yxat QO'LDA YOZILMAYDI — ishlovchi bilan bitta manbadan
           (`ek-kassa-keys.js`). Aks holda u birinchi o'zgarishdayoq
           yolg'on gapira boshlardi. */}
+      {filterOpen && (
+        <FacetFilter
+          facets={facets}
+          value={filter}
+          onChange={setFilter}
+          onClose={() => setFilterOpen(false)}
+        />
+      )}
+
       {keysOpen && (
         <Overlay className="pay-modal-overlay ek-overlay" role="dialog" aria-modal="true"
                  aria-label={t("kbd.title")} onEscape={() => setKeysOpen(false)}>

@@ -221,6 +221,17 @@ export const productApi = {
                   if (shopId) p.set("shopId", shopId);
                   if (opts.categoryId) p.set("categoryId", opts.categoryId);
                   if (opts.favorites) p.set("favorites", "true");
+                  /* ⚠ KO'P TANLOVLI FILTR (V57) — har qiymat ALOHIDA
+                     parametr bo'lib ketadi (`?brand=Zara&brand=Mango`).
+                     Vergul bilan birlashtirish qilinmadi: brend nomida
+                     ham, rang nomida ham vergul uchraydi va «Dolce,
+                     Gabbana» serverda ikkiga bo'linib ketardi. */
+                  for (const [key, param] of Object.entries({
+                    categories: "category", brands: "brand", sizes: "sizeLabel",
+                    colors: "color", targets: "target", seasons: "season",
+                  })) {
+                    for (const v of opts[key] || []) if (v) p.append(param, v);
+                  }
                   return request(`/products/search?${p}`);
                 },
   /**
@@ -254,6 +265,17 @@ export const productApi = {
   deleteCategory: (id, shopId)       => request(`/products/categories/${id}${shopId ? `?shopId=${shopId}` : ""}`, { method: "DELETE" }),
 
   getVariantGroups: (shopId) => request(`/products/variant-groups${shopId ? `?shopId=${shopId}` : ""}`),
+  /* ── Kiyim: filtr va variantlar (V57) ──────────────────────────────
+     `facets` — do'konda HAQIQATAN mavjud filtr qiymatlari va sanoq.
+     Alohida lug'at jadvali yo'q: u tovarlar bilan sinxron qolishi uchun
+     har o'zgarishda yangilanishi kerak edi va birinchi o'chirilgan
+     tovardayoq «Zara (0 ta)» degan o'lik katakcha qolib ketardi. */
+  getFacets: (shopId) => request(`/products/facets${shopId ? `?shopId=${shopId}` : ""}`),
+  getVariantMatrix: (id, shopId) =>
+    request(`/products/variant-groups/${id}/matrix${shopId ? `?shopId=${shopId}` : ""}`),
+  generateVariants: (data, shopId) =>
+    request(`/products/variant-groups/generate${shopId ? `?shopId=${shopId}` : ""}`,
+            { method: "POST", body: JSON.stringify(data) }),
   createVariantGroup: (data) => request("/products/variant-groups", { method: "POST", body: JSON.stringify(data) }),
 };
 

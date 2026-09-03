@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { t } from "../lib/ek-i18n";
-import { productApi, mediaApi, downloadScaleExport } from "../api";
+import { productApi, mediaApi, shopApi, downloadScaleExport } from "../api";
 import { BranchSelector, Modal } from "../components";
 import CatalogWizard from "../components/CatalogWizard";
 import { Empty, Field, SearchBar, FormGroup } from "../components/ui";
@@ -38,8 +38,23 @@ const EMPTY_FORM = {
   mxikCode: "", packageCode: "", vatRate: "", priceIncludesVat: true,
   markingGroup: "", imageId: null, imageUrl: null, color: "", favorite: false,
   pickupRequired: false,
+  /* Kiyim atributlari (V57) — faqat kiyim yo'nalishidagi do'konda
+     so'raladi, qolganlarida bo'sh qoladi va serverga `null` ketadi. */
+  brand: "", targetGroup: "", sizeLabel: "", colorName: "", colorHex: "",
+  season: "", material: "",
   barcodes: [],
 };
+
+/**
+ * KIM UCHUN va MAVSUM ro'yxatlari.
+ *
+ * ⚠ Qiymatlar SERVERDAGI enum bilan AYNAN bir xil (`TargetGroup`,
+ * `Season`). Matnlar esa tarjimadan — server `facets` da ham shu
+ * kalitlar bilan tarjima qaytaradi, ya'ni filtr va forma bir xil so'zni
+ * ko'rsatadi.
+ */
+const TARGETS = ["MEN", "WOMEN", "UNISEX", "BOYS", "GIRLS", "KIDS", "BABY"];
+const SEASONS = ["ALL_SEASON", "SUMMER", "WINTER", "DEMI"];
 
 export default function ProductsPage({ toast }) {
   const { user } = useAuth();
@@ -95,6 +110,8 @@ export default function ProductsPage({ toast }) {
   const [branchId, setBranchId]     = useState(null);
   const [wizard, setWizard]         = useState(false);
   const [fiscal, setFiscal]         = useState(null);
+  /* Do'kon yo'nalishi — kiyim maydonlari shu asosda ko'rsatiladi. */
+  const [bizType, setBizType]       = useState("");
   const fileRef = useRef(null);
 
   const isHeadUser = user?.role === "OWNER" || user?.role === "SHOP_ADMIN" || user?.role === "ADMIN";
@@ -126,6 +143,10 @@ export default function ProductsPage({ toast }) {
        uni to'ldirish uchun har sahifa ochilishida serverga chiqishning
        ma'nosi yo'q. */
     if (FISCAL_UI) productApi.fiscalReadiness().then((r) => setFiscal(r.data)).catch(() => {});
+    /* Do'kon yo'nalishi — kiyim maydonlari ko'rinishini hal qiladi.
+       Xatosi JIM yutiladi: yo'nalish noma'lum bo'lsa maydonlar
+       ko'rinmaydi, lekin forma baribir ishlaydi. */
+    shopApi.getProfile().then((r) => setBizType(r?.data?.businessType || "")).catch(() => {});
   }, [branchId, products.length]);
 
   // ── Modal ochish ───────────────────────────────────────────
@@ -142,6 +163,10 @@ export default function ProductsPage({ toast }) {
       wholesalePrice: p.wholesalePrice ?? "",
       discountAllowed: p.discountAllowed !== false,
       maxDiscountPercent: p.maxDiscountPercent ?? "",
+      brand: p.brand ?? "", targetGroup: p.targetGroup ?? "",
+      sizeLabel: p.sizeLabel ?? "", colorName: p.colorName ?? "",
+      colorHex: p.colorHex ?? "", season: p.season ?? "",
+      material: p.material ?? "",
       // ⚠ `categoryId` javobda ILGARI YO'Q EDI va bu yerda doim `undefined`
       // bo'lardi: tahrirlash oynasi kategoriyani har safar bo'sh ko'rsatib,
       // saqlanganda uni jimgina yo'qotardi.
@@ -226,6 +251,17 @@ export default function ProductsPage({ toast }) {
            bo'lardi va qo'yilgan foizni olib tashlashning yo'li
            qolmasdi. */
         maxDiscountPercent: form.maxDiscountPercent === "" ? -1 : num(form.maxDiscountPercent),
+        /* ⚠ BO'SH SATR YUBORILADI, `null` EMAS. Serverda `null` —
+           «tegilmasin», bo'sh satr esa «olib tashlansin». `null`
+           yuborilganda qo'yilgan brendni yoki o'lchamni O'CHIRISHNING
+           yo'li qolmasdi. */
+        brand: form.brand.trim(),
+        targetGroup: form.targetGroup || null,
+        sizeLabel: form.sizeLabel.trim(),
+        colorName: form.colorName.trim(),
+        colorHex: form.colorHex.trim(),
+        season: form.season || null,
+        material: form.material.trim(),
         categoryId: form.categoryId || null,
         type: form.type,
         unit: form.unit,
@@ -636,6 +672,83 @@ export default function ProductsPage({ toast }) {
                 <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />
                 <div>{priceWarning}</div>
               </div>
+            )}
+
+            {/* ══ KIYIM ATRIBUTLARI (V57) ═══════════════════════════════
+                ⚠ FAQAT KERAK BO'LGANDA. Oziq-ovqat do'konida «o'lcham»
+                va «mavsum» maydonlari har tovar kiritilganda ekranni
+                egallab, ularni har safar o'qib o'tishga majbur qilardi
+                — `BusinessType` izohidagi qoida aynan shu.
+
+                ⚠ LEKIN TO'LDIRILGAN BO'LSA — DOIM KO'RINADI. Do'kon
+                yo'nalishini keyin o'zgartirsa yoki aralash savdo qilsa,
+                yashirilgan maydonlar bazada QOLIB, hech qayerdan
+                ko'rinmasdi va tuzatib ham bo'lmasdi. */}
+            {(bizType === "CLOTHING" || form.brand || form.sizeLabel
+              || form.colorName || form.targetGroup || form.season) && (
+              <>
+                <div className="grid-2">
+                  <FormGroup label={t("clothing.brand")}>
+                    <Field className="form-input" value={form.brand}
+                           onChange={setField("brand")} maxLength={80} />
+                  </FormGroup>
+                  <FormGroup label={t("clothing.target")}>
+                    <Select
+                      block clearable
+                      ariaLabel={t("clothing.target")}
+                      placeholder="—"
+                      value={form.targetGroup}
+                      onChange={(v) => setForm((f) => ({ ...f, targetGroup: v }))}
+                      options={TARGETS.map((v) => ({ value: v, label: t(`target.${v.toLowerCase()}`) }))}
+                    />
+                  </FormGroup>
+                </div>
+
+                <div className="grid-2">
+                  <FormGroup label={t("clothing.size")}>
+                    {/* ⚠ Erkin matn: o'lchamlar tizimi do'konga qarab
+                        boshqa («M», «42», «104») va ro'yxatga sig'maydi.
+                        Server uni normallashtiradi va tartibini o'zi
+                        hisoblaydi. */}
+                    <Field className="form-input" value={form.sizeLabel}
+                           onChange={setField("sizeLabel")} maxLength={24}
+                           placeholder="M · 42 · 104" />
+                  </FormGroup>
+                  <FormGroup label={t("clothing.season")}>
+                    <Select
+                      block clearable
+                      ariaLabel={t("clothing.season")}
+                      placeholder="—"
+                      value={form.season}
+                      onChange={(v) => setForm((f) => ({ ...f, season: v }))}
+                      options={SEASONS.map((v) => ({ value: v, label: t(`season.${v.toLowerCase()}`) }))}
+                    />
+                  </FormGroup>
+                </div>
+
+                <div className="grid-2">
+                  <FormGroup label={t("clothing.color")}>
+                    {/* ⚠ Nom va rangning O'ZI yonma-yon: «ko'k» va
+                        «moviy» mijoz uchun boshqa rang, kassir uchun
+                        ikkalasi ham «ko'k». Filtrdagi doiracha savolni
+                        bir qarashda yopadi. */}
+                    <div className="color-pair">
+                      <Field className="form-input" value={form.colorName}
+                             onChange={setField("colorName")} maxLength={40}
+                             placeholder={t("clothing.colorName")} />
+                      <input type="color" className="color-pair__dot"
+                             aria-label={t("clothing.color")}
+                             value={form.colorHex || "#888888"}
+                             onChange={(e) => setForm((f) => ({ ...f, colorHex: e.target.value }))} />
+                    </div>
+                  </FormGroup>
+                  <FormGroup label={t("clothing.material")}>
+                    <Field className="form-input" value={form.material}
+                           onChange={setField("material")} maxLength={120}
+                           placeholder="100% paxta" />
+                  </FormGroup>
+                </div>
+              </>
             )}
 
             {/* ⚠ SOLIQ MAYDONLARI MVP DA YASHIRIN (`FISCAL_UI`). Ular

@@ -51,6 +51,11 @@ export const KASSA_KEYS = [
   { id: "category",  combo: "Alt+B",    scope: "cart", label: "kbd.category" },
   { id: "favorites", combo: "Alt+S",    scope: "cart", label: "kbd.favorites" },
   { id: "view",      combo: "Alt+K",    scope: "cart", label: "kbd.view" },
+  /* ⚠ FILTR — «T» dan, «F» dan EMAS. «Filtr» so'zi «F» ni taklif
+     qiladi-yu, `Alt+F` brauzerning MENYUSINI ochadi va kassa ko'zdan
+     g'oyib bo'lardi (sinovda tutildi). «T» — do'kon egasining o'z
+     so'zidan: «bir nechtasini TANLAB bo'lsin». */
+  { id: "filter",    combo: "Alt+T",    scope: "cart", label: "kbd.filter" },
 
   /* ── Savat qatorlari ─────────────────────────────────────────────── */
   { id: "linePrev",  combo: "ArrowUp",   scope: "cart", label: "kbd.linePrev" },
