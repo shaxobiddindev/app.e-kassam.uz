@@ -40,6 +40,20 @@ export const CASH = "CASH";
 export const CREDIT = "CREDIT";
 
 /**
+ * JAMG'ARMA — mijozning do'kondagi shaxsiy puli (V63).
+ *
+ * ⚠ HISOB-KITOB uchun u ODDIY NAQDSIZ usul: aniq summa yoziladi va
+ * undan qaytim CHIQMAYDI (mijozning o'z hisobidan ortiqcha yechishning
+ * ma'nosi yo'q). Shuning uchun `settle` ga hech qanday maxsus shox
+ * qo'shilmadi — u `CARD` bilan bir xil yo'ldan o'tadi.
+ *
+ * ⚠ FARQI EKRANDA: tugma faqat MIJOZ TANLANGANDA va qoldig'i bor
+ * bo'lganda chiqadi, kiritiladigan summa esa o'sha qoldiq bilan
+ * CHEGARALANADI.
+ */
+export const SAVINGS = "SAVINGS";
+
+/**
  * Qatorlar SHU tartibda chiziladi — kiritilish tartibida EMAS.
  *
  * ⚠ NEGA KERAK. `Object.entries` kalitlarni QO'SHILISH tartibida
@@ -48,7 +62,12 @@ export const CREDIT = "CREDIT";
  * saflanardi — brouzerda ko'rildi. Bir xil ikki chekning qatorlari
  * ham har xil tartibda chiqardi.
  */
-export const ORDER = [CASH, "CARD", "CLICK", "PAYME"];
+/* ⚠ JAMG'ARMA OXIRIDA, o'rtasida emas. Sabab klaviaturada:
+   F1..F4 aynan shu to'rttasiga bog'langan va kassirlarning barmog'i
+   uni yod biladi (`ek-kassa-keys.js` izohi). Yangi usulni o'rtaga
+   qo'yish ularning hammasini surib yuborardi. Jamg'armaning o'z
+   yorlig'i bor — `Alt+J`. */
+export const ORDER = [CASH, "CARD", "CLICK", "PAYME", SAVINGS];
 
 /** Ro'yxatda yo'q usul — oxiriga. */
 const rank = (t) => {

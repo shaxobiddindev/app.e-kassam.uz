@@ -44,12 +44,32 @@ const walk = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) =
 });
 
 /* Izoh va satrlarni olib tashlaymiz: izohdagi `setFoo(` chaqiruv emas. */
+
+/* ══ ⚠ APOSTROF — O'ZBEKCHA MATNDA HARF, SATR CHEGARASI EMAS ═══════════
+   Ilgari bu yerda oddiy `/'...'/` turardi va u JSX MATNIDAGI
+   apostrofni ham satr boshi deb olardi: «Do'kondagi QR kodni
+   skanerlang» dagi `'` keyingi apostrofgacha bo'lgan HAMMA NARSANI
+   yutib yuborardi — o'rtada qolgan `useState` e'loni bilan birga.
+
+   Natijasi ikki tomonlama va ikkinchisi yomonroq:
+     · YOLG'ON OGOHLANTIRISH — e'lon «yo'q» bo'lib ko'rinadi (aynan shu
+       tutildi: `jamg'arma` so'zi qo'shilishi bilan skript butunlay
+       to'g'ri faylni xato deb ko'rsatdi);
+     · YOLG'ON TINCHLIK — yutilgan bo'lakdagi HAQIQIY xato ko'rinmay
+       qoladi va skript o'z vazifasini bajarmaydi.
+
+   Endi apostrof faqat KOD belgisidan keyin kelsa satr deb olinadi
+   (`= ' ... '`, `( ' ... '`). So'z ichidagi apostrof — `do'kon`,
+   `jamg'arma` — harfdan keyin turadi va tegilmaydi.
+
+   ⚠ `\n` ham to'siq: JS satri qatordan oshmaydi va bu «qochib ketgan»
+   yutilishning oldini oladi. */
 const strip = (src) => src
   .replace(/\/\*[\s\S]*?\*\//g, " ")
   .replace(/(^|[^:])\/\/[^\n]*/g, "$1 ")
   .replace(/`(?:[^`\\]|\\.)*`/g, "``")
-  .replace(/"(?:[^"\\]|\\.)*"/g, '""')
-  .replace(/'(?:[^'\\]|\\.)*'/g, "''");
+  .replace(/"(?:[^"\\\n]|\\.)*"/g, '""')
+  .replace(/(^|[^A-Za-z0-9_$])'(?:[^'\\\n]|\\.)*'/gm, "$1''");
 
 /* Brauzerning o'z funksiyalari — e'lon talab qilmaydi. */
 const GLOBALS = new Set(["setTimeout", "setInterval", "setImmediate"]);

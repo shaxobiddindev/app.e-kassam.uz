@@ -46,6 +46,11 @@ export const PAYMENT_TYPE = dict("enum.payment", {
   /* Nasiya — to'lov EMAS: kassaga pul tushmaydi, mijozning qarzi oshadi.
      Rang ogohlantirish rangida: kassir uni tasodifan tanlab qo'ymasin. */
   CREDIT:{ icon: "fa-hand-holding-dollar",  color: "var(--fg-warning)" },
+  /* JAMG'ARMA (V63) — mijozning do'kondagi shaxsiy puli.
+     ⚠ Rang YASHIL (muvaffaqiyat), nasiyaniki kabi sariq EMAS: bu
+     haqiqiy to'lov va chek yopiladi. Sariq kassirni «bu ham qarz
+     ekan» deb o'ylatardi. */
+  SAVINGS:{ icon: "fa-piggy-bank",          color: "var(--fg-success)" },
 });
 
 /* ── Sotuv holati — SaleStatus ───────────────────────────────────────────── */

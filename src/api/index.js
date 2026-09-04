@@ -592,6 +592,19 @@ export const customerApi = {
      biladi va uni ikkinchi marta yuborish faqat ikkalasi bir-biriga
      to'g'ri kelmasligi xavfini tug'dirardi. */
   paymentReceipt: (ledgerId) => request(`/customers/ledger/${ledgerId}/receipt`),
+
+  /* ── MIJOZ JAMG'ARMASI (V63) ──────────────────────────────────
+     ⚠ Bu KESHBEK EMAS: ball do'konning sovg'asi (kuyadi, naqdga
+     chiqarilmaydi), jamg'arma esa mijozning do'konga bergan puli va
+     do'kon uchun majburiyat. Shuning uchun yo'llar ham alohida. */
+  savings:       (id)       => request(`/customers/${id}/savings`),
+  topUpSavings:  (id, data) => request(`/customers/${id}/savings/top-up`,
+                                       { method: "POST", body: JSON.stringify(data) }),
+  /* ⚠ Faqat rahbar: bu kassadan pul chiqishi (server ham shunday). */
+  refundSavings: (id, data) => request(`/customers/${id}/savings/refund`,
+                                       { method: "POST", body: JSON.stringify(data) }),
+  adjustSavings: (id, data) => request(`/customers/${id}/savings/adjust`,
+                                       { method: "POST", body: JSON.stringify(data) }),
   debtors:   () => request("/customers/debtors"),
   /* QO'LDA QARZDOR KIRITISH (V48) — daftardan ko'chirish uchun.
      Mijoz ham shu chaqiruvda yaratiladi: 40 ta ismni ikki bosqichda

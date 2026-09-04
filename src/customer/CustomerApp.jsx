@@ -603,6 +603,20 @@ function ReceiptsScreen() {
 function ShopsScreen({ shops }) {
   const items = shops?.items || [];
   const [history, setHistory] = useState(null);   // { id, shopName }
+  /* ⚠ JAMG'ARMA HAR DO'KONDA ALOHIDA va ular QO'SHILMAYDI: pul
+     do'konlar o'rtasida ko'chmaydi. Qo'shib ko'rsatish mijozga
+     ishlatib bo'lmaydigan raqamni va'da qilardi — ball tarixida
+     o'rganilgan dars bilan aynan bir xil.
+
+     ⚠ Xato YUTILADI: jamg'arma yo'q bo'lsa ham do'konlar ro'yxati
+     ochilishi kerak. */
+  const [savings, setSavings] = useState({});
+  useEffect(() => {
+    appApi.savings()
+      .then((list) => setSavings(Object.fromEntries(
+        (list || []).map((a) => [a.customerId, a]))))
+      .catch(() => {});
+  }, []);
 
   return (
     <div className="cu-screen">
@@ -637,6 +651,16 @@ function ShopsScreen({ shops }) {
               <span className="cu-shop__right">
                 <b className="cu-pos">{money(s.bonusBalance)}</b>
                 <small className="cu-muted">ball</small>
+                {/* ⚠ JAMG'ARMA BALLDAN PASTDA va BOSHQA yozuv bilan.
+                    Ikkalasi bitta ustunda turadi va chalkashish xavfi
+                    real: ball — do'konning sovg'asi (kuyadi), jamg'arma
+                    — MIJOZNING PULI (kuymaydi, qaytariladi). */}
+                {Number(savings[s.id]?.balance) > 0 && (
+                  <small className="cu-pos">
+                    <i className="fa-solid fa-piggy-bank" aria-hidden="true" />{" "}
+                    {money(savings[s.id].balance)} jamg'arma
+                  </small>
+                )}
               </span>
             </button>
           </li>
@@ -651,6 +675,7 @@ function ShopsScreen({ shops }) {
 
       {history && (
         <BonusSheet customerId={history.id} shopName={history.shopName}
+                    savings={savings[history.id]}
                     onClose={() => setHistory(null)} />
       )}
     </div>
@@ -662,6 +687,24 @@ function ShopsScreen({ shops }) {
    qilinadi. Summani mijoz IMZO bilan ko'radi (+840 / −5 000) — «SPEND»
    degan so'zni o'qib yo'nalishni o'zi topishi kerak emas. */
 
+/* ⚠ Turlar SERVERDAN nom bilan keladi va shu yerda tarjima qilinadi —
+   ball yorliqlaridagi bilan bir xil qoida. */
+const SAVINGS_LABEL = {
+  TOP_UP:  "To'ldirildi",
+  CHANGE:  "Qaytim qoldirildi",
+  OVERPAY: "Qarzdan ortiq to'lov",
+  SPEND:   "Xaridga ishlatildi",
+  REFUND:  "Naqd qaytarildi",
+  ADJUST:  "Do'kon to'g'irladi",
+};
+
+/** Mijoz ko'zi bilan: pul kirsa «+», chiqsa «−». */
+const savingsSign = (e) => {
+  const v = Number(e.amount) || 0;
+  if (e.type === "ADJUST") return v;
+  return e.type === "SPEND" || e.type === "REFUND" ? -v : v;
+};
+
 const BONUS_LABEL = {
   EARN:   { text: "Xariddan yig'ildi",        icon: "fa-plus" },
   SPEND:  { text: "Xaridda ishlatildi",       icon: "fa-minus" },
@@ -671,7 +714,7 @@ const BONUS_LABEL = {
   EXPIRE: { text: "Muddati o'tdi",            icon: "fa-clock" },
 };
 
-function BonusSheet({ customerId, shopName, onClose }) {
+function BonusSheet({ customerId, shopName, savings, onClose }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
 
@@ -701,6 +744,49 @@ function BonusSheet({ customerId, shopName, onClose }) {
         {error && <Retry text={error} onRetry={() =>
           { setError(""); appApi.bonus(customerId).then(setData).catch((e) => setError(e.message)); }} />}
         {!data && !error && <div className="cu-card cu-center">Yuklanmoqda…</div>}
+
+        {/* ── JAMG'ARMA (V63) — BALLDAN OLDIN va ALOHIDA kartochkada.
+             ⚠ Farq matn bilan AYTILADI, chunki ular bitta ekranda
+             yonma-yon turadi: ball do'konning sovg'asi va MUDDATI
+             BOR; jamg'arma esa mijozning o'z puli va KUYMAYDI.
+             Bu farqni bilmagan mijoz jamg'armasini «tezroq
+             ishlatib qolay» deb shoshardi yoki ballini «baribir
+             turaveradi» deb kuydirib yuborardi. */}
+        {Number(savings?.balance) > 0 && (
+          <div className="cu-card cu-center">
+            <span className="cu-muted">
+              <i className="fa-solid fa-piggy-bank" aria-hidden="true" /> Jamg'armangiz
+            </span>
+            <div className="cu-sheet__sum cu-pos">{money(savings.balance)}</div>
+            <p className="cu-muted">
+              Bu sizning pulingiz — kuymaydi va xaridda to'liq ishlatiladi.
+            </p>
+            {/* ⚠ BALL TARIXI BILAN AYNAN BIR XIL MARKUP (`cu-bonus`):
+                ikkalasi bitta ekranda, ketma-ket turadi va boshqacha
+                chizilsa mijoz ularni bir-biriga bog'lay olmasdi. */}
+            <ul className="cu-list">
+              {(savings.history || []).slice(0, 10).map((e) => {
+                const v = savingsSign(e);
+                const plus = v >= 0;
+                return (
+                  <li key={e.id} className="cu-bonus">
+                    <span className={`cu-bonus__icon ${plus ? "pos" : "neg"}`}>
+                      <i className={`fa-solid ${plus ? "fa-plus" : "fa-minus"}`} aria-hidden="true" />
+                    </span>
+                    <span className="cu-bonus__mid">
+                      <b>{SAVINGS_LABEL[e.type] || e.type}</b>
+                      <small className="cu-muted">{dateTime(e.createdAt)}</small>
+                      {e.reason && <small className="cu-muted">{e.reason}</small>}
+                    </span>
+                    <b className={plus ? "cu-pos" : "cu-neg"}>
+                      {plus ? "+" : "−"}{money(Math.abs(v))}
+                    </b>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
 
         {data && (
           <>

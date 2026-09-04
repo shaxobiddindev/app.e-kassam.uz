@@ -133,6 +133,13 @@ export const appApi = {
      sanalgan va mijoz pulini ikki marta sarflagan bo'lib chiqardi. */
   payments:   (limit = 30) => call(`/payments?limit=${limit}`),
 
+  /* ── Jamg'armam (V63) ──
+     ⚠ Har do'kon ALOHIDA va ular QO'SHILMAYDI: pul do'konlar
+     o'rtasida ko'chmaydi, bir do'kondagi 200 000 ni boshqasida
+     ishlatib bo'lmaydi. Qo'shib ko'rsatish ishlatib bo'lmaydigan
+     raqamni va'da qilardi. */
+  savings:    ()           => call("/savings"),
+
   /* ── Ball tarixi ──
      ⚠ Do'kon bo'yicha ALOHIDA: ballar do'konlar o'rtasida ko'chmaydi,
      aralash lenta esa mijozni chalkashtirardi. */

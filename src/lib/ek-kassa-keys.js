@@ -79,6 +79,12 @@ export const KASSA_KEYS = [
   { id: "payCard",   combo: "F2",       scope: "pay",  label: "kbd.payCard" },
   { id: "payClick",  combo: "F3",       scope: "pay",  label: "kbd.payClick" },
   { id: "payPayme",  combo: "F4",       scope: "pay",  label: "kbd.payPayme" },
+  /* ⚠ `Alt+J` — JAMG'ARMA (V63), F5 EMAS. F1..F4 to'lov usullariga
+     bog'langan va beshinchisini qo'shish qatorni davom ettirgandek
+     ko'rinardi-yu, aslida jamg'arma boshqa narsa: u mijozning
+     hisobidan yechadi va faqat mijoz tanlanganda ishlaydi. Harf esa
+     o'zbekcha nomdan — qolgan yorliqlardagi qoida bilan bir xil. */
+  { id: "paySavings", combo: "Alt+J",   scope: "pay",  label: "kbd.paySavings" },
   { id: "customer",  combo: "Alt+M",    scope: "pay",  label: "kbd.customer" },
   { id: "newCust",   combo: "Alt+Y",    scope: "pay",  label: "kbd.newCust" },
   { id: "discount",  combo: "Alt+C",    scope: "pay",  label: "kbd.discount" },

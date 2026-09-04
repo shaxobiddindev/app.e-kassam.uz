@@ -16,6 +16,7 @@ import SaleDetailModal from "../components/SaleDetailModal";
 const PaymentReceipt = lazy(() => import("../portal/PaymentReceipt"));
 import DebtPayModal from "../components/DebtPayModal";
 import ManualDebtModal from "../components/ManualDebtModal";
+import SavingsModal from "../components/SavingsModal";
 import { printDebtReceipt } from "../lib/ek-hardware";
 import { saleApi } from "../api";
 import { SkeletonTable, Spinner } from "../components/ek/Loading";
@@ -80,6 +81,9 @@ export default function CustomersPage({ toast }) {
      tugmadan. `null` — yopiq. */
   const [receipt, setReceipt] = useState(null);
   const [receiptLoading, setReceiptLoading] = useState(null);
+  /* Jamg'arma oynasi (V63): `{ customer, account }` yoki `null`. */
+  const [savings, setSavings] = useState(null);
+  const [savingsBusy, setSavingsBusy] = useState(false);
   const [saleDetail, setSaleDetail] = useState(null);
   const [saleLoading, setSaleLoading] = useState(null);
 
@@ -236,6 +240,36 @@ export default function CustomersPage({ toast }) {
       toast.error(err.message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  /* ── MIJOZ JAMG'ARMASI (V63) ─────────────────────────────────────
+     ⚠ Bu KESHBEK EMAS: ball do'konning sovg'asi (kuyadi, naqdga
+     chiqarilmaydi), jamg'arma esa mijozning do'konga bergan puli va
+     do'kon uchun majburiyat. */
+  const openSavings = async (c) => {
+    try {
+      const r = await customerApi.savings(c.id);
+      setSavings({ customer: c, account: r.data });
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
+
+  /* ⚠ Javobda YANGI holat qaytadi va oyna shundan yangilanadi —
+     qayta so'rov yuborilmaydi. Ikki so'rov orasida kassir eski
+     qoldiqni ko'rib turardi. */
+  const runSavings = (fn) => async (amount) => {
+    setSavingsBusy(true);
+    try {
+      const r = await fn(savings.customer.id, { amount, method: "CASH" });
+      setSavings((prev) => ({ ...prev, account: r.data }));
+      toast.success(r.message || t("common.saved"));
+      loadData();
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setSavingsBusy(false);
     }
   };
 
@@ -467,6 +501,18 @@ export default function CustomersPage({ toast }) {
                             <>
                               <button className="btn-icon" onClick={() => openEdit(c)}>
                                 <i className="fa-solid fa-pen" />
+                              </button>
+                              {/* ⚠ JAMG'ARMA TUGMASI DOIM BOR (V63),
+                                  qoldiq nol bo'lsa ham: kassir aynan
+                                  shu yerdan pul QO'SHADI. Qarz
+                                  tugmasidan farqi shunda — u tarixni
+                                  ochadi, bu esa ish qildiradi. */}
+                              <button className="btn-icon" title={t("savings.title")}
+                                      aria-label={t("savings.title")}
+                                      onClick={() => openSavings(c)}>
+                                <i className="fa-solid fa-piggy-bank"
+                                   style={Number(c.savingsBalance) > 0
+                                     ? { color: "var(--fg-success)" } : undefined} />
                               </button>
                               {/* ═══ ⚠ O'CHIRISH TUGMASI YO'Q — ATAYLAB (V62)
                                   Ilgari bu yerda rahbarga ochiq savat
@@ -721,6 +767,18 @@ export default function CustomersPage({ toast }) {
       {/* ⚠ TO'LOV CHEKI ENG OXIRIDA — chek tafsiloti bilan bir xil
           sabab: u qarz oynasining USTIDAN ochilishi kerak va bir xil
           `z-index` da buni DOM tartibi hal qiladi. */}
+      {savings && (
+        <SavingsModal
+          account={savings.account}
+          customer={savings.customer}
+          canRefund={isManager}
+          busy={savingsBusy}
+          onTopUp={runSavings(customerApi.topUpSavings)}
+          onRefund={runSavings(customerApi.refundSavings)}
+          onClose={() => setSavings(null)}
+        />
+      )}
+
       {receipt && (
         <Suspense fallback={null}>
           <PaymentReceipt data={receipt} onClose={() => setReceipt(null)} />

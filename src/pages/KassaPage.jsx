@@ -67,6 +67,7 @@ import { NumField } from "../components/ek/EkFields";
 const PAY_KBD = {
   CASH: keyLabel("payCash"), CARD: keyLabel("payCard"),
   CLICK: keyLabel("payClick"), PAYME: keyLabel("payPayme"),
+  SAVINGS: keyLabel("paySavings"),
 };
 const payItem = (key) => {
   const p = PAYMENT_TYPE[key];
@@ -88,6 +89,15 @@ const payItem = (key) => {
    Hisobotdagi «Aralash» esa QOLADI (`ek-payment.js` → `payType`):
    ekrandagi tur bilan hisobotdagi tur boshqa-boshqa narsa. */
 const PAY_METHODS = ["CASH", "CARD", "CLICK", "PAYME"].map(payItem);
+
+/* ⚠ JAMG'ARMA RO'YXATDA DOIM TURMAYDI (V63) — u faqat MIJOZ
+   TANLANGANDA va qoldig'i bor bo'lganda qo'shiladi.
+
+   Sabab: bosilib bo'lmaydigan tugma eng yomon tugma. Kassir uni
+   bosadi, hech narsa bo'lmaydi va u «buzuq» deb o'ylaydi. Mijozsiz
+   chekda esa jamg'armaning egasi ham yo'q — ko'rsatishning ma'nosi
+   qolmaydi. */
+const SAVINGS_METHOD = payItem("SAVINGS");
 
 const UNDO_MS    = 5000;   // o'chirishni bekor qilish oynasi
 
@@ -138,6 +148,10 @@ export default function KassaPage({ toast, refreshLowStock }) {
   const { guard } = useBadge();
   const [products, setProducts]     = useState([]);
   const [customers, setCustomers]   = useState([]);
+  /* Qaytim jamg'armaga yo'naltirilsinmi (V63). ⚠ Har chekda QAYTADAN
+     so'raladi: bir marta yoqilgan bayroq keyingi mijozning qaytimini
+     jimgina yutib yuborardi. */
+  const [changeToSavings, setChangeToSavings] = useState(false);
 
   /* ══ BIR NECHTA SAVAT ═══════════════════════════════════════════════
      ⚠ MUAMMO. Kassada bitta savat bor edi. Mijoz «yodimdan chiqibdi»
@@ -1423,6 +1437,17 @@ export default function KassaPage({ toast, refreshLowStock }) {
   /** Tanlangan usulning maydondagi qiymati. */
   const payValue = paid[payFocus] ?? "";
 
+  /* ── JAMG'ARMA (V63) ─────────────────────────────────────────────
+     ⚠ Qoldiq MIJOZ YOZUVIDAN olinadi (`savingsBalance`) — u ro'yxat
+     bilan birga keladi va qo'shimcha so'rov kerak emas. */
+  const savingsLeft = Math.max(0, Math.round(Number(customer?.savingsBalance) || 0));
+  const payMethods = savingsLeft > 0 ? [...PAY_METHODS, SAVINGS_METHOD] : PAY_METHODS;
+
+  /* ⚠ MAYDON QOLDIQ BILAN CHEGARALANADI. Serverda ham tekshiriladi,
+     lekin xatoni SOTUVDAN KEYIN ko'rsatish eng yomon vaqt: chek
+     yozilmay qoladi va kassir mijoz oldida boshqatdan boshlaydi. */
+  const payMax = payFocus === "SAVINGS" ? savingsLeft : null;
+
   /**
    * ⚠ USULNI TANLASH — QIYMATNI O'CHIRMAYDI. Kassir naqdga 20 000
    * yozib, Click ga o'tib, keyin naqdga QAYTSA, maydonda o'sha 20 000
@@ -1438,6 +1463,11 @@ export default function KassaPage({ toast, refreshLowStock }) {
       /* Bo'sh maydon — «bu usul ishlatilmadi». Nol yozib qoldirish
          chekda 0 so'mlik qatorni paydo qilardi. */
       if (v === "" || v == null) delete next[payFocus];
+      /* ⚠ JAMG'ARMA QOLDIQDAN OSHMAYDI — yozilayotgan paytda
+         KESILADI, keyin xato ko'rsatilmaydi. Kassir mijoz oldida
+         raqamni aytib bo'lgan bo'ladi va uni «bo'lmaydi» deb
+         qaytarish eng noqulay payt. */
+      else if (payMax != null) next[payFocus] = String(Math.min(Number(v) || 0, payMax));
       else next[payFocus] = v;
       return next;
     });
@@ -1469,6 +1499,9 @@ export default function KassaPage({ toast, refreshLowStock }) {
        kassir «Sotish» ni bosib butun chekni qarzga yozib qo'yardi. */
     setPaid({});
     setPayFocus("CASH");
+    /* ⚠ Bayroq HAR CHEKDA tushadi: qolgani keyingi mijozning
+       qaytimini jimgina yutib yuborardi. */
+    setChangeToSavings(false);
     setDiscount("");
     setShowPayModal(true);
   };
@@ -1532,6 +1565,13 @@ export default function KassaPage({ toast, refreshLowStock }) {
          qoladi va «bitta usul» bilan «aralash» boshqa-boshqa kod
          bo'lib ajralib ketmaydi. */
       payments: pay.parts,
+      /* ⚠ QAYTIM CHEK SUMMASIGA KIRMAYDI — bu chek yopilgandan
+         keyingi alohida harakat. `cashGiven` esa serverga qaytim
+         chegarasini hisoblash uchun kerak: u chekning naqd
+         QISMINI biladi, mijoz UZATGAN summani esa faqat kassir
+         aytadi. */
+      changeToSavings: changeToSavings && pay.change > 0 ? pay.change : null,
+      cashGiven: changeToSavings && pay.change > 0 ? pay.cashIn : null,
       /* ⚠ ESKI MAYDONLAR HAM YUBORILADI. Sabab bosqichma-bosqich
          yangilanish: server hali eski bo'lsa (yoki oflayn navbatdagi
          chek eski serverga tushsa) chek baribir yozilishi kerak.
@@ -1663,6 +1703,9 @@ export default function KassaPage({ toast, refreshLowStock }) {
        `finally` har qanday holatda tugmani ochib qo'yadi. */
     setPaid({});
     setPayFocus("CASH");
+    /* ⚠ Bayroq HAR CHEKDA tushadi: qolgani keyingi mijozning
+       qaytimini jimgina yutib yuborardi. */
+    setChangeToSavings(false);
     setDiscount("");
     setDiscBudget("");
     /* ⚠ Ball ham tozalanadi. Usiz keyingi mijozning chekiga oldingi
@@ -1823,6 +1866,9 @@ export default function KassaPage({ toast, refreshLowStock }) {
         payCard:   () => focusMethod("CARD"),
         payClick:  () => focusMethod("CLICK"),
         payPayme:  () => focusMethod("PAYME"),
+        /* ⚠ Faqat qoldiq bor bo'lsa: yo'q hisobga fokus qo'yish
+           maydonni «0 dan ortiq bo'lmasin» holatida qoldirardi. */
+        paySavings: () => { if (savingsLeft > 0) focusMethod("SAVINGS"); },
         customer:  pickCustomer,
         newCust:   () => setNewCust({ fullName: "", phone: "" }),
         discount:  () => document.getElementById("disc-budget")?.focus(),
@@ -2792,7 +2838,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
                   quyidagi maydon o'sha usulning summasiga o'tadi va
                   eski qiymati qaytadi (do'kon egasining talabi). */}
               <div className="pay-modal-types">
-                {PAY_METHODS.map(({ key, label, icon, color, kbd }) => (
+                {payMethods.map(({ key, label, icon, color, kbd }) => (
                   <button
                     key={key}
                     className={`pay-type-btn ${payFocus === key ? "active" : ""}${
@@ -2828,7 +2874,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
                   o'z qatorini ochar, oyna o'sar va kassir qaysi
                   maydonga yozayotganini adashtirardi. */}
               <label className="form-label" htmlFor="pay-amount" style={{ marginTop: 14 }}>
-                {t("kassa.amountFor", { method: PAY_METHODS.find((m) => m.key === payFocus)?.label })}
+                {t("kassa.amountFor", { method: payMethods.find((m) => m.key === payFocus)?.label })}
               </label>
               <NumField kind="money"
                 id="pay-amount"
@@ -2842,6 +2888,15 @@ export default function KassaPage({ toast, refreshLowStock }) {
                    zahoti ma'no o'zgaradi: bo'sh maydon endi nol. */
                 placeholder={payUntouched ? total.toLocaleString("uz-UZ") : "0"}
               />
+              {/* ⚠ QOLDIQ MAYDON OSTIDA: kassir mijozga «hisobingizda
+                  shuncha bor» deb ayta olishi kerak. Uni faqat
+                  tugmadagi kichkina raqamda ko'rsatish yetmasdi. */}
+              {payFocus === "SAVINGS" && (
+                <div className="text-muted" style={{ fontSize: 12, marginTop: 4 }}>
+                  <i className="fa-solid fa-piggy-bank" aria-hidden="true" />{" "}
+                  {t("savings.max", { n: money(savingsLeft) })}
+                </div>
+              )}
               {/* Bo'sh maydonning ma'nosini BIR GAPDA aytamiz —
                   ro'yxatda «Naqd 108 000» chiqqanida kassir «men-ku
                   hech narsa yozmadim» deb qolmasin. */}
@@ -2865,7 +2920,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
                   Kiritilganlar va qolgani — bir joyda, bir qarashda. */}
               <div className="pay-sum">
                 {pay.parts.filter((x) => x.type !== "CREDIT").map((x) => {
-                  const m = PAY_METHODS.find((k) => k.key === x.type);
+                  const m = payMethods.find((k) => k.key === x.type);
                   return (
                     <div className="pay-sum__row" key={x.type} style={{ "--pay-color": m?.color }}>
                       <span className="pay-sum__name">
@@ -2890,6 +2945,27 @@ export default function KassaPage({ toast, refreshLowStock }) {
                     </span>
                     <b className="ek-num">{money(pay.change)}</b>
                   </div>
+                )}
+
+                {/* ── QAYTIM JAMG'ARMAGA (V63) ───────────────────────
+                    ⚠ NEGA KERAK. Chek 93 400, mijoz 100 000 beradi va
+                    kassirda 6 600 lik chaqa doim ham bo'lmaydi. Bu
+                    kunda o'nlab marta takrorlanadi va shu paytgacha
+                    «qolsin, keyingi safar» degan OG'ZAKI kelishuv
+                    edi — hech qayerda yozilmasdi. Endi u mijozning
+                    hisobiga tushadi.
+
+                    ⚠ Faqat MIJOZ TANLANGANDA: egasiz jamg'arma
+                    bo'lmaydi (server ham shunday deydi). */}
+                {pay.change > 0 && customer && (
+                  <label className="pay-sum__row" style={{ cursor: "pointer", gap: 8 }}>
+                    <input type="checkbox" checked={changeToSavings}
+                           onChange={(e) => setChangeToSavings(e.target.checked)} />
+                    <span className="pay-sum__name" style={{ fontSize: 13 }}>
+                      <i className="fa-solid fa-piggy-bank" aria-hidden="true" />{" "}
+                      {t("savings.changeHere")}
+                    </span>
+                  </label>
                 )}
 
                 {/* ⚠ QOLGANI — AVTOMATIK NASIYA. Kassir uni yozmaydi,
