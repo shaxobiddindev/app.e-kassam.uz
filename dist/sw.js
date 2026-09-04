@@ -53,7 +53,21 @@ self.addEventListener("fetch", (e) => {
       caches.match(req).then((cached) => {
         const network = fetch(req)
           .then((res) => {
-            if (res.ok) caches.open(SHELL).then((c) => c.put(req, res.clone()));
+            /* ⚠ NUSXA DARHOL OLINADI, `caches.open(...)` NING ICHIDA EMAS.
+               `caches.open()` — promise: u hal bo'lgunicha javob
+               allaqachon brauzerga berilgan va TANASI O'QILGAN bo'ladi,
+               `clone()` esa o'qilgan tanani nusxalay olmaydi. Konsol
+               har rasm va har bo'lakda «Failed to execute 'clone' on
+               'Response': Response body is already used» bilan to'lardi
+               (do'kon egasi ko'rsatdi).
+
+               ⚠ Xato JIMGINA: sahifa ishlayveradi, faqat kesh
+               to'ldirilmaydi — ya'ni oflayn rejim asta-sekin bo'shab
+               qoladi va buni hech kim sezmaydi. */
+            if (res.ok) {
+              const copy = res.clone();
+              caches.open(SHELL).then((c) => c.put(req, copy)).catch(() => {});
+            }
             return res;
           })
           .catch(() => cached);
