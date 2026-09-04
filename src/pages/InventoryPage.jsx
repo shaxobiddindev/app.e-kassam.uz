@@ -427,9 +427,18 @@ export default function InventoryPage({ toast }) {
     };
   }, [rows]);
 
-  /** Filtr umuman kerakmi — kiyimsiz omborda tugma ham chiqmaydi. */
-  const hasClothing = invFacets.brands.length || invFacets.sizes.length
-    || invFacets.colors.length || invFacets.targets.length || invFacets.seasons.length;
+  /**
+   * Filtr umuman kerakmi — kiyimsiz omborda tugma ham chiqmaydi.
+   *
+   * ⚠ `Boolean(...)` SHART, yalang'och `||` zanjiri EMAS. Zanjirning
+   * qiymati oxirgi `.length`, ya'ni RAQAM: kiyim atributi yo'q
+   * omborda u `0` bo'ladi va `{shart && <tugma/>}` da React nolning
+   * O'ZINI ekranga chizadi — qidiruv yonida sababsiz «0» paydo
+   * bo'lardi (do'kon egasi rasm bilan ko'rsatdi). Xato jimgina:
+   * konsolda ham, qurilishda ham hech narsa chiqmaydi.
+   */
+  const hasClothing = Boolean(invFacets.brands.length || invFacets.sizes.length
+    || invFacets.colors.length || invFacets.targets.length || invFacets.seasons.length);
 
   const filterCount = useMemo(
     () => Object.values(clothFilter).reduce((n, a) => n + (Array.isArray(a) ? a.length : 0), 0),
