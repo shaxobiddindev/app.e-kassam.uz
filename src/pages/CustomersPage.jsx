@@ -164,6 +164,7 @@ export default function CustomersPage({ toast }) {
              bo'lishi shart. */
           receiptNo: rc?.receiptNo, qrUrl: rc?.qrUrl,
           balanceBefore: rc?.balanceBefore,
+          toSavings: rc?.toSavings, bonusEarned: rc?.bonusEarned,
           shopName: rc?.shopName || localStorage.getItem("ek_shopName")
                     || localStorage.getItem("ek_shopCode") || "",
           cashier: rc?.cashierName || localStorage.getItem("ek_fullName") || "",
@@ -510,7 +511,7 @@ export default function CustomersPage({ toast }) {
                               <button className="btn-icon" title={t("savings.title")}
                                       aria-label={t("savings.title")}
                                       onClick={() => openSavings(c)}>
-                                <i className="fa-solid fa-piggy-bank"
+                                <i className="fa-solid fa-sack-dollar"
                                    style={Number(c.savingsBalance) > 0
                                      ? { color: "var(--fg-success)" } : undefined} />
                               </button>

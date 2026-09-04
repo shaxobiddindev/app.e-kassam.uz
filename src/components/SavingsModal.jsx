@@ -79,7 +79,7 @@ export default function SavingsModal({ account, customer, canRefund, busy,
           <button className="btn btn-primary btn-sm"
                   disabled={busy || entered <= 0}
                   onClick={() => onTopUp(entered)}>
-            <i className="fa-solid fa-piggy-bank" /> {t("savings.topUp")}
+            <i className="fa-solid fa-sack-dollar" /> {t("savings.topUp")}
           </button>
         </>
       }
@@ -132,7 +132,7 @@ export default function SavingsModal({ account, customer, canRefund, busy,
               </tr>
             ))}
             {!(account?.history || []).length && (
-              <tr><td colSpan={5}><Empty icon="fa-piggy-bank" text={t("savings.empty")} /></td></tr>
+              <tr><td colSpan={5}><Empty icon="fa-sack-dollar" text={t("savings.empty")} /></td></tr>
             )}
           </tbody>
         </table>

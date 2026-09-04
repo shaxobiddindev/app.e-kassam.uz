@@ -6,6 +6,8 @@ import { useConfirm } from "../context/ConfirmProvider";
 import { money, quantity as fmtQty } from "../utils";
 import { unitLabel } from "../lib/ek-labels";
 import ProductTile from "../components/ProductTile";
+/* Jamg'armaga pul qo'yish (V64) — qarz to'lovi oynasining «savings» rejimi. */
+import DebtPayModal from "../components/DebtPayModal";
 import QuantityModal from "../components/QuantityModal";
 import LinePriceModal from "../components/LinePriceModal";
 import MarkingScanModal from "../components/MarkingScanModal";
@@ -152,6 +154,9 @@ export default function KassaPage({ toast, refreshLowStock }) {
      so'raladi: bir marta yoqilgan bayroq keyingi mijozning qaytimini
      jimgina yutib yuborardi. */
   const [changeToSavings, setChangeToSavings] = useState(false);
+  /* «Jamg'armaga qo'yish» oynasi (V64) — savdoga aloqasi yo'q. */
+  const [topUpOpen, setTopUpOpen] = useState(false);
+  const [toppingUp, setToppingUp] = useState(false);
 
   /* ══ BIR NECHTA SAVAT ═══════════════════════════════════════════════
      ⚠ MUAMMO. Kassada bitta savat bor edi. Mijoz «yodimdan chiqibdi»
@@ -1341,7 +1346,12 @@ export default function KassaPage({ toast, refreshLowStock }) {
      «eng ko'pi» biroz yuqoriroq bo'lishi mumkin — server aniqrog'ini
      aytadi. */
   const bonusCap = Math.floor(afterDiscount * (Number(bonusMaxPercent) || 0) / 100);
-  const bonusAvail = Math.min(Number(tier?.bonusBalance) || 0, bonusCap);
+  /* ⚠ BUTUN SO'M (`floor`). Server ilgari ballni 2 kasr bilan
+     yig'ardi va balans 7 249,99 bo'lib qolardi: yorliqda «7 250»
+     ko'rinar, «Hammasini» esa maydonga «7 249.» deb yozardi. Server
+     endi butun so'mga yaxlitlaydi (V64), eski balanslar uchun esa bu
+     yerda kesiladi. */
+  const bonusAvail = Math.floor(Math.min(Number(tier?.bonusBalance) || 0, bonusCap));
   const bonusNum = Math.max(0, Math.min(Number(bonusUse) || 0, bonusAvail));
   /* ── Yaxlitlash takliflari (V56) ──────────────────────────────────────
      ⚠ ALLAQACHON BERILGAN chegirmadan KEYINGI summadan hisoblanadi:
@@ -1440,7 +1450,14 @@ export default function KassaPage({ toast, refreshLowStock }) {
   /* ── JAMG'ARMA (V63) ─────────────────────────────────────────────
      ⚠ Qoldiq MIJOZ YOZUVIDAN olinadi (`savingsBalance`) — u ro'yxat
      bilan birga keladi va qo'shimcha so'rov kerak emas. */
-  const savingsLeft = Math.max(0, Math.round(Number(customer?.savingsBalance) || 0));
+  /* ⚠ `tier` DAN, savatdagi mijoz yozuvidan EMAS. Savat localStorage da
+     turadi va undagi mijoz eskirgan bo'lishi mumkin: boshqa terminalda
+     to'ldirilgan jamg'arma bu yerda ko'rinmasdi («mijoz jamg'armasi
+     kassada ko'rinmayapti»). `tier` esa har tanlashda serverdan
+     keladi. Savatdagisi faqat zaxira — `tier` hali yuklanmagan lahza
+     uchun. */
+  const savingsLeft = Math.max(0, Math.round(
+    Number(tier?.savingsBalance ?? customer?.savingsBalance) || 0));
   const payMethods = savingsLeft > 0 ? [...PAY_METHODS, SAVINGS_METHOD] : PAY_METHODS;
 
   /* ⚠ MAYDON QOLDIQ BILAN CHEGARALANADI. Serverda ham tekshiriladi,
@@ -1455,6 +1472,33 @@ export default function KassaPage({ toast, refreshLowStock }) {
    * faqat fokus almashadi.
    */
   const focusMethod = (type) => setPayFocus(type);
+
+  /**
+   * JAMG'ARMAGA PUL QO'YISH (V64) — savdosiz.
+   *
+   * ⚠ MIJOZ MAJBURIY va tugma usiz o'chiq turadi: egasiz jamg'arma
+   * bo'lmaydi. Keshbek YO'Q (server `topUp` da bermaydi) — bu xarid
+   * emas, pul saqlashga berildi; keshbekni u xaridga ishlatilganda
+   * oladi.
+   *
+   * ⚠ `tier` QAYTA YUKLANADI: kartadagi qoldiq va to'lov oynasidagi
+   * «Jamg'arma» tugmasi shundan o'qiydi. Usiz kassir hozirgina
+   * qo'ygan pulni to'lov oynasida ko'rmasdi.
+   */
+  const submitTopUp = async ({ amount, method }) => {
+    setToppingUp(true);
+    try {
+      const r = await customerApi.topUpSavings(customer.id, { amount, method });
+      toast.success(`${t("savings.topped")}: ${money(r?.data?.balance)}`);
+      setTopUpOpen(false);
+      const fresh = await loyaltyApi.customerTier(customer.id).catch(() => null);
+      if (fresh?.data) setTier(fresh.data);
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setToppingUp(false);
+    }
+  };
 
   /** Maydonga yozilgan summa — tanlangan usulga. */
   const setPayValue = (v) =>
@@ -2272,9 +2316,35 @@ export default function KassaPage({ toast, refreshLowStock }) {
               <i className="fa-solid fa-wallet" aria-hidden="true" />
               {t("kassa.checkout")} <span className="kbd">F9</span>
             </button>
+            {/* ── JAMG'ARMAGA QO'YISH (V64) ─────────────────────────
+                ⚠ SAVAT BO'SH BO'LSA HAM ISHLAYDI — bu savdo emas, mijoz
+                shunchaki pul qoldiradi. To'lov tugmasi bo'sh savatda
+                o'chiq, bu esa aynan bo'sh savatda kerak: mijoz tovar
+                olmasdan «keyingi safarga» pul tashlab ketadi.
+
+                ⚠ MIJOZSIZ O'CHIQ: egasiz jamg'arma bo'lmaydi. Sarlavha
+                sababini aytadi — o'chiq tugma «buzuq» deb
+                o'ylanmasin. */}
+            <button className="btn btn-outline btn-full" style={{ marginTop: 8 }}
+                    onClick={() => setTopUpOpen(true)}
+                    disabled={!customer}
+                    title={customer ? t("savings.topUpTitle") : t("savings.customerRequired")}>
+              <i className="fa-solid fa-sack-dollar" aria-hidden="true"
+                 style={{ color: "var(--fg-success)" }} />
+              {t("savings.topUpTitle")}
+            </button>
           </div>
         </div>
       </div>
+
+      {/* ════ Jamg'armaga qo'yish (V64) ════ */}
+      {topUpOpen && customer && (
+        <DebtPayModal mode="savings"
+                      customer={{ ...customer, savingsBalance: savingsLeft }}
+                      onClose={() => setTopUpOpen(false)}
+                      onSubmit={submitTopUp}
+                      paying={toppingUp} />
+      )}
 
       {/* ════ Markirovka yorliqlari (tamaki, alkogol, suv…) ════ */}
       {markModal && (
@@ -2589,6 +2659,27 @@ export default function KassaPage({ toast, refreshLowStock }) {
                 </div>
               )}
 
+              {/* ── Mijozning JAMG'ARMASI (V64) ────────────────────────
+                  ⚠ Ball blokidan ALOHIDA va ostida: ular bir xil
+                  ko'rinsa, kassir ikkalasini bitta narsa deb o'ylardi.
+                  Ball — do'konning sovg'asi, bu — mijozning puli.
+                  Faqat qoldiq bo'lganda: nol qator ma'lumot bermaydi. */}
+              {customer && savingsLeft > 0 && (
+                <div style={{
+                  marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--border-subtle)",
+                  display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8,
+                  fontSize: 13,
+                }}>
+                  <span style={{ color: "var(--fg-success)", fontWeight: 700 }}>
+                    <i className="fa-solid fa-sack-dollar" style={{ marginRight: 6 }} aria-hidden="true" />
+                    {t("savings.balance")}: <b className="mono">{money(savingsLeft)}</b>
+                  </span>
+                  <span className="text-muted" style={{ fontSize: 12 }}>
+                    {t("savings.payHint")} <span className="kbd">{keyLabel("paySavings")}</span>
+                  </span>
+                </div>
+              )}
+
               {/* ── Mijozning QARZI ──────────────────────────────────────
 
                   ⚠ Kassir buni KO'RMASDI. U nasiyaga sotishga urinib,
@@ -2893,7 +2984,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
                   tugmadagi kichkina raqamda ko'rsatish yetmasdi. */}
               {payFocus === "SAVINGS" && (
                 <div className="text-muted" style={{ fontSize: 12, marginTop: 4 }}>
-                  <i className="fa-solid fa-piggy-bank" aria-hidden="true" />{" "}
+                  <i className="fa-solid fa-sack-dollar" aria-hidden="true" />{" "}
                   {t("savings.max", { n: money(savingsLeft) })}
                 </div>
               )}
@@ -2961,8 +3052,9 @@ export default function KassaPage({ toast, refreshLowStock }) {
                   <label className="pay-sum__row" style={{ cursor: "pointer", gap: 8 }}>
                     <input type="checkbox" checked={changeToSavings}
                            onChange={(e) => setChangeToSavings(e.target.checked)} />
-                    <span className="pay-sum__name" style={{ fontSize: 13 }}>
-                      <i className="fa-solid fa-piggy-bank" aria-hidden="true" />{" "}
+                    <span className="pay-sum__name" style={{ fontSize: 13, fontWeight: 700 }}>
+                      <i className="fa-solid fa-sack-dollar" aria-hidden="true"
+                         style={{ color: "var(--fg-success)", fontSize: 16 }} />{" "}
                       {t("savings.changeHere")}
                     </span>
                   </label>

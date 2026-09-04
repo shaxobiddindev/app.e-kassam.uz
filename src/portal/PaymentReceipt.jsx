@@ -184,6 +184,19 @@ export default function PaymentReceipt({
                 <span>{money(data.balanceAfter)}</span>
               </div>
             )}
+            {/* ⚠ Ortig'i JAMG'ARMAGA (V64) — faqat to'lov paytidagi
+                chekda keladi. Mijoz 200 000 uzatib «150 000» ni ko'rsa,
+                «qolgan 50 mingim qani?» deydi — javob shu satrda. */}
+            {Number(data.toSavings) > 0 && (
+              <div className="pt-tape__row pt-earn">
+                <span>Jamg'armaga</span><span>+{money(data.toSavings)}</span>
+              </div>
+            )}
+            {Number(data.bonusEarned) > 0 && (
+              <div className="pt-tape__row pt-earn">
+                <span>Ball yig'ildi</span><span>+{money(data.bonusEarned)}</span>
+              </div>
+            )}
             {data.reason && (
               <div className="pt-tape__row"><span>Izoh</span><span>{data.reason}</span></div>
             )}

@@ -25,17 +25,31 @@ import Overlay from "./ek/Overlay";
 const METHODS = ["CASH", "CARD", "CLICK", "PAYME"];
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "000", "0", "⌫"];
 
-export default function DebtPayModal({ customer, onClose, onSubmit, paying }) {
-  const balance = Number(customer?.balance) || 0;
+/**
+ * `mode`:
+ *   `"debt"`    — qarz to'lovi (standart): ortig'i JAMG'ARMAGA tushadi;
+ *   `"savings"` — jamg'armaga pul qo'yish (V64): savdoga aloqasi yo'q,
+ *                 chegarasi yo'q, keshbeksiz.
+ *
+ * ⚠ BITTA OYNA, IKKI REJIM — ataylab. Ikkalasi ham «kassir mijozdan
+ * pul oladi» degan bitta harakat va kassirning barmog'i bitta raqamli
+ * klaviaturani biladi. Alohida oyna yozilsa, ular allaqachon
+ * bir-biridan ajralib ketgan bo'lardi.
+ */
+export default function DebtPayModal({ customer, onClose, onSubmit, paying, mode = "debt" }) {
+  const savingsMode = mode === "savings";
+  const balance = Number(savingsMode ? customer?.savingsBalance : customer?.balance) || 0;
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState("CASH");
 
   const num = Number(String(amount).replace(/\D/g, "")) || 0;
-  /* ⚠ Qarzdan ORTIQ to'lov server tomonidan ham rad etiladi. Bu yerda
-     tugma oldindan o'chiriladi: kassir mijoz oldida xato javob
-     olmasligi kerak. */
-  const tooMuch = num > balance;
-  const canPay = num > 0 && !tooMuch && !paying;
+  /* ⚠ QARZDAN ORTIQ TO'LOV ENDI TO'SILMAYDI (V63): ortig'i mijozning
+     jamg'armasiga tushadi. Ilgari bu yerda tugma o'chirilardi va
+     kassir 470 000 lik qarzga 500 000 uzatgan mijozga qaytim qidirardi.
+     Endi ortig'i KO'RSATILADI — kassir mijozga «50 mingingiz
+     jamg'armangizda» deb aytib beradi. */
+  const extra = savingsMode ? 0 : Math.max(0, num - balance);
+  const canPay = num > 0 && !paying;
 
   const press = (k) => {
     if (k === "⌫") return setAmount((v) => String(v).slice(0, -1));
@@ -44,13 +58,14 @@ export default function DebtPayModal({ customer, onClose, onSubmit, paying }) {
 
   return (
     <Overlay className="pay-modal-overlay ek-overlay" role="dialog" aria-modal="true"
-         aria-label={t("credit.payTitle")}
+         aria-label={savingsMode ? t("savings.topUpTitle") : t("credit.payTitle")}
          onEscape={onClose}>
       <div className="pay-modal-box ek-dialog">
         <div className="pay-modal-header">
           <div className="pay-modal-title">
-            <i className="fa-solid fa-hand-holding-dollar" aria-hidden="true" />
-            {t("credit.payTitle")} — {customer?.fullName}
+            <i className={`fa-solid ${savingsMode ? "fa-sack-dollar" : "fa-hand-holding-dollar"}`}
+               aria-hidden="true" />
+            {savingsMode ? t("savings.topUpTitle") : t("credit.payTitle")} — {customer?.fullName}
           </div>
           <button className="pay-modal-close" onClick={onClose} aria-label={t("common.close")}>
             <i className="fa-solid fa-xmark" aria-hidden="true" />
@@ -59,7 +74,9 @@ export default function DebtPayModal({ customer, onClose, onSubmit, paying }) {
 
         <div className="pay-modal-body">
           <div className="pay-modal-total">
-            <div className="pay-modal-total-label">{t("credit.balance")}</div>
+            <div className="pay-modal-total-label">
+              {savingsMode ? t("savings.balance") : t("credit.balance")}
+            </div>
             <div className="pay-modal-total-value ek-num">{money(balance)}</div>
           </div>
 
@@ -83,23 +100,28 @@ export default function DebtPayModal({ customer, onClose, onSubmit, paying }) {
           <div className="pay-modal-section-label">
             <i className="fa-solid fa-money-bill-wave" aria-hidden="true" /> {t("credit.payAmount")}
           </div>
-          <NumField kind="money" max={balance} autoFocus
+          {/* ⚠ `max` YO'Q (V63): qarzdan ortiq to'lov jamg'armaga
+              tushadi, uni maydonda kesish o'sha imkoniyatni yopib
+              qo'yardi. */}
+          <NumField kind="money" autoFocus
                     className="form-input qty-modal__input ek-num"
                     value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0" />
 
           {/* ⚠ «Hammasi» — eng ko'p bosiladigan tugma: mijoz odatda
               qarzini to'liq yopadi va uni har safar qo'lda terish
-              ortiqcha qadam edi. */}
-          <div className="debt-quick">
-            <button type="button" className="btn btn-outline btn-sm"
-                    onClick={() => setAmount(String(Math.round(balance)))}>
-              {t("credit.payAll")} · {money(balance)}
-            </button>
-            <button type="button" className="btn btn-outline btn-sm"
-                    onClick={() => setAmount(String(Math.round(balance / 2)))}>
-              {t("credit.payHalf")}
-            </button>
-          </div>
+              ortiqcha qadam edi. Jamg'arma rejimida ma'nosi yo'q. */}
+          {!savingsMode && (
+            <div className="debt-quick">
+              <button type="button" className="btn btn-outline btn-sm"
+                      onClick={() => setAmount(String(Math.round(balance)))}>
+                {t("credit.payAll")} · {money(balance)}
+              </button>
+              <button type="button" className="btn btn-outline btn-sm"
+                      onClick={() => setAmount(String(Math.round(balance / 2)))}>
+                {t("credit.payHalf")}
+              </button>
+            </div>
+          )}
 
           <div className="qty-modal__keys">
             {KEYS.map((k) => (
@@ -109,10 +131,13 @@ export default function DebtPayModal({ customer, onClose, onSubmit, paying }) {
             ))}
           </div>
 
-          {tooMuch && (
-            <div className="pay-mixed-warn" style={{ marginTop: 10 }}>
-              <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />{" "}
-              {t("credit.overpay")}
+          {/* ⚠ OGOHLANTIRISH EMAS, MA'LUMOT: ortig'i yo'qolmaydi, u
+              mijozning hisobiga tushadi. Qizil rang «xato» deb
+              o'qilardi. */}
+          {extra > 0 && (
+            <div style={{ marginTop: 10, fontSize: 13, color: "var(--fg-success)", fontWeight: 700 }}>
+              <i className="fa-solid fa-sack-dollar" aria-hidden="true" />{" "}
+              {t("credit.overpayToSavings", { n: money(extra) })}
             </div>
           )}
         </div>
@@ -122,7 +147,7 @@ export default function DebtPayModal({ customer, onClose, onSubmit, paying }) {
           <button className="btn btn-primary" disabled={!canPay}
                   onClick={() => onSubmit({ amount: num, method })}>
             {paying ? <Spinner small /> : <i className="fa-solid fa-check" aria-hidden="true" />}
-            {t("credit.pay")}
+            {savingsMode ? t("savings.topUp") : t("credit.pay")}
           </button>
         </div>
       </div>

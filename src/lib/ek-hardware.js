@@ -269,7 +269,8 @@ export async function printReceipt(sale) {
  * yana do'konning so'ziga qarshi mijozning so'zi bo'lib qolardi.
  */
 export function buildDebtReceipt({ customer, amount, balanceAfter, balanceBefore, method,
-                                   shopName, cashier, date, receiptNo, qrUrl }) {
+                                   shopName, cashier, date, receiptNo, qrUrl,
+                                   toSavings, bonusEarned }) {
   const s = getSettings();
   const r = new Receipt(s.width === 58 ? WIDTH_58 : WIDTH_80);
 
@@ -296,6 +297,10 @@ export function buildDebtReceipt({ customer, amount, balanceAfter, balanceBefore
   /* Qolgan qarz — mijoz aynan shuni so'raydi. Nol bo'lsa ham yoziladi:
      «qarzingiz qolmadi» degan qator eng qimmatli qator. */
   r.row(t("kassa.receiptDebtLeft"), money(balanceAfter ?? 0));
+  /* Ortig'i jamg'armaga va keshbek (V64) — mijoz uzatgan pulning
+     TO'LIQ taqdiri qog'ozda turishi kerak. */
+  if (Number(toSavings) > 0) r.row(t("savings.toSavings"), money(toSavings));
+  if (Number(bonusEarned) > 0) r.row(t("kassa.receiptBonusEarned"), "+" + money(bonusEarned));
 
   /* ⚠ QR — chekning elektron nusxasiga (V61). Termal qog'oz vaqt
      o'tib xiralashadi va aynan qarz cheki eng uzoq saqlanishi kerak
@@ -797,7 +802,7 @@ export async function testPrint() {
 function printInBrowser({ saleId, serverSaleId, cart = [], total = 0, subtotal, discount = 0,
                           payType, payments, customer, offline, shopName, cashier, receiptUrl,
                           credit, __debt, amount, balanceAfter, balanceBefore, method, date,
-                          receiptNo, qrUrl }) {
+                          receiptNo, qrUrl, toSavings, bonusEarned }) {
   const win = window.open("", "_blank", "width=360,height=640,toolbar=no,menubar=no");
   if (!win) throw new Error(t("hw.errPopup"));
 
@@ -842,6 +847,8 @@ function printInBrowser({ saleId, serverSaleId, cart = [], total = 0, subtotal, 
       <div class="row"><span>${esc(t("kassa.receiptPayment"))}</span><span>${esc(paymentLabel(method))}</span></div>
       ${balanceBefore != null ? `<div class="row"><span>${esc(t("credit.wasDebt"))}</span><span>${esc(money(balanceBefore))}</span></div>` : ""}
       <div class="row"><span>${esc(t("kassa.receiptDebtLeft"))}</span><span>${esc(money(balanceAfter ?? 0))}</span></div>
+      ${Number(toSavings) > 0 ? `<div class="row"><span>${esc(t("savings.toSavings"))}</span><span>${esc(money(toSavings))}</span></div>` : ""}
+      ${Number(bonusEarned) > 0 ? `<div class="row"><span>${esc(t("kassa.receiptBonusEarned"))}</span><span>+${esc(money(bonusEarned))}</span></div>` : ""}
       ${qrUrl ? `<div class="hr"></div><div class="c">
         ${qrSvg(qrUrl, { size: 96, margin: 1 })}
         <small>${esc(t("kassa.receiptQrHint"))}</small>

@@ -106,7 +106,12 @@ export function displayNumber(raw, { decimals = 0 } = {}) {
   const [int = "", frac] = s.replace("-", "").split(".");
   const cleanInt = onlyDigits(int) || (s.replace("-", "").startsWith(".") ? "0" : "");
   if (cleanInt === "" && !frac) return "";
-  const f = frac === undefined ? null : String(frac).slice(0, decimals);
+  /* ⚠ `decimals === 0` DA NUQTA HECH QACHON CHIQMAYDI. Ilgari xom
+     qiymat «7249.99» bo'lsa (server 2 kasr bilan yuborgan ball)
+     kasr kesilar-u NUQTA qolardi va maydonda «7 249.» degan chala
+     raqam turardi — do'kon egasi aynan shuni ko'rsatdi. Butun son
+     maydonida nuqtaning o'rni yo'q, «yozilayotgan» holat ham yo'q. */
+  const f = frac === undefined || decimals === 0 ? null : String(frac).slice(0, decimals);
   return sign + groupInt(cleanInt || "0") + (f !== null ? "." + f : "");
 }
 

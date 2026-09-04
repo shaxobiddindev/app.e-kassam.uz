@@ -50,7 +50,7 @@ export const PAYMENT_TYPE = dict("enum.payment", {
      ⚠ Rang YASHIL (muvaffaqiyat), nasiyaniki kabi sariq EMAS: bu
      haqiqiy to'lov va chek yopiladi. Sariq kassirni «bu ham qarz
      ekan» deb o'ylatardi. */
-  SAVINGS:{ icon: "fa-piggy-bank",          color: "var(--fg-success)" },
+  SAVINGS:{ icon: "fa-sack-dollar",          color: "var(--fg-success)" },
 });
 
 /* ── Sotuv holati — SaleStatus ───────────────────────────────────────────── */

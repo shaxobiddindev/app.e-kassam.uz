@@ -657,7 +657,7 @@ function ShopsScreen({ shops }) {
                     — MIJOZNING PULI (kuymaydi, qaytariladi). */}
                 {Number(savings[s.id]?.balance) > 0 && (
                   <small className="cu-pos">
-                    <i className="fa-solid fa-piggy-bank" aria-hidden="true" />{" "}
+                    <i className="fa-solid fa-sack-dollar" aria-hidden="true" />{" "}
                     {money(savings[s.id].balance)} jamg'arma
                   </small>
                 )}
@@ -755,7 +755,7 @@ function BonusSheet({ customerId, shopName, savings, onClose }) {
         {Number(savings?.balance) > 0 && (
           <div className="cu-card cu-center">
             <span className="cu-muted">
-              <i className="fa-solid fa-piggy-bank" aria-hidden="true" /> Jamg'armangiz
+              <i className="fa-solid fa-sack-dollar" aria-hidden="true" /> Jamg'armangiz
             </span>
             <div className="cu-sheet__sum cu-pos">{money(savings.balance)}</div>
             <p className="cu-muted">
