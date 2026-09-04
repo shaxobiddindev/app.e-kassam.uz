@@ -1,6 +1,7 @@
 import { API_BASE, LOGIN_URL, getDeviceId } from "../config";
 import { getLang, withLang, t } from "../lib/ek-i18n";
 import { isNativeShell } from "../lib/ek-desktop";
+import { rememberShopHead } from "../lib/ek-shop-print";
 
 /**
  * Sessiya tiklab bo'lmadi — foydalanuvchini kirish ekraniga qaytaramiz.
@@ -572,7 +573,10 @@ export const customerApi = {
      ⚠ ARXIVLASH: yozuv bazada qoladi va eski cheklarida ko'rinadi,
      lekin ro'yxatda, qidiruvda va kassada chiqmaydi. Haqiqiy o'chirish
      sotuv tarixini buzardi. */
-  remove: (id) => request(`/customers/${id}`, { method: "DELETE" }),
+  /* ⚠ `remove` OLIB TASHLANDI (V62). Do'kon mijoz yozuvini o'chira
+     olmaydi va serverda `DELETE /customers/{id}` yo'li ham YO'Q —
+     yozuv mijozniki, uni faqat mijozning o'zi ilovadan arxivga
+     jo'natadi. */
   /** Karta kodi bo'yicha (V34) — kassada skanerlanganda. */
   byCard: (code) => request(`/customers/by-card/${encodeURIComponent(code)}`),
   /** Telefon bo'yicha — mijoz kartasini unutgan bo'lsa. */
@@ -666,7 +670,16 @@ export async function downloadScaleExport() {
 }
 
 export const shopApi = {
-  getProfile: () => request("/shop/profile"),
+  /* ⚠ CHEK SARLAVHASI SHU YERDA KESHLANADI. Profil to'qqizta sahifada
+     so'raladi va har biriga «keshni ham yangilashni unutmang» deb
+     ishonib bo'lmasdi — shuning uchun yangilanish chaqiruvchida emas,
+     chaqiruvning O'ZIDA. Chek chop etish paytida esa server so'roviga
+     vaqt yo'q: kassir tugmani bosgan zahoti qog'oz chiqishi kerak va
+     internet uzilgan bo'lishi ham mumkin. */
+  getProfile: () => request("/shop/profile").then((r) => {
+    rememberShopHead(r?.data);
+    return r;
+  }),
 
   /* DO'KONDA QAYSI BO'LIMLAR BOR (V49) — menyu shu javobdan quriladi.
      Har qanday xodimga ochiq: menyuni chizish uchun kassirga ham,

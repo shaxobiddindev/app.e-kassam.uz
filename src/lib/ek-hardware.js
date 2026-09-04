@@ -21,6 +21,7 @@
 import { isDesktop, invoke } from "./ek-desktop";
 import { Receipt, WIDTH_80, WIDTH_58, drawerKickBytes } from "./ek-escpos";
 import { t } from "./ek-i18n";
+import { shopHead } from "./ek-shop-print";
 import { money, quantity } from "../utils";
 import { paymentLabel, unitLabel } from "./ek-labels";
 import { code128Svg, saleCode } from "./ek-barcode";
@@ -95,7 +96,15 @@ export function buildReceipt({ saleId, serverSaleId, cart = [], total = 0, subto
   const s = getSettings();
   const r = new Receipt(s.width === 58 ? WIDTH_58 : WIDTH_80);
 
-  r.center().double().line(shopName || "E-KASSAM.UZ").double(false);
+  /* ⚠ NOM KESHDAN (V62). Ilgari `shopName` chaqiruvchidan kelardi va u
+     `localStorage.ek_shopName` dan o'qilardi — o'sha kalit esa hech
+     qayerda YOZILMASDI. Natijada chekda do'konning nomi emas, KODI
+     («ulash01») yoki «E-KASSAM.UZ» chiqardi. Mijoz qo'lidagi qog'ozda
+     do'konning haqiqiy nomi hech qachon bo'lmagan. */
+  const head = shopHead(shopName);
+  r.center().double().line(head.name).double(false);
+  /* Telefon — nom ostida, sozlama yoqilgan bo'lsa (`shopHead` izohi). */
+  if (head.phone) r.line(head.phone);
   r.line(t("kassa.receiptSystem"));
   r.left().rule();
 
@@ -264,7 +273,9 @@ export function buildDebtReceipt({ customer, amount, balanceAfter, balanceBefore
   const s = getSettings();
   const r = new Receipt(s.width === 58 ? WIDTH_58 : WIDTH_80);
 
-  r.center().double().line(shopName || "E-KASSAM.UZ").double(false);
+  const head = shopHead(shopName);
+  r.center().double().line(head.name).double(false);
+  if (head.phone) r.line(head.phone);
   r.line(t("kassa.receiptDebtPay"));
   r.left().rule();
 
@@ -792,6 +803,9 @@ function printInBrowser({ saleId, serverSaleId, cart = [], total = 0, subtotal, 
 
   // Qog'oz kengligi — apparat sozlamasidan (58 yoki 80 mm).
   const mm = getSettings().width === 58 ? 58 : 80;
+  /* ⚠ ESC/POS cheki bilan BIR XIL manbadan: brauzer cheki boshqa nom
+     yoki boshqa telefon ko'rsatsa, ikkalasi ham ishonchini yo'qotardi. */
+  const head = shopHead(shopName);
 
   const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -815,7 +829,8 @@ function printInBrowser({ saleId, serverSaleId, cart = [], total = 0, subtotal, 
   /* ⚠ QARZ TO'LOVI — BOSHQA HUJJAT: tovar qatorlari, QQS va chek raqami
      yo'q. Uni sotuv qolipiga tiqish «jami 0» li bo'sh chek berardi. */
   const debtBody = !__debt ? "" : `
-      <div class="c"><div class="logo">${esc(shopName || "E-KASSAM.UZ")}</div>
+      <div class="c"><div class="logo">${esc(head.name)}</div>
+        ${head.phone ? `<small>${esc(head.phone)}</small><br>` : ""}
         <small>${esc(t("kassa.receiptDebtPay"))}</small></div>
       <div class="hr"></div>
       ${receiptNo ? `<div class="row"><span>${esc(t("kassa.receiptNo"))}</span><span>${esc(receiptNo)}</span></div>` : ""}
@@ -868,7 +883,8 @@ function printInBrowser({ saleId, serverSaleId, cart = [], total = 0, subtotal, 
     </style></head><body>
       ${debtBody}
       ${__debt ? "" : `
-      <div class="c"><div class="logo">${esc(shopName || "E-KASSAM.UZ")}</div>
+      <div class="c"><div class="logo">${esc(head.name)}</div>
+        ${head.phone ? `<small>${esc(head.phone)}</small><br>` : ""}
         <small>${esc(t("kassa.receiptSystem"))}</small></div>
       <div class="hr"></div>
       <div class="row"><span>${esc(t("kassa.receiptNo"))} ${esc(saleId)}</span><span>${esc(new Date().toLocaleString("uz-UZ"))}</span></div>

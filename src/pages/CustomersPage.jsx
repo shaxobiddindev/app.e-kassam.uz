@@ -70,8 +70,11 @@ export default function CustomersPage({ toast }) {
      do'kon egasi Sotuvlar sahifasiga o'tib, chekni qidirishi kerak
      edi. Endi qatorning o'zi bosiladi. */
   const { user } = useAuth();
-  /* O'chirish — faqat egasi va do'kon administratori. */
-  const canDelete = [...roleSet(user?.role)].some((r) => r === "OWNER" || r === "SHOP_ADMIN");
+  /* ⚠ NOMI `canDelete` EDI (V62 da o'zgardi). O'chirish endi umuman
+     yo'q — bu bayroq faqat RAHBAR amallarini (qo'lda qarz kiritish)
+     to'sadi. Eski nom qolganda, keyingi o'quvchi «demak o'chirish bor
+     ekan» deb o'ylardi. */
+  const isManager = [...roleSet(user?.role)].some((r) => r === "OWNER" || r === "SHOP_ADMIN");
   const [payOpen, setPayOpen] = useState(false);
   /* Ekranda turgan to'lov cheki: to'lovdan keyin darhol, yoki jurnaldagi
      tugmadan. `null` — yopiq. */
@@ -236,36 +239,6 @@ export default function CustomersPage({ toast }) {
     }
   };
 
-  /**
-   * MIJOZNI RO'YXATDAN OLIB TASHLASH (V47).
-   *
-   * ⚠ ILGARI BU TUGMA UMUMAN ISHLAMASDI: u `customerApi.delete` ni
-   * chaqirardi, bunday metod esa YO'Q edi — bosilganda jimgina
-   * `TypeError` chiqardi (foydalanuvchi shikoyati: «o'chirsa o'chmay
-   * qolyapti»).
-   *
-   * ⚠ Matn ROSTINI aytadi: bu arxivlash, ya'ni xaridlar tarixi va qarz
-   * jurnali saqlanadi. «Butunlay o'chirildi» deb yozish yolg'on bo'lardi
-   * va do'kon egasi keyin hisobotda o'sha mijozni ko'rib hayron qolardi.
-   */
-  const handleDelete = async (customer) => {
-    const ok = await confirm({
-      title: t("cust.delete"),
-      message: t("cust.deleteAsk").replace("{name}", customer.fullName),
-      type: "danger",
-      confirmText: t("cust.delete"),
-      cancelText: t("common.cancel"),
-    });
-    if (!ok) return;
-    try {
-      await customerApi.remove(customer.id);
-      toast.success(t("cust.deleted"));
-      loadData();
-    } catch (err) {
-      toast.error(err.message);
-    }
-  };
-
   const setField = (key) => (e) => setForm((prev) => ({ ...prev, [key]: e.target.value }));
 
   /* ⚠ QIDIRUV — kassadagi bilan BIR XIL algoritm (`lib/ek-search.js`).
@@ -370,7 +343,7 @@ export default function CustomersPage({ toast }) {
           {/* Qarzdorlar ro'yxatida asosiy amal — MIJOZ emas, QARZ
               qo'shish: do'koncha bu ro'yxatga aynan daftarini
               ko'chirish uchun kiradi. */}
-          {view === "debtors" && canDelete && (
+          {view === "debtors" && isManager && (
             <button className="btn btn-outline btn-sm" onClick={() => setManualDebt(true)}>
               <i className="fa-solid fa-file-pen" /> {t("credit.manualAdd")}
             </button>
@@ -495,18 +468,23 @@ export default function CustomersPage({ toast }) {
                               <button className="btn-icon" onClick={() => openEdit(c)}>
                                 <i className="fa-solid fa-pen" />
                               </button>
-                              {/* ⚠ O'CHIRISH FAQAT RAHBARGA (V47). Kassir
-                                  mijozlar bilan to'liq ishlaydi, lekin
-                                  o'zi xizmat qilgan mijozni ro'yxatdan
-                                  yashira olsa, qarzdorni ham, nizoni ham
-                                  ko'zdan yo'qota olardi. Server ham shu
-                                  qoidani qo'yadi (`SecurityConfig`). */}
-                              {canDelete && (
-                                <button className="btn-icon danger" title={t("cust.delete")}
-                                        onClick={() => handleDelete(c)}>
-                                  <i className="fa-solid fa-trash" />
-                                </button>
-                              )}
+                              {/* ═══ ⚠ O'CHIRISH TUGMASI YO'Q — ATAYLAB (V62)
+                                  Ilgari bu yerda rahbarga ochiq savat
+                                  tugmasi turardi.
+
+                                  Yozuv MIJOZNIKI: unda odamning ismi,
+                                  telefoni, xarid tarixi va ballari
+                                  yotadi. Do'kon uni ro'yxatdan yashira
+                                  olsa, mijoz o'z ma'lumoti ustidan
+                                  nazoratini yo'qotardi.
+
+                                  ⚠ Rolni qattiqroq qilish yetmasdi:
+                                  masala huquqda emas, EGALIKDA. Server
+                                  ham endi bu yo'lni bermaydi —
+                                  `DELETE /customers/{id}` UMUMAN yo'q.
+
+                                  O'chirishni mijozning o'zi ilovadan
+                                  qiladi («Hisobni o'chirish»). ═══ */}
                             </>
                           )}
                         </div>

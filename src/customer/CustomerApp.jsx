@@ -771,13 +771,20 @@ function ProfileScreen({ me, onSaved, onLogout }) {
   const askDelete = async () => {
     const ok = await confirm({
       title: "Hisobni o'chirish",
+      /* ⚠ MATN V62 DA YANGILANDI. Ilgari «do'kon yozuvi o'chmaydi»
+         deb yozilgan edi va u o'sha paytda ROST edi: yozuvni faqat
+         do'konning o'zi arxivlay olardi. Endi aksincha — do'konda
+         bunday tugma umuman yo'q va arxivlashni shu tugma qiladi.
+         Eski matn qolganda, u YOLG'ON bo'lib qolardi. */
       message: "Ilova hisobingiz butunlay o'chiriladi: telefon, ismingiz, "
              + "Telegram va pochta bog'lanishi, barcha seanslar va "
              + "bildirishnomalar.\n\n"
-             + "⚠ Do'konlardagi xarid tarixingiz, ballaringiz va QARZ "
-             + "QOLDIG'INGIZ o'chmaydi — bu do'konning o'z hisob yozuvi va "
-             + "u qonun bo'yicha saqlanadi. Qarzingiz bo'lsa, u o'z "
-             + "kuchida qoladi.\n\n"
+             + "Do'konlardagi yozuvingiz ARXIVGA o'tadi: do'kon sizni "
+             + "ro'yxatida, qidiruvida va kassada ko'rmaydi.\n\n"
+             + "⚠ Xarid tarixingiz eski cheklarda qoladi — u do'konning "
+             + "buxgalteriya yozuvi va qonun bo'yicha saqlanadi.\n\n"
+             + "⚠ QARZINGIZ BO'LSA, o'sha do'kondagi yozuv ARXIVLANMAYDI "
+             + "va qarz o'z kuchida qoladi. Avval qarzni yoping.\n\n"
              + "Bu amalni qaytarib bo'lmaydi.",
       type: "danger",
       confirmText: "Ha, o'chirilsin",
