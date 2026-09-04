@@ -479,7 +479,10 @@ function NewsScreen() {
 
 const RCP_TABS = [
   { key: "buy",  label: "Xaridlar" },
-  { key: "paid", label: "To'lovlarim" },
+  /* ⚠ «To'lovlarim» emas, «Qarzlarim» (V62): lentada endi olingan qarz
+     ham turadi. Eski nom yarim mazmunni yashirardi — mijoz qarzini shu
+     yerdan qidirmasdi. */
+  { key: "paid", label: "Qarzlarim" },
 ];
 
 function ReceiptsScreen() {
@@ -530,10 +533,10 @@ function ReceiptsScreen() {
         <div className="cu-card cu-center">
           <i className={`fa-solid ${paid ? "fa-hand-holding-dollar" : "fa-receipt"} cu-big-icon`}
              aria-hidden="true" />
-          <p><b>{paid ? "Hali to'lov yo'q" : "Hali chek yo'q"}</b></p>
+          <p><b>{paid ? "Hali qarz yo'q" : "Hali chek yo'q"}</b></p>
           <p className="cu-muted">
             {paid
-              ? "Qarzingizni to'laganingizda cheki shu yerda saqlanadi."
+              ? "Nasiyaga olgan tovaringiz va to'lovingiz cheki shu yerda saqlanadi."
               : "Kassada kartangizni ko'rsating — xarid cheki shu yerda saqlanadi."}
           </p>
         </div>
@@ -550,7 +553,15 @@ function ReceiptsScreen() {
                 <small className="cu-muted">{dateLabel(r.date)}</small>
               </span>
               <span className="cu-rcp__right">
-                <b>{money(paid ? r.amount : r.total)}</b>
+                {/* ⚠ ISHORA MIJOZNING KO'ZI BILAN: olingan qarz «+»
+                    (qarzim oshdi), to'lov «−» (qarzim kamaydi). Rang
+                    ham shunga qarab: qarz qizil, to'lov yashil.
+                    Ishorasiz ikkala qator bir xil ko'rinardi va mijoz
+                    lentaga qarab qaysi biri nima ekanini ajrata
+                    olmasdi. */}
+                <b className={paid ? (r.kind === "CHARGE" ? "cu-neg" : "cu-pos") : ""}>
+                  {paid ? (r.kind === "CHARGE" ? "+" : "−") : ""}{money(paid ? r.amount : r.total)}
+                </b>
                 {paid
                   /* ⚠ «Qarz yopildi» — lentaning eng qimmatli xabari:
                      mijoz chekni ochmasdan, qaysi to'lovda qutulganini
@@ -559,7 +570,9 @@ function ReceiptsScreen() {
                   ? (r.balanceAfter != null && (
                       Number(r.balanceAfter) === 0
                         ? <small className="cu-pos">Qarz yopildi</small>
-                        : <small className="cu-muted">Qoldi: {money(r.balanceAfter)}</small>
+                        : <small className="cu-muted">
+                            {r.kind === "CHARGE" ? "Jami qarz: " : "Qoldi: "}{money(r.balanceAfter)}
+                          </small>
                     ))
                   : <>
                       {Number(r.bonusEarned) > 0 && <small className="cu-pos">+{money(r.bonusEarned)} ball</small>}

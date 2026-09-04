@@ -1240,6 +1240,8 @@ export default {
   "settings.creditConfirm": "Qarzni mijoz ham tasdiqlasin",
   "settings.pickup": "Ombordan berib yuborish",
   "settings.pickupHint": "Mijoz kassaga to'laydi, tovarni omborchi beradi. Chek omborchining ekraniga tushadi. U barkodni skanerlab tovarni beradi.",
+  "settings.receiptPhone": "Chekda do'kon telefoni",
+  "settings.receiptPhoneHint": "O'chirilsa raqam chekda chiqmaydi. Raqamning o'zi profilda, hisobotlarda va mijoz kabinetida qoladi.",
   "settings.creditConfirmHint": "Nasiya yozilgach mijozga so'rov boradi: ilova, Telegram yoki SMS. Kassa kutmaydi — chek darhol yakunlanadi. Tasdiq — tortishuvdagi dalil.",
   "settings.creditConfirmAsk": "Har nasiyadan keyin mijozga do'koningiz nomidan so'rov boradi. Yoqilsinmi?",
   "debt.state.PENDING": "Tasdiq kutilyapti",

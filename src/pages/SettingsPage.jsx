@@ -106,6 +106,10 @@ export default function SettingsPage({ toast }) {
   /* Qarzni mijoz ham tasdiqlaydimi (V46). */
   const [creditConfirm, setCreditConfirm] = useState(false);
   const [pickupEnabled, setPickupEnabled] = useState(false);
+  /* ⚠ Standart `true`: chekda telefon KO'RINADI. Profil hali
+     yuklanmagan bir lahzada kalit «o'chiq» bo'lib turib, keyin
+     sakrab yonishi noto'g'ri taassurot berardi. */
+  const [receiptShowPhone, setReceiptShowPhone] = useState(true);
   /* Nasiya muddati (V43), kunlarda. "0" — muddatsiz. */
   const [creditDueDays, setCreditDueDays] = useState("0");
   /* Mijozga qarz eslatmasi (V44). */
@@ -129,6 +133,7 @@ export default function SettingsPage({ toast }) {
         setCreditDueMode(r?.data?.creditDueMode || "EACH");
         setCreditConfirm(Boolean(r?.data?.creditConfirmEnabled));
         setPickupEnabled(Boolean(r?.data?.pickupEnabled));
+        setReceiptShowPhone(r?.data?.receiptShowPhone !== false);
         setCreditDueDays(String(r?.data?.creditDueDays ?? 0));
         setCreditRemind(Boolean(r?.data?.creditRemindEnabled));
         setBaseCashback(String(r?.data?.baseCashbackPercent ?? 0));
@@ -210,6 +215,11 @@ export default function SettingsPage({ toast }) {
      tashkiliy sozlama, mijozga hech qanday xabar yubormaydi. */
   const togglePickup = () =>
     saveToggle(shopApi.setPickupEnabled, !pickupEnabled, setPickupEnabled);
+
+  /* Chekdagi telefon — tasdiqsiz: qaytarib yoqish bir bosish va hech
+     narsa yo'qolmaydi (raqam profilda joyida qoladi). */
+  const toggleReceiptPhone = () =>
+    saveToggle(shopApi.setReceiptShowPhone, !receiptShowPhone, setReceiptShowPhone);
 
   const saveField = (fn, value, fallback = 0) => async () => {
     try {
@@ -506,6 +516,29 @@ export default function SettingsPage({ toast }) {
               </button>
             </Row>
             )}
+
+            {/* ⚠ CHEKDAGI TELEFON (V62) — modulsiz, HAR do'konda bor.
+                Ilgari raqamni chekdan olib tashlashning yagona yo'li uni
+                profildan o'chirish edi, o'shanda esa u hisobotlardan,
+                mijoz kabinetidan va do'kon kartochkasidan ham
+                yo'qolardi. Sabablar haqiqiy: bozordagi nuqta egasining
+                raqami shaxsiy, filial cheki markaz raqamini ko'rsatishi
+                kerak, yuzlab chek qo'lma-qo'l yurgani sari raqam
+                reklama qo'ng'iroqlariga ochilib ketadi. */}
+            <Row label={t("settings.receiptPhone")} hint={t("settings.receiptPhoneHint")}>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={receiptShowPhone}
+                className={`ek-switch ${receiptShowPhone ? "on" : ""}`}
+                onClick={toggleReceiptPhone}
+              >
+                <span className="ek-switch__knob" />
+                <span className="ek-switch__text">
+                  {receiptShowPhone ? t("common.yes") : t("common.no")}
+                </span>
+              </button>
+            </Row>
             {/* ⚠ ALOHIDA SOZLAMA, muddatning davomi emas. Muddat do'konning
                 ichki qoidasi, bu esa do'kon nomidan MIJOZGA boradigan
                 xabar — uni ongli ravishda yoqish kerak. Izohda mijoz

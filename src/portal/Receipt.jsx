@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { API_BASE } from "../config";
 import { code128Svg } from "../lib/ek-barcode";
+import { groupDigits } from "../lib/ek-format";
 import { qrSvg } from "../lib/ek-qr";
 import { saveReceiptPdf } from "../lib/ek-receipt-pdf";
 import CodeZoom from "../components/CodeZoom";
+import Overlay from "../components/ek/Overlay";
 
 /* ══════════════════════════════════════════════════════════════════════════
    ELEKTRON CHEK — QOG'OZ CHEKNING AYNAN O'ZI
@@ -24,8 +26,22 @@ import CodeZoom from "../components/CodeZoom";
    so'mga farq qilishi mumkin edi — mijoz uchun bu «aldash» ko'rinadi.
    ══════════════════════════════════════════════════════════════════════════ */
 
-const money = (v) =>
-  new Intl.NumberFormat("uz-UZ", { maximumFractionDigits: 2 }).format(Number(v || 0));
+/* ⚠ AJRATGICH BUTUN MAHSULOTDA BIR XIL (02-DESIGN-SYSTEM.md).
+   Bu yerda `Intl.NumberFormat("uz-UZ")` turardi va u brauzerga qarab
+   VERGUL qaytarardi: mijoz SMS da «500 000 so'm», chekda esa
+   «500,000 so'm» ko'rib, ikkalasi bir xil summami deb o'ylardi.
+   Xuddi shu xato mijoz ilovasida bir marta tuzatilgan edi. */
+const money = (v) => groupDigits(v);
+
+/* ⚠ MIQDOR — ALOHIDA. `groupDigits` butunlashtiradi va u pul uchun
+   to'g'ri (so'mda tiyin ishlatilmaydi), MIQDOR uchun esa halokatli:
+   1,5 kg go'sht chekda «2 kg» bo'lib chiqardi va mijoz o'zi ko'rgan
+   tarozidan boshqa raqamni o'qirdi. Shuning uchun kasr qismi
+   SAQLANADI, keraksiz nollar esa olib tashlanadi (2,000 → 2). */
+const qty = (v) => {
+  const n = Number(v || 0);
+  return Number.isInteger(n) ? groupDigits(n) : String(n).replace(".", ",");
+};
 
 const PAY_LABEL = {
   CASH: "Naqd",
@@ -96,15 +112,12 @@ export default function Receipt({ token, appToken, customerId, id, signedId, sig
     }
   };
 
-  // Esc bilan yopish — telefonda ham, brauzerda ham kutiladigan xatti-harakat
-  useEffect(() => {
-    const onKey = (e) => { if (e.key === "Escape") onClose(); };
-    addEventListener("keydown", onKey);
-    return () => removeEventListener("keydown", onKey);
-  }, [onClose]);
-
   return (
-    <div className="pt-modal" onClick={onClose} role="dialog" aria-modal="true">
+    /* ⚠ `Overlay` orqali: qo'lda yozilgan `div` sahifa daraxtida qoladi
+       va portal bilan chizilgan oynaning ORQASIGA tushadi. Esc ham shu
+       yerdan — u FAQAT eng ustidagi oynani yopadi. */
+    <Overlay className="pt-modal" onClick={onClose} onEscape={onClose}
+             role="dialog" aria-modal="true">
       <div className="pt-modal__inner" onClick={(e) => e.stopPropagation()}>
         <button className="pt-close" onClick={onClose} aria-label="Yopish">
           <i className="fa-solid fa-xmark" aria-hidden="true" />
@@ -140,7 +153,7 @@ export default function Receipt({ token, appToken, customerId, id, signedId, sig
                 <div className="pt-line__name">{l.name}</div>
                 <div className="pt-tape__row">
                   <span>
-                    {money(l.quantity)} {UNIT_LABEL[l.unit] || ""} × {money(l.price)}
+                    {qty(l.quantity)} {UNIT_LABEL[l.unit] || ""} × {money(l.price)}
                   </span>
                   <span>{money(l.sum)}</span>
                 </div>
@@ -241,6 +254,6 @@ export default function Receipt({ token, appToken, customerId, id, signedId, sig
             onClose={() => setZoom(null)} />
         )}
       </div>
-    </div>
+    </Overlay>
   );
 }

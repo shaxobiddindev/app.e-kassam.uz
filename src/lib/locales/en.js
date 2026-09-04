@@ -1171,6 +1171,8 @@ export default {
   "settings.creditConfirm": "Customer confirms the debt",
   "settings.pickup": "Warehouse pickup",
   "settings.pickupHint": "The customer pays at the till and the store keeper hands over the goods. The receipt lands on their screen.",
+  "settings.receiptPhone": "Shop phone on receipt",
+  "settings.receiptPhoneHint": "When off, the number is not shown on receipts. The number itself stays in the profile, reports and customer portal.",
   "settings.creditConfirmHint": "After a debt the customer gets a request: app, Telegram or SMS. The till does not wait. The reply is proof in a dispute.",
   "settings.creditConfirmAsk": "After every debt the customer gets a request from your shop. Turn it on?",
   "debt.state.PENDING": "Awaiting answer",

@@ -8,7 +8,7 @@ import { Empty, Field, SearchBar, Avatar, FormGroup } from "../components/ui";
 import { useConfirm } from "../context/ConfirmProvider";
 import { roleSet } from "../lib/ek-roles";
 import { useAuth } from "../hooks/useAuth";
-import { shortDate } from "../lib/ek-format";
+import { shortDate, dateTime } from "../lib/ek-format";
 import SaleDetailModal from "../components/SaleDetailModal";
 /* ⚠ SEKIN YUKLANADI: to'lov cheki kunda bir necha marta ochiladi,
    mijozlar sahifasi esa doim. Chekni asosiy bo'lakka qo'shish uni
@@ -447,9 +447,14 @@ export default function CustomersPage({ toast }) {
                       {/* Qarz — MUSBAT bo'lsa qizil: bu do'konning pulini
                           ushlab turgan summa va u ko'zga tashlanishi kerak. */}
                       <td>
+                        {/* ⚠ QARZSIZDA «0», TIRE EMAS. Tire «ma'lumot
+                            yo'q» degani va do'kon egasini «hisoblanmagan
+                            bo'lsa kerak» deb o'ylatardi. Nol esa ANIQ
+                            javob: bu mijoz hech narsa qarz emas.
+                            Rangi ham boshqa — qizil faqat haqiqiy qarzda. */}
                         {Number(c.balance) > 0
                           ? <span className="mono fw-800" style={{ color: "var(--fg-danger)" }}>{money(c.balance)}</span>
-                          : <span className="text-muted">—</span>}
+                          : <span className="mono text-muted">{money(0)}</span>}
                       </td>
                       <td>
                         <div style={{ display: "flex", gap: 6 }}>
@@ -579,7 +584,10 @@ export default function CustomersPage({ toast }) {
           title={`${Number(debt.customer.balance) > 0 ? t("credit.title") : t("credit.history")}`
                  + ` — ${debt.customer.fullName}`}
           onClose={() => setDebt(null)}
-          maxWidth={520}
+          /* ⚠ KENG (720): jurnalda endi to'rt ustun bor — tur, SANA-VAQT,
+             izoh va summa. 520 da sana summani siqib, raqamlar
+             o'ralib ketardi. */
+          maxWidth={720}
           footer={
             <>
               <button className="btn btn-outline btn-sm" onClick={() => setDebt(null)}>
@@ -616,12 +624,29 @@ export default function CustomersPage({ toast }) {
 
           {/* Jurnal — "qarz qayerdan chiqdi" degan savolga javob. */}
           <div className="form-label" style={{ marginTop: 14 }}>{t("credit.ledger")}</div>
-          <div className="table-wrap" style={{ maxHeight: 220, overflowY: "auto" }}>
+          {/* ⚠ BALANDLIK EKRANGA QARAB (`vh`), qat'iy 220px EMAS. Ilgari
+              oynada bor-yo'g'i to'rt qator ko'rinardi va yillik qarz
+              tarixi millimetrlab aylantiriladigan darchadan o'qilardi.
+              Endi bo'sh joyning yarmigacha cho'ziladi; kichkina
+              monoblokda esa `min()` uni 260px dan pastga tushirmaydi,
+              ya'ni oyna ekrandan chiqib ketmaydi. */}
+          <div className="table-wrap"
+               style={{ maxHeight: "min(52vh, 520px)", minHeight: 260, overflowY: "auto" }}>
             <table>
               <tbody>
                 {(debt.ledger || []).map((l) => (
                   <tr key={l.id}>
                     <td style={{ fontSize: 12 }}>{t(`credit.type.${l.type}`)}</td>
+                    {/* ⚠ SANA VA VAQT (do'kon egasining talabi). Usiz
+                        jurnal «kim qachon nima qildi» degan savolga
+                        javob bermasdi: bir kunda ikkita to'lov bo'lsa,
+                        qaysi biri ertalab, qaysi biri kechqurun ekani
+                        ko'rinmasdi — tortishuv esa aynan shundan
+                        boshlanadi. VAQT ham kerak, faqat sana emas. */}
+                    <td className="mono text-muted"
+                        style={{ fontSize: 12, whiteSpace: "nowrap" }}>
+                      {dateTime(l.createdAt)}
+                    </td>
                     <td className="mono" style={{ fontSize: 12 }}>
                       {l.saleId
                         ? <button type="button" className="ek-linkbtn"
@@ -667,7 +692,16 @@ export default function CustomersPage({ toast }) {
                         qatorga tugma qo'yish jurnalni tugmalar
                         devoriga aylantirardi. */}
                     <td style={{ width: 34, textAlign: "right" }}>
-                      {l.type === "PAYMENT" && (
+                      {/* ⚠ QARZ QATORIDA HAM CHEK BOR (V62). Ilgari
+                          faqat to'lovda edi va qarz olgan mijozning
+                          qo'lida hech narsa qolmasdi — ayniqsa QO'LDA
+                          kiritilgan qarzda (daftardan ko'chirilgan),
+                          u yerda sotuv ham, chek ham umuman yo'q.
+
+                          TO'G'IRLASHDA tugma YO'Q: uni mijoz emas,
+                          do'kon qiladi (kechirdi, xato tuzatdi) va
+                          server ham uni ochmaydi. */}
+                      {l.type !== "ADJUSTMENT" && (
                         <button type="button" className="btn-icon"
                                 title={t("credit.receipt")}
                                 aria-label={t("credit.receipt")}
@@ -682,7 +716,7 @@ export default function CustomersPage({ toast }) {
                   </tr>
                 ))}
                 {debt.ledger && debt.ledger.length === 0 && (
-                  <tr><td colSpan={4}><Empty icon="fa-receipt" text={t("credit.noDebt")} /></td></tr>
+                  <tr><td colSpan={5}><Empty icon="fa-receipt" text={t("credit.noDebt")} /></td></tr>
                 )}
               </tbody>
             </table>

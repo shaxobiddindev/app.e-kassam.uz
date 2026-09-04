@@ -717,6 +717,9 @@ export const shopApi = {
   setCreditConfirm: (value) => request(`/shop/credit-confirm?value=${value}`, { method: "PATCH" }),
   /* Ombordan berib yuborish tizimi (V48). */
   setPickupEnabled: (value) => request(`/shop/pickup-enabled?value=${value}`, { method: "PATCH" }),
+  /* Do'kon telefoni chekda ko'rinsinmi (V62). ⚠ Raqamning O'ZI
+     o'chmaydi — u profilda, hisobotlarda va mijoz kabinetida qoladi. */
+  setReceiptShowPhone: (value) => request(`/shop/receipt-show-phone?value=${value}`, { method: "PATCH" }),
   /** Naqdsiz yarashtiruvda tasdiqsiz o'tadigan farq. Standart 0. */
   setNonCashTolerance: (value) => request(`/shop/noncash-tolerance?value=${value}`, { method: "PATCH" }),
   /** Inventarizatsiya kamomadi chegarasi — SO'MDA (tannarx bo'yicha). */
