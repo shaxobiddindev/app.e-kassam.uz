@@ -184,6 +184,18 @@ export default function PaymentReceipt({
                 <span>{money(data.balanceAfter)}</span>
               </div>
             )}
+            {/* QAYSI QARZLAR YOPILDI (V65) — «Q-41 → 50 000». Tortishuvda
+                bu satr hal qiluvchi: «men o'sha chekni to'lagandim». */}
+            {Array.isArray(data.allocations) && data.allocations.length > 0 && (
+              <>
+                <div className="pt-hr" />
+                {data.allocations.map((a) => (
+                  <div className="pt-tape__row" key={a.chargeId}>
+                    <span>{a.chargeNo}</span><span>{money(a.amount)}</span>
+                  </div>
+                ))}
+              </>
+            )}
             {/* ⚠ Ortig'i JAMG'ARMAGA (V64) — faqat to'lov paytidagi
                 chekda keladi. Mijoz 200 000 uzatib «150 000» ni ko'rsa,
                 «qolgan 50 mingim qani?» deydi — javob shu satrda. */}

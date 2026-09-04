@@ -141,12 +141,14 @@ export default function CustomersPage({ toast }) {
     } catch (_) { /* jurnal kelmasa ham to'lov qabul qilinaveradi */ }
   };
 
-  const submitDebt = async ({ amount, method }) => {
+  const submitDebt = async ({ amount, method, mode, chargeIds }) => {
     setPaying(true);
     try {
       /* ⚠ JAVOB — CHEKNING O'ZI (V61), qolgan balans emas: har
-         to'lovning o'z raqami, o'z havolasi va o'z QR i bor. */
-      const r = await customerApi.payDebt(debt.customer.id, { amount, method });
+         to'lovning o'z raqami, o'z havolasi va o'z QR i bor.
+         `mode`/`chargeIds` (V65): avto — eng eskisidan, alohida —
+         tanlangan qarzlar. */
+      const r = await customerApi.payDebt(debt.customer.id, { amount, method, mode, chargeIds });
       const rc = r?.data || null;
       const left = Number(rc?.balanceAfter) || 0;
       toast.success(`${t("credit.left")}: ${money(left)}`);
@@ -709,6 +711,19 @@ export default function CustomersPage({ toast }) {
                     <td className="mono fw-700"
                         style={{ color: ledgerSigned(l) >= 0 ? "var(--fg-success)" : "var(--fg-danger)" }}>
                       {ledgerSigned(l) >= 0 ? "+" : "−"}{money(Math.abs(ledgerSigned(l)))}
+                      {/* ⚠ QARZNING QOLDIG'I (V65) — qisman to'langan qarz
+                          summasi ostida «qoldi: X». To'liq yopilgani esa
+                          «yopildi»: egasi jurnalga qarab qaysi qarz hali
+                          ochiq ekanini bir qarashda ko'radi. */}
+                      {l.remaining != null && (
+                        <div style={{ fontSize: 11, fontWeight: 400,
+                                      color: Number(l.remaining) > 0 ? undefined : "var(--fg-success)" }}
+                             className={Number(l.remaining) > 0 ? "text-muted" : ""}>
+                          {Number(l.remaining) > 0
+                            ? `${t("credit.left")}: ${money(l.remaining)}`
+                            : t("credit.settled")}
+                        </div>
+                      )}
                     </td>
                     {/* ⚠ CHEK FAQAT TO'LOVDA (V61). Qarz qatorining
                         cheki — o'sha sotuvning cheki va u yonidagi
@@ -753,6 +768,7 @@ export default function CustomersPage({ toast }) {
       {debt && payOpen && (
         <DebtPayModal
           customer={debt.customer}
+          ledger={debt.ledger}
           paying={paying}
           onClose={() => setPayOpen(false)}
           onSubmit={submitDebt}
