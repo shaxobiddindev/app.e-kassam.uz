@@ -64,6 +64,11 @@ export const KASSA_KEYS = [
   { id: "lineMinus", combo: "-",         scope: "cart", label: "kbd.lineMinus" },
   { id: "linePrice", combo: "Enter",     scope: "cart", label: "kbd.linePrice" },
   { id: "lineDrop",  combo: "Delete",    scope: "cart", label: "kbd.lineDrop" },
+  /* ⚠ «0-9» — HUJJAT UCHUN QATOR, `resolve` unga hech qachon mos
+     kelmaydi (uch belgili «tugma» yo'q). Raqamlar `KassaPage` da
+     jadvaldan OLDIN tutiladi (`ek-qty-type.js`): ular yorliq emas,
+     matn — lekin yordam oynasida kassir buni ko'rishi kerak. */
+  { id: "lineQty",   combo: "0-9",       scope: "cart", label: "kbd.lineQty" },
 
   /* ── Apparat ─────────────────────────────────────────────────────── */
   { id: "drawer",    combo: "Ctrl+O",   scope: "cart", label: "kbd.drawer" },
@@ -85,6 +90,10 @@ export const KASSA_KEYS = [
      hisobidan yechadi va faqat mijoz tanlanganda ishlaydi. Harf esa
      o'zbekcha nomdan — qolgan yorliqlardagi qoida bilan bir xil. */
   { id: "paySavings", combo: "Alt+J",   scope: "pay",  label: "kbd.paySavings" },
+  /* ⚠ O'SHA `Alt+J` — KASSA EKRANIDA «jamg'armaga pul qo'yish» (V66).
+     Harf bitta, ma'no bitta: J — jamg'arma. To'lov oynasida undan
+     TO'LANADI, kassa ekranida unga QO'YILADI; soha ajratib turadi. */
+  { id: "topUp",     combo: "Alt+J",    scope: "cart", label: "kbd.topUp" },
   { id: "customer",  combo: "Alt+M",    scope: "pay",  label: "kbd.customer" },
   { id: "newCust",   combo: "Alt+Y",    scope: "pay",  label: "kbd.newCust" },
   { id: "discount",  combo: "Alt+C",    scope: "pay",  label: "kbd.discount" },

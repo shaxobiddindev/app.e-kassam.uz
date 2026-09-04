@@ -3148,7 +3148,12 @@ img.logo--dark { display: none; }
    (turi, taqsimot, olingan summa). Ikkalasi mustaqil o'qiladi va
    balandlik ikki barobar kamayadi.
    ══════════════════════════════════════════════════════════════════════════ */
-.pay-modal-body {
+/* ⚠ `.pay-grid` — TANA EMAS (V66). Tana (`.pay-modal-body`) endi faqat
+   o'lchanadigan idish: `useFitHeight` uning `scrollHeight` ini
+   `clientHeight` bilan solishtiradi va sig'masa to'rni `zoom` bilan
+   kichraytiradi. To'r tananing o'zida bo'lsa `zoom` ni qo'yadigan
+   joy qolmasdi. */
+.pay-grid {
   display: grid;
   /* ⚠ UCH USTUN (V57). Tovarlar ro'yxati qo'shilgach ikki ustun yana
      balandlab ketardi — kenglik esa hamon bo'sh turardi. Endi:
@@ -3178,7 +3183,7 @@ img.logo--dark { display: none; }
    to'lov tugmalari uchun yetarli. Ikki ustunga o'tish endi faqat
    haqiqatan tor ekranda. */
 @media (max-width: 980px) {
-  .pay-modal-body { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .pay-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .pay-col--list { grid-column: 1; }
   .pay-col--left { grid-column: 1; }
   .pay-col--right { grid-column: 2; grid-row: 1 / span 2; }
@@ -3209,7 +3214,7 @@ img.logo--dark { display: none; }
 /* ⚠ Tor ekranda BITTA ustun. Ikki ustun 900px dan pastda siqilib,
    raqamlar bir-biriga yopishib qolardi — bu scroldan ham yomon. */
 @media (max-width: 900px) {
-  .pay-modal-body { grid-template-columns: 1fr; gap: 0; }
+  .pay-grid { grid-template-columns: 1fr; gap: 0; }
   .pay-col--list, .pay-col--left, .pay-col--right {
     grid-column: 1; grid-row: auto;
   }
@@ -3706,4 +3711,224 @@ img.logo--dark { display: none; }
   .batch-row { flex-wrap: wrap; }
   .batch-row__act { width: 100%; }
   .batch-row__act .btn { width: 100%; }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   TO'LOV OYNASI — O'ZINI O'ZI SIG'DIRADI (V66)
+
+   Do'kon egasi: «to'lov oynasida scrol HECH QACHON bo'lmasin, nima
+   bo'lganda ham; kerak bo'lsa o'zini o'zi tartiblaydigan qilsang ham».
+
+   `useFitHeight` tanani o'lchaydi va sig'masa qutiga `data-fit`
+   darajasini qo'yadi:
+     1 — havo kamayadi: bo'shliqlar, jami kartasi, tugma balandligi;
+     2 — izohlar yashirinadi, chegirma bloki chap ustunga ko'chadi (JS),
+         tovarlar ro'yxati qisqaradi;
+     undan keyin — to'r `zoom` bilan kichrayadi (inline uslub).
+
+   ⚠ 1-darajadan boshlab tana `overflow: hidden`: o'lchash-kichraytirish
+   chizishdan OLDIN tugaydi, ammo 1px yaxlitlash qoldig'i ham
+   scrolbar chiqarib qo'ymasin. 0-darajada mazmun sig'adi — scrolbar
+   baribir yo'q.
+   ══════════════════════════════════════════════════════════════════════════ */
+.pay-modal-box[data-fit="1"] .pay-modal-body,
+.pay-modal-box[data-fit="2"] .pay-modal-body { overflow: hidden; padding: 12px 22px; }
+.pay-modal-box[data-fit="1"] .pay-modal-header,
+.pay-modal-box[data-fit="2"] .pay-modal-header { padding: 14px 22px 0; }
+.pay-modal-box[data-fit="1"] .pay-modal-footer,
+.pay-modal-box[data-fit="2"] .pay-modal-footer { padding: 0 22px 14px; }
+.pay-modal-box[data-fit="1"] .pay-modal-total,
+.pay-modal-box[data-fit="2"] .pay-modal-total { padding: 10px 16px; margin-bottom: 10px; border-radius: 12px; }
+.pay-modal-box[data-fit="1"] .pay-modal-total-value,
+.pay-modal-box[data-fit="2"] .pay-modal-total-value { font-size: 22px; }
+.pay-modal-box[data-fit="1"] .pay-modal-total-label,
+.pay-modal-box[data-fit="2"] .pay-modal-total-label { margin-bottom: 2px; }
+.pay-modal-box[data-fit="1"] .pay-modal-total-qty,
+.pay-modal-box[data-fit="2"] .pay-modal-total-qty { display: none; }
+.pay-modal-box[data-fit="1"] .pay-modal-section-label,
+.pay-modal-box[data-fit="2"] .pay-modal-section-label { margin-bottom: 6px; }
+.pay-modal-box[data-fit="1"] .pay-type-btn,
+.pay-modal-box[data-fit="2"] .pay-type-btn { min-height: 46px; padding: 4px 9px; }
+.pay-modal-box[data-fit="1"] .pay-items,
+.pay-modal-box[data-fit="2"] .pay-items { min-height: 72px; max-height: min(220px, 26vh); margin-bottom: 8px; }
+.pay-modal-box[data-fit="1"] .pay-sum,
+.pay-modal-box[data-fit="2"] .pay-sum { margin-top: 8px; padding: 6px 10px; }
+.pay-modal-box[data-fit="1"] .pay-sum__row,
+.pay-modal-box[data-fit="2"] .pay-sum__row { height: 30px; }
+.pay-modal-box[data-fit="1"] .ek-quick-cash,
+.pay-modal-box[data-fit="2"] .ek-quick-cash { margin-top: 6px; }
+.pay-modal-box[data-fit="1"] .ek-quick-cash button,
+.pay-modal-box[data-fit="2"] .ek-quick-cash button { min-height: 34px; padding: 0 12px; }
+.pay-modal-box[data-fit="1"] .cust-facts,
+.pay-modal-box[data-fit="2"] .cust-facts { gap: 4px; margin-top: 6px; }
+.pay-modal-box[data-fit="1"] .round-offers,
+.pay-modal-box[data-fit="2"] .round-offers { margin-top: 6px; }
+/* 2-daraja: izohlar yashirinadi — ular ma'lumot, tugma emas. */
+.pay-modal-box[data-fit="2"] .pay-modal-hint,
+.pay-modal-box[data-fit="2"] .round-offers__hint,
+.pay-modal-box[data-fit="2"] .cust-fact__sub { display: none; }
+.pay-modal-box[data-fit="2"] .pay-items { max-height: min(160px, 20vh); }
+.pay-modal-box[data-fit="2"] .pay-modal-total-value { font-size: 20px; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   MIJOZ KARTASI — TO'R (V66)
+
+   Daraja · Jamg'arma / Qarz · Ball — 2×2 katak. Ilgari to'rt qator
+   ustma-ust edi va o'sha ustun oynani scrolga olib borardi.
+   ══════════════════════════════════════════════════════════════════════════ */
+.cust-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 8px;
+}
+/* Katak: YORLIQ QATORI (ikonka, nom, o'ngda tugma/yorliq) → SUMMA →
+   izoh. Summa o'z qatorida — u hech qachon qirqilmaydi, nom esa
+   kichik harflarda ustida turadi. */
+.cust-fact {
+  display: flex; flex-direction: column; gap: 1px;
+  min-width: 0;
+  padding: 5px 9px 6px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 9px;
+  background: var(--bg);
+  color: var(--text);
+  text-align: left;
+  font-family: var(--font);
+}
+.cust-fact__lab {
+  display: flex; align-items: center; gap: 5px; min-width: 0;
+  font-size: 10.5px; font-weight: 800; letter-spacing: .4px; text-transform: uppercase;
+  color: var(--fg-tertiary); white-space: nowrap;
+}
+.cust-fact__lab > i { flex: none; font-size: 11px; }
+.cust-fact__val {
+  font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+  font-weight: 800; font-size: 14px; line-height: 1.25;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
+}
+.cust-fact__sub {
+  font-size: 11px; color: var(--fg-tertiary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.cust-fact__sub i { font-size: 10px; }
+.cust-fact .kbd { margin-left: auto; font-size: 10px; padding: 1px 5px; letter-spacing: 0; }
+/* «Hammasini» — yorliq qatoridagi kichik tugma. */
+.cust-fact__act {
+  margin-left: auto; flex: none;
+  min-height: 22px; padding: 1px 7px;
+  border: 1.5px solid var(--border); border-radius: 6px;
+  background: var(--bg-surface); color: var(--text2);
+  font-family: var(--font); font-size: 10.5px; font-weight: 700; letter-spacing: 0; text-transform: none;
+  cursor: pointer;
+}
+.cust-fact__act:hover { border-color: var(--blue); color: var(--blue); }
+/* Qarz — qizil, jamg'arma — yashil: ikkisini aralashtirib bo'lmaydi. */
+.cust-fact--debt .cust-fact__lab, .cust-fact--debt .cust-fact__val { color: var(--fg-danger); }
+/* JAMG'ARMA KATAGI — TUGMA: bosilsa to'lov shu hisobdan. */
+.cust-fact--btn {
+  cursor: pointer;
+  border-color: var(--border-success, var(--fg-success));
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.cust-fact--btn .cust-fact__lab, .cust-fact--btn .cust-fact__val { color: var(--fg-success); }
+.cust-fact--btn .cust-fact__lab > i { font-size: 13px; }
+.cust-fact--btn:hover { background: var(--bg-success-subtle); }
+.cust-fact--btn.active {
+  background: var(--fg-success); border-color: transparent;
+  box-shadow: 0 4px 14px rgba(31,174,76,.3);
+}
+.cust-fact--btn.active .cust-fact__lab,
+.cust-fact--btn.active .cust-fact__val,
+.cust-fact--btn.active .cust-fact__sub { color: var(--fg-on-brand); }
+.cust-fact--btn.active .cust-fact__sub { opacity: .85; }
+.cust-fact--btn.active .kbd {
+  background: rgba(255,255,255,.18); color: var(--fg-on-brand); border-color: rgba(255,255,255,.55);
+}
+/* Ball maydoni — to'rning ostida, butun kenglikda. */
+.cust-facts__input { grid-column: 1 / -1; min-height: 38px; }
+
+/* Chegirma va byudjet — yonma-yon. */
+.pay-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.pay-two .pay-modal-section-label { margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+.pay-two .pay-modal-section-label i { margin-right: 5px; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SAVAT OSTIDAGI IKKI TUGMA (V66) — chapda jamg'arma, o'ngda to'lov
+
+   Jamg'arma tugmasi ko'k karta ustida OQ: doim bosiladi, hira emas
+   («buzuq» ko'rinmaydi), yashil to'lov tugmasidan aniq farq qiladi.
+   Kengligi o'z matnicha, qolgan joy to'lov tugmasiniki: 340px li tor
+   ustunda ham ikkalasi bir qatorga sig'adi.
+   ══════════════════════════════════════════════════════════════════════════ */
+.checkout-row { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; margin-top: 10px; }
+.checkout-row .btn { white-space: nowrap; padding-left: 12px; padding-right: 12px; font-size: 14px; }
+.btn-savings {
+  background: var(--bg-surface);
+  color: var(--text);
+  border: 2px solid var(--bg-surface);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, .14);
+}
+.btn-savings i { color: var(--green); font-size: 17px; }
+.btn-savings:hover { background: var(--green-l); transform: translateY(-1px); }
+.btn-savings .kbd { opacity: 1; color: var(--fg-secondary); border-color: var(--border-strong); }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SAVATDA RAQAM BILAN MIQDOR — KO'RSATKICH (V66)
+
+   Yozilayotgan katak ko'k, ichida kursor, ostida QISQARAYOTGAN CHIZIQ:
+   chiziq tugaganda (1,5 s) keyingi raqam eskisi O'RNIGA yoziladi.
+   Chiziq har raqamda qaytadan boshlanadi (`key={seq}`).
+   ══════════════════════════════════════════════════════════════════════════ */
+.qty-num--edit { position: relative; }
+.qty-num.is-typing {
+  color: var(--blue);
+  background: var(--blue-l);
+  border-radius: 7px;
+  min-width: 34px;
+  box-shadow: 0 0 0 2px var(--blue);
+}
+.qty-num__caret {
+  display: inline-block; width: 2px; height: 14px; margin-left: 1px;
+  background: currentColor; vertical-align: -2px;
+  animation: qtyCaret 1s steps(1) infinite;
+}
+@keyframes qtyCaret { 50% { opacity: 0; } }
+.qty-num__win {
+  position: absolute; left: 4px; right: 4px; bottom: 2px; height: 3px;
+  border-radius: 2px; background: var(--blue);
+  transform-origin: left center;
+  animation: qtyWin 1.5s linear forwards;
+}
+@keyframes qtyWin { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   QARZ / JAMG'ARMA OYNASI — `pay-lite` (V66)
+
+   Chapda mijoz, qoldiq, usul va summa; o'ngda raqamli klaviatura.
+   Ilgari bu oyna to'lov oynasining uch ustunli to'rini olib, bo'laklari
+   ustunlarga sochilib ketardi.
+   ══════════════════════════════════════════════════════════════════════════ */
+.pay-modal-box--lite { max-width: 840px; }
+.pay-lite {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 240px;
+  gap: 0 22px;
+  align-items: start;
+}
+.pay-lite__main { min-width: 0; }
+.pay-lite__keys { position: sticky; top: 0; }
+.pay-lite__keys .qty-modal__keys { margin-top: 0; }
+.pay-lite__keys .qty-modal__key { min-height: 76px; font-size: 22px; }
+.pay-lite .pay-modal-total { padding: 14px 18px; margin-bottom: 14px; }
+.pay-lite .pay-modal-total-value { font-size: 26px; }
+.pay-lite .pay-modal-types { margin-bottom: 12px; }
+.pay-lite .pay-type-btn { min-height: 50px; }
+.pay-lite .qty-modal__input { height: 56px; font-size: 26px; }
+/* Mijoz tanlagichi oynada — `.cart-cust` ning chegarasi va bo'shlig'isiz. */
+.cart-cust--bare { padding: 0; border-top: 0; margin-bottom: 12px; }
+@media (max-width: 720px) {
+  .pay-lite { grid-template-columns: 1fr; }
+  .pay-lite__keys { position: static; margin-top: 12px; }
 }
