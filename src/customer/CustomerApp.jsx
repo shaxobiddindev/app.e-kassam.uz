@@ -483,6 +483,9 @@ const RCP_TABS = [
      ham turadi. Eski nom yarim mazmunni yashirardi — mijoz qarzini shu
      yerdan qidirmasdi. */
   { key: "paid", label: "Qarzlarim" },
+  /* JAMG'ARMA (V66): har kirim-chiqimning kvitansiyasi. Do'kon egasi:
+     «mijoz tarixni batafsil ko'ra olishi kerak». */
+  { key: "sav",  label: "Jamg'arma" },
 ];
 
 function ReceiptsScreen() {
@@ -491,11 +494,23 @@ function ReceiptsScreen() {
   const [error, setError] = useState("");
   const [open, setOpen]   = useState(null);   // { id, customerId }
   const [openPaid, setOpenPaid] = useState(null);
+  const [openSav, setOpenSav] = useState(null);
 
   const load = useCallback(() => {
     setError("");
     setItems(null);
-    const req = kind === "paid" ? appApi.payments(50) : appApi.receipts(50);
+    /* ⚠ Jamg'arma lentasi DO'KONLAR bo'yicha keladi (pul ko'chmaydi)
+       — bu yerda faqat ko'rish uchun bitta lentaga yig'iladi, har
+       qatorda do'kon nomi turadi. */
+    const req = kind === "sav"
+      ? appApi.savings().then((accs) => (accs || [])
+          .flatMap((a) => (a.history || []).map((e) => ({
+            id: e.id, customerId: a.customerId, shopName: a.shopName,
+            receiptNo: `J-${e.id}`, date: e.createdAt, type: e.type,
+            amount: e.amount, balanceAfter: e.balanceAfter,
+          })))
+          .sort((a, b) => new Date(b.date) - new Date(a.date)))
+      : kind === "paid" ? appApi.payments(50) : appApi.receipts(50);
     req.then(setItems).catch((e) => setError(e.message));
   }, [kind]);
   useEffect(load, [load]);
@@ -523,6 +538,7 @@ function ReceiptsScreen() {
   }
 
   const paid = kind === "paid";
+  const sav = kind === "sav";
 
   return (
     <div className="cu-screen">
@@ -531,11 +547,13 @@ function ReceiptsScreen() {
 
       {items.length === 0 && (
         <div className="cu-card cu-center">
-          <i className={`fa-solid ${paid ? "fa-hand-holding-dollar" : "fa-receipt"} cu-big-icon`}
+          <i className={`fa-solid ${sav ? "fa-sack-dollar" : paid ? "fa-hand-holding-dollar" : "fa-receipt"} cu-big-icon`}
              aria-hidden="true" />
-          <p><b>{paid ? "Hali qarz yo'q" : "Hali chek yo'q"}</b></p>
+          <p><b>{sav ? "Hali jamg'arma yo'q" : paid ? "Hali qarz yo'q" : "Hali chek yo'q"}</b></p>
           <p className="cu-muted">
-            {paid
+            {sav
+              ? "Kassada jamg'armangizga pul qo'ysangiz, kvitansiyasi shu yerda saqlanadi."
+              : paid
               ? "Nasiyaga olgan tovaringiz va to'lovingiz cheki shu yerda saqlanadi."
               : "Kassada kartangizni ko'rsating — xarid cheki shu yerda saqlanadi."}
           </p>
@@ -546,7 +564,7 @@ function ReceiptsScreen() {
         {items.map((r) => (
           <li key={`${r.customerId}-${r.id}`}>
             <button className="cu-rcp"
-                    onClick={() => (paid ? setOpenPaid : setOpen)({ id: r.id, customerId: r.customerId })}>
+                    onClick={() => (sav ? setOpenSav : paid ? setOpenPaid : setOpen)({ id: r.id, customerId: r.customerId })}>
               <span className="cu-rcp__left">
                 <b>{r.receiptNo}</b>
                 <small className="cu-muted">{r.shopName}</small>
@@ -559,10 +577,21 @@ function ReceiptsScreen() {
                     Ishorasiz ikkala qator bir xil ko'rinardi va mijoz
                     lentaga qarab qaysi biri nima ekanini ajrata
                     olmasdi. */}
-                <b className={paid ? (r.kind === "CHARGE" ? "cu-neg" : "cu-pos") : ""}>
-                  {paid ? (r.kind === "CHARGE" ? "+" : "−") : ""}{money(paid ? r.amount : r.total)}
+                {/* JAMG'ARMA (V66): kirim yashil «+», chiqim qizil «−». */}
+                <b className={sav ? (savingsSign(r) >= 0 ? "cu-pos" : "cu-neg")
+                              : paid ? (r.kind === "CHARGE" ? "cu-neg" : "cu-pos") : ""}>
+                  {sav ? (savingsSign(r) >= 0 ? "+" : "−")
+                       : paid ? (r.kind === "CHARGE" ? "+" : "−") : ""}
+                  {money(sav ? Math.abs(savingsSign(r)) : paid ? r.amount : r.total)}
                 </b>
-                {paid
+                {sav
+                  ? <>
+                      <small className="cu-muted">{SAVINGS_LABEL[r.type] || r.type}</small>
+                      {r.balanceAfter != null && (
+                        <small className="cu-muted">Jamg'armada: {money(r.balanceAfter)}</small>
+                      )}
+                    </>
+                  : paid
                   /* ⚠ «Qarz yopildi» — lentaning eng qimmatli xabari:
                      mijoz chekni ochmasdan, qaysi to'lovda qutulganini
                      ko'radi. Qoldiq bo'sh bo'lishi mumkin (V61 dan
@@ -593,6 +622,10 @@ function ReceiptsScreen() {
       {openPaid && (
         <PaymentReceipt appToken={getAppToken()} id={openPaid.id} customerId={openPaid.customerId}
                         onClose={() => setOpenPaid(null)} />
+      )}
+      {openSav && (
+        <PaymentReceipt savings appToken={getAppToken()} id={openSav.id} customerId={openSav.customerId}
+                        onClose={() => setOpenSav(null)} />
       )}
     </div>
   );
@@ -695,6 +728,7 @@ const SAVINGS_LABEL = {
   OVERPAY: "Qarzdan ortiq to'lov",
   SPEND:   "Xaridga ishlatildi",
   REFUND:  "Naqd qaytarildi",
+  RETURN:  "Qaytarishdan qaytdi",
   ADJUST:  "Do'kon to'g'irladi",
 };
 
@@ -717,6 +751,8 @@ const BONUS_LABEL = {
 function BonusSheet({ customerId, shopName, savings, onClose }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
+  /* Jamg'arma qatoriga bosilsa — kvitansiyasi (V66). */
+  const [openSav, setOpenSav] = useState(null);
 
   useEffect(() => {
     appApi.bonus(customerId).then(setData).catch((e) => setError(e.message));
@@ -769,7 +805,13 @@ function BonusSheet({ customerId, shopName, savings, onClose }) {
                 const v = savingsSign(e);
                 const plus = v >= 0;
                 return (
-                  <li key={e.id} className="cu-bonus">
+                  /* ⚠ BOSILADI (V66): har qatorning kvitansiyasi bor —
+                     mijoz «bu pul qayerdan?» degan savolga batafsil
+                     javob oladi (kim, qachon, qaysi xarid). */
+                  <li key={e.id} className="cu-bonus" role="button" tabIndex={0}
+                      style={{ cursor: "pointer" }}
+                      onClick={() => setOpenSav(e.id)}
+                      onKeyDown={(ev) => { if (ev.key === "Enter" || ev.key === " ") setOpenSav(e.id); }}>
                     <span className={`cu-bonus__icon ${plus ? "pos" : "neg"}`}>
                       <i className={`fa-solid ${plus ? "fa-plus" : "fa-minus"}`} aria-hidden="true" />
                     </span>
@@ -786,6 +828,11 @@ function BonusSheet({ customerId, shopName, savings, onClose }) {
               })}
             </ul>
           </div>
+        )}
+
+        {openSav && (
+          <PaymentReceipt savings appToken={getAppToken()} id={openSav} customerId={customerId}
+                          onClose={() => setOpenSav(null)} />
         )}
 
         {data && (

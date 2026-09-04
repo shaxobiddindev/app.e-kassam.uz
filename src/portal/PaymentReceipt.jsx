@@ -8,6 +8,7 @@ import Overlay from "../components/ek/Overlay";
 
 /* ══════════════════════════════════════════════════════════════════════════
    QARZ JURNALINING CHEKI (V61) — «QARZ OLINDI» va «QARZ TO'LANDI»
+   JAMG'ARMA KVITANSIYASI (V66) — har bir jamg'arma harakati
 
    ═══ NEGA XARID CHEKIDAN ALOHIDA FAYL ══════════════════════════════════
 
@@ -18,6 +19,11 @@ import Overlay from "../components/ek/Overlay";
    ham o'qib bo'lmas edi — va ikkalasidan biriga tegilganda ikkinchisi
    sinardi.
 
+   ⚠ JAMG'ARMA ESA SHU YERDA (V66), alohida faylda emas: uning shakli
+   qarz cheki bilan AYNAN bir xil — sana, kim, qancha, usul, qoldiq
+   oldin-keyin. Farq faqat so'zlarda va ular `kind` dan olinadi.
+   Uchinchi fayl uchinchi tasma bo'lardi.
+
    ⚠ TASMANING KO'RINISHI esa BIR XIL sinflardan (`pt-tape`, `pt-hr`,
    `pt-tape__row`) yig'iladi: mijoz ikkala chekni bitta do'kondan olgan
    deb bilishi kerak.
@@ -26,6 +32,7 @@ import Overlay from "../components/ek/Overlay";
      · KASSADA        — `data` to'g'ridan-to'g'ri uzatiladi (to'lov javobi);
      · QOG'OZDAGI QR  — `signedId` + `signature`, kalitsiz;
      · ILOVA/KABINET  — `id` + (`appToken` + `customerId`) yoki `token`.
+   `savings` — jamg'arma kvitansiyasi (manzillar boshqa).
    ══════════════════════════════════════════════════════════════════════════ */
 
 /* ⚠ `groupDigits` — TIZIMNING YAGONA GURUHLAGICHI (02-DESIGN-SYSTEM.md).
@@ -42,11 +49,25 @@ const PAY_LABEL = {
   CASH: "Naqd", CARD: "Karta", CLICK: "Click", PAYME: "Payme", TRANSFER: "O'tkazma",
 };
 
+/* ⚠ JAMG'ARMA TURLARI — so'zlar mijozning ko'zi bilan. «Qabul qildi» —
+   pul do'konga o'tgan turlarda; «Qaytardi» — do'kon pul bergan turda.
+   Bitta so'z qoldirilsa, qaytarish kvitansiyasida «qabul qildi» deb
+   yozilib, mijoz pul TOPSHIRGANDEK o'qilardi. */
+const SAV = {
+  TOP_UP:  { head: "JAMG'ARMAGA QO'YILDI",        who: "Qabul qildi", sign: "+" },
+  CHANGE:  { head: "QAYTIM JAMG'ARMAGA",           who: "Kassir",      sign: "+" },
+  OVERPAY: { head: "ORTIQCHA TO'LOV JAMG'ARMAGA",  who: "Qabul qildi", sign: "+" },
+  SPEND:   { head: "JAMG'ARMADAN XARIDGA",         who: "Kassir",      sign: "−" },
+  REFUND:  { head: "JAMG'ARMADAN QAYTARILDI",      who: "Qaytardi",    sign: "−" },
+  RETURN:  { head: "QAYTARISH — JAMG'ARMAGA",       who: "Kassir",      sign: "+" },
+  ADJUST:  { head: "JAMG'ARMA TO'G'IRLANDI",       who: "Xodim",       sign: "" },
+};
+
 const when = (v) =>
   new Date(v).toLocaleString("uz-UZ", { dateStyle: "short", timeStyle: "short" });
 
 export default function PaymentReceipt({
-  data: given, token, appToken, customerId, id, signedId, signature, onClose,
+  data: given, token, appToken, customerId, id, signedId, signature, onClose, savings = false,
 }) {
   const [data, setData] = useState(given || null);
   const [error, setError] = useState("");
@@ -60,13 +81,18 @@ export default function PaymentReceipt({
 
     let url;
     let headers = {};
+    /* ⚠ Jamg'arma manzillari BOSHQA (V66): qator boshqa jadvalda va
+       imzo prefiksi ham boshqa — to'lov manziliga `J-` id yuborilsa,
+       o'sha raqamdagi TO'LOV cheki ochilardi. */
     if (signedId) {
-      url = `${API_BASE}/public/portal/payment/${signedId}?k=${encodeURIComponent(signature)}`;
+      url = savings
+        ? `${API_BASE}/public/portal/savings-receipt/${signedId}?k=${encodeURIComponent(signature)}`
+        : `${API_BASE}/public/portal/payment/${signedId}?k=${encodeURIComponent(signature)}`;
     } else if (appToken) {
-      url = `${API_BASE}/app/payments/${id}?c=${encodeURIComponent(customerId)}`;
+      url = `${API_BASE}/app/${savings ? "savings" : "payments"}/${id}?c=${encodeURIComponent(customerId)}`;
       headers = { "X-App-Token": appToken };
     } else {
-      url = `${API_BASE}/public/portal/payments/${id}`;
+      url = `${API_BASE}/public/portal/${savings ? "savings" : "payments"}/${id}`;
       headers = { "X-Portal-Token": token };
     }
 
@@ -77,7 +103,7 @@ export default function PaymentReceipt({
         setData(j.data);
       })
       .catch((e) => setError(e.message || "Chekni ochib bo'lmadi"));
-  }, [given, id, token, appToken, customerId, signedId, signature]);
+  }, [given, id, token, appToken, customerId, signedId, signature, savings]);
 
   const savePdf = async () => {
     setPdfError("");
@@ -96,10 +122,16 @@ export default function PaymentReceipt({
 
      ⚠ Eski javoblarda `kind` bo'lmasligi mumkin — o'shanda TO'LOV deb
      hisoblanadi, chunki V62 gacha faqat to'lovning cheki bor edi. */
-  const charge = data?.kind === "CHARGE";
+  const kind = data?.kind || "";
+  const charge = kind === "CHARGE";
+  /* Jamg'arma kvitansiyasi (V66): `SAVINGS_TOP_UP` … `SAVINGS_ADJUST`. */
+  const sav = kind.startsWith("SAVINGS_") ? (SAV[kind.slice(8)] || SAV.ADJUST) : null;
   /* «Qarz yopildi» faqat TO'LOVDA ma'noga ega: qarz olib, qoldig'i nol
      bo'lishi mumkin emas. */
-  const cleared = data && !charge && Number(data.balanceAfter) === 0;
+  const cleared = data && !charge && !sav && Number(data.balanceAfter) === 0;
+  /* Jamg'armada pul KO'PAYGAN bo'lsa yashil — bu mijoz uchun yaxshi xabar. */
+  const grew = sav && data && data.balanceBefore != null
+    && Number(data.balanceAfter) > Number(data.balanceBefore);
 
   return (
     /* ⚠ `Overlay` SHART, qo'lda yozilgan `<div className="pt-modal">` EMAS.
@@ -132,7 +164,9 @@ export default function PaymentReceipt({
               {/* ⚠ Sarlavha SHART: xarid cheki bilan bir xil tasmada
                   chiqadi va ularni ajratib turadigan yagona narsa shu
                   qator. Usiz mijoz to'lovni xarid deb o'ylardi. */}
-              <div className="pt-tape__kind">{charge ? "QARZ OLINDI" : "QARZ TO'LOVI"}</div>
+              <div className="pt-tape__kind">
+                {sav ? "JAMG'ARMA KVITANSIYASI" : charge ? "QARZ OLINDI" : "QARZ TO'LOVI"}
+              </div>
             </div>
 
             <div className="pt-hr" />
@@ -148,15 +182,19 @@ export default function PaymentReceipt({
                  qarz chekida «qabul qildi» deb yozilib, mijoz pul
                  topshirgandek o'qilardi. */
               <div className="pt-tape__row">
-                <span>{charge ? "Berdi" : "Qabul qildi"}</span><span>{data.cashierName}</span>
+                <span>{sav ? sav.who : charge ? "Berdi" : "Qabul qildi"}</span>
+                <span>{data.cashierName}</span>
               </div>
             )}
 
             <div className="pt-hr" />
 
             <div className="pt-tape__row pt-total">
-              <span>{charge ? "QARZGA OLINDI" : "TO'LANDI"}</span>
-              <span>{money(data.amount)}</span>
+              <span>{sav ? sav.head : charge ? "QARZGA OLINDI" : "TO'LANDI"}</span>
+              <span>
+                {sav ? (sav.sign || (Number(data.amount) < 0 ? "−" : "+")) : ""}
+                {money(Math.abs(Number(data.amount) || 0))}
+              </span>
             </div>
             {/* ⚠ Usul bo'sh bo'lishi mumkin (V61 dan oldingi to'lovlar) —
                 o'shanda satr UMUMAN chiqmaydi. «—» yozib qo'yish
@@ -167,20 +205,25 @@ export default function PaymentReceipt({
                 <span>To'lov turi</span><span>{PAY_LABEL[data.method] || data.method}</span>
               </div>
             )}
+            {/* Xaridga bog'liq jamg'arma qatori — QAYSI xarid (V66). */}
+            {data.linkedNo && (
+              <div className="pt-tape__row"><span>Xarid cheki</span><span>{data.linkedNo}</span></div>
+            )}
 
             <div className="pt-hr" />
 
             {data.balanceBefore != null && (
               <div className="pt-tape__row">
-                <span>Qarz edi</span><span>{money(data.balanceBefore)}</span>
+                <span>{sav ? "Jamg'armada edi" : "Qarz edi"}</span>
+                <span>{money(data.balanceBefore)}</span>
               </div>
             )}
             {data.balanceAfter != null && (
               /* ⚠ Chekning ENG MUHIM satri — mijoz aynan shuni qidiradi.
                  Nol ham yoziladi va yashil chiqadi: «qarzingiz qolmadi»
                  degan xabar qog'ozning butun ma'nosi. */
-              <div className={`pt-tape__row pt-total ${cleared ? "pt-earn" : ""}`}>
-                <span>{cleared ? "QARZ YOPILDI" : charge ? "JAMI QARZ" : "QOLDI"}</span>
+              <div className={`pt-tape__row pt-total ${cleared || grew ? "pt-earn" : ""}`}>
+                <span>{sav ? "JAMG'ARMADA" : cleared ? "QARZ YOPILDI" : charge ? "JAMI QARZ" : "QOLDI"}</span>
                 <span>{money(data.balanceAfter)}</span>
               </div>
             )}
@@ -211,6 +254,10 @@ export default function PaymentReceipt({
             )}
             {data.reason && (
               <div className="pt-tape__row"><span>Izoh</span><span>{data.reason}</span></div>
+            )}
+            {/* Jamg'arma — keshbek EMAS; mijoz buni qog'ozda ham o'qisin. */}
+            {sav && (
+              <div className="pt-center pt-tape__no">Bu sizning pulingiz — kuymaydi, xaridda to'liq ishlatiladi</div>
             )}
 
             {/* ⚠ QR faqat KASSA javobida bo'ladi (`qrUrl`): mijoz o'z

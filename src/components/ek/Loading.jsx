@@ -225,7 +225,9 @@ export function Spinner({ small = false }) {
  * cho'chitardi: «men bosdimmi, o'zi ketdimi?». Tugmada qolgan
  * sekundlar yozilib turadi.
  */
-export function FinishOverlay({ phase, total, receiptNo, onClose, closeIn = 5 }) {
+/* ⚠ 5 → 3 soniya (V66, do'kon egasi). Oyna kassirni ushlab turmasin —
+   keyingi mijoz navbatda. Tugma va Esc bilan darrov ham yopiladi. */
+export function FinishOverlay({ phase, total, receiptNo, note, onClose, closeIn = 3 }) {
   const [left, setLeft] = useState(closeIn);
 
   useEffect(() => {
@@ -260,6 +262,8 @@ export function FinishOverlay({ phase, total, receiptNo, onClose, closeIn = 5 })
             <div className="ek-finish__title">{t("finish.done")}</div>
             <div className="ek-finish__amount">{total}</div>
             {receiptNo && <div className="ek-finish__sub">{t("finish.receiptNo", { n: receiptNo })}</div>}
+            {/* Qaytim jamg'armaga tushgani (V66) — kassir mijozga aytib beradi. */}
+            {note && <div className="ek-finish__note">{note}</div>}
             {onClose && (
               <button className="btn btn-outline" onClick={onClose} autoFocus>
                 {t("common.close")}

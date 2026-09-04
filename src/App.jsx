@@ -57,7 +57,7 @@ initLang();
    xodim daraxtiga tushib, `localStorage.clear()` dan keyin kassa
    kirish sahifasiga otilib ketardi — chek o'rniga parol so'ralardi.
    Aynan shu xato `c/` bilan bir marta qilingan. */
-const IS_PORTAL = /^\/(qr|kabinet|c\/|q\/|t\/)(\/|$|\d)/.test(window.location.pathname);
+const IS_PORTAL = /^\/(qr|kabinet|c\/|q\/|t\/|j\/)(\/|$|\d)/.test(window.location.pathname);
 
 /* ══════════════════════════════════════════════════════════════════════════
    MIJOZ ILOVASI BRAUZERDA (V40)

@@ -262,17 +262,51 @@ export default function CustomersPage({ toast }) {
   /* ⚠ Javobda YANGI holat qaytadi va oyna shundan yangilanadi —
      qayta so'rov yuborilmaydi. Ikki so'rov orasida kassir eski
      qoldiqni ko'rib turardi. */
-  const runSavings = (fn) => async (amount) => {
+  /* ⚠ USUL SAQLANADI (V66): ilgari bu yerda doim «CASH» ketardi — mijoz
+     kartadan bergan bo'lsa ham. Endi summa ham, usul ham kassadagi
+     oynadan keladi. `true/false` — oyna faqat muvaffaqiyatda yopiladi. */
+  const runSavings = (fn) => async ({ amount, method }) => {
     setSavingsBusy(true);
     try {
-      const r = await fn(savings.customer.id, { amount, method: "CASH" });
+      const r = await fn(savings.customer.id, { amount, method: method || "CASH" });
       setSavings((prev) => ({ ...prev, account: r.data }));
       toast.success(r.message || t("common.saved"));
       loadData();
+      /* KVITANSIYA (V66) — qog'ozga va ekranga, qarz to'lovidagidek. */
+      const rc = r.data?.receipt;
+      if (rc) {
+        try {
+          await printDebtReceipt({
+            kind: rc.kind, customer: savings.customer, amount, method: rc.method || "CASH",
+            balanceAfter: rc.balanceAfter, balanceBefore: rc.balanceBefore,
+            receiptNo: rc.receiptNo, qrUrl: rc.qrUrl, shopName: rc.shopName,
+            cashier: rc.cashierName || localStorage.getItem("ek_fullName") || "",
+            date: rc.date ? new Date(rc.date) : new Date(),
+          });
+        } catch (e) {
+          toast.info(e.message || t("hw.errPopup"));
+        }
+        setReceipt(rc);
+      }
+      return true;
+    } catch (err) {
+      toast.error(err.message);
+      return false;
+    } finally {
+      setSavingsBusy(false);
+    }
+  };
+
+  /* Jamg'arma lentasidagi ESKI qatorning kvitansiyasi (V66). */
+  const openSavingsReceipt = async (entryId) => {
+    setReceiptLoading("s" + entryId);
+    try {
+      const r = await customerApi.savingsReceipt(entryId);
+      setReceipt(r.data);
     } catch (err) {
       toast.error(err.message);
     } finally {
-      setSavingsBusy(false);
+      setReceiptLoading(null);
     }
   };
 
@@ -792,6 +826,8 @@ export default function CustomersPage({ toast }) {
           busy={savingsBusy}
           onTopUp={runSavings(customerApi.topUpSavings)}
           onRefund={runSavings(customerApi.refundSavings)}
+          onReceipt={openSavingsReceipt}
+          receiptLoading={typeof receiptLoading === "string" ? Number(receiptLoading.slice(1)) : null}
           onClose={() => setSavings(null)}
         />
       )}

@@ -3932,3 +3932,47 @@ img.logo--dark { display: none; }
   .pay-lite { grid-template-columns: 1fr; }
   .pay-lite__keys { position: static; margin-top: 12px; }
 }
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   QAYTIM → MIJOZ JAMG'ARMASIGA — TUGMA-SWITCH (V66)
+   Do'kon egasi: «to'lovda ortiqcha pulni jamg'armaga qo'shish imkoni
+   bo'lsin — bu muhim». Kichkina checkbox ko'rinmasdi; endi summa bilan
+   katta tugma.
+   ══════════════════════════════════════════════════════════════════════════ */
+.pay-change-sav {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  margin-top: 8px; padding: 8px 10px;
+  border: 1.5px dashed var(--fg-success); border-radius: 10px;
+  background: var(--bg-surface); color: var(--text);
+  text-align: left; cursor: pointer; font-family: var(--font);
+  transition: background var(--dur-fast) var(--ease-out);
+}
+.pay-change-sav__icon {
+  width: 32px; height: 32px; border-radius: 8px; flex: none;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg-success-subtle); color: var(--fg-success); font-size: 15px;
+}
+.pay-change-sav__text { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.pay-change-sav__text b { font-size: 13px; }
+.pay-change-sav__text small { font-size: 11.5px; color: var(--fg-secondary); }
+.pay-change-sav__switch {
+  width: 38px; height: 22px; border-radius: 11px; flex: none; position: relative;
+  background: var(--border-strong); transition: background var(--dur-fast) var(--ease-out);
+}
+.pay-change-sav__switch::after {
+  content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px;
+  border-radius: 50%; background: #fff; transition: transform var(--dur-fast) var(--ease-out);
+}
+.pay-change-sav.active { border-style: solid; background: var(--bg-success-subtle); }
+.pay-change-sav.active .pay-change-sav__switch { background: var(--fg-success); }
+.pay-change-sav.active .pay-change-sav__switch::after { transform: translateX(16px); }
+.pay-sum__row--save, .pay-sum__row--save b { color: var(--fg-success); }
+/* Yakun oynasida «Jamg'armaga +X». */
+.ek-finish__note { margin-top: 6px; font-weight: 800; color: var(--fg-success); }
+/* «Mijoz jamg'armasi» — savat ostidagi tugmada ikki qatorga sig'adi. */
+.checkout-row .btn-savings {
+  white-space: normal; max-width: 170px; line-height: 1.1; text-align: left;
+  font-size: 13px; padding: 6px 10px;
+}
+.cust-fact__sub .kbd { font-size: 9.5px; padding: 0 4px; margin-right: 2px; }

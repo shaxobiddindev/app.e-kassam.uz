@@ -516,6 +516,15 @@ export default function CustomerPortal() {
                            onClose={() => window.history.back()} />;
   }
 
+  /* ── JAMG'ARMA KVITANSIYASI (V66): `/j/{id}-{imzo}` ──────────────────
+     Qarz cheki bilan bir xil: kalitsiz, imzo faqat shu bitta qatorni
+     ochadi. Pul qo'yib ketgan odamda ilova bo'lmasligi mumkin. */
+  const savLink = /^\/j\/(\d+)-([0-9a-f]+)$/i.exec(window.location.pathname);
+  if (savLink) {
+    return <PaymentReceipt savings signedId={savLink[1]} signature={savLink[2]}
+                           onClose={() => window.history.back()} />;
+  }
+
   /* ── QARZ TASDIG'I (V46): `/q/{id}-{imzo}` ────────────────────────────
      ⚠ Chek havolasi bilan bir xil naqsh va bir xil sabab: SMS ga sig'ishi
      kerak, ya'ni bitta qisqa segment. */

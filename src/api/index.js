@@ -592,6 +592,8 @@ export const customerApi = {
      biladi va uni ikkinchi marta yuborish faqat ikkalasi bir-biriga
      to'g'ri kelmasligi xavfini tug'dirardi. */
   paymentReceipt: (ledgerId) => request(`/customers/ledger/${ledgerId}/receipt`),
+  /* Jamg'arma lentasidagi qatorning kvitansiyasi (V66). */
+  savingsReceipt: (entryId) => request(`/customers/savings/${entryId}/receipt`),
 
   /* ── MIJOZ JAMG'ARMASI (V63) ──────────────────────────────────
      ⚠ Bu KESHBEK EMAS: ball do'konning sovg'asi (kuyadi, naqdga

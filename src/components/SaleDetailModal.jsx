@@ -103,6 +103,38 @@ export default function SaleDetailModal({ sale, onClose, onReprint, printing = f
           </tbody>
         </table>
       </div>
+
+      {/* ══ TO'LOV QISMLARI (V66) ══════════════════════════════════════
+          Do'kon egasi: «jamg'armadan to'lov sotuv tarixida boshqa usul
+          kabi ko'rinsin». «Aralash» degan bitta so'z hech narsa
+          aytmaydi — aynan qaysi usuldan qancha, shu yerda. Ball esa
+          to'lov usuli EMAS: u umumiy summadan ayrilgan chegirma va
+          alohida qatorda «−» bilan turadi. */}
+      {((sale.payments || []).length > 0 || Number(sale.bonusUsed) > 0) && (
+        <>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "var(--text2)", textTransform: "uppercase",
+                        letterSpacing: ".5px", margin: "14px 0 8px" }}>
+            {t("sales.colPayment")}
+          </div>
+          <div className="pay-sum" style={{ marginTop: 0 }}>
+            {(sale.payments || []).map((p, i) => (
+              <div className="pay-sum__row" key={i} style={{ "--pay-color": paymentEntry(p.type).color }}>
+                <span className="pay-sum__name"><PayLabel type={p.type} /></span>
+                <b className="ek-num">{money(p.amount)}</b>
+              </div>
+            ))}
+            {Number(sale.bonusUsed) > 0 && (
+              <div className="pay-sum__row">
+                <span className="pay-sum__name">
+                  <i className="fa-solid fa-coins" style={{ color: "var(--fg-warning)" }} aria-hidden="true" />{" "}
+                  {t("bonus.used")}
+                </span>
+                <b className="ek-num" style={{ color: "var(--fg-warning)" }}>−{money(sale.bonusUsed)}</b>
+              </div>
+            )}
+          </div>
+        </>
+      )}
     </Modal>
   );
 }

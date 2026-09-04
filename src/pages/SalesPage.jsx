@@ -50,6 +50,8 @@ function saleToReceipt(sale) {
     // chiqarmasdan serverdagi qiymatni olamiz.
     subtotal: sale.subtotalAmount,
     payType:  sale.paymentType,
+    /* Qismlar (V66): qayta chop etilgan chekda ham «Naqd · Mijoz jamg'armasi». */
+    payments: sale.payments || [],
     customer: sale.customerName ? { fullName: sale.customerName } : null,
     shopName: localStorage.getItem("ek_shopName") || localStorage.getItem("ek_shopCode") || "",
     cashier:  sale.cashierName || "",
@@ -315,7 +317,11 @@ export default function SalesPage({ toast }) {
                       <td className="fw-700">{sale.cashierName || "—"}</td>
                       <td>{sale.customerName || <span className="text-muted">—</span>}</td>
                       <td><span className="mono fw-700 text-blue">{money(sale.totalAmount)}</span></td>
-                      <td><span style={{ fontSize: 13 }}><PayLabel type={sale.paymentType} /></span></td>
+                      {/* Aralash chekda qismlar sichqoncha ostida (V66). */}
+                      <td><span style={{ fontSize: 13 }}
+                                title={(sale.payments || []).length > 1
+                                  ? sale.payments.map((p) => `${paymentEntry(p.type).label}: ${money(p.amount)}`).join(" · ")
+                                  : undefined}><PayLabel type={sale.paymentType} /></span></td>
                       <td><Badge color={st.color}>{st.label}</Badge></td>
                       <td className="text-muted" style={{ fontSize: 12 }}>
                         {sale.createdAt ? new Date(sale.createdAt).toLocaleString("uz-UZ") : "—"}

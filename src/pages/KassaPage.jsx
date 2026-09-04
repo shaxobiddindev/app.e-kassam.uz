@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspense } from "react";
 import { t } from "../lib/ek-i18n";
 import { productApi, customerApi, saleApi, securityApi, shopApi, mediaApi, fiscalApi, loyaltyApi } from "../api";
 import { useBadge } from "../context/BadgeProvider";
@@ -29,7 +29,10 @@ import { useLoading } from "../lib/use-loading";
 import Modal from "../components/Modal";
 import { PhoneField } from "../components/ek/EkFields";
 import Select from "../components/ek/Select";
-import { printReceipt, openDrawer } from "../lib/ek-hardware";
+import { printReceipt, openDrawer, printDebtReceipt } from "../lib/ek-hardware";
+
+/* Jamg'arma kvitansiyasi (V66) — kassada kamdan-kam ochiladi, alohida bo'lakda. */
+const PaymentReceipt = lazy(() => import("../portal/PaymentReceipt"));
 import FacetFilter from "../components/ek/FacetFilter";
 import { KASSA_KEYS, keyLabel, resolve as resolveKey } from "../lib/ek-kassa-keys";
 import { settle, payType as payTypeOf, restFor, effective } from "../lib/ek-payment";
@@ -162,6 +165,8 @@ export default function KassaPage({ toast, refreshLowStock }) {
   /* Jamg'arma oynasidagi mijoz (V66) — savatdagidan MUSTAQIL: kassir
      uni oynaning o'zida tanlaydi. */
   const [topUpCust, setTopUpCust] = useState(null);
+  /* To'ldirishdan keyingi KVITANSIYA (V66) — ekranda ham qoladi. */
+  const [savingsReceipt, setSavingsReceipt] = useState(null);
   /* Raqam bilan miqdor yozish (V66) — ko'rsatkich uchun holat, mantiq
      esa ref larda (`lib/ek-qty-type.js`). */
   const [qtyTyping, setQtyTyping] = useState(null);   // { id, text, seq }
@@ -1525,6 +1530,28 @@ export default function KassaPage({ toast, refreshLowStock }) {
       const r = await customerApi.topUpSavings(c.id, { amount, method });
       toast.success(`${t("savings.topped")}: ${money(r?.data?.balance)}`);
       setTopUpOpen(false);
+
+      /* ══ KVITANSIYA (V66) — do'kon egasi: «jamg'arma to'ldirilganda
+         ham chek berilishi kerak». Qarz to'lovidagi bilan bir xil:
+         avval QOG'OZGA (xato to'ldirishni bekor qilmaydi — pul
+         allaqachon kassada, qog'ozni qayta chiqarish mumkin), keyin
+         EKRANDA — printersiz do'konda mijoz uni QR orqali telefoniga
+         ko'chirib oladi. */
+      const rc = r?.data?.receipt || null;
+      if (rc) {
+        try {
+          await printDebtReceipt({
+            kind: rc.kind, customer: c, amount, method,
+            balanceAfter: rc.balanceAfter, balanceBefore: rc.balanceBefore,
+            receiptNo: rc.receiptNo, qrUrl: rc.qrUrl, shopName: rc.shopName,
+            cashier: rc.cashierName || localStorage.getItem("ek_fullName") || "",
+            date: rc.date ? new Date(rc.date) : new Date(),
+          });
+        } catch (e) {
+          toast.info(e.message || t("hw.errPopup"));
+        }
+        setSavingsReceipt(rc);
+      }
       /* ⚠ SAVATGA BIRIKTIRILADI — savatda mijoz bo'lmasa. Pul qo'ygan
          mijoz kassa oldida turibdi va keyingi chek ko'pincha uniki;
          to'lov oynasida uni qayta tanlash ortiqcha qadam bo'lardi.
@@ -1760,7 +1787,9 @@ export default function KassaPage({ toast, refreshLowStock }) {
        to'lagan edim?» deb do'kon bilan tortishadi. */
     const snapshot = { cart: [...cart], total, subtotal, discount: discountNum,
                        payType: saleType, customer,
-                       payments: payload.payments, credit: creditInfo };
+                       payments: payload.payments, credit: creditInfo,
+                       /* Qaytim jamg'armaga (V66) — chekda va yakun oynasida. */
+                       toSavings: Number(payload.changeToSavings) || 0 };
 
     setShowPayModal(false);
     setFinish({ phase: "printing", total: money(total) });
@@ -1833,7 +1862,8 @@ export default function KassaPage({ toast, refreshLowStock }) {
     printReceipt({ saleId: receiptNo, serverSaleId: res_saleId, ...snapshot, offline, shopName, cashier, fiscal, receiptUrl })
       .catch((err) => toast.error(`${t("hw.printFailed")}: ${err.message}`));
 
-    setFinish({ phase: "done", total: money(snapshot.total), receiptNo });
+    setFinish({ phase: "done", total: money(snapshot.total), receiptNo,
+                note: snapshot.toSavings > 0 ? t("savings.finishNote", { n: money(snapshot.toSavings) }) : null });
     if (refreshLowStock) refreshLowStock();
     /* ⚠ Katakchalar ham QAYTA O'QILADI. Ilgari faqat yon paneldagi «kam
        qolgan» belgisi yangilanardi, mahsulot katakchalari esa oxirgi
@@ -2674,6 +2704,12 @@ export default function KassaPage({ toast, refreshLowStock }) {
       </div>
 
       {/* ════ Jamg'armaga qo'yish (V64) ════ */}
+      {savingsReceipt && (
+        <Suspense fallback={null}>
+          <PaymentReceipt data={savingsReceipt} onClose={() => setSavingsReceipt(null)} />
+        </Suspense>
+      )}
+
       {topUpOpen && (
         <DebtPayModal mode="savings"
                       customer={topUpCust}
@@ -3026,10 +3062,10 @@ export default function KassaPage({ toast, refreshLowStock }) {
                       <span className="cust-fact__lab">
                         <i className="fa-solid fa-sack-dollar" aria-hidden="true" />
                         {t("savings.short")}
-                        <span className="kbd">{keyLabel("paySavings")}</span>
                       </span>
                       <span className="cust-fact__val">{money(savingsLeft)}</span>
                       <span className="cust-fact__sub">
+                        <span className="kbd">{keyLabel("paySavings")}</span>{" "}
                         {payShown.SAVINGS
                           ? t("savings.inPay", { n: money(payShown.SAVINGS) })
                           : t("kbd.paySavings")}
@@ -3124,17 +3160,10 @@ export default function KassaPage({ toast, refreshLowStock }) {
                         tushib, joyini boshqarib bo'lmasdi. */}
                     <span className="pay-type-label">{label}</span>
                     {kbd && <span className="kbd">{kbd}</span>}
-                    {/* Kiritilgan summa TUGMANING O'ZIDA: kassir qaysi
-                        usulga qancha yozganini pastdagi ro'yxatga
-                        qaramasdan ko'radi.
-
-                        ⚠ Summa BO'LMAGANDA ham qator bo'sh turadi
-                        (`&nbsp;`): aks holda pul yozilgan tugma
-                        boshqalaridan baland bo'lib, 2×2 to'r
-                        qiyshayardi. */}
-                    <span className="pay-type-btn__sum ek-num">
-                      {payShown[key] ? money(payShown[key]) : "\u00a0"}
-                    </span>
+                    {/* ⚠ SUMMA TUGMADA YO'Q (V66, do'kon egasi: «tugmalar
+                        ichida summa ko'rinishi shart emas»). Qaysi usulga
+                        pul yozilgani chegara rangi (`has-amount`) bilan
+                        ko'rinadi, summalar esa pastdagi hisobda. */}
                   </button>
                 ))}
               </div>
@@ -3210,11 +3239,16 @@ export default function KassaPage({ toast, refreshLowStock }) {
                 {/* ⚠ QAYTIM — faqat naqdda. Terminal aynan so'ralgan
                     summani oladi va u yerdan pul qaytmaydi. */}
                 {pay.change > 0 && (
-                  <div className="pay-sum__row pay-sum__row--change">
+                  /* Jamg'armaga belgilangan bo'lsa qator YASHIL va «Jamg'armaga
+                     +X»: kassir qaytimni qo'lga bermasligini ko'rib turadi. */
+                  <div className={`pay-sum__row ${changeToSavings && customer
+                                   ? "pay-sum__row--save" : "pay-sum__row--change"}`}>
                     <span className="pay-sum__name">
-                      <i className="fa-solid fa-arrow-rotate-left" aria-hidden="true" /> {t("kassa.change")}
+                      <i className={`fa-solid ${changeToSavings && customer
+                                     ? "fa-sack-dollar" : "fa-arrow-rotate-left"}`} aria-hidden="true" />{" "}
+                      {changeToSavings && customer ? t("savings.toSavings") : t("kassa.change")}
                     </span>
-                    <b className="ek-num">{money(pay.change)}</b>
+                    <b className="ek-num">{changeToSavings && customer ? "+" : ""}{money(pay.change)}</b>
                   </div>
                 )}
 
@@ -3228,16 +3262,37 @@ export default function KassaPage({ toast, refreshLowStock }) {
 
                     ⚠ Faqat MIJOZ TANLANGANDA: egasiz jamg'arma
                     bo'lmaydi (server ham shunday deydi). */}
+                {/* ⚠ KO'RINARLI TUGMA-SWITCH (V66), kichkina checkbox emas:
+                    do'kon egasi «ortiqcha to'lovni jamg'armaga qo'shish
+                    imkoni bo'lsin — bu muhim» dedi. Summa tugmaning
+                    o'zida: kassir «81 010 jamg'armaga» deb mijozga
+                    ko'rsatib bosadi. */}
                 {pay.change > 0 && customer && (
-                  <label className="pay-sum__row" style={{ cursor: "pointer", gap: 8 }}>
-                    <input type="checkbox" checked={changeToSavings}
-                           onChange={(e) => setChangeToSavings(e.target.checked)} />
-                    <span className="pay-sum__name" style={{ fontSize: 13, fontWeight: 700 }}>
-                      <i className="fa-solid fa-sack-dollar" aria-hidden="true"
-                         style={{ color: "var(--fg-success)", fontSize: 16 }} />{" "}
-                      {t("savings.changeHere")}
+                  <button type="button"
+                          className={`pay-change-sav${changeToSavings ? " active" : ""}`}
+                          aria-pressed={changeToSavings}
+                          onClick={() => setChangeToSavings((v) => !v)}>
+                    <span className="pay-change-sav__icon">
+                      <i className="fa-solid fa-sack-dollar" aria-hidden="true" />
                     </span>
-                  </label>
+                    <span className="pay-change-sav__text">
+                      <b>{t("savings.changeHere")}</b>
+                      <small>
+                        {changeToSavings
+                          ? t("savings.changeOn", { n: money(pay.change) })
+                          : t("savings.changeAsk", { n: money(pay.change) })}
+                      </small>
+                    </span>
+                    <span className="pay-change-sav__switch" aria-hidden="true" />
+                  </button>
+                )}
+                {/* Mijozsiz — imkoniyat BORLIGINI aytamiz, aks holda kassir
+                    uni hech qachon bilmasdi. */}
+                {pay.change > 0 && !customer && (
+                  <div className="pay-modal-hint">
+                    <i className="fa-solid fa-sack-dollar" style={{ marginRight: 4 }} aria-hidden="true" />
+                    {t("savings.changeNeedCustomer")}
+                  </div>
                 )}
 
                 {/* ⚠ QOLGANI — AVTOMATIK NASIYA. Kassir uni yozmaydi,
@@ -3321,6 +3376,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
           phase={finish.phase}
           total={finish.total}
           receiptNo={finish.receiptNo}
+          note={finish.note}
           /* ⚠ `setTimeout` bu yerdan OLIB TASHLANDI (V58). U
              `handleSubmit` ichida turardi va o'sha funksiya xatoga
              uchraganda umuman qo'yilmasdi — oyna abadiy osilib

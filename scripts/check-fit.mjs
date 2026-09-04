@@ -67,6 +67,7 @@ const cors = (r) => ({
 });
 const pageErrors = [];
 const posted = [];
+const salesPosted = [];
 const ITEMS = [
   { id: 1, name: "Qog'oz sochiq 100 SHT", salePrice: 5000, qty: 1, unit: "DONA", stockQuantity: 500 },
   { id: 2, name: "Monarx ketchup", salePrice: 13990, qty: 1, unit: "DONA", stockQuantity: 500 },
@@ -82,10 +83,24 @@ async function openKassa({ w = 1366, h = 768, customer = null } = {}) {
     const u = r.url();
     let body = { success: true, data: [] };
     if (u.includes("/shop/profile")) body = { success: true, data: PROFILE };
+    else if (/\/sales(\?|$)/.test(u) && r.method() === "POST") {
+      /* Sotuv — so'rov tanasi tekshiruv uchun saqlanadi (V66). */
+      try { salesPosted.push(JSON.parse(r.postData() || "{}")); } catch { salesPosted.push({}); }
+      body = { success: true, data: { id: 501, paymentType: "CASH", totalAmount: 18990,
+               receiptUrl: "https://app.e-kassam.uz/c/501-0123456789abcdef" } };
+    }
     else if (/\/customers(\?|$)/.test(u) && r.method() === "GET") body = { success: true, data: [CUST, CUST2] };
     else if (u.includes("/loyalty/customers/5")) body = { success: true, data: TIER };
     else if (u.includes("/loyalty/customers/6")) body = { success: true, data: { ...TIER, tierName: null, debtBalance: 0, bonusBalance: 0, savingsBalance: 0 } };
-    else if (u.includes("/savings/top-up")) { posted.push(u); body = { success: true, data: { balance: 72020 } }; }
+    else if (u.includes("/savings/top-up")) {
+      posted.push(u);
+      /* Javobda KVITANSIYA ham (V66) — kassa uni ekranda ko'rsatadi. */
+      body = { success: true, data: { balance: 72020, receipt: {
+        id: 77, receiptNo: "J-77", date: new Date().toISOString(), kind: "SAVINGS_TOP_UP",
+        shopName: "Sinov do'koni", cashierName: "V", customerName: CUST.fullName,
+        amount: 10000, method: "CASH", balanceBefore: 62020, balanceAfter: 72020,
+        qrUrl: "https://app.e-kassam.uz/j/77-0123456789abcdef" } } };
+    }
     return r.respond({ status: 200, contentType: "application/json", headers: C, body: JSON.stringify(body) });
   });
   page.on("pageerror", (e) => pageErrors.push(e.message));
@@ -244,9 +259,51 @@ SHOT && await page.screenshot({ path: `${SHOT}/v66-topup.png` });
 await page.click(".pay-modal-box--lite .pay-modal-footer .btn-primary"); await sleep(700);
 u = await tu();
 yes(!u.open, "yuborilgach oyna yopildi");
+{
+  /* KVITANSIYA (V66) — ekranda, J- raqami va jamg'arma sarlavhasi bilan. */
+  const tape = await page.evaluate(() => document.querySelector(".pt-tape")?.textContent || "");
+  yes(/J-77/.test(tape) && /JAMG'ARMA KVITANSIYASI/.test(tape) && /72\s?020/.test(tape),
+      "to'ldirishdan keyin kvitansiya ekranda (J-77, jamg'armada 72 020)", tape.slice(0, 120));
+  await page.click(".pt-close"); await sleep(300);
+}
 yes(posted.some((p) => p.includes("/customers/5/savings/top-up")), "so'rov mijoz 5 ning jamg'armasiga ketdi", posted.join(","));
 const cartCust = await page.evaluate(() => JSON.parse(localStorage.getItem("ek_cart_v_v")).carts[0].customer?.id);
 yes(cartCust === 5, "mijozsiz savatga shu mijoz biriktirildi", cartCust);
+
+/* ══ E. Qaytim → mijoz jamg'armasiga (V66) ══ */
+console.log("\n── E. Qaytim jamg'armaga ──");
+await page.close();
+page = await openKassa({ customer: CUST });
+await openPay();
+await type("#pay-amount", "100000");
+let cs = await page.evaluate(() => ({
+  toggle: !!document.querySelector(".pay-change-sav"),
+  change: document.querySelector(".pay-sum__row--change")?.textContent.replace(/\s+/g, " ").trim(),
+  sums: [...document.querySelectorAll(".pay-type-btn__sum")].length,
+}));
+yes(cs.toggle, "qaytim bor va mijoz tanlangan — «qaytim jamg'armaga» tugmasi ko'rinadi");
+yes(/81\s?010/.test(cs.change || ""), "qaytim 81 010: " + cs.change, cs.change);
+yes(cs.sums === 0, "usul tugmalarida summa yo'q");
+await page.click(".pay-change-sav"); await sleep(200);
+cs = await page.evaluate(() => ({
+  on: document.querySelector(".pay-change-sav")?.getAttribute("aria-pressed"),
+  row: document.querySelector(".pay-sum__row--save")?.textContent.replace(/\s+/g, " ").trim(),
+}));
+yes(cs.on === "true" && /81\s?010/.test(cs.row || ""), "belgilangach qator «Jamg'armaga +81 010»: " + cs.row, JSON.stringify(cs));
+SHOT && await page.screenshot({ path: `${SHOT}/v66-change.png` });
+await page.keyboard.press("F9"); await sleep(1500);
+const sb = salesPosted[0];
+yes(!!sb, "sotuv serverga ketdi");
+yes(sb?.changeToSavings === 81010 && sb?.cashGiven === 100000,
+    "so'rovda changeToSavings=81 010, cashGiven=100 000", JSON.stringify({ c: sb?.changeToSavings, g: sb?.cashGiven }));
+yes(Array.isArray(sb?.payments) && sb.payments.length === 1 && sb.payments[0].type === "CASH"
+    && Number(sb.payments[0].amount) === 18990, "naqd qismi 18 990 (qaytimsiz)", JSON.stringify(sb?.payments));
+{
+  const note = await page.evaluate(() => document.querySelector(".ek-finish__note")?.textContent || "");
+  yes(/81\s?010/.test(note), "yakun oynasida: " + note, note || "yo'q");
+}
+await sleep(3300);
+yes(!(await page.$(".ek-finish")), "yakun oynasi 3 soniyada o'zi yopildi");
 
 /* ══ D. Raqam bilan miqdor ══ */
 console.log("\n── D. Savatda raqam bilan miqdor ──");

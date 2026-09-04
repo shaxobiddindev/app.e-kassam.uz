@@ -92,7 +92,7 @@ async function send(bytes) {
  */
 export function buildReceipt({ saleId, serverSaleId, cart = [], total = 0, subtotal, discount = 0,
                                payType, payments, customer, offline, shopName, cashier, fiscal, receiptUrl,
-                               credit }) {
+                               credit, toSavings }) {
   const s = getSettings();
   const r = new Receipt(s.width === 58 ? WIDTH_58 : WIDTH_80);
 
@@ -157,6 +157,9 @@ export function buildReceipt({ saleId, serverSaleId, cart = [], total = 0, subto
       r.row("  " + paymentLabel(part.type), money(part.amount));
     }
   }
+  /* Qaytim mijoz jamg'armasiga qo'yildi (V66) — mijoz uzatgan pulning
+     TO'LIQ taqdiri qog'ozda turishi kerak. */
+  if (Number(toSavings) > 0) r.row(t("savings.toSavings"), "+" + money(toSavings));
   if (customer?.fullName) r.row(t("kassa.receiptCustomer"), customer.fullName);
 
   /* ── NASIYA BLOKI (V47) ────────────────────────────────────────────
@@ -268,16 +271,37 @@ export async function printReceipt(sale) {
  * buning izini olishi kerak — aks holda «to'lagandim-ku» degan tortishuv
  * yana do'konning so'ziga qarshi mijozning so'zi bo'lib qolardi.
  */
+/**
+ * Chekning SO'ZLARI — qarz cheki yoki jamg'arma kvitansiyasi (V66).
+ *
+ * ⚠ Shakl BITTA, so'zlar boshqa. Jamg'arma kvitansiyasi qarz cheki
+ * bilan aynan bir xil satrlardan iborat (kim, qachon, qancha, usul,
+ * qoldiq oldin-keyin) — faqat «qarz» o'rniga «jamg'arma». Ikkinchi
+ * qolip yozilsa, ikkalasi asta-sekin ajralib ketardi. `kind`
+ * `SAVINGS_` bilan boshlansa — jamg'arma.
+ */
+function debtLabels(kind) {
+  const sav = String(kind || "").startsWith("SAVINGS_");
+  if (!sav) {
+    return { sav, title: t("kassa.receiptDebtPay"), main: t("kassa.receiptPaid"),
+             before: t("credit.wasDebt"), after: t("kassa.receiptDebtLeft") };
+  }
+  const type = String(kind).slice(8);
+  return { sav, title: t("savings.receiptTitle"), main: t(`savings.rcp.${type}`),
+           before: t("savings.wasBalance"), after: t("savings.nowBalance") };
+}
+
 export function buildDebtReceipt({ customer, amount, balanceAfter, balanceBefore, method,
                                    shopName, cashier, date, receiptNo, qrUrl,
-                                   toSavings, bonusEarned }) {
+                                   toSavings, bonusEarned, kind, linkedNo }) {
   const s = getSettings();
   const r = new Receipt(s.width === 58 ? WIDTH_58 : WIDTH_80);
+  const L = debtLabels(kind);
 
   const head = shopHead(shopName);
   r.center().double().line(head.name).double(false);
   if (head.phone) r.line(head.phone);
-  r.line(t("kassa.receiptDebtPay"));
+  r.line(L.title);
   r.left().rule();
 
   /* ⚠ CHEK RAQAMI (V61). Usiz qog'ozni tizimdagi yozuv bilan
@@ -291,12 +315,14 @@ export function buildDebtReceipt({ customer, amount, balanceAfter, balanceBefore
   if (customer?.fullName) r.row(t("kassa.receiptCustomer"), customer.fullName);
   r.rule();
 
-  r.bold().double().row(t("kassa.receiptPaid"), money(amount)).double(false).bold(false);
-  r.row(t("kassa.receiptPayment"), paymentLabel(method));
-  if (balanceBefore != null) r.row(t("credit.wasDebt"), money(balanceBefore));
+  r.bold().double().row(L.main, money(Math.abs(Number(amount) || 0))).double(false).bold(false);
+  /* Jamg'armaning xaridga ishlatilgan qatorida usul yo'q — satr chiqmaydi. */
+  if (method || !L.sav) r.row(t("kassa.receiptPayment"), paymentLabel(method));
+  if (linkedNo) r.row(t("savings.linkedSale"), linkedNo);
+  if (balanceBefore != null) r.row(L.before, money(balanceBefore));
   /* Qolgan qarz — mijoz aynan shuni so'raydi. Nol bo'lsa ham yoziladi:
      «qarzingiz qolmadi» degan qator eng qimmatli qator. */
-  r.row(t("kassa.receiptDebtLeft"), money(balanceAfter ?? 0));
+  r.row(L.after, money(balanceAfter ?? 0));
   /* Ortig'i jamg'armaga va keshbek (V64) — mijoz uzatgan pulning
      TO'LIQ taqdiri qog'ozda turishi kerak. */
   if (Number(toSavings) > 0) r.row(t("savings.toSavings"), money(toSavings));
@@ -802,9 +828,11 @@ export async function testPrint() {
 function printInBrowser({ saleId, serverSaleId, cart = [], total = 0, subtotal, discount = 0,
                           payType, payments, customer, offline, shopName, cashier, receiptUrl,
                           credit, __debt, amount, balanceAfter, balanceBefore, method, date,
-                          receiptNo, qrUrl, toSavings, bonusEarned }) {
+                          receiptNo, qrUrl, toSavings, bonusEarned, kind, linkedNo }) {
   const win = window.open("", "_blank", "width=360,height=640,toolbar=no,menubar=no");
   if (!win) throw new Error(t("hw.errPopup"));
+  /* Qarz cheki yoki jamg'arma kvitansiyasi — so'zlar `kind` dan (V66). */
+  const L = debtLabels(kind);
 
   // Qog'oz kengligi — apparat sozlamasidan (58 yoki 80 mm).
   const mm = getSettings().width === 58 ? 58 : 80;
@@ -836,17 +864,18 @@ function printInBrowser({ saleId, serverSaleId, cart = [], total = 0, subtotal, 
   const debtBody = !__debt ? "" : `
       <div class="c"><div class="logo">${esc(head.name)}</div>
         ${head.phone ? `<small>${esc(head.phone)}</small><br>` : ""}
-        <small>${esc(t("kassa.receiptDebtPay"))}</small></div>
+        <small>${esc(L.title)}</small></div>
       <div class="hr"></div>
       ${receiptNo ? `<div class="row"><span>${esc(t("kassa.receiptNo"))}</span><span>${esc(receiptNo)}</span></div>` : ""}
       <div class="row"><span>${esc(t("common.date"))}</span><span>${esc((date || new Date()).toLocaleString("uz-UZ"))}</span></div>
       ${cashier ? `<div class="row"><span>${esc(t("kassa.receiptCashier"))}</span><span>${esc(cashier)}</span></div>` : ""}
       ${customer?.fullName ? `<div class="row"><span>${esc(t("kassa.receiptCustomer"))}</span><span>${esc(customer.fullName)}</span></div>` : ""}
       <div class="hr"></div>
-      <div class="row"><b>${esc(t("kassa.receiptPaid"))}</b><b>${esc(money(amount))}</b></div>
-      <div class="row"><span>${esc(t("kassa.receiptPayment"))}</span><span>${esc(paymentLabel(method))}</span></div>
-      ${balanceBefore != null ? `<div class="row"><span>${esc(t("credit.wasDebt"))}</span><span>${esc(money(balanceBefore))}</span></div>` : ""}
-      <div class="row"><span>${esc(t("kassa.receiptDebtLeft"))}</span><span>${esc(money(balanceAfter ?? 0))}</span></div>
+      <div class="row"><b>${esc(L.main)}</b><b>${esc(money(Math.abs(Number(amount) || 0)))}</b></div>
+      ${method || !L.sav ? `<div class="row"><span>${esc(t("kassa.receiptPayment"))}</span><span>${esc(paymentLabel(method))}</span></div>` : ""}
+      ${linkedNo ? `<div class="row"><span>${esc(t("savings.linkedSale"))}</span><span>${esc(linkedNo)}</span></div>` : ""}
+      ${balanceBefore != null ? `<div class="row"><span>${esc(L.before)}</span><span>${esc(money(balanceBefore))}</span></div>` : ""}
+      <div class="row"><span>${esc(L.after)}</span><span>${esc(money(balanceAfter ?? 0))}</span></div>
       ${Number(toSavings) > 0 ? `<div class="row"><span>${esc(t("savings.toSavings"))}</span><span>${esc(money(toSavings))}</span></div>` : ""}
       ${Number(bonusEarned) > 0 ? `<div class="row"><span>${esc(t("kassa.receiptBonusEarned"))}</span><span>+${esc(money(bonusEarned))}</span></div>` : ""}
       ${qrUrl ? `<div class="hr"></div><div class="c">
@@ -856,7 +885,7 @@ function printInBrowser({ saleId, serverSaleId, cart = [], total = 0, subtotal, 
       <div class="hr"></div>
       <div class="c"><p>${esc(t("kassa.receiptThanks"))}</p><small>e-kassam.uz</small></div>`;
 
-  win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(__debt ? t("kassa.receiptDebtPay") : t("kassa.receiptNo") + " " + saleId)}</title>
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(__debt ? L.title : t("kassa.receiptNo") + " " + saleId)}</title>
     <style>
       /* CHEK QOG'OZI - A4 EMAS.
          @page bo'lmasa brauzer chekni A4 sahifaga joylashtiradi, chetiga
@@ -905,6 +934,7 @@ function printInBrowser({ saleId, serverSaleId, cart = [], total = 0, subtotal, 
       ${Array.isArray(payments) && payments.length > 1
         ? payments.map((p) => `<div class="row"><span>&nbsp;&nbsp;${esc(paymentLabel(p.type))}</span><span>${esc(money(p.amount))}</span></div>`).join("")
         : ""}
+      ${Number(toSavings) > 0 && !__debt ? `<div class="row"><span>${esc(t("savings.toSavings"))}</span><span>+${esc(money(toSavings))}</span></div>` : ""}
       ${customer?.fullName ? `<div class="row"><span>${esc(t("kassa.receiptCustomer"))}</span><span>${esc(customer.fullName)}</span></div>` : ""}
       ${credit && Number(credit.amount) > 0 ? `<div class="hr"></div>
       <div class="c"><b>${esc(t("kassa.receiptCredit"))}</b></div>

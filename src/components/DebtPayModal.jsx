@@ -63,7 +63,11 @@ export default function DebtPayModal({
   customers = null, onCustomerChange, onNewCustomer,
 }) {
   const savingsMode = mode === "savings";
-  const balance = Number(savingsMode ? customer?.savingsBalance : customer?.balance) || 0;
+  /* `"refund"` — jamg'armadan NAQD qaytarish (V66): o'sha oyna, usul
+     tanlanadi, summa qoldiqdan oshmaydi. */
+  const refundMode = mode === "refund";
+  const savingsAcc = savingsMode || refundMode;
+  const balance = Number(savingsAcc ? customer?.savingsBalance : customer?.balance) || 0;
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState("CASH");
 
@@ -100,18 +104,22 @@ export default function DebtPayModal({
      kassir 470 000 lik qarzga 500 000 uzatgan mijozga qaytim qidirardi.
      Endi ortig'i KO'RSATILADI — kassir mijozga «50 mingingiz
      jamg'armangizda» deb aytib beradi. */
-  const extra = savingsMode ? 0 : Math.max(0, num - balance);
-  const manualEmpty = !savingsMode && alloc === "MANUAL" && picked.size === 0;
+  const extra = savingsAcc ? 0 : Math.max(0, num - balance);
+  const manualEmpty = !savingsAcc && alloc === "MANUAL" && picked.size === 0;
   /* Jamg'arma rejimida EGASIZ pul qo'yib bo'lmaydi. */
   const needCustomer = savingsMode && !customer;
-  const canPay = num > 0 && !paying && !manualEmpty && !needCustomer;
+  /* Qaytarish qoldiqdan oshmaydi — server ham rad etadi, lekin kassir
+     buni tugmani bosgandan KEYIN emas, OLDIN ko'rsin. */
+  const overRefund = refundMode && num > balance;
+  const canPay = num > 0 && !paying && !manualEmpty && !needCustomer && !overRefund;
 
   const press = (k) => {
     if (k === "⌫") return setAmount((v) => String(v).slice(0, -1));
     setAmount((v) => (String(v) + k).replace(/^0+(?=\d)/, "").slice(0, 12));
   };
 
-  const title = savingsMode ? t("savings.topUpTitle") : t("credit.payTitle");
+  const title = refundMode ? t("savings.refundTitle")
+    : savingsMode ? t("savings.topUpTitle") : t("credit.payTitle");
   const showPicker = savingsMode && Array.isArray(customers);
 
   return (
@@ -120,7 +128,7 @@ export default function DebtPayModal({
       <div className="pay-modal-box pay-modal-box--lite ek-dialog">
         <div className="pay-modal-header">
           <div className="pay-modal-title">
-            <i className={`fa-solid ${savingsMode ? "fa-sack-dollar" : "fa-hand-holding-dollar"}`}
+            <i className={`fa-solid ${refundMode ? "fa-arrow-up" : savingsMode ? "fa-sack-dollar" : "fa-hand-holding-dollar"}`}
                aria-hidden="true" />
             {title}{customer?.fullName ? ` — ${customer.fullName}` : ""}
           </div>
@@ -175,7 +183,7 @@ export default function DebtPayModal({
 
             <div className="pay-modal-total">
               <div className="pay-modal-total-label">
-                {savingsMode ? t("savings.balance") : t("credit.balance")}
+                {savingsAcc ? t("savings.balance") : t("credit.balance")}
               </div>
               <div className="pay-modal-total-value ek-num">
                 {needCustomer ? "—" : money(balance)}
@@ -207,13 +215,20 @@ export default function DebtPayModal({
                 tushadi, uni maydonda kesish o'sha imkoniyatni yopib
                 qo'yardi. */}
             <NumField kind="money" autoFocus={!needCustomer}
+                      max={refundMode ? balance : undefined}
                       className="form-input qty-modal__input ek-num"
                       value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0" />
+            {refundMode && (
+              <div className="pay-modal-hint">
+                <i className="fa-solid fa-circle-info" style={{ marginRight: 4 }} aria-hidden="true" />
+                {t("savings.max", { n: money(balance) })}
+              </div>
+            )}
 
             {/* ⚠ «Hammasi» — eng ko'p bosiladigan tugma: mijoz odatda
                 qarzini to'liq yopadi va uni har safar qo'lda terish
                 ortiqcha qadam edi. Jamg'arma rejimida ma'nosi yo'q. */}
-            {!savingsMode && (
+            {!savingsAcc && (
               <div className="debt-quick">
                 <button type="button" className="btn btn-outline btn-sm"
                         onClick={() => setAmount(String(Math.round(balance)))}>
@@ -229,7 +244,7 @@ export default function DebtPayModal({
             {/* ── QAYSI QARZLAR (V65) — faqat bittadan ko'p ochiq qarz
                 bo'lsa: bitta qarzda tanlovning ma'nosi yo'q va ortiqcha
                 tugma kassirni to'xtatardi. */}
-            {!savingsMode && openDebts.length > 1 && (
+            {!savingsAcc && openDebts.length > 1 && (
               <>
                 <div className="pay-modal-section-label" style={{ marginTop: 12 }}>
                   <i className="fa-solid fa-list-check" aria-hidden="true" /> {t("credit.allocTitle")}
@@ -318,11 +333,11 @@ export default function DebtPayModal({
           <button className="btn btn-outline" onClick={onClose}>{t("common.close")}</button>
           <button className="btn btn-primary btn-pos" disabled={!canPay}
                   title={needCustomer ? t("savings.customerRequired") : undefined}
-                  onClick={() => onSubmit(savingsMode ? { amount: num, method, customer }
+                  onClick={() => onSubmit(savingsAcc ? { amount: num, method, customer }
                     : { amount: num, method, mode: alloc,
                         chargeIds: alloc === "MANUAL" ? [...picked] : null })}>
             {paying ? <Spinner small /> : <i className="fa-solid fa-check" aria-hidden="true" />}
-            {savingsMode ? t("savings.topUp") : t("credit.pay")}
+            {refundMode ? t("savings.refund") : savingsMode ? t("savings.topUp") : t("credit.pay")}
           </button>
         </div>
       </div>
