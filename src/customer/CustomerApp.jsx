@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { appApi, clearAppToken, getAppToken } from "./customerApi";
 import Receipt from "../portal/Receipt";
+import PaymentReceipt from "../portal/PaymentReceipt";
 import { qrSvg, totpNow, secondsLeft } from "../lib/ek-qr";
 import { code128Svg } from "../lib/ek-barcode";
 import { useConfirm } from "../context/ConfirmProvider";
@@ -461,33 +462,79 @@ function NewsScreen() {
 
 /* ── 3. Cheklarim ───────────────────────────────────────────────────────
    ⚠ Lenta HAMMA do'kon bo'yicha bitta ro'yxat: mijoz xaridni sana bo'yicha
-   eslaydi, «qaysi do'konda edi» deb emas. Do'kon nomi har satrda turadi. */
+   eslaydi, «qaysi do'konda edi» deb emas. Do'kon nomi har satrda turadi.
+
+   ═══ IKKI LENTA, BITTA VARAQ (V61) ═══════════════════════════════════
+
+   ⚠ NEGA OLTINCHI VARAQ EMAS. Pastdagi menyuda beshta tugma bor va
+   oltinchisi telefon ekranida barmoq sig'maydigan darajada tor bo'lardi.
+   To'lovlar esa cheklarga eng yaqin narsa: ikkalasi ham «men nima
+   qildim» degan savolga javob beradi.
+
+   ⚠ NEGA BITTA ARALASH LENTA EMAS. Xarid — pul CHIQQANI, to'lov — qarz
+   KAMAYGANI. Ular aralashsa, mijoz «shu oyda qancha sarfladim» deb
+   qo'shib chiqqanda qarz to'lovini ham xaridga qo'shib yuborardi —
+   holbuki u allaqachon o'sha xaridda sanalgan. Ya'ni pul ikki marta
+   sanalgan bo'lib chiqardi. */
+
+const RCP_TABS = [
+  { key: "buy",  label: "Xaridlar" },
+  { key: "paid", label: "To'lovlarim" },
+];
 
 function ReceiptsScreen() {
+  const [kind, setKind]   = useState("buy");
   const [items, setItems] = useState(null);
   const [error, setError] = useState("");
   const [open, setOpen]   = useState(null);   // { id, customerId }
+  const [openPaid, setOpenPaid] = useState(null);
 
-  const load = () => {
+  const load = useCallback(() => {
     setError("");
     setItems(null);
-    appApi.receipts(50).then(setItems).catch((e) => setError(e.message));
-  };
-  useEffect(load, []);
+    const req = kind === "paid" ? appApi.payments(50) : appApi.receipts(50);
+    req.then(setItems).catch((e) => setError(e.message));
+  }, [kind]);
+  useEffect(load, [load]);
 
-  if (error) return <div className="cu-screen"><Retry text={error} onRetry={load} /></div>;
-  if (!items) return <div className="cu-screen"><div className="cu-card cu-center">Yuklanmoqda…</div></div>;
+  const tabs = (
+    <div className="cu-seg" role="tablist" aria-label="Chek turi">
+      {RCP_TABS.map((x) => (
+        <button key={x.key} type="button" role="tab"
+                aria-selected={kind === x.key}
+                className={`cu-seg__btn ${kind === x.key ? "active" : ""}`}
+                onClick={() => setKind(x.key)}>
+          {x.label}
+        </button>
+      ))}
+    </div>
+  );
+
+  if (error) {
+    return <div className="cu-screen"><h1 className="cu-title">Cheklarim</h1>{tabs}
+             <Retry text={error} onRetry={load} /></div>;
+  }
+  if (!items) {
+    return <div className="cu-screen"><h1 className="cu-title">Cheklarim</h1>{tabs}
+             <div className="cu-card cu-center">Yuklanmoqda…</div></div>;
+  }
+
+  const paid = kind === "paid";
 
   return (
     <div className="cu-screen">
       <h1 className="cu-title">Cheklarim</h1>
+      {tabs}
 
       {items.length === 0 && (
         <div className="cu-card cu-center">
-          <i className="fa-solid fa-receipt cu-big-icon" aria-hidden="true" />
-          <p><b>Hali chek yo'q</b></p>
+          <i className={`fa-solid ${paid ? "fa-hand-holding-dollar" : "fa-receipt"} cu-big-icon`}
+             aria-hidden="true" />
+          <p><b>{paid ? "Hali to'lov yo'q" : "Hali chek yo'q"}</b></p>
           <p className="cu-muted">
-            Kassada kartangizni ko'rsating — xarid cheki shu yerda saqlanadi.
+            {paid
+              ? "Qarzingizni to'laganingizda cheki shu yerda saqlanadi."
+              : "Kassada kartangizni ko'rsating — xarid cheki shu yerda saqlanadi."}
           </p>
         </div>
       )}
@@ -495,16 +542,29 @@ function ReceiptsScreen() {
       <ul className="cu-list">
         {items.map((r) => (
           <li key={`${r.customerId}-${r.id}`}>
-            <button className="cu-rcp" onClick={() => setOpen({ id: r.id, customerId: r.customerId })}>
+            <button className="cu-rcp"
+                    onClick={() => (paid ? setOpenPaid : setOpen)({ id: r.id, customerId: r.customerId })}>
               <span className="cu-rcp__left">
                 <b>{r.receiptNo}</b>
                 <small className="cu-muted">{r.shopName}</small>
                 <small className="cu-muted">{dateLabel(r.date)}</small>
               </span>
               <span className="cu-rcp__right">
-                <b>{money(r.total)}</b>
-                {Number(r.bonusEarned) > 0 && <small className="cu-pos">+{money(r.bonusEarned)} ball</small>}
-                {Number(r.bonusUsed) > 0 && <small className="cu-muted">−{money(r.bonusUsed)} ball</small>}
+                <b>{money(paid ? r.amount : r.total)}</b>
+                {paid
+                  /* ⚠ «Qarz yopildi» — lentaning eng qimmatli xabari:
+                     mijoz chekni ochmasdan, qaysi to'lovda qutulganini
+                     ko'radi. Qoldiq bo'sh bo'lishi mumkin (V61 dan
+                     oldingi yozuv) — o'shanda satr chiqmaydi. */
+                  ? (r.balanceAfter != null && (
+                      Number(r.balanceAfter) === 0
+                        ? <small className="cu-pos">Qarz yopildi</small>
+                        : <small className="cu-muted">Qoldi: {money(r.balanceAfter)}</small>
+                    ))
+                  : <>
+                      {Number(r.bonusEarned) > 0 && <small className="cu-pos">+{money(r.bonusEarned)} ball</small>}
+                      {Number(r.bonusUsed) > 0 && <small className="cu-muted">−{money(r.bonusUsed)} ball</small>}
+                    </>}
               </span>
             </button>
           </li>
@@ -516,6 +576,10 @@ function ReceiptsScreen() {
       {open && (
         <Receipt appToken={getAppToken()} id={open.id} customerId={open.customerId}
                  onClose={() => setOpen(null)} />
+      )}
+      {openPaid && (
+        <PaymentReceipt appToken={getAppToken()} id={openPaid.id} customerId={openPaid.customerId}
+                        onClose={() => setOpenPaid(null)} />
       )}
     </div>
   );

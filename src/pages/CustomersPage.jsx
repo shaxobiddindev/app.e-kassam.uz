@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { t } from "../lib/ek-i18n";
 import { customerApi } from "../api";
 import { BranchSelector } from "../components";
@@ -10,6 +10,10 @@ import { roleSet } from "../lib/ek-roles";
 import { useAuth } from "../hooks/useAuth";
 import { shortDate } from "../lib/ek-format";
 import SaleDetailModal from "../components/SaleDetailModal";
+/* ⚠ SEKIN YUKLANADI: to'lov cheki kunda bir necha marta ochiladi,
+   mijozlar sahifasi esa doim. Chekni asosiy bo'lakka qo'shish uni
+   hech qachon ochmaydigan kassirga ham yuklatardi. */
+const PaymentReceipt = lazy(() => import("../portal/PaymentReceipt"));
 import DebtPayModal from "../components/DebtPayModal";
 import ManualDebtModal from "../components/ManualDebtModal";
 import { printDebtReceipt } from "../lib/ek-hardware";
@@ -69,6 +73,10 @@ export default function CustomersPage({ toast }) {
   /* O'chirish — faqat egasi va do'kon administratori. */
   const canDelete = [...roleSet(user?.role)].some((r) => r === "OWNER" || r === "SHOP_ADMIN");
   const [payOpen, setPayOpen] = useState(false);
+  /* Ekranda turgan to'lov cheki: to'lovdan keyin darhol, yoki jurnaldagi
+     tugmadan. `null` — yopiq. */
+  const [receipt, setReceipt] = useState(null);
+  const [receiptLoading, setReceiptLoading] = useState(null);
   const [saleDetail, setSaleDetail] = useState(null);
   const [saleLoading, setSaleLoading] = useState(null);
 
@@ -129,8 +137,11 @@ export default function CustomersPage({ toast }) {
   const submitDebt = async ({ amount, method }) => {
     setPaying(true);
     try {
+      /* ⚠ JAVOB — CHEKNING O'ZI (V61), qolgan balans emas: har
+         to'lovning o'z raqami, o'z havolasi va o'z QR i bor. */
       const r = await customerApi.payDebt(debt.customer.id, { amount, method });
-      const left = Number(r?.data) || 0;
+      const rc = r?.data || null;
+      const left = Number(rc?.balanceAfter) || 0;
       toast.success(`${t("credit.left")}: ${money(left)}`);
 
       /* ⚠ CHEK MIJOZ UCHUN (V47). U pul berdi va buning izini olishi
@@ -141,9 +152,15 @@ export default function CustomersPage({ toast }) {
       try {
         await printDebtReceipt({
           customer: debt.customer, amount, method, balanceAfter: left,
-          shopName: localStorage.getItem("ek_shopName") || localStorage.getItem("ek_shopCode") || "",
-          cashier: localStorage.getItem("ek_fullName") || "",
-          date: new Date(),
+          /* Raqam va havola SERVERDAN (V61): qog'ozdagi QR aynan shu
+             chekni ochadi va qog'ozdagi raqam ekrandagi bilan bir xil
+             bo'lishi shart. */
+          receiptNo: rc?.receiptNo, qrUrl: rc?.qrUrl,
+          balanceBefore: rc?.balanceBefore,
+          shopName: rc?.shopName || localStorage.getItem("ek_shopName")
+                    || localStorage.getItem("ek_shopCode") || "",
+          cashier: rc?.cashierName || localStorage.getItem("ek_fullName") || "",
+          date: rc?.date ? new Date(rc.date) : new Date(),
         });
       } catch (e) {
         toast.info(e.message || t("hw.errPopup"));
@@ -151,11 +168,31 @@ export default function CustomersPage({ toast }) {
 
       setPayOpen(false);
       setDebt(null);
+      /* ⚠ CHEK EKRANDA HAM QOLADI. Printersiz do'konda (yoki qog'oz
+         tugaganda) chop etish jimgina yo'q bo'lardi va mijoz yana
+         quruq qo'l bilan ketardi — endi u chekni telefoniga QR orqali
+         ko'chirib oladi. */
+      if (rc) setReceipt(rc);
       loadData();
     } catch (err) {
       toast.error(err.message);
     } finally {
       setPaying(false);
+    }
+  };
+
+  /* Jurnaldagi ESKI to'lovning cheki. ⚠ Mijoz «o'tgan hafta
+     to'lagandim, qog'ozi yo'q» deb kelganda javob «qaytadan to'lang»
+     bo'lmasligi kerak. */
+  const openReceipt = async (ledgerId) => {
+    setReceiptLoading(ledgerId);
+    try {
+      const r = await customerApi.paymentReceipt(ledgerId);
+      setReceipt(r.data);
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setReceiptLoading(null);
     }
   };
 
@@ -416,9 +453,31 @@ export default function CustomersPage({ toast }) {
                       </td>
                       <td>
                         <div style={{ display: "flex", gap: 6 }}>
-                          {Number(c.balance) > 0 && (
-                            <button className="btn-icon" title={t("credit.pay")} onClick={() => openDebt(c)}>
-                              <i className="fa-solid fa-hand-holding-dollar" />
+                          {/* ⚠ TUGMA QARZ TUGAGACH HAM QOLADI (V60).
+                              Ilgari sharti faqat `balance > 0` edi:
+                              mijoz qarzini to'liq to'lagach tugma
+                              yo'qolar va u bilan birga JURNAL OYNASIGA
+                              kiradigan yagona eshik ham yo'qolardi —
+                              «qachon, qancha to'ladi?» degan savolga
+                              javob berib bo'lmasdi. Jurnal bazada ham,
+                              API da ham joyida edi; yetishmagani eshik
+                              edi.
+
+                              Balansning o'zi yetarli emas: nol balans
+                              «hech qachon qarz olmagan» va «olib, to'lab
+                              bo'lgan» ni ajratmaydi. Shu sabab server
+                              `hasDebtHistory` ni aytadi.
+
+                              Qarzi borida — to'lash, tugaganida —
+                              tarix: ikkalasi bitta oyna, lekin tugma
+                              nima qilishini aniq aytishi kerak. */}
+                          {(Number(c.balance) > 0 || c.hasDebtHistory) && (
+                            <button className="btn-icon"
+                                    title={Number(c.balance) > 0 ? t("credit.pay") : t("credit.history")}
+                                    aria-label={Number(c.balance) > 0 ? t("credit.pay") : t("credit.history")}
+                                    onClick={() => openDebt(c)}>
+                              <i className={`fa-solid ${Number(c.balance) > 0
+                                  ? "fa-hand-holding-dollar" : "fa-clock-rotate-left"}`} />
                             </button>
                           )}
                           {/* Qarzdorlar ro'yxatida tahrirlash/o'chirish YO'Q:
@@ -515,7 +574,10 @@ export default function CustomersPage({ toast }) {
           klaviaturani ham bitta oynaga tiqish uni ekrandan uzun qilardi. */}
       {debt && !payOpen && (
         <Modal
-          title={`${t("credit.title")} — ${debt.customer.fullName}`}
+          /* Sarlavha holatga qarab: qarzi borida «Qarz», tugaganida
+             «Qarz tarixi» — oyna bir xil, savol boshqa. */
+          title={`${Number(debt.customer.balance) > 0 ? t("credit.title") : t("credit.history")}`
+                 + ` — ${debt.customer.fullName}`}
           onClose={() => setDebt(null)}
           maxWidth={520}
           footer={
@@ -532,7 +594,15 @@ export default function CustomersPage({ toast }) {
         >
           <div className="row" style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
             <span className="fw-700">{t("credit.balance")}</span>
-            <span className="mono fw-800" style={{ color: "var(--fg-danger)" }}>{money(debt.customer.balance)}</span>
+            {/* ⚠ QIZIL — do'kon ushlab turgan pul. Nol esa yomon xabar
+                emas: qarz yopilgan. Uni ham qizil qilib ko'rsatish
+                tarixni ochgan egaga «hali ham muammo bor» degan yolg'on
+                taassurot berardi. */}
+            <span className="mono fw-800"
+                  style={{ color: Number(debt.customer.balance) > 0
+                    ? "var(--fg-danger)" : "var(--fg-success)" }}>
+              {money(debt.customer.balance)}
+            </span>
           </div>
           {/* ⚠ Chegara O'RNIGA «qachondan beri qarzdor» (V46): «yana
               nasiya berish mumkinmi» degan savolga endi raqam emas,
@@ -590,10 +660,29 @@ export default function CustomersPage({ toast }) {
                         style={{ color: ledgerSigned(l) >= 0 ? "var(--fg-success)" : "var(--fg-danger)" }}>
                       {ledgerSigned(l) >= 0 ? "+" : "−"}{money(Math.abs(ledgerSigned(l)))}
                     </td>
+                    {/* ⚠ CHEK FAQAT TO'LOVDA (V61). Qarz qatorining
+                        cheki — o'sha sotuvning cheki va u yonidagi
+                        `#id` tugmasidan ochiladi; to'g'irlashda esa
+                        umuman chek yo'q (mijoz pul bermagan). Har
+                        qatorga tugma qo'yish jurnalni tugmalar
+                        devoriga aylantirardi. */}
+                    <td style={{ width: 34, textAlign: "right" }}>
+                      {l.type === "PAYMENT" && (
+                        <button type="button" className="btn-icon"
+                                title={t("credit.receipt")}
+                                aria-label={t("credit.receipt")}
+                                disabled={receiptLoading === l.id}
+                                onClick={() => openReceipt(l.id)}>
+                          {receiptLoading === l.id
+                            ? <Spinner small />
+                            : <i className="fa-solid fa-receipt" />}
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 ))}
                 {debt.ledger && debt.ledger.length === 0 && (
-                  <tr><td colSpan={3}><Empty icon="fa-receipt" text={t("credit.noDebt")} /></td></tr>
+                  <tr><td colSpan={4}><Empty icon="fa-receipt" text={t("credit.noDebt")} /></td></tr>
                 )}
               </tbody>
             </table>
@@ -616,6 +705,15 @@ export default function CustomersPage({ toast }) {
           `z-index` da DOM tartibi hal qilardi — chek oynasi qarz
           oynasining ORQASIDA qolib, ko'rinmasdi. */}
       <SaleDetailModal sale={saleDetail} onClose={() => setSaleDetail(null)} />
+
+      {/* ⚠ TO'LOV CHEKI ENG OXIRIDA — chek tafsiloti bilan bir xil
+          sabab: u qarz oynasining USTIDAN ochilishi kerak va bir xil
+          `z-index` da buni DOM tartibi hal qiladi. */}
+      {receipt && (
+        <Suspense fallback={null}>
+          <PaymentReceipt data={receipt} onClose={() => setReceipt(null)} />
+        </Suspense>
+      )}
     </div>
   );
 }

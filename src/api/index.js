@@ -583,6 +583,11 @@ export const customerApi = {
   payDebt:   (id, data) => request(`/customers/${id}/payment`, { method: "POST", body: JSON.stringify(data) }),
   adjustDebt:(id, data) => request(`/customers/${id}/adjust`,  { method: "POST", body: JSON.stringify(data) }),
   ledger:    (id) => request(`/customers/${id}/ledger`),
+  /* TO'LOV CHEKI (V61) — jurnal qatorining `id` si bo'yicha.
+     ⚠ Mijoz `id` si SO'RALMAYDI: qator o'zi mijozni ham, do'konni ham
+     biladi va uni ikkinchi marta yuborish faqat ikkalasi bir-biriga
+     to'g'ri kelmasligi xavfini tug'dirardi. */
+  paymentReceipt: (ledgerId) => request(`/customers/ledger/${ledgerId}/receipt`),
   debtors:   () => request("/customers/debtors"),
   /* QO'LDA QARZDOR KIRITISH (V48) — daftardan ko'chirish uchun.
      Mijoz ham shu chaqiruvda yaratiladi: 40 ta ismni ikki bosqichda

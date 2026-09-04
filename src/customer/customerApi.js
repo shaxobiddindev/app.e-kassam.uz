@@ -126,6 +126,13 @@ export const appApi = {
      yuboriladi — mijozning har do'konda alohida `customers.id` si bor. */
   receipts:   (limit = 30) => call(`/receipts?limit=${limit}`),
 
+  /* ── To'lovlarim (V61) ──
+     ⚠ Xarid cheklaridan ALOHIDA lenta. Ikkalasi bitta ro'yxatga
+     qo'shilsa, «jami qancha sarfladim» degan hisobda qarz to'lovi ham
+     xaridga qo'shilib ketardi — u esa allaqachon o'sha xaridda
+     sanalgan va mijoz pulini ikki marta sarflagan bo'lib chiqardi. */
+  payments:   (limit = 30) => call(`/payments?limit=${limit}`),
+
   /* ── Ball tarixi ──
      ⚠ Do'kon bo'yicha ALOHIDA: ballar do'konlar o'rtasida ko'chmaydi,
      aralash lenta esa mijozni chalkashtirardi. */

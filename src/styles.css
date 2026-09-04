@@ -2557,6 +2557,14 @@ img.logo--dark { display: none; }
 .pt-line__name { font-weight: 700; }
 .pt-total { font-size: 15px; font-weight: 800; padding: 6px 0; border-top: 1px solid #111111; margin-top: 4px; }
 .pt-earn { font-weight: 700; }
+/* ⚠ CHEK TURI (V61) — «QARZ TO'LOVI». Xarid cheki bilan bir xil tasmada
+   chiqadi va ularni ajratib turadigan yagona narsa shu qator, shuning
+   uchun u ko'zga tashlanishi kerak: yozuvi katta emas, lekin harflar
+   ajratilgan va ustidan chiziq o'tadi. */
+.pt-tape__kind {
+  margin-top: 6px; padding-top: 5px; border-top: 1px solid #111111;
+  font-size: 12px; font-weight: 800; letter-spacing: .18em;
+}
 .pt-returned {
   margin: 10px 0; padding: 6px; text-align: center; font-weight: 800; letter-spacing: .2em;
   border: 2px solid #111111; border-radius: 4px;
@@ -2858,6 +2866,24 @@ img.logo--dark { display: none; }
 .cu-rcp__right { display: grid; justify-items: end; gap: 2px; }
 .cu-rcp__right b { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 .cu-rcp__right small { font-size: var(--fs-xs); }
+
+/* ⚠ IKKI LENTA BIR VARAQDA (V61): «Xaridlar» / «To'lovlarim». Pastdagi
+   menyuga oltinchi tugma sig'masdi — telefon ekranida u barmoq
+   tegmaydigan darajada tor bo'lardi. Tugmalar 44px dan past emas
+   (barmoq o'lchovi), tanlangani esa RANG BILAN EMAS, fon bilan
+   ajratiladi: yorug'da ekranda rang farqi ko'rinmay qoladi. */
+.cu-seg {
+  display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px;
+  padding: 4px; margin: 10px 0 2px;
+  background: var(--bg-surface); border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+}
+.cu-seg__btn {
+  min-height: 40px; padding: 8px 10px; border: 0; border-radius: var(--r-md);
+  background: transparent; color: var(--fg-secondary); cursor: pointer;
+  font-family: var(--font-sans); font-size: var(--fs-sm); font-weight: 700;
+}
+.cu-seg__btn.active { background: var(--bg-page); color: var(--fg-primary); box-shadow: var(--sh-sm); }
 
 /* Do'konlar ro'yxati */
 .cu-list { list-style: none; display: grid; gap: 8px; }

@@ -259,8 +259,8 @@ export async function printReceipt(sale) {
  * buning izini olishi kerak — aks holda «to'lagandim-ku» degan tortishuv
  * yana do'konning so'ziga qarshi mijozning so'zi bo'lib qolardi.
  */
-export function buildDebtReceipt({ customer, amount, balanceAfter, method,
-                                   shopName, cashier, date }) {
+export function buildDebtReceipt({ customer, amount, balanceAfter, balanceBefore, method,
+                                   shopName, cashier, date, receiptNo, qrUrl }) {
   const s = getSettings();
   const r = new Receipt(s.width === 58 ? WIDTH_58 : WIDTH_80);
 
@@ -268,6 +268,12 @@ export function buildDebtReceipt({ customer, amount, balanceAfter, method,
   r.line(t("kassa.receiptDebtPay"));
   r.left().rule();
 
+  /* ⚠ CHEK RAQAMI (V61). Usiz qog'ozni tizimdagi yozuv bilan
+     bog'lashning yo'li yo'q edi: mijoz chekni ko'rsatadi, do'kon esa
+     uni sana va summa bo'yicha qidirishga majbur bo'lardi — bir kunda
+     bir xil summali ikkita to'lov bo'lsa, qaysi biri ekani noaniq
+     qolardi. */
+  if (receiptNo) r.row(t("kassa.receiptNo"), receiptNo);
   r.row(t("common.date"), (date || new Date()).toLocaleString("uz-UZ"));
   if (cashier) r.row(t("kassa.receiptCashier"), cashier);
   if (customer?.fullName) r.row(t("kassa.receiptCustomer"), customer.fullName);
@@ -275,9 +281,20 @@ export function buildDebtReceipt({ customer, amount, balanceAfter, method,
 
   r.bold().double().row(t("kassa.receiptPaid"), money(amount)).double(false).bold(false);
   r.row(t("kassa.receiptPayment"), paymentLabel(method));
+  if (balanceBefore != null) r.row(t("credit.wasDebt"), money(balanceBefore));
   /* Qolgan qarz — mijoz aynan shuni so'raydi. Nol bo'lsa ham yoziladi:
      «qarzingiz qolmadi» degan qator eng qimmatli qator. */
   r.row(t("kassa.receiptDebtLeft"), money(balanceAfter ?? 0));
+
+  /* ⚠ QR — chekning elektron nusxasiga (V61). Termal qog'oz vaqt
+     o'tib xiralashadi va aynan qarz cheki eng uzoq saqlanishi kerak
+     bo'lgan qog'oz: tortishuv oylar keyin ham chiqishi mumkin.
+     Telefonga ko'chirilgan nusxa esa xiralashmaydi. */
+  if (qrUrl) {
+    r.rule();
+    r.center().line(t("kassa.receiptQrHint"));
+    r.qr(qrUrl, 6);
+  }
 
   r.rule();
   r.center().line(t("kassa.receiptThanks")).line("e-kassam.uz");
@@ -768,7 +785,8 @@ export async function testPrint() {
  */
 function printInBrowser({ saleId, serverSaleId, cart = [], total = 0, subtotal, discount = 0,
                           payType, payments, customer, offline, shopName, cashier, receiptUrl,
-                          credit, __debt, amount, balanceAfter, method, date }) {
+                          credit, __debt, amount, balanceAfter, balanceBefore, method, date,
+                          receiptNo, qrUrl }) {
   const win = window.open("", "_blank", "width=360,height=640,toolbar=no,menubar=no");
   if (!win) throw new Error(t("hw.errPopup"));
 
@@ -800,13 +818,19 @@ function printInBrowser({ saleId, serverSaleId, cart = [], total = 0, subtotal, 
       <div class="c"><div class="logo">${esc(shopName || "E-KASSAM.UZ")}</div>
         <small>${esc(t("kassa.receiptDebtPay"))}</small></div>
       <div class="hr"></div>
+      ${receiptNo ? `<div class="row"><span>${esc(t("kassa.receiptNo"))}</span><span>${esc(receiptNo)}</span></div>` : ""}
       <div class="row"><span>${esc(t("common.date"))}</span><span>${esc((date || new Date()).toLocaleString("uz-UZ"))}</span></div>
       ${cashier ? `<div class="row"><span>${esc(t("kassa.receiptCashier"))}</span><span>${esc(cashier)}</span></div>` : ""}
       ${customer?.fullName ? `<div class="row"><span>${esc(t("kassa.receiptCustomer"))}</span><span>${esc(customer.fullName)}</span></div>` : ""}
       <div class="hr"></div>
       <div class="row"><b>${esc(t("kassa.receiptPaid"))}</b><b>${esc(money(amount))}</b></div>
       <div class="row"><span>${esc(t("kassa.receiptPayment"))}</span><span>${esc(paymentLabel(method))}</span></div>
+      ${balanceBefore != null ? `<div class="row"><span>${esc(t("credit.wasDebt"))}</span><span>${esc(money(balanceBefore))}</span></div>` : ""}
       <div class="row"><span>${esc(t("kassa.receiptDebtLeft"))}</span><span>${esc(money(balanceAfter ?? 0))}</span></div>
+      ${qrUrl ? `<div class="hr"></div><div class="c">
+        ${qrSvg(qrUrl, { size: 96, margin: 1 })}
+        <small>${esc(t("kassa.receiptQrHint"))}</small>
+      </div>` : ""}
       <div class="hr"></div>
       <div class="c"><p>${esc(t("kassa.receiptThanks"))}</p><small>e-kassam.uz</small></div>`;
 

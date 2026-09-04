@@ -8,6 +8,7 @@ import { dateTime, groupDigits } from "../lib/ek-format";
 import { MaskedField } from "../components/ek/EkFields";
 import { phoneInput } from "../lib/ek-input";
 import Receipt from "./Receipt";
+import PaymentReceipt from "./PaymentReceipt";
 
 /* ══════════════════════════════════════════════════════════════════════════
    MIJOZ KABINETI — do'kon xaridorining sahifasi (V34)
@@ -502,6 +503,17 @@ export default function CustomerPortal() {
   const signed = /^\/c\/(\d+)-([0-9a-f]+)$/i.exec(window.location.pathname);
   if (signed) {
     return <Receipt signedId={signed[1]} signature={signed[2]} onClose={() => window.history.back()} />;
+  }
+
+  /* ── QARZ TO'LOVINING CHEKI (V61): `/t/{id}-{imzo}` ──────────────────
+     ⚠ Kabinet kaliti TALAB QILINMAYDI — xarid chekidagi bilan bir xil
+     sabab, faqat bu yerda u KUCHLIROQ: qarzini naqd yopib ketgan odamda
+     ilova ham, kabinet ham bo'lmasligi mumkin, chek esa aynan unga
+     kerak. Imzo faqat SHU bitta to'lovni ochadi. */
+  const paidLink = /^\/t\/(\d+)-([0-9a-f]+)$/i.exec(window.location.pathname);
+  if (paidLink) {
+    return <PaymentReceipt signedId={paidLink[1]} signature={paidLink[2]}
+                           onClose={() => window.history.back()} />;
   }
 
   /* ── QARZ TASDIG'I (V46): `/q/{id}-{imzo}` ────────────────────────────

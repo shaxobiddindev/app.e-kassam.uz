@@ -50,8 +50,14 @@ initLang();
    ketardi va kartasini umuman ko'rmasdi.
    ══════════════════════════════════════════════════════════════════════════ */
 /* ⚠ `q/` ham shu yerda (V46): qarz tasdig'i sahifasi mijozniki va u
-   xodim daraxtiga umuman kirmasligi kerak. */
-const IS_PORTAL = /^\/(qr|kabinet|c\/|q\/)(\/|$|\d)/.test(window.location.pathname);
+   xodim daraxtiga umuman kirmasligi kerak.
+
+   ⚠ `t/` — QARZ TO'LOVINING CHEKI (V61) va u SHU RO'YXATDA bo'lishi
+   SHART. Yo'l bu yerda sanalmasa, qog'ozdagi QR ni o'qigan xaridor
+   xodim daraxtiga tushib, `localStorage.clear()` dan keyin kassa
+   kirish sahifasiga otilib ketardi — chek o'rniga parol so'ralardi.
+   Aynan shu xato `c/` bilan bir marta qilingan. */
+const IS_PORTAL = /^\/(qr|kabinet|c\/|q\/|t\/)(\/|$|\d)/.test(window.location.pathname);
 
 /* ══════════════════════════════════════════════════════════════════════════
    MIJOZ ILOVASI BRAUZERDA (V40)
