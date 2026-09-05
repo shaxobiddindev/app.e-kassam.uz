@@ -67,14 +67,18 @@ export function niceMax(max) {
  * @param lines   `[{ key, name, color, area }]` — `area` bo'lsa ostiga
  *                shaffof to'ldiruv qo'yiladi (asosiy qator uchun)
  */
-export function LineChart({ points = [], lines = [], height = 240, fmt = shortNum, empty = "" }) {
+export function LineChart({ points = [], lines = [], height = 240, fmt = shortNum, empty = "", label = "" }) {
   const uid = useId().replace(/:/g, "");
   const [hover, setHover] = useState(null);
   const W = 1000, H = height, PL = 62, PR = 12, PT = 12, PB = 26;
 
+  /* ⚠ `null` — «qiymat YO'Q», nol emas. U chegara hisobiga ham,
+     chiziqning o'ziga ham qo'shilmaydi. */
+  const has = (v) => v != null && Number.isFinite(Number(v));
+
   const max = useMemo(() => {
     let m = 0;
-    for (const p of points) for (const l of lines) m = Math.max(m, nz(p[l.key]));
+    for (const p of points) for (const l of lines) if (has(p[l.key])) m = Math.max(m, nz(p[l.key]));
     return niceMax(m);
   }, [points, lines]);
   /* ⚠ Manfiy qiymat ham bo'lishi mumkin (foyda zararga ketsa) — pastki
@@ -82,7 +86,7 @@ export function LineChart({ points = [], lines = [], height = 240, fmt = shortNu
      ketardi va grafik yolg'on gapirardi. */
   const min = useMemo(() => {
     let m = 0;
-    for (const p of points) for (const l of lines) m = Math.min(m, nz(p[l.key]));
+    for (const p of points) for (const l of lines) if (has(p[l.key])) m = Math.min(m, nz(p[l.key]));
     return m === 0 ? 0 : -niceMax(-m);
   }, [points, lines]);
 
@@ -95,9 +99,32 @@ export function LineChart({ points = [], lines = [], height = 240, fmt = shortNu
 
   if (!n) return <ChartEmpty height={height} text={empty} />;
 
-  const path = (key) => points.map((p, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(p[key]).toFixed(1)}`).join(" ");
-  const area = (key) =>
-    `${path(key)} L${x(n - 1).toFixed(1)},${y(0).toFixed(1)} L${x(0).toFixed(1)},${y(0).toFixed(1)} Z`;
+  /**
+   * Chiziq. `null` nuqtada U UZILADI, nolga tushmaydi.
+   *
+   * ⚠ MANA SHU YERDA HAQIQIY XATO BOR EDI. Bosh sahifada bugungi
+   * chiziq joriy soatda tugaydi va qolgan soatlar `null` bo'ladi.
+   * Ilgari `nz()` ularni NOLGA aylantirardi va chiziq soat 14 dan
+   * keyin pastga QULARDI — ekranda «savdo to'xtadi» degan yolg'on
+   * rasm chiqardi. Endi chiziq shunchaki to'xtaydi.
+   */
+  const path = (key) => {
+    let d = "", open = false;
+    points.forEach((p, i) => {
+      if (!has(p[key])) { open = false; return; }
+      d += `${open ? "L" : "M"}${x(i).toFixed(1)},${y(p[key]).toFixed(1)} `;
+      open = true;
+    });
+    return d.trim();
+  };
+  /* To'ldirish chiziqning OXIRGI mavjud nuqtasidan yopiladi — aks
+     holda uzilgan chiziqda soya bo'sh joyni ham bo'yardi. */
+  const area = (key) => {
+    const idx = points.map((p, i) => (has(p[key]) ? i : -1)).filter((i) => i >= 0);
+    if (!idx.length) return "";
+    const a = idx[0], b = idx[idx.length - 1];
+    return `${path(key)} L${x(b).toFixed(1)},${y(0).toFixed(1)} L${x(a).toFixed(1)},${y(0).toFixed(1)} Z`;
+  };
 
   /* O'q yozuvlari — beshta chiziq. Ko'proq qilinsa ular bir-biriga
      yopishib, grafikni to'r bilan qoplab qo'yardi. */
@@ -109,6 +136,10 @@ export function LineChart({ points = [], lines = [], height = 240, fmt = shortNu
     <div className="chart" onMouseLeave={() => setHover(null)}>
       <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img"
            style={{ width: "100%", height, display: "block" }}>
+        {/* ⚠ `role="img"` bo'lgan SVG ga NOM shart: usiz skrinrider
+            grafikni «rasm» deb o'qiydi va nima chizilganini aytmaydi.
+            Nom berilmasa chiziqlarning nomlaridan yig'iladi. */}
+        <title>{label || lines.map((l) => l.label || l.name || l.key).filter(Boolean).join(", ")}</title>
         <defs>
           {lines.filter((l) => l.area).map((l) => (
             <linearGradient key={l.key} id={`g-${uid}-${l.key}`} x1="0" y1="0" x2="0" y2="1">
@@ -229,7 +260,7 @@ export function BarChart({ bars = [], height = 200, fmt = shortNum, color = "var
  * ⚠ `stroke-dasharray` bilan chiziladi, burchak hisoblanmaydi: bu
  * yozilishi ham, o'qilishi ham oson va SVG uni aniq bajaradi.
  */
-export function Donut({ slices = [], size = 180, thickness = 22, center = null, empty = "" }) {
+export function Donut({ slices = [], size = 180, thickness = 22, center = null, empty = "", label = "" }) {
   const total = slices.reduce((s, x) => s + Math.abs(nz(x.value)), 0);
   if (!slices.length || total === 0) return <ChartEmpty height={size} text={empty} />;
   const r = (size - thickness) / 2;
@@ -238,6 +269,7 @@ export function Donut({ slices = [], size = 180, thickness = 22, center = null, 
   return (
     <div className="donut" style={{ width: size, height: size }}>
       <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} role="img">
+        <title>{label || slices.map((x) => x.label).filter(Boolean).join(", ")}</title>
         <g transform={`rotate(-90 ${size / 2} ${size / 2})`}>
           {slices.map((s, i) => {
             const frac = Math.abs(nz(s.value)) / total;

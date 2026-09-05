@@ -33,7 +33,7 @@ import { useShopFeatures } from "../hooks/useShopFeatures";
    ⚠ Bandning YORLIG'I emas, KALITI saqlanadi — yorliq har render'da `t()`
    dan olinadi, aks holda til almashtirilganda menyu eski tilda qolardi.
    ══════════════════════════════════════════════════════════════════════════ */
-const NAV = [
+export const NAV = [
   { id: "dashboard", path: "/",     key: "nav.dashboard", icon: "fa-chart-pie",     roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
   { id: "sale",      path: "/sale", key: "nav.kassa",     icon: "fa-cash-register", roles: ["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"] },
 

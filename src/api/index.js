@@ -219,6 +219,16 @@ export const reportApi = {
    * davrdagi cheklarni qaytadan o'qirdi (eng og'ir qism aynan shu) va
    * raqamlar bir-biriga mos kelmasligi mumkin edi.
    */
+  /**
+   * Bosh sahifaning «HOZIR» qatlami (V74) — bugungi kun, jonli lenta,
+   * ochiq kassalar, tugash arafasidagi tovarlar.
+   *
+   * ⚠ `analytics` dan ALOHIDA so'rov. U davrni tahlil qiladi va og'ir;
+   * bu yengil va avto-yangilanishda HAR DAQIQADA takrorlanadi. Ikkisi
+   * bitta so'rovga birlashtirilganda har yangilanish butun davr
+   * tahlilini qaytadan hisoblatardi.
+   */
+  pulse: (shopId) => request(`/reports/pulse${shopId ? `?shopId=${shopId}` : ""}`),
   analytics: (from, to, bucket, shopId) => {
     const q = new URLSearchParams({ from, to });
     if (bucket) q.set("bucket", bucket);

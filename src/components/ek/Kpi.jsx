@@ -43,38 +43,66 @@ function budget(value) {
 }
 
 export function CountUp({ value, format = groupDigits, duration }) {
-  const [shown, setShown] = useState(REDUCED() ? value : 0);
+  const target = Number(value) || 0;
   const ref = useRef(null);
-  const done = useRef(false);
+  /* Ekranda turgan qiymat — REF da ham saqlanadi, chunki keyingi
+     animatsiya AYNAN shu yerdan boshlanishi kerak. */
+  const shownRef = useRef(REDUCED() ? target : 0);
+  const [shown, setShown] = useState(shownRef.current);
 
+  /* ══════════════════════════════════════════════════════════════════
+     ⚠ BU YERDA HAQIQIY XATO BOR EDI — RAQAMLAR NOL BO'LIB QOLARDI
+
+     Kartochka avval BO'SH chiziladi (`value` hali kelmagan, ya'ni 0),
+     keyin javob kelib qiymat almashadi. Eski kodda birinchi
+     animatsiya «0 dan 0 gacha» ishga tushardi va u ~420 ms davom
+     etardi. Javob shu oraliqda kelsa — tez tarmoqda DOIM shunday
+     bo'ladi — yangi qiymat qo'yilar, lekin ESKI halqa keyingi
+     kadrda uni yana NOLGA qaytarardi. Halqa tugagach ekranda «0»
+     qolib ketardi va boshqa hech qachon yangilanmasdi.
+
+     Xato JIMGINA edi: sahifa yiqilmasdi, foizlar to'g'ri turardi,
+     faqat eng katta raqamlar nol ko'rsatardi.
+
+     Yechim ikkita: (1) eski halqa TOZALASHDA bekor qilinadi;
+     (2) animatsiya noldan emas, EKRANDAGI qiymatdan boshlanadi —
+     shu bilan avto-yangilanishda raqam nolga tushib qaytmaydi.
+     ══════════════════════════════════════════════════════════════════ */
   useEffect(() => {
-    const target = Number(value) || 0;
-    if (REDUCED()) { setShown(target); return; }
+    const set = (v) => { shownRef.current = v; setShown(v); };
+    if (REDUCED()) { set(target); return; }
     const el = ref.current;
     if (!el) return;
 
-    const run = () => {
-      if (done.current) { setShown(target); return; }
-      done.current = true;
+    let raf = 0, stop = false;
+    const from = shownRef.current;
+
+    const animate = () => {
+      if (from === target) { set(target); return; }
       const t0 = performance.now();
       const ms = duration || budget(target);
       const ease = (t) => 1 - Math.pow(1 - t, 3);   // ease-out
       const tick = (now) => {
+        if (stop) return;
         const p = Math.min(1, (now - t0) / ms);
-        setShown(Math.round(target * ease(p)));
-        if (p < 1) requestAnimationFrame(tick);
+        set(Math.round(from + (target - from) * ease(p)));
+        if (p < 1) raf = requestAnimationFrame(tick);
       };
-      requestAnimationFrame(tick);
+      raf = requestAnimationFrame(tick);
     };
 
-    if (!("IntersectionObserver" in window)) { run(); return; }
+    const stopAll = () => { stop = true; if (raf) cancelAnimationFrame(raf); };
+
+    /* Sanash faqat kartochka KO'RINGANDA boshlanadi — ekrandan
+       tashqarida sanalgan raqamni hech kim ko'rmaydi. */
+    if (!("IntersectionObserver" in window)) { animate(); return stopAll; }
     const io = new IntersectionObserver(
-      ([e]) => { if (e.isIntersecting) { run(); io.disconnect(); } },
+      ([e]) => { if (e.isIntersecting) { animate(); io.disconnect(); } },
       { threshold: .35 }
     );
     io.observe(el);
-    return () => io.disconnect();
-  }, [value, duration]);
+    return () => { stopAll(); io.disconnect(); };
+  }, [target, duration]);
 
   // Tabular figures majburiy — aks holda raqam o'zgarganda kenglik sakraydi
   return <span ref={ref} className="ek-countup">{format(shown)}</span>;
