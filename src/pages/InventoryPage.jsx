@@ -6,6 +6,7 @@ import { BranchSelector, Modal } from "../components";
 import MarkingScanModal from "../components/MarkingScanModal";
 import { Empty, SearchBar } from "../components/ui";
 import FacetFilter from "../components/ek/FacetFilter";
+import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
 import VariantMatrixModal from "../components/VariantMatrixModal";
 import Select from "../components/ek/Select";
 import { useAuth } from "../hooks/useAuth";
@@ -347,6 +348,36 @@ export default function InventoryPage({ toast }) {
      ko'rinmay qolardi. */
   const needsOrder = (f) => f.low || f.out;
 
+  /* ══ USTUNLAR BO'YICHA FILTR (V68) ═════════════════════════════════
+     Do'kon egasi: «ekranda ko'ringan har bir ustun bilan filtr qila
+     olsin». Ro'yxat AYNAN jadval sarlavhalariga mos: filtrda bor-u
+     jadvalda yo'q ustun natijani tushuntirib bo'lmas qilardi va
+     aksincha.
+
+     ⚠ `get` — jadvalda ko'rinadigan QIYMATNI beradi, xom yozuvni
+     emas: omborchi ekranda «71 dona» ni ko'rib turib, «qoldiq > 50»
+     deb filtrlaydi va javob shu songa mos kelishi kerak. */
+  const COLS = useMemo(() => [
+    { key: "name",   label: t("products.col"),        type: "text",   get: ({ g }) => g.productName },
+    { key: "code",   label: t("products.barcode"),    type: "text",   get: ({ g }) => g.barcode },
+    { key: "qty",    label: t("inv.stock"),           type: "number", get: ({ g }) => g.totalQuantity },
+    { key: "cost",   label: t("products.costPrice"),  type: "number", get: ({ g }) => g.costPrice },
+    { key: "price",  label: t("products.salePrice"),  type: "number", get: ({ g }) => g.salePrice },
+    { key: "expiry", label: t("inv.expiry"),          type: "date",   get: ({ g }) => g.nearestExpiry },
+    /* Holat — hisoblanadigan ustun: ekranda yozuv bo'lib turadi. */
+    { key: "state",  label: t("common.status"),       type: "enum",
+      options: [
+        { value: "expired", label: t("enum.inventory.EXPIRED") },
+        { value: "near",    label: t("inv.fltNear") },
+        { value: "low",     label: t("inv.fltLow") },
+        { value: "out",     label: t("enum.inventory.OUT_OF_STOCK") },
+        { value: "ok",      label: t("enum.inventory.ACTIVE") },
+      ],
+      get: ({ f }) => (f.expired ? "expired" : f.near ? "near"
+                      : f.out ? "out" : f.low ? "low" : "ok") },
+  ], []);
+  const colFlt = useDataFilter(COLS, "inv");
+
   const counts = useMemo(() => ({
     expired: rows.filter((r) => r.f.expired).length,
     near:    rows.filter((r) => r.f.near).length,
@@ -465,7 +496,10 @@ export default function InventoryPage({ toast }) {
         && ok(clothFilter.targets, g.targetGroup)
         && ok(clothFilter.seasons, g.season);
   });
-  const filtered = rankItems(byState, search, {
+  /* ⚠ TARTIB: tez filtr (chiplar) → USTUN FILTRI → qidiruv. Qidiruv
+     oxirida, chunki u natijani MOSLIK bo'yicha saralaydi; ustun
+     saralashi esa qidiruvsiz ishlaydi. */
+  const filtered = rankItems(colFlt.apply(byState), search, {
     codes: ({ g }) => [g.barcode],
     texts: ({ g }) => [g.productName],
   });
@@ -714,6 +748,13 @@ export default function InventoryPage({ toast }) {
                     onClick={() => setFlt("all")}>
               {t("common.all")} <span className="badge tab-badge">{rows.length}</span>
             </button>
+            {/* ⚠ USTUN FILTRI SHU QATORDA (V68, do'kon egasining g'oyasi:
+                «filtrni shunga joylashtirsang bu yaxshi g'oya»). Tez
+                filtrlar (muddati o'tgan, kam qolgan) va batafsil filtr
+                bitta joyda: ikkalasi ham «ro'yxatni toraytirish» degan
+                bitta ish va ularni sahifaning ikki burchagiga bo'lish
+                omborchini qidirishga majburlardi. */}
+            <DataFilter cols={COLS} flt={colFlt} />
             {counts.expired > 0 && (
               <button type="button"
                       className={`btn btn-sm ${flt === "expired" ? "btn-primary" : "btn-outline"}`}
@@ -846,15 +887,18 @@ export default function InventoryPage({ toast }) {
             <Empty text={t(flt === "all" ? "inv.notFound" : "inv.noMatch")} />
           ) : (
             <table className="table">
+              {/* ⚠ SARLAVHA BOSILSA — SARALASH (V68): o'sish → kamayish →
+                  tartibsiz. Uchinchi bosish tartibni BEKOR qiladi, aks
+                  holda dastlabki tartibga qaytish yo'li qolmasdi. */}
               <thead>
                 <tr>
-                  <th>{t("products.col")}</th>
-                  <th>{t("products.barcode")}</th>
-                  <th>{t("inv.stock")}</th>
-                  <th>{t("products.costPrice")}</th>
-                  <th>{t("products.salePrice")}</th>
-                  <th>{t("inv.expiry")}</th>
-                  <th>{t("common.status")}</th>
+                  <SortTh flt={colFlt} col="name">{t("products.col")}</SortTh>
+                  <SortTh flt={colFlt} col="code">{t("products.barcode")}</SortTh>
+                  <SortTh flt={colFlt} col="qty">{t("inv.stock")}</SortTh>
+                  <SortTh flt={colFlt} col="cost">{t("products.costPrice")}</SortTh>
+                  <SortTh flt={colFlt} col="price">{t("products.salePrice")}</SortTh>
+                  <SortTh flt={colFlt} col="expiry">{t("inv.expiry")}</SortTh>
+                  <SortTh flt={colFlt} col="state">{t("common.status")}</SortTh>
                   {!branchId && <th className="text-end">{t("common.actions")}</th>}
                 </tr>
               </thead>

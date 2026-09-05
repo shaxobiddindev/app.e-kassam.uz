@@ -4083,3 +4083,55 @@ body.osk-open .mark-modal {
   .osk--num .osk__key { min-height: 46px; height: 46px; font-size: 20px; }
   .osk__key { min-height: 44px; }
 }
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   USTUNLAR BO'YICHA FILTR (V68)
+   ══════════════════════════════════════════════════════════════════════════ */
+.flt-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1.4fr) auto;
+  gap: 8px; align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.flt-row:last-of-type { border-bottom: 0; }
+.flt-vals { display: flex; gap: 6px; min-width: 0; }
+.flt-vals .form-input { min-width: 0; }
+.flt-enum { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+
+/* Faol shartlar — jadval tepasida, oyna yopiq bo'lsa ham ko'rinadi. */
+.flt-chips { display: inline-flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.flt-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 6px 3px 9px; border-radius: 999px;
+  background: var(--bg-brand-subtle); color: var(--fg-brand);
+  font-size: 12px; font-weight: 600; white-space: nowrap;
+}
+.flt-chip b { font-weight: 800; }
+.flt-chip button {
+  border: 0; background: none; color: inherit; cursor: pointer;
+  width: 18px; height: 18px; border-radius: 50%; font-size: 11px;
+}
+.flt-chip button:hover { background: var(--bg-brand); color: var(--fg-on-brand); }
+.flt-chips__clear {
+  border: 0; background: none; color: var(--fg-secondary); cursor: pointer;
+  font-size: 12px; font-weight: 700; text-decoration: underline;
+}
+
+/* ⚠ SARALASH TUGMASI — `th` NING ICHIDA, `th` ning O'ZI emas: sarlavha
+   `sticky` va unga `button` uslublarini berish qatorni siljitardi. */
+.th-sort {
+  display: inline-flex; align-items: center; gap: 6px;
+  border: 0; background: none; padding: 0; cursor: pointer;
+  font: inherit; color: inherit; letter-spacing: inherit; text-transform: inherit;
+}
+.th-sort i { font-size: 10px; opacity: .45; }
+.th-sort:hover i { opacity: .9; }
+.th-sort.is-on { color: var(--fg-brand); }
+.th-sort.is-on i { opacity: 1; }
+
+@media (max-width: 720px) {
+  .flt-row { grid-template-columns: 1fr auto; }
+  .flt-vals, .flt-enum { grid-column: 1 / -1; }
+}
