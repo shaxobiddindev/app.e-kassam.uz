@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "../lib/ek-i18n";
-import { reportApi } from "../api";
+import { reportApi, shopApi } from "../api";
 import { BranchSelector } from "../components";
 import { Empty } from "../components/ui";
 import { money, percent } from "../utils";
@@ -11,6 +11,7 @@ import Select from "../components/ek/Select";
 import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
 import { LineChart, BarChart, Donut, HeatMap, shortNum } from "../components/ek/Charts";
 import { PERIODS, periodRange, isoInstant, isoDay, lengthDays, growth } from "../lib/ek-period";
+import { forecast, expectedTotal, targetProgress, MIN_POINTS } from "../lib/ek-forecast";
 
 /* ══════════════════════════════════════════════════════════════════════════
    HISOBOTLAR — biznes tahlili (V69)
@@ -151,6 +152,15 @@ export default function ReportsPage({ toast }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const busy = useLoading(loading);
+  /* Oylik reja — do'kon sozlamasidan. ⚠ ALOHIDA so'rov va u yiqilsa
+     ekran baribir chiziladi: reja qo'shimcha, uning yo'qligi
+     hisobotni ishlatishga xalaqit bermaydi. */
+  const [target, setTarget] = useState(null);
+  useEffect(() => {
+    shopApi.getProfile()
+      .then((p) => setTarget(p?.monthlySalesTarget ?? p?.data?.monthlySalesTarget ?? null))
+      .catch(() => setTarget(null));
+  }, []);
 
   const range = useMemo(() => periodRange(period, new Date(), custom), [period, custom]);
   const days = lengthDays(range);
@@ -172,6 +182,9 @@ export default function ReportsPage({ toast }) {
   /* ── Dinamika nuqtalari ──────────────────────────────────────────── */
   const points = useMemo(() => (data?.series || []).map((s) => ({
     label: s.label,
+    /* ⚠ Sana ham saqlanadi: prognoz hafta kuni koeffitsiyentini
+       shundan oladi va usiz shanba bilan dushanbani ajrata olmasdi. */
+    at: s.at,
     sales: num(s.netSales),
     cost: num(s.cogs),
     profit: num(s.grossProfit),
@@ -259,7 +272,8 @@ export default function ReportsPage({ toast }) {
         : !data ? <Empty icon="fa-chart-pie" text={t("rpt2.noData")} />
         : (
           <>
-            {tab === "home"     && <Home     d={data} k={k} p={p} points={points} days={days} />}
+            {tab === "home"     && <Home     d={data} k={k} p={p} points={points} days={days}
+                                     target={target} range={range} period={period} />}
             {tab === "sales"    && <Sales    d={data} k={k} p={p} points={points} />}
             {tab === "profit"   && <Profit   d={data} k={k} p={p} />}
             {tab === "products" && <Products d={data} />}
@@ -277,7 +291,7 @@ export default function ReportsPage({ toast }) {
 
 /* ══ 1. BOSH SAHIFA ════════════════════════════════════════════════════ */
 
-function Home({ d, k, p, points, days }) {
+function Home({ d, k, p, points, days, target, range, period }) {
   /* Kunlik o'rtacha — davrlarni taqqoslash uchun yagona adolatli
      o'lchov: 5 kunlik va 30 kunlik davrning jami summasini yonma-yon
      qo'yish hech narsa aytmaydi. */
@@ -324,6 +338,8 @@ function Home({ d, k, p, points, days }) {
         </div>
       </Panel>
 
+      <TargetAndForecast points={points} k={k} target={target} range={range} period={period} />
+
       <Insights d={d} k={k} p={p} />
 
       <div className="rpt-cols">
@@ -335,6 +351,109 @@ function Home({ d, k, p, points, days }) {
                  }))} />
       </div>
     </>
+  );
+}
+
+/* ══ REJA VA PROGNOZ (V70) ═════════════════════════════════════════════
+
+   Do'kon egasi ikkita narsani so'radi: «reja 2.0 mlrd, haqiqat 1.62
+   mlrd, bajarilish 81%» va «oy tugashiga 8 kun qoldi, tizim 2.08 mlrd
+   bo'lishini taxmin qilsin».
+
+   ⚠ BO'LIM FAQAT KERAK BO'LGANDA CHIZILADI. Reja qo'yilmagan bo'lsa
+   yoki davr TUGAGAN bo'lsa (kecha, o'tgan oy) — u umuman ko'rinmaydi:
+   tugagan oyning «prognozi» ma'nosiz va ekranda bekorga joy egallardi.
+
+   ⚠ Reja OYLIK, shuning uchun bajarilish faqat OY davrida
+   ko'rsatiladi. «Bugun» yoki «shu yil» ni oylik reja bilan
+   solishtirish yolg'on javob berardi: kunlik savdo rejaning 3% ini
+   bajaradi va bu «yomon» bo'lib ko'rinardi.
+   ══════════════════════════════════════════════════════════════════════ */
+function TargetAndForecast({ points, k, target, range, period }) {
+  /* Davr oxirigacha qolgan kunlar. Manfiy bo'lsa davr tugagan. */
+  const daysLeft = useMemo(() => {
+    const end = new Date(range.to.getTime() - 1);
+    const today = new Date();
+    return Math.max(0, Math.ceil((end - today) / 86400000));
+  }, [range.to]);
+
+  /* Prognoz uchun KUNLIK qator kerak — hafta yoki oy qadamida
+     «kelasi kun» degan tushunchaning o'zi yo'q. */
+  const daily = useMemo(
+    () => points.filter((x) => x.at).map((x) => ({ at: x.at, value: x.sales })),
+    [points]);
+
+  const prog = targetProgress(target, k.netSales, daysLeft);
+  const showTarget = prog && period === "month";
+  const expected = daysLeft > 0 ? expectedTotal(k.netSales, daily, daysLeft) : null;
+  const next = daysLeft > 0 ? null : forecast(daily, 7);
+
+  if (!showTarget && expected == null && !next) return null;
+
+  return (
+    <div className="rpt-cols">
+      {showTarget && (
+        <Panel title={t("rpt2.target")} icon="fa-bullseye">
+          <div className="card-body">
+            <div className="tgt">
+              <div className="tgt__row">
+                <span>{t("rpt2.targetPlan")}</span>
+                <b className="mono">{money(target)}</b>
+              </div>
+              <div className="tgt__row">
+                <span>{t("rpt2.targetDone")}</span>
+                <b className="mono text-blue">{money(k.netSales)}</b>
+              </div>
+              {/* ⚠ Chiziq 100% dan OSHMAYDI, lekin foiz oshadi: to'lgan
+                  chiziq «tugadi» degan aniq ishora va uni cho'zish
+                  qutidan chiqib ketardi. */}
+              <div className="tgt__bar">
+                <i style={{ width: `${Math.min(100, prog.percent)}%`,
+                            background: prog.percent >= 100 ? "var(--fg-success)" : "var(--bg-brand)" }} />
+              </div>
+              <div className="tgt__foot">
+                <b className={prog.percent >= 100 ? "text-success" : ""}>{prog.percent.toFixed(0)}%</b>
+                {prog.left > 0
+                  ? <span>{t("rpt2.targetLeft", { v: money(prog.left) })}</span>
+                  : <span className="text-success">{t("rpt2.targetDoneAll")}</span>}
+              </div>
+              {prog.perDayNeeded != null && prog.left > 0 && (
+                <div className="tgt__hint">
+                  {t("rpt2.targetPerDay", { n: daysLeft, v: money(prog.perDayNeeded) })}
+                </div>
+              )}
+            </div>
+          </div>
+        </Panel>
+      )}
+
+      {(expected != null || next) && (
+        <Panel title={t("rpt2.forecast")} icon="fa-wand-magic-sparkles"
+               right={<i className="fa-solid fa-circle-info kpi__hint" title={t("rpt2.forecastHint")} />}>
+          <div className="card-body">
+            {expected != null && (
+              <div className="tgt__row tgt__row--big">
+                <span>{t("rpt2.expectedTotal", { n: daysLeft })}</span>
+                <b className="mono">{money(expected)}</b>
+              </div>
+            )}
+            {/* Davr tugagan bo'lsa — kelasi hafta taxmini. */}
+            {next && (
+              <BarChart height={170} empty={t("rpt2.noData")} color={C.sales}
+                        bars={next.map((x) => ({
+                          label: `${String(x.at.getDate()).padStart(2, "0")}.${String(x.at.getMonth() + 1).padStart(2, "0")}`,
+                          value: x.value,
+                        }))} />
+            )}
+            {expected == null && !next && (
+              <div className="text-muted" style={{ fontSize: 13 }}>
+                {t("rpt2.forecastNeedData", { n: MIN_POINTS })}
+              </div>
+            )}
+          </div>
+        </Panel>
+      )}
+    </div>
   );
 }
 
@@ -598,6 +717,39 @@ function Products({ d }) {
           </div>
         </Panel>
       </div>
+
+      {/* ══ SAVAT TAHLILI (V70) ══════════════════════════════════════
+          Do'kon egasi: «Coca-Cola sotilganda odamlar ko'pincha Chips
+          ham oladi». ⚠ Juftlik YO'NALTIRILGAN o'qiladi: «A olganlarning
+          X% i B ni ham oldi». Non olganlarning 5% i ikra oladi, ikra
+          olganlarning 90% i non oladi — ikkalasi ham to'g'ri va
+          ikkinchisi qimmatli javob. */}
+      {(d.basket || []).length > 0 && (
+        <Panel title={t("rpt2.basket")} icon="fa-cart-plus" wide
+               right={<span className="text-muted" style={{ fontSize: 12 }}>{t("rpt2.basketHint")}</span>}>
+          <div className="table-wrap">
+            <table className="table">
+              <thead><tr>
+                <th>{t("rpt2.basketA")}</th><th /><th>{t("rpt2.basketB")}</th>
+                <th>{t("rpt2.together")}</th><th>{t("rpt2.confidence")}</th>
+              </tr></thead>
+              <tbody>
+                {d.basket.slice(0, 20).map((b, i) => (
+                  <tr key={i}>
+                    <td className="fw-700">{b.nameA}</td>
+                    <td className="text-muted" style={{ width: 24, textAlign: "center" }}>
+                      <i className="fa-solid fa-arrow-right-long" aria-hidden="true" />
+                    </td>
+                    <td className="fw-700">{b.nameB}</td>
+                    <td className="mono">{b.together}</td>
+                    <td className="mono fw-700 text-blue">{percent(b.confidence)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Panel>
+      )}
 
       <Panel title={t("rpt2.allProducts")} icon="fa-boxes-stacked" wide
              right={<div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>

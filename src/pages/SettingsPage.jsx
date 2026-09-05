@@ -119,6 +119,7 @@ export default function SettingsPage({ toast }) {
   const [nonCashTolerance, setNonCashTolerance] = useState("");
   const [stockTolerance, setStockTolerance] = useState("");
   const [nearExpiry, setNearExpiry] = useState("");
+  const [salesTarget, setSalesTarget] = useState("");
   useEffect(() => {
     if (!isOwner) return;
     shopApi.getProfile()
@@ -142,6 +143,10 @@ export default function SettingsPage({ toast }) {
         /* ⚠ Bo'sh ustun — STANDART (7 kun), nol emas. Nol ko'rsatilsa egasi
            «ogohlantirish o'chiq» deb o'ylardi va u hech qachon o'chirilmagan. */
         setNearExpiry(String(r?.data?.nearExpiryDays ?? DEFAULT_NEAR_EXPIRY_DAYS));
+        /* ⚠ Reja `null` bo'lsa maydon BO'SH qoladi, nol emas: nol
+           «rejamiz nol» degani va hisobotda bajarilish har doim
+           100% bo'lib chiqardi. */
+        setSalesTarget(r?.data?.monthlySalesTarget == null ? "" : String(r.data.monthlySalesTarget));
       })
       .catch(() => {});
   }, [isOwner]);
@@ -350,6 +355,29 @@ export default function SettingsPage({ toast }) {
                      onBlur={saveField(shopApi.setNearExpiryDays, nearExpiry, DEFAULT_NEAR_EXPIRY_DAYS)} />
             </Row>
             )}
+            {/* ══ OYLIK SAVDO REJASI (V70) ═══════════════════════════
+                Rahbar «shu oy 2 milliard savdo qilishimiz kerak»
+                deydi — hisobot esa reja va haqiqatni yonma-yon
+                ko'rsatadi.
+
+                ⚠ BO'SH QOLDIRSA REJA O'CHADI, nolga tenglashmaydi:
+                nol «rejamiz nol» degani va bajarilish har doim 100%
+                bo'lib chiqardi. Shuning uchun bu yerda `saveField`
+                ISHLATILMAYDI — u bo'sh qiymatni fallback songa
+                aylantiradi. */}
+            <Row label={t("set.salesTarget")} hint={t("set.salesTargetHint")}>
+              <Field kind="money" className="form-input ek-num"
+                     wrapStyle={{ width: 220 }}
+                     value={salesTarget}
+                     onChange={(e) => setSalesTarget(e.target.value)}
+                     onBlur={async () => {
+                       try {
+                         const raw = String(salesTarget).replace(/\s/g, "");
+                         await shopApi.setSalesTarget(raw === "" ? "" : Number(raw) || 0);
+                         toast?.success(t("common.saved"));
+                       } catch (err) { toast?.error(err.message); }
+                     }} />
+            </Row>
             <Row label={t("settings.discountLimit")} hint={t("settings.discountLimitHint")}>
               <Field kind="percent" className="form-input ek-num"
                      wrapStyle={{ width: 160 }}

@@ -146,6 +146,10 @@ const ANALYTICS = {
     { kind: "HIGH_DISCOUNT", severity: "warn", subjectName: "Vali", value: 4.1, baseline: 1.9 },
     { kind: "OFF_HOURS",     severity: "info", subjectName: null, value: 12, baseline: 0 },
   ],
+  basket: [
+    { productA: 1, nameA: "Coca-Cola", productB: 2, nameB: "Chips",    together: 64, confidence: 64 },
+    { productA: 2, nameA: "Chips",     productB: 1, nameB: "Coca-Cola", together: 64, confidence: 91 },
+  ],
 };
 
 /** Bo'sh javob — hamma ro'yxat bo'sh, hamma raqam nol. */
@@ -154,7 +158,7 @@ const EMPTY = {
   now: Object.fromEntries(Object.entries(kpi(1)).map(([k]) => [k, 0])),
   prev: Object.fromEntries(Object.entries(kpi(1)).map(([k]) => [k, 0])),
   series: [], hourly: [], heat: [], products: [], categories: [],
-  cashiers: [], branches: [], payments: [], expenses: [],
+  cashiers: [], branches: [], payments: [], expenses: [], basket: [],
   stock: { totalQuantity: 0, totalValue: 0, outOfStock: 0, lowStock: 0,
            expiringSoon: 0, expired: 0, slowMoving: [] },
   debt: { total: 0, overdue: 0, bucket0to7: 0, bucket8to30: 0, bucket31plus: 0, debtors: 0 },
@@ -162,6 +166,7 @@ const EMPTY = {
   anomalies: [],
 };
 
+let TARGET = null;
 let calls = [];
 async function openReports(payload = ANALYTICS) {
   calls = [];
@@ -176,7 +181,10 @@ async function openReports(payload = ANALYTICS) {
     if (u.pathname === "/api/reports/analytics") calls.push(u.search);
     const body = u.pathname === "/api/reports/analytics"
       ? { success: true, data: payload }
-      : { success: true, data: [] };
+      /* Reja do'kon profilidan keladi (V70). */
+      : u.pathname === "/api/shop/profile"
+        ? { success: true, data: { monthlySalesTarget: TARGET } }
+        : { success: true, data: [] };
     return r.respond({ status: 200, contentType: "application/json",
                        headers: CORS, body: JSON.stringify(body) });
   });
@@ -297,6 +305,48 @@ await page.close();
   is(empties > 0, "bo'sh holat yozuvi chizildi (grafik o'rni bo'm-bo'sh qolmadi)", String(empties));
   await shot(p2, "rpt-empty");
   await p2.close();
+}
+
+/* ══ F. Savat, reja va prognoz (V70) ═══════════════════════════════════ */
+console.log("\n── F. Savat, reja va prognoz ──");
+{
+  TARGET = 200e6;
+  const p3 = await openReports();
+
+  /* Reja — «shu oy» davrida va faqat reja qo'yilgan bo'lsa. */
+  await wait(400);
+  const tgt = await p3.$(".tgt");
+  is(!!tgt, "reja bo'limi chizildi");
+  const pct = await p3.$eval(".tgt__foot b", (e) => e.textContent.trim()).catch(() => "");
+  is(pct === "56%", "bajarilish foizi to'g'ri (112 mln / 200 mln)", pct);
+  /* ⚠ Chiziq 100% dan oshmasligi kerak — cho'zilsa qutidan chiqib ketardi. */
+  const w = await p3.$eval(".tgt__bar i", (e) => e.style.width);
+  is(parseFloat(w) <= 100, "chiziq 100% dan oshmadi", w);
+
+  /* Savat — Tovarlar bo'limida, YO'NALTIRILGAN. */
+  await openTab(p3, 3);
+  const rows = await p3.$$eval(".rpt .card table tbody tr", (n) => n.length);
+  is(rows > 0, "tovarlar jadvali chizildi", String(rows));
+  const basket = await p3.evaluate(() => {
+    const card = [...document.querySelectorAll(".rpt .card")]
+      .find((c) => /birga sotiladigan/i.test(c.querySelector(".card-title")?.textContent || ""));
+    if (!card) return null;
+    return [...card.querySelectorAll("tbody tr")].map((tr) =>
+      [...tr.querySelectorAll("td")].map((td) => td.textContent.trim()));
+  });
+  is(!!basket && basket.length === 2, "savat juftliklari chizildi", JSON.stringify(basket));
+  is(basket && basket[0][0] === "Coca-Cola" && basket[0][2] === "Chips",
+     "juftlik YO'NALTIRILGAN o'qiladi (A → B)");
+  is(basket && basket[0][4] !== basket[1][4],
+     "ikki yo'nalish BOSHQA ishonch beradi", basket ? `${basket[0][4]} ≠ ${basket[1][4]}` : "");
+
+  /* Reja YO'Q bo'lsa bo'lim umuman chizilmaydi. */
+  await p3.close();
+  TARGET = null;
+  const p4 = await openReports();
+  await wait(400);
+  is(!(await p4.$(".tgt")), "reja qo'yilmagan bo'lsa bo'lim UMUMAN chizilmaydi");
+  await p4.close();
 }
 
 is(pageErrors.length === 0, "sahifada JS xatosi tushmadi", pageErrors.join(" | "));

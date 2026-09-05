@@ -4501,3 +4501,19 @@ body.osk-open .mark-modal {
   .kpi__value { font-size: 18px; }
   .rpt-bar__tools { margin-inline-start: 0; }
 }
+
+/* ── Reja va prognoz (V70) ─────────────────────────────────────────── */
+.tgt { display: flex; flex-direction: column; gap: 10px; }
+.tgt__row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font-size: 13px; }
+.tgt__row > span { color: var(--fg-secondary); font-weight: 700; }
+.tgt__row > b { font-size: 17px; font-weight: 800; }
+.tgt__row--big > b { font-size: 22px; }
+/* ⚠ Chiziq 100% dan OSHMAYDI, foiz esa oshadi: to'lgan chiziq
+   «tugadi» degan aniq ishora va uni cho'zish qutidan chiqib ketardi. */
+.tgt__bar { height: 10px; border-radius: 999px; background: var(--bg-sunken); overflow: hidden; }
+.tgt__bar i { display: block; height: 100%; border-radius: 999px; transition: width var(--dur-slow, .4s) var(--ease-out); }
+.tgt__foot { display: flex; align-items: baseline; gap: 10px; font-size: 13px; }
+.tgt__foot > b { font-size: 20px; font-weight: 900; }
+.tgt__foot > span { color: var(--fg-secondary); }
+.tgt__hint { font-size: 12px; color: var(--fg-tertiary); }
+.text-success { color: var(--fg-success); }
