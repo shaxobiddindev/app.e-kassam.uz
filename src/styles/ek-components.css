@@ -45,7 +45,7 @@
   transition: background var(--dur-fast) var(--ease-out);
 }
 .attn__row:last-child { border-bottom: 0; }
-.attn__row:hover { background: var(--bg-sunken); }
+.attn__row:hover { background: var(--bg-hover); }
 .attn__icon {
   display: grid; place-items: center; flex-shrink: 0;
   width: 30px; height: 30px; border-radius: var(--r-md); font-size: 13px;

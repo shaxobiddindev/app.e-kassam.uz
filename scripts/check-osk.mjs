@@ -208,6 +208,43 @@ console.log("\n── B2. HARFLI klaviatura va ochilgan ro'yxat ──");
   await page.keyboard.press("Escape"); await sleep(300);
 }
 
+console.log("\n── C2. Fokus ketsa klaviatura YOPILADI (V68) ──");
+{
+  /* ⚠ Bo'lim O'ZI oyna ochadi: oldingi bo'lim qanday tugaganiga
+     bog'lanib qolish sinovni mo'rt qiladi (bir marta boshdan
+     kechirilgan). */
+  for (let i = 0; i < 6 && (await page.$(".pay-modal-box")); i++) {
+    await page.keyboard.press("Escape"); await sleep(250);
+  }
+  await page.keyboard.press("F9");
+  await page.waitForSelector("#pay-amount", { timeout: 5000 });
+  await sleep(200);
+  await page.evaluate(() => document.querySelector("#pay-amount")?.focus());
+  await sleep(400);
+  yes(!!(await page.$(".osk")), "maydonda klaviatura ochiq");
+
+  /* Klaviatura TUGMASI fokusni olmaydi — u yopilmasligi kerak. */
+  await page.evaluate(() => [...document.querySelectorAll(".osk__key")].find((b) => b.textContent.trim() === "7")?.click());
+  await sleep(300);
+  yes(!!(await page.$(".osk")), "tugma bosilganda YOPILMAYDI");
+
+  /* Maydondan tashqariga — yopiladi. */
+  await page.evaluate(() => document.activeElement?.blur?.());
+  await sleep(500);
+  yes(!(await page.$(".osk")), "fokus ketgach klaviatura yopildi", "hali ochiq");
+
+  /* Maydondan maydonga o'tish klaviaturani yonib-o'chirmaydi. */
+  await page.evaluate(() => document.querySelector("#pay-amount")?.focus());
+  await sleep(350);
+  const before = !!(await page.$(".osk"));
+  await page.evaluate(() => {
+    const a = document.querySelector("#pay-amount");
+    a?.blur(); a?.focus();
+  });
+  await sleep(200);
+  yes(before && !!(await page.$(".osk")), "maydondan maydonga o'tganda ochiq qoladi");
+}
+
 console.log("\n── D. Mijoz har ochilishda tozalanadi ──");
 {
   /* Haqiqiy oqim: to'lov oynasida mijoz tanlanadi, oyna yopiladi va

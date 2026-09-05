@@ -260,6 +260,8 @@ body {
 :root {
   /* ── Brend nomlariga sinonimlar ─────────────────────────────────────── */
   --bg-brand-subtle:  var(--bg-brand-soft);
+  /* Hover foni — ko'kning eng och ottenkasi (V68 izohi pastda). */
+  --bg-hover:         var(--bg-brand-subtle);
   --bg-elevated:      var(--bg-surface);
   --fg-on-inverse:    var(--fg-inverse);
   --ring-brand:       var(--focus-ring);
@@ -355,3 +357,19 @@ body {
   padding: 0; margin: -1px; overflow: hidden;
   clip: rect(0 0 0 0); white-space: nowrap; border: 0;
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   HOVER FONI — KULRANG EMAS, KO'K (V68)
+
+   Do'kon egasi: «hover bo'lganda kulrang bo'lyapti, bu yoqimsiz — barcha
+   shunaqa hover elementlarni dizaynga mos ko'k rangda qilish kerak».
+
+   ⚠ BITTA TOKEN, uchala ilovada bir xil. Ilgari har joyda
+   `var(--bg-sunken)` yozilardi — u «cho'kkan sirt» rangi, ya'ni
+   BOSHQA maqsad uchun (maydon foni, ichki panel). Hoverni o'sha rangga
+   bog'lash ikkalasini ajratib bo'lmas qilib qo'ygan edi: sirt rangini
+   o'zgartirsangiz hover ham o'zgarardi va aksincha.
+
+   ⚠ XAVFLI amallar (o'chirish) BUNGA KIRMAYDI: ular qizil hoverni
+   saqlaydi — rang ogohlantirishning bir qismi.
+   ══════════════════════════════════════════════════════════════════════════ */

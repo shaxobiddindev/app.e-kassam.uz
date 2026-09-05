@@ -181,7 +181,7 @@
   border-color: transparent; background: transparent; color: var(--fg-secondary);
 }
 .sb-footer .ek-select__btn:hover,
-.sb-foot   .ek-select__btn:hover { background: var(--bg-sunken); border-color: transparent; }
+.sb-foot   .ek-select__btn:hover { background: var(--bg-hover); border-color: transparent; }
 
 /* Mobil: ro'yxat ekran bo'ylab, barmoq uchun kattaroq */
 @media (max-width: 520px) {

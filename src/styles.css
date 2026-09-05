@@ -128,13 +128,13 @@ h1, h2, h3, .page-title, .card-title, .modal-title {
 .sidebar {
   --sb-fg:        var(--fg-secondary);
   --sb-fg-dim:    var(--fg-tertiary);
-  --sb-hover-bg:  var(--bg-sunken);
+  --sb-hover-bg:  var(--bg-hover);
   --sb-hover-fg:  var(--fg-primary);
   --sb-border:    var(--border-subtle);
   --sb-active-bg: var(--bg-brand);
   --sb-active-fg: var(--fg-on-brand);
   /* ThemeSelect yon menyuda shu qiymatlarni oladi */
-  --sb-hover:        var(--bg-sunken);
+  --sb-hover:        var(--bg-hover);
   --sb-control-fg:   var(--fg-secondary);
   --sb-control-border: var(--border-subtle);
 
@@ -295,7 +295,7 @@ table            { width: 100%; border-collapse: collapse; }
 th               { padding: 9px 14px; text-align: left; font-size: 11px; font-weight: 800; color: var(--text2); text-transform: uppercase; letter-spacing: .5px; background: var(--bg-sunken); border-bottom: 1px solid var(--border); }
 td               { padding: 11px 14px; font-size: 13px; color: var(--text); border-bottom: 1px solid var(--border); }
 tr:last-child td { border-bottom: none; }
-tbody tr:hover td { background: var(--bg-sunken); }
+tbody tr:hover td { background: var(--bg-hover); }
 
 /* ── OMBOR: muddat va kam qoldiq ranglari (2026-08-20) ────────────────────
    Fon `td` ga beriladi, `tr` ga EMAS: yuqorida `tbody tr:hover td` bor va u
@@ -842,7 +842,7 @@ select.form-input { cursor: pointer; }
 
 .cart-items      { flex: 1; overflow-y: auto; }
 .cart-item       { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--border); transition: .15s; }
-.cart-item:hover { background: var(--bg-sunken); }
+.cart-item:hover { background: var(--bg-hover); }
 .cart-item-info  { flex: 1; min-width: 0; }
 .cart-item-name  { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cart-item-price { font-size: 12px; color: var(--text2); font-family: var(--mono); }
@@ -2225,7 +2225,7 @@ img.logo--dark { display: none; }
   border: 0; background: transparent; cursor: pointer; border-radius: 8px;
   color: var(--text2, var(--fg-secondary));
 }
-.ek-date__pick:hover { background: var(--bg-sunken); }
+.ek-date__pick:hover { background: var(--bg-hover); }
 .ek-date__native { position: absolute; right: 8px; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 
 /* ── Birinchi qadamlar (onboarding, V31 davomi) ───────────────────────── */

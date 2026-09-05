@@ -54,8 +54,40 @@ export function KeyboardProvider({ children }) {
       if (el.getAttribute("data-osk") === "off") return;
       setTarget(el);
     }
+    /* ══ FOKUS KETSA — KLAVIATURA YOPILADI (V68) ═══════════════════
+       Do'kon egasi: «inputlardan fokus yo'qolganda ekran klaviaturasi
+       yopilishi kerak». Ilgari u maydon tark etilgandan keyin ham
+       ekranda osilib turardi va kassirning yarim ekranini egallardi;
+       yopish uchun uning o'z tugmasini topish kerak edi.
+
+       ⚠ KLAVIATURANING O'Z TUGMASI FOKUSNI OLMAYDI: har tugmada
+       `onPointerDown` da `preventDefault()` bor (`OnScreenKeyboard`),
+       ya'ni `focusout` umuman kelmaydi. Shunga qaramay `relatedTarget`
+       ham tekshiriladi — himoya to'ri sifatida: klaviatura ichiga
+       o'tgan fokus uni yopmasligi kerak.
+
+       ⚠ KECHIKISH SHART. Maydondan maydonga o'tganda brauzer avval
+       `focusout`, keyin `focusin` yuboradi: darhol yopilsa, klaviatura
+       har o'tishda ko'z oldida yonib-o'chardi. Bir kadr kutamiz —
+       o'sha orada `focusin` kelsa, u yangi maydonni o'rnatadi. */
+    let closeTimer = null;
+    function onFocusOut(e) {
+      if (e.relatedTarget?.closest?.(".osk")) return;
+      clearTimeout(closeTimer);
+      closeTimer = setTimeout(() => {
+        const now = document.activeElement;
+        if (now && (isTextEntry(now) || now.closest?.(".osk"))) return;
+        setTarget(null);
+      }, 120);
+    }
+
     document.addEventListener("focusin", onFocusIn);
-    return () => document.removeEventListener("focusin", onFocusIn);
+    document.addEventListener("focusout", onFocusOut);
+    return () => {
+      clearTimeout(closeTimer);
+      document.removeEventListener("focusin", onFocusIn);
+      document.removeEventListener("focusout", onFocusOut);
+    };
   }, []);
 
   /* Maydon DOM'dan olib tashlansa (modal yopildi) klaviatura ham ketsin —
