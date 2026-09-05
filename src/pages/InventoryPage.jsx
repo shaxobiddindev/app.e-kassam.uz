@@ -12,7 +12,7 @@ import Select from "../components/ek/Select";
 import { useAuth } from "../hooks/useAuth";
 import { useBadge } from "../context/BadgeProvider";
 import { money, quantity as fmtQty } from "../utils";
-import { shortDate } from "../lib/ek-format";
+import { shortDate, dateTime } from "../lib/ek-format";
 import { unitLabel, unitDecimals } from "../lib/ek-labels";
 import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
@@ -659,10 +659,10 @@ export default function InventoryPage({ toast }) {
     }
   };
 
-  const fmtWhen = (iso) => {
-    try { return new Date(iso).toLocaleString("uz-UZ", { dateStyle: "short", timeStyle: "short" }); }
-    catch (_) { return iso; }
-  };
+  /* ⚠ SANA+VAQT — `lib/ek-format.js` dan (V70). Bu yerda mahalliy
+     nusxa bor edi va u `uz-UZ` ni qattiq yozardi: ruscha yoki
+     inglizcha tanlagan foydalanuvchi ham o'zbekcha sanani ko'rardi. */
+  const fmtWhen = dateTime;
 
   const statusBadge = (expired) => (
     <span className={`badge ${expired ? "badge-red" : "badge-green"}`}>

@@ -18,7 +18,7 @@ import { Modal } from "../components";
 import MarkingScanModal from "../components/MarkingScanModal";
 import { Empty, Field, FormGroup, SearchBar } from "../components/ui";
 import Select from "../components/ek/Select";
-import { money, shortDate } from "../lib/ek-format";
+import { money, shortDate, dateTime } from "../lib/ek-format";
 import { TRANSFER_STATUS, transferStatus, unitLabel } from "../lib/ek-labels";
 import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
 import { SkeletonTable, Spinner } from "../components/ek/Loading";
@@ -303,7 +303,12 @@ export default function TransfersPage({ toast }) {
         {rows.length ? rows.map((r) => (
           <tr key={r.id}>
             <td className="mono">{r.id}</td>
-            <td className="mono" style={{ fontSize: 13 }}>{(r.sentAt || "").slice(0, 10)}</td>
+            {/* ⚠ SANA + VAQT (V70). Ilgari `slice(0, 10)` bilan faqat
+                sana olinardi, holbuki `sentAt` — LAHZA. Ko'chirish kun
+                davomida bo'ladi va bir kunda bir necha marta yuboriladi:
+                «qaysi biri oldin ketdi?» degan savolga sanadan javob
+                topib bo'lmasdi. */}
+            <td className="mono" style={{ fontSize: 13, whiteSpace: "nowrap" }}>{dateTime(r.sentAt)}</td>
             <td className="fw-700">{tab === "incoming" ? r.fromShopName : r.toShopName}</td>
             <td className="mono">{r.lines?.length || 0}</td>
             <td className="mono fw-700">

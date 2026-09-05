@@ -17,7 +17,7 @@ import { expenseApi } from "../api";
 import { Modal } from "../components";
 import { Empty, Field, FormGroup } from "../components/ui";
 import Select from "../components/ek/Select";
-import { money } from "../lib/ek-format";
+import { money, shortDate } from "../lib/ek-format";
 import { useConfirm } from "../context/ConfirmProvider";
 import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
@@ -204,7 +204,11 @@ export default function ExpensesPage({ toast }) {
                 <tbody>
                   {items.length ? items.map((e) => (
                     <tr key={e.id}>
-                      <td className="mono" style={{ fontSize: 13 }}>{e.spentAt}</td>
+                      {/* ⚠ `spentAt` — KUN (vaqti yo'q va kerak emas:
+                          xarajat kun bo'yicha yoziladi). Lekin u xom
+                          `2026-09-05` ko'rinishida chiqardi, ilovaning
+                          qolgan hamma joyida esa `05-09-2026`. */}
+                      <td className="mono" style={{ fontSize: 13 }}>{shortDate(e.spentAt)}</td>
                       <td className="fw-700">{e.categoryName}</td>
                       <td className="mono fw-700">{money(e.amount)}</td>
                       <td>

@@ -5,7 +5,7 @@ import { inventoryApi, shopApi } from "../api";
 import { Empty } from "../components/ui";
 import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { money, quantity as fmtQty } from "../utils";
-import { shortDate } from "../lib/ek-format";
+import { shortDate, dateTime } from "../lib/ek-format";
 import { unitLabel, unitDecimals } from "../lib/ek-labels";
 import { DEFAULT_NEAR_EXPIRY_DAYS, daysLeft } from "../lib/ek-expiry";
 import BatchCorrectModal from "../components/BatchCorrectModal";
@@ -216,7 +216,11 @@ export default function BatchesPage({ toast }) {
                         tartibining ko'rinadigan asosi hamdir. */}
                     <span>
                       <i className="fa-solid fa-arrow-down-to-line" aria-hidden="true" />{" "}
-                      {t("batch.received")}: <b>{b.createdAt ? shortDate(b.createdAt) : "—"}</b>
+                      {/* ⚠ SANA + VAQT (V70): `createdAt` — LAHZA va bir
+                          kunda bir necha partiya kelishi mumkin. FEFO
+                          tartibida «qaysi biri oldin keldi?» degan
+                          savolga faqat sanadan javob topib bo'lmasdi. */}
+                      {t("batch.received")}: <b>{b.createdAt ? dateTime(b.createdAt) : "—"}</b>
                     </span>
                     <span>
                       <i className="fa-solid fa-hourglass-half" aria-hidden="true" />{" "}
@@ -226,7 +230,7 @@ export default function BatchesPage({ toast }) {
                     {b.archivedAt && (
                       <span>
                         <i className="fa-solid fa-box-archive" aria-hidden="true" />{" "}
-                        {t("batch.archivedAt")}: <b>{shortDate(b.archivedAt)}</b>
+                        {t("batch.archivedAt")}: <b>{dateTime(b.archivedAt)}</b>
                       </span>
                     )}
                   </div>

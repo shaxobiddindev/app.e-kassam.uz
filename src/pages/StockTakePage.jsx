@@ -16,14 +16,18 @@ import { t } from "../lib/ek-i18n";
 import { inventoryApi, productApi } from "../api";
 import { Modal } from "../components";
 import { Empty, Field } from "../components/ui";
-import { money, quantity as qtyFmt } from "../lib/ek-format";
+import { money, quantity as qtyFmt, dateTime } from "../lib/ek-format";
 import { useConfirm } from "../context/ConfirmProvider";
 import { useBadge } from "../context/BadgeProvider";
 import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
 import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
 
-const fmtT = (iso) => (iso ? new Date(iso).toLocaleString("uz-UZ", { dateStyle: "short", timeStyle: "short" }) : "—");
+/* ⚠ SANA+VAQT — `lib/ek-format.js` dan (V70). Uchta sahifada
+   uchta bir xil mahalliy nusxa bor edi va ular `uz-UZ` ni
+   qattiq yozardi: ruscha yoki inglizcha tanlagan foydalanuvchi
+   ham o'zbekcha sanani ko'rardi. */
+const fmtT = dateTime;
 
 export default function StockTakePage({ toast }) {
   const confirm = useConfirm();

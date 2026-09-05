@@ -18,6 +18,7 @@ import { Empty, SearchBar } from "../components/ui";
 import Select from "../components/ek/Select";
 import { SkeletonTable } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
+import { dateTime } from "../lib/ek-format";
 import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
 
 /* Ro'yxat qo'lda sanab chiqiladi: server enum'ni qaytarmaydi va uni
@@ -39,7 +40,11 @@ const MONEY = new Set([
   "CUSTOMER_DEBT_ADJUST", "SHOP_SETTING_CHANGE", "PRICE_BULK_CHANGE",
 ]);
 
-const fmtT = (iso) => (iso ? new Date(iso).toLocaleString("uz-UZ", { dateStyle: "short", timeStyle: "short" }) : "—");
+/* ⚠ SANA+VAQT — `lib/ek-format.js` dan (V70). Uchta sahifada
+   uchta bir xil mahalliy nusxa bor edi va ular `uz-UZ` ni
+   qattiq yozardi: ruscha yoki inglizcha tanlagan foydalanuvchi
+   ham o'zbekcha sanani ko'rardi. */
+const fmtT = dateTime;
 
 export default function AuditPage({ toast }) {
   /* Filtr manzilda ham turadi: bosh sahifadagi «Kassa kamomadi» satri shu
