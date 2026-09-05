@@ -8,7 +8,7 @@
    bu yerdagi tekshiruv faqat ortiqcha tugmalarni yashiradi.
    ══════════════════════════════════════════════════════════════════════════ */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { t } from "../lib/ek-i18n";
 import { securityApi } from "../api";
@@ -20,6 +20,7 @@ import { useBadge } from "../context/BadgeProvider";
 import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
 import { roleSet } from "../lib/ek-roles";
+import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
 import { printBadge } from "../lib/ek-hardware";
 import { isDesktop } from "../lib/ek-desktop";
 import { useSuspiciousCount } from "../hooks/useSuspiciousCount";
@@ -177,6 +178,25 @@ export default function SecurityPage({ toast }) {
 
   const visibleTabs = visibleTabsFor(isOwner);
 
+  /* ══ USTUNLAR BO'YICHA FILTR (V68) — bajik jurnali ════════════════
+     ⚠ «Shubhali» tepadagi belgi bilan SERVERDAN kesiladi. Bu yerdagi
+     filtr esa kelgan sahifa ustida ishlaydi va boshqa savollarga
+     javob beradi: «falon kassirning bajigi bilan kim ish qilgan?»
+     — aynan shu ikki ustunni (bajik egasi ↔ seansdagi odam)
+     taqqoslash kerak bo'ladi. */
+  const LOG_COLS = useMemo(() => [
+    { key: "when",  label: t("inv.histWhen"),     type: "date", get: (c) => c.createdAt },
+    { key: "act",   label: t("sec.action"),       type: "enum",
+      options: Object.keys(ACTION_BADGE).map((k) => ({ value: k, label: t(`act.${k}`) })),
+      get: (c) => c.action },
+    { key: "badge", label: t("sec.badgeUser"),    type: "text", get: (c) => c.badgeUserName },
+    { key: "sess",  label: t("sec.sessionUser"),  type: "text", get: (c) => c.sessionUserName },
+    { key: "note",  label: t("sec.detail"),       type: "text",
+      get: (c) => `${c.suspicionReason || ""} ${c.note || ""}` },
+  ], []);
+  const logFlt = useDataFilter(LOG_COLS, "sec-log");
+  const shownLog = logFlt.apply(log);
+
   return (
     <div>
       <div className="page-header">
@@ -261,21 +281,24 @@ export default function SecurityPage({ toast }) {
                              onChange={(e) => setOnlySuspicious(e.target.checked)} />
                       <span style={{ fontSize: 13, fontWeight: 600 }}>{t("sec.onlySuspicious")}</span>
                     </label>
+                    <span style={{ marginLeft: 12 }}>
+                      <DataFilter cols={LOG_COLS} flt={logFlt} />
+                    </span>
                   </div>
                   {log.length === 0 ? <Empty text={t("sec.logEmpty")} /> : (
                     <table className="table">
                       <thead>
                         <tr>
-                          <th>{t("inv.histWhen")}</th>
-                          <th>{t("sec.action")}</th>
-                          <th>{t("sec.badgeUser")}</th>
-                          <th>{t("sec.sessionUser")}</th>
-                          <th>{t("sec.detail")}</th>
+                          <SortTh flt={logFlt} col="when">{t("inv.histWhen")}</SortTh>
+                          <SortTh flt={logFlt} col="act">{t("sec.action")}</SortTh>
+                          <SortTh flt={logFlt} col="badge">{t("sec.badgeUser")}</SortTh>
+                          <SortTh flt={logFlt} col="sess">{t("sec.sessionUser")}</SortTh>
+                          <SortTh flt={logFlt} col="note">{t("sec.detail")}</SortTh>
                           <th className="text-end">{t("common.actions")}</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {log.map((c) => (
+                        {shownLog.map((c) => (
                           <tr key={c.id} style={c.suspicious && !c.acknowledgedAt
                             ? { background: "rgba(239,68,68,0.07)" } : undefined}>
                             <td className="mono" style={{ whiteSpace: "nowrap" }}>{fmt(c.createdAt)}</td>

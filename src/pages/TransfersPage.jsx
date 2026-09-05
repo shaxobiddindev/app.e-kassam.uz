@@ -11,7 +11,7 @@
    uni hech kim sota olmaydi. Bu chalkashlik emas, haqiqat.
    ══════════════════════════════════════════════════════════════════════════ */
 
-import { Fragment, useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "../lib/ek-i18n";
 import { transferApi, productApi } from "../api";
 import { Modal } from "../components";
@@ -19,7 +19,8 @@ import MarkingScanModal from "../components/MarkingScanModal";
 import { Empty, Field, FormGroup, SearchBar } from "../components/ui";
 import Select from "../components/ek/Select";
 import { money, shortDate } from "../lib/ek-format";
-import { transferStatus, unitLabel } from "../lib/ek-labels";
+import { TRANSFER_STATUS, transferStatus, unitLabel } from "../lib/ek-labels";
+import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
 import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
 
@@ -265,18 +266,36 @@ export default function TransfersPage({ toast }) {
     );
   };
 
-  const rows = tab === "incoming" ? incoming : outgoing;
+  const all = tab === "incoming" ? incoming : outgoing;
+
+  /* ══ USTUNLAR BO'YICHA FILTR (V68) ═══════════════════════════════════
+     ⚠ «Kimdan/kimga» ustuni YO'NALISHGA qarab boshqa maydondan
+     o'qiladi, lekin filtr uchun bu BITTA ustun: ekranda ham bitta
+     ustun turibdi va foydalanuvchi uni «qarshi tomon» deb ko'radi. */
+  const COLS = useMemo(() => [
+    { key: "id",    label: "#",                 type: "number", get: (r) => r.id },
+    { key: "date",  label: t("common.date"),    type: "date",   get: (r) => r.sentAt },
+    { key: "side",  label: tab === "incoming" ? t("transfer.from") : t("transfer.to"),
+      type: "text",   get: (r) => (tab === "incoming" ? r.fromShopName : r.toShopName) },
+    { key: "lines", label: t("transfer.lines"), type: "number", get: (r) => r.lines?.length || 0 },
+    { key: "val",   label: t("transfer.value"), type: "number", get: (r) => r.totalCost },
+    { key: "st",    label: t("common.status"),  type: "enum",
+      options: Object.keys(TRANSFER_STATUS).map((k) => ({ value: k, label: transferStatus(k).label })),
+      get: (r) => r.status },
+  ], [tab]);
+  const colFlt = useDataFilter(COLS, `transfer-${tab}`);
+  const rows = colFlt.apply(all);
 
   const table = (
     <table>
       <thead>
         <tr>
-          <th>#</th>
-          <th>{t("common.date")}</th>
-          <th>{tab === "incoming" ? t("transfer.from") : t("transfer.to")}</th>
-          <th>{t("transfer.lines")}</th>
-          <th>{t("transfer.value")}</th>
-          <th>{t("common.status")}</th>
+          <SortTh flt={colFlt} col="id">#</SortTh>
+          <SortTh flt={colFlt} col="date">{t("common.date")}</SortTh>
+          <SortTh flt={colFlt} col="side">{tab === "incoming" ? t("transfer.from") : t("transfer.to")}</SortTh>
+          <SortTh flt={colFlt} col="lines">{t("transfer.lines")}</SortTh>
+          <SortTh flt={colFlt} col="val">{t("transfer.value")}</SortTh>
+          <SortTh flt={colFlt} col="st">{t("common.status")}</SortTh>
           <th></th>
         </tr>
       </thead>
@@ -362,7 +381,18 @@ export default function TransfersPage({ toast }) {
 
           {busy
             ? <SkeletonTable rows={6} cols={["narrow", "text", "wide", "num", "num", "text"]} />
-            : <div className="card"><div className="table-wrap">{table}</div></div>}
+            : (
+              <div className="card">
+                <div className="card-header">
+                  <span className="card-title">
+                    {tab === "incoming" ? t("transfer.incoming") : t("transfer.outgoing")}
+                    <span className="text-muted" style={{ marginLeft: 8, fontWeight: 600 }}>{rows.length}</span>
+                  </span>
+                  <DataFilter cols={COLS} flt={colFlt} />
+                </div>
+                <div className="table-wrap">{table}</div>
+              </div>
+            )}
         </>
       )}
 

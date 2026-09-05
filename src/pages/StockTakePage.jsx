@@ -11,7 +11,7 @@
    qo'llanadi, ya'ni oradagi sotuvlar bekor bo'lmaydi.
    ══════════════════════════════════════════════════════════════════════════ */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "../lib/ek-i18n";
 import { inventoryApi, productApi } from "../api";
 import { Modal } from "../components";
@@ -21,6 +21,7 @@ import { useConfirm } from "../context/ConfirmProvider";
 import { useBadge } from "../context/BadgeProvider";
 import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
+import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
 
 const fmtT = (iso) => (iso ? new Date(iso).toLocaleString("uz-UZ", { dateStyle: "short", timeStyle: "short" }) : "—");
 
@@ -162,6 +163,22 @@ export default function StockTakePage({ toast }) {
   // yopilgan). Ustunlarni shunga qarab chizamiz.
   const reveal = lines.some((l) => l.expectedQuantity != null);
 
+  /* ══ USTUNLAR BO'YICHA FILTR (V68) — sanoq tarixi ═════════════════
+     Kamomad va ortiqcha SON: «kamomadi 100 mingdan katta sanoqlar»
+     degan savol aynan shu jadvalda so'raladi. */
+  const HCOLS = useMemo(() => [
+    { key: "id",    label: "#",                      type: "number", get: (h) => h.id },
+    { key: "st",    label: t("common.status"),       type: "enum",
+      options: ["OPEN", "CLOSED", "CANCELLED"].map((k) => ({ value: k, label: t(`stocktake.status.${k}`) })),
+      get: (h) => h.status },
+    { key: "open",  label: t("sec.openedAt"),        type: "date",   get: (h) => h.openedAt },
+    { key: "close", label: t("shift.closedAt"),      type: "date",   get: (h) => h.closedAt },
+    { key: "short", label: t("stocktake.shortage"),  type: "number", get: (h) => h.shortageValue },
+    { key: "surp",  label: t("stocktake.surplus"),   type: "number", get: (h) => h.surplusValue },
+  ], []);
+  const hFlt = useDataFilter(HCOLS, "stocktake");
+  const shownHistory = hFlt.apply(history);
+
   return (
     <div>
       <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
@@ -253,21 +270,22 @@ export default function StockTakePage({ toast }) {
             <span className="card-title">
               <i className="fa-solid fa-clock-rotate-left text-blue" /> {t("stocktake.history")}
             </span>
+            <DataFilter cols={HCOLS} flt={hFlt} />
           </div>
           <div className="table-wrap">
             <table>
               <thead>
                 <tr>
-                  <th>#</th>
-                  <th>{t("common.status")}</th>
-                  <th>{t("sec.openedAt")}</th>
-                  <th>{t("shift.closedAt")}</th>
-                  <th>{t("stocktake.shortage")}</th>
-                  <th>{t("stocktake.surplus")}</th>
+                  <SortTh flt={hFlt} col="id">#</SortTh>
+                  <SortTh flt={hFlt} col="st">{t("common.status")}</SortTh>
+                  <SortTh flt={hFlt} col="open">{t("sec.openedAt")}</SortTh>
+                  <SortTh flt={hFlt} col="close">{t("shift.closedAt")}</SortTh>
+                  <SortTh flt={hFlt} col="short">{t("stocktake.shortage")}</SortTh>
+                  <SortTh flt={hFlt} col="surp">{t("stocktake.surplus")}</SortTh>
                 </tr>
               </thead>
               <tbody>
-                {history.length ? history.map((h) => (
+                {shownHistory.length ? shownHistory.map((h) => (
                   <tr key={h.id}>
                     <td className="mono">{h.id}</td>
                     <td>

@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from "react";
+import { useState, useEffect, useMemo, lazy, Suspense } from "react";
 import { t } from "../lib/ek-i18n";
 import { customerApi } from "../api";
 import { BranchSelector } from "../components";
@@ -10,6 +10,7 @@ import { roleSet } from "../lib/ek-roles";
 import { useAuth } from "../hooks/useAuth";
 import { shortDate, dateTime } from "../lib/ek-format";
 import SaleDetailModal from "../components/SaleDetailModal";
+import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
 /* ⚠ SEKIN YUKLANADI: to'lov cheki kunda bir necha marta ochiladi,
    mijozlar sahifasi esa doim. Chekni asosiy bo'lakka qo'shish uni
    hech qachon ochmaydigan kassirga ham yuklatardi. */
@@ -317,15 +318,42 @@ export default function CustomersPage({ toast }) {
      mijozni «abdulla» deb qidirgan kassir TOPA OLMASDI, xato yozilgan
      harf esa umuman natija bermasdi. Telefon raqami maxsus ishlanadi —
      odam oxirgi raqamlarni eslaydi, to'liq raqamni emas. */
-  const filtered = rankItems(customers, search, {
-    texts:  (c) => [c.fullName],
-    digits: (c) => [c.phone],
-  });
-
   /* Muddat qo'yilgan do'konda kamida bitta qarz kechikkanmi (V43).
      Ustun shu holatda chiziladi: muddatsiz do'konda u har qatorda
      chiziqcha ko'rsatib, jadvalni bekorga kengaytirardi. */
   const hasOverdue = view === "debtors" && customers.some((c) => Number(c.overdue) > 0);
+
+  /* ══ USTUNLAR BO'YICHA FILTR (V68) ═══════════════════════════════════
+     ⚠ RO'YXAT KO'RINISHGA QARAB O'ZGARADI. Jadvalning o'rta ustunlari
+     «hammasi» va «qarzdorlar» da BOSHQA (sarflagan puli ↔ qarz sanasi,
+     yoshi, muddati o'tgani) — filtrda ekranda YO'Q ustun turishi
+     natijani tushuntirib bo'lmas qilardi. Ko'rinish almashganda
+     saqlangan shart ham tashlanadi (`useDataFilter` o'zi qiladi:
+     ustuni yo'q shartni o'chiradi).
+
+     ⚠ Telefon MATN sifatida: qidiruvi «oxirgi raqamlar» bo'yicha
+     ketadi va son solishtiruvi bunda ma'nosiz. */
+  const COLS = useMemo(() => [
+    { key: "name",  label: t("cust.col"),        type: "text",   get: (c) => c.fullName },
+    { key: "phone", label: t("common.phone"),    type: "text",   get: (c) => c.phone },
+    ...(view === "debtors"
+      ? [{ key: "since",   label: t("credit.debtSince"), type: "date",   get: (c) => c.debtSince },
+         { key: "age",     label: t("credit.since"),     type: "number", get: (c) => daysSince(c.lastChargeAt) },
+         ...(hasOverdue
+           ? [{ key: "overdue", label: t("credit.overdue"), type: "number", get: (c) => c.overdue }]
+           : [])]
+      : [{ key: "spent",   label: t("cust.totalSpent"),  type: "number", get: (c) => c.totalSpent }]),
+    { key: "debt",  label: t("credit.balance"),  type: "number", get: (c) => c.balance },
+  ], [view, hasOverdue]);
+  /* Kalit ko'rinishga bog'liq: ikki ro'yxatning filtri bir-birini
+     bosib ketmasin — «qarzdorlar» dagi shart «hammasi» ga qaytganda
+     yo'qolishi tabiiy emas edi. */
+  const colFlt = useDataFilter(COLS, view === "debtors" ? "cust-debt" : "cust");
+
+  const filtered = rankItems(colFlt.apply(customers), search, {
+    texts:  (c) => [c.fullName],
+    digits: (c) => [c.phone],
+  });
 
   const [reminding, setReminding] = useState(false);
   /* QO'LDA QARZDOR (V48) — daftardan ko'chirish. Serverda ham FAQAT
@@ -389,6 +417,7 @@ export default function CustomersPage({ toast }) {
             placeholder={t("cust.search")}
             style={{ width: 280 }}
           />
+          <DataFilter cols={COLS} flt={colFlt} />
           {/* Qarzdorlar — alohida RO'YXAT, filtr emas: u serverdan qarz
               bo'yicha saralangan holda va qarz yoshi bilan keladi. */}
           <div className="cat-tabs" role="tablist" aria-label={t("credit.debtors")}>
@@ -431,21 +460,22 @@ export default function CustomersPage({ toast }) {
             <table>
               <thead>
                 <tr>
-                  <th>{t("cust.col")}</th>
-                  <th>{t("common.phone")}</th>
+                  <SortTh flt={colFlt} col="name">{t("cust.col")}</SortTh>
+                  <SortTh flt={colFlt} col="phone">{t("common.phone")}</SortTh>
                   {/* ⚠ Chegara ustuni OLIB TASHLANDI (V46) va o'rniga
                       «qachondan beri qarzdor» turadi. Chegara endi yo'q;
                       qarzning YOSHI esa qaror uchun aynan kerak: bugungi
                       300 ming va yarim yillik 300 ming boshqa gap. */}
                   {view === "debtors"
-                    ? <><th>{t("credit.debtSince")}</th><th>{t("credit.since")}</th>
+                    ? <><SortTh flt={colFlt} col="since">{t("credit.debtSince")}</SortTh>
+                        <SortTh flt={colFlt} col="age">{t("credit.since")}</SortTh>
                         {/* Muddati o'tgan qism (V43) — do'kon muddat
                             qo'ymagan bo'lsa ustun umuman chizilmaydi:
                             har qatorda nol turgan ustun jadvalni
                             kengaytiradi-yu, hech narsa aytmaydi. */}
-                        {hasOverdue && <th>{t("credit.overdue")}</th>}</>
-                    : <th>{t("cust.totalSpent")}</th>}
-                  <th>{t("credit.balance")}</th>
+                        {hasOverdue && <SortTh flt={colFlt} col="overdue">{t("credit.overdue")}</SortTh>}</>
+                    : <SortTh flt={colFlt} col="spent">{t("cust.totalSpent")}</SortTh>}
+                  <SortTh flt={colFlt} col="debt">{t("credit.balance")}</SortTh>
                   <th></th>
                 </tr>
               </thead>

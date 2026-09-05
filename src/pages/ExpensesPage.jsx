@@ -11,7 +11,7 @@
    chiqib ketardi-yu, smena yopilishida sababsiz kamomad chiqardi.
    ══════════════════════════════════════════════════════════════════════════ */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "../lib/ek-i18n";
 import { expenseApi } from "../api";
 import { Modal } from "../components";
@@ -22,6 +22,7 @@ import { useConfirm } from "../context/ConfirmProvider";
 import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
 import { DateField } from "../components/ek/EkFields";
+import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
 
 /** Oyning birinchi kuni va bugun — `YYYY-MM-DD`. */
 const monthRange = () => {
@@ -124,6 +125,22 @@ export default function ExpensesPage({ toast }) {
     }
   };
 
+  /* ══ USTUNLAR BO'YICHA FILTR (V68) ═════════════════════════════════
+     «Manba» — RO'YXAT (kassadan / tashqaridan): bu ikkitadan biri va
+     matn qidiruvi bunda ortiqcha ish bo'lardi. */
+  const COLS = useMemo(() => [
+    { key: "date", label: t("common.date"),      type: "date",   get: (e) => e.spentAt },
+    { key: "cat",  label: t("expense.category"), type: "text",   get: (e) => e.categoryName },
+    { key: "sum",  label: t("common.sum"),       type: "number", get: (e) => e.amount },
+    { key: "src",  label: t("expense.source"),   type: "enum",
+      options: [{ value: "reg", label: t("expense.fromRegister") },
+                { value: "out", label: t("expense.fromOutside") }],
+      get: (e) => (e.fromRegister ? "reg" : "out") },
+    { key: "note", label: t("inv.reason"),       type: "text",   get: (e) => e.note },
+  ], []);
+  const colFlt = useDataFilter(COLS, "expenses");
+  const items = colFlt.apply(data?.items || []);
+
   return (
     <div>
       <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
@@ -163,20 +180,29 @@ export default function ExpensesPage({ toast }) {
           </div>
 
           <div className="card">
+            <div className="card-header">
+              <span className="card-title">
+                <i className="fa-solid fa-list text-blue" /> {t("expense.title")}
+                <span className="text-muted" style={{ marginLeft: 8, fontWeight: 600 }}>
+                  {items.length}
+                </span>
+              </span>
+              <DataFilter cols={COLS} flt={colFlt} />
+            </div>
             <div className="table-wrap">
               <table>
                 <thead>
                   <tr>
-                    <th>{t("common.date")}</th>
-                    <th>{t("expense.category")}</th>
-                    <th>{t("common.sum")}</th>
-                    <th>{t("expense.source")}</th>
-                    <th>{t("inv.reason")}</th>
+                    <SortTh flt={colFlt} col="date">{t("common.date")}</SortTh>
+                    <SortTh flt={colFlt} col="cat">{t("expense.category")}</SortTh>
+                    <SortTh flt={colFlt} col="sum">{t("common.sum")}</SortTh>
+                    <SortTh flt={colFlt} col="src">{t("expense.source")}</SortTh>
+                    <SortTh flt={colFlt} col="note">{t("inv.reason")}</SortTh>
                     <th></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {data?.items?.length ? data.items.map((e) => (
+                  {items.length ? items.map((e) => (
                     <tr key={e.id}>
                       <td className="mono" style={{ fontSize: 13 }}>{e.spentAt}</td>
                       <td className="fw-700">{e.categoryName}</td>

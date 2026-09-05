@@ -10,7 +10,7 @@
    tasdiqladi».
    ══════════════════════════════════════════════════════════════════════════ */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { t } from "../lib/ek-i18n";
 import { shopApi } from "../api";
@@ -18,6 +18,7 @@ import { Empty, SearchBar } from "../components/ui";
 import Select from "../components/ek/Select";
 import { SkeletonTable } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
+import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
 
 /* Ro'yxat qo'lda sanab chiqiladi: server enum'ni qaytarmaydi va uni
    olish uchun alohida endpoint ochish ortiqcha bo'lardi. Yangi amal
@@ -86,6 +87,24 @@ export default function AuditPage({ toast }) {
     if (next.toString() !== params.toString()) setParams(next, { replace: true });
   }, [action]);
 
+  /* ══ USTUNLAR BO'YICHA FILTR (V68) ═════════════════════════════════
+     ⚠ Yuqoridagi «amal» tanlagichi SERVERGA ketadi (sahifalash bilan),
+     bu esa KELGAN sahifani kesadi. Ikkalasi bir-birini almashtirmaydi:
+     server bittagina amalni bera oladi, bu yerda esa «narx VA
+     chegirma» kabi kombinatsiya va sana oralig'i ishlaydi. */
+  const COLS = useMemo(() => [
+    { key: "date",  label: t("common.date"),    type: "date", get: (r) => r.createdAt },
+    { key: "act",   label: t("audit.action"),   type: "enum",
+      options: ACTIONS.map((a) => ({ value: a, label: t(`enum.audit.${a}`) })),
+      get: (r) => r.action },
+    { key: "sum",   label: t("audit.summary"),  type: "text",
+      get: (r) => `${r.summary || ""} ${r.details || ""}` },
+    { key: "actor", label: t("audit.actor"),    type: "text",
+      get: (r) => (r.actorType === "ADMIN" ? t("audit.actorSupport") : r.actorUsername) },
+  ], []);
+  const colFlt = useDataFilter(COLS, "audit");
+  const shown = colFlt.apply(rows);
+
   return (
     <div>
       <div className="page-header" style={{ marginBottom: 12 }}>
@@ -104,6 +123,7 @@ export default function AuditPage({ toast }) {
                 ...ACTIONS.map((a) => ({ value: a, label: t(`enum.audit.${a}`), icon: "fa-clock-rotate-left" }))]}
             />
             <SearchBar value={actor} onChange={setActor} placeholder={t("audit.actor")} style={{ width: 220 }} />
+            <DataFilter cols={COLS} flt={colFlt} />
           </div>
           <span className="text-muted mono" style={{ fontSize: 13 }}>{total}</span>
         </div>
@@ -113,14 +133,14 @@ export default function AuditPage({ toast }) {
             <table>
               <thead>
                 <tr>
-                  <th>{t("common.date")}</th>
-                  <th>{t("audit.action")}</th>
-                  <th>{t("audit.summary")}</th>
-                  <th>{t("audit.actor")}</th>
+                  <SortTh flt={colFlt} col="date">{t("common.date")}</SortTh>
+                  <SortTh flt={colFlt} col="act">{t("audit.action")}</SortTh>
+                  <SortTh flt={colFlt} col="sum">{t("audit.summary")}</SortTh>
+                  <SortTh flt={colFlt} col="actor">{t("audit.actor")}</SortTh>
                 </tr>
               </thead>
               <tbody>
-                {rows.length ? rows.map((r) => (
+                {shown.length ? shown.map((r) => (
                   <tr key={r.id}>
                     <td style={{ fontSize: 13, whiteSpace: "nowrap" }}>{fmtT(r.createdAt)}</td>
                     <td>
