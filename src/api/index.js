@@ -665,6 +665,19 @@ export const telegramApi = {
   status:     ()   => request("/telegram/status"),
   bindCode:   ()   => request("/telegram/bind-code", { method: "POST" }),
   disconnect: (id) => request(`/telegram/chats/${id}`, { method: "DELETE" }),
+  /**
+   * Avtomatik hisobot jadvali (V71): kunlik, haftalik, oylik.
+   *
+   * ⚠ FAQAT o'zgargan bayroq yuboriladi. Uchalasini har safar
+   * yuborsak, bitta tugmacha bosilganda qolgan ikkitasining eski
+   * holati ustiga yozilardi — ikki qurilmadan bir vaqtda
+   * o'zgartirilsa biri ikkinchisini bekor qilardi.
+   */
+  setDigest: (id, patch) => {
+    const q = new URLSearchParams();
+    for (const [k, v] of Object.entries(patch || {})) q.set(k, String(v));
+    return request(`/telegram/chats/${id}/digest?${q}`, { method: "PATCH" });
+  },
 };
 
 /**

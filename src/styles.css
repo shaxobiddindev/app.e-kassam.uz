@@ -4517,3 +4517,26 @@ body.osk-open .mark-modal {
 .tgt__foot > span { color: var(--fg-secondary); }
 .tgt__hint { font-size: 12px; color: var(--fg-tertiary); }
 .text-success { color: var(--fg-success); }
+
+/* ── Avtomatik hisobot jadvali (V71) ───────────────────────────────── */
+.tg-digest { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+/* ⚠ Tugmacha «tugma» ko'rinishida EMAS: uchtasi yonma-yon to'la tugma
+   bo'lsa, ular chatni uzish tugmasi bilan bir og'irlikda ko'rinardi —
+   holbuki bu shunchaki yoqilgan-o'chirilgan holat. */
+.tg-digest__btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 10px; min-height: 32px;
+  border: 1px solid var(--border); border-radius: 999px;
+  background: var(--bg-surface); color: var(--fg-secondary);
+  font: 700 12px/1 var(--font); cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out),
+              border-color var(--dur-fast) var(--ease-out),
+              color var(--dur-fast) var(--ease-out);
+}
+.tg-digest__btn:hover:not(:disabled) { background: var(--bg-hover); color: var(--fg-primary); }
+.tg-digest__btn.is-on {
+  background: var(--bg-brand-subtle); border-color: var(--border-brand);
+  color: var(--fg-brand, var(--blue));
+}
+.tg-digest__btn > i { font-size: 11px; }
+.tg-digest__btn:disabled { opacity: .6; cursor: default; }

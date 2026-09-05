@@ -12,6 +12,7 @@ import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
 import { LineChart, BarChart, Donut, HeatMap, shortNum } from "../components/ek/Charts";
 import { PERIODS, periodRange, isoInstant, isoDay, lengthDays, growth } from "../lib/ek-period";
 import { forecast, expectedTotal, targetProgress, MIN_POINTS } from "../lib/ek-forecast";
+import { downloadXlsx } from "../lib/ek-xlsx";
 
 /* ══════════════════════════════════════════════════════════════════════════
    HISOBOTLAR — biznes tahlili (V69)
@@ -138,6 +139,172 @@ function downloadCsv(name, headers, rows) {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
+/* ══ EXCEL — BUTUN HISOBOT ═════════════════════════════════════════════
+
+   ⚠ HAR BO'LIM O'Z VARAG'IDA. Hammasini bitta varaqqa yopishtirish
+   Excelda ustunlarni bir-biriga to'g'ri kelmaydigan qilardi: tovarlar
+   sakkiz ustun, to'lovlar uchta. Alohida varaqda esa har jadval o'z
+   sarlavhasi bilan turadi va uni saralash ham, jamlash ham ishlaydi.
+
+   ⚠ SON SIFATIDA yoziladi (`Number`), formatlangan matn sifatida
+   emas: «12 000 so'm» degan katakni Excel jamlay olmaydi va
+   foydalanuvchi «nega yig'indi chiqmayapti?» deb qolardi. Formatlash
+   Excelning o'z ishi.
+   ══════════════════════════════════════════════════════════════════════ */
+function exportXlsx(d, range, periodLabel) {
+  const n = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+  const head = (...cols) => cols.map((v) => ({ v, bold: true }));
+  const k = d.now || {};
+  const sheets = [];
+
+  sheets.push({
+    name: t("rpt2.tabHome"),
+    rows: [
+      [{ v: `${periodLabel}: ${isoDay(range.from)} — ${isoDay(new Date(range.to.getTime() - 1))}`, bold: true }],
+      [],
+      head(t("rpt2.metric"), t("common.sum")),
+      [t("rpt2.grossSales"),    n(k.grossSales)],
+      [t("rpt2.discount"),      n(k.discount)],
+      [t("rpt2.returns"),       n(k.returns)],
+      [t("rpt2.netSales"),      n(k.netSales)],
+      [t("rpt2.cogs"),          n(k.cogs)],
+      [t("rpt2.grossProfit"),   n(k.grossProfit)],
+      [t("rpt2.margin"),        n(k.margin)],
+      [t("rpt2.expenses"),      n(k.expenses)],
+      [t("rpt2.inventoryLoss"), n(k.inventoryLoss)],
+      [t("rpt2.netProfit"),     n(k.netProfit)],
+      [],
+      [t("rpt2.receipts"),      n(k.receipts)],
+      [t("rpt2.avgReceipt"),    n(k.avgReceipt)],
+      [t("rpt2.maxReceipt"),    n(k.maxReceipt)],
+      [t("rpt2.minReceipt"),    n(k.minReceipt)],
+      [t("rpt2.cancelled"),     n(k.cancelledReceipts)],
+      [t("rpt2.itemsSold"),     n(k.itemsSold)],
+      [t("rpt2.customers"),     n(k.customers)],
+      [t("rpt2.customersNew"),  n(k.newCustomers)],
+      [t("rpt2.credit"),        n(k.credit)],
+    ],
+  });
+
+  sheets.push({
+    name: t("rpt2.tabSales"),
+    rows: [
+      head(t("common.date"), t("rpt2.netSales"), t("rpt2.cogs"), t("rpt2.grossProfit"),
+           t("rpt2.returns"), t("rpt2.receipts")),
+      ...(d.series || []).map((x) => [x.label, n(x.netSales), n(x.cogs),
+                                      n(x.grossProfit), n(x.returns), n(x.receipts)]),
+    ],
+  });
+
+  sheets.push({
+    name: t("rpt2.tabProducts"),
+    rows: [
+      head(t("products.col"), t("products.category"), t("rpt2.sold"), t("rpt2.netSales"),
+           t("rpt2.profit"), t("rpt2.margin"), t("rpt2.returned"), t("rpt2.turnover"),
+           t("rpt2.stockQty"), t("rpt2.stockValue")),
+      ...(d.products || []).map((x) => [x.name, x.categoryName || "", n(x.quantity),
+        n(x.netSales), n(x.profit), n(x.margin), n(x.returnedQty), n(x.turnover),
+        n(x.stockQty), n(x.stockValue)]),
+    ],
+  });
+
+  sheets.push({
+    name: t("rpt2.byCategory"),
+    rows: [
+      head(t("rpt2.byCategory"), t("rpt2.sold"), t("rpt2.netSales"), t("rpt2.profit"), t("rpt2.margin")),
+      ...(d.categories || []).map((x) => [x.name || t("rpt2.noCategory"),
+        n(x.quantity), n(x.netSales), n(x.profit), n(x.margin)]),
+    ],
+  });
+
+  sheets.push({
+    name: t("rpt2.tabStaff"),
+    rows: [
+      head(t("staff.name"), t("rpt2.receipts"), t("rpt2.netSales"), t("rpt2.avgReceipt"),
+           t("rpt2.discount"), t("rpt2.returns"), t("rpt2.cancelled"), t("rpt2.nonCash")),
+      ...(d.cashiers || []).map((x) => [x.name, n(x.receipts), n(x.netSales), n(x.avgReceipt),
+        n(x.discount), n(x.returns), n(x.cancelled), n(x.nonCashShare)]),
+    ],
+  });
+
+  if ((d.branches || []).length) {
+    sheets.push({
+      name: t("rpt2.branches"),
+      rows: [
+        head(t("rpt2.branch"), t("rpt2.receipts"), t("rpt2.netSales"),
+             t("rpt2.grossProfit"), t("rpt2.margin"), t("rpt2.customers")),
+        ...d.branches.map((x) => [x.name, n(x.receipts), n(x.netSales),
+          n(x.profit), n(x.margin), n(x.customers)]),
+      ],
+    });
+  }
+
+  sheets.push({
+    name: t("rpt2.tabMoney"),
+    rows: [
+      head(t("rpt2.payMix"), t("common.sum"), "%"),
+      ...(d.payments || []).map((x) => [paymentEntry(x.type).label, n(x.amount), n(x.share)]),
+      [],
+      head(t("rpt2.expenses"), t("common.sum"), "%"),
+      ...(d.expenses || []).map((x) => [x.name || t("rpt2.noCategory"), n(x.amount), n(x.share)]),
+      [],
+      head(t("rpt2.debtAging"), t("common.sum")),
+      [t("rpt2.age0"),  n(d.debt?.bucket0to7)],
+      [t("rpt2.age8"),  n(d.debt?.bucket8to30)],
+      [t("rpt2.age31"), n(d.debt?.bucket31plus)],
+      [t("rpt2.debtTotal"), n(d.debt?.total)],
+    ],
+  });
+
+  sheets.push({
+    name: t("rpt2.tabStock"),
+    rows: [
+      head(t("rpt2.metric"), t("common.sum")),
+      [t("rpt2.stockValue"),   n(d.stock?.totalValue)],
+      [t("rpt2.stockQty"),     n(d.stock?.totalQuantity)],
+      [t("rpt2.outOfStock"),   n(d.stock?.outOfStock)],
+      [t("rpt2.lowStock"),     n(d.stock?.lowStock)],
+      [t("rpt2.expiringSoon"), n(d.stock?.expiringSoon)],
+      [t("rpt2.expired"),      n(d.stock?.expired)],
+      [],
+      head(t("rpt2.slowMoving"), t("rpt2.stockQty"), t("rpt2.stockValue"), t("rpt2.sold")),
+      ...(d.stock?.slowMoving || []).map((x) => [x.name, n(x.stockQty), n(x.stockValue), n(x.soldQty)]),
+    ],
+  });
+
+  sheets.push({
+    name: t("rpt2.tabTime"),
+    rows: [
+      head(t("rpt2.hourly"), t("rpt2.netSales"), t("rpt2.receipts")),
+      ...(d.hourly || []).map((x) => [`${String(x.hour).padStart(2, "0")}:00`,
+        n(x.netSales), n(x.receipts)]),
+    ],
+  });
+
+  if ((d.basket || []).length) {
+    sheets.push({
+      name: t("rpt2.basket"),
+      rows: [
+        head(t("rpt2.basketA"), t("rpt2.basketB"), t("rpt2.together"), t("rpt2.confidence")),
+        ...d.basket.map((x) => [x.nameA, x.nameB, n(x.together), n(x.confidence)]),
+      ],
+    });
+  }
+
+  if ((d.anomalies || []).length) {
+    sheets.push({
+      name: t("rpt2.tabWatch"),
+      rows: [
+        head(t("audit.action"), t("staff.name"), t("common.sum"), t("rpt2.avgIs", { v: "" })),
+        ...d.anomalies.map((x) => [t(`rpt2.an.${x.kind}`), x.subjectName || "",
+          n(x.value), n(x.baseline)]),
+      ],
+    });
+  }
+
+  downloadXlsx(`hisobot-${isoDay(range.from)}`, sheets);
+}
+
 /* ══════════════════════════════════════════════════════════════════════ */
 
 export default function ReportsPage({ toast }) {
@@ -231,6 +398,14 @@ export default function ReportsPage({ toast }) {
           {/* ⚠ Chop etish BRAUZERNIKI: PDF kutubxonasi ilovaga 200 KB
               qo'shardi, brauzer esa «PDF ga saqlash» ni o'zi taklif
               qiladi va sahifa uslubini aynan saqlaydi (`@media print`). */}
+          {/* ⚠ Excel — BUTUN hisobot, har bo'lim o'z varag'ida. Faqat
+              ochiq bo'limni chiqarish «yana bir bosim» degan ish
+              bo'lardi: rahbar odatda hammasini bir faylda oladi. */}
+          <button className="btn btn-outline btn-sm" disabled={!data}
+                  onClick={() => { try { exportXlsx(data, range, periodLabel); }
+                                   catch (e) { toast?.error(e.message); } }}>
+            <i className="fa-solid fa-file-excel" aria-hidden="true" /> Excel
+          </button>
           <button className="btn btn-outline btn-sm" onClick={() => window.print()}>
             <i className="fa-solid fa-print" aria-hidden="true" /> {t("rpt2.print")}
           </button>

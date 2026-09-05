@@ -349,6 +349,74 @@ console.log("\n── F. Savat, reja va prognoz ──");
   await p4.close();
 }
 
+/* ══ G. Excel eksporti (V71) ═══════════════════════════════════════════
+
+   ⚠ HAQIQIY YO'L tekshiriladi, `buildXlsx` ning o'zi emas (uning sof
+   sinovi `test/xlsx.test.mjs` da). Bu yerda savol boshqa: tugma
+   bosilganda ekrandagi MA'LUMOT faylga tushdimi. Yo'lda uzilish
+   bo'lsa (`data` hali yo'q, maydon nomi o'zgargan) sof sinov buni
+   ko'rmasdi.
+
+   Yuklab olishni ushlash uchun `URL.createObjectURL` almashtiriladi:
+   headless brauzerda faylni diskdan o'qish ishonchsiz, Blob esa
+   xotirada va uni bayt-bayt tekshirsa bo'ladi. */
+console.log("\n── G. Excel eksporti ──");
+{
+  TARGET = null;
+  const p5 = await openReports();
+  await p5.evaluate(() => {
+    window.__xlsx = null;
+    const real = URL.createObjectURL.bind(URL);
+    URL.createObjectURL = (blob) => {
+      window.__xlsxBlob = blob;
+      return real(blob);
+    };
+    /* Yuklab olishni bosmasin — sinovda fayl saqlanmaydi. */
+    const click = HTMLAnchorElement.prototype.click;
+    HTMLAnchorElement.prototype.click = function () {
+      if (this.download) { window.__xlsxName = this.download; return; }
+      return click.call(this);
+    };
+  });
+
+  await p5.evaluate(() => {
+    const b = [...document.querySelectorAll(".rpt-bar__tools button")]
+      .find((x) => /excel/i.test(x.textContent));
+    b?.click();
+  });
+  await wait(500);
+
+  const info = await p5.evaluate(async () => {
+    if (!window.__xlsxBlob) return null;
+    const buf = new Uint8Array(await window.__xlsxBlob.arrayBuffer());
+    const head = String.fromCharCode(buf[0], buf[1], buf[2], buf[3]);
+    let text = "";
+    for (let i = 0; i < buf.length; i++) text += String.fromCharCode(buf[i]);
+    return { name: window.__xlsxName, size: buf.length, head, text, type: window.__xlsxBlob.type };
+  });
+
+  is(!!info, "Excel fayli yaratildi");
+  if (info) {
+    is(info.head === "PK\u0003\u0004", "haqiqiy ZIP (xlsx) imzosi", JSON.stringify(info.head));
+    is(/^hisobot-\d{4}-\d{2}-\d{2}\.xlsx$/.test(info.name || ""), "fayl nomi davr sanasi bilan", info.name);
+    is(info.type.includes("spreadsheetml"), "MIME turi xlsx", info.type);
+    is(info.size > 3000, "fayl bo'sh emas", `${info.size} bayt`);
+    /* Har bo'lim o'z varag'ida. ⚠ `<sheet name=` bo'yicha sanaladi
+       (`workbook.xml` dagi ro'yxat), fayl nomlari bo'yicha emas: ular
+       `[Content_Types].xml` va `.rels` da ham uchraydi va son ikki
+       barobar chiqardi. */
+    const sheets = (info.text.match(/<sheet name="/g) || []).length;
+    is(sheets >= 9, "har bo'lim O'Z VARAG'IDA", `${sheets} ta varaq`);
+    /* ⚠ Eng muhimi: SON son bo'lib tushdimi. «12 000 so'm» degan
+       katakni Excel jamlay olmaydi. */
+    is(info.text.includes("<v>112000000</v>"), "sof savdo SON sifatida yozildi (matn emas)");
+    is(info.text.includes("Coca-Cola") && info.text.includes("Chips"),
+       "savat juftliklari ham faylda");
+    is(info.text.includes("Ali") && info.text.includes("Vali"), "kassirlar varag'i to'ldi");
+  }
+  await p5.close();
+}
+
 is(pageErrors.length === 0, "sahifada JS xatosi tushmadi", pageErrors.join(" | "));
 
 await browser.close();
