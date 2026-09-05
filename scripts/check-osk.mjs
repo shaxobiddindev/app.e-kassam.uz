@@ -212,23 +212,35 @@ console.log("\n── D. Mijoz har ochilishda tozalanadi ──");
 {
   /* Haqiqiy oqim: to'lov oynasida mijoz tanlanadi, oyna yopiladi va
      qaytadan ochiladi — eski mijoz qolmasligi kerak. */
-  await page.keyboard.press("Escape"); await sleep(200);
-  await page.keyboard.press("Escape"); await sleep(400);
-  await page.keyboard.press("F9"); await sleep(700);
-  await page.click(".cart-cust .ek-select__btn"); await sleep(350);
+  /* ⚠ OYNA OCHILGANINI KUTAMIZ, ko'r-ko'rona bosmaymiz. Ilgari bu yerda
+     `press` + qat'iy `sleep` turardi va u SKRINSHOTSIZ ishga tushirilganda
+     yiqilardi: skrinshot olish qo'shimcha vaqt bergani uchun xato faqat
+     `SHOT_DIR` siz chiqar — ya'ni aynan `npm run check` da. */
+  for (let i = 0; i < 6 && (await page.$(".pay-modal-box")); i++) {
+    await page.keyboard.press("Escape"); await sleep(250);
+  }
+  await page.keyboard.press("F9");
+  await page.waitForSelector(".cart-cust .ek-select__btn", { timeout: 5000 });
+  await sleep(200);
+  await page.click(".cart-cust .ek-select__btn");
+  await page.waitForSelector(".ek-select__opt", { timeout: 5000 });
   await page.evaluate(() => [...document.querySelectorAll(".ek-select__opt")].find((o) => /Рустам/.test(o.textContent))?.click());
   await sleep(500);
   const picked = await page.evaluate(() => document.querySelector(".cart-cust .ek-select__btn")?.textContent.trim() || "");
   yes(/Рустам/.test(picked), "oynada mijoz tanlandi: " + picked, picked);
 
   await page.keyboard.press("Escape"); await sleep(500);
-  await page.keyboard.press("F9"); await sleep(700);
+  await page.keyboard.press("F9");
+  await page.waitForSelector(".cart-cust .ek-select__btn", { timeout: 5000 });
+  await sleep(250);
   const again = await page.evaluate(() => document.querySelector(".cart-cust .ek-select__btn")?.textContent.trim() || "");
   yes(!/Рустам/.test(again), "qayta ochilganda mijoz TOZALANGAN: «" + again + "»", again);
 
   /* Jamg'arma oynasi ham har safar bo'sh ochiladi. */
   await page.keyboard.press("Escape"); await sleep(400);
-  await page.keyboard.down("Alt"); await page.keyboard.press("j"); await page.keyboard.up("Alt"); await sleep(600);
+  await page.keyboard.down("Alt"); await page.keyboard.press("j"); await page.keyboard.up("Alt");
+  await page.waitForSelector(".pay-modal-box--lite", { timeout: 5000 });
+  await sleep(250);
   const sav = await page.evaluate(() => ({
     need: !!document.querySelector(".cart-cust--bare.is-needed"),
     title: document.querySelector(".pay-modal-box--lite .pay-modal-title")?.textContent.trim() || "",
