@@ -496,6 +496,24 @@ export default function CustomerPortal() {
   const code = params.get("c") || "";
   const isJoin = window.location.pathname.startsWith("/qr");
 
+  /* ⚠ HOOKLAR QUYIDAGI ERTA `return` LARDAN YUQORIDA. Manzil qatori
+     bu ekranning umri davomida o'zgarmaydi (bu yerda marshrutlash
+     yo'q, o'tish sahifani qayta yuklaydi), ya'ni hozir xato bo'lmaydi.
+     Lekin hooklarni shartli shoxlardan pastda qoldirish MINA qo'yish
+     bilan teng — birinchi mijoz marshrutlash qo'shilishi bilan
+     React butun kabinetni yiqitardi (#310). */
+  const finishJoin = useCallback(() => {
+    setToken(localStorage.getItem(TOKEN_KEY) || "");
+    // QR parametrlari (bir martalik kod) manzil qatorida qolmasin
+    window.history.replaceState({}, "", "/kabinet");
+  }, []);
+
+  const logout = useCallback(() => {
+    localStorage.removeItem(TOKEN_KEY);
+    setToken("");
+    window.history.replaceState({}, "", "/kabinet");
+  }, []);
+
   /* ── Qog'oz chekdagi QR: `/c/{saleId}-{imzo}` ────────────────────────
      ⚠ Kabinet kaliti TALAB QILINMAYDI — chekni qo'lida ushlab turgan
      odam uni allaqachon ko'rgan, QR shuni telefonga ko'chiradi. Ya'ni
@@ -532,18 +550,6 @@ export default function CustomerPortal() {
   if (debtLink) {
     return <DebtScreen id={debtLink[1]} sig={debtLink[2]} />;
   }
-
-  const finishJoin = useCallback(() => {
-    setToken(localStorage.getItem(TOKEN_KEY) || "");
-    // QR parametrlari (bir martalik kod) manzil qatorida qolmasin
-    window.history.replaceState({}, "", "/kabinet");
-  }, []);
-
-  const logout = useCallback(() => {
-    localStorage.removeItem(TOKEN_KEY);
-    setToken("");
-    window.history.replaceState({}, "", "/kabinet");
-  }, []);
 
   if (isJoin && ref_ && code) {
     return <JoinScreen ref_={ref_} code={code} onDone={finishJoin} />;

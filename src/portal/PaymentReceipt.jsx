@@ -145,9 +145,12 @@ export default function PaymentReceipt({
        beradi, ya'ni Esc chekni yopadi-yu, ostidagi qarz oynasini
        ochiq qoldiradi. Qo'lda yozilgan ishlovchi ikkalasini birdan
        yopardi. */
-    <Overlay className="pt-modal" onClick={onClose} onEscape={onClose}
+    /* ⚠ ORQA FONGA BOSISH YOPMAYDI (V72) — butun tizimda bir xil
+       qoida: sensor ekranda chetga tasodifan tegish oddiy hol.
+       Chiqish yo'llari: ✕ va ESC. */
+    <Overlay className="pt-modal" onEscape={onClose}
              role="dialog" aria-modal="true">
-      <div className="pt-modal__inner" onClick={(e) => e.stopPropagation()}>
+      <div className="pt-modal__inner">
         <button className="pt-close" onClick={onClose} aria-label="Yopish">
           <i className="fa-solid fa-xmark" aria-hidden="true" />
         </button>

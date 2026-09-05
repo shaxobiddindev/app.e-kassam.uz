@@ -158,18 +158,19 @@ export default function StockTakePage({ toast }) {
     }
   };
 
-  if (session === undefined || busy) {
-    return <div><h2 className="page-title">{t("stocktake.title")}</h2><SkeletonTable rows={6} cols={["wide", "num", "num", "narrow"]} /></div>;
-  }
-
-  const lines = session?.lines || [];
-  // Kutilgan qiymat kelgan bo'lsa — foydalanuvchi rahbar (yoki sanoq
-  // yopilgan). Ustunlarni shunga qarab chizamiz.
-  const reveal = lines.some((l) => l.expectedQuantity != null);
-
   /* ══ USTUNLAR BO'YICHA FILTR (V68) — sanoq tarixi ═════════════════
      Kamomad va ortiqcha SON: «kamomadi 100 mingdan katta sanoqlar»
-     degan savol aynan shu jadvalda so'raladi. */
+     degan savol aynan shu jadvalda so'raladi.
+
+     ⚠⚠ HOOKLAR ERTA `return` DAN YUQORIDA TURISHI SHART. Ilgari ular
+     pastda edi va sahifa YIQILARDI: yuklanayotganda quyidagi
+     `return` ishlaydi va hooklar chaqirilmaydi, ma'lumot kelgach esa
+     chaqiriladi — React buni «Rendered more hooks than during the
+     previous render» (#310) deb butun bo'limni yiqitadi.
+
+     ⚠ Xato JIMGINA edi: qurilish o'tardi, sahifa ochilganda skeleton
+     ko'rinardi va faqat MA'LUMOT KELGANDA yiqilardi. Endi buni
+     `scripts/check-hooks.mjs` qo'riqlaydi. */
   const HCOLS = useMemo(() => [
     { key: "id",    label: "#",                      type: "number", get: (h) => h.id },
     { key: "st",    label: t("common.status"),       type: "enum",
@@ -182,6 +183,15 @@ export default function StockTakePage({ toast }) {
   ], []);
   const hFlt = useDataFilter(HCOLS, "stocktake");
   const shownHistory = hFlt.apply(history);
+
+  if (session === undefined || busy) {
+    return <div><h2 className="page-title">{t("stocktake.title")}</h2><SkeletonTable rows={6} cols={["wide", "num", "num", "narrow"]} /></div>;
+  }
+
+  const lines = session?.lines || [];
+  // Kutilgan qiymat kelgan bo'lsa — foydalanuvchi rahbar (yoki sanoq
+  // yopilgan). Ustunlarni shunga qarab chizamiz.
+  const reveal = lines.some((l) => l.expectedQuantity != null);
 
   return (
     <div>

@@ -63,7 +63,9 @@ export default function LinePriceModal({ item, onClose, onApply }) {
     <Overlay className="pay-modal-overlay ek-overlay" role="dialog" aria-modal="true"
          aria-label={t("kassa.linePrice")}
          onEscape={onClose}
-         onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+         /* ⚠ Orqa fonga bosish YOPMAYDI (V72): sensor ekranda barmoq
+            chetga tasodifan tegishi oddiy hol va yarim yozilgan narx
+            yo'qolib ketardi. Chiqish — ✕, «Bekor qilish» va ESC. */>
       <div className="ek-dialog qty-modal">
         <div className="pay-modal-header">
           <div className="pay-modal-title">

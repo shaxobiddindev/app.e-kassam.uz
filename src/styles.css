@@ -4088,17 +4088,89 @@ body.osk-open .mark-modal {
 /* ══════════════════════════════════════════════════════════════════════════
    USTUNLAR BO'YICHA FILTR (V68)
    ══════════════════════════════════════════════════════════════════════════ */
+/* ══ FILTR OYNASI (V72 da qayta ishlangan) ═════════════════════════════
+   Do'kon egasi: «filtr oynasi juda kichik va dizayn jihatdan juda
+   oddiy, uni professional qilish kerak, ✕ tugmaga alohida e'tibor».
+
+   Uchta o'zgarish: oyna KENGAYDI (760 → 880) va balandligi cheklandi,
+   shartlar KARTOCHKA bo'ldi (ilgari ular chiziq bilan ajratilgan
+   qatorlar edi va uchtasi bir-biriga qo'shilib ketardi), ✕ esa
+   ko'rinadigan tugmaga aylandi. */
+.flt-box {
+  max-width: 880px;
+  width: min(880px, calc(100vw - 32px));
+}
+.flt-head { align-items: flex-start; }
+.flt-head__hint {
+  display: block; margin-top: 3px;
+  font-size: 12px; font-weight: 600; color: var(--fg-tertiary);
+}
+
+/* ⚠ ✕ — ALOHIDA E'TIBOR (do'kon egasining talabi). Ilgari u
+   `modal-close` sinfiga tayanardi va u bu oynada umuman
+   ta'riflanmagan edi: natijada shrift o'lchamidagi qora krestcha
+   bo'lib, sensor ekranda tegib bo'lmasdi. Endi 40×40 (teginish
+   me'yori) va fonli. */
+.flt-x {
+  flex: 0 0 auto;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px; border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--bg-sunken); color: var(--fg-secondary);
+  font-size: 16px; cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out),
+              color var(--dur-fast) var(--ease-out),
+              border-color var(--dur-fast) var(--ease-out);
+}
+.flt-x:hover {
+  background: var(--bg-danger-subtle, var(--red-l));
+  border-color: var(--fg-danger); color: var(--fg-danger);
+}
+.flt-x:active { transform: scale(.94); }
+
+/* Tana — uzun ro'yxatda ham oyna ekrandan chiqib ketmasin. */
+.flt-body { max-height: min(60vh, 520px); overflow-y: auto; }
+
 .flt-row {
   display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1.4fr) auto;
-  gap: 8px; align-items: center;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--border-subtle);
+  grid-template-columns: 26px minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1.4fr) auto;
+  gap: 10px; align-items: center;
+  padding: 12px; margin-bottom: 10px;
+  border: 1px solid var(--border); border-radius: 12px;
+  background: var(--bg-sunken);
 }
-.flt-row:last-of-type { border-bottom: 0; }
+.flt-row:last-of-type { margin-bottom: 0; }
+/* Qator raqami — uchta-to'rtta shart bir-biridan ajralib tursin. */
+.flt-row__n {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; border-radius: 8px;
+  background: var(--bg-brand-subtle); color: var(--fg-brand, var(--blue));
+  font-size: 12px; font-weight: 800;
+}
 .flt-vals { display: flex; gap: 6px; min-width: 0; }
 .flt-vals .form-input { min-width: 0; }
 .flt-enum { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.flt-add { margin-top: 12px; }
+
+/* Bo'sh holat — yozuv emas, bosiladigan TAKLIF. */
+.flt-empty {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  width: 100%; padding: 28px 16px;
+  border: 1px dashed var(--border); border-radius: 14px;
+  background: none; cursor: pointer; color: var(--fg-secondary);
+  font-family: var(--font);
+}
+.flt-empty:hover { background: var(--bg-hover); border-color: var(--border-brand); }
+.flt-empty > i { font-size: 22px; opacity: .45; }
+.flt-empty > b { font-size: 13px; font-weight: 700; }
+.flt-empty > span {
+  font-size: 12px; font-weight: 700;
+  color: var(--fg-brand, var(--blue));
+}
+
+.flt-foot { align-items: center; }
+/* ⚠ Chapga suriladi: tugmalar o'ngda qolsin (butun tizimda shunday). */
+.flt-foot__n { margin-inline-end: auto; font-size: 12px; color: var(--fg-tertiary); font-weight: 600; }
 
 /* Faol shartlar — jadval tepasida, oyna yopiq bo'lsa ham ko'rinadi. */
 .flt-chips { display: inline-flex; flex-wrap: wrap; gap: 6px; align-items: center; }
@@ -4540,3 +4612,38 @@ body.osk-open .mark-modal {
 }
 .tg-digest__btn > i { font-size: 11px; }
 .tg-digest__btn:disabled { opacity: .6; cursor: default; }
+
+/* ══ OMBOR JADVALI (V72) ═══════════════════════════════════════════════
+
+   Do'kon egasi ikki narsani ko'rsatdi: «Kirim» va «To'g'irlash»
+   tugmalari yopishib qolgani, va qatorning ISTALGAN joyidan bosilganda
+   partiyalarga o'tib ketishi.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ⚠ Bo'shliq TARTIBNING O'ZIDA. Ilgari ikkala tugma orasida faqat
+   matn bo'shlig'i turardi va ustun torayganda ular yangi qatorga
+   tushib bir-biriga yopishib qolardi. */
+.inv-acts {
+  display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end;
+}
+
+/* ⚠ PARTIYALARGA O'TISHNING YAGONA NISHONI — nom. Butun qator
+   bosiladigan bo'lsa, omborchi qoldiqni o'qish uchun tegib qo'yganda
+   ham boshqa sahifaga chiqib ketardi. Havola ko'rinishida: bosilishi
+   KO'RINIB turishi kerak, aks holda nishon topilmay qolardi. */
+.inv-open {
+  display: inline-flex; align-items: center; gap: 6px;
+  border: 0; background: none; padding: 2px 0; cursor: pointer;
+  font: inherit; color: var(--fg-brand, var(--blue));
+  text-align: start;
+  border-bottom: 1px solid transparent;
+  transition: border-color var(--dur-fast) var(--ease-out),
+              color var(--dur-fast) var(--ease-out);
+}
+.inv-open > i { font-size: 10px; opacity: .5; transition: transform var(--dur-fast) var(--ease-out); }
+.inv-open:hover { border-bottom-color: currentColor; }
+.inv-open:hover > i { transform: translateX(2px); opacity: 1; }
+.inv-open:focus-visible { outline: 2px solid var(--border-brand); outline-offset: 3px; border-radius: 4px; }
+
+/* Faol shartlar — panelda O'Z qatorida (V72). */
+.inv-bar > .flt-chips { flex-basis: 100%; margin-top: 2px; }

@@ -6,7 +6,7 @@ import { BranchSelector, Modal } from "../components";
 import MarkingScanModal from "../components/MarkingScanModal";
 import { Empty, SearchBar } from "../components/ui";
 import FacetFilter from "../components/ek/FacetFilter";
-import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
+import DataFilter, { useDataFilter, SortTh, FilterChips } from "../components/ek/DataFilter";
 import VariantMatrixModal from "../components/VariantMatrixModal";
 import Select from "../components/ek/Select";
 import { useAuth } from "../hooks/useAuth";
@@ -800,7 +800,11 @@ export default function InventoryPage({ toast }) {
                 chizilmaydi va «nega ro'yxat qisqa?» degan savol javobsiz
                 qolardi — tugmadagi son shartning O'ZINI aytmaydi.
                 Chiplar panelda o'z qatoriga o'tadi (flex-wrap). */}
-            <DataFilter cols={COLS} flt={colFlt} />
+            {/* ⚠ Chiplar BU YERDA emas (`chips={false}`) — ular
+                pastda, o'z qatorida. Ilgari ular tugmalar bilan bitta
+                qatorda turardi va uchta shart qo'yilgan zahoti
+                «Stiker chiqarish» siqilib, yozuvi ko'rinmay qolardi. */}
+            <DataFilter cols={COLS} flt={colFlt} chips={false} />
             {/* ⚠ Stiker tugmasi shu yerda: omborchi «Muddati yaqin» ni
                 bosadi va darhol shu qatordan stikerni chiqaradi. */}
             {counts.near > 0 && (
@@ -811,6 +815,9 @@ export default function InventoryPage({ toast }) {
               </button>
             )}
           </div>
+
+          {/* Faol shartlar — TO'LIQ kenglikdagi o'z qatorida. */}
+          <FilterChips cols={COLS} flt={colFlt} />
 
           {/* Izoh FAQAT ogohlantirish paytida: tinch kunda u bitta
               qatorni bekorga egallardi. */}
@@ -940,21 +947,35 @@ export default function InventoryPage({ toast }) {
                     <tr
                       key={`p-${g.productId}`}
                       className={rowClass(f)}
-                      style={{ cursor: "pointer" }}
                       /* ⚠ MODAL EMAS, SAHIFA (V60). Partiyalar uchta
                          bo'limga bo'lindi (faol, muddati o'tgan, arxiv) va
                          modal ichida ular oynani scrolga majbur qilardi.
                          Sahifada havola bo'ladi, brauzerning «orqaga»
                          tugmasi ishlaydi va omborchi uni ochiq qoldirib
                          boshqa ishga o'ta oladi. */
-                      onClick={() => navigate(`/inventory/${g.productId}`)}
-                      title={t("inv.openDetails")}
                     >
                       <td>
                         <div className="fw-700" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <i className="fa-solid fa-chevron-right"
-                             style={{ fontSize: 11, opacity: 0.55, width: 12 }} aria-hidden="true" />
-                          {g.productName}
+                          {/* ══ PARTIYALARGA — FAQAT NOMDAN (V72) ═══════
+                              Do'kon egasi: «qatorning istalgan joyidan
+                              bossa partiyalarga o'tib ketyapti, buni
+                              faqat bir joyga, lekin e'tibor tortadigan
+                              qilish kerak».
+
+                              Ilgari butun `<tr>` bosiladigan edi:
+                              omborchi qoldiqni o'qish uchun qatorga
+                              tegib qo'ysa ham boshqa sahifaga chiqib
+                              ketardi va qaytish uchun «orqaga» bosishi
+                              kerak bo'lardi. Endi yagona nishon — NOM,
+                              va u havola ko'rinishida (ko'k, ostiga
+                              chizilgan, o'q bilan) — ya'ni bosilishi
+                              KO'RINIB turadi. */}
+                          <button type="button" className="inv-open"
+                                  onClick={() => navigate(`/inventory/${g.productId}`)}
+                                  title={t("inv.openDetails")}>
+                            {g.productName}
+                            <i className="fa-solid fa-chevron-right" aria-hidden="true" />
+                          </button>
                           {/* ⚠ MODEL JADVALI TUGMASI (V57) — «qaysi
                               o'lchamdan qancha qoldi?». Ilgari omborchi
                               variantlarni jadvaldan ko'z bilan yig'ardi:
@@ -1005,11 +1026,17 @@ export default function InventoryPage({ toast }) {
                           : (single.expiryDate ? shortDate(single.expiryDate) : t("inv.noExpiry"))}
                       </td>
                       <td>{stateBadges(f, g)}</td>
+                      {/* ⚠ FLEX VA GAP, matn bo'shlig'i EMAS. Ilgari ikkala
+                          tugma orasida faqat `{" "}` turardi: ustun
+                          torayganda ular yangi qatorga tushib BIR-BIRIGA
+                          YOPISHIB qolardi (do'kon egasi ko'rsatgan holat).
+                          Bo'shliq endi tartibning o'zida. */}
                       {!branchId && (
-                        <td className="text-end" onClick={(e) => e.stopPropagation()}>
+                        <td className="text-end">
+                          <div className="inv-acts">
                           <button className="btn btn-primary btn-sm" onClick={() => openModal(g)}>
                             <i className="fa-solid fa-plus" /> {t("inv.receive")}
-                          </button>{" "}
+                          </button>
                           {/* Bitta partiyada to'g'irlash shu yerda; ko'p
                               partiyada QAYSI birini — ochib tanlanadi.
 
@@ -1024,6 +1051,7 @@ export default function InventoryPage({ toast }) {
                               <i className="fa-solid fa-sliders" /> {t("inv.correctAction")}
                             </button>
                           )}
+                          </div>
                         </td>
                       )}
                     </tr>,

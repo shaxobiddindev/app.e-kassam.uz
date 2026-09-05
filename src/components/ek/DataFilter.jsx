@@ -37,6 +37,21 @@ import Overlay from "./Overlay";
    aks holda «nega ro'yxat qisqa?» degan savol javobsiz qolardi.
    ══════════════════════════════════════════════════════════════════════════ */
 
+/**
+ * Shart TO'LDIRILGANMI (ya'ni ro'yxatni haqiqatan kesadimi).
+ *
+ * ⚠ BITTA joyda ta'riflangan: qoida uchta joyda kerak — tugmadagi
+ * son, chiplar va `ek-filter.js` dagi qo'llash. Uch nusxa bo'lganda
+ * ular vaqt o'tib bir-biridan uzoqlashardi va ekranda «2 ta shart»
+ * deb yozilib, ro'yxat esa bittasi bilan kesilgan bo'lardi.
+ */
+export const isLive = (c) => {
+  if (!NEEDS_VALUE.has(c.op)) return true;
+  if (c.type === "enum") return Array.isArray(c.value) && c.value.length > 0;
+  if (NEEDS_SECOND.has(c.op)) return c.value !== "" || c.value2 !== "";
+  return c.value !== "" && c.value != null;
+};
+
 /** Amal nomlari — tarjima kalitlari `filter.op.*`. */
 const opLabel = (op) => t(`filter.op.${op}`);
 
@@ -77,8 +92,30 @@ export function useDataFilter(cols, storageKey) {
     } catch { /* xotira to'lgan yoki bloklangan — filtr baribir ishlaydi */ }
   };
 
-  const set = (nextConds) => { setConds(nextConds); save(nextConds, sort); };
-  const setSorting = (nextSort) => { setSort(nextSort); save(conds, nextSort); };
+  /**
+   * Shart va tartibni BIRGA yozadi.
+   *
+   * ⚠⚠ MANA SHU YERDA HAQIQIY XATO BOR EDI. `clear()` ketma-ket
+   * `set([])` va `setSorting(...)` ni chaqirardi, ularning har biri
+   * esa `localStorage` ga O'ZICHA yozardi — ikkinchisi o'z
+   * yopilmasidan (closure) ESKI shartlarni olib, birinchisi tozalagan
+   * ro'yxatni QAYTA TIKLARDI. Natijada foydalanuvchi filtrni
+   * tozalaydi, ekran to'g'ri yangilanadi, lekin boshqa sahifaga o'tib
+   * qaytganda (yoki F5 dan keyin) shart QAYTA PAYDO bo'lardi va uni
+   * o'chirishning yo'li ko'rinmasdi.
+   *
+   * ⚠ Xato ko'rinmasligining sababi: ekrandagi holat (`useState`)
+   * to'g'ri tozalanardi, faqat DISKDAGI nusxa eski qolardi. Ya'ni
+   * hamma narsa ishlayotgandek ko'rinardi — keyingi kirishgacha.
+   */
+  const write = (nextConds, nextSort) => {
+    setConds(nextConds);
+    setSort(nextSort);
+    save(nextConds, nextSort);
+  };
+
+  const set = (nextConds) => write(nextConds, sort);
+  const setSorting = (nextSort) => write(conds, nextSort);
 
   /** Ustun sarlavhasiga bosilganda: o'sish → kamayish → tartibsiz. */
   const toggleSort = (colKey) => {
@@ -90,15 +127,12 @@ export function useDataFilter(cols, storageKey) {
   const apply = (rows) => applyAll(rows || [], conds, sort, cols);
 
   /* Faol (to'ldirilgan) shartlar soni — tugmadagi belgi shundan. */
-  const activeCount = useMemo(() => conds.filter((c) => {
-    if (!NEEDS_VALUE.has(c.op)) return true;
-    if (c.type === "enum") return Array.isArray(c.value) && c.value.length > 0;
-    if (NEEDS_SECOND.has(c.op)) return c.value !== "" || c.value2 !== "";
-    return c.value !== "" && c.value != null;
-  }).length, [conds]);
+  const activeCount = useMemo(() => conds.filter(isLive).length, [conds]);
 
   return { cols, conds, set, sort, setSorting, toggleSort, apply, open, setOpen, activeCount,
-           clear: () => { set([]); setSorting({ key: null, dir: "asc" }); } };
+           /* ⚠ BITTA yozuv: ikkita alohida chaqiruv bir-birining
+              yozganini bosib ketardi (yuqoridagi izoh). */
+           clear: () => write([], { key: null, dir: "asc" }) };
 }
 
 /** Jadval sarlavhasi uchun: saralanadigan `th`. */
@@ -119,7 +153,7 @@ export function SortTh({ flt, col, children, ...rest }) {
 }
 
 /** Filtr tugmasi + faol shartlar chipi + oyna. */
-export default function DataFilter({ cols, flt, compact = false }) {
+export default function DataFilter({ cols, flt, compact = false, chips = true }) {
   const { conds, set, open, setOpen, activeCount } = flt;
   const byKey = useMemo(() => new Map(cols.map((c) => [c.key, c])), [cols]);
 
@@ -137,6 +171,13 @@ export default function DataFilter({ cols, flt, compact = false }) {
   const chip = (c, i) => {
     const col = byKey.get(c.key);
     if (!col) return null;
+    /* ⚠ TO'LDIRILMAGAN shart chip BERMAYDI. Ilgari qator qo'shilishi
+       bilan «Mahsulot ichida bor» degan bo'sh chip paydo bo'lardi —
+       u hech narsani kesmaydi, lekin ekranda filtr ishlayotgandek
+       ko'rinardi va foydalanuvchi «nega ro'yxat o'zgarmadi?» deb
+       qolardi. Shart faol bo'lishi qoidasi `activeCount` bilan bir
+       xil. */
+    if (!isLive(c)) return null;
     const val = c.type === "enum" ? (c.value || []).join(", ")
       : NEEDS_SECOND.has(c.op) ? `${c.value || "…"} — ${c.value2 || "…"}`
       : NEEDS_VALUE.has(c.op) ? c.value : "";
@@ -160,8 +201,12 @@ export default function DataFilter({ cols, flt, compact = false }) {
         {activeCount > 0 && <span className="facet__badge ek-num">{activeCount}</span>}
       </button>
 
-      {/* Faol shartlar — oyna yopiq bo'lsa ham ko'rinadi. */}
-      {activeCount > 0 && !compact && (
+      {/* Faol shartlar — oyna yopiq bo'lsa ham ko'rinadi.
+          ⚠ `chips={false}` bo'lsa ular BU YERDA chizilmaydi: ba'zi
+          sahifada (ombor paneli) chiplar tugmalar bilan bitta qatorga
+          sig'may, «Stiker chiqarish» ni siqib qo'yardi. U yerda
+          `FilterChips` alohida, to'liq kenglikdagi qatorga qo'yiladi. */}
+      {chips && activeCount > 0 && !compact && (
         <span className="flt-chips">
           {conds.map(chip)}
           <button type="button" className="flt-chips__clear" onClick={flt.clear}>
@@ -171,23 +216,38 @@ export default function DataFilter({ cols, flt, compact = false }) {
       )}
 
       {open && (
+        /* ⚠ ORQA FONGA BOSISH YOPMAYDI (V72) — sensor ekranda barmoq
+           chetga tasodifan tegishi oddiy hol va yarim terilgan shart
+           yo'qolib ketardi. Chiqish: ✕, ESC va «Qo'llash». */
         <Overlay className="modal-overlay ek-overlay" onEscape={() => setOpen(false)}
-                 role="dialog" aria-modal="true" aria-label={t("filter.title")}
-                 onClick={(e) => { if (e.target === e.currentTarget) setOpen(false); }}>
-          <div className="modal-box ek-dialog" style={{ maxWidth: 760 }}>
-            <div className="modal-header">
-              <h3 className="modal-title">
-                <i className="fa-solid fa-filter" aria-hidden="true" /> {t("filter.title")}
-              </h3>
-              <button className="modal-close" onClick={() => setOpen(false)}
-                      aria-label={t("common.close")}>
+                 role="dialog" aria-modal="true" aria-label={t("filter.title")}>
+          <div className="modal-box ek-dialog flt-box">
+            <div className="modal-header flt-head">
+              <div>
+                <h3 className="modal-title">
+                  <i className="fa-solid fa-filter" aria-hidden="true" /> {t("filter.title")}
+                </h3>
+                {/* ⚠ Qoida OYNANING O'ZIDA yozilgan. Ilgari shartlar
+                    «VA» bilan birlashishini hech narsa aytmasdi va
+                    ikkita shart qo'ygan odam nega ro'yxat bo'shab
+                    qolganini tushunmasdi. */}
+                <span className="flt-head__hint">{t("filter.andHint")}</span>
+              </div>
+              <button type="button" className="flt-x" onClick={() => setOpen(false)}
+                      aria-label={t("common.close")} title={t("common.close")}>
                 <i className="fa-solid fa-xmark" aria-hidden="true" />
               </button>
             </div>
 
-            <div className="modal-body">
+            <div className="modal-body flt-body">
               {conds.length === 0 && (
-                <div className="text-muted" style={{ marginBottom: 10 }}>{t("filter.empty")}</div>
+                /* Bo'sh holat — yozuv emas, TAKLIF: bitta bosishda
+                   birinchi shart qo'shiladi. */
+                <button type="button" className="flt-empty" onClick={addCond}>
+                  <i className="fa-solid fa-filter-circle-xmark" aria-hidden="true" />
+                  <b>{t("filter.empty")}</b>
+                  <span>{t("filter.add")}</span>
+                </button>
               )}
 
               {conds.map((c, i) => {
@@ -195,6 +255,10 @@ export default function DataFilter({ cols, flt, compact = false }) {
                 const ops = OPS[c.type] || OPS.text;
                 return (
                   <div className="flt-row" key={i}>
+                    {/* ⚠ Qator raqami: uchta-to'rtta shart bo'lganda
+                        «qaysi biri qaysi» degan savol tug'iladi va
+                        ular ko'zga bir xil ko'rinardi. */}
+                    <span className="flt-row__n">{i + 1}</span>
                     <Select block ariaLabel={t("filter.column")}
                             value={c.key} onChange={(v) => pickCol(i, v)}
                             options={cols.map((x) => ({ value: x.key, label: x.label }))} />
@@ -243,15 +307,22 @@ export default function DataFilter({ cols, flt, compact = false }) {
                 );
               })}
 
-              <button type="button" className="btn btn-outline btn-sm" onClick={addCond}
-                      style={{ marginTop: 8 }}>
-                <i className="fa-solid fa-plus" aria-hidden="true" /> {t("filter.add")}
-              </button>
+              {conds.length > 0 && (
+                <button type="button" className="btn btn-outline btn-sm flt-add" onClick={addCond}>
+                  <i className="fa-solid fa-plus" aria-hidden="true" /> {t("filter.add")}
+                </button>
+              )}
             </div>
 
-            <div className="modal-footer">
-              <button className="btn btn-outline btn-sm" onClick={flt.clear}>
-                {t("filter.clear")}
+            <div className="modal-footer flt-foot">
+              {/* Faol shartlar soni — «Qo'llash» dan keyin ro'yxat
+                  nega qisqarganini oldindan aytadi. */}
+              <span className="flt-foot__n">
+                {activeCount > 0 ? t("filter.activeN", { n: activeCount }) : t("filter.none")}
+              </span>
+              <button className="btn btn-outline btn-sm" onClick={flt.clear}
+                      disabled={!conds.length}>
+                <i className="fa-solid fa-eraser" aria-hidden="true" /> {t("filter.clear")}
               </button>
               <button className="btn btn-primary btn-sm" onClick={() => setOpen(false)}>
                 <i className="fa-solid fa-check" aria-hidden="true" /> {t("common.apply")}
@@ -261,5 +332,43 @@ export default function DataFilter({ cols, flt, compact = false }) {
         </Overlay>
       )}
     </>
+  );
+}
+
+/**
+ * Faol shartlar chipi — ALOHIDA joyga qo'yish uchun.
+ *
+ * ⚠ Nega kerak: ombor panelida tugmalar va chiplar bitta qatorda
+ * turardi va uchta shart qo'yilgan zahoti «Stiker chiqarish» siqilib,
+ * yozuvi ko'rinmay qolardi. Chiplar soni oldindan noma'lum, tugmalar
+ * esa doimiy — shuning uchun ular BOSHQA qatorda bo'lishi kerak.
+ */
+export function FilterChips({ cols, flt }) {
+  const { conds, set, activeCount } = flt;
+  const byKey = useMemo(() => new Map(cols.map((c) => [c.key, c])), [cols]);
+  if (!activeCount) return null;
+
+  const dropCond = (i) => set(conds.filter((_, k) => k !== i));
+  return (
+    <span className="flt-chips">
+      {conds.map((c, i) => {
+        const col = byKey.get(c.key);
+        if (!col || !isLive(c)) return null;
+        const val = c.type === "enum" ? (c.value || []).join(", ")
+          : NEEDS_SECOND.has(c.op) ? `${c.value || "…"} — ${c.value2 || "…"}`
+          : NEEDS_VALUE.has(c.op) ? c.value : "";
+        return (
+          <span className="flt-chip" key={i}>
+            <b>{col.label}</b> {opLabel(c.op)} {val && <span className="mono">{String(val)}</span>}
+            <button type="button" onClick={() => dropCond(i)} aria-label={t("common.delete")}>
+              <i className="fa-solid fa-xmark" aria-hidden="true" />
+            </button>
+          </span>
+        );
+      })}
+      <button type="button" className="flt-chips__clear" onClick={flt.clear}>
+        {t("filter.clear")}
+      </button>
+    </span>
   );
 }

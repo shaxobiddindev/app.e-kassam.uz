@@ -66,6 +66,7 @@ let pass = 0, fail = 0;
 const ok  = (m, extra = "") => { pass++; console.log(`  ✅ ${m}${extra ? ` (${extra})` : ""}`); };
 const bad = (m, extra = "") => { fail++; console.log(`  ❌ ${m}${extra ? ` — ${extra}` : ""}`); };
 const is  = (cond, m, extra = "") => (cond ? ok(m, extra) : bad(m, extra));
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const day = (offset) => {
   const d = new Date();
@@ -81,7 +82,11 @@ const day = (offset) => {
    AYNAN shu shaklda bo'lishi shart, aks holda jadval bo'sh chiqadi va
    sinov «filtr ishlamadi» deb yolg'on gapirardi. */
 const batch = (id, name, code, qty, cost, price, minQ, exp) => ({
-  id: id * 100, productId: id, productName: name, barcode: code,
+  /* ⚠ `inventoryId` SHART: «To'g'irlash» tugmasi faqat haqiqiy
+     partiyada chiziladi (`single.inventoryId != null`). Usiz qatorda
+     bitta tugma qolardi va «tugmalar yopishib qolgan» degan holat
+     sinovda umuman yuzaga kelmasdi. */
+  id: id * 100, inventoryId: id * 100, productId: id, productName: name, barcode: code,
   quantity: qty, minQuantity: minQ, costPrice: cost, salePrice: price,
   expiryDate: exp, unit: "DONA",
 });
@@ -137,6 +142,25 @@ async function openInv(items) {
 const rowCount = (page) => page.$$eval("table.table tbody tr", (r) => r.length).catch(() => 0);
 const shot = async (page, name) => { if (SHOT) await page.screenshot({ path: path.join(SHOT, `${name}.png`) }); };
 
+/**
+ * Filtr oynasida yangi shart qatorini qo'shadi.
+ *
+ * ⚠ IKKI XIL tugma bo'lishi mumkin (V72): shart yo'q bo'lganda —
+ * o'rtadagi katta TAKLIF (`.flt-empty`), bor bo'lganda — pastdagi
+ * «Shart qo'shish». Sinov ikkalasini ham bilishi kerak, aks holda u
+ * ekranning holatiga bog'lanib qolardi.
+ */
+async function addCondition(page) {
+  await page.evaluate(() => {
+    const empty = document.querySelector(".flt-empty");
+    if (empty) return empty.click();
+    const add = [...document.querySelectorAll(".modal-body button")]
+      .find((b) => /shart qo'shish/i.test(b.textContent));
+    add?.click();
+  });
+  await page.waitForSelector(".flt-row", { timeout: 8000 });
+}
+
 /* ══ A. Panel tinch omborda ham turadi ═════════════════════════════════ */
 console.log("── A. Muammosiz ombor ──");
 {
@@ -188,12 +212,7 @@ console.log("\n── C. Ustun filtri ──");
 {
   await page.click(".inv-bar__tools .filter-btn");
   await page.waitForSelector(".flt-row, .modal-box", { timeout: 8000 });
-  await page.evaluate(() => {
-    const add = [...document.querySelectorAll(".modal-body .btn-outline")]
-      .find((b) => /shart qo'shish/i.test(b.textContent));
-    add?.click();
-  });
-  await page.waitForSelector(".flt-row", { timeout: 8000 });
+  await addCondition(page);
   ok("shart qatori qo'shildi");
 
   /* Ustun = qoldiq, amal = kichik, qiymat = 20.
@@ -272,6 +291,123 @@ console.log("\n── E. Saralash ──");
     return th?.className.includes("is-on");
   });
   is(!stillOn, "uchinchi bosish tartibni BEKOR qildi");
+}
+
+/* ══ F. Qator bosilishi va tugmalar (V72) ══════════════════════════════
+
+   Do'kon egasi ikkita narsani ko'rsatdi: qatorning ISTALGAN joyidan
+   bosilganda partiyalarga o'tib ketishi (omborchi qoldiqni o'qish
+   uchun tegib qo'ysa ham sahifadan chiqib ketardi) va «Kirim» bilan
+   «To'g'irlash» tugmalarining yopishib qolgani. */
+console.log("\n── F. Qator va tugmalar ──");
+{
+  const p6 = await openInv(BAD);
+
+  /* Qatorning «bo'sh» joyi — masalan tannarx katagi — hech qayerga
+     olib bormasligi kerak. */
+  const url0 = p6.url();
+  await p6.evaluate(() => {
+    const td = document.querySelector("table.table tbody tr td:nth-child(4)");
+    td?.click();
+  });
+  await wait(400);
+  is(p6.url() === url0, "qatorning bo'sh joyiga bosish HECH QAYERGA olib bormaydi", p6.url());
+
+  /* Yagona nishon — NOM. */
+  const opener = await p6.$("table.table tbody .inv-open");
+  is(!!opener, "nomda alohida ochish tugmasi bor");
+  const styled = await p6.evaluate(() => {
+    const b = document.querySelector("table.table tbody .inv-open");
+    if (!b) return null;
+    const cs = getComputedStyle(b);
+    return { cursor: cs.cursor, hasArrow: !!b.querySelector("i") };
+  });
+  is(styled?.cursor === "pointer" && styled?.hasArrow,
+     "u bosiladigan ko'rinishda (kursor va o'q bilan)", JSON.stringify(styled));
+
+  await p6.evaluate(() => document.querySelector("table.table tbody .inv-open")?.click());
+  await wait(500);
+  is(/\/inventory\/\d+/.test(p6.url()), "nomga bosilganda partiyalarga o'tadi", p6.url());
+  await p6.goBack({ waitUntil: "networkidle2" });
+  await p6.waitForSelector(".inv-bar", { timeout: 10_000 });
+
+  /* ⚠ Tugmalar YOPISHIB qolmasin — orasida haqiqiy bo'shliq bo'lsin. */
+  const gap = await p6.evaluate(() => {
+    const cell = [...document.querySelectorAll("table.table tbody .inv-acts")]
+      .find((d) => d.querySelectorAll("button").length >= 2);
+    if (!cell) return null;
+    const [a, b] = [...cell.querySelectorAll("button")].map((x) => x.getBoundingClientRect());
+    /* Yonma-yon bo'lsa — gorizontal, tushib ketgan bo'lsa — vertikal. */
+    const sameRow = Math.abs(a.top - b.top) < 4;
+    return { sameRow, dx: Math.round(b.left - a.right), dy: Math.round(b.top - a.bottom) };
+  });
+  is(!!gap, "ikkita tugmali qator topildi");
+  if (gap) {
+    is(gap.sameRow ? gap.dx >= 6 : gap.dy >= 6,
+       "«Kirim» va «To'g'irlash» orasida bo'shliq bor (yopishib qolmagan)",
+       JSON.stringify(gap));
+  }
+  await p6.close();
+}
+
+/* ══ G. Filtr oynasi va saqlanishi (V72) ═══════════════════════════════ */
+console.log("\n── G. Filtr oynasi ──");
+{
+  const p7 = await openInv(BAD);
+  await p7.click(".inv-bar__tools .filter-btn");
+  await p7.waitForSelector(".flt-box", { timeout: 8000 });
+
+  /* ⚠ ORQA FONGA BOSISH YOPMAYDI — sensor ekranda tasodifan
+     tegishda yarim terilgan shart yo'qolib ketardi. */
+  await p7.evaluate(() => {
+    const ov = document.querySelector(".modal-overlay");
+    ov?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
+  await wait(300);
+  is(!!(await p7.$(".flt-box")), "orqa fonga bosilganda oyna YOPILMADI");
+
+  const x = await p7.evaluate(() => {
+    const b = document.querySelector(".flt-x");
+    if (!b) return null;
+    const r = b.getBoundingClientRect();
+    return { w: Math.round(r.width), h: Math.round(r.height) };
+  });
+  is(x && x.w >= 36 && x.h >= 36, "✕ tugmasi teginish o'lchamida", JSON.stringify(x));
+
+  const wide = await p7.evaluate(() => Math.round(document.querySelector(".flt-box").getBoundingClientRect().width));
+  is(wide >= 700, "oyna kengaydi", `${wide}px`);
+
+  /* ESC — yopadi. */
+  await p7.keyboard.press("Escape");
+  await wait(300);
+  is(!(await p7.$(".flt-box")), "ESC oynani yopdi");
+
+  /* ⚠ ENG MUHIMI: shart TOZALANGACH QAYTIB KELMASIN. Ilgari
+     `clear()` ikki marta yozardi va ikkinchi yozuv eski shartlarni
+     tiklardi — foydalanuvchi tozalasa ham, qayta kirganda shart
+     joyida turardi. */
+  await p7.click(".inv-bar__tools .filter-btn");
+  await p7.waitForSelector(".flt-box", { timeout: 8000 });
+  await addCondition(p7);
+  await p7.type(".flt-row .form-input", "sut");
+  await wait(300);
+  const saved = await p7.evaluate(() => localStorage.getItem("ek_flt_inv"));
+  is(saved && saved.includes("sut"), "shart diskka yozildi", saved);
+
+  await p7.evaluate(() => {
+    [...document.querySelectorAll(".flt-foot button")]
+      .find((b) => /tozalash/i.test(b.textContent))?.click();
+  });
+  await wait(400);
+  const after = await p7.evaluate(() => localStorage.getItem("ek_flt_inv"));
+  is(!after || !after.includes("sut"),
+     "tozalangach diskda ham QOLMADI (qayta kirganda paydo bo'lmaydi)", after);
+
+  /* Sahifani qayta yuklab, haqiqatan yo'qligini tekshiramiz. */
+  await p7.reload({ waitUntil: "networkidle2" });
+  await p7.waitForSelector(".inv-bar", { timeout: 10_000 });
+  is(!(await p7.$(".flt-chip")), "qayta yuklashdan keyin ham shart yo'q");
+  await p7.close();
 }
 
 is(pageErrors.length === 0, "sahifada JS xatosi tushmadi", pageErrors.join(" | "));
