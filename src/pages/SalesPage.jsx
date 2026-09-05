@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "../lib/ek-i18n";
 import { saleApi } from "../api";
 import { money } from "../utils";
@@ -7,7 +7,7 @@ import { Empty, SearchBar, Badge, Field } from "../components/ui";
 import { useConfirm } from "../context/ConfirmProvider";
 import { useBadge } from "../context/BadgeProvider";
 import { useAuth } from "../hooks/useAuth";
-import { paymentEntry, saleStatus } from "../lib/ek-labels";
+import { PAYMENT_TYPE, SALE_STATUS, paymentEntry, saleStatus } from "../lib/ek-labels";
 // ⚠ `Spinner` HAM shu yerdan. U chek chiqarish va bekor qilish tugmalarida
 // FAQAT amal davomida chiziladi — shuning uchun import unutilgani sahifa
 // ochilganda bilinmasdi, tugma bosilgan zahoti esa render'da
@@ -16,6 +16,7 @@ import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
 import { printReceipt } from "../lib/ek-hardware";
 import SaleDetailModal from "../components/SaleDetailModal";
+import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
 import { topRole } from "../lib/ek-roles";
 import { useScanner } from "../hooks/useScanner";
 import { useOnline } from "../hooks/useOnline";
@@ -228,11 +229,31 @@ export default function SalesPage({ toast }) {
 
   /* ⚠ Avval HOLAT, keyin qidiruv: qidiruv natijani mosligiga qarab
      saralaydi va undan keyin filtrlash saralashni buzardi. */
+  /* ══ USTUNLAR BO'YICHA FILTR (V68) ═══════════════════════════════════
+     Jadvaldagi HAR BIR ustun — filtrda ham, saralashda ham. Do'kon
+     egasi kunni «kim nima sotdi, qaysi usulda, qancha?» degan savol
+     bilan yopadi va bu savollarning har biri boshqa ustun.
+
+     ⚠ `#` — SON: chek raqamini «> 500» deb kesish tabiiy, matn
+     qoidasida esa «71» «500» dan katta chiqardi. */
+  const COLS = useMemo(() => [
+    { key: "id",    label: "#",                     type: "number", get: (s) => s.id },
+    { key: "cash",  label: t("sales.colCashier"),   type: "text",   get: (s) => s.cashierName },
+    { key: "cust",  label: t("cust.col"),           type: "text",   get: (s) => s.customerName },
+    { key: "sum",   label: t("common.sum"),         type: "number", get: (s) => s.totalAmount },
+    { key: "pay",   label: t("sales.colPayment"),   type: "enum",   get: (s) => s.paymentType,
+      options: Object.keys(PAYMENT_TYPE).map((k) => ({ value: k, label: paymentEntry(k).label })) },
+    { key: "st",    label: t("common.status"),      type: "enum",   get: (s) => s.status,
+      options: Object.keys(SALE_STATUS).map((k) => ({ value: k, label: saleStatus(k).label })) },
+    { key: "date",  label: t("common.date"),        type: "date",   get: (s) => s.createdAt },
+  ], []);
+  const colFlt = useDataFilter(COLS, "sales");
+
   const byStatus = byPeriod.filter((s) => status === "ALL" || s.status === status);
   /* Chek raqami RAQAMLI maydon sifatida: do'koncha «…347» deb oxirgi
      raqamlarni eslaydi, to'liq raqamni emas — matn qoidasi bunda
      ishlamasdi. */
-  const filtered = rankItems(byStatus, search, {
+  const filtered = rankItems(colFlt.apply(byStatus), search, {
     digits: (s) => [String(s.id)],
     texts:  (s) => [s.customerName, s.cashierName],
   });
@@ -257,9 +278,12 @@ export default function SalesPage({ toast }) {
               </span>
             )}
           </div>
-          <button className="btn btn-outline btn-sm" onClick={loadSales}>
-            <i className="fa-solid fa-rotate-right" /> {t("common.refresh")}
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <DataFilter cols={COLS} flt={colFlt} />
+            <button className="btn btn-outline btn-sm" onClick={loadSales}>
+              <i className="fa-solid fa-rotate-right" /> {t("common.refresh")}
+            </button>
+          </div>
         </div>
 
         {/* Holat filtri. Bekor qilingan sotuvlar endi ro'yxatda turadi —
@@ -298,13 +322,13 @@ export default function SalesPage({ toast }) {
             <table>
               <thead>
                 <tr>
-                  <th>#</th>
-                  <th>{t("sales.colCashier")}</th>
-                  <th>{t("cust.col")}</th>
-                  <th>{t("common.sum")}</th>
-                  <th>{t("sales.colPayment")}</th>
-                  <th>{t("common.status")}</th>
-                  <th>{t("common.date")}</th>
+                  <SortTh flt={colFlt} col="id">#</SortTh>
+                  <SortTh flt={colFlt} col="cash">{t("sales.colCashier")}</SortTh>
+                  <SortTh flt={colFlt} col="cust">{t("cust.col")}</SortTh>
+                  <SortTh flt={colFlt} col="sum">{t("common.sum")}</SortTh>
+                  <SortTh flt={colFlt} col="pay">{t("sales.colPayment")}</SortTh>
+                  <SortTh flt={colFlt} col="st">{t("common.status")}</SortTh>
+                  <SortTh flt={colFlt} col="date">{t("common.date")}</SortTh>
                   <th></th>
                 </tr>
               </thead>

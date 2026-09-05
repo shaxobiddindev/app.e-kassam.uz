@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { t } from "../lib/ek-i18n";
 import { productApi, mediaApi, shopApi, downloadScaleExport } from "../api";
 import { BranchSelector, Modal } from "../components";
@@ -18,6 +18,7 @@ import {
   UNIT, PRODUCT_TYPE, MARKING_GROUP, options, unitLabel, unitDecimals,
 } from "../lib/ek-labels";
 import { NumField, BarcodeField } from "../components/ek/EkFields";
+import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
 import { checkPrices, marginPercent, VIOLATION } from "../lib/ek-prices";
 import { rankItems, PRODUCT_SPEC } from "../lib/ek-search";
 
@@ -322,7 +323,29 @@ export default function ProductsPage({ toast }) {
      oddiy `includes` turardi va Katalog kassadan boshqacha javob
      berardi: kassada topilgan tovar Katalogda topilmasdi va do'kon
      egasi «tovar yo'qolib qoldi» deb o'ylardi. */
-  const filtered = rankItems(products, search, PRODUCT_SPEC);
+  /* ══ USTUNLAR BO'YICHA FILTR (V68) ═══════════════════════════════════
+     Jadvaldagi olti ustunning hammasi. «Holat» — hisoblanadigan ustun:
+     ekranda ko'rinadigan yorliqning AYNAN o'zi (nofaol → tugagan →
+     faol tartibida), aks holda «tugagan» deb filtrlagan odam nofaol
+     tovarlarni ham olardi va sababini tushunmasdi. */
+  const COLS = useMemo(() => [
+    { key: "name",  label: t("products.col"),       type: "text",   get: (p) => p.name },
+    { key: "code",  label: t("products.barcode"),   type: "text",   get: (p) => p.barcode || p.sku },
+    { key: "cat",   label: t("products.category"),  type: "text",   get: (p) => p.categoryName },
+    { key: "price", label: t("products.salePrice"), type: "number", get: (p) => p.salePrice },
+    { key: "qty",   label: t("inv.currentQty"),     type: "number", get: (p) => p.stockQuantity },
+    { key: "st",    label: t("common.status"),      type: "enum",
+      options: [
+        { value: "off", label: t("products.inactive") },
+        { value: "out", label: t("products.outOfStock") },
+        { value: "on",  label: t("common.active") },
+      ],
+      get: (p) => (!p.active ? "off"
+                 : p.stockQuantity != null && Number(p.stockQuantity) <= 0 ? "out" : "on") },
+  ], []);
+  const colFlt = useDataFilter(COLS, "products");
+
+  const filtered = rankItems(colFlt.apply(products), search, PRODUCT_SPEC);
 
   const setField = (key) => (e) => setForm((prev) => ({ ...prev, [key]: e.target.value }));
   const setValue = (key) => (v) => setForm((prev) => ({ ...prev, [key]: v }));
@@ -421,6 +444,7 @@ export default function ProductsPage({ toast }) {
       <div className="card">
         <div className="card-header">
           <SearchBar value={search} onChange={setSearch} placeholder={t("products.search")} style={{ width: 320 }} />
+          <DataFilter cols={COLS} flt={colFlt} />
         </div>
 
         <div className="table-wrap">
@@ -430,12 +454,12 @@ export default function ProductsPage({ toast }) {
             <table>
               <thead>
                 <tr>
-                  <th>{t("products.col")}</th>
-                  <th>{t("products.barcode")}</th>
-                  <th>{t("products.category")}</th>
-                  <th>{t("products.salePrice")}</th>
-                  <th>{t("inv.currentQty")}</th>
-                  <th>{t("common.status")}</th>
+                  <SortTh flt={colFlt} col="name">{t("products.col")}</SortTh>
+                  <SortTh flt={colFlt} col="code">{t("products.barcode")}</SortTh>
+                  <SortTh flt={colFlt} col="cat">{t("products.category")}</SortTh>
+                  <SortTh flt={colFlt} col="price">{t("products.salePrice")}</SortTh>
+                  <SortTh flt={colFlt} col="qty">{t("inv.currentQty")}</SortTh>
+                  <SortTh flt={colFlt} col="st">{t("common.status")}</SortTh>
                   <th></th>
                 </tr>
               </thead>
