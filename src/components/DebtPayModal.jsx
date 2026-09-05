@@ -35,7 +35,6 @@ import Select from "./ek/Select";
    yopishadi va uni «karta» deb yozib qo'yish bank yarashtiruvida
    nomuvofiqlik berardi. */
 const METHODS = ["CASH", "CARD", "CLICK", "PAYME"];
-const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "000", "0", "⌫"];
 
 /**
  * `mode`:
@@ -112,11 +111,6 @@ export default function DebtPayModal({
      buni tugmani bosgandan KEYIN emas, OLDIN ko'rsin. */
   const overRefund = refundMode && num > balance;
   const canPay = num > 0 && !paying && !manualEmpty && !needCustomer && !overRefund;
-
-  const press = (k) => {
-    if (k === "⌫") return setAmount((v) => String(v).slice(0, -1));
-    setAmount((v) => (String(v) + k).replace(/^0+(?=\d)/, "").slice(0, 12));
-  };
 
   const title = refundMode ? t("savings.refundTitle")
     : savingsMode ? t("savings.topUpTitle") : t("credit.payTitle");
@@ -316,17 +310,6 @@ export default function DebtPayModal({
             )}
           </div>
 
-          {/* ── RAQAMLI KLAVIATURA — o'z ustunida ───────────────────── */}
-          <div className="pay-lite__keys">
-            <div className="qty-modal__keys">
-              {KEYS.map((k) => (
-                <button key={k} type="button" className="qty-modal__key" onClick={() => press(k)}
-                        aria-label={k === "⌫" ? t("common.delete") : undefined}>
-                  {k === "⌫" ? <i className="fa-solid fa-delete-left" aria-hidden="true" /> : k}
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
 
         <div className="pay-modal-footer">

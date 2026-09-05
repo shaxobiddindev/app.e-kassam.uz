@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { t } from "../lib/ek-i18n";
 import { insert, backspace, clear, isNumericField } from "../lib/ek-keys";
 
@@ -24,6 +25,11 @@ const NUM_ROWS = [
   ["4", "5", "6"],
   ["1", "2", "3"],
   [".", "0", "⌫"],
+  /* ⚠ `000` — KASSA KLAVIATURALARIDAGI ODATIY TUGMA va u eng ko'p
+     bosiladigan raqam: summalar ming bilan yuriladi (50 000, 200 000).
+     Nolni uch marta bosish har chekda uchta ortiqcha teginish edi.
+     Butun kenglikda — barmoq bilan adashmay bosish uchun. */
+  ["000"],
 ];
 
 /* Lotin — o'zbekcha `oʻ gʻ ʼ` bilan. Ular alohida tugma: kassir ularni
@@ -105,7 +111,18 @@ export default function OnScreenKeyboard({ target, onClose }) {
 
   const rows = numeric ? NUM_ROWS : (cyr ? CYR_ROWS : LAT_ROWS);
 
-  return (
+  /* ⚠ PORTAL — `body` OXIRIGA (V67). Ilgari klaviatura provayder
+     ichida, ya'ni `#root` daraxtida chizilardi. `z-index: 900` esa
+     modallarnikidan (600) yuqori bo'lsa ham, u FAQAT o'z «stacking
+     context» ida ishlaydi: `#root` ichidagi istalgan `transform`,
+     `filter` yoki `opacity` yangi kontekst ochadi va butun klaviatura
+     portal orqali chiqqan oynaning TAGIDA qolardi — sensorli
+     monoblokda bu kassirni yozishdan butunlay mahrum qiladi.
+
+     Bu aynan `Overlay.jsx` da tasvirlangan tuzoq; klaviatura o'sha
+     tuzatishda e'tibordan chetda qolgan ekan. Endi u ham `body` ning
+     bevosita farzandi va `900 > 600` global tartibda ishlaydi. */
+  return createPortal(
     <div
       className={`osk ${numeric ? "osk--num" : "osk--text"}`}
       ref={boxRef}
@@ -128,7 +145,8 @@ export default function OnScreenKeyboard({ target, onClose }) {
               <button
                 key={k}
                 type="button"
-                className={`osk__key${k === "⌫" ? " osk__key--wide" : ""}${k === "⇧" && caps ? " is-on" : ""}`}
+                className={`osk__key${k === "⌫" ? " osk__key--wide" : ""}${
+                  k === "000" ? " osk__key--zeros" : ""}${k === "⇧" && caps ? " is-on" : ""}`}
                 onPointerDown={hold}
                 onClick={() => press(k)}
               >
@@ -163,6 +181,7 @@ export default function OnScreenKeyboard({ target, onClose }) {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

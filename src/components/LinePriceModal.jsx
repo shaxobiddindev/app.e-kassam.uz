@@ -119,19 +119,11 @@ export default function LinePriceModal({ item, onClose, onApply }) {
             </div>
           )}
 
-          <div className="qty-modal__keys">
+          <div className="qty-modal__reset">
             <button type="button" className="btn btn-outline qty-modal__clear"
                     onClick={() => setPrice(String(Math.round(base)))}>
               <i className="fa-solid fa-rotate-left" aria-hidden="true" /> {t("kassa.resetPrice")}
             </button>
-            {["1","2","3","4","5","6","7","8","9","000","0","⌫"].map((k) => (
-              <button key={k} type="button" className="qty-modal__key"
-                      onClick={() => setPrice((v) => (k === "⌫"
-                        ? String(v).slice(0, -1)
-                        : (String(v) + k).replace(/^0+(?=\d)/, "").slice(0, 12)))}>
-                {k === "⌫" ? <i className="fa-solid fa-delete-left" aria-hidden="true" /> : k}
-              </button>
-            ))}
           </div>
         </div>
 

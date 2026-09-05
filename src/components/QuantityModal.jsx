@@ -19,7 +19,6 @@ import Overlay from "./ek/Overlay";
    tugmalar 56px (CLAUDE.md #3).
    ══════════════════════════════════════════════════════════════════════════ */
 
-const KEYS = ["7", "8", "9", "4", "5", "6", "1", "2", "3", ".", "0", "⌫"];
 
 export default function QuantityModal({ product, initial, stock: stockProp, onConfirm, onClose }) {
   const decimals = product?.unitDecimals ?? 3;
@@ -172,24 +171,6 @@ export default function QuantityModal({ product, initial, stock: stockProp, onCo
                   : "")}
           </div>
 
-          <div className="qty-modal__keys">
-            {KEYS.map((k) => (
-              <button key={k} type="button" className="qty-modal__key"
-                      onClick={() => press(k)}
-                      disabled={k === "." && !decimals}>
-                {k}
-              </button>
-            ))}
-            {/* Kalkulyatordagi «C» — butun qiymatni bir bosishda tozalaydi.
-                Raqamlar joyi O'ZGARMADI: kassirning barmog'i 7-8-9 ni
-                yod biladi va ularni surish yangi xatolar tug'dirardi. */}
-            <button type="button" className="qty-modal__key qty-modal__clear"
-                    onClick={clearAll}
-                    aria-label={t("kassa.clearInput")}>
-              C
-              <span className="kbd">Del</span>
-            </button>
-          </div>
         </div>
 
         <div className="pay-modal-footer">

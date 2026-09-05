@@ -1508,7 +1508,11 @@ export default function KassaPage({ toast, refreshLowStock }) {
   /* ⚠ MIJOZSIZ HAM OCHILADI (V66): mijoz oynaning O'ZIDA tanlanadi.
      Savatda mijoz bo'lsa u oldindan tanlangan turadi. */
   const openTopUp = () => {
-    setTopUpCust(customer ? { ...customer, savingsBalance: savingsLeft } : null);
+    /* ⚠ HAR OCHILISHDA BO'SH (V67): savatdagi mijoz bu yerga
+       KO'CHIRILMAYDI. Pulni kim qo'yayotgani har safar ongli
+       tanlanishi kerak — aks holda oldingi chekdan qolgan mijozning
+       hisobiga begona pul tushib ketardi. */
+    setTopUpCust(null);
     setTopUpOpen(true);
   };
   /* Oynada mijoz tanlandi: qoldiq SERVERDAN yangilanadi — ro'yxatdagi
@@ -1552,13 +1556,13 @@ export default function KassaPage({ toast, refreshLowStock }) {
         }
         setSavingsReceipt(rc);
       }
-      /* ⚠ SAVATGA BIRIKTIRILADI — savatda mijoz bo'lmasa. Pul qo'ygan
-         mijoz kassa oldida turibdi va keyingi chek ko'pincha uniki;
-         to'lov oynasida uni qayta tanlash ortiqcha qadam bo'lardi.
-         `tier` (va undagi qoldiq) effekt orqali o'zi yuklanadi.
-         Savatda BOSHQA mijoz bo'lsa tegilmaydi. */
-      if (!customer) { setCustomer(c); return; }
-      if (customer.id === c.id) {
+      /* ⚠ SAVATGA BIRIKTIRILMAYDI (V67). Ilgari pul qo'ygan mijoz
+         savatga o'tkazilardi «keyingi chek ko'pincha uniki» degan
+         taxmin bilan — amalda esa u keyingi chekda qolib ketar va
+         begona mijozga keshbek yozilardi (do'kon egasi shikoyati).
+         Savatdagi mijoz shu paytda tanlangan bo'lsa, uning qoldig'i
+         yangilanadi, xolos. */
+      if (customer?.id === c.id) {
         const fresh = await loyaltyApi.customerTier(c.id).catch(() => null);
         if (fresh?.data) setTier(fresh.data);
       }
@@ -1666,6 +1670,15 @@ export default function KassaPage({ toast, refreshLowStock }) {
        qaytimini jimgina yutib yuborardi. */
     setChangeToSavings(false);
     setDiscount("");
+    /* ⚠⚠ MIJOZ HAR OCHILISHDA TOZALANADI (V67, do'kon egasi:
+       «har safar to'lov yoki jamg'arma tugmasi bosilganda eski
+       tanlangan mijoz qolib ketyapti, bu xato»).
+
+       Xato jimgina va QIMMAT: oldingi chekdan qolgan mijozga keshbek
+       yozilar, qarzi oshar, jamg'armasidan pul yechilardi — buni na
+       kassir, na o'sha mijoz sezardi. Endi mijoz HAR CHEKDA ongli
+       tanlanadi (oyna ichidagi tanlagichdan yoki kartani skanerlab). */
+    setCustomer(null);
     setShowPayModal(true);
   };
   const closePayModal = () => setShowPayModal(false);

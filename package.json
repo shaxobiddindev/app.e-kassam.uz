@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "test": "node test/escpos.test.mjs && node test/input-format.test.mjs && node test/cart-store.test.mjs && node test/discount.test.mjs && node test/search.test.mjs && node test/badge-guard.test.mjs && node test/prices.test.mjs && node test/kassa-keys.test.mjs && node test/locale-simple.test.mjs && node test/payment.test.mjs && node test/shop-head.test.mjs && node test/qty-type.test.mjs && node scripts/check-undefined.mjs && node scripts/check-zero.mjs",
-    "check": "npm run build && node scripts/check-budget.mjs && node scripts/check-locales.mjs && node scripts/check-a11y.mjs && node scripts/check-pay.mjs && node scripts/check-fit.mjs",
+    "check": "npm run build && node scripts/check-budget.mjs && node scripts/check-locales.mjs && node scripts/check-a11y.mjs && node scripts/check-pay.mjs && node scripts/check-fit.mjs && node scripts/check-osk.mjs",
     "build": "node node_modules/vite/bin/vite.js build",
     "preview": "vite preview",
     "tauri": "tauri",

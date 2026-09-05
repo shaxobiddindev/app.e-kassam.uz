@@ -126,8 +126,17 @@ const yes = (c, m, got) => (c ? ok(m) : no(m, got));
 /* ══ A. TO'LOV OYNASI — og'ir mijoz, 5 usul, chegirma ══ */
 console.log("── A. To'lov oynasi — scrol yo'q (og'ir mijoz) ──");
 let page = await openKassa({ customer: CUST });
-const openPay = async () => {
+/* ⚠ MIJOZ OYNADA TANLANADI (V67): to'lov oynasi HAR SAFAR mijozsiz
+   ochiladi (eski mijoz qolib, begona odamga keshbek yozilmasin), ya'ni
+   mijoz kartasini ko'rish uchun uni shu yerda tanlash kerak — kassir
+   ham aynan shunday qiladi. */
+const openPay = async ({ withCustomer = true } = {}) => {
   await page.keyboard.press("F9"); await sleep(700);
+  if (!withCustomer) return;
+  await page.click(".cart-cust .ek-select__btn"); await sleep(350);
+  await page.evaluate(() => [...document.querySelectorAll(".ek-select__opt")]
+    .find((o) => /Рустам/.test(o.textContent))?.click());
+  await sleep(800);
 };
 await openPay();
 const st = () => page.evaluate(() => {
@@ -218,8 +227,6 @@ page = await openKassa({ customer: null });
 await page.keyboard.down("Alt"); await page.keyboard.press("j"); await page.keyboard.up("Alt"); await sleep(500);
 const tu = () => page.evaluate(() => {
   const box = document.querySelector(".pay-modal-box--lite");
-  const main = document.querySelector(".pay-lite__main")?.getBoundingClientRect();
-  const keys = document.querySelector(".pay-lite__keys")?.getBoundingClientRect();
   const body = document.querySelector(".pay-modal-box--lite .pay-modal-body");
   return {
     open: !!box, w: box?.getBoundingClientRect().width,
@@ -227,7 +234,10 @@ const tu = () => page.evaluate(() => {
     hint: document.querySelector(".cart-cust__need")?.textContent.trim(),
     total: document.querySelector(".pay-modal-box--lite .pay-modal-total-value")?.textContent.trim(),
     submitDis: document.querySelector(".pay-modal-box--lite .pay-modal-footer .btn-primary")?.disabled,
-    sideBySide: main && keys ? keys.left >= main.right - 1 && Math.abs(keys.top - main.top) < 40 : null,
+    /* ⚠ OYNA ICHIDA KLAVIATURA BO'LMASLIGI KERAK (V67): sensorli
+       monoblokda umumiy ekran klaviaturasi o'zi ochiladi va ikkitasi
+       ustma-ust tushardi. */
+    ownKeys: document.querySelectorAll(".pay-modal-box--lite .qty-modal__keys, .pay-lite__keys").length,
     over: body ? body.scrollHeight - body.clientHeight : -1,
     input: document.querySelector(".pay-modal-box--lite .qty-modal__input")?.value,
     title: document.querySelector(".pay-modal-box--lite .pay-modal-title")?.textContent.trim(),
@@ -238,7 +248,7 @@ yes(u.open, "Alt+J — jamg'arma oynasi mijozsiz ham ochildi");
 yes(u.need, "mijoz tanlagichi «kerak» deb ishora qilyapti");
 yes(!!u.hint, "tanlagich tagida yozuv: " + u.hint, "yo'q");
 yes(u.submitDis === true, "mijozsiz «qo'shish» tugmasi yopiq");
-yes(u.sideBySide, "klaviatura o'ng ustunda, asosiy qism chapda", JSON.stringify(u.sideBySide));
+yes(u.ownKeys === 0, "oyna ICHIDA o'z klaviaturasi YO'Q (umumiysi ochiladi)", u.ownKeys + " ta");
 yes(u.w <= 842, `oyna kengligi ixcham: ${Math.round(u.w)}px`, u.w);
 yes(u.over <= 1, "jamg'arma oynasida scrol yo'q", u.over);
 await page.click(".pay-modal-box--lite .ek-select__btn"); await sleep(300);
@@ -248,12 +258,20 @@ u = await tu();
 yes(!u.need, "mijoz tanlangach ishora yo'qoldi");
 yes(/Рустам/.test(u.title), "sarlavhada mijoz nomi: " + u.title, u.title);
 yes((u.total || "").replace(/\D/g, "") === "62020", "qoldiq serverdan: " + u.total, u.total);
-for (const k of ["1", "0", "0", "0", "0"]) {
-  await page.evaluate((kk) => [...document.querySelectorAll(".pay-lite__keys .qty-modal__key")].find((b) => b.textContent.trim() === kk)?.click(), k);
-}
-await sleep(200);
+/* ⚠ MASKALANGAN MAYDON: `NumField` har belgidan keyin qiymatni qayta
+   formatlaydi (bo'sh joy qo'shadi) va kursorni ko'chiradi — belgima-belgi
+   yozilganda ular yo'qoladi. Qiymat React ning O'Z setteri bilan
+   beriladi: `useScanner` da ham xuddi shu naqsh ishlatilgan, chunki
+   `el.value = ...` React ni xabardor qilmaydi. */
+await page.evaluate(() => {
+  const el = document.querySelector(".pay-modal-box--lite .qty-modal__input");
+  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
+  setter.call(el, "10000");
+  el.dispatchEvent(new Event("input", { bubbles: true }));
+});
+await sleep(300);
 u = await tu();
-yes((u.input || "").replace(/\D/g, "") === "10000", "klaviaturadan 10 000 yozildi: " + u.input, u.input);
+yes((u.input || "").replace(/\D/g, "") === "10000", "summa 10 000 yozildi: " + u.input, u.input);
 yes(u.submitDis === false, "endi «qo'shish» ochiq");
 SHOT && await page.screenshot({ path: `${SHOT}/v66-topup.png` });
 await page.click(".pay-modal-box--lite .pay-modal-footer .btn-primary"); await sleep(700);
@@ -267,8 +285,11 @@ yes(!u.open, "yuborilgach oyna yopildi");
   await page.click(".pt-close"); await sleep(300);
 }
 yes(posted.some((p) => p.includes("/customers/5/savings/top-up")), "so'rov mijoz 5 ning jamg'armasiga ketdi", posted.join(","));
-const cartCust = await page.evaluate(() => JSON.parse(localStorage.getItem("ek_cart_v_v")).carts[0].customer?.id);
-yes(cartCust === 5, "mijozsiz savatga shu mijoz biriktirildi", cartCust);
+/* ⚠ SAVATGA BIRIKTIRILMAYDI (V67): jamg'armaga pul qo'ygan mijoz
+   keyingi chekka O'TIB QOLMASLIGI kerak — aks holda begona odamga
+   keshbek yozilardi (do'kon egasi shikoyati). */
+const cartCust = await page.evaluate(() => JSON.parse(localStorage.getItem("ek_cart_v_v")).carts[0].customer?.id ?? null);
+yes(cartCust == null, "savatdagi mijoz O'ZGARMADI (pul qo'ygan mijoz o'tib qolmadi)", cartCust);
 
 /* ══ E. Qaytim → mijoz jamg'armasiga (V66) ══ */
 console.log("\n── E. Qaytim jamg'armaga ──");

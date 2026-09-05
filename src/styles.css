@@ -3976,3 +3976,22 @@ img.logo--dark { display: none; }
   font-size: 13px; padding: 6px 10px;
 }
 .cust-fact__sub .kbd { font-size: 9.5px; padding: 0 4px; margin-right: 2px; }
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   EKRAN KLAVIATURASI — `000` VA JOYLASHUV (V67)
+
+   ⚠ Klaviatura endi `body` ga portal bilan chiqadi (`OnScreenKeyboard`
+   izohi): `z-index` global tartibda hisoblanadi va u HAR DOIM oyna
+   ustida turadi. Toast (`--z-toast`) undan ham yuqori — bu ataylab:
+   xato xabari klaviatura ostida qolmasligi kerak.
+   ══════════════════════════════════════════════════════════════════════════ */
+.osk__key--zeros { grid-column: span 3; }
+
+/* Oyna ichidagi raqamli klaviaturalar OLIB TASHLANDI (V67, do'kon egasi:
+   «hech qaysi oynaning o'zida klaviatura qo'yma — sensor rejimda umumiy
+   klaviatura o'zi ochiladi»). Ikkita klaviatura ustma-ust tushib, biri
+   ikkinchisini bosib turardi. `.qty-modal__reset` — o'sha oynalarda
+   QOLGAN yagona tugma («narxni tiklash»): u klaviatura emas, amal. */
+.qty-modal__reset { margin-top: 12px; }
+.qty-modal__reset .btn { width: 100%; }
