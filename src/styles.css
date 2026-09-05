@@ -5247,3 +5247,121 @@ button.stk__c:hover { background: var(--bg-hover); }
   .cmd__back { padding: 0; }
   .cmd { max-height: 100vh; height: 100%; border-radius: 0; border: 0; }
 }
+
+/* ── Kalendar va vazifalar (V72) ──────────────────────────────────────
+   ⚠ Voqea va vazifa satri BIR XIL tuzilishda: belgi — matn — sana.
+   Ular bitta blokda yonma-yon turadi va ikki xil ko'rinishda
+   bo'lganda blok ikkita alohida ro'yxatdek o'qilardi. */
+.pln__n {
+  font-size: 11px; font-weight: 700; color: var(--fg-secondary);
+  padding: 2px 8px; border-radius: 999px; background: var(--bg-sunken);
+}
+.pln__n[data-tone="bad"] { color: var(--fg-danger); }
+.pln__none { font-size: 12px; color: var(--fg-secondary); padding: 4px 0 8px; }
+.pln__ev, .pln__tk { display: flex; flex-direction: column; }
+.pln__row {
+  display: grid; grid-template-columns: 22px minmax(0, 1fr) auto;
+  align-items: center; gap: 9px;
+  padding: 7px 2px; border-bottom: 1px solid var(--border-subtle);
+}
+.pln__row:last-child { border-bottom: 0; }
+.pln__row > i { color: var(--fg-tertiary); font-size: 12px; justify-self: center; }
+.pln__row[data-now] > i { color: var(--bg-brand); }
+.pln__t {
+  font-size: 13px; font-weight: 600;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  display: flex; flex-direction: column;
+}
+.pln__who { font-size: 11px; font-weight: 600; color: var(--fg-tertiary); }
+.pln__when { font-size: 11px; font-weight: 700; color: var(--fg-secondary); white-space: nowrap; }
+.pln__when[data-tone="bad"] { color: var(--fg-danger); }
+.pln__row[data-now] .pln__when { color: var(--bg-brand); }
+.pln__row[data-tone="bad"] .pln__t { color: var(--fg-danger); }
+
+/* Yopish tugmasi — katta tegish maydoni bilan: uni kassir
+   telefonda, shoshib bosadi. */
+.pln__done {
+  width: 22px; height: 22px; display: grid; place-items: center; justify-self: center;
+  border: 1.5px solid var(--border-subtle); border-radius: 50%;
+  background: none; color: transparent; cursor: pointer; font-size: 10px;
+}
+.pln__done:hover:not(:disabled) { border-color: var(--fg-success); color: var(--fg-success); }
+.pln__done:focus-visible { outline: 2px solid var(--bg-brand); outline-offset: 2px; }
+.pln__done:disabled { opacity: .5; cursor: progress; }
+
+.pln__add { display: flex; gap: 7px; margin-top: 12px; }
+.pln__add input {
+  flex: 1; min-width: 0; padding: 8px 11px; font: inherit; font-size: 13px;
+  border: 1px solid var(--border-subtle); border-radius: 8px;
+  background: var(--bg-surface); color: var(--fg-primary);
+}
+.pln__add input:focus { outline: none; border-color: var(--bg-brand); }
+.pln__add button {
+  width: 36px; display: grid; place-items: center; cursor: pointer;
+  border: 0; border-radius: 8px; background: var(--bg-brand); color: var(--fg-on-brand, #fff);
+}
+.pln__add button:disabled { opacity: .4; cursor: not-allowed; }
+
+/* ── Kalendar va vazifalar oynasi (V72) ─────────────────────────────── */
+.pmd__tabs { margin-bottom: 12px; }
+.pmd__f { margin-bottom: 10px; }
+.pmd__list {
+  display: flex; flex-direction: column;
+  max-height: 44vh; overflow-y: auto; margin-bottom: 12px;
+}
+.pmd__row {
+  display: grid; grid-template-columns: 14px minmax(0, 1fr) auto;
+  align-items: center; gap: 10px;
+  padding: 9px 2px; border-bottom: 1px solid var(--border-subtle);
+}
+.pmd__row:last-child { border-bottom: 0; }
+.pmd__ico { color: var(--fg-tertiary); font-size: 12px; justify-self: center; }
+/* Muhimlik — YOLG'IZ rang emas, u kenglik bilan ham farqlanadi:
+   rangni ajratmaydigan odam ham qalinlikdan ko'radi. */
+.pmd__pri { width: 4px; height: 22px; border-radius: 2px; background: var(--border-subtle); justify-self: center; }
+.pmd__pri[data-p="HIGH"]   { background: var(--fg-danger); width: 5px; }
+.pmd__pri[data-p="NORMAL"] { background: var(--fg-warning); }
+.pmd__pri[data-p="LOW"]    { background: var(--border-subtle); width: 3px; }
+.pmd__t {
+  display: flex; flex-direction: column; min-width: 0;
+  font-size: 13px; font-weight: 600;
+}
+.pmd__row[data-tone="bad"] .pmd__t { color: var(--fg-danger); }
+.pmd__meta {
+  font-size: 11px; font-weight: 600; color: var(--fg-secondary);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.pmd__acts { display: flex; gap: 4px; }
+.pmd__acts button {
+  width: 28px; height: 28px; display: grid; place-items: center; cursor: pointer;
+  border: 1px solid var(--border-subtle); border-radius: 7px;
+  background: none; color: var(--fg-secondary); font-size: 11px;
+}
+.pmd__acts button:hover { border-color: var(--bg-brand); color: var(--bg-brand); }
+
+.pmd__form {
+  display: flex; flex-direction: column; gap: 10px;
+  padding-top: 12px; border-top: 1px solid var(--border-subtle);
+}
+.pmd__form > input {
+  padding: 9px 11px; font: inherit; font-size: 13px;
+  border: 1px solid var(--border-subtle); border-radius: 8px;
+  background: var(--bg-surface); color: var(--fg-primary);
+}
+.pmd__form > input:focus { outline: none; border-color: var(--bg-brand); }
+.pmd__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 9px; }
+.pmd__grid label {
+  display: flex; flex-direction: column; gap: 4px;
+  font-size: 11px; font-weight: 700; color: var(--fg-secondary);
+}
+.pmd__grid input, .pmd__grid select {
+  padding: 7px 9px; font: inherit; font-size: 13px; font-weight: 600;
+  border: 1px solid var(--border-subtle); border-radius: 7px;
+  background: var(--bg-surface); color: var(--fg-primary);
+}
+.pmd__grid .pmd__chk {
+  flex-direction: row; align-items: center; gap: 7px; align-self: end;
+  padding-bottom: 8px; cursor: pointer;
+}
+.pmd__grid .pmd__chk input { padding: 0; }
+.pmd__save { display: flex; justify-content: flex-end; gap: 8px; }

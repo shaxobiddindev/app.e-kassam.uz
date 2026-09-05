@@ -114,6 +114,21 @@ const PULSE = {
     { productId: 9, name: "Non",          unit: "DONA", stock: 30, dailyRate: 6, daysLeft: 5, lostPerDay: 90000 },
   ],
   incoming: { transfersInTransit: 2, openShifts: 2, lowStock: 11, outOfStock: 3 },
+  events: [
+    { id: 1, title: "Navro'z", kind: "HOLIDAY", startsOn: "2026-03-21", endsOn: null,
+      originalOn: "2020-03-21", repeatYearly: true, remindDays: 0, daysAway: 0, active: true },
+    { id: 2, title: "Ijara to'lovi", kind: "PAYMENT", startsOn: "2026-03-25", endsOn: null,
+      originalOn: "2026-03-25", repeatYearly: false, remindDays: 3, daysAway: 4, active: false },
+  ],
+  tasks: {
+    open: 4, overdue: 1, dueToday: 1, mine: 2,
+    top: [
+      { id: 11, title: "Muzlatkichni tekshirish", assignee: "Ali", assigneeId: 1,
+        dueOn: "2026-03-18", priority: "HIGH", status: "OPEN", overdue: true },
+      { id: 12, title: "Sut buyurtma qilish", assignee: null, assigneeId: null,
+        dueOn: null, priority: "NORMAL", status: "OPEN", overdue: false },
+    ],
+  },
 };
 
 const kpi = (m = 1) => ({
@@ -191,6 +206,7 @@ const EMPTY_PULSE = {
   forecast: { endOfDay: null, low: null, high: null, confidence: 0 },
   live: [], registers: [], branches: [], stockouts: [],
   incoming: { transfersInTransit: 0, openShifts: 0, lowStock: 0, outOfStock: 0 },
+  events: [], tasks: { open: 0, overdue: 0, dueToday: 0, mine: 0, top: [] },
 };
 const EMPTY_ANALYTICS = {
   ...ANALYTICS,
@@ -206,8 +222,16 @@ const EMPTY_ANALYTICS = {
 
 /* ── Sahifani ochish ────────────────────────────────────────────────── */
 let calls = [];
+const PLANNER = {
+  events: [{ id: 5, title: "Yetkazib berish", kind: "SUPPLY", startsOn: "2026-03-20",
+             endsOn: null, originalOn: "2026-03-20", repeatYearly: false,
+             remindDays: 1, daysAway: 1, active: false }],
+  tasks: [{ id: 21, title: "Javonni tartibga solish", assignee: null, assigneeId: null,
+            dueOn: "2026-01-01", priority: "NORMAL", status: "OPEN", overdue: true }],
+};
+
 async function open({ pulse = PULSE, analytics = ANALYTICS, signals = SIGNALS,
-                      role = "OWNER", url = "/", storage = {} } = {}) {
+                      role = "OWNER", url = "/", storage = {}, planner = PLANNER } = {}) {
   calls = [];
   pageErrors = [];
   const page = await browser.newPage();
@@ -226,6 +250,11 @@ async function open({ pulse = PULSE, analytics = ANALYTICS, signals = SIGNALS,
       "/api/inventory/low-stock": [{ id: 1, quantity: 0 }, { id: 2, quantity: 2 }],
       "/api/loyalty/summary": { receipts: 12, discountGiven: 400000, revenue: 9e6, tieredCustomers: 8 },
       "/api/shop/profile": { monthlySalesTarget: 300e6 },
+      /* ⚠ Bu ikkisi FAQAT pul ko'rmaydigan rolga so'raladi — rahbarda
+         ular puls javobining ichida keladi. */
+      "/api/planner/tasks": planner.tasks,
+      "/api/planner/events": planner.events,
+      "/api/shop/users": [{ id: 1, fullName: "Ali" }, { id: 2, fullName: "Vali" }],
     };
     const data = u.pathname in map ? map[u.pathname] : [];
     return r.respond({ status: 200, contentType: "application/json",
@@ -401,7 +430,7 @@ console.log("\n── E. Bloklarni sozlash ──");
   });
   await wait(250);
   const rows = await page.$$eval(".lay__row", (n) => n.length);
-  is(rows === 15, "o'n beshta blok ro'yxatda", String(rows));
+  is(rows === 16, "o'n oltita blok ro'yxatda", String(rows));
 
   /* Jonli lentani o'chiramiz. */
   await page.evaluate(() => {
@@ -532,6 +561,96 @@ console.log("\n── K. Avto-yangilanish ──");
   /* ⚠ Og'ir so'rov TAKRORLANMASLIGI kerak: har daqiqada butun davr
      tahlilini qayta hisoblash bitta ochiq oyna bilan serverni bo'g'ardi. */
   is(slowAfter === slowBefore, "OG'IR so'rov takrorlanmadi", `${slowBefore} → ${slowAfter}`);
+  await page.close();
+}
+
+/* ══ M. Kalendar va vazifalar ══════════════════════════════════════════ */
+console.log("\n── M. Kalendar va vazifalar ──");
+{
+  page = await open();
+  const evs = await page.$$eval(".pln__ev .pln__row", (n) => n.map((x) => x.innerText.replace(/\n/g, " ")));
+  is(evs.length === 2, "yaqin kunlardagi voqealar chizildi", evs.join(" · "));
+  is(/bugun/i.test(evs[0]), "bugungi voqea «Bugun» deb belgilanadi", evs[0]);
+
+  const tks = await page.$$eval(".pln__tk .pln__row", (n) => n.map((x) => x.dataset.tone || "-"));
+  is(tks.length === 2, "vazifalar chizildi", String(tks.length));
+  is(tks[0] === "bad", "kechikkan vazifa qizil", tks.join(","));
+
+  /* ⚠ Vazifa YOPILGANDA yengil so'rov qayta yuboriladi — ro'yxatni
+     mahalliy yangilash serverdagi tartib va sanoqni takrorlashni
+     talab qilardi. */
+  const before = calls.filter((c) => c.startsWith("/api/reports/pulse")).length;
+  await page.evaluate(() => document.querySelector(".pln__done")?.click());
+  await wait(500);
+  const posted = calls.filter((c) => c.includes("/api/planner/tasks/11/status"));
+  is(posted.length === 1, "yopish so'rovi ketdi", posted.join(" ") || "yo'q");
+  is(posted[0]?.includes("status=DONE"), "holat DONE deb yuborildi", posted[0] || "");
+  const after = calls.filter((c) => c.startsWith("/api/reports/pulse")).length;
+  is(after > before, "ro'yxat serverdan qayta olindi", `${before} → ${after}`);
+
+  /* Qo'shish maydoni — rahbarda bor. */
+  is((await page.$(".pln__add input")) !== null, "vazifa shu yerdan qo'shiladi");
+  await page.type(".pln__add input", "Sut buyurtma qilish");
+  await page.keyboard.press("Enter");
+  await wait(500);
+  const made = calls.filter((c) => c === "/api/planner/tasks");
+  is(made.length === 1, "yangi vazifa yuborildi", made.join(" ") || "yo'q");
+
+  /* ── To'liq boshqaruv oynasi ──────────────────────────────────────
+     ⚠ «Hammasini ko'rish» ILGARI mavjud bo'lmagan `/planner`
+     sahifasiga olib borardi — bosilganda bo'sh ekran chiqardi. */
+  await page.evaluate(() => {
+    const b = [...document.querySelectorAll(".dpn__more")]
+      .find((x) => /hammasini/i.test(x.textContent));
+    b?.click();
+  });
+  await wait(400);
+  is((await page.$(".pmd__list")) !== null, "«Hammasini ko'rish» OYNANI ochdi");
+
+  const tabs = await page.$$eval(".pmd__tabs .seg__b", (n) => n.map((x) => x.textContent.trim()));
+  is(tabs.length === 2, "vazifa va kalendar bo'limlari bor", tabs.join(" · "));
+
+  /* Kalendar bo'limida voqealarni tahrirlash mumkin. */
+  await page.evaluate(() => {
+    const b = [...document.querySelectorAll(".pmd__tabs .seg__b")].pop();
+    b?.click();
+  });
+  await wait(400);
+  const evRows = await page.$$eval(".pmd__row", (n) => n.length);
+  is(evRows >= 1, "kalendar bo'limi to'ldi", String(evRows));
+  is((await page.$(".pmd__form select")) !== null, "voqea qo'shish shakli bor");
+
+  await page.keyboard.press("Escape");
+  await wait(300);
+  is((await page.$(".pmd__list")) === null, "Esc oynani yopdi");
+
+  await shot(page, "dash-plan");
+  await page.close();
+}
+
+/* ══ N. Omborchida vazifa ══════════════════════════════════════════════ */
+console.log("\n── N. Omborchida vazifa ──");
+{
+  page = await open({ role: "STOREKEEPER" });
+  /* ⚠ Omborchida `pulse` YO'Q (pul so'rovi yuborilmaydi), shuning uchun
+     blok bo'sh holatini ko'rsatadi va YIQILMAYDI. */
+  is(pageErrors.length === 0, "omborchida ham xatosiz", pageErrors[0] || "");
+  /* ⚠ ENG QIMMAT TEKSHIRUV: omborchida `pulse` YO'Q, shuning uchun
+     kalendar va vazifa ALOHIDA so'rovdan kelishi kerak. Aks holda
+     blok unga doim bo'sh ko'rinardi — holbuki vazifani bajaradigan
+     odam aynan u. */
+  const asked = calls.filter((c) => c.startsWith("/api/planner/"));
+  is(asked.length === 2, "omborchi kalendar va vazifani ALOHIDA so'radi", asked.join(" "));
+
+  const tks = await page.$$eval(".pln__tk .pln__row", (n) => n.length);
+  is(tks === 1, "vazifa unga ham ko'rinadi", String(tks));
+  is((await page.$('.pln__tk .pln__row[data-tone="bad"]')) !== null,
+     "kechikkan vazifa unda ham qizil");
+
+  /* Yopish tugmasi BOR — serverda ham shu amal hammaga ochiq. */
+  is((await page.$(".pln__done")) !== null, "vazifani yopa oladi");
+  is((await page.$(".pln__add")) === null,
+     "lekin qo'shish maydoni YO'Q — serverda ham shunday");
   await page.close();
 }
 

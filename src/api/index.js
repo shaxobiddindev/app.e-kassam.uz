@@ -237,6 +237,46 @@ export const reportApi = {
   },
 };
 
+// ─── Kalendar va vazifalar (V72) ──────────────────────────────
+/**
+ * ⚠ Vazifa holatini almashtirish ALOHIDA yo'lda. Serverda ham shunday:
+ * kassirga aynan shu amal ochiq (o'ziga berilgan ishni yopish), qolgani
+ * — qo'shish, tahrirlash, o'chirish — rahbarga.
+ */
+export const plannerApi = {
+  events:      (from, to, shopId) => {
+                 const q = new URLSearchParams();
+                 if (from) q.set("from", from);
+                 if (to) q.set("to", to);
+                 if (shopId) q.set("shopId", shopId);
+                 const s = q.toString();
+                 return request(`/planner/events${s ? `?${s}` : ""}`);
+               },
+  addEvent:    (data, shopId) => request(`/planner/events${shopId ? `?shopId=${shopId}` : ""}`,
+                 { method: "POST", body: JSON.stringify(data) }),
+  editEvent:   (id, data, shopId) => request(`/planner/events/${id}${shopId ? `?shopId=${shopId}` : ""}`,
+                 { method: "PUT", body: JSON.stringify(data) }),
+  delEvent:    (id, shopId) => request(`/planner/events/${id}${shopId ? `?shopId=${shopId}` : ""}`,
+                 { method: "DELETE" }),
+
+  tasks:       (status, shopId) => {
+                 const q = new URLSearchParams();
+                 if (status) q.set("status", status);
+                 if (shopId) q.set("shopId", shopId);
+                 const s = q.toString();
+                 return request(`/planner/tasks${s ? `?${s}` : ""}`);
+               },
+  addTask:     (data, shopId) => request(`/planner/tasks${shopId ? `?shopId=${shopId}` : ""}`,
+                 { method: "POST", body: JSON.stringify(data) }),
+  editTask:    (id, data, shopId) => request(`/planner/tasks/${id}${shopId ? `?shopId=${shopId}` : ""}`,
+                 { method: "PUT", body: JSON.stringify(data) }),
+  setStatus:   (id, status, shopId) => request(
+                 `/planner/tasks/${id}/status?status=${status}${shopId ? `&shopId=${shopId}` : ""}`,
+                 { method: "PATCH" }),
+  delTask:     (id, shopId) => request(`/planner/tasks/${id}${shopId ? `?shopId=${shopId}` : ""}`,
+                 { method: "DELETE" }),
+};
+
 // ─── Mahsulotlar ──────────────────────────────────────────────
 export const productApi = {
   getAll:       (shopId)   => request(`/products${shopId ? `?shopId=${shopId}` : ""}`),

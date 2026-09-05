@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useT } from "../lib/ek-i18n";
-import { reportApi, inventoryApi, loyaltyApi } from "../api";
+import { reportApi, inventoryApi, loyaltyApi, plannerApi, shopApi } from "../api";
 import { BranchSelector } from "../components";
 import OnboardingCard from "../components/OnboardingCard";
 import Modal from "../components/Modal";
@@ -9,11 +9,11 @@ import CommandPalette from "../components/ek/CommandPalette";
 import { useAuth } from "../hooks/useAuth";
 import { roleSet } from "../lib/ek-roles";
 import { Empty } from "../components/ui";
-import { money, percent, time } from "../lib/ek-format";
+import { money, percent, time, shortDate } from "../lib/ek-format";
 import { CountUp, Sparkline } from "../components/ek/Kpi";
 import { LineChart, Donut, shortNum } from "../components/ek/Charts";
 import { paymentEntry } from "../lib/ek-labels";
-import { PERIODS, periodRange, isoInstant } from "../lib/ek-period";
+import { PERIODS, periodRange, isoInstant, isoDay } from "../lib/ek-period";
 import {
   buildAlerts, moneyAtRisk, countBySeverity, changes, opportunities,
   healthTone, readLayout, saveLayout, move, toggle, comparePoints,
@@ -902,6 +902,382 @@ function PeoplePanel({ analytics, loyalty, loading, onGo }) {
 }
 
 /* ══════════════════════════════════════════════════════════════════════
+   KALENDAR VA VAZIFALAR (V72)
+   ══════════════════════════════════════════════════════════════════════ */
+
+/** Voqea turining belgisi va rangi — bitta lug'atdan. */
+const EVENT_ICON = {
+  HOLIDAY: "fa-star", PROMO: "fa-tag", SUPPLY: "fa-truck-ramp-box",
+  PAYMENT: "fa-money-bill-wave", MEETING: "fa-users", OTHER: "fa-calendar",
+};
+
+/**
+ * Yaqin kunlar va ochiq vazifalar.
+ *
+ * ⚠ IKKALASI BITTA BLOKDA. Ular ikki xil jadval, lekin bitta savolga
+ * javob beradi: «bugun nima bo'ladi va kim nima qilishi kerak?».
+ * Ikkita alohida blokda ular bir-biridan uzoqlashib, egasi ikkalasini
+ * ham qaramay o'tib ketardi.
+ *
+ * ⚠ VAZIFA SHU YERDAN QO'SHILADI VA YOPILADI. Alohida sahifaga
+ * o'tishni talab qiladigan ro'yxat ishlatilmaydi: «sut buyurtma
+ * qilish» kabi ish o'ttiz soniyada yozilishi kerak, aks holda u
+ * baribir daftarda qoladi.
+ */
+function PlanPanel({ plan, loading, canEdit, shopId, toast, onOpenAll, onChanged }) {
+  const { t } = useT();
+  const [adding, setAdding] = useState("");
+  const [busy, setBusy] = useState(false);
+  const events = plan?.events || [];
+  const tasks = plan?.tasks;
+  const rows = tasks?.top || [];
+
+  const add = () => {
+    const title = adding.trim();
+    if (!title || busy) return;
+    setBusy(true);
+    plannerApi.addTask({ title }, shopId)
+      .then(() => { setAdding(""); onChanged(); })
+      .catch((e) => toast.error(e.message))
+      .finally(() => setBusy(false));
+  };
+
+  const close = (id) => {
+    setBusy(true);
+    plannerApi.setStatus(id, "DONE", shopId)
+      .then(onChanged)
+      .catch((e) => toast.error(e.message))
+      .finally(() => setBusy(false));
+  };
+
+  return (
+    <Panel title={t("dash.plan2")} icon="fa-calendar-check" hint={t("dash.hintPlan2")}
+           right={tasks?.open > 0 ? (
+             <span className="pln__n" data-tone={tasks.overdue > 0 ? "bad" : undefined}>
+               {t("dash.nOpen", { n: tasks.open })}
+             </span>
+           ) : null}>
+      {loading ? <span className="ek-skeleton" style={{ height: 150 }} /> : (
+        <>
+          {/* ── Yaqin kunlar ──────────────────────────────────────── */}
+          <div className="two__t">{t("dash.upcoming")}</div>
+          {events.length === 0 ? (
+            <div className="pln__none">{t("dash.noEvents")}</div>
+          ) : (
+            <div className="pln__ev">
+              {events.slice(0, 4).map((e) => (
+                <div key={`${e.id}-${e.startsOn}`} className="pln__row"
+                     data-now={e.active ? "" : undefined}>
+                  <i className={`fa-solid ${EVENT_ICON[e.kind] || EVENT_ICON.OTHER}`} aria-hidden="true" />
+                  <span className="pln__t">{e.title}</span>
+                  <span className="pln__when ek-num">
+                    {e.active ? t("dash.today")
+                     : e.daysAway === 1 ? t("dash.tomorrow")
+                     : t("dash.inDays", { n: e.daysAway })}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* ── Vazifalar ─────────────────────────────────────────── */}
+          <div className="two__t stk__t">{t("dash.tasks")}</div>
+          {rows.length === 0 ? (
+            <div className="pln__none">{t("dash.noTasks")}</div>
+          ) : (
+            <div className="pln__tk">
+              {rows.map((k) => (
+                <div key={k.id} className="pln__row" data-tone={k.overdue ? "bad" : undefined}>
+                  {/* ⚠ Yopish tugmasi HAMMA rolga ochiq — serverda ham
+                      shunday. Vazifani yopadigan odam aynan uni
+                      bajargan xodim. */}
+                  <button type="button" className="pln__done" disabled={busy}
+                          onClick={() => close(k.id)}
+                          aria-label={t("dash.markDone", { name: k.title })}>
+                    <i className="fa-solid fa-check" aria-hidden="true" />
+                  </button>
+                  <span className="pln__t">
+                    {k.title}
+                    {k.assignee && <span className="pln__who">{k.assignee}</span>}
+                  </span>
+                  {k.dueOn && (
+                    <span className="pln__when ek-num" data-tone={k.overdue ? "bad" : undefined}>
+                      {shortDate(k.dueOn)}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* ⚠ Qo'shish maydoni faqat rahbarga — serverda ham shunday. */}
+          {canEdit && (
+            <div className="pln__add">
+              <input
+                value={adding}
+                onChange={(e) => setAdding(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") add(); }}
+                placeholder={t("dash.addTask")}
+                aria-label={t("dash.addTask")}
+                maxLength={200}
+              />
+              <button type="button" disabled={!adding.trim() || busy} onClick={add}
+                      aria-label={t("common.add")} title={t("common.add")}>
+                <i className="fa-solid fa-plus" aria-hidden="true" />
+              </button>
+            </div>
+          )}
+
+          {(tasks?.open > rows.length || events.length > 4) && (
+            <button type="button" className="dpn__more" onClick={onOpenAll}>
+              {t("dash.allPlan")}
+            </button>
+          )}
+        </>
+      )}
+    </Panel>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   TO'LIQ BOSHQARUV OYNASI (V72)
+   ══════════════════════════════════════════════════════════════════════ */
+
+const EVENT_KINDS = ["HOLIDAY", "PROMO", "SUPPLY", "PAYMENT", "MEETING", "OTHER"];
+const PRIORITIES = ["HIGH", "NORMAL", "LOW"];
+
+/**
+ * Vazifa va kalendarni to'liq boshqarish.
+ *
+ * ⚠ ALOHIDA SAHIFA EMAS, OYNA. Bosh sahifadagi blok kundalik ish uchun
+ * yetadi (ko'rish, qo'shish, yopish); bu yerga esa kamdan-kam —
+ * bayramni kiritish yoki bajarilganlar tarixini ko'rish uchun
+ * kiriladi. Bunday ish uchun alohida sahifa qilish menyuni
+ * uzaytirardi va u yerdan bosh sahifaga qaytish kerak bo'lardi.
+ *
+ * ⚠ Yopilgan vazifalar TARIXI ham shu yerda: bosh sahifada ular
+ * ko'rinmaydi (u ochiq ishlar uchun), lekin «kim nima bajardi?» degan
+ * savolga javob beradigan yagona joy shu.
+ */
+function PlannerModal({ open, onClose, shopId, canEdit, toast, onChanged }) {
+  const { t } = useT();
+  const [tab, setTab] = useState("tasks");
+  const [status, setStatus] = useState("OPEN");
+  const [tasks, setTasks] = useState([]);
+  const [events, setEvents] = useState([]);
+  const [staff, setStaff] = useState([]);
+  const [busy, setBusy] = useState(false);
+  const [form, setForm] = useState(null);
+
+  const load = useCallback(() => {
+    setBusy(true);
+    Promise.all([
+      plannerApi.tasks(status, shopId).then((r) => r.data || []).catch(() => []),
+      plannerApi.events(null, isoDay(new Date(Date.now() + 365 * 864e5)), shopId)
+        .then((r) => r.data || []).catch(() => []),
+    ]).then(([tk, ev]) => { setTasks(tk); setEvents(ev); }).finally(() => setBusy(false));
+  }, [status, shopId]);
+
+  useEffect(() => { if (open) load(); }, [open, load]);
+
+  /* Xodimlar ro'yxati faqat rahbarga va faqat BIR MARTA kerak. */
+  useEffect(() => {
+    if (!open || !canEdit || staff.length) return;
+    shopApi.getUsers(shopId).then((r) => setStaff(r.data || [])).catch(() => setStaff([]));
+  }, [open, canEdit, shopId, staff.length]);
+
+  const done = (p) => p.then(() => { load(); onChanged(); })
+                       .catch((e) => toast.error(e.message));
+
+  if (!open) return null;
+
+  const empty = { title: "", note: "", kind: "PROMO", startsOn: isoDay(new Date()),
+                  endsOn: "", repeatYearly: false, remindDays: 0,
+                  assigneeId: "", dueOn: "", priority: "NORMAL" };
+  const f = form || empty;
+  const set = (k, v) => setForm({ ...f, [k]: v });
+
+  const save = () => {
+    if (!f.title.trim()) return;
+    const body = tab === "tasks"
+      ? { title: f.title, note: f.note || null,
+          assigneeId: f.assigneeId ? Number(f.assigneeId) : null,
+          dueOn: f.dueOn || null, priority: f.priority }
+      : { title: f.title, note: f.note || null, kind: f.kind,
+          startsOn: f.startsOn, endsOn: f.endsOn || null,
+          repeatYearly: f.repeatYearly, remindDays: Number(f.remindDays) || 0 };
+    const req = tab === "tasks"
+      ? (f.id ? plannerApi.editTask(f.id, body, shopId) : plannerApi.addTask(body, shopId))
+      : (f.id ? plannerApi.editEvent(f.id, body, shopId) : plannerApi.addEvent(body, shopId));
+    done(req.then(() => setForm(null)));
+  };
+
+  return (
+    <Modal onClose={onClose} title={t("dash.plan2")} maxWidth={720}>
+      <div className="seg pmd__tabs" role="tablist">
+        <button type="button" role="tab" aria-selected={tab === "tasks"}
+                className={`seg__b${tab === "tasks" ? " is-on" : ""}`}
+                onClick={() => { setTab("tasks"); setForm(null); }}>{t("dash.tasks")}</button>
+        <button type="button" role="tab" aria-selected={tab === "events"}
+                className={`seg__b${tab === "events" ? " is-on" : ""}`}
+                onClick={() => { setTab("events"); setForm(null); }}>{t("dash.calendar")}</button>
+      </div>
+
+      {tab === "tasks" ? (
+        <>
+          <div className="seg pmd__f" role="group" aria-label={t("common.status")}>
+            {["OPEN", "DONE", "CANCELLED"].map((x) => (
+              <button key={x} type="button" className={`seg__b${status === x ? " is-on" : ""}`}
+                      onClick={() => setStatus(x)}>{t(`dash.st.${x}`)}</button>
+            ))}
+          </div>
+
+          <div className="pmd__list">
+            {busy ? <span className="ek-skeleton" style={{ height: 90 }} />
+             : tasks.length === 0 ? <Empty text={t("dash.noTasks")} />
+             : tasks.map((k) => (
+              <div key={k.id} className="pmd__row" data-tone={k.overdue ? "bad" : undefined}>
+                <span className="pmd__pri" data-p={k.priority} aria-hidden="true" />
+                <span className="pmd__t">
+                  {k.title}
+                  <span className="pmd__meta">
+                    {k.assignee || t("dash.wholeShop")}
+                    {k.dueOn && ` · ${shortDate(k.dueOn)}`}
+                    {k.doneBy && ` · ${k.doneBy}`}
+                  </span>
+                </span>
+                <span className="pmd__acts">
+                  {k.status === "OPEN" ? (
+                    <>
+                      <button type="button" title={t("dash.st.DONE")}
+                              onClick={() => done(plannerApi.setStatus(k.id, "DONE", shopId))}>
+                        <i className="fa-solid fa-check" aria-hidden="true" />
+                      </button>
+                      {canEdit && (
+                        <button type="button" title={t("dash.st.CANCELLED")}
+                                onClick={() => done(plannerApi.setStatus(k.id, "CANCELLED", shopId))}>
+                          <i className="fa-solid fa-ban" aria-hidden="true" />
+                        </button>
+                      )}
+                    </>
+                  ) : (
+                    /* Qayta ochish — yopilgan vazifani tahrirlashning
+                       yagona yo'li: matnni o'zgartirish taqiqlangan. */
+                    <button type="button" title={t("dash.reopen")}
+                            onClick={() => done(plannerApi.setStatus(k.id, "OPEN", shopId))}>
+                      <i className="fa-solid fa-rotate-left" aria-hidden="true" />
+                    </button>
+                  )}
+                  {canEdit && (
+                    <button type="button" title={t("common.delete")}
+                            onClick={() => done(plannerApi.delTask(k.id, shopId))}>
+                      <i className="fa-solid fa-trash" aria-hidden="true" />
+                    </button>
+                  )}
+                </span>
+              </div>
+            ))}
+          </div>
+        </>
+      ) : (
+        <div className="pmd__list">
+          {busy ? <span className="ek-skeleton" style={{ height: 90 }} />
+           : events.length === 0 ? <Empty text={t("dash.noEvents")} />
+           : events.map((e) => (
+            <div key={`${e.id}-${e.startsOn}`} className="pmd__row">
+              <i className={`fa-solid ${EVENT_ICON[e.kind] || EVENT_ICON.OTHER} pmd__ico`} aria-hidden="true" />
+              <span className="pmd__t">
+                {e.title}
+                <span className="pmd__meta">
+                  {shortDate(e.startsOn)}{e.endsOn && ` — ${shortDate(e.endsOn)}`}
+                  {e.repeatYearly && ` · ${t("dash.yearly")}`}
+                  {e.remindDays > 0 && ` · ${t("dash.remindN", { n: e.remindDays })}`}
+                </span>
+              </span>
+              {canEdit && (
+                <span className="pmd__acts">
+                  <button type="button" title={t("common.edit")}
+                          onClick={() => setForm({
+                            id: e.id, title: e.title, note: e.note || "", kind: e.kind,
+                            /* ⚠ Tahrirlashda BAZADAGI sana ochiladi, ekrandagi
+                               ko'chirilgani emas — aks holda har yilgi voqea
+                               saqlanganda joriy yilga «yopishib» qolardi. */
+                            startsOn: e.originalOn, endsOn: e.endsOn || "",
+                            repeatYearly: e.repeatYearly, remindDays: e.remindDays,
+                          })}>
+                    <i className="fa-solid fa-pen" aria-hidden="true" />
+                  </button>
+                  <button type="button" title={t("common.delete")}
+                          onClick={() => done(plannerApi.delEvent(e.id, shopId))}>
+                    <i className="fa-solid fa-trash" aria-hidden="true" />
+                  </button>
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {canEdit && (
+        <div className="pmd__form">
+          <input value={f.title} onChange={(e) => set("title", e.target.value)}
+                 placeholder={tab === "tasks" ? t("dash.addTask") : t("dash.addEvent")}
+                 aria-label={tab === "tasks" ? t("dash.addTask") : t("dash.addEvent")}
+                 maxLength={200} />
+
+          {tab === "tasks" ? (
+            <div className="pmd__grid">
+              <label>{t("dash.due")}
+                <input type="date" value={f.dueOn} onChange={(e) => set("dueOn", e.target.value)} /></label>
+              <label>{t("dash.priority")}
+                <select value={f.priority} onChange={(e) => set("priority", e.target.value)}>
+                  {PRIORITIES.map((x) => <option key={x} value={x}>{t(`dash.pr.${x}`)}</option>)}
+                </select></label>
+              <label>{t("dash.assignee")}
+                <select value={f.assigneeId} onChange={(e) => set("assigneeId", e.target.value)}>
+                  <option value="">{t("dash.wholeShop")}</option>
+                  {staff.map((u) => <option key={u.id} value={u.id}>{u.fullName || u.username}</option>)}
+                </select></label>
+            </div>
+          ) : (
+            <div className="pmd__grid">
+              <label>{t("dash.kind")}
+                <select value={f.kind} onChange={(e) => set("kind", e.target.value)}>
+                  {EVENT_KINDS.map((x) => <option key={x} value={x}>{t(`dash.ek.${x}`)}</option>)}
+                </select></label>
+              <label>{t("dash.from")}
+                <input type="date" value={f.startsOn} onChange={(e) => set("startsOn", e.target.value)} /></label>
+              <label>{t("dash.to")}
+                <input type="date" value={f.endsOn} onChange={(e) => set("endsOn", e.target.value)} /></label>
+              <label>{t("dash.remind")}
+                <input type="number" min="0" max="60" value={f.remindDays}
+                       onChange={(e) => set("remindDays", e.target.value)} /></label>
+              <label className="pmd__chk">
+                <input type="checkbox" checked={f.repeatYearly}
+                       onChange={(e) => set("repeatYearly", e.target.checked)} />
+                {t("dash.yearly")}
+              </label>
+            </div>
+          )}
+
+          <div className="pmd__save">
+            {f.id && (
+              <button type="button" className="btn btn-secondary btn-sm" onClick={() => setForm(null)}>
+                {t("common.cancel")}
+              </button>
+            )}
+            <button type="button" className="btn btn-primary btn-sm"
+                    disabled={!f.title.trim() || busy} onClick={save}>
+              {f.id ? t("common.save") : t("common.add")}
+            </button>
+          </div>
+        </div>
+      )}
+    </Modal>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════════
    IMKONIYATLAR VA TEZKOR AMALLAR
    ══════════════════════════════════════════════════════════════════════ */
 
@@ -1039,11 +1415,13 @@ export default function DashboardPage({ toast }) {
   const [signals, setSignals] = useState(null);
   const [lowStock, setLowStock] = useState([]);
   const [loyalty, setLoyalty] = useState(null);
+  const [planned, setPlanned] = useState(null);
   const [loadingSlow, setLoadingSlow] = useState(true);
   const [loadingFast, setLoadingFast] = useState(true);
   const [at, setAt] = useState(null);
   const [cmdOpen, setCmdOpen] = useState(false);
   const [layoutOpen, setLayoutOpen] = useState(false);
+  const [planOpen, setPlanOpen] = useState(false);
   const [layout, setLayout] = useState(() => readLayout(canMoney));
 
   /* Rol o'zgarsa (boshqa hisobga kirilsa) ro'yxat qayta quriladi. */
@@ -1051,12 +1429,42 @@ export default function DashboardPage({ toast }) {
 
   const range = useMemo(() => periodRange(period), [period]);
 
+  /* Bitta manba — blok ham, ogohlantirishlar ham shundan o'qiydi. */
+  const plan = canMoney
+    ? { events: pulse?.events || [], tasks: pulse?.tasks || null }
+    : planned;
+
   /* ── OG'IR so'rov: davr tahlili ───────────────────────────────────
      Faqat davr yoki filial o'zgarganda. Avto-yangilanish bunga
      TEGMAYDI. */
   useEffect(() => {
     let alive = true;
     setLoadingSlow(true);
+    /* ⚠ KALENDAR VA VAZIFA IKKI YO'LDAN KELADI. Rahbarda ular puls
+       javobining ichida (qo'shimcha so'rovsiz), pul ko'rmaydigan rolda
+       esa alohida so'rov bilan — chunki unga puls umuman yuborilmaydi.
+       Bitta manbaga bog'lansa, omborchi o'ziga berilgan vazifani hech
+       qachon ko'rmasdi, holbuki uni bajaradigan odam aynan u. */
+    if (!canMoney) {
+      Promise.all([
+        plannerApi.events(null, null, branchId).then((r) => r.data || []).catch(() => []),
+        plannerApi.tasks("OPEN", branchId).then((r) => r.data || []).catch(() => []),
+      ]).then(([events, open]) => {
+        if (!alive) return;
+        const today = new Date().toISOString().slice(0, 10);
+        setPlanned({
+          events,
+          tasks: {
+            open: open.length,
+            overdue: open.filter((t) => t.overdue).length,
+            dueToday: open.filter((t) => t.dueOn === today).length,
+            mine: 0,
+            top: open.slice(0, 5),
+          },
+        });
+      });
+    }
+
     const jobs = [
       /* ⚠ `getLow` FILIAL qabul qilmaydi — server yo'li joriy do'kon
          bo'yicha ishlaydi. Rahbarda bu raqamlar `pulse.incoming` dan
@@ -1086,6 +1494,27 @@ export default function DashboardPage({ toast }) {
 
   /* ── YENGIL so'rov: hozirgi holat ─────────────────────────────────
      Avto-yangilanish faqat SHUNI takrorlaydi. */
+  /** Vazifa qo'shilgan yoki yopilgandan keyin — o'sha rolning manbayi. */
+  const reloadPlan = useCallback(() => {
+    if (canMoney) return;
+    Promise.all([
+      plannerApi.events(null, null, branchId).then((r) => r.data || []).catch(() => []),
+      plannerApi.tasks("OPEN", branchId).then((r) => r.data || []).catch(() => []),
+    ]).then(([events, open]) => {
+      const today = new Date().toISOString().slice(0, 10);
+      setPlanned({
+        events,
+        tasks: {
+          open: open.length,
+          overdue: open.filter((t) => t.overdue).length,
+          dueToday: open.filter((t) => t.dueOn === today).length,
+          mine: 0,
+          top: open.slice(0, 5),
+        },
+      });
+    });
+  }, [canMoney, branchId]);
+
   const loadPulse = useCallback((quiet) => {
     if (!canMoney) { setLoadingFast(false); return Promise.resolve(); }
     if (!quiet) setLoadingFast(true);
@@ -1130,17 +1559,30 @@ export default function DashboardPage({ toast }) {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  const go = useCallback((to) => { if (to) navigate(to); }, [navigate]);
+  /**
+   * Ogohlantirish yoki blok havolasi.
+   *
+   * ⚠ `planner:` — sahifa emas, OYNA. Kalendar va vazifalar uchun
+   * alohida marshrut qilinmadi (sabab `PlannerModal` da), lekin
+   * ogohlantirish satri baribir biror joyga olib borishi kerak.
+   * Havolani bo'sh qoldirish «bosdim, hech narsa bo'lmadi» degan eng
+   * yomon holatni berardi.
+   */
+  const go = useCallback((to) => {
+    if (!to) return;
+    if (to === "/planner") { setPlanOpen(true); return; }
+    navigate(to);
+  }, [navigate]);
 
   /* ── Ogohlantirishlar ─────────────────────────────────────────────
      Butun tizimdan kelgan signallar bitta tartiblangan ro'yxatda —
      mantiq `ek-dash.js` da, chunki u SINALADIGAN qaror. */
   const alerts = useMemo(() => buildAlerts({
-    signals, pulse, lowStock,
+    signals, pulse, lowStock, plan,
     /* Omborchida savdo so'rovi yuborilmaydi — «bilmaymiz» deb
        beriladi, «sotuv yo'q» deb emas. */
     hasSales: canMoney ? Number(pulse?.today?.receipts || analytics?.now?.receipts || 0) > 0 : null,
-  }), [signals, pulse, lowStock, analytics, canMoney]);
+  }), [signals, pulse, lowStock, analytics, canMoney, plan]);
 
   /* ── KPI qatori ───────────────────────────────────────────────────
      ⚠ Tartib — HISOBOTNING O'ZI: tushumdan sof foydagacha zinapoya.
@@ -1204,6 +1646,15 @@ export default function DashboardPage({ toast }) {
                              onCmp={(v) => patch({ c: v === "yesterday" ? null : v })} onGo={go} />,
     target: () => <TargetPanel key="target" pulse={pulse} onGo={go} />,
     changes: () => <ChangesPanel key="changes" analytics={analytics} loading={loadingSlow} onGo={go} />,
+    plan: () => <PlanPanel key="plan" plan={plan} loading={canMoney ? loadingFast : loadingSlow}
+                           canEdit={canMoney} onOpenAll={() => setPlanOpen(true)}
+                           shopId={branchId} toast={toast}
+                           /* ⚠ Vazifa qo'shilgach YENGIL so'rov qayta
+                              yuboriladi: ro'yxatni mahalliy yangilash
+                              serverdagi tartib va sanoqni takrorlashni
+                              talab qilardi va ikkalasi vaqt o'tib
+                              bir-biridan uzoqlashardi. */
+                           onChanged={() => { loadPulse(true); reloadPlan(); }} />,
     live: () => <LivePanel key="live" pulse={pulse} loading={loadingFast} onGo={go} />,
     registers: () => <RegistersPanel key="registers" pulse={pulse} loading={loadingFast} onGo={go} />,
     branches: () => <BranchesPanel key="branches" pulse={pulse} loading={loadingFast} onGo={go} />,
@@ -1221,7 +1672,7 @@ export default function DashboardPage({ toast }) {
      ekranda joy tejaladi, lekin ro'yxat va grafik bir-birini
      siqmasligi kerak: keng bloklar (KPI, egri chiziq, kassirlar)
      BUTUN kenglikda qoladi. */
-  const NARROW = new Set(["target", "changes", "live", "registers", "branches",
+  const NARROW = new Set(["target", "changes", "plan", "live", "registers", "branches",
                           "payments", "people", "opps", "actions"]);
 
   const blocks = layout.filter((w) => w.on && RENDER[w.id]);
@@ -1312,6 +1763,9 @@ export default function DashboardPage({ toast }) {
                       role={user?.role} branchId={branchId} />
       <LayoutModal open={layoutOpen} onClose={() => setLayoutOpen(false)}
                    list={layout} setList={setLayout} />
+      <PlannerModal open={planOpen} onClose={() => setPlanOpen(false)}
+                    shopId={branchId} canEdit={canMoney} toast={toast}
+                    onChanged={() => { loadPulse(true); reloadPlan(); }} />
     </div>
   );
 }

@@ -58,6 +58,8 @@ export const T = {
   changeMin: 8,
   /** Qaytarish ulushi shundan oshsa — ogohlantirish (foizda). */
   returnShare: 10,
+  /** Kalendar voqeasi shuncha kun qolganda ogohlantirishga tushadi. */
+  eventSoon: 3,
 };
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -83,7 +85,8 @@ const rows = (r) => (n(r?.count) > 0 ? r : null);
  * yo'q» degan satr soat 8 da har kuni yonsa, bir haftada butun blok
  * e'tibordan chiqadi.
  */
-export function buildAlerts({ signals = {}, pulse = null, lowStock = [], hasSales = true } = {}) {
+export function buildAlerts({ signals = {}, pulse = null, lowStock = [],
+                              hasSales = true, plan = null } = {}) {
   /* ⚠ `hasSales === null` — «BILMAYMIZ», «yo'q» EMAS. Omborchida
      savdo so'rovi umuman yuborilmaydi va uni `false` deb hisoblash
      unga har kuni «bugun sotuv bo'lmadi» degan yolg'on satr
@@ -215,6 +218,43 @@ export function buildAlerts({ signals = {}, pulse = null, lowStock = [], hasSale
     id: "credit", severity: "info", icon: "fa-hand-holding-dollar",
     key: "dash.sigCustomerDebt", args: { n: sig.customerDebt.count },
     money: n(sig.customerDebt.amount), to: "/customers",
+  });
+
+  /* ── Vazifalar (V72) ──────────────────────────────────────────────
+     ⚠ KECHIKKAN vazifa — sariq, oddiy ochiq vazifa esa UMUMAN
+     ogohlantirish emas. Har ochiq vazifa uchun satr chiqarilsa, blok
+     ish rejasiga aylanardi va haqiqiy muammolar orasida yo'qolardi. */
+  /* ⚠ `plan` ALOHIDA argument, `pulse` ning ichidan olinmaydi.
+     Rahbarda u puls javobidan keladi (qo'shimcha so'rovsiz), pul
+     ko'rmaydigan rolda esa alohida so'rovdan — chunki unga puls
+     umuman yuborilmaydi. Ikkalasi bir manbadan o'qilganda omborchi
+     o'ziga berilgan kechikkan vazifani hech qachon ko'rmasdi. */
+  const tk = plan?.tasks;
+  if (n(tk?.overdue) > 0) out.push({
+    id: "task-overdue", severity: "warning", icon: "fa-list-check",
+    key: "dash.alertTaskOverdue", count: n(tk.overdue), to: "/planner",
+  });
+  if (n(tk?.dueToday) > 0) out.push({
+    id: "task-today", severity: "info", icon: "fa-list-check",
+    key: "dash.alertTaskToday", count: n(tk.dueToday), to: "/planner",
+  });
+
+  /* ── Kalendar (V72) ───────────────────────────────────────────────
+     ⚠ Faqat BUGUN boshlanadigan yoki juda yaqin voqealar. «Ikki
+     haftadan keyin bayram» degan satr ogohlantirish emas — u
+     kalendarning o'z ishi. */
+  const near = (plan?.events || []).filter((e) => {
+    const d = n(e.daysAway);
+    /* Har voqeaning O'Z eslatish oynasi bor: ijara to'lovi besh kun
+       oldin kerak, bayram esa faqat o'sha kuni. */
+    const win = Math.max(T.eventSoon, n(e.remindDays));
+    return e.active || (d >= 0 && d <= win);
+  });
+  if (near.length) out.push({
+    id: "event-soon", severity: "info", icon: "fa-calendar-day",
+    key: near[0].active ? "dash.alertEventToday" : "dash.alertEventSoon",
+    args: { name: near[0].title, n: n(near[0].daysAway) },
+    count: near.length > 1 ? near.length : null, to: "/planner",
   });
 
   /* ── Reja sur'ati (V74) ───────────────────────────────────────── */
@@ -407,6 +447,7 @@ export const WIDGETS = [
   { id: "pulse",     money: true,  key: "dash.wPulse" },
   { id: "target",    money: true,  key: "dash.wTarget" },
   { id: "changes",   money: true,  key: "dash.wChanges" },
+  { id: "plan",      money: false, key: "dash.wPlan" },
   { id: "live",      money: true,  key: "dash.wLive" },
   { id: "registers", money: true,  key: "dash.wRegisters" },
   { id: "branches",  money: true,  key: "dash.wBranches" },

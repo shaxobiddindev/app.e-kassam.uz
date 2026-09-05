@@ -376,6 +376,66 @@ it("ball rangga aylanadi", () => {
 });
 
 /* ══════════════════════════════════════════════════════════════════
+   KALENDAR VA VAZIFALAR (V72)
+   ══════════════════════════════════════════════════════════════════ */
+console.log("\n── Kalendar va vazifalar ──");
+
+it("kechikkan vazifa — sariq, bugungisi — ko'k", () => {
+  const a = buildAlerts({ hasSales: true, plan: { tasks: { open: 5, overdue: 2, dueToday: 1 } } });
+  assert.equal(a.find((x) => x.id === "task-overdue").severity, "warning");
+  assert.equal(a.find((x) => x.id === "task-overdue").count, 2);
+  assert.equal(a.find((x) => x.id === "task-today").severity, "info");
+});
+
+it("shunchaki OCHIQ vazifa ogohlantirish EMAS", () => {
+  /* ⚠ Har ochiq vazifa uchun satr chiqarilsa, blok ish rejasiga
+     aylanardi va haqiqiy muammolar orasida yo'qolardi. */
+  const a = buildAlerts({ hasSales: true, plan: { tasks: { open: 9, overdue: 0, dueToday: 0 } } });
+  assert.deepEqual(a, []);
+});
+
+it("uzoqdagi voqea ogohlantirishga TUSHMAYDI", () => {
+  const far = buildAlerts({ hasSales: true, plan: {
+    events: [{ title: "Bayram", daysAway: 12, active: false, remindDays: 0 }] } });
+  assert.equal(far.find((x) => x.id === "event-soon"), undefined,
+    "o'n ikki kundan keyingi bayram ogohlantirish emas — u kalendarning ishi");
+});
+
+it("voqeaning O'Z eslatish oynasi hurmat qilinadi", () => {
+  /* Ijara to'lovi besh kun oldin kerak, oddiy chegara esa uch kun. */
+  const a = buildAlerts({ hasSales: true, plan: {
+    events: [{ title: "Ijara", daysAway: 5, active: false, remindDays: 5 }] } });
+  const e = a.find((x) => x.id === "event-soon");
+  assert.equal(e.args.name, "Ijara");
+  assert.equal(e.args.n, 5);
+});
+
+it("bugun boshlangan voqea BOSHQA matn oladi", () => {
+  const today = buildAlerts({ hasSales: true, plan: {
+    events: [{ title: "Navro'z", daysAway: 0, active: true, remindDays: 0 }] } });
+  assert.equal(today.find((x) => x.id === "event-soon").key, "dash.alertEventToday");
+
+  const soon = buildAlerts({ hasSales: true, plan: {
+    events: [{ title: "Navro'z", daysAway: 2, active: false, remindDays: 0 }] } });
+  assert.equal(soon.find((x) => x.id === "event-soon").key, "dash.alertEventSoon");
+});
+
+it("bir nechta voqea BITTA satrga yig'iladi", () => {
+  const a = buildAlerts({ hasSales: true, plan: { events: [
+    { title: "Birinchi", daysAway: 0, active: true, remindDays: 0 },
+    { title: "Ikkinchi", daysAway: 1, active: false, remindDays: 0 },
+  ] } });
+  const rows = a.filter((x) => x.id === "event-soon");
+  assert.equal(rows.length, 1, "har voqeaga alohida satr ro'yxatni ko'mib tashlardi");
+  assert.equal(rows[0].count, 2, "lekin nechtaligi ko'rinadi");
+});
+
+it("kalendar va vazifa bloki OMBORCHIGA ham ochiq", () => {
+  assert.ok(allowedWidgets(false).some((w) => w.id === "plan"),
+    "vazifa aynan omborchi bajaradigan ish — undan yashirishning ma\'nosi yo\'q");
+});
+
+/* ══════════════════════════════════════════════════════════════════
    TARJIMA QAMROVI
 
    ⚠ BU SINOV HAQIQIY XATODAN KEYIN YOZILDI. Ogohlantirish matnlari
@@ -407,6 +467,17 @@ const EVERY = {
     stockouts: [{ name: "A", daysLeft: 1, lostPerDay: 5 },
                 { name: "B", daysLeft: 5, lostPerDay: 5 }],
   },
+  plan: {
+    tasks: { open: 4, overdue: 2, dueToday: 1, mine: 1, top: [] },
+    events: [{ id: 1, title: "Navro'z", daysAway: 0, active: true, remindDays: 0 }],
+  },
+};
+
+/* «{n} kundan keyin» matni FAOL BO'LMAGAN voqeada chiqadi — yuqoridagi
+   namunada voqea bugungi, shuning uchun ikkinchisi kerak. */
+const EVERY_SOON = {
+  hasSales: true,
+  plan: { events: [{ id: 2, title: "Ijara", daysAway: 2, active: false, remindDays: 0 }] },
 };
 
 const EVERY_OPP = {
@@ -421,12 +492,13 @@ const EVERY_OPP = {
 
 const emitted = new Set();
 for (const a of buildAlerts(EVERY)) emitted.add(a.key);
+for (const a of buildAlerts(EVERY_SOON)) emitted.add(a.key);
 for (const o of opportunities(EVERY_OPP, 99)) emitted.add(o.key);
 for (const w of WIDGETS) emitted.add(w.key);
 
 it("hamma ogohlantirish CHIQADI — sinov o'zi ham tekshiriladi", () => {
-  assert.ok(buildAlerts(EVERY).length >= 12,
-    "kamida o'n ikkita satr kutilgan, kelgan: " + buildAlerts(EVERY).length);
+  assert.ok(buildAlerts(EVERY).length >= 15,
+    "kamida o'n beshta satr kutilgan, kelgan: " + buildAlerts(EVERY).length);
 });
 
 for (const lang of ["uz", "ru", "en"]) {
