@@ -3995,3 +3995,91 @@ img.logo--dark { display: none; }
    QOLGAN yagona tugma («narxni tiklash»): u klaviatura emas, amal. */
 .qty-modal__reset { margin-top: 12px; }
 .qty-modal__reset .btn { width: 100%; }
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   KLAVIATURA OYNANI BOSMASIN (V67)
+
+   Do'kon egasi: «to'lov oynasi klaviatura orqasida qolib ketmasligi
+   kerak». Klaviatura oynaning USTIDA turishi to'g'ri (u yerga yoziladi),
+   lekin u oynaning ishlaydigan qismini — to'lov turlarini va summa
+   maydonini — yopib qo'yayotgan edi.
+
+   Yechim ikki xil, ekranga qarab. O'lchamlarni klaviaturaning O'ZI
+   e'lon qiladi (`--osk-h`, `--osk-w`): ular rejimga qarab o'zgaradi va
+   CSS ularni oldindan bila olmaydi.
+
+     · KENG ekran + RAQAMLI pad (u o'ng pastda, ~360px): oyna CHAPGA
+       suriladi va ikkalasi ham TO'LIQ ko'rinadi — oyna kichraymaydi,
+       kassir hamma narsani bir vaqtda ko'radi.
+
+     · Qolgan holatlar (harfli pad butun kenglikda, yoki ekran tor):
+       oyna YUQORIGA chiqadi va balandligi klaviaturadan qolgan joyga
+       moslanadi. To'lov oynasi bunda o'zini o'zi sig'diradi
+       (`useFitHeight`) — scrol baribir chiqmaydi.
+   ══════════════════════════════════════════════════════════════════════════ */
+body.osk-open .pay-modal-overlay,
+body.osk-open .modal-overlay,
+body.osk-open .ek-overlay {
+  align-items: flex-start;
+  padding-top: 10px;
+}
+/* ⚠ `margin: auto` NI BEKOR QILISH SHART. `.pay-modal-overlay > *` da u
+   bor (joy bo'lsa markazlaydi) va `align-items` dan KUCHLIROQ: usiz
+   oyna markazda qolib, klaviatura ustiga chiqib turaverardi — 1024×768
+   monoblokda aynan shu tutildi (340×209px kesishuv). */
+body.osk-open .pay-modal-overlay > *,
+body.osk-open .modal-overlay > *,
+body.osk-open .ek-overlay > * { margin-top: 0; margin-bottom: auto; }
+body.osk-open .pay-modal-box,
+body.osk-open .modal-box,
+body.osk-open .qty-modal,
+body.osk-open .mark-modal {
+  /* ⚠ `dvh` — telefon brauzerlarida manzil qatori yig'ilganda `vh`
+     eskirib qoladi va oyna klaviatura ostiga qayta kirib ketardi. */
+  max-height: calc(100dvh - var(--osk-h, 0px) - 20px);
+}
+
+/* Keng ekran: raqamli pad o'ngda qoladi, oyna esa chapga suriladi. */
+@media (min-width: 1180px) {
+  body.osk-open.osk-num .pay-modal-overlay,
+  body.osk-open.osk-num .modal-overlay,
+  body.osk-open.osk-num .ek-overlay {
+    justify-content: flex-start;
+    align-items: center;
+    padding-top: 0;
+    padding-left: 16px;
+    padding-right: calc(var(--osk-w, 0px) + 16px);
+  }
+  body.osk-open.osk-num .pay-modal-box,
+  body.osk-open.osk-num .modal-box,
+  body.osk-open.osk-num .qty-modal,
+  body.osk-open.osk-num .mark-modal { max-height: 94vh; }
+  /* Keng ekranda oyna yana MARKAZDA (o'ngdagi klaviatura bilan yonma-yon). */
+  body.osk-open.osk-num .pay-modal-overlay > *,
+  body.osk-open.osk-num .modal-overlay > *,
+  body.osk-open.osk-num .ek-overlay > * { margin: auto; }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   PAST EKRANDA KLAVIATURA IXCHAMLASHADI (V67)
+
+   ⚠ 1024×768 monoblokda raqamli pad 447px egallardi va to'lov oynasiga
+   atigi 301px qolardi — mazmun unga sig'maydi, oyna esa eng kichik
+   masshtabga (0.6) tushib ham 17px scrol berardi. Ya'ni «scrol hech
+   qachon bo'lmasin» qoidasi klaviatura ochiq holatda buzilardi.
+
+   Yechim oynani yana kichraytirish EMAS (matn o'qilmas bo'lib qoladi),
+   klaviaturaning o'zini pasaytirish: 60px tugma sensorli barmoq uchun
+   qulay, lekin 46px ham yetarli (Apple/Google tavsiyasi 44px). Shu
+   bilan pad ~350px ga tushadi va oynaga 400px dan ortiq qoladi.
+   ══════════════════════════════════════════════════════════════════════════ */
+@media (max-height: 820px) {
+  .osk { padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px)); }
+  .osk__bar { padding: 0 2px 4px; }
+  .osk__rows { gap: 5px; }
+  .osk__row { gap: 5px; }
+  .osk--num .osk__key { min-height: 46px; height: 46px; font-size: 20px; }
+  .osk__key { min-height: 44px; }
+}

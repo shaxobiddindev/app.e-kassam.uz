@@ -109,7 +109,15 @@ export default function Select({
     // Pastda joy yetmasa yuqoriga ochamiz — ro'yxat ekrandan chiqib ketmasin
     const r = btnRef.current?.getBoundingClientRect();
     if (!r) return;
-    setDrop(window.innerHeight - r.bottom < 280 && r.top > 300 ? "up" : "down");
+    /* ⚠ EKRAN KLAVIATURASI EGALLAGAN JOY AYIRILADI (V67). Usiz «pastda
+       joy bor» deb hisoblanar, ro'yxat esa klaviatura ostiga ochilib,
+       mijozni tanlab bo'lmasdi — do'kon egasi aynan shu holatni
+       ko'rsatdi (jamg'arma oynasida mijoz qidiruvi). Klaviatura o'z
+       balandligini `--osk-h` da e'lon qiladi. */
+    const oskH = parseInt(
+      getComputedStyle(document.documentElement).getPropertyValue("--osk-h"), 10) || 0;
+    const below = window.innerHeight - oskH - r.bottom;
+    setDrop(below < 280 && r.top > 300 ? "up" : "down");
     // Ro'yxat tugmadan kengroq bo'lishi mumkin — o'ng chetdan chiqib ketmasin
     setAlign(window.innerWidth - r.left < 240 ? "right" : "left");
   }, [open, selectedIndex]);

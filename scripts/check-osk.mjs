@@ -62,6 +62,25 @@ const yes = (c, m, g) => { if (c) { ok++; console.log("  ✅ " + m); } else { ba
 
 /* Klaviatura ochiq bo'lgan holatda uning ustidagi nuqtada NIMA borligini
    o'lchaymiz: agar modal chiqsa — klaviatura tagida qolgan. */
+/* ⚠ ASOSIY MEZON (V67): klaviatura oynani BOSMASLIGI kerak. Ustida
+   turishning o'zi yetarli emas — do'kon egasi rasmda ko'rsatgan holatda
+   klaviatura to'lov turlarini va summa maydonini yopib turgan edi.
+   Shuning uchun ikkita to'rtburchakning KESISHUVI o'lchanadi. */
+const overlap = () => page.evaluate(() => {
+  const osk = document.querySelector(".osk");
+  const box = document.querySelector(".pay-modal-box") || document.querySelector(".modal-box");
+  if (!osk || !box) return null;
+  const a = osk.getBoundingClientRect(), b = box.getBoundingClientRect();
+  const w = Math.min(a.right, b.right) - Math.max(a.left, b.left);
+  const h = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+  return {
+    px: w > 0 && h > 0 ? Math.round(w * h) : 0,
+    w: Math.round(w), h: Math.round(h),
+    box: `${Math.round(b.left)},${Math.round(b.top)} ${Math.round(b.width)}×${Math.round(b.height)}`,
+    osk: `${Math.round(a.left)},${Math.round(a.top)} ${Math.round(a.width)}×${Math.round(a.height)}`,
+  };
+});
+
 const probe = () => page.evaluate(() => {
   const osk = document.querySelector(".osk");
   if (!osk) return { open: false };
@@ -87,7 +106,42 @@ let p = await probe();
 yes(p.open, "ekran klaviaturasi ochildi", JSON.stringify(p));
 console.log(`     osk z=${p.zOsk}, modal z=${p.modalZ}, ota=${p.parentTag}`);
 yes(p.inOsk, "klaviatura ustidagi nuqta klaviaturaning O'ZI (tagida qolmagan)", `nuqtada: ${p.hitClass}`);
+{
+  const o = await overlap();
+  yes(o && o.px === 0, `oyna va klaviatura KESISHMAYDI (oyna ${o?.box}, klaviatura ${o?.osk})`,
+      `${o?.w}×${o?.h}px kesishdi`);
+}
 SHOT && await page.screenshot({ path: `${SHOT}/v67-osk-pay.png` });
+
+console.log("\n── A2. TOR MONOBLOK (1024×768) ──");
+{
+  /* ⚠ Kassa monobloklarining ko'pi shu o'lchamda: bu yerda oyna
+     chapga sig'maydi, shuning uchun u YUQORIGA chiqib, balandligi
+     klaviaturadan qolgan joyga moslanadi. */
+  await page.setViewport({ width: 1024, height: 768, hasTouch: true });
+  await sleep(600);
+  await page.evaluate(() => document.querySelector("#pay-amount")?.focus()); await sleep(500);
+  const o = await overlap();
+  yes(o && o.px === 0, `1024×768: kesishmaydi (oyna ${o?.box}, klaviatura ${o?.osk})`,
+      `${o?.w}×${o?.h}px kesishdi`);
+  const body = await page.evaluate(() => {
+    const b = document.querySelector(".pay-modal-body");
+    return b ? b.scrollHeight - b.clientHeight : -1;
+  });
+  const dbg = await page.evaluate(() => {
+    const b = document.querySelector(".pay-modal-body");
+    const box = document.querySelector(".pay-modal-box");
+    const grid = document.querySelector(".pay-grid");
+    return { fit: box?.dataset.fit, zoom: grid?.style.zoom || "-",
+             boxMax: getComputedStyle(box).maxHeight, boxH: Math.round(box.getBoundingClientRect().height),
+             bodyC: b?.clientHeight, bodyS: b?.scrollHeight,
+             oskH: getComputedStyle(document.documentElement).getPropertyValue("--osk-h") };
+  });
+  console.log("     debug:", JSON.stringify(dbg));
+  yes(body <= 1, "va oynada scrol ham yo'q", body + "px ortiqcha");
+  SHOT && await page.screenshot({ path: `${SHOT}/v67-osk-1024.png` });
+  await page.setViewport({ width: 1366, height: 768, hasTouch: true }); await sleep(500);
+}
 
 console.log("\n── B. Oyna ustidagi oyna (jamg'arma) ──");
 await page.keyboard.press("Escape"); await sleep(300);
@@ -96,10 +150,17 @@ await page.evaluate(() => document.querySelector(".pay-modal-box--lite .qty-moda
 p = await probe();
 yes(p.open, "jamg'arma oynasida ham klaviatura ochildi", JSON.stringify(p));
 yes(p.inOsk, "u ham oyna USTIDA", `nuqtada: ${p.hitClass}`);
+{
+  const o = await overlap();
+  yes(o && o.px === 0, `jamg'arma oynasi ham kesishmaydi (oyna ${o?.box})`, `${o?.w}×${o?.h}px kesishdi`);
+}
 SHOT && await page.screenshot({ path: `${SHOT}/v67-osk-topup.png` });
 
 console.log("\n── C. `000` tugmasi va ichki klaviaturalar ──");
 {
+  /* ⚠ Bu bo'lim RAQAMLI rejim ochiq turganda bajariladi (`000` faqat
+     o'sha yerda bo'ladi) — shuning uchun u harfli klaviatura sinovidan
+     OLDIN turadi. */
   const st = await page.evaluate(() => ({
     zeros: !!document.querySelector(".osk__key--zeros"),
     clear: [...document.querySelectorAll(".osk__key--fn")].map((b) => b.textContent.trim()),
@@ -120,6 +181,31 @@ console.log("\n── C. `000` tugmasi va ichki klaviaturalar ──");
   await sleep(250);
   const val = await page.evaluate(() => (document.querySelector(".pay-modal-box--lite .qty-modal__input") || document.querySelector("#pay-amount"))?.value);
   yes((val || "").replace(/\D/g, "") === "5000", "5 + 000 → 5 000 yozildi: " + val, val);
+}
+
+console.log("\n── B2. HARFLI klaviatura va ochilgan ro'yxat ──");
+{
+  /* ⚠ Harfli pad BUTUN KENGLIKDA pastda turadi — raqamlidan boshqa
+     holat. Do'kon egasi ko'rsatgan rasm aynan shu: mijoz qidiruvi
+     ochilgan-u, ro'yxat klaviatura ostida qolgan. */
+  await page.click(".pay-modal-box--lite .ek-select__btn"); await sleep(500);
+  /* Kassir qidiruv maydoniga TEGADI — shunda klaviatura harfliga o'tadi. */
+  await page.click(".ek-select__search input"); await sleep(600);
+  const st = await page.evaluate(() => {
+    const osk = document.querySelector(".osk");
+    const menu = document.querySelector(".ek-select__menu, .ek-select__pop, [role='listbox']");
+    if (!osk || !menu) return null;
+    const a = osk.getBoundingClientRect(), m = menu.getBoundingClientRect();
+    const w = Math.min(a.right, m.right) - Math.max(a.left, m.left);
+    const h = Math.min(a.bottom, m.bottom) - Math.max(a.top, m.top);
+    return { text: osk.classList.contains("osk--text"), over: w > 0 && h > 0 ? Math.round(w * h) : 0,
+             menu: `${Math.round(m.top)}..${Math.round(m.bottom)}`, oskTop: Math.round(a.top) };
+  });
+  yes(st && st.text, "qidiruv maydonida HARFLI klaviatura ochildi", JSON.stringify(st));
+  yes(st && st.over === 0, `mijoz ro'yxati klaviatura ostida QOLMADI (ro'yxat ${st?.menu}, klaviatura ${st?.oskTop} dan)`,
+      `${st?.over}px kesishdi`);
+  SHOT && await page.screenshot({ path: `${SHOT}/v67-osk-select.png` });
+  await page.keyboard.press("Escape"); await sleep(300);
 }
 
 console.log("\n── D. Mijoz har ochilishda tozalanadi ──");

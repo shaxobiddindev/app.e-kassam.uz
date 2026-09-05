@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { t } from "../lib/ek-i18n";
 import { insert, backspace, clear, isNumericField } from "../lib/ek-keys";
@@ -108,6 +108,43 @@ export default function OnScreenKeyboard({ target, onClose }) {
     }
     onClose();
   };
+
+  /* ══ O'LCHAMNI E'LON QILISH (V67) ═══════════════════════════════════
+     Klaviatura oynaning USTIDA turadi — bu to'g'ri, lekin u oynani
+     BOSIB qo'ymasligi ham kerak: do'kon egasi rasmda ko'rsatdi, o'ng
+     pastdagi raqamli pad to'lov turlarini va summa maydonini yopib
+     turgan edi.
+
+     CSS o'zi bilmaydi: klaviaturaning balandligi rejimga qarab
+     o'zgaradi (raqamli ~5 qator, harfli ~4 qator + probel), kengligi
+     esa `min(360px, 100%)`. Shuning uchun o'lcham SHU YERDA o'lchanadi
+     va o'zgaruvchiga yoziladi — oynalarni joylashtirish qoidasi
+     `styles.css` da o'shanga tayanadi.
+
+     ⚠ `useLayoutEffect`: o'lcham chizishdan OLDIN yoziladi, aks holda
+     oyna bir kadr davomida eski joyida turib «sakrardi». */
+  useLayoutEffect(() => {
+    const el = boxRef.current;
+    if (!el) return undefined;
+    const root = document.documentElement;
+    const write = () => {
+      root.style.setProperty("--osk-h", `${Math.round(el.offsetHeight)}px`);
+      root.style.setProperty("--osk-w", `${Math.round(el.offsetWidth)}px`);
+    };
+    write();
+    /* Rejim almashsa (raqam ↔ harf, kirill) balandlik o'zgaradi. */
+    const ro = typeof ResizeObserver === "function" ? new ResizeObserver(write) : null;
+    ro?.observe(el);
+    window.addEventListener("resize", write);
+    document.body.classList.toggle("osk-num", numeric);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener("resize", write);
+      root.style.removeProperty("--osk-h");
+      root.style.removeProperty("--osk-w");
+      document.body.classList.remove("osk-num");
+    };
+  }, [numeric]);
 
   const rows = numeric ? NUM_ROWS : (cyr ? CYR_ROWS : LAT_ROWS);
 

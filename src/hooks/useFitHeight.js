@@ -48,6 +48,12 @@ const SUPPORTS_ZOOM = typeof CSS !== "undefined" && CSS.supports?.("zoom", "0.9"
  * @param maxLevel  CSS darajalarining eng kattasi (undan keyin masshtab)
  * @param minZoom   masshtab shundan pastga tushmaydi
  */
+/* ⚠ `minZoom` — HIMOYA TO'RI, ish rejimi emas. 0.6 dan pastda matn
+   o'qilmaydigan bo'lib qoladi, shuning uchun oyna bu chegaraga
+   yetgan bo'lsa, demak muammo boshqa joyda: mazmunga berilgan joy
+   haqiqatan yetmayapti (masalan klaviatura ekranning yarmini
+   egallagan) va uni CSS bilan hal qilish kerak — `styles.css` dagi
+   «past ekranda klaviatura ixchamlashadi» blokiga qarang. */
 export function useFitHeight(ref, { enabled = true, key = "", maxLevel = 2, minZoom = 0.6 } = {}) {
   const [fit, setFit] = useState(ZERO);
   /* ⚠ QAYTA O'LCHASH UCHUN ALOHIDA HISOBLAGICH. Oyna o'lchami
@@ -82,8 +88,37 @@ export function useFitHeight(ref, { enabled = true, key = "", maxLevel = 2, minZ
     if (!enabled) { setFit(ZERO); return undefined; }
     const reset = () => { setFit(ZERO); bump((n) => n + 1); };
     window.addEventListener("resize", reset);
-    return () => window.removeEventListener("resize", reset);
-  }, [enabled]);
+
+    /* ⚠ TANAGA BERILGAN JOYNI KUZATAMIZ (V67). Ekran klaviaturasi
+       ochilganda oynaga qolgan balandlik CSS orqali kamayadi
+       (`max-height: calc(100dvh - var(--osk-h) …)`) — React buni
+       BILMAYDI va qayta render bo'lmaydi, ya'ni o'lchov ham
+       bo'lmasdi: oyna eski balandligicha qolib, scrol chiqardi.
+
+       ⚠⚠ FAQAT `clientHeight` O'ZGARSA. Kuzatuvchi har o'zgarishga
+       javob bersa, o'zini o'zi qo'zg'atadi: daraja oshadi → mazmun
+       kichrayadi → kuzatuvchi ishlaydi → daraja NOLGA qaytadi →
+       hech qachon sig'maydi. Aynan shu tutildi: 1024×768 da oynada
+       17px scrol qolib ketardi. Mavjud JOY esa faqat tashqaridan
+       o'zgaradi — klaviatura ochilganda yoki ekran o'lchami
+       o'zgarganda. */
+    const el = ref.current;
+    let lastH = el ? el.clientHeight : 0;
+    const ro = el && typeof ResizeObserver === "function"
+      ? new ResizeObserver(() => {
+          const h = el.clientHeight;
+          if (Math.abs(h - lastH) < 2) return;
+          lastH = h;
+          reset();
+        })
+      : null;
+    if (el && ro) ro.observe(el);
+
+    return () => {
+      window.removeEventListener("resize", reset);
+      ro?.disconnect();
+    };
+  }, [enabled, ref]);
 
   return fit;
 }

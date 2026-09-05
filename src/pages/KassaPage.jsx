@@ -1708,12 +1708,18 @@ export default function KassaPage({ toast, refreshLowStock }) {
      o'zgarsa daraja nolga qaytib, qaytadan o'lchanadi (aks holda bir
      marta kichraygan oyna mijoz olib tashlanganda ham kichik qolardi). */
   const payBodyRef = useRef(null);
+  /* Ekran klaviaturasi ochiqmi — oynaga qolgan joy shunga bog'liq
+     (`keyboard` yuqorida allaqachon olingan). */
+  const oskOpen = keyboard.isOpen;
   const fitKey = [
     customer?.id, !!tier, savingsLeft > 0, Number(tier?.debtBalance) > 0, bonusAvail > 0,
     Number(tier?.bonusExpiringSoon) > 0, pay.parts.length, pay.change > 0, creditPart > 0,
     creditBlocked, needCustomer, discountNum > 0, budgetNum > 0, lineDiscounts > 0,
     roundOffers.length, budgetPicks.length, discVerdict, cart.length, payUntouched,
     pay.over > 0, payFocus === "SAVINGS",
+    /* ⚠ Klaviatura ochilganda oynaga qolgan joy KESKIN kamayadi
+       (V67) — daraja nolga qaytib, qaytadan o'lchanishi shart. */
+    oskOpen,
   ].join("|");
   const fit = useFitHeight(payBodyRef, { enabled: showPayModal, key: fitKey });
 
