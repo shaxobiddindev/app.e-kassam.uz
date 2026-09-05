@@ -4135,3 +4135,76 @@ body.osk-open .mark-modal {
   .flt-row { grid-template-columns: 1fr auto; }
   .flt-vals, .flt-enum { grid-column: 1 / -1; }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   OMBOR HOLAT PANELI (V68) — ilgarigi «sariq devor» o'rniga
+
+   Do'kon egasi ilgarigi panelni yoqtirmadi. Uch sabab bor edi:
+   sarlavha, izoh va tugmalar BIR XIL ogohlantirish rangida turardi
+   (har kuni yonib turgan ogohlantirish bir haftada ko'rinmas bo'ladi);
+   panel uch qator joyni doim egallardi; va muammo yo'q kuni u umuman
+   chizilmay, holat tanlagichi ham u bilan birga yo'qolardi.
+
+   Endi: BITTA qator, betaraf fon, rang faqat SONDA. Ogohlantirish
+   toni chap chekkadagi chiziq bilan beriladi — ko'zga tashlanadi,
+   lekin ekranni bosib olmaydi.
+   ══════════════════════════════════════════════════════════════════════════ */
+.inv-bar {
+  position: sticky; top: var(--sh); z-index: 20;
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  margin-bottom: 12px; padding: 8px 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+}
+/* ⚠ Chap chekkadagi chiziq — `border-left` EMAS: u qutini 4px ga
+   siljitib, tinch va ogohlantirish holatlarida panel eni boshqacha
+   bo'lib qolardi (ko'z uni «sakrash» deb o'qiydi). */
+.inv-bar--warn {
+  box-shadow: inset 4px 0 0 var(--fg-warning);
+  border-color: var(--border-warning);
+}
+.inv-bar__states { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
+.inv-bar__tools  { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-inline-start: auto; }
+.inv-bar__hint {
+  flex-basis: 100%;
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--fg-secondary);
+}
+.inv-bar__hint > i { color: var(--fg-warning); }
+
+/* Segment — «tugma» emas, TANLAGICH: tanlanmagani deyarli ko'rinmas,
+   tanlangani esa aniq. Qator to'la tugmalar ekranni og'irlashtirardi. */
+.inv-seg {
+  display: inline-flex; align-items: center; gap: 6px;
+  min-height: 34px; padding: 5px 10px;
+  border: 1px solid transparent; border-radius: 9px;
+  background: none; color: var(--fg-secondary);
+  font-size: 13px; font-weight: 700; font-family: var(--font);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out),
+              color var(--dur-fast) var(--ease-out);
+}
+.inv-seg:hover { background: var(--bg-hover); color: var(--fg-primary); }
+.inv-seg.is-on {
+  background: var(--bg-brand-subtle);
+  border-color: var(--border-brand);
+  color: var(--fg-brand, var(--blue));
+}
+.inv-seg > i { font-size: 11px; opacity: .8; }
+.inv-seg__n {
+  min-width: 20px; padding: 1px 6px; border-radius: 999px;
+  background: var(--bg-sunken); color: var(--fg-secondary);
+  font-size: 11px; font-weight: 800; font-variant-numeric: tabular-nums;
+}
+.inv-seg__n.is-warn   { background: var(--yellow-l); color: var(--fg-warning); }
+.inv-seg__n.is-danger { background: var(--red-l);    color: var(--red); }
+.inv-seg.is-on .inv-seg__n:not(.is-warn):not(.is-danger) {
+  background: var(--bg-brand); color: var(--fg-on-brand, #fff);
+}
+
+/* Tor ekranda asboblar pastki qatorga tushadi — segmentlar siqilib
+   o'qib bo'lmas holga kelmasin. */
+@media (max-width: 720px) {
+  .inv-bar__tools { margin-inline-start: 0; flex-basis: 100%; }
+}

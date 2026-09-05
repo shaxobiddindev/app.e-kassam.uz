@@ -360,10 +360,16 @@ export default function InventoryPage({ toast }) {
   const COLS = useMemo(() => [
     { key: "name",   label: t("products.col"),        type: "text",   get: ({ g }) => g.productName },
     { key: "code",   label: t("products.barcode"),    type: "text",   get: ({ g }) => g.barcode },
-    { key: "qty",    label: t("inv.stock"),           type: "number", get: ({ g }) => g.totalQuantity },
+    /* ⚠ `sellable`, xom `quantity` EMAS: jadvalda ham SOTILADIGAN
+       qoldiq turadi (muddati o'tgan partiya undan chiqarilgan).
+       Xom qoldiq olinsa, «qoldiq > 0» filtri sotib bo'lmaydigan
+       tovarni ham qaytarardi va omborchi uni javonda deb o'ylardi. */
+    { key: "qty",    label: t("inv.stock"),           type: "number", get: ({ g }) => g.sellable },
     { key: "cost",   label: t("products.costPrice"),  type: "number", get: ({ g }) => g.costPrice },
     { key: "price",  label: t("products.salePrice"),  type: "number", get: ({ g }) => g.salePrice },
-    { key: "expiry", label: t("inv.expiry"),          type: "date",   get: ({ g }) => g.nearestExpiry },
+    /* `nearest` — qoldig'i BOR partiyalardan eng yaqin muddat; aynan
+       shu sana jadvalda ko'rinadi. */
+    { key: "expiry", label: t("inv.expiry"),          type: "date",   get: ({ g }) => g.nearest },
     /* Holat — hisoblanadigan ustun: ekranda yozuv bo'lib turadi. */
     { key: "state",  label: t("common.status"),       type: "enum",
       options: [
@@ -383,6 +389,22 @@ export default function InventoryPage({ toast }) {
     near:    rows.filter((r) => r.f.near).length,
     low:     rows.filter((r) => needsOrder(r.f)).length,
   }), [rows]);
+
+  /* Panelning segmentlari — ekrandagi tartibda. `tone` FAQAT songa
+     beriladi: butun tugmani bo'yash panelni yana «sariq devor» ga
+     aylantirardi. */
+  /* ⚠ «Tugagan» ALOHIDA segment EMAS — u «kam qolgan» ichida
+     (`needsOrder`, yuqoridagi izoh): ikkalasi bir xil ish talab
+     qiladi — buyurtma berish, va ajratilganda eng shoshilinchi tovar
+     ikkinchi ro'yxatga tushib ko'rinmay qolardi. */
+  const STATES = [
+    { key: "all",     icon: "",                    n: rows.length,    tone: "" },
+    { key: "expired", icon: "fa-hourglass-end",    n: counts.expired, tone: "danger" },
+    { key: "near",    icon: "fa-clock",            n: counts.near,    tone: "warn" },
+    { key: "low",     icon: "fa-arrow-trend-down", n: counts.low,     tone: "danger" },
+  ];
+  /* Ogohlantirish TONI — faqat haqiqiy muammo bo'lganda. */
+  const alerting = counts.expired + counts.near + counts.low > 0;
 
   /* ── MUDDAT STIKERLARI (V48) ──────────────────────────────────────
      ⚠ NEGA KERAK. Muddati yaqin tovarni ro'yxatda ko'rish yetmaydi:
@@ -718,63 +740,69 @@ export default function InventoryPage({ toast }) {
         <BranchSelector selectedId={branchId} onSelect={setBranchId} />
       </div>
 
-      {/* ── PIN QILINGAN OGOHLANTIRISH ──────────────────────────────────
-          Jadval bilan birga sirg'almaydi: `position: sticky` bilan topbar
-          ostida turib qoladi. Sabab — muammoli tovar ro'yxatning O'RTASIDA
-          bo'lishi mumkin va pastga tushgan omborchi ogohlantirishni ko'rmay
-          qolardi.
+      {/* ── OMBOR HOLAT PANELI (V68 da qayta ishlangan) ────────────────
+          Do'kon egasi: «2-rasmdagi oynani ham nimadir qilish kerak
+          yoqmayapti, balki filtrni shunga joylarsan — bu yaxshi g'oya».
 
-          Raqamlarning o'zi FILTR tugmasi: «7 ta muddati o'tgan» ni bosgan
-          odam aynan o'shalarni ko'radi. Alohida filtr paneli qo'shilsa,
-          ekranda bir xil ma'noli ikkita boshqaruv turardi.
+          ═══ ILGARI NIMA NOTO'G'RI EDI ═══════════════════════════════
 
-          ⚠ Blok muammo yo'q paytda UMUMAN chizilmaydi — har kuni bekorga
-          yonib turgan ogohlantirish bir haftada ko'rinmas bo'lib qoladi
-          (bosh sahifadagi «E'tibor talab qiladi» bloki bilan bir qoida).
-          Filtr yoqilgan bo'lsa esa qoladi: aks holda tovarlar tuzatilgach
-          blok yo'qolib, filtrni o'chirish tugmasi ham yo'qolardi. */}
-      {!showHistory && (counts.expired + counts.near + counts.low > 0 || flt !== "all") && (
-        <div className="inv-alert" role="status">
-          <div className="inv-alert__head">
-            <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />
-            <b>{t("inv.alertTitle")}</b>
-            <span className="text-muted inv-alert__hint">
-              {t("inv.alertHint", { n: nearDays })}
-            </span>
+          1. Panel MUAMMO BO'LMASA UMUMAN CHIZILMASDI. Ya'ni omborda
+             hammasi joyida bo'lgan kunlari «Tugagan» yoki «Hammasi»
+             bo'yicha ajratib ko'rishning YO'LI QOLMASDI — holat
+             tanlagichi ogohlantirish bilan bir taqdirni bo'lishardi,
+             holbuki u oddiy ko'rish vositasi.
+          2. Butun blok SARIQ edi: sarlavha, izoh va tugmalar bir xil
+             ogohlantirish rangida. Har kuni yonib turgan ogohlantirish
+             bir haftada ko'rinmas bo'lib qoladi.
+          3. Uch qator joy egallardi (sarlavha + izoh + chiplar), va u
+             `sticky` — ya'ni bu joy jadvaldan DOIM o'g'irlangan.
+
+          ═══ ENDI ════════════════════════════════════════════════════
+
+          BITTA qator: chapda holat segmentlari, o'ngda batafsil filtr
+          va stiker. Panel HAR DOIM turadi, lekin ogohlantirish TONI
+          faqat haqiqiy muammo bo'lganda yoqiladi (chap chekkadagi
+          rangli chiziq + izoh). Rang endi FAQAT sondan chiqadi:
+          «muddati o'tgan 7» qizil, «kam qolgan 3» sariq, qolgani
+          betaraf.
+
+          ⚠ Segment faqat SONI BOR holat uchun chiziladi (+ «Hammasi»
+          doim): nol turgan tugma bosilsa bo'sh ro'yxat chiqib,
+          omborchi «yuklanmadimi?» deb o'ylardi. Tanlangan holat esa
+          nolga tushsa ham qoladi — aks holda tovar tuzatilgach tugma
+          yo'qolib, filtrdan chiqish yo'li ham yo'qolardi. */}
+      {!showHistory && (
+        <div className={`inv-bar${alerting ? " inv-bar--warn" : ""}`}
+             role={alerting ? "status" : undefined}>
+          <div className="inv-bar__states" role="tablist" aria-label={t("common.status")}>
+            {STATES.map(({ key, icon, n, tone }) => (
+              (key === "all" || n > 0 || flt === key) && (
+                <button key={key} type="button" role="tab" aria-selected={flt === key}
+                        className={`inv-seg${flt === key ? " is-on" : ""}`}
+                        onClick={() => setFlt(key)}>
+                  {icon && <i className={`fa-solid ${icon}`} aria-hidden="true" />}
+                  <span>{key === "all" ? t("common.all")
+                        : key === "expired" ? t("enum.inventory.EXPIRED")
+                        : key === "near" ? t("inv.fltNear")
+                        : t("inv.fltLow")}</span>
+                  <span className={`inv-seg__n${tone ? ` is-${tone}` : ""}`}>{n}</span>
+                </button>
+              )
+            ))}
           </div>
-          <div className="inv-alert__chips">
-            <button type="button"
-                    className={`btn btn-sm ${flt === "all" ? "btn-primary" : "btn-outline"}`}
-                    onClick={() => setFlt("all")}>
-              {t("common.all")} <span className="badge tab-badge">{rows.length}</span>
-            </button>
-            {/* ⚠ USTUN FILTRI SHU QATORDA (V68, do'kon egasining g'oyasi:
-                «filtrni shunga joylashtirsang bu yaxshi g'oya»). Tez
-                filtrlar (muddati o'tgan, kam qolgan) va batafsil filtr
-                bitta joyda: ikkalasi ham «ro'yxatni toraytirish» degan
-                bitta ish va ularni sahifaning ikki burchagiga bo'lish
-                omborchini qidirishga majburlardi. */}
+
+          <div className="inv-bar__tools">
+            {/* ⚠ USTUN FILTRI SHU YERDA (do'kon egasining g'oyasi). Tez
+                holatlar va batafsil filtr bitta ish qiladi —
+                ro'yxatni toraytiradi; ularni sahifaning ikki
+                burchagiga bo'lish omborchini qidirishga majburlardi. */}
+            {/* ⚠ `compact` EMAS: qisqa ko'rinishda faol shartlar CHIPI
+                chizilmaydi va «nega ro'yxat qisqa?» degan savol javobsiz
+                qolardi — tugmadagi son shartning O'ZINI aytmaydi.
+                Chiplar panelda o'z qatoriga o'tadi (flex-wrap). */}
             <DataFilter cols={COLS} flt={colFlt} />
-            {counts.expired > 0 && (
-              <button type="button"
-                      className={`btn btn-sm ${flt === "expired" ? "btn-primary" : "btn-outline"}`}
-                      onClick={() => setFlt("expired")}>
-                <i className="fa-solid fa-hourglass-end" aria-hidden="true" /> {t("enum.inventory.EXPIRED")}
-                <span className="badge badge-red tab-badge">{counts.expired}</span>
-              </button>
-            )}
-            {counts.near > 0 && (
-              <button type="button"
-                      className={`btn btn-sm ${flt === "near" ? "btn-primary" : "btn-outline"}`}
-                      onClick={() => setFlt("near")}>
-                <i className="fa-solid fa-clock" aria-hidden="true" /> {t("inv.fltNear")}
-                <span className="badge badge-yellow tab-badge">{counts.near}</span>
-              </button>
-            )}
-            {/* ⚠ Stiker tugmasi FILTR YONIDA turadi: omborchi avval
-                «Muddati yaqin» ni bosadi, keyin darhol shu yerda
-                stikerni chiqaradi — sahifaning boshqa burchagiga
-                borish kerak emas. */}
+            {/* ⚠ Stiker tugmasi shu yerda: omborchi «Muddati yaqin» ni
+                bosadi va darhol shu qatordan stikerni chiqaradi. */}
             {counts.near > 0 && (
               <button type="button" className="btn btn-sm btn-outline" disabled={labeling}
                       onClick={() => printLabels(rows.filter(({ f }) => f.near))}
@@ -782,19 +810,16 @@ export default function InventoryPage({ toast }) {
                 <i className="fa-solid fa-tag" aria-hidden="true" /> {t("label.expiryPrint")}
               </button>
             )}
-            {counts.low > 0 && (
-              <button type="button"
-                      className={`btn btn-sm ${flt === "low" ? "btn-primary" : "btn-outline"}`}
-                      onClick={() => setFlt("low")}>
-                {/* ⚠ `arrow-down-short-wide` EMAS. Unda o'q pastga qaraydi,
-                    ustunlar esa pastga qarab O'SADI — ikkita qarama-qarshi
-                    ishora bitta ikonkada. `arrow-trend-down` bir narsani
-                    aytadi: kamayish. */}
-                <i className="fa-solid fa-arrow-trend-down" aria-hidden="true" /> {t("inv.fltLow")}
-                <span className="badge badge-red tab-badge">{counts.low}</span>
-              </button>
-            )}
           </div>
+
+          {/* Izoh FAQAT ogohlantirish paytida: tinch kunda u bitta
+              qatorni bekorga egallardi. */}
+          {alerting && (
+            <div className="inv-bar__hint">
+              <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />
+              {t("inv.alertHint", { n: nearDays })}
+            </div>
+          )}
         </div>
       )}
 
