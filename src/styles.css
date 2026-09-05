@@ -4208,3 +4208,296 @@ body.osk-open .mark-modal {
 @media (max-width: 720px) {
   .inv-bar__tools { margin-inline-start: 0; flex-basis: 100%; }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   HISOBOTLAR — biznes tahlili (V69)
+
+   Do'kon egasi: «bu juda professional bo'lishi kerak, u loyihaning yuzi
+   hisoblanadi».
+
+   ⚠ UMUMIY QOIDA: rang MA'NO tashiydi, bezak emas. Yashil — yaxshi
+   yo'nalish, qizil — yomon, sariq — e'tibor. Shuning uchun bu yerda
+   «chiroyli bo'lsin» deb qo'yilgan bitta ham rang yo'q: har biri
+   raqamning yo'nalishidan chiqadi.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Grafik ranglari — mavzu tokenlari ustida. Qorong'i mavzuda ular
+   yorqinroq bo'ladi: to'q fonda to'q rang ko'rinmay qolardi. */
+:root {
+  --ek-chart-1: #017dca;
+  --ek-chart-2: #16a34a;
+  --ek-chart-3: #7c3aed;
+  --ek-chart-4: #dc2626;
+  --ek-chart-5: #d97706;
+}
+:root[data-theme="dark"] {
+  --ek-chart-1: #38bdf8;
+  --ek-chart-2: #4ade80;
+  --ek-chart-3: #c084fc;
+  --ek-chart-4: #f87171;
+  --ek-chart-5: #fbbf24;
+}
+
+/* ── Boshqaruv qatori ──────────────────────────────────────────────── */
+.rpt-bar {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.rpt-bar__periods {
+  display: flex; gap: 2px; flex-wrap: wrap;
+  padding: 3px; border-radius: 12px;
+  background: var(--bg-sunken); border: 1px solid var(--border);
+}
+.rpt-bar__tools { display: flex; gap: 8px; align-items: center; margin-inline-start: auto; flex-wrap: wrap; }
+
+/* Davr segmenti — tanlanmagani deyarli ko'rinmas. O'nta to'la tugma
+   qator butun ekranni og'irlashtirardi. */
+.rpt-seg {
+  border: 0; background: none; cursor: pointer;
+  padding: 7px 12px; border-radius: 9px;
+  font: 700 13px/1 var(--font); color: var(--fg-secondary);
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.rpt-seg:hover { background: var(--bg-hover); color: var(--fg-primary); }
+.rpt-seg.is-on { background: var(--bg-brand); color: var(--fg-on-brand, #fff); }
+
+.rpt-custom { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 12px; }
+.rpt-custom label { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; }
+.rpt-custom .form-input { width: 165px; }
+
+.rpt-range {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin-bottom: 14px; font-size: 13px; color: var(--fg-secondary);
+}
+.rpt-range > i { color: var(--fg-brand, var(--blue)); }
+.rpt-range b { color: var(--fg-primary); }
+
+/* ── Bo'lim tanlagichi ─────────────────────────────────────────────── */
+.rpt-tabs {
+  display: flex; gap: 4px; flex-wrap: wrap;
+  margin-bottom: 16px; padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.rpt-tab {
+  display: inline-flex; align-items: center; gap: 7px;
+  border: 1px solid transparent; border-radius: 10px;
+  background: none; cursor: pointer;
+  padding: 8px 13px; min-height: var(--hit-md);
+  font: 700 13px/1 var(--font); color: var(--fg-secondary);
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.rpt-tab:hover { background: var(--bg-hover); color: var(--fg-primary); }
+.rpt-tab.is-on {
+  background: var(--bg-brand-subtle); border-color: var(--border-brand);
+  color: var(--fg-brand, var(--blue));
+}
+.rpt-tab > i { font-size: 12px; }
+
+/* ── KPI kartalari ─────────────────────────────────────────────────── */
+.kpi-grid {
+  display: grid; gap: 12px; margin-bottom: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+}
+.kpi {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 14px 16px; border-radius: var(--r-lg);
+  background: var(--bg-surface); border: 1px solid var(--border);
+}
+/* ⚠ Ton CHEKKADAGI chiziq bilan, butun fon bilan EMAS: sakkizta rangli
+   quti yonma-yon turganda ekran bayram kartochkasiga o'xshab qolardi va
+   hech qaysi raqam ajralib turmasdi. */
+.kpi--brand { box-shadow: inset 3px 0 0 var(--bg-brand); }
+.kpi--good  { box-shadow: inset 3px 0 0 var(--fg-success); }
+.kpi--warn  { box-shadow: inset 3px 0 0 var(--fg-warning); }
+.kpi--bad   { box-shadow: inset 3px 0 0 var(--fg-danger); }
+
+.kpi__top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.kpi__label { font-size: 12px; font-weight: 700; color: var(--fg-secondary); }
+.kpi__icon { font-size: 14px; color: var(--fg-tertiary); }
+.kpi__hint { font-size: 11px; color: var(--fg-tertiary); margin-inline-start: 5px; cursor: help; }
+.kpi__value {
+  font-size: 22px; font-weight: 800; letter-spacing: -0.4px;
+  font-variant-numeric: tabular-nums;
+}
+.kpi--bad .kpi__value { color: var(--fg-danger); }
+.kpi__foot { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; }
+.kpi__sub { color: var(--fg-tertiary); font-weight: 600; }
+.kpi__delta { font-weight: 800; font-variant-numeric: tabular-nums; }
+.kpi__delta.is-up   { color: var(--fg-success); }
+.kpi__delta.is-down { color: var(--fg-danger); }
+.kpi__delta.is-flat { color: var(--fg-tertiary); }
+/* «Yangi» — oldingi davr nol bo'lgani uchun foiz yo'q. */
+.kpi__delta.is-new  { color: var(--fg-brand, var(--blue)); font-weight: 700; }
+
+/* ── Panellar ──────────────────────────────────────────────────────── */
+.rpt-cols {
+  display: grid; gap: 14px; margin-bottom: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+}
+.rpt .card { margin-bottom: 14px; }
+.rpt-wide { grid-column: 1 / -1; }
+
+/* ── Grafiklar ─────────────────────────────────────────────────────── */
+.chart { position: relative; }
+.chart--empty {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 8px; color: var(--fg-tertiary); font-size: 13px;
+}
+.chart--empty > i { font-size: 22px; opacity: .4; }
+.chart__legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 8px; }
+.chart__key { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--fg-secondary); }
+.chart__key i, .chart__tip i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+/* Yozuv SVG dan TASHQARIDA: `preserveAspectRatio="none"` matnni
+   cho'zib, o'qib bo'lmas holga keltirardi. */
+.chart__tip {
+  position: absolute; top: 6px; inset-inline-end: 6px;
+  padding: 8px 11px; border-radius: 10px; pointer-events: none;
+  background: var(--bg-surface); border: 1px solid var(--border);
+  box-shadow: var(--shadow-md, 0 6px 20px rgba(0,0,0,.12));
+  font-size: 12px; min-width: 150px;
+}
+.chart__tip b { display: block; margin-bottom: 4px; }
+.chart__tip > div { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+.chart__tip > div > span { margin-inline-start: auto; font-weight: 800; font-variant-numeric: tabular-nums; }
+
+.chart--bars { display: flex; align-items: flex-end; gap: 6px; padding-top: 18px; }
+.bar { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; height: 100%; }
+.bar__fill { width: 100%; max-width: 46px; border-radius: 6px 6px 0 0; margin-top: auto; }
+.bar__v { font-size: 10px; font-weight: 800; color: var(--fg-secondary); white-space: nowrap; }
+.bar__l {
+  font-size: 10px; color: var(--fg-tertiary); margin-top: 5px;
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.donut { position: relative; flex: 0 0 auto; }
+.donut__mid {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; text-align: center; pointer-events: none;
+}
+.donut__mid b { font-size: 17px; font-weight: 800; }
+.donut__mid span { font-size: 11px; color: var(--fg-tertiary); }
+.donut-row { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
+.donut-row .shl { flex: 1 1 240px; min-width: 0; }
+
+/* Issiqlik xaritasi */
+.heat { overflow-x: auto; }
+.heat__grid { display: grid; gap: 3px; min-width: 420px; }
+.heat__h { font-size: 10px; color: var(--fg-tertiary); text-align: center; }
+.heat__d { font-size: 11px; font-weight: 700; color: var(--fg-secondary); padding-inline-end: 6px; }
+.heat__c {
+  height: 20px; border-radius: 4px;
+  background: var(--bg-sunken);
+}
+
+/* ── Ulush ro'yxati ────────────────────────────────────────────────── */
+.shl { display: flex; flex-direction: column; gap: 9px; }
+.shl__row {
+  display: grid; align-items: center; gap: 8px;
+  grid-template-columns: 10px minmax(0, 1fr) auto auto auto;
+  font-size: 13px;
+}
+.shl__dot { width: 10px; height: 10px; border-radius: 3px; }
+.shl__name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.shl__sub { font-size: 11px; color: var(--fg-tertiary); font-weight: 600; }
+.shl__val { font-weight: 700; }
+.shl__pct { font-size: 12px; color: var(--fg-secondary); min-width: 46px; text-align: end; }
+/* Chiziq — butun qator ostida: ulushni son bilan birga KO'Z bilan ham
+   taqqoslash kerak, raqamlar ro'yxati esa buni bermaydi. */
+.shl__bar { grid-column: 1 / -1; height: 4px; border-radius: 999px; background: var(--bg-sunken); overflow: hidden; }
+.shl__bar i { display: block; height: 100%; border-radius: 999px; }
+
+/* ── TOP ro'yxati ──────────────────────────────────────────────────── */
+.topl { display: flex; flex-direction: column; }
+.topl__row {
+  display: grid; align-items: center; gap: 10px;
+  grid-template-columns: 22px minmax(0, 1fr) auto auto;
+  padding: 8px 0; border-bottom: 1px solid var(--border-subtle);
+  font-size: 13px;
+}
+.topl__row:last-child { border-bottom: 0; }
+.topl__name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.topl__sub { font-size: 11px; color: var(--fg-tertiary); }
+.topl__val { font-weight: 800; }
+.rank {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 20px; height: 20px; border-radius: 6px;
+  background: var(--bg-brand-subtle); color: var(--fg-brand, var(--blue));
+  font-size: 11px; font-weight: 800;
+}
+.rank--dim { background: var(--bg-sunken); color: var(--fg-tertiary); }
+
+/* ── Foyda va zarar ────────────────────────────────────────────────── */
+.pnl { width: 100%; border-collapse: collapse; font-size: 14px; }
+.pnl td { padding: 9px 4px; border-bottom: 1px solid var(--border-subtle); }
+.pnl td:last-child { text-align: end; font-weight: 700; font-variant-numeric: tabular-nums; }
+.pnl td:nth-child(2) { text-align: end; color: var(--fg-tertiary); font-size: 12px; }
+/* ⚠ Ayiriladigan qatorlar CHEKKAGA suriladi: shunda zinapoya ko'rinadi
+   — qaysi raqam qaysi biridan chiqqani. Bir tekis ro'yxatda hamma
+   qator teng ko'rinardi va hisobning mantiqi yo'qolardi. */
+.pnl--minus td:first-child { padding-inline-start: 20px; color: var(--fg-secondary); }
+.pnl--minus td:last-child { color: var(--fg-danger); }
+.pnl--sum td { font-weight: 800; background: var(--bg-sunken); }
+.pnl--total td {
+  font-weight: 900; font-size: 16px;
+  border-top: 2px solid var(--border); border-bottom: 0;
+  padding-top: 12px;
+}
+
+/* ── Xulosa ────────────────────────────────────────────────────────── */
+.ins { display: flex; flex-direction: column; gap: 8px; }
+.ins__row {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 12px; border-radius: 10px;
+  background: var(--bg-sunken); font-size: 13px; line-height: 1.45;
+}
+.ins__row > i { margin-top: 2px; }
+.ins--good > i { color: var(--fg-success); }
+.ins--warn > i { color: var(--fg-warning); }
+.ins--bad  > i { color: var(--fg-danger); }
+.ins--info > i { color: var(--fg-brand, var(--blue)); }
+
+/* ── Anomaliyalar ──────────────────────────────────────────────────── */
+.anom { display: flex; flex-direction: column; gap: 8px; }
+.anom__row {
+  display: grid; align-items: center; gap: 12px;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  padding: 11px 13px; border-radius: 10px;
+  background: var(--bg-sunken); font-size: 13px;
+}
+.anom--warn { box-shadow: inset 3px 0 0 var(--fg-warning); }
+.anom--high { box-shadow: inset 3px 0 0 var(--fg-danger); }
+.anom--info { box-shadow: inset 3px 0 0 var(--fg-brand, var(--blue)); }
+.anom__who { display: block; font-size: 12px; color: var(--fg-secondary); }
+.anom__v { font-weight: 800; text-align: end; }
+.anom__v small { display: block; font-weight: 600; color: var(--fg-tertiary); font-size: 11px; }
+
+/* ── Qarz ──────────────────────────────────────────────────────────── */
+.dbt__total {
+  display: flex; flex-direction: column; gap: 2px;
+  padding-bottom: 12px; margin-bottom: 12px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.dbt__total > span { font-size: 12px; font-weight: 700; color: var(--fg-secondary); }
+.dbt__total > b { font-size: 22px; font-weight: 800; }
+.dbt__total > small { font-size: 12px; color: var(--fg-tertiary); }
+
+/* ── CHOP ETISH ────────────────────────────────────────────────────────
+   ⚠ Brauzerning o'z chop etishi (PDF kutubxonasi ilovaga 200 KB
+   qo'shardi). Shuning uchun bu yerda faqat KERAKSIZ narsalar
+   olib tashlanadi: menyu, boshqaruv tugmalari, bo'lim tanlagichi.
+   Chop etilgan varaqda faqat RAQAMLAR qoladi. */
+@media print {
+  .sidebar, .topbar, .rpt-bar, .rpt-tabs, .rpt-custom,
+  .chart__tip, .filter-btn, .flt-chips { display: none !important; }
+  .rpt .card { break-inside: avoid; border-color: #ccc; box-shadow: none; }
+  .kpi { break-inside: avoid; border-color: #ccc; }
+  .kpi-grid { grid-template-columns: repeat(4, 1fr); }
+  .rpt-cols { grid-template-columns: 1fr 1fr; }
+  body { background: #fff; }
+}
+
+@media (max-width: 700px) {
+  .kpi-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+  .kpi__value { font-size: 18px; }
+  .rpt-bar__tools { margin-inline-start: 0; }
+}

@@ -1,449 +1,1019 @@
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "../lib/ek-i18n";
-import { reportApi, inventoryApi } from "../api";
+import { reportApi } from "../api";
 import { BranchSelector } from "../components";
-import { Empty, StatCard } from "../components/ui";
+import { Empty } from "../components/ui";
 import { money, percent } from "../utils";
 import { paymentEntry } from "../lib/ek-labels";
 import { SkeletonCards } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
+import Select from "../components/ek/Select";
+import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
+import { LineChart, BarChart, Donut, HeatMap, shortNum } from "../components/ek/Charts";
+import { PERIODS, periodRange, isoInstant, isoDay, lengthDays, growth } from "../lib/ek-period";
 
-const PERIODS = [
-  { key: "daily",   label: t("rep.today") },
-  { key: "weekly",  label: t("rep.week") },
-  { key: "monthly", label: t("rep.month") },
+/* ══════════════════════════════════════════════════════════════════════════
+   HISOBOTLAR — biznes tahlili (V69)
+
+   Do'kon egasi: «bu juda professional bo'lishi kerak, u loyihaning
+   yuzi hisoblanadi».
+
+   ═══ EKRAN NIMAGA JAVOB BERADI ════════════════════════════════════════
+
+   Professional hisobot — ko'p grafik degani EMAS. U rahbarning
+   savollariga darhol javob berishi kerak: qancha sotdik, qancha foyda
+   qildik, nima ko'p sotildi, qaysi filial va kassir yaxshi ishlayapti,
+   qayerda pul yo'qotyapmiz, nima qaytarilyapti, omborda nima tugayapti,
+   kim chegirmani ko'p beryapti, savdo o'syaptimi.
+
+   Shu sabab ekran BO'LIMLARGA bo'lingan va har bo'lim BITTA savolga
+   javob beradi. Hammasini bitta uzun sahifaga yoysak, javob shovqin
+   ichida yo'qolardi — aynan shu narsa eski hisobot sahifasida bo'lgan.
+
+   ═══ MA'LUMOT BITTA SO'ROVDAN ═════════════════════════════════════════
+
+   ⚠ Butun ekran BITTA javobdan chiziladi (`/reports/analytics`).
+   Bo'limlar alohida so'rov qilsa, har biri davrdagi cheklarni qaytadan
+   o'qirdi va ekranning turli burchaklari TURLI daqiqani ko'rsatishi
+   mumkin edi — savdo bo'limida 12,4 mln, foyda bo'limida esa allaqachon
+   12,5 mln. Bir ekranda ikkita haqiqat bo'lmasligi kerak.
+
+   ⚠ Bo'lim almashganda YANGI SO'ROV KETMAYDI: ma'lumot allaqachon
+   qo'lda. Faqat davr yoki filial o'zgarganda qayta so'raladi.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Bo'limlar — har biri bitta savol. */
+const TABS = [
+  { key: "home",     icon: "fa-gauge-high",        label: () => t("rpt2.tabHome") },
+  { key: "sales",    icon: "fa-chart-line",        label: () => t("rpt2.tabSales") },
+  { key: "profit",   icon: "fa-scale-balanced",    label: () => t("rpt2.tabProfit") },
+  { key: "products", icon: "fa-boxes-stacked",     label: () => t("rpt2.tabProducts") },
+  { key: "staff",    icon: "fa-user-tie",          label: () => t("rpt2.tabStaff") },
+  { key: "money",    icon: "fa-money-bill-transfer", label: () => t("rpt2.tabMoney") },
+  { key: "stock",    icon: "fa-warehouse",         label: () => t("rpt2.tabStock") },
+  { key: "people",   icon: "fa-users",             label: () => t("rpt2.tabPeople") },
+  { key: "time",     icon: "fa-clock",             label: () => t("rpt2.tabTime") },
+  { key: "watch",    icon: "fa-shield-halved",     label: () => t("rpt2.tabWatch") },
 ];
 
-/* ⚠ `totalProfit` endi YALPI foyda deb ataladi va yonida SOF foyda turadi.
-   Ilgari u "Sof foyda" deb ko'rsatilardi, holbuki ijara/oylik/transport
-   umuman ayirilmasdi — raqam haqiqiydan katta chiqib, zarar ko'rilayotgan
-   oy foydali bo'lib ko'rinardi. */
-const STATS_CONFIG = [
-  { key: "totalRevenue",  label: t("rep.totalSales"),     icon: "fa-sack-dollar",     bg: "rgba(1,125,202,0.09)", color: "#017dca" },
-  { key: "totalProfit",   label: t("rpt.grossProfit"),    icon: "fa-arrow-trend-up",  bg: "#ecfdf5",              color: "#22c55e" },
-  { key: "totalExpenses", label: t("rpt.expenses"),       icon: "fa-money-bill-wave", bg: "#fef2f2",              color: "#ef4444" },
-  /* ⚠ Ombor yo'qotishi SOF FOYDADAN OLDIN turadi: u ham ayiriladigan
-     raqam va sof foyda nega kamayganini o'sha yerdan ko'rish kerak.
-     Usiz egasi «foyda tushib ketibdi» deb, sababini qidirib yurardi. */
-  { key: "inventoryLoss", label: t("rpt.inventoryLoss"),  icon: "fa-trash-can",       bg: "#fff7ed",              color: "#f97316", hint: t("rpt.inventoryLossHint") },
-  { key: "netProfit",     label: t("rpt.netProfit"),      icon: "fa-wallet",          bg: "#eff6ff",              color: "#3b82f6", hint: t("rpt.netProfitHint") },
-  /* ⚠ ZARARIGA SOTISH (V53) — SOF FOYDADAN KEYIN, chunki u undan
-     AYIRILMAYDI: zarar allaqachon tannarx orqali yalpi foydaga
-     tushgan. Ombor yo'qotishi bilan yonma-yon qo'yilsa, ikkalasi ham
-     ayiriladigan raqam bo'lib ko'rinardi va egasi ikki karra
-     yo'qotgandek hisoblardi.
+const C = {
+  sales:  "var(--ek-chart-1, #017dca)",
+  profit: "var(--ek-chart-2, #22c55e)",
+  cost:   "var(--ek-chart-3, #9333ea)",
+  ret:    "var(--ek-chart-4, #ef4444)",
+  warn:   "var(--ek-chart-5, #f59e0b)",
+};
+/* Halqa uchun aylanma palitra — to'lov turlari va kategoriyalar. */
+const PALETTE = [C.sales, C.profit, C.warn, C.cost, C.ret, "#0ea5e9", "#14b8a6", "#f472b6"];
 
-     Alohida qator kerak, chunki foyda tushganda egasi «sotuv
-     kamaydimi, tannarx oshdimi yoki zarariga sotdikmi?» degan
-     savolga javob topa olmasdi. */
-  { key: "lossAmount",    label: t("report.lossAmount"),  icon: "fa-arrow-trend-down", bg: "#fef2f2",             color: "#dc2626", hint: t("report.lossHint"), danger: true },
-  { key: "totalSales",    label: t("dash.salesCount"),    icon: "fa-cart-shopping",   bg: "#fffbeb",              color: "#f59e0b" },
-  { key: "totalCost",     label: t("dash.costPrice"),     icon: "fa-coins",           bg: "#fdf4ff",              color: "#9333ea" },
-];
+const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 
-/* To'lov turi yorlig'i — CLICK va PAYME ham qamrab olinadi.
-   Ilgari bu yerda uchta qiymatli mahalliy jadval bor edi va Click/Payme
-   sotuvlarida xom `CLICK` matni chiqardi. */
-function PayLabel({ type }) {
-  const p = paymentEntry(type);
-  return <><i className={`fa-solid ${p.icon || "fa-wallet"}`} style={{ color: p.color }} aria-hidden="true" /> {p.label}</>;
+/* ══ O'SISH BELGISI ════════════════════════════════════════════════════
+   ⚠ Oldingi davr nol bo'lsa foiz YOZILMAYDI («yangi» deyiladi):
+   «+∞%» ham, «+0%» ham yolg'on bo'lardi (`ek-period.growth` izohi). */
+function Delta({ now, prev, invert = false }) {
+  const g = growth(now, prev);
+  if (g === null) return <span className="kpi__delta is-new">{t("rpt2.new")}</span>;
+  if (Math.abs(g) < 0.05) return <span className="kpi__delta is-flat">↔ 0%</span>;
+  /* `invert` — xarajat va qaytarish uchun: ularning O'SISHI yomon. */
+  const good = invert ? g < 0 : g > 0;
+  return (
+    <span className={`kpi__delta ${good ? "is-up" : "is-down"}`}>
+      {g > 0 ? "↑" : "↓"} {Math.abs(g).toFixed(1)}%
+    </span>
+  );
 }
 
-/** Naqdsiz turlar — bank yoki provayder bilan solishtiriladigan qism.
-    ⚠ `CREDIT` bu yerda YO'Q: nasiya to'lov emas, qarz — solishtiradigan
-    tashqi raqami yo'q (backenddagi `PaymentSplitter.NON_CASH` bilan bir xil). */
-const NON_CASH = ["CARD", "CLICK", "PAYME"];
-
-/* Davr chegaralari — BACKEND bilan AYNAN bir xil hisoblanadi
-   (`ReportService`: MAHALLIY sutka boshi). Boshqacha hisoblansa, bitta
-   sahifadagi ikkita kartochka har xil davrni ko'rsatib, farqning sababi
-   topilmasdi.
-
-   ⚠ Ilgari bu yerda ham, backendda ham sutka boshi UTC deb olinardi:
-   `Date.UTC(yil, oy, kun)`. Mahalliy 00:00–05:00 oralig'ida bu KELAJAK
-   lahzasini berardi va oraliq teskari bo'lib, hisobot bo'm-bo'sh
-   chiqardi. Endi mahalliy sutka boshi — brauzer mintaqasi do'kon
-   mintaqasi bilan bir xil. */
-function periodRange(period) {
-  const now = new Date();
-  const startOfDay = (d) =>
-    new Date(d.getFullYear(), d.getMonth(), d.getDate()).toISOString().replace(/\.\d{3}/, "");
-  if (period === "weekly") {
-    const d = new Date(now); d.setDate(d.getDate() - 7);
-    return [startOfDay(d), now.toISOString().replace(/\.\d{3}/, "")];
-  }
-  if (period === "monthly") {
-    const d = new Date(now.getFullYear(), now.getMonth(), 1);
-    return [startOfDay(d), now.toISOString().replace(/\.\d{3}/, "")];
-  }
-  return [startOfDay(now), now.toISOString().replace(/\.\d{3}/, "")];
+function Kpi({ label, value, now, prev, icon, tone, invert, hint, sub }) {
+  return (
+    <div className={`kpi${tone ? ` kpi--${tone}` : ""}`}>
+      <div className="kpi__top">
+        <span className="kpi__label">
+          {label}
+          {hint && <i className="fa-solid fa-circle-info kpi__hint" title={hint} aria-label={hint} />}
+        </span>
+        {icon && <i className={`fa-solid ${icon} kpi__icon`} aria-hidden="true" />}
+      </div>
+      <div className="kpi__value">{value}</div>
+      <div className="kpi__foot">
+        {prev !== undefined && <Delta now={now} prev={prev} invert={invert} />}
+        {sub && <span className="kpi__sub">{sub}</span>}
+      </div>
+    </div>
+  );
 }
 
-/**
- * Davr chegaralari SANA sifatida (YYYY-MM-DD) — chiqit hisoboti uchun.
- *
- * ⚠ `periodRange` dan alohida: u ISO lahzalarni UTC da beradi, chiqit
- * hisoboti esa do'kon kalendari bilan ishlaydi. Ikkalasini aralashtirsak,
- * kechqurun ochilgan «bugun» hisoboti ertangi kunni ko'rsatib qo'yardi.
- */
-function periodDates(period) {
-  const now = new Date();
-  const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-  if (period === "weekly") {
-    const from = new Date(now); from.setDate(now.getDate() - 6);
-    return [iso(from), iso(now)];
-  }
-  if (period === "monthly") {
-    return [iso(new Date(now.getFullYear(), now.getMonth(), 1)), iso(now)];
-  }
-  return [iso(now), iso(now)];
+/** Karta — sarlavha + ixtiyoriy o'ng burchak. */
+function Panel({ title, icon, right, children, wide }) {
+  return (
+    <div className={`card${wide ? " rpt-wide" : ""}`}>
+      <div className="card-header">
+        <span className="card-title">
+          {icon && <i className={`fa-solid ${icon} text-blue`} aria-hidden="true" />} {title}
+        </span>
+        {right}
+      </div>
+      {children}
+    </div>
+  );
 }
+
+/* ══ CSV ═══════════════════════════════════════════════════════════════
+   ⚠ Nuqtali VERGUL bilan ajratiladi, vergul bilan emas: Excel'ning
+   ruscha/o'zbekcha sozlamasida vergul KASR belgisi va oddiy CSV bitta
+   ustunga yopishib qolardi. `﻿` — BOM, usiz kirill harflar
+   Excel'da krakozyabra bo'lardi. */
+function downloadCsv(name, headers, rows) {
+  const esc = (v) => {
+    const s = v == null ? "" : String(v);
+    return /[";\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const body = [headers, ...rows].map((r) => r.map(esc).join(";")).join("\r\n");
+  const blob = new Blob([`﻿${body}`], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `${name}.csv`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+/* ══════════════════════════════════════════════════════════════════════ */
 
 export default function ReportsPage({ toast }) {
-  const [period, setPeriod]   = useState("daily");
-  const [data, setData]       = useState(null);
-  const [cashiers, setCashiers] = useState(null);
-  const [writeOffs, setWriteOffs] = useState(null);
-  const [loading, setLoading] = useState(false);
-  // Tez javobda skeleton umuman chizilmaydi; chizilsa kamida 400ms turadi.
-  const busy = useLoading(loading);
+  const [period, setPeriod] = useState(() => localStorage.getItem("ek_rpt_period") || "month");
+  const [custom, setCustom] = useState(() => {
+    const now = new Date();
+    return { from: isoDay(new Date(now.getFullYear(), now.getMonth(), 1)), to: isoDay(now) };
+  });
+  const [bucket, setBucket] = useState("");
   const [branchId, setBranchId] = useState(null);
+  const [tab, setTab] = useState("home");
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const busy = useLoading(loading);
 
-  useEffect(() => {
+  const range = useMemo(() => periodRange(period, new Date(), custom), [period, custom]);
+  const days = lengthDays(range);
+
+  const load = useCallback(() => {
     setLoading(true);
-    const fetcher = { daily: reportApi.daily, weekly: reportApi.weekly, monthly: reportApi.monthly };
-    fetcher[period](branchId)
-      .then((res) => setData(res.data))
-      .catch((err) => toast.error(err.message))
+    reportApi.analytics(isoInstant(range.from), isoInstant(range.to), bucket || undefined, branchId)
+      .then((r) => setData(r.data))
+      .catch((e) => toast?.error(e.message))
       .finally(() => setLoading(false));
+  }, [range.from, range.to, bucket, branchId]);
 
-    /* Kassirlar taqqoslashi ALOHIDA so'rov: u yiqilsa ham asosiy hisobot
-       chiziladi. Xatosi ham ko'rsatilmaydi — bu qo'shimcha panel, uning
-       yo'qligi sahifani ishlatishga xalaqit bermaydi. */
-    const [from, to] = periodRange(period);
-    reportApi.byCashier(from, to, branchId)
-      .then((res) => setCashiers(res.data))
-      .catch(() => setCashiers(null));
+  useEffect(() => { load(); }, [load]);
+  useEffect(() => { localStorage.setItem("ek_rpt_period", period); }, [period]);
 
-    /* Chiqit ham qo'shimcha panel — u yiqilsa asosiy hisobot chiziladi. */
-    const [dFrom, dTo] = periodDates(period);
-    inventoryApi.writeOffs(dFrom, dTo)
-      .then((res) => setWriteOffs(res.data))
-      .catch(() => setWriteOffs(null));
-  }, [period, branchId]);
+  const k = data?.now;
+  const p = data?.prev;
+
+  /* ── Dinamika nuqtalari ──────────────────────────────────────────── */
+  const points = useMemo(() => (data?.series || []).map((s) => ({
+    label: s.label,
+    sales: num(s.netSales),
+    cost: num(s.cogs),
+    profit: num(s.grossProfit),
+    returns: num(s.returns),
+  })), [data]);
+
+  const periodLabel = t(`rpt2.p.${period}`);
 
   return (
-    <div>
-      {/* Period tabs and Branch selector */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
-        <div style={{ display: "flex", gap: 6 }}>
-          {PERIODS.map((p) => (
-            <button
-              key={p.key}
-              className={`btn btn-sm ${period === p.key ? "btn-primary" : "btn-outline"}`}
-              onClick={() => setPeriod(p.key)}
-            >
-              {p.label}
+    <div className="rpt">
+      {/* ── Boshqaruv qatori ───────────────────────────────────────────
+          ⚠ Davr, qadam, filial va eksport BITTA qatorda: bularning
+          hammasi «nimani ko'rsataman» degan bitta savolga tegishli va
+          ularni sahifaning turli joylariga sochish foydalanuvchini
+          har safar qidirishga majburlardi. */}
+      <div className="rpt-bar">
+        <div className="rpt-bar__periods" role="tablist" aria-label={t("rpt2.period")}>
+          {PERIODS.filter((x) => x !== "custom").map((x) => (
+            <button key={x} type="button" role="tab" aria-selected={period === x}
+                    className={`rpt-seg${period === x ? " is-on" : ""}`}
+                    onClick={() => setPeriod(x)}>
+              {t(`rpt2.p.${x}`)}
             </button>
           ))}
+          <button type="button" role="tab" aria-selected={period === "custom"}
+                  className={`rpt-seg${period === "custom" ? " is-on" : ""}`}
+                  onClick={() => setPeriod("custom")}>
+            <i className="fa-solid fa-calendar-days" aria-hidden="true" /> {t("rpt2.p.custom")}
+          </button>
         </div>
-        <BranchSelector selectedId={branchId} onSelect={setBranchId} />
+
+        <div className="rpt-bar__tools">
+          <Select value={bucket} onChange={setBucket} ariaLabel={t("rpt2.step")}
+                  options={[
+                    { value: "",      label: t("rpt2.stepAuto"), icon: "fa-wand-magic-sparkles" },
+                    { value: "day",   label: t("rpt2.stepDay"),   icon: "fa-calendar-day" },
+                    { value: "week",  label: t("rpt2.stepWeek"),  icon: "fa-calendar-week" },
+                    { value: "month", label: t("rpt2.stepMonth"), icon: "fa-calendar" },
+                  ]} />
+          <BranchSelector selectedId={branchId} onSelect={setBranchId} />
+          <button className="btn btn-outline btn-sm" onClick={load} title={t("common.refresh")}>
+            <i className="fa-solid fa-rotate-right" aria-hidden="true" />
+          </button>
+          {/* ⚠ Chop etish BRAUZERNIKI: PDF kutubxonasi ilovaga 200 KB
+              qo'shardi, brauzer esa «PDF ga saqlash» ni o'zi taklif
+              qiladi va sahifa uslubini aynan saqlaydi (`@media print`). */}
+          <button className="btn btn-outline btn-sm" onClick={() => window.print()}>
+            <i className="fa-solid fa-print" aria-hidden="true" /> {t("rpt2.print")}
+          </button>
+        </div>
       </div>
 
-      {busy ? (
-        /* Hisobot KPI kartochkalari shaklida — kelayotgan kontent shu shaklda */
-        <SkeletonCards count={4} className="stats-grid" />
-      ) : data ? (
-        <>
-          {/* Stat kartochkalar */}
-          <div className="stats-grid" style={{ marginBottom: 18 }}>
-            {STATS_CONFIG.map((cfg) => (
-              <StatCard
-                key={cfg.key}
-                label={cfg.label}
-                value={cfg.key === "totalSales" ? (data[cfg.key] || 0) : money(data[cfg.key])}
-                /* Zararda summadan tashqari CHEK SONI ham kerak: 500 000
-                   bitta katta chekdanmi yoki 50 ta mayda chekdanmi —
-                   bular butunlay boshqa hodisa va boshqa qaror talab
-                   qiladi. */
-                sub={cfg.key === "lossAmount" && data.lossSales
-                  ? `${data.lossSales} ${t("report.lossSales")}`
-                  : undefined}
-                icon={cfg.icon}
-                bg={cfg.bg}
-                color={cfg.color}
-                /* Sof foyda MANFIY bo'lishi mumkin va aynan shunda ko'zga
-                   tashlanishi kerak — oy zarar bilan ketayotgani eng muhim
-                   xabar. */
-                valueColor={
-                  (cfg.key === "netProfit" && Number(data.netProfit) < 0)
-                  || (cfg.danger && Number(data[cfg.key]) > 0)
-                    ? "var(--fg-danger)" : undefined
-                }
-                hint={cfg.hint}
-              />
+      {period === "custom" && (
+        <div className="rpt-custom">
+          <label>{t("common.from")}
+            <input type="date" className="form-input" value={custom.from}
+                   onChange={(e) => setCustom((c) => ({ ...c, from: e.target.value }))} />
+          </label>
+          <label>{t("common.to")}
+            <input type="date" className="form-input" value={custom.to}
+                   onChange={(e) => setCustom((c) => ({ ...c, to: e.target.value }))} />
+          </label>
+        </div>
+      )}
+
+      <div className="rpt-range">
+        <i className="fa-solid fa-calendar-check" aria-hidden="true" />
+        <b>{periodLabel}</b>
+        <span>{isoDay(range.from)} — {isoDay(new Date(range.to.getTime() - 1))}</span>
+        <span className="text-muted">· {t("rpt2.days", { n: days })}</span>
+      </div>
+
+      {/* ── Bo'limlar ─────────────────────────────────────────────────── */}
+      <div className="rpt-tabs" role="tablist" aria-label={t("rpt2.sections")}>
+        {TABS.map((x) => (
+          <button key={x.key} type="button" role="tab" aria-selected={tab === x.key}
+                  className={`rpt-tab${tab === x.key ? " is-on" : ""}`}
+                  onClick={() => setTab(x.key)}>
+            <i className={`fa-solid ${x.icon}`} aria-hidden="true" /> {x.label()}
+          </button>
+        ))}
+      </div>
+
+      {busy ? <SkeletonCards count={4} className="kpi-grid" />
+        : !data ? <Empty icon="fa-chart-pie" text={t("rpt2.noData")} />
+        : (
+          <>
+            {tab === "home"     && <Home     d={data} k={k} p={p} points={points} days={days} />}
+            {tab === "sales"    && <Sales    d={data} k={k} p={p} points={points} />}
+            {tab === "profit"   && <Profit   d={data} k={k} p={p} />}
+            {tab === "products" && <Products d={data} />}
+            {tab === "staff"    && <Staff    d={data} />}
+            {tab === "money"    && <Money    d={data} k={k} p={p} />}
+            {tab === "stock"    && <Stock    d={data} />}
+            {tab === "people"   && <People   d={data} k={k} p={p} />}
+            {tab === "time"     && <Time     d={data} />}
+            {tab === "watch"    && <Watch    d={data} k={k} />}
+          </>
+        )}
+    </div>
+  );
+}
+
+/* ══ 1. BOSH SAHIFA ════════════════════════════════════════════════════ */
+
+function Home({ d, k, p, points, days }) {
+  /* Kunlik o'rtacha — davrlarni taqqoslash uchun yagona adolatli
+     o'lchov: 5 kunlik va 30 kunlik davrning jami summasini yonma-yon
+     qo'yish hech narsa aytmaydi. */
+  const perDay = num(k.netSales) / Math.max(1, days);
+
+  return (
+    <>
+      <div className="kpi-grid">
+        <Kpi label={t("rpt2.netSales")} value={money(k.netSales)}
+             now={k.netSales} prev={p.netSales} icon="fa-sack-dollar" tone="brand"
+             sub={t("rpt2.perDay", { v: shortNum(perDay) })} />
+        <Kpi label={t("rpt2.grossProfit")} value={money(k.grossProfit)}
+             now={k.grossProfit} prev={p.grossProfit} icon="fa-arrow-trend-up" tone="good"
+             sub={`${t("rpt2.margin")}: ${percent(k.margin)}`} />
+        <Kpi label={t("rpt2.netProfit")} value={money(k.netProfit)}
+             now={k.netProfit} prev={p.netProfit} icon="fa-wallet"
+             tone={num(k.netProfit) < 0 ? "bad" : "good"}
+             hint={t("rpt2.netProfitHint")} />
+        <Kpi label={t("rpt2.receipts")} value={k.receipts}
+             now={k.receipts} prev={p.receipts} icon="fa-receipt"
+             sub={`${t("rpt2.avgReceipt")}: ${money(k.avgReceipt)}`} />
+        <Kpi label={t("rpt2.customers")} value={k.customers}
+             now={k.customers} prev={p.customers} icon="fa-users"
+             sub={t("rpt2.newN", { n: k.newCustomers })} />
+        <Kpi label={t("rpt2.returns")} value={money(k.returns)}
+             now={k.returns} prev={p.returns} icon="fa-rotate-left" invert
+             tone={num(k.returns) > 0 ? "warn" : undefined}
+             sub={t("rpt2.nReceipts", { n: k.returnReceipts })} />
+        <Kpi label={t("rpt2.expenses")} value={money(k.expenses)}
+             now={k.expenses} prev={p.expenses} icon="fa-money-bill-wave" invert />
+        <Kpi label={t("rpt2.credit")} value={money(k.credit)}
+             now={k.credit} prev={p.credit} icon="fa-hand-holding-dollar" invert
+             hint={t("rpt2.creditHint")} />
+      </div>
+
+      <Panel title={t("rpt2.dynamics")} icon="fa-chart-line" wide>
+        <div className="card-body">
+          <LineChart points={points} height={260} empty={t("rpt2.noData")}
+                     lines={[
+                       { key: "sales",  name: t("rpt2.netSales"),    color: C.sales,  area: true },
+                       { key: "profit", name: t("rpt2.grossProfit"), color: C.profit },
+                       { key: "cost",   name: t("rpt2.cogs"),        color: C.cost },
+                     ]} />
+        </div>
+      </Panel>
+
+      <Insights d={d} k={k} p={p} />
+
+      <div className="rpt-cols">
+        <PayMix d={d} />
+        <TopList title={t("rpt2.topProducts")} icon="fa-trophy"
+                 rows={(d.products || []).slice(0, 8).map((x) => ({
+                   name: x.name, value: money(x.netSales),
+                   sub: `${shortNum(x.quantity)} · ${percent(x.margin)}`,
+                 }))} />
+      </div>
+    </>
+  );
+}
+
+/* ══ AI-XULOSA ═════════════════════════════════════════════════════════
+   ⚠ Bu «sun'iy aql» emas, ARIFMETIKA — va shunday atalishi ham kerak
+   emas edi: har xulosa ekrandagi raqamlardan chiqadi va uni qo'lda
+   tekshirsa bo'ladi. Sabab oddiy: rahbar grafikni o'zi tahlil qilishga
+   majbur bo'lmasligi kerak, lekin xulosa tushuntirib bo'lmaydigan
+   qora quti bo'lsa, unga bir marta ishonch yo'qolgach qaytmaydi.
+
+   ⚠ Faqat SEZILARLI o'zgarish yoziladi (10% dan katta). Har kichik
+   tebranishga izoh yozilsa, ro'yxat uzayib, muhimi ichida yo'qolardi. */
+function Insights({ d, k, p }) {
+  const list = useMemo(() => {
+    const out = [];
+    const g = (a, b) => growth(a, b);
+
+    const gs = g(k.netSales, p.netSales);
+    if (gs !== null && Math.abs(gs) >= 10) {
+      out.push({ tone: gs > 0 ? "good" : "bad", icon: gs > 0 ? "fa-arrow-trend-up" : "fa-arrow-trend-down",
+                 text: t(gs > 0 ? "rpt2.insSalesUp" : "rpt2.insSalesDown", { v: Math.abs(gs).toFixed(1) }) });
+    }
+    const gm = num(k.margin) - num(p.margin);
+    if (Math.abs(gm) >= 2) {
+      out.push({ tone: gm > 0 ? "good" : "warn", icon: "fa-percent",
+                 text: t(gm > 0 ? "rpt2.insMarginUp" : "rpt2.insMarginDown", { v: Math.abs(gm).toFixed(1) }) });
+    }
+    /* Eng katta ulushli kategoriya — o'sishning manbasi. */
+    const cat = (d.categories || [])[0];
+    if (cat && num(k.netSales) > 0) {
+      const share = (num(cat.netSales) / num(k.netSales)) * 100;
+      if (share >= 20) {
+        out.push({ tone: "info", icon: "fa-layer-group",
+                   text: t("rpt2.insCategory", { name: cat.name || t("rpt2.noCategory"), v: share.toFixed(0) }) });
+      }
+    }
+    if (num(k.netProfit) < 0) {
+      out.push({ tone: "bad", icon: "fa-triangle-exclamation", text: t("rpt2.insLoss") });
+    }
+    const retRate = num(k.netSales) > 0 ? (num(k.returns) / num(k.netSales)) * 100 : 0;
+    if (retRate >= 5) {
+      out.push({ tone: "warn", icon: "fa-rotate-left", text: t("rpt2.insReturns", { v: retRate.toFixed(1) }) });
+    }
+    const st = d.stock || {};
+    if (num(st.outOfStock) > 0 || num(st.lowStock) > 0) {
+      out.push({ tone: "warn", icon: "fa-boxes-stacked",
+                 text: t("rpt2.insStock", { out: st.outOfStock || 0, low: st.lowStock || 0 }) });
+    }
+    if ((d.anomalies || []).length) {
+      out.push({ tone: "bad", icon: "fa-shield-halved", text: t("rpt2.insAnomaly", { n: d.anomalies.length }) });
+    }
+    return out;
+  }, [d, k, p]);
+
+  if (!list.length) return null;
+  return (
+    <Panel title={t("rpt2.insights")} icon="fa-lightbulb" wide>
+      <div className="card-body ins">
+        {list.map((x, i) => (
+          <div key={i} className={`ins__row ins--${x.tone}`}>
+            <i className={`fa-solid ${x.icon}`} aria-hidden="true" />
+            <span>{x.text}</span>
+          </div>
+        ))}
+      </div>
+    </Panel>
+  );
+}
+
+/* ══ 2. SAVDO ══════════════════════════════════════════════════════════ */
+
+function Sales({ d, k, p, points }) {
+  return (
+    <>
+      <div className="kpi-grid">
+        <Kpi label={t("rpt2.grossSales")} value={money(k.grossSales)} now={k.grossSales} prev={p.grossSales} icon="fa-cash-register" />
+        <Kpi label={t("rpt2.discount")} value={money(k.discount)} now={k.discount} prev={p.discount} icon="fa-tags" invert />
+        <Kpi label={t("rpt2.returns")} value={money(k.returns)} now={k.returns} prev={p.returns} icon="fa-rotate-left" invert />
+        <Kpi label={t("rpt2.netSales")} value={money(k.netSales)} now={k.netSales} prev={p.netSales} icon="fa-sack-dollar" tone="brand" />
+        <Kpi label={t("rpt2.itemsSold")} value={shortNum(k.itemsSold)} now={k.itemsSold} prev={p.itemsSold} icon="fa-box" />
+        <Kpi label={t("rpt2.maxReceipt")} value={money(k.maxReceipt)} icon="fa-arrow-up-wide-short" />
+        <Kpi label={t("rpt2.minReceipt")} value={money(k.minReceipt)} icon="fa-arrow-down-wide-short" />
+        <Kpi label={t("rpt2.cancelled")} value={k.cancelledReceipts} now={k.cancelledReceipts} prev={p.cancelledReceipts}
+             icon="fa-circle-xmark" invert tone={num(k.cancelledReceipts) > 0 ? "warn" : undefined}
+             sub={money(k.cancelledAmount)} />
+      </div>
+
+      <Panel title={t("rpt2.dynamics")} icon="fa-chart-line" wide>
+        <div className="card-body">
+          <LineChart points={points} height={280} empty={t("rpt2.noData")}
+                     lines={[
+                       { key: "sales",   name: t("rpt2.netSales"), color: C.sales, area: true },
+                       { key: "returns", name: t("rpt2.returns"),  color: C.ret },
+                     ]} />
+        </div>
+      </Panel>
+
+      {(d.branches || []).length > 0 && (
+        <Panel title={t("rpt2.branches")} icon="fa-store" wide>
+          <div className="table-wrap">
+            <table className="table">
+              <thead><tr>
+                <th>{t("rpt2.branch")}</th><th>{t("rpt2.receipts")}</th>
+                <th>{t("rpt2.netSales")}</th><th>{t("rpt2.grossProfit")}</th>
+                <th>{t("rpt2.margin")}</th><th>{t("rpt2.customers")}</th>
+              </tr></thead>
+              <tbody>
+                {d.branches.map((b, i) => (
+                  <tr key={b.shopId}>
+                    <td className="fw-700">
+                      {/* Uchtalik — birinchi uch o'rin ko'zga tashlanadi. */}
+                      {i < 3 && <span className="rank">{i + 1}</span>} {b.name}
+                    </td>
+                    <td className="mono">{b.receipts}</td>
+                    <td className="mono fw-700 text-blue">{money(b.netSales)}</td>
+                    <td className="mono">{money(b.profit)}</td>
+                    <td className="mono">{percent(b.margin)}</td>
+                    <td className="mono">{b.customers}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Panel>
+      )}
+    </>
+  );
+}
+
+/* ══ 3. FOYDA (P&L) ════════════════════════════════════════════════════ */
+
+/**
+ * Foyda va zarar hisoboti — zinapoya.
+ *
+ * ⚠ «Savdo 100 mln» degan bitta raqam yetarli emas: rahbar pul QAYERDA
+ * qolganini ko'rishi kerak. Shuning uchun har qator yuqoridagidan
+ * qanday chiqqani ko'rinib turadi va ayiriladigan qatorlar chekkaga
+ * suriladi.
+ */
+function Profit({ d, k, p }) {
+  const rows = [
+    { label: t("rpt2.grossSales"),  value: k.grossSales,  strong: true },
+    { label: t("rpt2.discount"),    value: -num(k.discount), minus: true },
+    { label: t("rpt2.returns"),     value: -num(k.returns),  minus: true },
+    { label: t("rpt2.netSales"),    value: k.netSales,    sum: true },
+    { label: t("rpt2.cogs"),        value: -num(k.cogs),  minus: true },
+    { label: t("rpt2.grossProfit"), value: k.grossProfit, sum: true,
+      extra: percent(k.margin) },
+    { label: t("rpt2.expenses"),      value: -num(k.expenses),      minus: true },
+    { label: t("rpt2.inventoryLoss"), value: -num(k.inventoryLoss), minus: true,
+      hint: t("rpt2.inventoryLossHint") },
+    { label: t("rpt2.netProfit"),   value: k.netProfit,   total: true },
+  ];
+
+  return (
+    <>
+      <div className="kpi-grid">
+        <Kpi label={t("rpt2.grossProfit")} value={money(k.grossProfit)} now={k.grossProfit} prev={p.grossProfit} icon="fa-arrow-trend-up" tone="good" />
+        <Kpi label={t("rpt2.margin")} value={percent(k.margin)} now={k.margin} prev={p.margin} icon="fa-percent" />
+        <Kpi label={t("rpt2.netProfit")} value={money(k.netProfit)} now={k.netProfit} prev={p.netProfit}
+             icon="fa-wallet" tone={num(k.netProfit) < 0 ? "bad" : "good"} />
+        <Kpi label={t("rpt2.lossSales")} value={money(k.lossAmount)} icon="fa-arrow-trend-down"
+             tone={num(k.lossAmount) > 0 ? "bad" : undefined}
+             sub={t("rpt2.nReceipts", { n: k.lossSales })} hint={t("rpt2.lossHint")} />
+      </div>
+
+      <Panel title={t("rpt2.pnl")} icon="fa-scale-balanced" wide
+             right={<button className="btn btn-outline btn-sm"
+                            onClick={() => downloadCsv("pnl",
+                              [t("rpt2.metric"), t("common.sum")],
+                              rows.map((r) => [r.label, Math.round(num(r.value))]))}>
+                      <i className="fa-solid fa-file-csv" aria-hidden="true" /> CSV
+                    </button>}>
+        <div className="card-body">
+          <table className="pnl">
+            <tbody>
+              {rows.map((r, i) => (
+                <tr key={i} className={`${r.minus ? "pnl--minus" : ""}${r.sum ? " pnl--sum" : ""}${r.total ? " pnl--total" : ""}`}>
+                  <td>
+                    {r.label}
+                    {r.hint && <i className="fa-solid fa-circle-info kpi__hint" title={r.hint} />}
+                  </td>
+                  <td className="mono">{r.extra}</td>
+                  <td className={`mono ${num(r.value) < 0 ? "text-danger" : ""}`}>{money(r.value)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Panel>
+
+      <div className="rpt-cols">
+        <Panel title={t("rpt2.expenses")} icon="fa-money-bill-wave">
+          <div className="card-body">
+            {(d.expenses || []).length
+              ? <ShareList rows={(d.expenses || []).map((e, i) => ({
+                  name: e.name || t("rpt2.noCategory"), value: e.amount,
+                  share: e.share, color: PALETTE[i % PALETTE.length],
+                }))} />
+              : <Empty icon="fa-receipt" text={t("rpt2.noExpenses")} />}
+          </div>
+        </Panel>
+        <Panel title={t("rpt2.byCategory")} icon="fa-layer-group">
+          <div className="card-body">
+            {(d.categories || []).length
+              ? <ShareList rows={(d.categories || []).slice(0, 8).map((c, i) => ({
+                  name: c.name || t("rpt2.noCategory"), value: c.netSales,
+                  share: null, sub: percent(c.margin), color: PALETTE[i % PALETTE.length],
+                }))} />
+              : <Empty icon="fa-layer-group" text={t("rpt2.noData")} />}
+          </div>
+        </Panel>
+      </div>
+    </>
+  );
+}
+
+/* ══ 4. TOVARLAR ═══════════════════════════════════════════════════════ */
+
+function Products({ d }) {
+  /* ⚠ Ustun filtri SHU YERDA ham: «marjasi 10% dan past tovarlar» yoki
+     «eng ko'p qaytarilgani» — bularning har biri boshqa savol va
+     ularni qattiq tugmalar bilan qoplab bo'lmaydi. */
+  const COLS = useMemo(() => [
+    { key: "name",  label: t("products.col"),      type: "text",   get: (x) => x.name },
+    { key: "cat",   label: t("products.category"), type: "text",   get: (x) => x.categoryName },
+    { key: "qty",   label: t("rpt2.sold"),         type: "number", get: (x) => x.quantity },
+    { key: "sales", label: t("rpt2.netSales"),     type: "number", get: (x) => x.netSales },
+    { key: "prof",  label: t("rpt2.profit"),       type: "number", get: (x) => x.profit },
+    { key: "marg",  label: t("rpt2.margin"),       type: "number", get: (x) => x.margin },
+    { key: "ret",   label: t("rpt2.returned"),     type: "number", get: (x) => x.returnedQty },
+    { key: "turn",  label: t("rpt2.turnover"),     type: "number", get: (x) => x.turnover },
+  ], []);
+  const flt = useDataFilter(COLS, "rpt-products");
+  const rows = flt.apply(d.products || []);
+
+  return (
+    <>
+      <div className="rpt-cols">
+        <Panel title={t("rpt2.byCategory")} icon="fa-layer-group">
+          <div className="card-body donut-row">
+            <Donut size={190} empty={t("rpt2.noData")}
+                   slices={(d.categories || []).slice(0, 8).map((c, i) => ({
+                     label: c.name || t("rpt2.noCategory"),
+                     value: num(c.netSales), color: PALETTE[i % PALETTE.length],
+                   }))}
+                   center={<><b>{(d.categories || []).length}</b><span>{t("rpt2.categories")}</span></>} />
+            <ShareList rows={(d.categories || []).slice(0, 8).map((c, i) => ({
+              name: c.name || t("rpt2.noCategory"), value: c.netSales,
+              sub: percent(c.margin), color: PALETTE[i % PALETTE.length],
+            }))} />
+          </div>
+        </Panel>
+        <Panel title={t("rpt2.topByProfit")} icon="fa-trophy">
+          <div className="card-body">
+            <BarChart height={200} empty={t("rpt2.noData")} color={C.profit}
+                      bars={[...(d.products || [])]
+                        .sort((a, b) => num(b.profit) - num(a.profit))
+                        .slice(0, 7)
+                        .map((x) => ({ label: x.name.slice(0, 10), value: num(x.profit) }))} />
+          </div>
+        </Panel>
+      </div>
+
+      <Panel title={t("rpt2.allProducts")} icon="fa-boxes-stacked" wide
+             right={<div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                      <DataFilter cols={COLS} flt={flt} />
+                      <button className="btn btn-outline btn-sm"
+                              onClick={() => downloadCsv("tovarlar",
+                                COLS.map((c) => c.label),
+                                rows.map((r) => COLS.map((c) => c.get(r))))}>
+                        <i className="fa-solid fa-file-csv" aria-hidden="true" /> CSV
+                      </button>
+                    </div>}>
+        <div className="table-wrap">
+          <table className="table">
+            <thead><tr>
+              <SortTh flt={flt} col="name">{t("products.col")}</SortTh>
+              <SortTh flt={flt} col="cat">{t("products.category")}</SortTh>
+              <SortTh flt={flt} col="qty">{t("rpt2.sold")}</SortTh>
+              <SortTh flt={flt} col="sales">{t("rpt2.netSales")}</SortTh>
+              <SortTh flt={flt} col="prof">{t("rpt2.profit")}</SortTh>
+              <SortTh flt={flt} col="marg">{t("rpt2.margin")}</SortTh>
+              <SortTh flt={flt} col="ret">{t("rpt2.returned")}</SortTh>
+              <SortTh flt={flt} col="turn">{t("rpt2.turnover")}</SortTh>
+            </tr></thead>
+            <tbody>
+              {rows.length ? rows.map((x) => (
+                <tr key={x.productId}>
+                  <td className="fw-700">{x.name}</td>
+                  <td className="text-muted">{x.categoryName || "—"}</td>
+                  <td className="mono">{shortNum(x.quantity)}</td>
+                  <td className="mono fw-700 text-blue">{money(x.netSales)}</td>
+                  <td className={`mono ${num(x.profit) < 0 ? "text-danger" : ""}`}>{money(x.profit)}</td>
+                  <td className="mono">{percent(x.margin)}</td>
+                  <td className="mono">{num(x.returnedQty) ? shortNum(x.returnedQty) : "—"}</td>
+                  <td className="mono">{num(x.turnover) ? num(x.turnover).toFixed(1) : "—"}</td>
+                </tr>
+              )) : <tr><td colSpan={8}><Empty icon="fa-box-open" text={t("rpt2.noData")} /></td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </Panel>
+    </>
+  );
+}
+
+/* ══ 5. KASSIRLAR ══════════════════════════════════════════════════════ */
+
+function Staff({ d }) {
+  const rows = d.cashiers || [];
+  return (
+    <>
+      <Panel title={t("rpt2.byCashier")} icon="fa-user-tie" wide
+             right={<button className="btn btn-outline btn-sm"
+                            onClick={() => downloadCsv("kassirlar",
+                              [t("staff.name"), t("rpt2.receipts"), t("rpt2.netSales"),
+                               t("rpt2.discount"), t("rpt2.returns"), t("rpt2.cancelled"),
+                               t("rpt2.avgReceipt"), t("rpt2.nonCash")],
+                              rows.map((c) => [c.name, c.receipts, Math.round(num(c.netSales)),
+                                Math.round(num(c.discount)), Math.round(num(c.returns)),
+                                c.cancelled, Math.round(num(c.avgReceipt)), num(c.nonCashShare)]))}>
+                      <i className="fa-solid fa-file-csv" aria-hidden="true" /> CSV
+                    </button>}>
+        <div className="table-wrap">
+          <table className="table">
+            <thead><tr>
+              <th>{t("staff.name")}</th><th>{t("rpt2.receipts")}</th><th>{t("rpt2.netSales")}</th>
+              <th>{t("rpt2.avgReceipt")}</th><th>{t("rpt2.discount")}</th>
+              <th>{t("rpt2.returns")}</th><th>{t("rpt2.cancelled")}</th><th>{t("rpt2.nonCash")}</th>
+            </tr></thead>
+            <tbody>
+              {rows.length ? rows.map((c, i) => (
+                <tr key={c.userId}>
+                  <td className="fw-700">{i < 3 && <span className="rank">{i + 1}</span>} {c.name}</td>
+                  <td className="mono">{c.receipts}</td>
+                  <td className="mono fw-700 text-blue">{money(c.netSales)}</td>
+                  <td className="mono">{money(c.avgReceipt)}</td>
+                  <td className="mono">{money(c.discount)}</td>
+                  <td className="mono">{num(c.returns) ? money(c.returns) : "—"}</td>
+                  {/* Bekor qilish — nazorat ustuni, shuning uchun nol
+                      ham ANIQ ko'rsatiladi: tire «hisoblanmagan» degan
+                      shubha qoldirardi. */}
+                  <td className={`mono ${num(c.cancelled) > 0 ? "text-danger fw-700" : "text-muted"}`}>{c.cancelled}</td>
+                  <td className="mono">{percent(c.nonCashShare)}</td>
+                </tr>
+              )) : <tr><td colSpan={8}><Empty icon="fa-user-tie" text={t("rpt2.noData")} /></td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </Panel>
+
+      <div className="rpt-cols">
+        <Panel title={t("rpt2.salesByCashier")} icon="fa-chart-simple">
+          <div className="card-body">
+            <BarChart height={200} empty={t("rpt2.noData")}
+                      bars={rows.slice(0, 8).map((c) => ({ label: (c.name || "").slice(0, 10), value: num(c.netSales) }))} />
+          </div>
+        </Panel>
+        <Panel title={t("rpt2.discountByCashier")} icon="fa-tags">
+          <div className="card-body">
+            <BarChart height={200} color={C.warn} empty={t("rpt2.noData")}
+                      bars={rows.slice(0, 8).map((c) => ({ label: (c.name || "").slice(0, 10), value: num(c.discount) }))} />
+          </div>
+        </Panel>
+      </div>
+    </>
+  );
+}
+
+/* ══ 6. PUL ════════════════════════════════════════════════════════════ */
+
+function Money({ d, k, p }) {
+  return (
+    <>
+      <div className="kpi-grid">
+        <Kpi label={t("enum.payment.CASH")} value={money(k.cash)} now={k.cash} prev={p.cash} icon="fa-money-bill-1" />
+        <Kpi label={t("enum.payment.CARD")} value={money(k.card)} now={k.card} prev={p.card} icon="fa-credit-card" />
+        <Kpi label={t("rpt2.online")} value={money(k.online)} now={k.online} prev={p.online} icon="fa-mobile-screen" />
+        <Kpi label={t("enum.payment.SAVINGS")} value={money(k.savings)} now={k.savings} prev={p.savings} icon="fa-sack-dollar" />
+      </div>
+
+      <div className="rpt-cols">
+        <PayMix d={d} />
+        <Panel title={t("rpt2.debt")} icon="fa-hand-holding-dollar">
+          <div className="card-body">
+            <div className="dbt">
+              <div className="dbt__total">
+                <span>{t("rpt2.debtTotal")}</span>
+                <b className="mono">{money(d.debt?.total)}</b>
+                <small>{t("rpt2.nDebtors", { n: d.debt?.debtors || 0 })}</small>
+              </div>
+              {/* ⚠ Qarz YOSHI bo'yicha bo'linadi: bugungi 300 ming va
+                  yarim yillik 300 ming butunlay boshqa gap va boshqa
+                  qaror talab qiladi. */}
+              <ShareList rows={[
+                { name: t("rpt2.age0"),  value: d.debt?.bucket0to7,   color: C.profit },
+                { name: t("rpt2.age8"),  value: d.debt?.bucket8to30,  color: C.warn },
+                { name: t("rpt2.age31"), value: d.debt?.bucket31plus, color: C.ret },
+              ]} />
+            </div>
+          </div>
+        </Panel>
+      </div>
+    </>
+  );
+}
+
+function PayMix({ d }) {
+  const rows = (d.payments || []).map((x, i) => {
+    const e = paymentEntry(x.type);
+    return { name: e.label, value: x.amount, share: x.share,
+             color: e.color || PALETTE[i % PALETTE.length], icon: e.icon };
+  });
+  return (
+    <Panel title={t("rpt2.payMix")} icon="fa-credit-card">
+      <div className="card-body donut-row">
+        <Donut size={180} empty={t("rpt2.noData")}
+               slices={rows.map((r) => ({ label: r.name, value: num(r.value), color: r.color }))}
+               center={<><b>{shortNum(rows.reduce((s, r) => s + num(r.value), 0))}</b>
+                         <span>{t("common.sum")}</span></>} />
+        <ShareList rows={rows} />
+      </div>
+    </Panel>
+  );
+}
+
+/** Rangli ro'yxat — nom, summa, ulush. */
+function ShareList({ rows = [] }) {
+  const total = rows.reduce((s, r) => s + Math.abs(num(r.value)), 0);
+  if (!rows.length) return <Empty icon="fa-list" text={t("rpt2.noData")} />;
+  return (
+    <div className="shl">
+      {rows.map((r, i) => {
+        const share = r.share != null ? num(r.share)
+          : total > 0 ? (Math.abs(num(r.value)) / total) * 100 : 0;
+        return (
+          <div key={i} className="shl__row">
+            <span className="shl__dot" style={{ background: r.color }} />
+            <span className="shl__name">{r.name}</span>
+            {r.sub && <span className="shl__sub">{r.sub}</span>}
+            <span className="shl__val mono">{money(r.value)}</span>
+            <span className="shl__pct mono">{share.toFixed(1)}%</span>
+            <span className="shl__bar"><i style={{ width: `${Math.min(100, share)}%`, background: r.color }} /></span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function TopList({ title, icon, rows = [] }) {
+  return (
+    <Panel title={title} icon={icon}>
+      <div className="card-body">
+        {rows.length ? (
+          <div className="topl">
+            {rows.map((r, i) => (
+              <div key={i} className="topl__row">
+                <span className={`rank${i < 3 ? "" : " rank--dim"}`}>{i + 1}</span>
+                <span className="topl__name">{r.name}</span>
+                <span className="topl__sub">{r.sub}</span>
+                <span className="topl__val mono">{r.value}</span>
+              </div>
             ))}
           </div>
+        ) : <Empty icon="fa-trophy" text={t("rpt2.noData")} />}
+      </div>
+    </Panel>
+  );
+}
 
-          <div className="grid-2c">
-            {/* To'lov turlari */}
-            <div className="card">
-              <div className="card-header">
-                <span className="card-title">
-                  <i className="fa-solid fa-credit-card text-blue" />
-                  {t("dash.paymentTypes")}
-                </span>
-              </div>
-              {/* ⚠ Har satrda ULUSH ham ko'rsatiladi. Sabab ikkita: egasi
-                  aslida "naqd ko'proqmi yoki karta?" degan savolga javob
-                  qidiradi, va faqat ikki qatorli kartochka yonidagi
-                  o'nta qatorli jadval bo'lgani uchun bu yer bo'm-bo'sh
-                  turardi. */}
-              <div className="card-body">
-                {data.paymentSummary?.length ? (
-                  (() => {
-                    const sum = data.paymentSummary.reduce((s, p) => s + Number(p.amount || 0), 0) || 1;
-                    return data.paymentSummary.map((p, i, arr) => {
-                      const pct = (Number(p.amount || 0) / sum) * 100;
-                      return (
-                        <div
-                          key={i}
-                          style={{
-                            padding: "10px 0",
-                            borderBottom: i < arr.length - 1 ? "1px solid var(--border)" : "none",
-                          }}
-                        >
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
-                            <span className="fw-700" style={{ fontSize: 13 }}>
-                              <PayLabel type={p.paymentType} />
-                            </span>
-                            <span style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-                              <span className="mono text-muted" style={{ fontSize: 12 }}>{percent(pct)}</span>
-                              <span className="mono fw-700">{money(p.amount)}</span>
-                            </span>
-                          </div>
-                          <div className="pay-share" aria-hidden="true">
-                            <span style={{ width: `${pct}%` }} />
-                          </div>
-                        </div>
-                      );
-                    });
-                  })()
-                ) : (
-                  <Empty text={t("rep.noData")} />
-                )}
-              </div>
-            </div>
+/* ══ 7. OMBOR ══════════════════════════════════════════════════════════ */
 
-            {/* Top mahsulotlar */}
-            <div className="card">
-              <div className="card-header">
-                <span className="card-title">
-                  <i className="fa-solid fa-trophy" style={{ color: "var(--yellow)" }} />
-                  {t("rep.top10")}
-                </span>
-              </div>
-              <div className="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>#</th>
-                      <th>{t("products.col")}</th>
-                      <th>{t("common.count")}</th>
-                      <th>{t("common.sum")}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.topProducts?.length ? (
-                      data.topProducts.map((p, i) => (
-                        <tr key={i}>
-                          <td className="text-muted fw-800">{i + 1}</td>
-                          <td className="fw-700">{p.productName}</td>
-                          <td><span className="badge badge-blue">{p.totalQuantity}</span></td>
-                          <td className="mono fw-700">{money(p.totalRevenue)}</td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan={4}>
-                          <Empty text={t("rep.noData")} />
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
+function Stock({ d }) {
+  const s = d.stock || {};
+  return (
+    <>
+      <div className="kpi-grid">
+        <Kpi label={t("rpt2.stockValue")} value={money(s.totalValue)} icon="fa-warehouse" tone="brand" />
+        <Kpi label={t("rpt2.stockQty")} value={shortNum(s.totalQuantity)} icon="fa-cubes" />
+        <Kpi label={t("rpt2.outOfStock")} value={s.outOfStock || 0} icon="fa-ban"
+             tone={num(s.outOfStock) > 0 ? "bad" : undefined} />
+        <Kpi label={t("rpt2.lowStock")} value={s.lowStock || 0} icon="fa-arrow-trend-down"
+             tone={num(s.lowStock) > 0 ? "warn" : undefined} />
+        <Kpi label={t("rpt2.expiringSoon")} value={s.expiringSoon || 0} icon="fa-clock"
+             tone={num(s.expiringSoon) > 0 ? "warn" : undefined} />
+        <Kpi label={t("rpt2.expired")} value={s.expired || 0} icon="fa-hourglass-end"
+             tone={num(s.expired) > 0 ? "bad" : undefined} />
+      </div>
 
-          {/* ── Naqdsiz jamlama ───────────────────────────────────────────
-              Bu kartochka bitta ish uchun: egasi shu raqamlarni bank
-              ilovasi va Click/Payme kabineti bilan solishtiradi. To'lov
-              turini kassir QO'LDA tanlaydi, ya'ni naqdni "karta" deb yozib
-              pulni olib qolish mumkin — mos kelmaslik aynan shuni ochadi. */}
-          <div className="card" style={{ marginTop: 18 }}>
-            <div className="card-header">
-              <span className="card-title">
-                <i className="fa-solid fa-building-columns text-blue" />
-                {t("rpt.nonCashTotals")}
-              </span>
-            </div>
-            <div className="card-body">
-              <p className="text-muted" style={{ fontSize: 13, marginTop: 0 }}>
-                {t("rpt.nonCashCompareHint")}
-              </p>
-              {(() => {
-                const rows = (data.paymentSummary || []).filter((p) => NON_CASH.includes(p.paymentType));
-                if (!rows.length) return <Empty text={t("rep.noData")} />;
-                const total = rows.reduce((s, p) => s + Number(p.amount || 0), 0);
-                return (
-                  <>
-                    {rows.map((p) => (
-                      <div key={p.paymentType} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid var(--border)" }}>
-                        <span className="fw-700" style={{ fontSize: 13 }}><PayLabel type={p.paymentType} /></span>
-                        <span className="mono fw-700">{money(p.amount)}</span>
-                      </div>
-                    ))}
-                    <div style={{ display: "flex", justifyContent: "space-between", paddingTop: 10 }}>
-                      <span className="fw-800">{t("common.total")}</span>
-                      <span className="mono fw-800">{money(total)}</span>
-                    </div>
-                  </>
-                );
-              })()}
-            </div>
-          </div>
+      <Panel title={t("rpt2.slowMoving")} icon="fa-snowflake" wide
+             right={<span className="text-muted" style={{ fontSize: 12 }}>{t("rpt2.slowHint")}</span>}>
+        <div className="table-wrap">
+          <table className="table">
+            <thead><tr>
+              <th>{t("products.col")}</th><th>{t("rpt2.stockQty")}</th>
+              <th>{t("rpt2.stockValue")}</th><th>{t("rpt2.sold")}</th>
+            </tr></thead>
+            <tbody>
+              {(s.slowMoving || []).length ? s.slowMoving.map((x) => (
+                <tr key={x.productId}>
+                  <td className="fw-700">{x.name}</td>
+                  <td className="mono">{shortNum(x.stockQty)}</td>
+                  <td className="mono fw-700">{money(x.stockValue)}</td>
+                  <td className="mono text-muted">{shortNum(x.soldQty)}</td>
+                </tr>
+              )) : <tr><td colSpan={4}><Empty icon="fa-check" text={t("rpt2.noSlow")} /></td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </Panel>
 
-          {/* ── Kassirlar taqqoslash ─────────────────────────────────────
-              Terminal integratsiyasi yo'q ekan, ikkinchi nazorat — NAQSH:
-              bir xil smenalarda ishlagan kassirlarning naqdsiz ulushi
-              bir-biriga yaqin bo'lishi kerak. */}
-          {cashiers?.rows?.length > 0 && (
-            <div className="card" style={{ marginTop: 18 }}>
-              <div className="card-header">
-                <span className="card-title">
-                  <i className="fa-solid fa-users-between-lines text-blue" />
-                  {t("rpt.byCashier")}
-                </span>
-                <span className="text-muted mono" style={{ fontSize: 13 }}>
-                  {t("rpt.shopAverage")}: {cashiers.shopNonCashShare}%
-                </span>
-              </div>
-              <div className="card-body" style={{ paddingBottom: 0 }}>
-                <p className="text-muted" style={{ fontSize: 13, marginTop: 0 }}>
-                  {t("rpt.cashierHint")}
-                </p>
-              </div>
-              <div className="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>{t("sales.colCashier")}</th>
-                      <th>{t("dash.salesCount")}</th>
-                      <th>{t("common.sum")}</th>
-                      <th>{t("rpt.nonCashShare")}</th>
-                      <th>{t("rpt.deviation")}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {cashiers.rows.map((r) => {
-                      // 10 foizdan katta chetlanish ajratiladi. Bu AYBLOV
-                      // emas — kassir kunning kartali qismida ishlagan
-                      // bo'lishi ham mumkin; qolganini egasi hal qiladi.
-                      const far = Math.abs(Number(r.deviation)) >= 10;
-                      return (
-                        <tr key={r.userId}>
-                          <td className="fw-700">{r.fullName}</td>
-                          <td className="mono">{r.salesCount}</td>
-                          <td className="mono fw-700">{money(r.total)}</td>
-                          <td className="mono">{r.nonCashShare}%</td>
-                          <td className="mono fw-700"
-                              style={far ? { color: "var(--fg-danger)" } : undefined}>
-                            {Number(r.deviation) > 0 ? "+" : ""}{r.deviation}%
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
+      <Panel title={t("rpt2.turnoverTop")} icon="fa-rotate" wide>
+        <div className="card-body">
+          <BarChart height={200} empty={t("rpt2.noData")} color={C.cost}
+                    bars={[...(d.products || [])]
+                      .filter((x) => num(x.turnover) > 0)
+                      .sort((a, b) => num(b.turnover) - num(a.turnover))
+                      .slice(0, 8)
+                      .map((x) => ({ label: x.name.slice(0, 10), value: num(x.turnover) }))}
+                    fmt={(v) => `${num(v).toFixed(1)}×`} />
+        </div>
+      </Panel>
+    </>
+  );
+}
 
-          {/* ── Chiqit ───────────────────────────────────────────────────
-              «Shu oy sinishga qancha ketdi» — ilgari bu savolga javob
-              yo'q edi: sabab erkin matn bo'lgani uchun yig'ib bo'lmasdi.
+/* ══ 8. MIJOZLAR ═══════════════════════════════════════════════════════ */
 
-              ⚠ Sanoq kamomadi bu yerda YO'Q va bu ataylab: bu jadval
-              BILIB TURIB chiqarilgan tovar, sanoq kamomadi esa hech kim
-              sezmagan holda yo'qolgani. Ularni qo'shish ikkala savolni
-              ham yo'q qilardi. */}
-          {writeOffs?.rows?.length > 0 && (
-            <div className="card" style={{ marginTop: 18 }}>
-              <div className="card-header">
-                <span className="card-title">
-                  <i className="fa-solid fa-trash-can" style={{ color: "var(--fg-warning)" }} />
-                  {t("rpt.writeOffs")}
-                </span>
-                <span className="mono fw-800" style={{ fontSize: 15, color: "var(--fg-danger)" }}>
-                  {money(writeOffs.lossTotal)}
-                </span>
-              </div>
-              <div className="card-body" style={{ paddingBottom: 0 }}>
-                <p className="text-muted" style={{ fontSize: 13, marginTop: 0 }}>
-                  {t("rpt.writeOffsHint")}
-                </p>
-              </div>
-              <div className="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>{t("inv.writeOffReason")}</th>
-                      <th className="num">{t("common.count")}</th>
-                      <th className="num">{t("rpt.atCost")}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {writeOffs.rows.map((r) => (
-                      <tr key={r.reason}>
-                        <td className="fw-700">
-                          {t(`enum.writeOff.${r.reason}`)}
-                          {/* Hisob tuzatishi yo'qotish EMAS — jamiga
-                              kirmagani shu yerda ham aytiladi. */}
-                          {r.reason === "RECOUNT" && (
-                            <span className="text-muted" style={{ fontWeight: 400, fontSize: 12, marginLeft: 6 }}>
-                              {t("rpt.notALoss")}
-                            </span>
-                          )}
-                        </td>
-                        <td className="num mono">{r.quantity}</td>
-                        <td className="num mono fw-700">{money(r.value)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+const RFM = [
+  { key: "VIP",       color: C.profit },
+  { key: "LOYAL",     color: C.sales },
+  { key: "POTENTIAL", color: "#0ea5e9" },
+  { key: "AT_RISK",   color: C.warn },
+  { key: "LOST",      color: C.ret },
+];
 
-              {writeOffs.topProducts?.length > 0 && (
-                <div className="card-body" style={{ paddingTop: 14 }}>
-                  <div className="text-muted" style={{ fontSize: 12, marginBottom: 8, fontWeight: 700 }}>
-                    {t("rpt.writeOffTop")}
-                  </div>
-                  {writeOffs.topProducts.slice(0, 5).map((p, i) => (
-                    <div key={i} style={{
-                      display: "flex", justifyContent: "space-between", gap: 12,
-                      padding: "6px 0", fontSize: 13,
-                    }}>
-                      <span>{p.productName}</span>
-                      <span className="mono fw-700">{money(p.value)}</span>
-                    </div>
-                  ))}
+function People({ d, k, p }) {
+  const c = d.customers || {};
+  const seg = c.segments || {};
+  return (
+    <>
+      <div className="kpi-grid">
+        <Kpi label={t("rpt2.customersAll")} value={c.total || 0} icon="fa-users" />
+        <Kpi label={t("rpt2.customersActive")} value={c.active || 0} now={k.customers} prev={p.customers} icon="fa-user-check" />
+        <Kpi label={t("rpt2.customersNew")} value={c.newInPeriod || 0} now={k.newCustomers} prev={p.newCustomers} icon="fa-user-plus" />
+        <Kpi label={t("rpt2.debtors")} value={c.debtors || 0} icon="fa-hand-holding-dollar"
+             tone={num(c.debtors) > 0 ? "warn" : undefined} sub={money(d.debt?.total)} />
+      </div>
+
+      <div className="rpt-cols">
+        <Panel title={t("rpt2.rfm")} icon="fa-chart-pie"
+               right={<i className="fa-solid fa-circle-info kpi__hint" title={t("rpt2.rfmHint")} />}>
+          <div className="card-body donut-row">
+            <Donut size={180} empty={t("rpt2.noData")}
+                   slices={RFM.map((r) => ({ label: t(`rpt2.rfm.${r.key}`), value: seg[r.key] || 0, color: r.color }))}
+                   center={<><b>{c.total || 0}</b><span>{t("rpt2.customersAll")}</span></>} />
+            <div className="shl">
+              {RFM.map((r) => (
+                <div key={r.key} className="shl__row">
+                  <span className="shl__dot" style={{ background: r.color }} />
+                  <span className="shl__name">{t(`rpt2.rfm.${r.key}`)}</span>
+                  <span className="shl__val mono">{seg[r.key] || 0}</span>
                 </div>
-              )}
+              ))}
             </div>
-          )}
-        </>
-      ) : null}
-    </div>
+          </div>
+        </Panel>
+
+        <Panel title={t("rpt2.debtAging")} icon="fa-hourglass-half">
+          <div className="card-body">
+            <ShareList rows={[
+              { name: t("rpt2.age0"),  value: d.debt?.bucket0to7,   color: C.profit },
+              { name: t("rpt2.age8"),  value: d.debt?.bucket8to30,  color: C.warn },
+              { name: t("rpt2.age31"), value: d.debt?.bucket31plus, color: C.ret },
+            ]} />
+          </div>
+        </Panel>
+      </div>
+    </>
+  );
+}
+
+/* ══ 9. VAQT ═══════════════════════════════════════════════════════════ */
+
+function Time({ d }) {
+  const hourly = d.hourly || [];
+  const peak = useMemo(() => {
+    let best = null;
+    for (const h of hourly) if (!best || num(h.netSales) > num(best.netSales)) best = h;
+    return best;
+  }, [hourly]);
+  const dows = [t("dow.mon"), t("dow.tue"), t("dow.wed"), t("dow.thu"),
+                t("dow.fri"), t("dow.sat"), t("dow.sun")];
+
+  return (
+    <>
+      <Panel title={t("rpt2.hourly")} icon="fa-clock" wide
+             right={peak && num(peak.netSales) > 0 && (
+               <span className="badge badge-blue">
+                 {t("rpt2.peakHour", { h: String(peak.hour).padStart(2, "0") })}
+               </span>
+             )}>
+        <div className="card-body">
+          <BarChart height={220} empty={t("rpt2.noData")}
+                    bars={hourly.map((h) => ({
+                      label: String(h.hour).padStart(2, "0"),
+                      value: num(h.netSales),
+                      /* Tirband soat ajratiladi — u qaror uchun kerak:
+                         kassirni qaysi soatga qo'yish. */
+                      color: peak && h.hour === peak.hour ? C.profit : undefined,
+                    }))} />
+        </div>
+      </Panel>
+
+      <Panel title={t("rpt2.heat")} icon="fa-table-cells" wide
+             right={<span className="text-muted" style={{ fontSize: 12 }}>{t("rpt2.heatHint")}</span>}>
+        <div className="card-body">
+          <HeatMap dows={dows} empty={t("rpt2.noData")}
+                   cells={(d.heat || []).map((x) => ({ dow: x.dow, hour: x.hour, value: num(x.netSales) }))} />
+        </div>
+      </Panel>
+    </>
+  );
+}
+
+/* ══ 10. NAZORAT ═══════════════════════════════════════════════════════ */
+
+/**
+ * Anomaliyalar.
+ *
+ * ⚠ Bu AYBLOV EMAS, SAVOL. Shuning uchun har qatorda o'lchangan qiymat
+ * ham, do'kon o'rtachasi ham turadi — rahbar farqni o'zi ko'rib qaror
+ * qiladi. Sababsiz «firibgarlik» yozuvi bir marta noto'g'ri chiqsa,
+ * butun bo'limga ishonch yo'qolardi.
+ */
+function Watch({ d, k }) {
+  const list = d.anomalies || [];
+  return (
+    <>
+      <div className="kpi-grid">
+        <Kpi label={t("rpt2.cancelled")} value={k.cancelledReceipts} icon="fa-circle-xmark"
+             tone={num(k.cancelledReceipts) > 0 ? "warn" : undefined} sub={money(k.cancelledAmount)} />
+        <Kpi label={t("rpt2.returns")} value={money(k.returns)} icon="fa-rotate-left"
+             sub={t("rpt2.nReceipts", { n: k.returnReceipts })} />
+        <Kpi label={t("rpt2.discount")} value={money(k.discount)} icon="fa-tags" />
+        <Kpi label={t("rpt2.lossSales")} value={money(k.lossAmount)} icon="fa-arrow-trend-down"
+             tone={num(k.lossAmount) > 0 ? "bad" : undefined}
+             sub={t("rpt2.nReceipts", { n: k.lossSales })} />
+      </div>
+
+      <Panel title={t("rpt2.anomalies")} icon="fa-shield-halved" wide
+             right={<span className="text-muted" style={{ fontSize: 12 }}>{t("rpt2.anomalyHint")}</span>}>
+        <div className="card-body">
+          {list.length ? (
+            <div className="anom">
+              {list.map((a, i) => (
+                <div key={i} className={`anom__row anom--${a.severity}`}>
+                  <i className={`fa-solid ${a.kind === "OFF_HOURS" ? "fa-moon"
+                                : a.kind === "HIGH_RETURNS" ? "fa-rotate-left"
+                                : a.kind === "HIGH_DISCOUNT" ? "fa-tags" : "fa-circle-xmark"}`}
+                     aria-hidden="true" />
+                  <div>
+                    <b>{t(`rpt2.an.${a.kind}`)}</b>
+                    {a.subjectName && <span className="anom__who">{a.subjectName}</span>}
+                  </div>
+                  <span className="mono anom__v">
+                    {a.kind === "OFF_HOURS"
+                      ? t("rpt2.nReceipts", { n: Math.round(num(a.value)) })
+                      : <>{num(a.value).toFixed(1)}%
+                          <small> · {t("rpt2.avgIs", { v: num(a.baseline).toFixed(1) })}</small></>}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : <Empty icon="fa-shield-halved" text={t("rpt2.noAnomalies")} />}
+        </div>
+      </Panel>
+    </>
   );
 }

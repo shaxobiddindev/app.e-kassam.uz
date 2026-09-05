@@ -211,6 +211,20 @@ export const reportApi = {
    * kamomadi, yetkazib beruvchi qarzi, nasiya. Bitta so'rovda.
    */
   signals: (shopId) => request(`/reports/signals${shopId ? `?shopId=${shopId}` : ""}`),
+  /**
+   * TO'LIQ biznes tahlili — hisobot bo'limining butun ekrani (V69).
+   *
+   * ⚠ BITTA so'rov, o'n beshta emas: ekranning hamma bo'limi BIR XIL
+   * daqiqaning suratini ko'rsatishi kerak. Alohida so'rovlarda har biri
+   * davrdagi cheklarni qaytadan o'qirdi (eng og'ir qism aynan shu) va
+   * raqamlar bir-biriga mos kelmasligi mumkin edi.
+   */
+  analytics: (from, to, bucket, shopId) => {
+    const q = new URLSearchParams({ from, to });
+    if (bucket) q.set("bucket", bucket);
+    if (shopId) q.set("shopId", shopId);
+    return request(`/reports/analytics?${q}`);
+  },
 };
 
 // ─── Mahsulotlar ──────────────────────────────────────────────
