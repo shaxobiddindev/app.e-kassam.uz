@@ -86,13 +86,36 @@ function Delta({ now, prev, invert = false }) {
   );
 }
 
+/**
+ * IZOH BELGISI — «i» harfi, ikonka shrifti EMAS.
+ *
+ * ⚠ HAQIQIY HOLAT (do'kon egasi so'radi: «bu ikoncha nimaniki?»).
+ * Chop etishda va sekin internetda Font Awesome (tashqi CDN) kelmaydi
+ * va uning o'rnida BO'SH KATAKCHA qoladi — foydalanuvchi esa uni
+ * xato deb o'ylaydi. Bu belgi MA'NO tashiydi (ustiga borsa hisob
+ * qoidasi chiqadi), shuning uchun u shriftga bog'liq bo'lmasligi
+ * kerak. Kodda bunday qoida allaqachon bor: `styles.css` dagi
+ * «Belgi — oddiy BELGI, Font Awesome emas» izohiga qarang.
+ *
+ * ⚠ `<button>`, `<i>` emas: klaviatura bilan ham yetib borish va
+ * teginish bilan ochish kerak — sensor ekranda «ustiga borish» degan
+ * narsaning o'zi yo'q.
+ */
+function Hint({ text }) {
+  if (!text) return null;
+  return (
+    <button type="button" className="kpi__hint" title={text} aria-label={text}
+            onClick={(e) => e.currentTarget.focus()}>i</button>
+  );
+}
+
 function Kpi({ label, value, now, prev, icon, tone, invert, hint, sub }) {
   return (
     <div className={`kpi${tone ? ` kpi--${tone}` : ""}`}>
       <div className="kpi__top">
         <span className="kpi__label">
           {label}
-          {hint && <i className="fa-solid fa-circle-info kpi__hint" title={hint} aria-label={hint} />}
+          <Hint text={hint} />
         </span>
         {icon && <i className={`fa-solid ${icon} kpi__icon`} aria-hidden="true" />}
       </div>
@@ -323,9 +346,16 @@ export default function ReportsPage({ toast }) {
      ekran baribir chiziladi: reja qo'shimcha, uning yo'qligi
      hisobotni ishlatishga xalaqit bermaydi. */
   const [target, setTarget] = useState(null);
+  /* Do'kon nomi — QOG'OZDAGI sarlavha uchun. Ekranda u yon panelda
+     turadi, chop etilgan varaqda esa yon panel yo'q. */
+  const [shopName, setShopName] = useState("");
   useEffect(() => {
     shopApi.getProfile()
-      .then((p) => setTarget(p?.monthlySalesTarget ?? p?.data?.monthlySalesTarget ?? null))
+      .then((r) => {
+        const p = r?.data ?? r;
+        setTarget(p?.monthlySalesTarget ?? null);
+        setShopName(p?.name || "");
+      })
       .catch(() => setTarget(null));
   }, []);
 
@@ -424,6 +454,18 @@ export default function ReportsPage({ toast }) {
           </label>
         </div>
       )}
+
+      {/* ══ QOG'OZDAGI SARLAVHA (V73) ═══════════════════════════════════
+          ⚠ FAQAT CHOP ETISHDA ko'rinadi. Ekranda do'kon nomi yon
+          panelda turadi, qog'ozda esa u YO'Q — va sarlavhasiz varaq
+          «qaysi do'konning qaysi davri?» degan savolni javobsiz
+          qoldiradi. Bir necha filialli do'konda bu ayniqsa muhim:
+          bosilgan ikkita hisobotni ajratib bo'lmasdi. */}
+      <div className="rpt-print-head">
+        <b>{shopName || t("rpt2.title")}</b>
+        <span>{t("rpt2.title")} · {periodLabel}</span>
+        <span>{isoDay(range.from)} — {isoDay(new Date(range.to.getTime() - 1))}</span>
+      </div>
 
       <div className="rpt-range">
         <i className="fa-solid fa-calendar-check" aria-hidden="true" />
@@ -604,7 +646,7 @@ function TargetAndForecast({ points, k, target, range, period }) {
 
       {(expected != null || next) && (
         <Panel title={t("rpt2.forecast")} icon="fa-wand-magic-sparkles"
-               right={<i className="fa-solid fa-circle-info kpi__hint" title={t("rpt2.forecastHint")} />}>
+               right={<Hint text={t("rpt2.forecastHint")} />}>
           <div className="card-body">
             {expected != null && (
               <div className="tgt__row tgt__row--big">
@@ -809,7 +851,7 @@ function Profit({ d, k, p }) {
                 <tr key={i} className={`${r.minus ? "pnl--minus" : ""}${r.sum ? " pnl--sum" : ""}${r.total ? " pnl--total" : ""}`}>
                   <td>
                     {r.label}
-                    {r.hint && <i className="fa-solid fa-circle-info kpi__hint" title={r.hint} />}
+                    <Hint text={r.hint} />
                   </td>
                   <td className="mono">{r.extra}</td>
                   <td className={`mono ${num(r.value) < 0 ? "text-danger" : ""}`}>{money(r.value)}</td>
@@ -1215,7 +1257,7 @@ function People({ d, k, p }) {
 
       <div className="rpt-cols">
         <Panel title={t("rpt2.rfm")} icon="fa-chart-pie"
-               right={<i className="fa-solid fa-circle-info kpi__hint" title={t("rpt2.rfmHint")} />}>
+               right={<Hint text={t("rpt2.rfmHint")} />}>
           <div className="card-body donut-row">
             <Donut size={180} empty={t("rpt2.noData")}
                    slices={RFM.map((r) => ({ label: t(`rpt2.rfm.${r.key}`), value: seg[r.key] || 0, color: r.color }))}

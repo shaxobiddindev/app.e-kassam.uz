@@ -136,8 +136,13 @@ export function LineChart({ points = [], lines = [], height = 240, fmt = shortNu
                 strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
         ))}
 
+        {/* ⚠ CHEKKADAGI yozuvlar markazlanmaydi. Markazlanganda oxirgi
+            yozuvning yarmi maydondan chiqib QIRQILARDI («14.09» →
+            «14.0») — ekranda bu sezilmasdi, chop etishda esa aniq
+            ko'rinardi. Birinchisi chapga, oxirgisi o'ngga tiraladi. */}
         {points.map((p, i) => (i % every === 0 || i === n - 1) && (
-          <text key={`x-${i}`} x={x(i)} y={H - 8} textAnchor="middle"
+          <text key={`x-${i}`} x={x(i)} y={H - 8}
+                textAnchor={i === 0 ? "start" : i === n - 1 ? "end" : "middle"}
                 fill="var(--fg-tertiary, #9ca3af)" fontSize="11">{p.label}</text>
         ))}
 

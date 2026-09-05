@@ -110,6 +110,7 @@ export default {
   "filter.op.isFalse": "yo'q",
 
   /* ══ HISOBOTLAR — biznes tahlili (V69) ═════════════════════════════ */
+  "rpt2.title": "Hisobot",
   "rpt2.period": "Davr",
   "rpt2.sections": "Bo'limlar",
   "rpt2.days": "{n} kun",

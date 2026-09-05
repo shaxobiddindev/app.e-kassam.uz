@@ -105,6 +105,7 @@ export default {
   "filter.op.isFalse": "no",
 
   /* ══ REPORTS — business analytics (V69) ════════════════════════════ */
+  "rpt2.title": "Report",
   "rpt2.period": "Period",
   "rpt2.sections": "Sections",
   "rpt2.days": "{n} days",

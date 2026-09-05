@@ -105,6 +105,7 @@ export default {
   "filter.op.isFalse": "нет",
 
   /* ══ ОТЧЁТЫ — бизнес-аналитика (V69) ═══════════════════════════════ */
+  "rpt2.title": "Отчёт",
   "rpt2.period": "Период",
   "rpt2.sections": "Разделы",
   "rpt2.days": "{n} дн.",

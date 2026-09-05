@@ -4337,6 +4337,9 @@ body.osk-open .mark-modal {
 .rpt-custom label { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; }
 .rpt-custom .form-input { width: 165px; }
 
+/* Qog'ozdagi sarlavha — ekranda YO'Q (chop etishda yoqiladi). */
+.rpt-print-head { display: none; }
+
 .rpt-range {
   display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
   margin-bottom: 14px; font-size: 13px; color: var(--fg-secondary);
@@ -4386,7 +4389,19 @@ body.osk-open .mark-modal {
 .kpi__top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
 .kpi__label { font-size: 12px; font-weight: 700; color: var(--fg-secondary); }
 .kpi__icon { font-size: 14px; color: var(--fg-tertiary); }
-.kpi__hint { font-size: 11px; color: var(--fg-tertiary); margin-inline-start: 5px; cursor: help; }
+/* ⚠ IZOH BELGISI — «i» harfi, ikonka shrifti EMAS. Chop etishda va
+   sekin internetda Font Awesome kelmaydi va o'rnida bo'sh katakcha
+   qolardi; foydalanuvchi esa uni xato deb o'ylardi (do'kon egasi
+   aynan shuni so'radi). Doira CSS bilan chiziladi. */
+.kpi__hint {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 15px; height: 15px; padding: 0; margin-inline-start: 5px;
+  border: 1px solid currentColor; border-radius: 50%;
+  background: none; color: var(--fg-tertiary);
+  font: 700 10px/1 var(--font); font-style: italic;
+  cursor: help; vertical-align: middle;
+}
+.kpi__hint:hover, .kpi__hint:focus-visible { color: var(--fg-brand, var(--blue)); }
 .kpi__value {
   font-size: 22px; font-weight: 800; letter-spacing: -0.4px;
   font-variant-numeric: tabular-nums;
@@ -4406,6 +4421,11 @@ body.osk-open .mark-modal {
   display: grid; gap: 14px; margin-bottom: 14px;
   grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
 }
+/* ⚠ Yolg'iz karta TO'LIQ kenglikni oladi. Ilgari u yarim ustunda
+   turib, yonida katta bo'sh joy qolardi — «Prognoz» rejasiz do'konda
+   aynan shunday chiqardi (chop etilgan varaqda ayniqsa ko'zga
+   tashlanardi). */
+.rpt-cols > :only-child { grid-column: 1 / -1; }
 .rpt .card { margin-bottom: 14px; }
 .rpt-wide { grid-column: 1 / -1; }
 
@@ -4553,19 +4573,100 @@ body.osk-open .mark-modal {
 .dbt__total > b { font-size: 22px; font-weight: 800; }
 .dbt__total > small { font-size: 12px; color: var(--fg-tertiary); }
 
-/* ── CHOP ETISH ────────────────────────────────────────────────────────
-   ⚠ Brauzerning o'z chop etishi (PDF kutubxonasi ilovaga 200 KB
-   qo'shardi). Shuning uchun bu yerda faqat KERAKSIZ narsalar
-   olib tashlanadi: menyu, boshqaruv tugmalari, bo'lim tanlagichi.
-   Chop etilgan varaqda faqat RAQAMLAR qoladi. */
+/* ── CHOP ETISH (V73 da qayta ishlangan) ──────────────────────────────
+   Do'kon egasi: «hisobotni chop qilishda ekranga sig'maslik holati bor».
+
+   ═══ NEGA SIG'MASDI ══════════════════════════════════════════════════
+
+   Ustunlar `repeat(4, 1fr)` qilingan edi, lekin `1fr` ning eng kichik
+   o'lchami MAZMUN kengligiga teng: «112 000 000 so'm» degan raqam
+   ko'chmaydi, ya'ni ustun undan tor bo'la olmaydi. Natijada to'rtta
+   ustun A4 ning 794px iga sig'may, 963px chiqardi va o'ng chekkasi
+   QIRQILARDI. Yechim — `minmax(0, 1fr)`: ustun mazmundan tor
+   bo'lishga HAQLI va raqam o'zi kichrayadi.
+
+   ⚠ Buni ekrandan ko'rib bo'lmasdi: `@media print` faqat chop
+   etishda qo'llanadi. `scripts/check-print.mjs` endi haqiqiy PDF
+   chiqarib, har elementni A4 kengligiga solishtiradi.
+   ══════════════════════════════════════════════════════════════════════ */
 @media print {
-  .sidebar, .topbar, .rpt-bar, .rpt-tabs, .rpt-custom,
+  /* ⚠ `.pg-tabs` ham yashiriladi — bo'lim ichidagi sahifa tanlagichi
+     («Umumiy · Xarajatlar · Maxsus hisobot»). Qog'ozda u bosilmaydi
+     va faqat joy egallaydi. */
+  .sidebar, .topbar, .pg-tabs, .rpt-bar, .rpt-tabs, .rpt-custom,
   .chart__tip, .filter-btn, .flt-chips { display: none !important; }
-  .rpt .card { break-inside: avoid; border-color: #ccc; box-shadow: none; }
-  .kpi { break-inside: avoid; border-color: #ccc; }
-  .kpi-grid { grid-template-columns: repeat(4, 1fr); }
-  .rpt-cols { grid-template-columns: 1fr 1fr; }
-  body { background: #fff; }
+
+  /* ⚠ BEZAK IKONKALARI CHIZILMAYDI. Ikonka shrifti tashqi CDN dan
+     keladi va chop etishda u ko'pincha yuklanmaydi — o'shanda har
+     ikonka o'rnida BO'SH KATAKCHA qolib, qog'oz iflos chiqardi.
+     Ma'no tashiydigan belgilar (izoh «i», o'sish ↑↓) shriftga
+     bog'liq emas va ular QOLADI. */
+  .rpt i.fa-solid, .rpt i.fa-brands { display: none !important; }
+
+  /* ⚠ Ranglar SAQLANADI: usiz halqa va ustunlar kulrang chiqib,
+     qaysi bo'lak qaysi to'lov turi ekani bilinmay qolardi. */
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+
+  body, .page, .rpt { background: #fff; margin: 0; padding: 0; }
+  .rpt { max-width: 100%; }
+
+  /* ⚠ Sarlavha FAQAT qog'ozda: ekranda do'kon nomi yon panelda
+     turadi, bosilgan varaqda esa yon panel yo'q va sarlavhasiz
+     hujjat «qaysi do'konning qaysi davri?» degan savolni javobsiz
+     qoldirardi. */
+  .rpt-print-head {
+    display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+    padding-bottom: 8px; margin-bottom: 12px;
+    border-bottom: 2px solid #333;
+  }
+  .rpt-print-head b { font-size: 15px; }
+  .rpt-print-head span { font-size: 11px; color: #555; }
+  .rpt-print-head span:last-child { margin-inline-start: auto; }
+  .rpt-range { display: none; }
+
+  /* ⚠ `minmax(0, 1fr)` — mazmun ustunni cho'zib yubormasin (yuqoridagi
+     izoh). Uchta ustun: A4 da to'rttasi 180px dan tor bo'lib,
+     summalar bir-birining ustiga chiqardi. */
+  .kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .rpt-cols { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+
+  .kpi { break-inside: avoid; border-color: #ccc; padding: 8px 10px; }
+  .kpi__value { font-size: 15px; }
+  .kpi__label { font-size: 11px; }
+  .rpt .card { break-inside: avoid; border-color: #ccc; box-shadow: none; margin-bottom: 10px; }
+
+  /* Jadval qog'ozda ixchamlashadi va KESILMAYDI: `table-layout: fixed`
+     ustunlarni majburan sig'diradi, uzun nom esa uch nuqta bilan
+     tugaydi — qirqilgan ustundan yaxshiroq. */
+  .rpt .table-wrap { overflow: visible; }
+  .rpt table { width: 100%; table-layout: fixed; font-size: 10px; }
+  .rpt table td, .rpt table th {
+    padding: 4px 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+
+  /* Grafiklar — qog'ozda pastroq, lekin nisbati saqlanadi. */
+  .chart svg { max-width: 100%; }
+  .donut-row { gap: 10px; }
+  .heat { overflow: visible; }
+  .heat__grid { min-width: 0; }
+
+  /* ⚠ Ulush ro'yxatida NOM yo'qolib ketardi: tor qutida `1fr`
+     nolgacha qisilib, uch nuqta ham qolmasdi va qog'ozda faqat
+     summalar turardi (do'kon egasining rasmida aynan shu). */
+  .shl__row { grid-template-columns: 8px minmax(60px, 1fr) auto auto; font-size: 10px; }
+  .shl__pct { min-width: 34px; }
+
+  /* ⚠ TOP ro'yxatida NOM birinchi navbatda kerak: qog'ozda «Tovar
+     no…» degan yozuv hech narsa aytmaydi. Yordamchi ustun (miqdor va
+     marja) qisqartiriladi, nomga esa joy beriladi. */
+  .topl__row { grid-template-columns: 18px minmax(0, 1fr) auto; font-size: 10px; padding: 5px 0; }
+  .topl__sub { display: none; }
+
+  /* Reja va prognoz — qog'ozda raqam kichrayadi, aks holda yozuv
+     uch qatorga bo'linib ketardi. */
+  .tgt__row > b { font-size: 13px; }
+  .tgt__row--big > b { font-size: 15px; }
+  .tgt__foot > b { font-size: 15px; }
 }
 
 @media (max-width: 700px) {
