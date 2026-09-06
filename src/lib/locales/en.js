@@ -1201,6 +1201,7 @@ export default {
   "kbd.lineQty": "Selected product: type the quantity",
   "savings.empty": "No savings yet",
   "kassa.overNonCash": "Over-paid (non-cash)",
+  "kassa.takenTotal": "Total from customer",
   "savings.short": "Customer savings",
   "savings.pickHint": "Whose savings gets the money — pick a customer",
   "savings.inPay": "In payment: {n}",

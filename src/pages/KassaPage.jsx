@@ -1667,10 +1667,37 @@ export default function KassaPage({ toast, refreshLowStock }) {
   /**
    * ⚠ USULNI TANLASH — QIYMATNI O'CHIRMAYDI. Kassir naqdga 20 000
    * yozib, Click ga o'tib, keyin naqdga QAYTSA, maydonda o'sha 20 000
-   * turishi kerak (do'kon egasining talabi). Shuning uchun bu yerda
-   * faqat fokus almashadi.
+   * turishi kerak (do'kon egasining talabi). Shuning uchun qiymat
+   * emas, faqat TAHRIRLANADIGAN usul almashadi.
+   *
+   * ⚠⚠ KURSOR HAM SUMMA MAYDONIGA O'TADI (V94). Ilgari bu yerda
+   * faqat `setPayFocus` turardi, F1..F4 yonidagi izohda esa
+   * «kursorni summa maydoniga qaytaradi» deb YOZILGAN edi — ya'ni
+   * izoh va’dani bergan, kod esa bajarmagan. Do'kon egasi buni
+   * ko'rsatdi: usul tugmasi bosiladi, keyin summa yozila boshlanadi
+   * va HECH QAYERGA tushmaydi — kassir sichqoncha bilan maydonga
+   * qayta bosishga majbur.
+   *
+   * ⚠ KARETKA `requestAnimationFrame` DA. Fokusning o'zi darhol
+   * beriladi (maydon allaqachon ekranda), lekin karetka YANGI qiymat
+   * chizilgandan keyin qo'yilishi kerak: `setPayFocus` maydondagi
+   * sonni almashtiradi va undan oldin qo'yilgan karetka eski
+   * uzunlikka tayanardi.
+   *
+   * ⚠ MATN BELGILANMAYDI (`select()` YO'Q). Belgilansa, keyingi
+   * raqam eski qiymatni o'chirib yuborardi — bu esa yuqoridagi
+   * «qiymat saqlanadi» qoidasini amalda bekor qilardi.
    */
-  const focusMethod = (type) => setPayFocus(type);
+  const focusMethod = (type) => {
+    setPayFocus(type);
+    const el = document.getElementById("pay-amount");
+    if (!el) return;
+    el.focus();
+    requestAnimationFrame(() => {
+      const n = el.value.length;
+      try { el.setSelectionRange(n, n); } catch (_) { /* karetkasiz maydon */ }
+    });
+  };
 
   /**
    * JAMG'ARMAGA PUL QO'YISH (V64) — savdosiz.
@@ -1969,6 +1996,26 @@ export default function KassaPage({ toast, refreshLowStock }) {
     }
     return rows.map((x) => (x.type === "CASH" ? { ...x, amount: pay.cashIn } : x));
   }, [pay]);
+
+  /**
+   * MIJOZDAN JAMI OLINADIGAN PUL (V94) — do'kon egasining talabi.
+   *
+   * ⚠ AYNAN YUQORIDAGI QATORLARNING YIG'INDISI, boshqa hisobdan
+   * EMAS. Sabab oddiy: kassir ro'yxatni ko'rib turibdi va jami
+   * o'sha ro'yxatga to'g'ri kelmasa, ikkalasining qaysi biri
+   * to'g'riligini bilib bo'lmaydi. Shuning uchun u `pay` dan qayta
+   * hisoblanmaydi — `payRows` dan qo'shiladi.
+   *
+   * ⚠ NASIYA KIRMAYDI: u `payRows` da yo'q va bo'lmasligi ham kerak —
+   * nasiya bugun olinadigan pul emas, qarz.
+   *
+   * ⚠ JAMG'ARMA KIRADI: u mijozning puli va aynan shu chekka
+   * ishlatilyapti. «Mijozdan jami» — mijoz qayerdan bo'lsa ham
+   * beradigan summa.
+   */
+  const payTaken = useMemo(
+    () => payRows.reduce((sum, x) => sum + (Number(x.amount) || 0), 0),
+    [payRows]);
 
   /* Muddatgacha necha kun (V87). `null` — sana yo'q yoki yaroqsiz. */
   const dueLeft = dueDate ? due.daysLeft(dueDate) : null;
@@ -3574,12 +3621,21 @@ export default function KassaPage({ toast, refreshLowStock }) {
                       katta bo'lganda: bo'sh maydon kassirni «nega
                       ishlamayapti» degan savolga qo'yardi. */}
                   {bonusAvail > 0 && (
-                    <NumField kind="int"
-                      className="form-input ek-num cust-facts__input" max={bonusAvail}
-                      value={bonusUse}
-                      onChange={(e) => setBonusUse(e.target.value)}
-                      placeholder={t("bonus.usePh", { max: money(bonusAvail) })}
-                    />
+                    /* «×» — summa maydonidagi bilan bir xil sabab (V94). */
+                    <div className="field">
+                      <NumField kind="int"
+                        className={`form-input ek-num cust-facts__input${
+                          bonusUse !== "" && bonusUse != null ? " has-clear" : ""}`}
+                        max={bonusAvail}
+                        value={bonusUse}
+                        onChange={(e) => setBonusUse(e.target.value)}
+                        placeholder={t("bonus.usePh", { max: money(bonusAvail) })}
+                      />
+                      {bonusUse !== "" && bonusUse != null && (
+                        <ClearButton label={t("kassa.clearInput")}
+                                     onClear={() => setBonusUse("")} />
+                      )}
+                    </div>
                   )}
                 </div>
               )}
@@ -3628,18 +3684,39 @@ export default function KassaPage({ toast, refreshLowStock }) {
               <label className="form-label" htmlFor="pay-amount" style={{ marginTop: 14 }}>
                 {t("kassa.amountFor", { method: payMethods.find((m) => m.key === payFocus)?.label })}
               </label>
-              <NumField kind="money"
-                id="pay-amount"
-                className="form-input pay-mixed-input"
-                value={payValue}
-                autoFocus
-                onChange={(e) => setPayValue(e.target.value)}
-                /* ⚠ PLACEHOLDER — BO'SH MAYDONNING MA'NOSI. Hech narsa
-                   yozilmagan bo'lsa, chek to'liq naqd bo'ladi va bu
-                   yerda aynan o'sha summa turadi. Kassir yozgan
-                   zahoti ma'no o'zgaradi: bo'sh maydon endi nol. */
-                placeholder={payUntouched ? total.toLocaleString("uz-UZ") : "0"}
-              />
+              {/* ⚠ «×» MAYDON ICHIDA (V94, do'kon egasi so'radi).
+                  Monoblokda `Ctrl+A`+`Delete` qilib bo'lmaydi va
+                  kassir noto'g'ri yozilgan summani o'chirish uchun
+                  raqamni birma-bir tozalardi.
+
+                  ⚠ Tugma QIYMAT BO'LGANDAGINA chiziladi: bosiladigan,
+                  lekin hech nima qilmaydigan tugma ishonchni
+                  yo'qotadi (`ui/index.jsx` dagi bir xil qoida).
+
+                  ⚠ `has-clear` — o'ng bo'shliq. Usiz uzun summa
+                  («1 971 010») «×» tagiga kirib ketardi. */}
+              <div className="field">
+                <NumField kind="money"
+                  id="pay-amount"
+                  className={`form-input pay-mixed-input${payValue !== "" && payValue != null ? " has-clear" : ""}`}
+                  value={payValue}
+                  autoFocus
+                  onChange={(e) => setPayValue(e.target.value)}
+                  /* ⚠ PLACEHOLDER — BO'SH MAYDONNING MA'NOSI. Hech narsa
+                     yozilmagan bo'lsa, chek to'liq naqd bo'ladi va bu
+                     yerda aynan o'sha summa turadi. Kassir yozgan
+                     zahoti ma'no o'zgaradi: bo'sh maydon endi nol. */
+                  placeholder={payUntouched ? total.toLocaleString("uz-UZ") : "0"}
+                />
+                {payValue !== "" && payValue != null && (
+                  /* ⚠ TOZALASH ODDIY `onChange` ORQALI: `setPayValue("")`
+                     o'sha usulning yozuvini butunlay o'chiradi
+                     (`delete next[payFocus]`). DOM ga to'g'ridan-to'g'ri
+                     yozish formatlangan qiymat tufayli ishlamasdi. */
+                  <ClearButton label={t("kassa.clearInput")}
+                               onClear={() => setPayValue("")} />
+                )}
+              </div>
               {/* ⚠ QOLDIQ MAYDON OSTIDA: kassir mijozga «hisobingizda
                   shuncha bor» deb ayta olishi kerak. Uni faqat
                   tugmadagi kichkina raqamda ko'rsatish yetmasdi. */}
@@ -3708,6 +3785,26 @@ export default function KassaPage({ toast, refreshLowStock }) {
                     </div>
                   );
                 })}
+
+                {/* ⚠⚠ MIJOZDAN JAMI (V94) — do'kon egasi so'radi:
+                    «bu joyda mijozdan jami qancha pul olinayotgani
+                    ko'rsatilsin». Uchta usul yozilganda kassir
+                    ularni boshida qo'shishga majbur edi, mijoz esa
+                    yonida turadi.
+
+                    ⚠ FAQAT BIRDAN ORTIQ QATORDA. Bitta usulda jami
+                    o'sha qatorning O'ZI bo'ladi va uni ikkinchi marta
+                    yozish — aynan do'kon egasi taqiqlagan ortiqcha
+                    element. */}
+                {payRows.length > 1 && (
+                  <div className="pay-sum__row pay-sum__row--taken">
+                    <span className="pay-sum__name">
+                      <i className="fa-solid fa-hand-holding-dollar" aria-hidden="true" />{" "}
+                      {t("kassa.takenTotal")}
+                    </span>
+                    <b className="ek-num">{money(payTaken)}</b>
+                  </div>
+                )}
 
                 {/* ⚠ NAQDSIZ USULDAN ORTIQCHA (V78). Terminal naqd
                     qaytarmaydi, ya'ni bu pulni mijozga qo'lga berib

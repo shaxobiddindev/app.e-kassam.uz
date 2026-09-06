@@ -1483,6 +1483,27 @@ select.form-input { cursor: pointer; }
 .pay-sum__name i { flex: none; }
 .pay-sum__row b { font-size: 15px; font-weight: 800; }
 
+/* ⚠ MIJOZDAN JAMI (V94) — ro'yxatning YAKUNI, yana bir usul EMAS.
+   Shu sababdan chegarasi uzuq emas, TUTASH va qalinroq: ko'z uni
+   usullar qatoridan darrov ajratadi. Rang ham asosiy matn rangida —
+   ogohlantirish ham, qaytim ham emas, shunchaki jami. */
+/* ⚠ Qo'shni tanlagichda (`+`) — `!important` bilan EMAS. Ustidagi
+   `.pay-sum__row + .pay-sum__row` uzuq chegara beradi va uni bosish
+   uchun aynan shuncha aniqlik yetarli. */
+.pay-sum__row + .pay-sum__row--taken { border-top: 1px solid var(--border-strong); }
+/* ⚠ PASTROQ (30px), usul qatorlaridan farqli. Ikki sabab bor va
+   ikkalasi ham majburiy:
+
+     · ichida TUGMA YO'Q (usul qatorlarida «×» bor va u 36px teginish
+       nishoniga muhtoj) — ya'ni balandlik bu yerda kerak emas;
+     · TO'LOV OYNASIDA SCROL BO'LMASLIGI SHART (V47/V70). Beshta usul
+       + chegirma bo'lgan eng baland holatda 36px lik qator oynani
+       1600×900 da 3px ga oshirib yubordi — `check-fit` shu zahoti
+       ushladi. */
+.pay-sum__row--taken { height: 30px; }
+.pay-sum__row--taken .pay-sum__name { color: var(--fg-primary); }
+.pay-sum__row--taken b { color: var(--fg-primary); }
+
 /* Qaytim — mijozga QAYTADIGAN pul, olingan puldan boshqa rangda. */
 .pay-sum__row--change { color: var(--fg-warning); }
 .pay-sum__row--change b { color: var(--fg-warning); }

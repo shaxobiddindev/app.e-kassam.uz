@@ -169,6 +169,9 @@ const state = () => page.evaluate(() => ({
     val: r.querySelector("b")?.textContent.trim(),
     credit: r.classList.contains("pay-sum__row--credit"),
     change: r.classList.contains("pay-sum__row--change"),
+    /* «Mijozdan jami» (V94) — usul EMAS, ro'yxatning yakuni. Usullarni
+       sanaydigan bandlar uni chiqarib tashlashi shart. */
+    taken: r.classList.contains("pay-sum__row--taken"),
   })),
   btns: [...document.querySelectorAll(".pay-type-btn")].map((b) => ({
     txt: b.textContent.replace(/\s+/g, " ").trim(),
@@ -181,6 +184,17 @@ const state = () => page.evaluate(() => ({
   scroll: (() => { const m = document.querySelector(".pay-modal-body") || document.querySelector(".pay-modal");
                    return m ? m.scrollHeight - m.clientHeight : -1; })(),
   warns: [...document.querySelectorAll(".pay-mixed-warn")].map((w) => w.textContent.trim()),
+  /* ⚠ FOKUS `id` bo'yicha o'qiladi, elementning o'zi bo'yicha emas:
+     `evaluate` DOM tugunini qaytara olmaydi (V94). */
+  focus: document.activeElement?.id || document.activeElement?.tagName || null,
+  /* «Mijozdan jami» qatori (V94) — bor-yo'qligi va summasi. */
+  taken: (() => {
+    const r = document.querySelector(".pay-sum__row--taken");
+    return r ? r.querySelector("b")?.textContent.trim() : null;
+  })(),
+  /* Summa maydonining «×» tugmasi (V94). */
+  clearX: !!document.querySelector("#pay-amount")?.parentElement
+            ?.querySelector(".field-clear"),
 }));
 
 const type = async (v) => {
@@ -346,7 +360,11 @@ await pick("Karta"); await type("30000");
 s = await state();
 c = s.rows.find((r) => r.credit)?.val;
 (c || "").replace(/\D/g, "") === "35000" ? ok(`nasiya ${c}`) : no("nasiya 35 000 bo'lishi kerak", c ?? "yo'q");
-s.rows.filter((r) => !r.credit && !r.change).length === 3 ? ok("uchala usul ro'yxatda") : no("uchta qator bo'lishi kerak", s.rows.length);
+s.rows.filter((r) => !r.credit && !r.change && !r.taken).length === 3
+  ? ok("uchala usul ro'yxatda") : no("uchta qator bo'lishi kerak", JSON.stringify(s.rows.map((r) => r.name)));
+/* Uchta usul bor — demak «Mijozdan jami» ham turishi kerak (V94). */
+s.rows.some((r) => r.taken) ? ok("«Mijozdan jami» qatori bor")
+                            : no("uchta usulda jami ko'rsatilishi kerak", "yo'q");
 
 console.log("\n── 6. Naqd ortiqcha → QAYTIM, nasiya yo'q ──");
 await pick("Naqd");
@@ -384,7 +402,7 @@ console.log("\n── 8b. Qatorlar tartibi surilmaydi ──");
   await pick("Karta"); await type("30000");
   await pick("Naqd");  await type("20000");     // eng oxirida qayta yozildi
   const st = await state();
-  const names = st.rows.filter((r) => !r.credit && !r.change).map((r) => r.name.trim());
+  const names = st.rows.filter((r) => !r.credit && !r.change && !r.taken).map((r) => r.name.trim());
   /Naqd/.test(names[0] || "") ? ok("Naqd birinchi qatorda: " + names.join(" · "))
     : no("Naqd birinchi bo'lishi kerak", names.join(" · "));
 }
@@ -956,6 +974,196 @@ console.log("\n── 8i. ⚠ QARZ MUDDATI TO'LOV PAYTIDA SO'RALADI (V87) ──
   body?.creditDueDate === isoDay(10)
     ? ok(`serverga muddat ketdi: ${body.creditDueDate}`)
     : no(`serverga ${isoDay(10)} ketishi kerak`, JSON.stringify(body?.creditDueDate));
+  await pg.close();
+}
+
+console.log("\n── 8j. ⚠ USUL TUGMASI KURSORNI SUMMAGA QAYTARADI (V94) ──");
+/* ═══ IZOH VA'DA BERGAN, KOD BAJARMAGAN ════════════════════════════
+
+   F1..F4 yonidagi izohda «usulni tanlaydi va kursorni summa maydoniga
+   qaytaradi» deb turardi, `focusMethod` esa faqat `setPayFocus` qilardi.
+   Do'kon egasi ko'rsatdi: tugma bosiladi, summa yozila boshlanadi va
+   hech qayerga tushmaydi.
+
+   ⚠ SICHQONCHA BILAN BOSILADI (`page.click`), `evaluate` ichidagi
+   `.click()` bilan emas: aynan HAQIQIY bosishda fokus tugmaga o'tadi
+   va shundan keyin maydonga qaytishi kerak. `evaluate` dagi bosish
+   fokusni umuman ko'chirmasdi — ya'ni tekshiruv o'tib ketaverardi. */
+{
+  const pg = await openKassa({ items: ONE });
+  await pg.evaluate(() => [...document.querySelectorAll("button")]
+    .find((b) => /Sotish|To'lov/i.test(b.textContent))?.click());
+  await new Promise((r) => setTimeout(r, 700));
+
+  const focusOf = () => pg.evaluate(() => document.activeElement?.id || null);
+
+  for (const name of ["Karta", "Click", "Payme", "Naqd"]) {
+    const box = await pg.evaluate((n) => {
+      const b = [...document.querySelectorAll(".pay-type-btn")].find((x) => x.textContent.includes(n));
+      if (!b) return null;
+      const r = b.getBoundingClientRect();
+      return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+    }, name);
+    if (!box) { no(`«${name}» tugmasi topilmadi`, "yo'q"); continue; }
+    await pg.mouse.click(box.x, box.y);
+    await new Promise((r) => setTimeout(r, 250));
+    const f = await focusOf();
+    f === "pay-amount" ? ok(`«${name}» → kursor summa maydonida`)
+                       : no(`«${name}» dan keyin fokus summada bo'lishi kerak`, f);
+  }
+
+  /* ⚠ KARETKA OXIRIDA — boshida EMAS. Kassir naqdga 20 000 yozib
+     Click ga o'tib qaytsa, keyingi raqam sonning OLDIGA tushmasligi
+     kerak. */
+  await pg.evaluate(() => {
+    const el = document.querySelector("#pay-amount");
+    const set = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
+    set?.call(el, "20000"); el.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await new Promise((r) => setTimeout(r, 300));
+  await pg.evaluate(() => [...document.querySelectorAll(".pay-type-btn")]
+    .find((x) => /Karta/i.test(x.textContent))?.click());
+  await new Promise((r) => setTimeout(r, 150));
+  await pg.evaluate(() => [...document.querySelectorAll(".pay-type-btn")]
+    .find((x) => /Naqd/i.test(x.textContent))?.click());
+  await new Promise((r) => setTimeout(r, 300));
+  const caret = await pg.evaluate(() => {
+    const el = document.querySelector("#pay-amount");
+    return { pos: el.selectionStart, len: el.value.length, val: el.value };
+  });
+  caret.pos === caret.len && caret.len > 0
+    ? ok(`karetka oxirida (${caret.val}, ${caret.pos}/${caret.len})`)
+    : no("karetka qiymat oxirida turishi kerak", JSON.stringify(caret));
+  await pg.close();
+}
+
+console.log("\n── 8k. ⚠ MIJOZDAN JAMI (V94) ──");
+/* Do'kon egasining talabi: «bu joyda mijozdan jami qancha pul
+   olinayotgani ko'rsatilsin». */
+{
+  const pg = await openKassa({
+    items: [{ id: 1, name: "Kurtka", salePrice: 28990, qty: 1, unit: "DONA", stockQuantity: 9 }],
+  });
+  await pg.evaluate(() => [...document.querySelectorAll("button")]
+    .find((b) => /Sotish|To'lov/i.test(b.textContent))?.click());
+  await new Promise((r) => setTimeout(r, 700));
+
+  const put = async (name, v) => {
+    await pg.evaluate((n) => [...document.querySelectorAll(".pay-type-btn")]
+      .find((x) => x.textContent.includes(n))?.click(), name);
+    await new Promise((r) => setTimeout(r, 200));
+    await pg.evaluate((val) => {
+      const el = document.querySelector("#pay-amount");
+      const set = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
+      set?.call(el, val); el.dispatchEvent(new Event("input", { bubbles: true }));
+    }, v);
+    await new Promise((r) => setTimeout(r, 300));
+  };
+  const readTaken = () => pg.evaluate(() => {
+    const r = document.querySelector(".pay-sum__row--taken");
+    return {
+      shown: !!r,
+      val: r ? Number(r.querySelector("b").textContent.replace(/\D/g, "")) : null,
+      rows: [...document.querySelectorAll(".pay-sum__row")]
+        .filter((x) => !x.classList.contains("pay-sum__row--taken")
+                    && !x.classList.contains("pay-sum__row--over")
+                    && !x.classList.contains("pay-sum__row--change")
+                    && !x.classList.contains("pay-sum__row--credit"))
+        .map((x) => Number(x.querySelector("b")?.textContent.replace(/\D/g, "") || 0)),
+    };
+  });
+
+  /* ⚠ BITTA USULDA QATOR YO'Q: jami o'sha qatorning O'ZI bo'lardi va
+     uni takrorlash — ortiqcha element (do'kon egasining umumiy
+     qoidasi). */
+  await put("Naqd", "100000");
+  let r = await readTaken();
+  r.shown ? no("bitta usulda «jami» ko'rsatilmasin", r.val)
+          : ok("bitta usulda ortiqcha qator chizilmadi");
+
+  /* Uchta usul — egasining suratidagi holat. */
+  await put("Karta", "1000000");
+  await put("Click", "1000000");
+  r = await readTaken();
+  const sum = r.rows.reduce((a, b) => a + b, 0);
+  r.shown ? ok(`uchta usulda «Mijozdan jami» chiqdi: ${r.val}`)
+          : no("uchta usulda «jami» ko'rsatilishi kerak", "yo'q");
+  /* ⚠⚠ JAMI KO'RINGAN QATORLARGA TENG BO'LISHI SHART. Agar u boshqa
+     hisobdan olinsa, ekranda ikkita bir-biriga zid raqam turardi va
+     kassir qaysi biriga ishonishni bilmasdi. */
+  r.val === sum
+    ? ok(`jami ko'ringan qatorlar yig'indisiga teng (${sum})`)
+    : no("jami qatorlar yig'indisiga teng bo'lishi kerak", `${r.val} ≠ ${sum}`);
+  sum === 2100000
+    ? ok("2 100 000 — naqd 100 000 + karta 1 000 000 + Click 1 000 000")
+    : no("kutilgan yig'indi 2 100 000", sum);
+  await pg.close();
+}
+
+console.log("\n── 8l. ⚠ MAYDONDAGI «×» (V94) ──");
+{
+  const pg = await openKassa({ items: ONE });
+  await pg.evaluate(() => [...document.querySelectorAll("button")]
+    .find((b) => /Sotish|To'lov/i.test(b.textContent))?.click());
+  await new Promise((r) => setTimeout(r, 700));
+
+  const xOf = () => pg.evaluate(() =>
+    !!document.querySelector("#pay-amount")?.closest(".field")?.querySelector(".field-clear"));
+
+  /* ⚠ BO'SH MAYDONDA TUGMA YO'Q: bosiladigan, lekin hech nima
+     qilmaydigan tugma ishonchni yo'qotadi (`ui/index.jsx` qoidasi). */
+  (await xOf()) ? no("bo'sh maydonda «×» chizilmasin", "bor") : ok("bo'sh maydonda «×» yo'q");
+
+  await pg.evaluate(() => {
+    const el = document.querySelector("#pay-amount");
+    const set = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
+    set?.call(el, "45000"); el.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await new Promise((r) => setTimeout(r, 300));
+  (await xOf()) ? ok("qiymat yozilgach «×» chiqdi") : no("«×» chiqishi kerak", "yo'q");
+
+  /* ⚠ Uzun son «×» tagiga kirib ketmasin. */
+  const pad = await pg.evaluate(() => {
+    const el = document.querySelector("#pay-amount");
+    return { cls: el.className.includes("has-clear"),
+             pr: parseInt(getComputedStyle(el).paddingRight, 10) };
+  });
+  pad.cls && pad.pr >= 30
+    ? ok(`o'ng bo'shliq ochildi (padding-right ${pad.pr}px)`)
+    : no("`has-clear` o'ng bo'shliq berishi kerak", JSON.stringify(pad));
+
+  /* ⚠⚠ TUGMA KO'RINADIGAN JOYDA VA BOSILADIGAN O'LCHAMDA BO'LSIN.
+     DOM da borligi YETMAYDI: 0×0 o'lchamli yoki maydondan tashqarida
+     qolgan tugmani kassir hech qachon bosa olmaydi, sinov esa
+     «bor» deb o'tkazib yuborardi.
+
+     ⚠ Ikonkaning O'ZI tekshirilmaydi — brauzer tekshiruvida Font
+     Awesome yuklanmaydi (barcha ikonkalar bo'sh chiqadi). Shrifting
+     yo'qligi bu yerda o'lchanadigan narsa emas. */
+  const geo = await pg.evaluate(() => {
+    const inp = document.querySelector("#pay-amount");
+    const x = inp.closest(".field").querySelector(".field-clear");
+    const a = inp.getBoundingClientRect(), b = x.getBoundingClientRect();
+    return {
+      w: Math.round(b.width), h: Math.round(b.height),
+      inside: b.right <= a.right + 1 && b.left >= a.left && b.top >= a.top - 1 && b.bottom <= a.bottom + 1,
+      vis: getComputedStyle(x).visibility !== "hidden" && getComputedStyle(x).opacity !== "0",
+    };
+  });
+  geo.w >= 18 && geo.h >= 18 && geo.inside && geo.vis
+    ? ok(`«×» maydon ichida va bosiladigan o'lchamda (${geo.w}×${geo.h})`)
+    : no("«×» maydon ichida, ko'rinadigan va ≥18px bo'lishi kerak", JSON.stringify(geo));
+
+  await pg.evaluate(() => document.querySelector("#pay-amount")
+    .closest(".field").querySelector(".field-clear").click());
+  await new Promise((r) => setTimeout(r, 350));
+  const after = await pg.evaluate(() => ({
+    val: document.querySelector("#pay-amount").value,
+    rows: document.querySelectorAll(".pay-sum__row").length,
+    x: !!document.querySelector("#pay-amount")?.closest(".field")?.querySelector(".field-clear"),
+  }));
+  after.val === "" ? ok("«×» maydonni tozaladi") : no("maydon bo'shashi kerak", after.val);
+  after.x ? no("tozalangach «×» yo'qolishi kerak", "qoldi") : ok("tozalangach «×» yo'qoldi");
   await pg.close();
 }
 

@@ -1256,6 +1256,7 @@ export default {
   "kbd.lineQty": "Tanlangan tovar: miqdorni raqam bilan yozish",
   "savings.empty": "Jamg'arma bo'sh",
   "kassa.overNonCash": "Naqdsiz usuldan ortiq",
+  "kassa.takenTotal": "Mijozdan jami",
   "savings.short": "Mijoz jamg'armasi",
   "savings.pickHint": "Pul kimning jamg'armasiga qo'yiladi — mijozni tanlang",
   "savings.inPay": "To'lovda: {n}",
