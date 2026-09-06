@@ -16,6 +16,7 @@ import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
    hech qachon ochmaydigan kassirga ham yuklatardi. */
 const PaymentReceipt = lazy(() => import("../portal/PaymentReceipt"));
 import DebtPayModal from "../components/DebtPayModal";
+import StatementModal from "../components/StatementModal";
 import ManualDebtModal from "../components/ManualDebtModal";
 import SavingsModal from "../components/SavingsModal";
 import { printDebtReceipt } from "../lib/ek-hardware";
@@ -78,6 +79,8 @@ export default function CustomersPage({ toast }) {
      ekan» deb o'ylardi. */
   const isManager = [...roleSet(user?.role)].some((r) => r === "OWNER" || r === "SHOP_ADMIN");
   const [payOpen, setPayOpen] = useState(false);
+  /* Mijoz hisoboti (V98) — qarz oynasidan ochiladi. */
+  const [stOpen, setStOpen] = useState(false);
   /* Ekranda turgan to'lov cheki: to'lovdan keyin darhol, yoki jurnaldagi
      tugmadan. `null` — yopiq. */
   const [receipt, setReceipt] = useState(null);
@@ -675,7 +678,7 @@ export default function CustomersPage({ toast }) {
           ⚠ To'lov ALOHIDA oynada: kassa kabi katta summa, to'lov turi
           katakchalari va raqamli klaviatura bilan. Jurnalni ham, raqamli
           klaviaturani ham bitta oynaga tiqish uni ekrandan uzun qilardi. */}
-      {debt && !payOpen && (
+      {debt && !payOpen && !stOpen && (
         <Modal
           /* Sarlavha holatga qarab: qarzi borida «Qarz», tugaganida
              «Qarz tarixi» — oyna bir xil, savol boshqa. */
@@ -690,6 +693,15 @@ export default function CustomersPage({ toast }) {
             <>
               <button className="btn btn-outline btn-sm" onClick={() => setDebt(null)}>
                 {t("common.close")}
+              </button>
+              {/* ⚠ HISOBOT QARZI YO'QLARDA HAM OCHILADI — «To'lash» dan
+                  farqli. Mijoz «men hammasini to'laganman» deb kelsa,
+                  unga aynan TO'LANGAN qarzning tarixini ko'rsatish
+                  kerak; tugma o'chiq bo'lsa, do'kon dalilini chiqara
+                  olmasdi. */}
+              <button className="btn btn-outline btn-sm" onClick={() => setStOpen(true)}
+                      disabled={!(debt.ledger || []).length}>
+                <i className="fa-solid fa-file-invoice" /> {t("credit.statement")}
               </button>
               <button className="btn btn-primary btn-sm" onClick={() => setPayOpen(true)}
                       disabled={!(Number(debt.customer.balance) > 0)}>
@@ -843,6 +855,20 @@ export default function CustomersPage({ toast }) {
           paying={paying}
           onClose={() => setPayOpen(false)}
           onSubmit={submitDebt}
+        />
+      )}
+
+      {/* ⚠ QARZ OYNASI YASHIRILADI, ustiga chizilmaydi — to'lov oynasi
+          bilan bir xil qoida (V24 «modal ustma-ustligi»). Ikkita oyna
+          ustma-ust tushganda foydalanuvchi qaysi biri faol ekanini
+          bilmay qoladi va ESC qaysinisini yopishi ham noaniq. */}
+      {debt && stOpen && (
+        <StatementModal
+          customer={debt.customer}
+          ledger={debt.ledger}
+          shopName={localStorage.getItem("ek_shopName") || ""}
+          toast={toast}
+          onClose={() => setStOpen(false)}
         />
       )}
 

@@ -85,14 +85,60 @@ body {
 `;
 
 /** Bosma hujjat — bitta oq sahifa, ichida chek tasmasining nusxasi. */
-function buildHtml(tapeHtml, title) {
+function buildHtml(tapeHtml, title, css = PRINT_CSS) {
   const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   /* ⚠ `data-theme="light"`: ilova qorong'i temada bo'lsa ham chek oq
      qog'ozda qoladi (ekranda ham shunday — `[data-theme=dark] .pt-tape`). */
   return `<!DOCTYPE html><html lang="uz" data-theme="light"><head>`
     + `<meta charset="utf-8"><title>${esc(title)}</title>`
-    + `<style>${PRINT_CSS}</style></head><body>${tapeHtml}</body></html>`;
+    + `<style>${css}</style></head><body>${tapeHtml}</body></html>`;
+}
+
+/**
+ * ══════════════════════════════════════════════════════════════════════
+ * HUJJATNI CHOP ETISH / PDF QILIB SAQLASH — UMUMIY YO'L (V98)
+ *
+ * ⚠ NEGA AJRATILDI. Platformaga xos ikkita nozik joy bor va ular
+ * TAKRORLANMASLIGI kerak:
+ *
+ *   · Android ilovada `window.print()` JIM ishlaydi — hech narsa
+ *     qilmaydi va foydalanuvchi tugma buzilgan deb o'ylaydi;
+ *   · brauzerda ochilgan oyna chop etilgach O'ZI yopilishi kerak,
+ *     aks holda har hujjatdan keyin bitta ochiq oyna qolib ketadi.
+ *
+ * Mijoz hisoboti ham shu yo'ldan o'tadi — faqat uslubi boshqa (A4,
+ * chek esa 58 mm). Ikkinchi nusxa yozilsa, bu ikki nozik joydan biri
+ * unda bir kuni tushib qolardi.
+ * ══════════════════════════════════════════════════════════════════════
+ */
+export async function printHtml(bodyHtml, title, css, win = "width=420,height=720") {
+  const name = title || "Hujjat";
+  const html = buildHtml(bodyHtml, name, css);
+
+  if (isMobileApp()) {
+    const plugin = window.Capacitor?.Plugins?.ReceiptPrint;
+    /* Plagin yo'q (eski APK yoki brauzerdagi `ek_forceMobile` sinovi) —
+       oddiy brauzer yo'liga tushamiz, u yerda ishlasa ishlaydi. */
+    if (plugin) {
+      await plugin.print({ html, name });
+      return;
+    }
+  }
+
+  /* ⚠ O'LCHAM PARAMETR: chek 420px oynada ochiladi (u 58 mm), hisobot
+     esa kengrog'ida. Umumiy yo'lga ko'chirishda buni unutib, chekni
+     ham 820px ga o'tkazib yuborgan edim — ishlab turgan yo'lning
+     ko'rinishini beixtiyor o'zgartirish aynan shunday boshlanadi. */
+  const w = window.open("", "_blank", win);
+  /* Popup to'silgan — bu YAGONA kutiladigan xato, matni ham aniq bo'lsin */
+  if (!w) throw new Error("Brauzer yangi oynani to'sdi — ruxsat bering va qayta urinib ko'ring");
+  w.document.write(html);
+  w.document.close();
+  /* Chop etilgach oyna O'ZI yopiladi — aks holda har hujjatdan keyin
+     bitta ochiq oyna qolib ketardi (`ek-hardware.js` bilan bir xil). */
+  w.onafterprint = () => w.close();
+  setTimeout(() => w.print(), 80);
 }
 
 /**
@@ -105,26 +151,7 @@ function buildHtml(tapeHtml, title) {
  */
 export async function saveReceiptPdf(tapeEl, title) {
   if (!tapeEl) throw new Error("Chek hali yuklanmadi");
-  const name = title || "Chek";
-  const html = buildHtml(tapeEl.outerHTML, name);
-
-  if (isMobileApp()) {
-    const plugin = window.Capacitor?.Plugins?.ReceiptPrint;
-    /* Plagin yo'q (eski APK yoki brauzerdagi `ek_forceMobile` sinovi) —
-       oddiy brauzer yo'liga tushamiz, u yerda ishlasa ishlaydi. */
-    if (plugin) {
-      await plugin.print({ html, name });
-      return;
-    }
-  }
-
-  const win = window.open("", "_blank", "width=420,height=720");
-  /* Popup to'silgan — bu YAGONA kutiladigan xato, matni ham aniq bo'lsin */
-  if (!win) throw new Error("Brauzer yangi oynani to'sdi — ruxsat bering va qayta urinib ko'ring");
-  win.document.write(html);
-  win.document.close();
-  /* Chop etilgach oyna O'ZI yopiladi — aks holda har chekdan keyin bitta
-     ochiq oyna qolib ketardi (ek-hardware.js dagi bilan bir xil qoida). */
-  win.onafterprint = () => win.close();
-  setTimeout(() => win.print(), 80);
+  /* ⚠ Uslub BERILMAYDI — chek 58 mm tasmada qoladi (`PRINT_CSS`).
+     Platformaga xos yo'l esa `printHtml` da, bitta joyda. */
+  return printHtml(tapeEl.outerHTML, title || "Chek");
 }

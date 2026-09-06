@@ -5769,3 +5769,43 @@ button.stk__c:hover { background: var(--bg-hover); }
 .sales-kpi__item--ret  { border-left-color: var(--fg-warning); }
 .sales-kpi__item--net  { border-left-color: var(--fg-success); }
 .sales-kpi__item--debt { border-left-color: var(--fg-danger); }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   MIJOZ HISOBOTI — SARLAVHA RAQAMLARI (V98)
+
+   ⚠ `auto-fit`: to'rtta ko'rsatkich keng oynada yonma-yon, tor ekranda
+   o'zi ustma-ust tushadi. Qat'iy to'rt ustun telefonda raqamlarni
+   o'rab yuborardi.
+   ══════════════════════════════════════════════════════════════════════════ */
+.st-tot {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius, 10px);
+  background: var(--bg-sunken, var(--bg-surface));
+}
+.st-tot > div { display: flex; flex-direction: column; gap: 2px; }
+.st-tot span {
+  font-size: 10px; font-weight: 800; letter-spacing: .04em;
+  text-transform: uppercase; color: var(--fg-tertiary);
+}
+.st-tot b { font-size: 16px; font-weight: 800; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   O'NGGA TEKISLASH — PUL USTUNLARI UCHUN (V98)
+
+   ⚠ SINF KODDA BOR EDI, CSS DA YO'Q. `SalesPage` ning qaytarish
+   jadvalida `ta-right` allaqachon yozilgan, lekin qoida hech qachon
+   e'lon qilinmagan — ya'ni u shu paytgacha HECH NARSA qilmagan va
+   summalar chapda turgan. Buni faqat yangi jadval qo'shilganda,
+   raqamlar tekislanmaganini ko'rib payqash mumkin bo'ldi.
+
+   Pul ustuni o'ngga tekislanishi shart: razryadlar bir-birining
+   ostiga tushganda 1 250 000 bilan 125 000 ni bir qarashda farqlash
+   mumkin, chapga tekislanganda esa ikkalasi bir xil uzunlikda
+   ko'rinadi.
+   ══════════════════════════════════════════════════════════════════════════ */
+.ta-right { text-align: right; }

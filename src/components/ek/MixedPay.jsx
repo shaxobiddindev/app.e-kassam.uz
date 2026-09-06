@@ -2,7 +2,12 @@ import { useMemo } from "react";
 import { NumField } from "./EkFields";
 import { ClearButton } from "../ui";
 import { paymentEntry } from "../../lib/ek-labels";
-import { money } from "../../lib/ek-format";
+/* ⚠ `config` DAN, `ek-format` dan EMAS: bu yerdagi `money` birlikni
+   («so'm») qo'shib beradi va kassadagi hisob aynan shunday
+   ko'rinadi. Do'kon egasi kassaning suratini yuborib «boshqa
+   oynalarda ham shunday bo'lsin» dedi — birlik ham o'sha
+   ko'rinishning bir qismi. */
+import { money } from "../../config";
 import { useT } from "../../lib/ek-i18n";
 import { enteredTotal, enteredParts, enteredMax } from "../../lib/ek-payment";
 
@@ -139,10 +144,25 @@ export default function MixedPay({
         )}
       </div>
 
-      {/* ⚠ HISOB FAQAT BIRDAN ORTIQ USULDA. Bitta usulda u yuqoridagi
-          maydonni takrorlagan bo'lardi — do'kon egasi taqiqlagan
-          ortiqcha element. */}
-      {rows.length > 1 && (
+      {/* ⚠ HISOB BITTA USULDA HAM KO'RINADI — kassadagi bilan AYNAN
+          BIR XIL (V98).
+
+          Ilgari u faqat ikki va undan ortiq usulda chizilardi:
+          «bitta usulda hisob yuqoridagi maydonni takrorlaydi» degan
+          mulohaza bilan. Do'kon egasi kassaning suratini yuborib
+          «boshqa to'lov oynalarida ham mana shunday ma'lumot
+          ko'rsatilishi kerak» dedi — ya'ni mulohaza noto'g'ri edi.
+
+          Sabab amaliy: maydon TANLANGAN usulni ko'rsatadi, hisob esa
+          YOZILGANLARNING HAMMASINI. Bitta usulda ular ustma-ust
+          tushadi, lekin kassir uchun blokning O'ZI muhim — u har
+          oynada bir xil joyda turishi kerak, aks holda ikkinchi
+          usulni yozgach «qayerda ko'raman?» degan savol tug'ilardi.
+
+          ⚠ «Mijozdan jami» esa hamon FAQAT ikkitadan boshlab: bitta
+          usulda u qatorning o'zini takrorlagan bo'lardi (kassada ham
+          shunday). */}
+      {rows.length > 0 && (
         <div className="pay-sum" style={{ marginTop: 10 }}>
           {rows.map((x) => {
             const p = paymentEntry(x.type);
@@ -160,6 +180,7 @@ export default function MixedPay({
               </div>
             );
           })}
+          {rows.length > 1 && (
           <div className="pay-sum__row pay-sum__row--taken">
             <span className="pay-sum__name">
               <i className="fa-solid fa-hand-holding-dollar" aria-hidden="true" />{" "}
@@ -167,6 +188,7 @@ export default function MixedPay({
             </span>
             <b className="ek-num">{money(total)}</b>
           </div>
+          )}
         </div>
       )}
     </>
