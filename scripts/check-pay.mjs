@@ -642,6 +642,75 @@ console.log("\n── 8d. Naqd tugmalari ──");
   await pg.close();
 }
 
+console.log("\n── 8g. ⚠ NAQDSIZ ORTIQCHA JAMG'ARMAGA — SOTISH OCHIQ ──");
+/* ═══ EKRAN O'ZI BILAN ZIDDIYATGA TUSHGAN EDI ═══════════════════════
+
+   Do'kon egasining surati: Click 100 000, chek 20 000. Yashil qatorda
+   «Jamg'armaga +80 000», tagida yashil tugma «Qaytim jamg'armaga» —
+   va SHU BILAN BIRGA qizil «Ortiqcha 80 000. Qaytim faqat naqddan»
+   hamda o'chirilgan «Sotish» tugmasi.
+
+   Sabab: V78 ortiqchani jamg'armaga yo'naltirish yo'lini ochgan,
+   lekin ikkita qorovul eski `pay.over > 0` shartida qolgan edi —
+   biri tugmani o'chirardi, ikkinchisi qizil xatoni chizardi.
+   Kassirda hech qanday yo'l yo'q edi: mijoz to'lagan, pulning
+   manzili bor, chek esa yopilmasdi. */
+{
+  const pg = await openKassa({
+    items: [{ id: 1, name: "Kurtka", salePrice: 20000, qty: 1, unit: "DONA", stockQuantity: 9 }],
+    customers: [{ id: 7, fullName: "Vali", phone: "+998901234567", savingsBalance: 0 }],
+  });
+  await pg.evaluate(() => [...document.querySelectorAll("button")]
+    .find((b) => /Sotish|To'lov/i.test(b.textContent))?.click());
+  await new Promise((r) => setTimeout(r, 700));
+  await pickCustomer(pg, "Vali");
+
+  /* Click tanlanadi va 100 000 yoziladi. */
+  await pg.evaluate(() => {
+    const b = [...document.querySelectorAll(".pay-type-btn")].find((x) => /Click/i.test(x.textContent));
+    b?.click();
+  });
+  await new Promise((r) => setTimeout(r, 250));
+  await pg.evaluate(() => {
+    const el = document.querySelector("#pay-amount");
+    const set = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
+    set?.call(el, "100000"); el.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await new Promise((r) => setTimeout(r, 400));
+
+  const read = () => pg.evaluate(() => ({
+    warn: [...document.querySelectorAll(".pay-mixed-warn")].map((w) => w.textContent.trim()),
+    rows: [...document.querySelectorAll(".pay-sum__row")].map((r) => r.textContent.replace(/\s+/g, " ").trim()),
+    sav: !!document.querySelector(".pay-change-sav"),
+    savOn: !!document.querySelector(".pay-change-sav.active"),
+    can: !document.querySelector(".pay-modal-submit")?.disabled,
+  }));
+
+  let v = await read();
+  /* ⚠ TUGMA O'CHIQ BO'LISHI TO'G'RI — hali jamg'armaga
+     yo'naltirilmagan, ya'ni 80 000 ning manzili yo'q. */
+  !v.can ? ok("yo'naltirilmaguncha «Sotish» yopiq — to'g'ri")
+         : no("yo'naltirilmagan ortiqchada yopiq bo'lishi kerak", "ochiq");
+  v.warn.some((w) => /Ortiqcha/i.test(w))
+    ? ok("sabab aytiladi: ortiqcha") : no("ogohlantirish bo'lishi kerak", JSON.stringify(v.warn));
+  v.sav ? ok("«Qaytim jamg'armaga» tugmasi bor") : no("tugma bo'lishi kerak", "yo'q");
+
+  await pg.evaluate(() => document.querySelector(".pay-change-sav")?.click());
+  await new Promise((r) => setTimeout(r, 400));
+  v = await read();
+
+  /* ⚠ ASOSIY SHART. */
+  v.can ? ok("jamg'armaga yo'naltirilgach «Sotish» OCHILDI")
+        : no("«Sotish» ochilishi kerak", "yopiq");
+  !v.warn.some((w) => /Ortiqcha/i.test(w))
+    ? ok("qizil «ortiqcha» xatosi yo'qoldi — ziddiyat yo'q")
+    : no("xato yo'qolishi kerak edi", JSON.stringify(v.warn));
+  v.rows.some((r) => /Jamg'arma/i.test(r) && /80 ?000/.test(r))
+    ? ok("hisobda «Jamg'armaga +80 000» qatori") : no("qator bo'lishi kerak", JSON.stringify(v.rows));
+  v.savOn ? ok("tugma faol holatda") : no("tugma faol bo'lishi kerak", "yo'q");
+  await pg.close();
+}
+
 console.log("\n── 9. Scrol bo'lmasin — har ekranda ──");
 
 const MANY = Array.from({ length: 9 }, (_, i) => ({

@@ -1903,13 +1903,29 @@ export default function KassaPage({ toast, refreshLowStock }) {
   const payBodyRef = useRef(null);
   /* Ekran klaviaturasi ochiqmi — oynaga qolgan joy shunga bog'liq
      (`keyboard` yuqorida allaqachon olingan). */
+  /* ══ ORTIQCHA PUL JAMG'ARMAGA KETYAPTIMI (V84) ══════════════════════
+     
+     ⚠ YAGONA SHART, uchta joyda ishlatiladi: to'siq, ogohlantirish va
+     serverga yuboriladigan tana. Ilgari ular UCHTA boshqa-boshqa
+     shartga tayanardi va ekran o'zi bilan ziddiyatga tushdi: yashil
+     qatorda «Jamg'armaga +80 000» yozilib turgan holda, pastda qizil
+     «Ortiqcha 80 000. Qaytim faqat naqddan» chiqib, «Sotish» tugmasi
+     o'chib qolardi. Kassirda hech qanday yo'l yo'q edi.
+
+     ⚠ `customer` ham SHART. Jamg'arma — mijozning hisobi; mijozsiz
+     yo'naltiradigan joy yo'q. Ilgari serverga yuboriladigan tanada bu
+     tekshiruv yo'q edi (faqat ko'rsatishda bor edi): mijoz tanlangach
+     tugma yoqilib, keyin mijoz olib tashlansa, chek serverga borib
+     «savings.change.no.customer» xatosi bilan qaytardi. */
+  const overToSavings = changeToSavings && !!customer && pay.excess > 0;
+
   const oskOpen = keyboard.isOpen;
   const fitKey = [
     customer?.id, !!tier, savingsLeft > 0, Number(tier?.debtBalance) > 0, bonusAvail > 0,
     Number(tier?.bonusExpiringSoon) > 0, pay.parts.length, pay.change > 0, creditPart > 0,
     creditBlocked, needCustomer, discountNum > 0, lineDiscounts > 0,
     roundOffers.length, budgetPicks.length, discVerdict, cart.length, payUntouched,
-    pay.over > 0, payFocus === "SAVINGS",
+    pay.over > 0, overToSavings, payFocus === "SAVINGS",
     /* ⚠ Klaviatura ochilganda oynaga qolgan joy KESKIN kamayadi
        (V67) — daraja nolga qaytib, qaytadan o'lchanishi shart. */
     oskOpen,
@@ -1917,8 +1933,9 @@ export default function KassaPage({ toast, refreshLowStock }) {
   const fit = useFitHeight(payBodyRef, { enabled: showPayModal, key: fitKey });
 
   /* ⚠ NAQDSIZ USULDA ORTIQCHA — XATO, qaytim emas: terminal aynan
-     so'ralgan summani oladi. */
-  const overOk = pay.over === 0;
+     so'ralgan summani oladi. Yagona istisno — u jamg'armaga
+     yo'naltirilgan bo'lsa: o'shanda pulning manzili bor. */
+  const overOk = pay.over === 0 || overToSavings;
 
   const canSubmit = cart.length > 0 && !processing
                     && creditOk && !creditBlocked && overOk;
@@ -1964,9 +1981,9 @@ export default function KassaPage({ toast, refreshLowStock }) {
       /* ⚠ ORTIQCHANING HAMMASI (V78): naqd qaytimi ham, naqdsiz
          usuldan oshgani ham. Server ikkalasini ham tekshiradi —
          `cashGiven` naqd qismini, `nonCashOver` esa qolganini. */
-      changeToSavings: changeToSavings && pay.excess > 0 ? pay.excess : null,
-      cashGiven: changeToSavings && pay.excess > 0 ? pay.cashIn : null,
-      nonCashOver: changeToSavings && pay.over > 0 ? pay.over : null,
+      changeToSavings: overToSavings ? pay.excess : null,
+      cashGiven: overToSavings ? pay.cashIn : null,
+      nonCashOver: overToSavings && pay.over > 0 ? pay.over : null,
       /* ⚠ ESKI MAYDONLAR HAM YUBORILADI. Sabab bosqichma-bosqich
          yangilanish: server hali eski bo'lsa (yoki oflayn navbatdagi
          chek eski serverga tushsa) chek baribir yozilishi kerak.
@@ -3556,7 +3573,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
                     bo'lmaydi — yagona to'g'ri manzili jamg'arma.
                     Ilgari u shunchaki «xato» deb turardi va kassirda
                     hech qanday yo'l yo'q edi. */}
-                {pay.over > 0 && !changeToSavings && (
+                {pay.over > 0 && !overToSavings && (
                   <div className="pay-sum__row pay-sum__row--over">
                     <span className="pay-sum__name">
                       <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />{" "}
@@ -3568,19 +3585,19 @@ export default function KassaPage({ toast, refreshLowStock }) {
 
                 {/* ⚠ QAYTIM — faqat NAQDDAN chiqadi: kassir qo'lga
                     beradigan pul aynan shu. */}
-                {(pay.change > 0 || (changeToSavings && customer && pay.excess > 0)) && (
+                {(pay.change > 0 || overToSavings) && (
                   /* Jamg'armaga belgilangan bo'lsa qator YASHIL va «Jamg'armaga
                      +X»: kassir qaytimni qo'lga bermasligini ko'rib turadi. */
-                  <div className={`pay-sum__row ${changeToSavings && customer
+                  <div className={`pay-sum__row ${overToSavings
                                    ? "pay-sum__row--save" : "pay-sum__row--change"}`}>
                     <span className="pay-sum__name">
-                      <i className={`fa-solid ${changeToSavings && customer
+                      <i className={`fa-solid ${overToSavings
                                      ? "fa-sack-dollar" : "fa-arrow-rotate-left"}`} aria-hidden="true" />{" "}
-                      {changeToSavings && customer ? t("savings.toSavings") : t("kassa.change")}
+                      {overToSavings ? t("savings.toSavings") : t("kassa.change")}
                     </span>
                     <b className="ek-num">
-                      {changeToSavings && customer ? "+" : ""}
-                      {money(changeToSavings && customer ? pay.excess : pay.change)}
+                      {overToSavings ? "+" : ""}
+                      {money(overToSavings ? pay.excess : pay.change)}
                     </b>
                   </div>
                 )}
@@ -3661,8 +3678,12 @@ export default function KassaPage({ toast, refreshLowStock }) {
                 </div>
               )}
 
-              {/* Naqdsiz usulda ortiqcha — xato, qaytim emas. */}
-              {pay.over > 0 && (
+              {/* ⚠ Naqdsiz usulda ortiqcha — xato, qaytim emas. Lekin
+                  jamg'armaga yo'naltirilgan bo'lsa XATO EMAS: yuqorida
+                  yashil qatorda «Jamg'armaga +X» yozib turib, bu yerda
+                  qizil «xato» chiqarish ekranni o'zi bilan ziddiyatga
+                  tushirardi. */}
+              {pay.over > 0 && !overToSavings && (
                 <div className="pay-mixed-warn ek-shake">
                   <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />{" "}
                   {t("kassa.payOver", { amount: money(pay.over) })}
