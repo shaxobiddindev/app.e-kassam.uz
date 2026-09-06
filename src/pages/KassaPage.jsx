@@ -25,6 +25,7 @@ import * as queue from "../lib/ek-offline";
 import * as cartStore from "../lib/ek-cart-store";
 import { PAYMENT_TYPE, paymentLabel } from "../lib/ek-labels";
 import { shortDate, time } from "../lib/ek-format";
+import * as due from "../lib/ek-due";
 import { useLoading } from "../lib/use-loading";
 import Modal from "../components/Modal";
 import { PhoneField } from "../components/ek/EkFields";
@@ -300,6 +301,19 @@ export default function KassaPage({ toast, refreshLowStock }) {
      ⚠ SAHIFA holatida: bu DO'KON sozlamasi (`creditDueDays`), savatning
      xususiyati emas — kassir uni tahrirlamaydi. */
   const [dueDays, setDueDays] = useState(0);
+  /* ══ QARZ MUDDATI — CHEKNIKI, SOZLAMANIKI EMAS (V87) ══════════════
+     Do'kon egasi: «qarz berilayotganda qarz muddatini to'lov paytida
+     so'raydigan qilish kerak, qo'shimchasiga sozlamadagi muddat deb
+     belgilay olsin, lekin to'lov paytida muddat so'rash birinchi».
+
+     ⚠ SOZLAMA — TAKLIF, QAROR EMAS. `dueDays` maydonni to'ldirib
+     beradi (shuning uchun «belgilab qo'yish» ham ishlaydi), lekin
+     oxirgi so'z kassirniki: muddat mijoz bilan aynan shu lahzada
+     kelishiladi va u har mijozda har xil.
+
+     Bo'sh satr — «muddat kelishilmagan»; server bunday qarzni
+     ilgarigidek sozlamadagi kun soniga qarab o'lchaydi. */
+  const [dueDate, setDueDate] = useState("");
   const [processing, setProcessing] = useState(false);
   const [branchId]                  = useState(null);
   const [showPayModal, setShowPayModal] = useState(false);
@@ -1879,6 +1893,16 @@ export default function KassaPage({ toast, refreshLowStock }) {
        TAKLIF — kassir uni tasdiqlashi kerak. */
     setPaid({});
     setPayFocus("CASH");
+    /* ⚠ MUDDAT SOZLAMADAN TO'LDIRILADI (V87). Do'kon egasi
+       «sozlamadagi muddat deb belgilay olsin» dedi: kun soni
+       qo'yilgan bo'lsa maydon o'sha sana bilan ochiladi va odatiy
+       chekda kassir hech narsa qilmaydi. Qo'yilmagan bo'lsa maydon
+       bo'sh qoladi — «kelishilmagan».
+
+       ⚠ HAR CHEKDA QAYTA HISOBLANADI: oldingi mijoz bilan
+       kelishilgan sana keyingisiga o'tib ketmasin — mijoz, to'lovlar
+       va ball ham shu sabab bilan shu yerda tozalanadi. */
+    setDueDate(due.plus(dueDays));
     /* ⚠ Bayroq HAR CHEKDA tushadi: qolgani keyingi mijozning
        qaytimini jimgina yutib yuborardi. */
     setChangeToSavings(false);
@@ -1916,6 +1940,9 @@ export default function KassaPage({ toast, refreshLowStock }) {
      boshlanadi: pul kiritilgan bo'lsa va qoldiq qolsa — o'shanda
      nasiya. */
   const creditReal = creditPart > 0 && !payUntouched;
+
+  /* Muddatgacha necha kun (V87). `null` — sana yo'q yoki yaroqsiz. */
+  const dueLeft = dueDate ? due.daysLeft(dueDate) : null;
 
   /* ⚠ NASIYA O'CHIRILGAN DO'KONDA qoldiq QOLMASLIGI shart: u yerda
      yozilmagan qismni yozadigan joy yo'q. Ilgari bu holat umuman
@@ -2026,6 +2053,16 @@ export default function KassaPage({ toast, refreshLowStock }) {
       changeToSavings: overToSavings ? pay.excess : null,
       cashGiven: overToSavings ? pay.cashIn : null,
       nonCashOver: overToSavings && pay.over > 0 ? pay.over : null,
+      /* ⚠ MUDDAT FAQAT NASIYA BO'LGANDA (V87). Kassir maydonni
+         to'ldirib qo'yib keyin summani to'liq kiritsa, chekda
+         «to'lash sanasi» degan ma'nosiz qator qolardi.
+
+         ⚠ SERVER ham xuddi shu qoidani takrorlaydi
+         (`creditPart > 0 ? dto.creditDueDate() : null`) va bu
+         takror ATAYLAB: server klientga ishonmaydi, klient esa
+         serverning javobini kutmasdan chekni bosib chiqaradi.
+         Qoida bir joyda qolsa, ikkinchi tomonda yolg'on chiqardi. */
+      creditDueDate: creditPart > 0 && dueDate ? dueDate : null,
       /* ⚠ ESKI MAYDONLAR HAM YUBORILADI. Sabab bosqichma-bosqich
          yangilanish: server hali eski bo'lsa (yoki oflayn navbatdagi
          chek eski serverga tushsa) chek baribir yozilishi kerak.
@@ -2053,9 +2090,17 @@ export default function KassaPage({ toast, refreshLowStock }) {
     const creditInfo = creditPart > 0 ? {
       amount: creditPart,
       balance: (Number(tier?.debtBalance) || 0) + creditPart,
-      dueDate: dueDays > 0
-        ? shortDate(new Date(Date.now() + dueDays * 864e5).toISOString())
-        : null,
+      /* ⚠ KELISHILGAN SANADAN (V87), sozlamadagi kun sonidan EMAS.
+         Ilgari chek `dueDays` dan hisoblardi va shu sababdan doim
+         «bugun + 30» derdi — mijoz bilan aslida boshqa kun
+         kelishilgan bo'lsa ham. Endi chekda aynan aytilgan sana
+         turadi va mijoz uyiga borib undan o'qiydi.
+
+         ⚠ Vaqt mintaqasi: `dueDate` allaqachon MAHALLIY `YYYY-MM-DD`
+         (`ek-due.js`), shuning uchun `T00:00` qo'shib beriladi —
+         `shortDate` ni sof sana satri bilan chaqirish uni UTC deb
+         o'qishga majbur qilardi va sana bir kun surilardi. */
+      dueDate: dueDate ? shortDate(`${dueDate}T00:00:00`) : null,
     } : null;
     /* ⚠ Chekka TAQSIMOT ham tushadi (V53): «Aralash» degan bitta so'z
        mijozga hech narsa aytmaydi va u ertaga «karta bilan qancha
@@ -2175,6 +2220,16 @@ export default function KassaPage({ toast, refreshLowStock }) {
        `finally` har qanday holatda tugmani ochib qo'yadi. */
     setPaid({});
     setPayFocus("CASH");
+    /* ⚠ MUDDAT SOZLAMADAN TO'LDIRILADI (V87). Do'kon egasi
+       «sozlamadagi muddat deb belgilay olsin» dedi: kun soni
+       qo'yilgan bo'lsa maydon o'sha sana bilan ochiladi va odatiy
+       chekda kassir hech narsa qilmaydi. Qo'yilmagan bo'lsa maydon
+       bo'sh qoladi — «kelishilmagan».
+
+       ⚠ HAR CHEKDA QAYTA HISOBLANADI: oldingi mijoz bilan
+       kelishilgan sana keyingisiga o'tib ketmasin — mijoz, to'lovlar
+       va ball ham shu sabab bilan shu yerda tozalanadi. */
+    setDueDate(due.plus(dueDays));
     /* ⚠ Bayroq HAR CHEKDA tushadi: qolgani keyingi mijozning
        qaytimini jimgina yutib yuborardi. */
     setChangeToSavings(false);
@@ -3717,6 +3772,69 @@ export default function KassaPage({ toast, refreshLowStock }) {
                 {payUntouched && (
                   <div className="pay-sum__empty">{t("kassa.needAmount")}</div>
                 )}
+                {/* ══ QARZ MUDDATI — SHU YERDA SO'RALADI (V87) ═════════
+                    Do'kon egasi: «qarz berilayotganda qarz muddatini
+                    to'lov paytida so'raydigan qilish kerak … lekin
+                    to'lov paytida muddat so'rash BIRINCHI».
+
+                    ⚠ AYNAN NASIYA QATORINING TAGIDA. Muddat qarzning
+                    xususiyati, ya'ni u qarz summasi bilan bir joyda
+                    turishi kerak: kassir «80 000 nasiya, 20-oktabrga»
+                    deb bitta qarashda o'qiydi va mijozga aynan
+                    shunday aytadi.
+
+                    ⚠ NASIYA YO'Q BO'LSA CHIQMAYDI: to'liq to'langan
+                    chekda «muddat» degan maydon ma'nosiz va u
+                    oynadagi joyni bekorga egallardi.
+
+                    ⚠ NASIYA O'CHIRILGAN do'konda ham chiqmaydi: u
+                    yerda qarz umuman yozilmaydi (`creditBlocked`) va
+                    muddat so'rash kassirni yo'q yo'lga boshlardi. */}
+                {creditReal && !creditBlocked && (
+                  <div className="pay-due">
+                    <label className="pay-due__label" htmlFor="pay-due">
+                      <i className="fa-regular fa-calendar-check" aria-hidden="true" />{" "}
+                      {t("credit.dueWhen")}
+                    </label>
+                    {/* ⚠ `min` — BUGUN: muddati allaqachon o'tgan qarz
+                        berishning ma'nosi yo'q va bunday sana deyarli
+                        doim kalendarda yilni adashtirishdan chiqadi.
+
+                        ⚠ TO'SIQ FAQAT SHU YERDA. Server o'tmishdagi
+                        sanani rad ETMAYDI va bu ataylab: oflayn
+                        navbatda yotgan chek bir necha kundan keyin
+                        yuborilishi mumkin va o'shanda kelishilgan
+                        sana allaqachon o'tgan bo'ladi — server uni
+                        rad etsa, sotilgan tovarning cheki butunlay
+                        yo'qolardi. Ya'ni xatoni tug'ilish joyida
+                        to'sish kerak, keyin emas. */}
+                    <input
+                      id="pay-due"
+                      type="date"
+                      className="pay-due__input"
+                      value={dueDate}
+                      min={due.today()}
+                      onChange={(e) => setDueDate(e.target.value)}
+                    />
+                    {/* Necha kun qolgani — kassir sanani ko'rib
+                        «bu qancha bo'ladi?» deb sanamasin. */}
+                    {dueLeft != null && (
+                      <span className="pay-due__left">
+                        {dueLeft === 0 ? t("credit.dueToday") : t("credit.dueInDays", { n: dueLeft })}
+                      </span>
+                    )}
+                    {/* Muddatsiz qarz ham bo'ladi («qachon bo'lsa ham»);
+                        u holda maydon bo'shatiladi. */}
+                    {dueDate && (
+                      <button type="button" className="pay-due__x"
+                              title={t("credit.dueNone")} aria-label={t("credit.dueNone")}
+                              onClick={() => setDueDate("")}>
+                        <i className="fa-solid fa-xmark" aria-hidden="true" />
+                      </button>
+                    )}
+                  </div>
+                )}
+
                 {/* Chek summasi nol bo'lgan (hammasi chegirmaga ketgan)
                     kamdan-kam holat: yozadigan narsa yo'q. */}
                 {!payUntouched && pay.parts.length === 0 && creditPart === 0 && (

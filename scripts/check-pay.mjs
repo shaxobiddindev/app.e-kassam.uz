@@ -65,6 +65,8 @@ const browser = await puppeteer.launch({
    birinchi tekshirishda aynan shu bo'lgan va do'kon egasi so'ragan
    holat (nasiya ochiq) umuman sinalmagan edi. */
 const PROFILE = { creditEnabled: true, creditDueDays: 30, bonusMaxPercent: 0, creditLimit: 0 };
+/** Serverga YUBORILGAN cheklar — tanasi bilan (§8i). */
+const sentSales = [];
 
 /* ⚠ CORS SARLAVHALARI SHART. So'rov `https://api.e-kassam.uz` ga
    (boshqa manba) va `credentials: "include"` bilan ketadi. Sarlavhasiz
@@ -103,6 +105,12 @@ async function openKassa({ w = 1600, h = 950, items = ONE, carts = null,
     const CORS = cors(r);
     if (r.method() === "OPTIONS") return r.respond({ status: 204, headers: CORS });
     const p = new URL(r.url()).pathname;
+    /* ⚠ YUBORILGAN TANA SAQLANADI. Ekranda to'g'ri ko'rinishi
+       yetmaydi: serverga aynan nima ketgani muhim va u faqat shu
+       yerdan ko'rinadi (§8i qarz muddatini shundan tekshiradi). */
+    if (/\/sales\b/.test(r.url()) && r.method() === "POST") {
+      try { sentSales.push(JSON.parse(r.postData() || "{}")); } catch { sentSales.push(null); }
+    }
     const body = r.url().includes("/shop/profile")
       ? { success: true, data: PROFILE }
       : /\/sales\b/.test(r.url()) && r.method() === "POST"
@@ -838,6 +846,116 @@ console.log("\n── 8g. ⚠ NAQDSIZ ORTIQCHA JAMG'ARMAGA — SOTISH OCHIQ ─�
   v.rows.some((r) => /Jamg'arma/i.test(r) && /80 ?000/.test(r))
     ? ok("hisobda «Jamg'armaga +80 000» qatori") : no("qator bo'lishi kerak", JSON.stringify(v.rows));
   v.savOn ? ok("tugma faol holatda") : no("tugma faol bo'lishi kerak", "yo'q");
+  await pg.close();
+}
+
+console.log("\n── 8i. ⚠ QARZ MUDDATI TO'LOV PAYTIDA SO'RALADI (V87) ──");
+/* Do'kon egasi: «qarz berilayotganda qarz muddatini to'lov paytida
+   so'raydigan qilish kerak, qo'shimchasiga sozlamadagi muddat deb
+   belgilay olsin, lekin to'lov paytida muddat so'rash BIRINCHI».
+
+   Shu paytgacha muddat faqat sozlamada edi va kassir mijoz bilan
+   kelishgan kunni tizimga yoza olmasdi — u daftarda qolardi. */
+{
+  const CUST = { id: 7, fullName: "Muddat mijoz", phone: "+998900000007",
+                 savingsBalance: 0, balance: 0 };
+  const pg = await openKassa({
+    customers: [CUST],
+    tier: { tierName: null, discountPercent: 0, bonusBalance: 0,
+            savingsBalance: 0, debtBalance: 0 },
+    items: [{ id: 1, name: "Kurtka", salePrice: 100000, qty: 1, unit: "DONA", stockQuantity: 9 }],
+  });
+  await pg.evaluate(() => [...document.querySelectorAll("button")]
+    .find((b) => /Sotish|To'lov/i.test(b.textContent))?.click());
+  await new Promise((r) => setTimeout(r, 700));
+
+  const read = () => pg.evaluate(() => ({
+    row:   !!document.querySelector(".pay-due"),
+    label: document.querySelector(".pay-due__label")?.textContent.trim() || null,
+    value: document.querySelector("#pay-due")?.value ?? null,
+    min:   document.querySelector("#pay-due")?.min ?? null,
+    left:  document.querySelector(".pay-due__left")?.textContent.trim() || null,
+    x:     !!document.querySelector(".pay-due__x"),
+    submit: !document.querySelector(".pay-modal-submit")?.disabled,
+  }));
+  const put = async (v) => {
+    await pg.focus("#pay-amount");
+    for (let i = 0; i < 30; i++) {
+      if (await pg.$eval("#pay-amount", (el) => el.value === "")) break;
+      await pg.keyboard.press("End"); await pg.keyboard.press("Backspace");
+    }
+    if (v !== "") await pg.type("#pay-amount", v, { delay: 12 });
+    await new Promise((r) => setTimeout(r, 260));
+  };
+  /* Mahalliy sana — sinov ham `ek-due.js` bilan bir xil qoidada
+     yurishi kerak (UTC ishlatsa kechqurun bir kunga adashardi). */
+  const isoDay = (n) => {
+    const d = new Date();
+    d.setDate(d.getDate() + n);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+
+  /* ── a. Nasiya YO'Q — muddat ham so'ralmaydi ── */
+  await put("100000");
+  let v = await read();
+  v.row ? no("to'liq to'langan chekda muddat so'ralmasligi kerak", "qator bor")
+        : ok("to'liq to'lovda muddat qatori yo'q");
+
+  /* ── b. Nasiya paydo bo'ldi — muddat SO'RALADI ── */
+  await put("40000");
+  v = await read();
+  v.row ? ok("nasiya chiqishi bilan muddat qatori paydo bo'ldi")
+        : no("muddat qatori bo'lishi kerak", "yo'q");
+  /* ⚠ SOZLAMADAGI 30 KUN — TAYYOR TAKLIF (`PROFILE.creditDueDays`). */
+  v.value === isoDay(30)
+    ? ok(`sozlamadan to'ldirildi: ${v.value} (bugun + 30)`)
+    : no(`sozlamadagi 30 kun qo'yilishi kerak (${isoDay(30)})`, v.value);
+  v.min === isoDay(0) ? ok("o'tmishga qo'yib bo'lmaydi (min = bugun)")
+                      : no(`min bugun bo'lishi kerak (${isoDay(0)})`, v.min);
+  /(30|kun)/i.test(v.left || "") ? ok(`qolgan kun ko'rinadi: ${v.left}`)
+                                 : no("«30 kun» yozuvi bo'lishi kerak", v.left);
+
+  /* ── c. Kassir boshqa kunni tanladi ── */
+  await pg.$eval("#pay-due", (el, val) => {
+    const set = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
+    set.call(el, val);
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+  }, isoDay(3));
+  await new Promise((r) => setTimeout(r, 300));
+  v = await read();
+  v.value === isoDay(3) ? ok("kassir kelishilgan kunni qo'ydi") : no("sana o'zgarishi kerak", v.value);
+  /3/.test(v.left || "") ? ok(`qolgan kun yangilandi: ${v.left}`)
+                         : no("«3 kun» bo'lishi kerak", v.left);
+
+  /* ── d. Muddatsiz ham mumkin ── */
+  v.x ? ok("✕ bor — muddatsiz qilish yo'li ochiq") : no("✕ bo'lishi kerak", "yo'q");
+  await pg.evaluate(() => document.querySelector(".pay-due__x")?.click());
+  await new Promise((r) => setTimeout(r, 250));
+  v = await read();
+  v.value === "" ? ok("✕ muddatni oldi — «kelishilmagan»") : no("maydon bo'shashi kerak", v.value);
+
+  /* ── e. SERVERGA AYNAN O'SHA SANA KETADI ── */
+  await pg.$eval("#pay-due", (el, val) => {
+    const set = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
+    set.call(el, val);
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+  }, isoDay(10));
+  await new Promise((r) => setTimeout(r, 250));
+  /* Nasiyada mijoz SHART — usiz «Sotish» yopiq. */
+  await pg.evaluate(() => document.querySelector(".cart-cust .ek-select__btn")?.click());
+  await new Promise((r) => setTimeout(r, 350));
+  await pg.evaluate((n) => [...document.querySelectorAll("[role='option']")]
+    .find((o) => o.textContent.includes(n))?.click(), "Muddat mijoz");
+  await new Promise((r) => setTimeout(r, 450));
+
+  const before = sentSales.length;
+  await pg.click(".pay-modal-submit");
+  await new Promise((r) => setTimeout(r, 1600));
+  const body = sentSales[before] || null;
+  body ? ok("chek serverga ketdi") : no("chek yuborilishi kerak", "yo'q");
+  body?.creditDueDate === isoDay(10)
+    ? ok(`serverga muddat ketdi: ${body.creditDueDate}`)
+    : no(`serverga ${isoDay(10)} ketishi kerak`, JSON.stringify(body?.creditDueDate));
   await pg.close();
 }
 

@@ -3,6 +3,7 @@ import { Badge } from "./ui";
 import { t } from "../lib/ek-i18n";
 import { money } from "../config";
 import { saleStatus, paymentEntry } from "../lib/ek-labels";
+import { shortDate } from "../lib/ek-format";
 import { Spinner } from "./ek/Loading";
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -56,6 +57,16 @@ export default function SaleDetailModal({ sale, onClose, onReprint, printing = f
           { label: t("common.status"),    value: <Badge color={TONE_COLOR[st.tone] || "blue"}>{st.label}</Badge> },
           { label: t("common.date"),      value: sale.createdAt ? new Date(sale.createdAt).toLocaleString("uz-UZ") : "—" },
           { label: t("common.total"),     value: <span className="mono fw-700 text-blue">{money(sale.totalAmount)}</span> },
+          /* ⚠ QARZ MUDDATI — FAQAT NASIYA CHEKIDA (V87). Mijoz «qachonga
+             kelishgan edik?» deb kelganda javob shu yerda turishi
+             kerak: chekni har doim ham saqlab qo'ymaydi.
+
+             ⚠ To'liq to'langan chekda katak umuman chiqmaydi —
+             bo'sh «—» qator to'rda joyni bekorga egallardi. */
+          ...(sale.creditDueDate ? [{
+            label: t("kassa.receiptCreditDue"),
+            value: <span className="mono fw-700">{shortDate(`${sale.creditDueDate}T00:00:00`)}</span>,
+          }] : []),
         ].map((item, i) => (
           <div key={i} style={{ background: "var(--bg)", borderRadius: 8, padding: "9px 12px" }}>
             <div style={{ fontSize: 10, fontWeight: 800, color: "var(--text3)", textTransform: "uppercase", letterSpacing: ".5px", marginBottom: 4 }}>{item.label}</div>

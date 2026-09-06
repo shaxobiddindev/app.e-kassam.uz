@@ -33,6 +33,14 @@
   --text:     var(--fg-primary);
   --text2:    var(--fg-secondary);
   --text3:    var(--fg-tertiary);
+  /* ⚠ `--fg-muted` HECH QAYERDA E'LON QILINMAGAN EDI (V87 da topildi).
+     Ettita qoida uni ishlatadi (`.stat-sub`, `.pay-sum__x`,
+     `.pay-sum__empty` …) va e'lonsiz `var()` butun `color`
+     deklaratsiyasini YAROQSIZ qiladi: rang jimgina ota-elementdan
+     meros bo'lib qolardi. Ya'ni «xira» deb yozilgan matn qora
+     chiqardi — xato ko'rinmas edi, chunki hech narsa buzilmagandek
+     turardi. Alias eng arzon tuzatish: bironta selektorga tegmaydi. */
+  --fg-muted: var(--fg-tertiary);
   --radius:   var(--r-lg);
   --sw:       248px;
   --sw-c:     70px;
@@ -1502,6 +1510,45 @@ select.form-input { cursor: pointer; }
   padding: 7px 10px; text-align: center; line-height: 1.35;
   font-size: 12px; font-weight: 600; color: var(--fg-muted);
 }
+
+/* ══ QARZ MUDDATI — NASIYA QATORINING TAGIDA (V87) ═══════════════════
+   ⚠ BITTA QATOR, ustun emas. To'lov oynasida scrol BO'LMASLIGI kerak
+   (do'kon egasining qat'iy talabi) va bu ustun eng to'lasi: to'lov
+   turlari, maydon, naqd tugmalari va hisob. Shuning uchun muddat
+   yorliq · maydon · qolgan kun · ✕ — hammasi bitta satrda.
+
+   ⚠ `flex-wrap` bor: 1024px monoblokda ustun ~300px va sana maydoni
+   brauzerga qarab kengroq chiqishi mumkin. O'sha holda satr ikkiga
+   bo'linadi — bu chiroyliroq, chunki muqobili gorizontal scrol. */
+.pay-due {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+  padding: 6px 0 2px;
+  border-top: 1px dashed var(--border);
+}
+.pay-due__label {
+  flex: none; font-size: 12px; font-weight: 600; color: var(--fg-muted);
+}
+/* ⚠ Kenglikni O'ZI egallaydi (`flex: 1`): sana maydonining tabiiy
+   kengligi brauzerdan brauzerga farq qiladi va qat'iy `width` bir
+   joyda kesilgan, boshqasida bo'sh joy qoldirardi. */
+.pay-due__input {
+  flex: 1 1 130px; min-width: 120px; height: 32px;
+  padding: 0 8px; border-radius: 8px;
+  border: 1.5px solid var(--border); background: var(--bg);
+  color: var(--text); font-family: var(--font-mono); font-size: 13px;
+}
+.pay-due__input:focus { outline: none; border-color: var(--blue); }
+.pay-due__left {
+  flex: none; font-size: 11.5px; font-weight: 700; color: var(--fg-muted);
+  font-family: var(--font-mono);
+}
+.pay-due__x {
+  flex: none; width: 28px; height: 28px; border-radius: 8px;
+  display: grid; place-items: center;
+  background: transparent; border: none; cursor: pointer;
+  color: var(--fg-muted);
+}
+.pay-due__x:hover { background: var(--bg-danger-subtle); color: var(--fg-danger); }
 
 
 
@@ -3807,6 +3854,12 @@ img.logo--dark { display: none; }
 .pay-modal-box[data-fit="2"] .pay-sum { margin-top: 8px; padding: 6px 10px; }
 .pay-modal-box[data-fit="1"] .pay-sum__row,
 .pay-modal-box[data-fit="2"] .pay-sum__row { height: 30px; }
+/* Muddat qatori ham qisqaradi (V87) — u hisobning ichida turadi va
+   qolgan qatorlar bilan bir xil qoidada yurishi kerak. */
+.pay-modal-box[data-fit="1"] .pay-due,
+.pay-modal-box[data-fit="2"] .pay-due { padding: 4px 0 0; gap: 4px; }
+.pay-modal-box[data-fit="1"] .pay-due__input,
+.pay-modal-box[data-fit="2"] .pay-due__input { height: 28px; }
 .pay-modal-box[data-fit="1"] .ek-quick-cash,
 .pay-modal-box[data-fit="2"] .ek-quick-cash { margin-top: 6px; }
 .pay-modal-box[data-fit="1"] .ek-quick-cash button,
