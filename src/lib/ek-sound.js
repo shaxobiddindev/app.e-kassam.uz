@@ -49,7 +49,14 @@ import * as web from "./ek-sound-web.js";
    BOSHNI KO'TARTIRISH, hikoya aytish emas.
 
    Nota: `[chastota Gts, davomiyligi ms]`. Chastota 0 — pauza. */
-const T = {
+/**
+ * ⚠ EKSPORT QILINADI, chunki ikkita iste'molchi bor va ular AJRALIB
+ * KETMASLIGI kerak: brauzerdagi adapter va `scripts/sfx-render.mjs`
+ * (ohanglarni WAV faylga chiqaradi — do'kon egasi brauzer ochmasdan
+ * eshitib ko'rishi uchun). Jadval ikki joyda yozilsa, eshitilgan
+ * ohang bilan kassadagisi bir kuni boshqacha bo'lib qolardi.
+ */
+export const TONES = {
   /* Uch nota yuqoriga — «bo'ldi». Eng uzun ohang, chunki u kunda
      o'nlab marta emas, chek yopilganda bir marta eshitiladi. */
   DONE:  { tone: [[784, 80], [988, 80], [1319, 170]], w: "sine",     gain: 0.75 },
@@ -157,7 +164,7 @@ export function decide(event, cfg, { lastAt = 0, activePri = 0, now = 0 } = {}) 
      hech qachon «qo'shildi» ostida qolib ketmasligi kerak. */
   if (activePri > def.pri) return null;
 
-  const base = T[def.t];
+  const base = TONES[def.t];
   const gain = base.gain * cfg.volume;
   if (gain <= 0) return null;
   return { tone: base.tone, w: base.w, gain, pri: def.pri };
@@ -222,7 +229,7 @@ export function preview(event, cfg) {
     const c = config(cfg);
     const def = SFX[event];
     if (!def) return;
-    const base = T[def.t];
+    const base = TONES[def.t];
     const gain = base.gain * (c.volume || 0.7);
     web.play({ tone: base.tone, w: base.w, gain, pri: 3 });
   } catch (_) { /* jim */ }
