@@ -215,3 +215,54 @@ export function savingsMax(entered, total, balance) {
     Math.max(0, Math.round(Number(balance) || 0)),
     restFor(entered, total, SAVINGS)));
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ARALASH TO'LOV — CHEKSIZ OYNALAR UCHUN (V96)
+
+   ⚠ NEGA `settle` YARAMAYDI. `settle` CHEK SUMMASIDAN kelib chiqadi:
+   qolgani nasiyaga, ortig'i qaytimga. Qarz to'lash, jamg'arma
+   to'ldirish va ta'minotchiga to'lovda esa BELGILANGAN SUMMA YO'Q —
+   to'lov summasi kiritilganlarning YIG'INDISI. Ya'ni bu boshqa
+   shakl va uni `settle` ichiga tiqish o'sha funksiyani ikki xil
+   vazifaga bo'lib yuborardi.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/** Kiritilganlarning yig'indisi — to'lovning umumiy summasi. */
+export function enteredTotal(entered) {
+  return Object.values(entered || {}).reduce((s, v) => s + num(v), 0);
+}
+
+/**
+ * Serverga ketadigan qismlar ro'yxati.
+ *
+ * ⚠ TARTIB `ORDER` bo'yicha — kiritilish tartibida EMAS. Sabab
+ * `ORDER` izohida: kassir summani o'chirib qayta yozsa, qator
+ * ro'yxatda sakrab yurardi.
+ *
+ * ⚠ Noldan katta qatorlargina qoladi: server nol qismni RAD ETADI
+ * (u klientdagi nosozlik belgisi).
+ */
+export function enteredParts(entered) {
+  return Object.entries(entered || {})
+    .map(([type, amount]) => [type, num(amount)])
+    .filter(([, amount]) => amount > 0)
+    .sort((a, b) => rank(a[0]) - rank(b[0]))
+    .map(([type, amount]) => ({ type, amount }));
+}
+
+/**
+ * Tanlangan usulga ko'pi bilan qancha yozish mumkin.
+ *
+ * ⚠ CHEGARA JAMIGA QO'YILADI, bitta maydonga emas. Jamg'armadan
+ * qaytarishda qoldiq 100 000 bo'lsa, «naqd 100 000 + karta 100 000»
+ * ni har maydon alohida tekshirilganda O'TKAZIB YUBORARDI.
+ *
+ * `cap` berilmasa (null) — chegara yo'q.
+ */
+export function enteredMax(entered, cap, type) {
+  if (cap == null) return null;
+  const others = Object.entries(entered || {})
+    .filter(([t]) => t !== type)
+    .reduce((s, [, v]) => s + num(v), 0);
+  return Math.max(0, Math.round(cap) - others);
+}

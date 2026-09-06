@@ -142,14 +142,19 @@ export default function CustomersPage({ toast }) {
     } catch (_) { /* jurnal kelmasa ham to'lov qabul qilinaveradi */ }
   };
 
-  const submitDebt = async ({ amount, method, mode, chargeIds }) => {
+  const submitDebt = async ({ amount, method, payments, mode, chargeIds }) => {
     setPaying(true);
     try {
       /* ⚠ JAVOB — CHEKNING O'ZI (V61), qolgan balans emas: har
          to'lovning o'z raqami, o'z havolasi va o'z QR i bor.
          `mode`/`chargeIds` (V65): avto — eng eskisidan, alohida —
          tanlangan qarzlar. */
-      const r = await customerApi.payDebt(debt.customer.id, { amount, method, mode, chargeIds });
+      /* ⚠ `payments` — ARALASH TO'LOV QISMLARI (V96). `method` HAM
+         yuboriladi: server yangilanmagan bo'lsa (yoki oflayn
+         navbatdagi so'rov eski serverga tushsa) to'lov baribir
+         o'tishi kerak. Yangi server ro'yxatni afzal ko'radi. */
+      const r = await customerApi.payDebt(debt.customer.id,
+        { amount, method, payments, mode, chargeIds });
       const rc = r?.data || null;
       const left = Number(rc?.balanceAfter) || 0;
       toast.success(`${t("credit.left")}: ${money(left)}`);
@@ -266,10 +271,12 @@ export default function CustomersPage({ toast }) {
   /* ⚠ USUL SAQLANADI (V66): ilgari bu yerda doim «CASH» ketardi — mijoz
      kartadan bergan bo'lsa ham. Endi summa ham, usul ham kassadagi
      oynadan keladi. `true/false` — oyna faqat muvaffaqiyatda yopiladi. */
-  const runSavings = (fn) => async ({ amount, method }) => {
+  const runSavings = (fn) => async ({ amount, method, payments }) => {
     setSavingsBusy(true);
     try {
-      const r = await fn(savings.customer.id, { amount, method: method || "CASH" });
+      /* Aralash to'lov (V96) — sabab `submitDebt` dagi bilan bir xil. */
+      const r = await fn(savings.customer.id,
+        { amount, method: method || "CASH", payments });
       setSavings((prev) => ({ ...prev, account: r.data }));
       toast.success(r.message || t("common.saved"));
       loadData();

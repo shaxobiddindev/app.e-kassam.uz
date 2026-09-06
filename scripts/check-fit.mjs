@@ -243,7 +243,7 @@ const tu = () => page.evaluate(() => {
        ustma-ust tushardi. */
     ownKeys: document.querySelectorAll(".pay-modal-box--lite .qty-modal__keys, .pay-lite__keys").length,
     over: body ? body.scrollHeight - body.clientHeight : -1,
-    input: document.querySelector(".pay-modal-box--lite .qty-modal__input")?.value,
+    input: document.querySelector("#debt-amount")?.value,
     title: document.querySelector(".pay-modal-box--lite .pay-modal-title")?.textContent.trim(),
   };
 });
@@ -267,8 +267,14 @@ yes((u.total || "").replace(/\D/g, "") === "62020", "qoldiq serverdan: " + u.tot
    yozilganda ular yo'qoladi. Qiymat React ning O'Z setteri bilan
    beriladi: `useScanner` da ham xuddi shu naqsh ishlatilgan, chunki
    `el.value = ...` React ni xabardor qilmaydi. */
+/* ⚠ `#debt-amount` — BARQAROR BELGI (V96). Ilgari bu yerda
+   `.qty-modal__input` sinfi ishlatilardi; aralash to'lov qo'shilganda
+   maydon `MixedPay` ichiga ko'chdi va sinf tabiiy ravishda
+   o'zgardi — tanlagich esa jimgina `null` qaytarib, tekshiruv
+   «Illegal invocation» bilan yiqildi. Sinf ko'rinishga tegishli,
+   `id` esa MA'NOGA: keyingi qayta bo'yashda ham qoladi. */
 await page.evaluate(() => {
-  const el = document.querySelector(".pay-modal-box--lite .qty-modal__input");
+  const el = document.querySelector("#debt-amount");
   const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
   setter.call(el, "10000");
   el.dispatchEvent(new Event("input", { bubbles: true }));

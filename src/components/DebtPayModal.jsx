@@ -2,8 +2,8 @@ import { useState } from "react";
 import { t } from "../lib/ek-i18n";
 import { money } from "../config";
 import { dateTime } from "../lib/ek-format";
-import { paymentEntry } from "../lib/ek-labels";
-import { NumField } from "./ek/EkFields";
+import MixedPay from "./ek/MixedPay";
+import { enteredTotal, enteredParts } from "../lib/ek-payment";
 import { Spinner } from "./ek/Loading";
 import Overlay from "./ek/Overlay";
 import Select from "./ek/Select";
@@ -67,8 +67,16 @@ export default function DebtPayModal({
   const refundMode = mode === "refund";
   const savingsAcc = savingsMode || refundMode;
   const balance = Number(savingsAcc ? customer?.savingsBalance : customer?.balance) || 0;
-  const [amount, setAmount] = useState("");
-  const [method, setMethod] = useState("CASH");
+  /* ══ ARALASH TO'LOV (V96) ═══════════════════════════════════════════
+     Do'kon egasi: «butun tizimda to'lov qilinadigan hamma oynada
+     kassadagiday aralash to'lov tizimi bo'lishi kerak».
+
+     ⚠ BITTA SUMMA O'RNIGA XARITA. Ilgari `amount` + `method` edi va
+     500 000 lik qarzning 300 000 ini kartadan, qolganini naqd to'lash
+     imkonsiz edi: kassir ikkita alohida to'lov yasar, jurnalda bitta
+     harakat ikkiga bo'linib ketardi. */
+  const [entered, setEntered] = useState({});
+  const [focus, setFocus] = useState("CASH");
 
   /* ── TAQSIMLASH (V65): avtomatik yoki alohida ──────────────────────
      Do'kon egasi: «bir vaqtda bir nechtasini yopmoqchi bo'lsa tanlov
@@ -92,12 +100,26 @@ export default function DebtPayModal({
       if (next.has(id)) next.delete(id); else next.add(id);
       const sum = openDebts.filter((l) => next.has(l.id))
         .reduce((s, l) => s + (Number(l.remaining) || 0), 0);
-      setAmount(sum > 0 ? String(Math.round(sum)) : "");
+      /* ⚠ QOLGANLARI TOZALANADI, ustiga qo'shilmaydi (V96). Tanlangan
+         qarzlar yig'indisi — TO'LANADIGAN SUMMANING O'ZI; kassir
+         kartaga 300 000 yozib qo'ygan bo'lsa, uning ustiga yana
+         500 000 qo'shilsa jami 800 000 bo'lib, u aytmagan pul
+         chiqardi. */
+      setEntered(sum > 0 ? { [focus]: String(Math.round(sum)) } : {});
       return next;
     });
   };
 
-  const num = Number(String(amount).replace(/\D/g, "")) || 0;
+  /* To'lov summasi — kiritilganlarning YIG'INDISI (V96). Bu yerda
+     belgilangan chek summasi yo'q, shuning uchun `settle` emas. */
+  const num = enteredTotal(entered);
+  /* Serverga ketadigan ro'yxat; bitta usulda ham yuboriladi — server
+     uni o'zi yakka usulga aylantiradi. */
+  const parts = enteredParts(entered);
+  /* Eski maydon HAM yuboriladi: server yangilanmagan bo'lsa (yoki
+     oflayn navbatdagi so'rov eski serverga tushsa) to'lov baribir
+     o'tishi kerak. Yangi server ro'yxatni afzal ko'radi. */
+  const method = parts.length === 1 ? parts[0].type : "MIXED";
   /* ⚠ QARZDAN ORTIQ TO'LOV ENDI TO'SILMAYDI (V63): ortig'i mijozning
      jamg'armasiga tushadi. Ilgari bu yerda tugma o'chirilardi va
      kassir 470 000 lik qarzga 500 000 uzatgan mijozga qaytim qidirardi.
@@ -184,34 +206,27 @@ export default function DebtPayModal({
               </div>
             </div>
 
-            <div className="pay-modal-section-label">
-              <i className="fa-solid fa-credit-card" aria-hidden="true" /> {t("credit.method")}
-            </div>
-            <div className="pay-modal-types">
-              {METHODS.map((key) => {
-                const p = paymentEntry(key);
-                return (
-                  <button key={key} type="button"
-                          className={`pay-type-btn ${method === key ? "active" : ""}`}
-                          onClick={() => setMethod(key)} aria-pressed={method === key}
-                          style={{ "--pay-color": p.color }}>
-                    <span className="pay-type-icon"><i className={`fa-solid ${p.icon || "fa-wallet"}`} aria-hidden="true" /></span>
-                    <span className="pay-type-label">{p.label}</span>
-                  </button>
-                );
-              })}
-            </div>
+            {/* ══ ARALASH TO'LOV (V96) — kassadagi bilan bir xil ══════
+                Usul tugmasi TO'LOV TURINI emas, tahrirlanadigan usulni
+                tanlaydi; bosilganda kursor summa maydoniga o'tadi.
 
-            <div className="pay-modal-section-label">
-              <i className="fa-solid fa-money-bill-wave" aria-hidden="true" /> {t("credit.payAmount")}
-            </div>
-            {/* ⚠ `max` YO'Q (V63): qarzdan ortiq to'lov jamg'armaga
-                tushadi, uni maydonda kesish o'sha imkoniyatni yopib
-                qo'yardi. */}
-            <NumField kind="money" autoFocus={!needCustomer}
-                      max={refundMode ? balance : undefined}
-                      className="form-input qty-modal__input ek-num"
-                      value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0" />
+                ⚠ `cap` FAQAT QAYTARISHDA. Qarz to'lash va jamg'arma
+                to'ldirishda chegara YO'Q va bu ataylab (V63):
+                qarzdan ortiq to'langan pul mijozning jamg'armasiga
+                tushadi va maydonni kesish o'sha imkoniyatni yopib
+                qo'yardi. Qaytarishda esa qoldiqdan ortig'ini berib
+                bo'lmaydi.
+
+                ⚠ Chegara JAMIGA qo'yiladi, bitta maydonga emas:
+                «naqd 100 000 + karta 100 000» ni har maydonni alohida
+                tekshirib o'tkazib yuborardi (`enteredMax`). */}
+            <MixedPay methods={METHODS}
+                      entered={entered} onChange={setEntered}
+                      focus={focus} onFocus={setFocus}
+                      cap={refundMode ? balance : null}
+                      inputId="debt-amount"
+                      autoFocus={!needCustomer}
+                      disabled={paying} />
             {refundMode && (
               <div className="pay-modal-hint">
                 <i className="fa-solid fa-circle-info" style={{ marginRight: 4 }} aria-hidden="true" />
@@ -224,12 +239,18 @@ export default function DebtPayModal({
                 ortiqcha qadam edi. Jamg'arma rejimida ma'nosi yo'q. */}
             {!savingsAcc && (
               <div className="debt-quick">
+                {/* ⚠ TUGMA HAMMA MAYDONNI ALMASHTIRADI, fokusdagisiga
+                    QO'SHMAYDI (V96). «Hammasi» — to'lanadigan
+                    SUMMANING O'ZI; kassir kartaga 300 000 yozib
+                    qo'ygan bo'lsa, uning ustiga yana butun qarz
+                    qo'shilsa mijoz aytmagan pul chiqardi. Tanlangan
+                    qarzlar tugmasidagi bilan bir xil qoida. */}
                 <button type="button" className="btn btn-outline btn-sm"
-                        onClick={() => setAmount(String(Math.round(balance)))}>
+                        onClick={() => setEntered({ [focus]: String(Math.round(balance)) })}>
                   {t("credit.payAll")} · {money(balance)}
                 </button>
                 <button type="button" className="btn btn-outline btn-sm"
-                        onClick={() => setAmount(String(Math.round(balance / 2)))}>
+                        onClick={() => setEntered({ [focus]: String(Math.round(balance / 2)) })}>
                   {t("credit.payHalf")}
                 </button>
               </div>
@@ -316,8 +337,9 @@ export default function DebtPayModal({
           <button className="btn btn-outline" onClick={onClose}>{t("common.close")}</button>
           <button className="btn btn-primary btn-pos" disabled={!canPay}
                   title={needCustomer ? t("savings.customerRequired") : undefined}
-                  onClick={() => onSubmit(savingsAcc ? { amount: num, method, customer }
-                    : { amount: num, method, mode: alloc,
+                  onClick={() => onSubmit(savingsAcc
+                    ? { amount: num, method, payments: parts, customer }
+                    : { amount: num, method, payments: parts, mode: alloc,
                         chargeIds: alloc === "MANUAL" ? [...picked] : null })}>
             {paying ? <Spinner small /> : <i className="fa-solid fa-check" aria-hidden="true" />}
             {refundMode ? t("savings.refund") : savingsMode ? t("savings.topUp") : t("credit.pay")}

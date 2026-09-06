@@ -16,8 +16,9 @@ import { supplyApi, productApi } from "../api";
 import { Modal } from "../components";
 import { Empty, Field, FormGroup } from "../components/ui";
 import Select from "../components/ek/Select";
+import MixedPay from "../components/ek/MixedPay";
+import { enteredTotal, enteredParts } from "../lib/ek-payment";
 import { money } from "../lib/ek-format";
-import { paymentLabel } from "../lib/ek-labels";
 import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
 import { NumField, DateField } from "../components/ek/EkFields";
@@ -62,8 +63,12 @@ export default function SupplyPage({ toast }) {
       docNumber: "",
       receivedAt: today(),
       note: "",
-      paidNow: "",
-      paymentMethod: "CASH",
+      /* ⚠ ARALASH TO'LOV (V96): «darhol to'langan» qism ham bo'linishi
+         mumkin. Ilgari bitta summa + bitta usul edi, usullar esa
+         faqat naqd va karta — Click/Payme orqali o'tkazish oddiy hol
+         bo'lsa ham ro'yxatda yo'q edi. */
+      paidEntered: {},
+      paidFocus: "CASH",
       lines: [],
       code: "",
     });
@@ -113,8 +118,11 @@ export default function SupplyPage({ toast }) {
         docNumber: form.docNumber || null,
         receivedAt: form.receivedAt,
         note: form.note || null,
-        paidNow: Number(form.paidNow) || 0,
-        paymentMethod: form.paymentMethod,
+        paidNow: enteredTotal(form.paidEntered),
+        /* `paymentMethod` HAM yuboriladi — eski server uchun. */
+        paymentMethod: enteredParts(form.paidEntered).length === 1
+          ? enteredParts(form.paidEntered)[0].type : "MIXED",
+        payments: enteredParts(form.paidEntered),
         lines: form.lines.map((l) => ({
           productId: l.productId,
           quantity: Number(l.quantity),
@@ -148,7 +156,10 @@ export default function SupplyPage({ toast }) {
   };
 
   const openPay = async (s) => {
-    setPay({ supplier: s, amount: "", method: "CASH", ledger: null });
+    /* ⚠ ARALASH TO'LOV (V96): bitta `amount`+`method` o'rniga
+       kiritilganlar xaritasi — ta'minotchiga to'lovning yarmi naqd,
+       yarmi kartadan bo'lishi kassadagidan kam uchramaydi. */
+    setPay({ supplier: s, entered: {}, focus: "CASH", ledger: null });
     try {
       const r = await supplyApi.ledger(s.id);
       setPay((p) => (p && p.supplier.id === s.id ? { ...p, ledger: r.data || [] } : p));
@@ -158,8 +169,13 @@ export default function SupplyPage({ toast }) {
   const submitPay = async () => {
     setSaving(true);
     try {
+      const parts = enteredParts(pay.entered);
+      /* `method` HAM yuboriladi — eski server uchun (sabab
+         `CustomersPage.submitDebt` izohida). */
       const r = await supplyApi.pay(pay.supplier.id, {
-        amount: Number(pay.amount), method: pay.method, reason: null,
+        amount: enteredTotal(pay.entered),
+        method: parts.length === 1 ? parts[0].type : "MIXED",
+        payments: parts, reason: null,
       });
       toast?.success(`${t("supply.debtLeft")}: ${money(r.data)}`);
       setPay(null);
@@ -385,18 +401,18 @@ export default function SupplyPage({ toast }) {
             <span className="mono fw-800">{money(formTotal)}</span>
           </div>
 
-          <div className="grid-2">
-            <FormGroup label={t("supply.paidNow")}>
-              <Field kind="money" className="form-input ek-num"
-                     value={form.paidNow} onChange={(e) => setForm({ ...form, paidNow: e.target.value })} />
-            </FormGroup>
-            <FormGroup label={t("credit.method")}>
-              <Select block variant="field" ariaLabel={t("credit.method")}
-                      value={form.paymentMethod}
-                      onChange={(v) => setForm({ ...form, paymentMethod: v })}
-                      options={["CASH", "CARD"].map((k) => ({ value: k, label: paymentLabel(k), icon: "fa-wallet" }))} />
-            </FormGroup>
-          </div>
+          {/* ══ DARHOL TO'LANADIGAN QISM — ARALASH (V96) ══════════════
+              ⚠ `cap` — HUJJAT JAMI: undan ortiq to'lash ma'nosiz va
+              server ham rad etadi (`receipt.paid.exceeds`). Chegara
+              JAMIGA qo'yiladi, bitta maydonga emas. */}
+          <div className="form-label" style={{ marginTop: 4 }}>{t("supply.paidNow")}</div>
+          <MixedPay entered={form.paidEntered}
+                    onChange={(paidEntered) => setForm({ ...form, paidEntered })}
+                    focus={form.paidFocus}
+                    onFocus={(paidFocus) => setForm({ ...form, paidFocus })}
+                    cap={formTotal || null}
+                    inputId="receipt-paid-amount"
+                    disabled={saving} />
           {/* ⚠ Naqd to'lov kassaga TA'SIR QILADI — aytib qo'yamiz. */}
           <p className="form-hint">{t("supply.paidHint")}</p>
         </Modal>
@@ -438,7 +454,7 @@ export default function SupplyPage({ toast }) {
             <>
               <button className="btn btn-outline btn-sm" onClick={() => setPay(null)}>{t("common.close")}</button>
               <button className="btn btn-primary btn-sm" onClick={submitPay}
-                      disabled={saving || !(Number(pay.amount) > 0)}>
+                      disabled={saving || !(enteredTotal(pay.entered) > 0)}>
                 <i className="fa-solid fa-money-bill-transfer" /> {t("supply.pay")}
               </button>
             </>
@@ -448,20 +464,22 @@ export default function SupplyPage({ toast }) {
             <span className="fw-700">{t("supply.debt")}</span>
             <span className="mono fw-800" style={{ color: "var(--fg-danger)" }}>{money(pay.supplier.balance)}</span>
           </div>
-          <label className="form-label">{t("credit.payAmount")}</label>
-          <Field kind="money" max={pay.supplier.balance}
-                 className="form-input ek-num" autoFocus value={pay.amount}
-                 onChange={(e) => setPay({ ...pay, amount: e.target.value })} />
-          <label className="form-label" style={{ marginTop: 10 }}>{t("credit.method")}</label>
-          <div className="cat-tabs" role="tablist">
-            {["CASH", "CARD"].map((k) => (
-              <button key={k} type="button" role="tab" aria-selected={pay.method === k}
-                      className={`cat-tab ${pay.method === k ? "active" : ""}`}
-                      onClick={() => setPay({ ...pay, method: k })}>
-                {paymentLabel(k)}
-              </button>
-            ))}
-          </div>
+          {/* ══ ARALASH TO'LOV (V96) — kassadagi bilan bir xil ko'rinish.
+              ⚠ USULLAR HAM KO'PAYDI: ilgari faqat naqd va karta bor
+              edi, holbuki ta'minotchiga Click/Payme orqali o'tkazish
+              oddiy hol. Ro'yxat qisqaligi imkoniyat emas, kamchilik
+              edi.
+              ⚠ `cap` — ta'minotchining qarzi: undan ortiq to'lash
+              ma'nosiz va server ham rad etadi
+              (`supplier.payment.exceeds`). */}
+          <MixedPay entered={pay.entered}
+                    onChange={(entered) => setPay({ ...pay, entered })}
+                    focus={pay.focus}
+                    onFocus={(focus) => setPay({ ...pay, focus })}
+                    cap={Number(pay.supplier.balance) || null}
+                    inputId="supplier-pay-amount"
+                    autoFocus
+                    disabled={saving} />
           <p className="form-hint">{t("supply.paidHint")}</p>
 
           <div className="form-label" style={{ marginTop: 14 }}>{t("credit.ledger")}</div>

@@ -12,7 +12,8 @@
    Ishga tushirish:  node test/payment.test.mjs
    ══════════════════════════════════════════════════════════════════════════ */
 
-const { settle, payType, restFor, savingsMax } = await import("../src/lib/ek-payment.js");
+const { settle, payType, restFor, savingsMax,
+        enteredTotal, enteredParts, enteredMax } = await import("../src/lib/ek-payment.js");
 
 let pass = 0, fail = 0;
 const ok  = (m) => { pass++; console.log("  ✅ " + m); };
@@ -260,6 +261,42 @@ console.log("\n═══ ⚠ KIRITILMAGAN PUL — TO'LOV EMAS (V86) ═══");
   eq(one.parts.length, 1, "Click yozildi — bitta qator");
   eq(one.parts[0].type, "CLICK", "va u Click");
   eq(one.cashIn, 0, "yashikka pul TUSHMAYDI");
+}
+
+console.log("\n── ARALASH TO'LOV — CHEK SUMMASI YO'Q OYNALAR (V96) ──");
+/* ⚠ NEGA ALOHIDA HISOB. `settle` CHEK SUMMASIDAN kelib chiqadi:
+   qolgani nasiyaga, ortig'i qaytimga. Qarz to'lash, jamg'arma
+   to'ldirish va ta'minotchiga to'lovda esa belgilangan summa YO'Q —
+   to'lov summasi kiritilganlarning YIG'INDISI. */
+{
+  eq(enteredTotal({ CASH: "200000", CARD: "300000" }), 500000, "jami — kiritilganlar yig'indisi");
+  eq(enteredTotal({}), 0, "bo'sh — nol");
+  eq(enteredTotal(null), 0, "null yiqitmaydi");
+  eq(enteredTotal({ CASH: "salom" }), 0, "son bo'lmagan qiymat nolga");
+
+  const parts = enteredParts({ CARD: "300000", CASH: "200000" });
+  eq(parts.length, 2, "ikkita qism");
+  /* ⚠ TARTIB `ORDER` bo'yicha — kiritilish tartibida EMAS: kassir
+     summani o'chirib qayta yozsa, qator ro'yxatda sakrab yurardi. */
+  eq(parts[0].type, "CASH", "naqd birinchi — kiritilish tartibi emas");
+  eq(parts[1].type, "CARD", "keyin karta");
+
+  /* ⚠ NOL QATOR YUBORILMAYDI: server uni RAD ETADI, chunki u
+     klientdagi nosozlik belgisi. */
+  eq(enteredParts({ CASH: "50000", CARD: "0" }).length, 1, "nol qator tushib qoladi");
+  eq(enteredParts({ CASH: "50000", CARD: "" }).length, 1, "bo'sh qator ham");
+  eq(enteredParts({}).length, 0, "bo'shdan bo'sh ro'yxat");
+
+  /* ⚠⚠ CHEGARA JAMIGA QO'YILADI, bitta maydonga emas. Jamg'armadan
+     qaytarishda qoldiq 100 000 bo'lsa, «naqd 100 000 + karta 100 000»
+     ni har maydonni alohida tekshirib O'TKAZIB YUBORARDI. */
+  eq(enteredMax({ CASH: "40000" }, 100000, "CARD"), 60000, "qolgan joy — jamidan");
+  eq(enteredMax({ CASH: "100000" }, 100000, "CARD"), 0, "jami to'lgan — boshqasiga joy yo'q");
+  eq(enteredMax({ CASH: "150000" }, 100000, "CARD"), 0, "oshib ketgan bo'lsa ham manfiy emas");
+  /* ⚠ Tahrirlanayotgan maydonning O'ZI hisobga olinmaydi: aks holda
+     20 000 yozilgan maydonni 30 000 ga o'zgartirib bo'lmasdi. */
+  eq(enteredMax({ CASH: "40000" }, 100000, "CASH"), 100000, "o'z qiymati chegaradan chiqarilmaydi");
+  eq(enteredMax({ CASH: "40000" }, null, "CARD"), null, "chegara berilmasa — yo'q");
 }
 
 console.log(`\n  ${pass} o'tdi, ${fail} yiqildi`);

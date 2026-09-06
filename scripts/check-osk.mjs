@@ -146,7 +146,7 @@ console.log("\n── A2. TOR MONOBLOK (1024×768) ──");
 console.log("\n── B. Oyna ustidagi oyna (jamg'arma) ──");
 await page.keyboard.press("Escape"); await sleep(300);
 await page.keyboard.down("Alt"); await page.keyboard.press("j"); await page.keyboard.up("Alt"); await sleep(600);
-await page.evaluate(() => document.querySelector(".pay-modal-box--lite .qty-modal__input")?.focus()); await sleep(500);
+await page.evaluate(() => document.querySelector("#debt-amount")?.focus()); await sleep(500);
 p = await probe();
 yes(p.open, "jamg'arma oynasida ham klaviatura ochildi", JSON.stringify(p));
 yes(p.inOsk, "u ham oyna USTIDA", `nuqtada: ${p.hitClass}`);
@@ -172,14 +172,14 @@ console.log("\n── C. `000` tugmasi va ichki klaviaturalar ──");
   yes(st.inModal === 0, "oyna ICHIDA klaviatura qolmagan", st.inModal + " ta topildi");
   // `000` haqiqatan uch nol yozadimi
   await page.evaluate(() => {
-    const f = document.querySelector(".pay-modal-box--lite .qty-modal__input") || document.querySelector("#pay-amount");
+    const f = document.querySelector("#debt-amount") || document.querySelector("#pay-amount");
     f.focus();
   });
   await sleep(300);
   await page.evaluate(() => [...document.querySelectorAll(".osk__key")].find((b) => b.textContent.trim() === "5")?.click());
   await page.evaluate(() => document.querySelector(".osk__key--zeros")?.click());
   await sleep(250);
-  const val = await page.evaluate(() => (document.querySelector(".pay-modal-box--lite .qty-modal__input") || document.querySelector("#pay-amount"))?.value);
+  const val = await page.evaluate(() => (document.querySelector("#debt-amount") || document.querySelector("#pay-amount"))?.value);
   yes((val || "").replace(/\D/g, "") === "5000", "5 + 000 → 5 000 yozildi: " + val, val);
 }
 

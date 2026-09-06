@@ -1733,11 +1733,12 @@ export default function KassaPage({ toast, refreshLowStock }) {
         ? { ...cur, savingsBalance: fresh.data.savingsBalance } : cur));
     }
   };
-  const submitTopUp = async ({ amount, method, customer: c }) => {
+  const submitTopUp = async ({ amount, method, payments, customer: c }) => {
     if (!c?.id) return;
     setToppingUp(true);
     try {
-      const r = await customerApi.topUpSavings(c.id, { amount, method });
+      /* Aralash to'lov qismlari (V96); `method` eski server uchun. */
+      const r = await customerApi.topUpSavings(c.id, { amount, method, payments });
       toast.success(`${t("savings.topped")}: ${money(r?.data?.balance)}`);
       setTopUpOpen(false);
 
