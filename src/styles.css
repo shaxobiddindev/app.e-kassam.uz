@@ -5613,26 +5613,50 @@ button.stk__c:hover { background: var(--bg-hover); }
    yerdan o'tadi (oxirgi qator → jami → to'lov). Alohida panel bo'lganda
    u yo ko'rilmasdi, yo tovarlar ro'yxatidan balandlik o'g'irlardi.
    ══════════════════════════════════════════════════════════════════════ */
+/* ⚠⚠ BU BLOK KO'K KARTOCHKA ICHIDA TURADI (`.total-card`) va V79 da
+   uslubi OQ FON uchun yozilgan edi. Natijada:
+
+     · yorliq `--fg-secondary` (to'q siyoh) — ko'k fonda deyarli
+       o'qilmasdi (do'kon egasi rasm bilan ko'rsatdi);
+     · tugmaning matni ham, punktir chegarasi ham `--bg-brand`, ya'ni
+       KO'K FONDA KO'K — butunlay ko'rinmasdi. U faqat `:hover` da
+       paydo bo'lardi (o'shanda fon oqarib, matn oqqa aylanardi) —
+       sichqonchasiz kassa monoblogida esa hover UMUMAN YO'Q. Ya'ni
+       funksiya bor edi, lekin uni ko'radigan odam yo'q edi.
+
+   Endi ranglar kartochkaning O'Z qoidasidan olinadi (yuqoridagi
+   `.total-card` izohi): ko'k fonda hamma narsa TO'LIQ OQ, ierarxiya
+   esa o'lcham va shaffoflik bilan emas — o'lcham va qalinlik bilan
+   beriladi. Bosilgan holat teskari: oq fon, ko'k matn. */
 .sugg {
   display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
   padding: 8px 0 4px;
 }
 .sugg__lab {
-  font-size: 11px; font-weight: 700; color: var(--fg-secondary); white-space: nowrap;
+  font-size: 11px; font-weight: 700; color: var(--fg-on-brand); white-space: nowrap;
 }
 .sugg__b {
   display: inline-flex; align-items: baseline; gap: 7px; min-width: 0;
   padding: 5px 10px; border-radius: 999px; cursor: pointer;
-  border: 1px dashed var(--border-brand, var(--bg-brand));
-  background: none; color: var(--bg-brand); font: inherit;
+  /* Punktir OQ: u «bu hali savatda emas, qo'shsa bo'ladi» degan
+     ishora va ko'k fonda faqat oq ko'rinadi. */
+  border: 1px dashed rgba(255, 255, 255, .55);
+  background: rgba(255, 255, 255, .12);
+  color: var(--fg-on-brand); font: inherit;
 }
-.sugg__b:hover { background: var(--bg-brand); color: var(--fg-on-brand, #fff); }
-.sugg__b:focus-visible { outline: 2px solid var(--bg-brand); outline-offset: 2px; }
+/* ⚠ HOVER — QO'SHIMCHA, YAGONA yo'l emas: sensorli monoblokda u
+   umuman ishlamaydi, shuning uchun tugma hover'siz ham to'liq
+   o'qiladi. Bu yerda u faqat «bosiladigan narsa» ekanini tasdiqlaydi. */
+.sugg__b:hover { background: var(--fg-on-brand); color: var(--bg-brand); border-color: var(--fg-on-brand); }
+.sugg__b:active { transform: scale(.97); }
+.sugg__b:focus-visible { outline: 2px solid var(--fg-on-brand); outline-offset: 2px; }
 .sugg__n {
   font-size: 12px; font-weight: 700; max-width: 130px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.sugg__p { font-size: 11px; font-weight: 800; opacity: .85; }
+/* ⚠ `opacity` OLIB TASHLANDI: ko'k fonda 0.85 oq kontrastni 4.8:1 dan
+   4.0:1 ga tushirardi — aynan `.total-card` izohida yozilgan xato. */
+.sugg__p { font-size: 11px; font-weight: 800; }
 
 /* ══════════════════════════════════════════════════════════════════════════
    QAYTARISH SUMMASI VA TAVSIYA (V80)
