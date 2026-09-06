@@ -22,6 +22,7 @@ import { useScanner } from "../hooks/useScanner";
 import { useOnline } from "../hooks/useOnline";
 import { parseSaleCode } from "../lib/ek-barcode";
 import { rankItems } from "../lib/ek-search";
+import { refundFor, refundSuggestion } from "../lib/ek-refund";
 
 /* ── Chekni qayta chiqarish ────────────────────────────────────────────────
    Kassa ekranidagi Ctrl+P faqat OXIRGI chekni chiqaradi. Amalda esa mijoz
@@ -214,6 +215,21 @@ export default function SalesPage({ toast }) {
       .filter((x) => x.quantity > 0);
     if (!items.length) return;
 
+    /* ⚠ SUMMA FAQAT KASSIR O'ZI TAKLIFNI BOSGANDA YUBORILADI.
+
+       Bo'sh qoldirilsa server muzlatilgan taqsimotdan hisoblaydi va bu
+       ASOSIY yo'l: qaytariladigan pul mijoz to'lagan puldir, uni tizim
+       ham, ekran ham o'zgartirmaydi. Kassir «Tavsiyani qo'llash» ni
+       bosgandagina bu yerda son paydo bo'ladi — va o'sha farq serverda
+       jurnalga tushadi. */
+    if (ret.adjust) {
+      const cut = Object.entries(ret.adjust);
+      for (const it of items) {
+        const found = cut.find(([id]) => Number(id) === it.saleItemId);
+        if (found) it.amount = found[1];
+      }
+    }
+
     setReturning(true);
     try {
       await guard(() => saleApi.returnSale(ret.sale.id, { items, reason: ret.reason }));
@@ -225,6 +241,80 @@ export default function SalesPage({ toast }) {
     } finally {
       setReturning(false);
     }
+  };
+
+  /* ══ QAYTARILADIGAN SUMMA (V80) ══════════════════════════════════════
+
+     ⚠ SERVERDAGI QOIDANING NUSXASI. Summa sotuv paytida muzlatilgan
+     taqsimotdan chiqadi (`RefundAllocation.java` → `ek-refund.js`) va
+     kassir uni tugmani bosishdan OLDIN ko'rishi kerak: mijozga aytilgan
+     raqam bilan kassadan chiqadigan pul bir xil bo'lishi shart.
+
+     `retTotal` — muzlatilgan (haqiqiy) summa;
+     `retPay`   — kassir to'laydigan summa. Ikkalasi FAQAT kassir
+                  tavsiyani bosgan bo'lsa farq qiladi. */
+  const retExact = useMemo(() => {
+    if (!ret) return {};
+    const out = {};
+    for (const it of ret.sale.items || []) {
+      const left = Number(it.quantity || 0) - Number(it.returnedQuantity || 0);
+      const back = Math.min(Number(ret.lines[it.id]) || 0, left);
+      if (back <= 0) continue;
+      const paid = Number(it.price || 0) * Number(it.quantity || 0)
+                 - Number(it.discountAmount || 0);
+      out[it.id] = refundFor(paid, it.quantity, it.returnedQuantity, back);
+    }
+    return out;
+  }, [ret]);
+
+  const retTotal = useMemo(
+    () => Math.round(Object.values(retExact).reduce((s2, v) => s2 + v, 0) * 100) / 100,
+    [retExact],
+  );
+
+  /* Kassir tavsiyani bosgan bo'lsa — o'zgartirilgan summa, aks holda
+     muzlatilganining o'zi. */
+  const retPay = useMemo(() => {
+    if (!ret?.adjust) return retTotal;
+    let sum = 0;
+    for (const [id, exact] of Object.entries(retExact)) {
+      sum += ret.adjust[id] == null ? exact : ret.adjust[id];
+    }
+    return Math.round(sum * 100) / 100;
+  }, [ret, retExact, retTotal]);
+
+  const retTip = useMemo(() => refundSuggestion(retTotal), [retTotal]);
+
+  /**
+   * Tavsiyani qo'llash.
+   *
+   * ⚠ KESIM ENG KATTA QATORDAN olinadi va yetmasa keyingisiga
+   * o'tadi. Hamma qatorga ulushga bo'lib tarqatish jamini yana
+   * yaxlit bo'lmagan songa aylantirardi — ya'ni butun tavsifning
+   * ma'nosini yo'qotardi. Kassirga esa aynan JAMI kerak: kassadan
+   * chiqadigan pul o'sha.
+   */
+  const applyTip = () => {
+    if (!retTip) return;
+    const rows = Object.entries(retExact).sort((a, b) => b[1] - a[1]);
+    const adjust = {};
+    /* ⚠ KESIM TAVSIYA SUMMASIDAN OLINADI, `retTip.cut` DAN EMAS.
+
+       Taklif YAXLITLANGAN jamidan hisoblanadi (3 333.33 → 3 333 →
+       3 300, kesim 33), lekin qatordan AYNAN o'sha 33 ayirilsa
+       3 300.33 chiqadi: ekranda «3 300» ko'rinardi (`money` yaxlitlaydi),
+       serverga esa 3 300.33 ketardi va kassirdan 33 tiyin talab
+       qilinardi — ya'ni butun tavsiyaning ma'nosi yo'qolardi. Bu
+       xatoni `scripts/check-ret.mjs` yuborilgan so'rovni o'qib
+       ushladi, ekrandan esa u KO'RINMASDI. */
+    let left = Math.round((retTotal - retTip.amount) * 100) / 100;
+    for (const [id, exact] of rows) {
+      if (left <= 0) break;
+      const cut = Math.min(left, exact);
+      adjust[id] = Math.round((exact - cut) * 100) / 100;
+      left = Math.round((left - cut) * 100) / 100;
+    }
+    setRet({ ...ret, adjust });
   };
 
   /* ⚠ Avval HOLAT, keyin qidiruv: qidiruv natijani mosligiga qarab
@@ -432,14 +522,37 @@ export default function SalesPage({ toast }) {
                   <th>{t("products.col")}</th>
                   <th>{t("ret.left")}</th>
                   <th>{t("ret.qty")}</th>
+                  {/* ⚠ SUMMA USTUNI (V80) — kassir mijozga aytadigan
+                      raqam. Ilgari u faqat qaytarish BAJARILGANDAN
+                      keyin ma'lum bo'lardi: chegirma bilan sotilgan
+                      chekda kassir e'lon narxini aytib qo'yib, keyin
+                      kamroq pul berardi. */}
+                  <th className="ta-right">{t("ret.amount")}</th>
                 </tr>
               </thead>
               <tbody>
                 {(ret.sale.items || []).map((it) => {
                   const left = Number(it.quantity || 0) - Number(it.returnedQuantity || 0);
+                  const back = Math.min(Number(ret.lines[it.id]) || 0, left);
+                  const paid = Number(it.price || 0) * Number(it.quantity || 0)
+                             - Number(it.discountAmount || 0);
+                  /* ⚠ SERVERDAGI QOIDANING NUSXASI (`ek-refund.js` →
+                     `RefundAllocation.java`). Ikkalasi ajralib ketsa,
+                     kassir mijozga bir summani aytib, kassa
+                     boshqasini berardi. */
+                  const sum = refundFor(paid, it.quantity, it.returnedQuantity, back);
                   return (
                     <tr key={it.id}>
-                      <td className="fw-700">{it.productName}</td>
+                      <td className="fw-700">
+                        {it.productName}
+                        {/* Bir donaning summasi — «nechtasini
+                            qaytaray?» degan savolga javob. */}
+                        {it.refundUnitAmount > 0 && (
+                          <div className="text-muted ek-num" style={{ fontSize: 11 }}>
+                            {money(it.refundUnitAmount)} / {t("ret.perUnit")}
+                          </div>
+                        )}
+                      </td>
                       <td><Badge color={left > 0 ? "blue" : "gray"}>{left}</Badge></td>
                       <td style={{ width: 150 }}>
                         <Field
@@ -447,8 +560,12 @@ export default function SalesPage({ toast }) {
                           className="form-input ek-num"
                           disabled={left <= 0}
                           value={ret.lines[it.id] ?? ""}
-                          onChange={(e) => setRet({ ...ret, lines: { ...ret.lines, [it.id]: e.target.value } })}
+                          onChange={(e) => setRet({ ...ret, lines: { ...ret.lines, [it.id]: e.target.value },
+                                                    adjust: null })}
                         />
+                      </td>
+                      <td className="ta-right ek-num fw-700">
+                        {sum > 0 ? money(sum) : "—"}
                       </td>
                     </tr>
                   );
@@ -456,6 +573,45 @@ export default function SalesPage({ toast }) {
               </tbody>
             </table>
           </div>
+
+          {/* ══ QAYTARILADIGAN JAMI VA TAVSIYA (V80) ═══════════════════
+
+              ⚠ TIZIM SUMMANI O'ZI O'ZGARTIRMAYDI — bu qat'iy qoida.
+              Qaytariladigan pul mijoz TO'LAGAN puldir; uni jimgina
+              yaxlitlash mijozning chekidagi raqamdan chetga chiqish
+              bo'lardi. Shuning uchun bu yerdan faqat TAVSIYA chiqadi
+              va u alohida tugma bilan qo'llanadi.
+
+              ⚠ Tavsiya ikki tomondan bo'g'ilgan: 1 000 so'mdan va
+              summaning 2% idan oshmaydi (`ek-refund.js`). 14 833 ni
+              14 000 ga tushirish ham «yaxlit», lekin bu mijozning
+              833 so'mi. */}
+          {retTotal > 0 && (
+            <div className="ret-sum">
+              <div className="ret-sum__row">
+                <span>{t("ret.total")}</span>
+                <b className="ek-num">{money(retPay)}</b>
+              </div>
+              {retTip && !ret.adjust && (
+                <button type="button" className="ret-sum__tip" onClick={applyTip}>
+                  <i className="fa-solid fa-wand-magic-sparkles" aria-hidden="true" />
+                  <span>
+                    {t("ret.suggest")}: <b className="ek-num">{money(retTip.amount)}</b>
+                    {" "}<span className="ret-sum__cut ek-num">−{money(retTip.cut)}</span>
+                  </span>
+                  <span className="ret-sum__apply">{t("ret.applySuggest")}</span>
+                </button>
+              )}
+              {ret.adjust && (
+                <button type="button" className="ret-sum__tip is-on"
+                        onClick={() => setRet({ ...ret, adjust: null })}>
+                  <i className="fa-solid fa-rotate-left" aria-hidden="true" />
+                  <span>{t("ret.adjusted")}: <b className="ek-num">−{money(retTotal - retPay)}</b></span>
+                  <span className="ret-sum__apply">{t("common.cancel")}</span>
+                </button>
+              )}
+            </div>
+          )}
 
           <label className="form-label" style={{ marginTop: 12 }}>{t("ret.reason")}</label>
           <Field

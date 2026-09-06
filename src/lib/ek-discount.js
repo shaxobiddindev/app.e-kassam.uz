@@ -311,3 +311,302 @@ export function discountVerdict(lines, amount) {
   if (d > cartRoom(lines)) return "over";
   return "ok";
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   CHEGIRMA OPTIMIZATORI (V80) — QAYTARISHNI HAM O'YLAYDIGAN TAKLIF
+
+   ═══ NEGA `budgetOffers` YETMADI ══════════════════════════════════════
+
+   Yuqoridagi ikkala funksiya ham BITTA savolga javob beradi: «CHEK
+   JAMISI qanday qilib yaxlit bo'ladi?». Ular chegirmani serverga
+   BUTUN CHEK bo'yicha bitta son qilib beradi va server uni qator
+   QIYMATIGA mutanosib tarqatadi.
+
+   Natijada 44 200 lik chek 44 000 bo'ladi — jami chiroyli. Lekin
+   uchta bir xil tovarning bir donasi 14 666.67 ga tushadi va bu
+   ERTAGA chiqadi: mijoz bittasini qaytarganda kassir 14 666 so'm
+   67 tiyin berishi kerak. Bunday pul yo'q. U yaxlitlaydi, ayirma
+   hisobsiz qoladi.
+
+   ═══ YANGI SAVOL ══════════════════════════════════════════════════════
+
+   «Byudjetdan oshmasdan, do'kon chegarasini buzmasdan, BIR DONANING
+   narxi ham, jami ham qulay bo'ladigan taqsimot bormi?»
+
+   Uchta bir xil tovar uchun javob: bir donasini 14 500 ga tushirish —
+   jami 43 500, chegirma 700. Byudjetdan (aytaylik 1 000) kam ishlatdi,
+   lekin qaytarish MUAMMOSIZ.
+
+   ═══ USTUVORLIK TARTIBI (do'kon egasi belgilagan) ═════════════════════
+
+     1. XAVFSIZLIK — hech bir qator o'z chegarasidan pastga tushmaydi,
+        chegirma byudjetdan oshmaydi. Bu BAHO EMAS, SARALASH: shartni
+        buzgan variant ro'yxatga umuman kirmaydi.
+     2. QAYTARISH QULAYLIGI — bir donaning narxi (`ek-refund.js`).
+     3. YAXLIT QATOR NARXI — nechta qator qulay narxga tushdi.
+     4. YAXLIT JAMI — chekning o'zi.
+     5. BYUDJETDAN FOYDALANISH — kassir bermoqchi bo'lganiga yaqinlik.
+     6. TEKIS TAQSIMOT — bitta qator hammasini yutib yubormasin.
+
+   ⚠ TARTIB LEKSIKOGRAFIK: yuqoridagi band teng chiqqandagina keyingisi
+   qaraladi. Shuning uchun qaytarish bahosi 100 bo'lgan 9 800 lik
+   chegirma, bahosi 40 bo'lgan 10 000 likdan USTUN — 5-band 2-bandni
+   hech qachon bosib keta olmaydi.
+
+   ⚠ NIMA UCHUN QATORMA-QATOR YUBORILADI. Server chek chegirmasini
+   qator QIYMATIGA mutanosib tarqatadi va bu taqsimot optimizator
+   topgan narsadan boshqa bo'lardi — ya'ni ekranda ko'rsatilgan narx
+   chekka tushmasdi. Shuning uchun taklif qo'llanganda har qatorga O'Z
+   summasi yoziladi (`discountAmount`), chek chegirmasi esa tegilmaydi.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+import { refundScore, cartRefundScore, REFUND_TIERS } from "./ek-refund.js";
+
+/** Pul aniqligi — ikki xona. */
+const r2 = (v) => Math.round((Number(v) || 0) * 100) / 100;
+/** Yarim tiyin — suzuvchi nuqta xatosidan himoya. */
+const EPS = 0.005;
+
+/**
+ * Qatorning optimizator uchun kerakli o'lchovlari.
+ *
+ * `paid` — hozirgi holatda to'lanadigan summa (qator chegirmasi
+ * ayirilgan), `room` — unga yana qancha chegirma sig'adi.
+ */
+function measure(l) {
+  const price = Number(l.salePrice) || 0;
+  const qty = Number(l.qty) || 0;
+  const paid = r2(Math.max(0, price * qty - (Number(l.discount) || 0)));
+  const room = lineRoom(l);
+  return { price, qty, paid, room, unit: qty > 0 ? paid / qty : 0 };
+}
+
+/**
+ * BIR DONANING NARXINI yaxlit pog'onaga tushirish.
+ *
+ * Har qatorga alohida qaraladi va byudjet ARZONIDAN boshlab
+ * sarflanadi: bir som evaziga eng ko'p qulaylik beradigan qator
+ * birinchi navbatda tuzatiladi. Aks holda bitta qimmat qator butun
+ * byudjetni yeb, qolganlari noqulay narxda qolardi.
+ */
+function snapUnits(rows, step, budget) {
+  const add = rows.map(() => 0);
+  const picks = [];
+
+  rows.forEach((r, i) => {
+    if (r.qty <= 0 || r.paid <= 0) return;
+    const target = Math.floor(r.unit / step) * step;
+    if (target <= 0) return;
+    const cost = r2(r.paid - target * r.qty);
+    if (cost <= EPS || cost > r.room + EPS) return;
+
+    const gain = (refundScore(target) - refundScore(r.unit)) * r.paid;
+    if (gain <= 0) return;
+    picks.push({ i, cost, gain });
+  });
+
+  /* Bir som evaziga eng ko'p foyda — birinchi. Teng bo'lsa arzoni:
+     qolgan byudjet keyingi qatorga ham yetsin. */
+  picks.sort((a, b) => (b.gain / b.cost) - (a.gain / a.cost) || a.cost - b.cost);
+
+  let spent = 0;
+  for (const p of picks) {
+    if (spent + p.cost > budget + EPS) continue;
+    add[p.i] = p.cost;
+    spent = r2(spent + p.cost);
+  }
+  return add;
+}
+
+/**
+ * CHEK JAMISINI yaxlit pog'onaga tushirish — bazadagi taqsimot ustiga.
+ *
+ * ⚠ Qoldiq qatorlarning BO'SH JOYIGA mutanosib tarqatiladi
+ * (`spreadByRoom` bilan bir qoida), qiymatiga emas: marjasi past qator
+ * o'z chegarasidan oshib ketmasligi kerak.
+ */
+function roundTotal(rows, step, budget, base) {
+  const add = base.slice();
+  const left = rows.map((r, i) => Math.max(0, r.room - add[i]));
+  const roomLeft = left.reduce((s, v) => s + v, 0);
+  const spent = add.reduce((s, v) => s + v, 0);
+  const cap = Math.min(budget - spent, roomLeft);
+  if (cap <= EPS) return add;
+
+  const total = r2(rows.reduce((s, r, i) => s + r.paid - add[i], 0));
+  const target = Math.ceil((total - cap) / step) * step;
+  const need = r2(total - target);
+  if (need <= EPS || need > cap + EPS) return add;
+
+  let given = 0;
+  let biggest = 0;
+  for (let i = 0; i < rows.length; i++) {
+    const share = Math.min(left[i], r2((need * left[i]) / roomLeft));
+    add[i] = r2(add[i] + share);
+    given = r2(given + share);
+    if (left[i] > left[biggest]) biggest = i;
+  }
+  const rest = r2(need - given);
+  if (rest > 0) add[biggest] = r2(Math.min(rows[biggest].room, add[biggest] + rest));
+  return add;
+}
+
+/** Rejaning bahosi — ustuvorlik tartibidagi 2–6-bandlar. */
+function scorePlan(rows, add) {
+  const parts = rows.map((r, i) => ({
+    paid: r2(r.paid - add[i]),
+    qty: r.qty,
+  }));
+  const units = parts.map((p) => (p.qty > 0 ? p.paid / p.qty : 0));
+
+  const refund = cartRefundScore(
+    parts.map((p, i) => ({ unitRefund: units[i], qty: p.qty })));
+
+  /* Nechta qator qulay narxga tushdi — qator SONI bo'yicha.
+     ⚠ 2-banddan farqi shunda: u summaga mutanosib va bitta katta
+     qator hukmron bo'ladi; bu esa har qatorni teng sanaydi. Ikkalasi
+     birga «bitta katta qator ham, hamma mayda qator ham» degan
+     javobni beradi.
+
+     Chegara — 100 ga bo'linish (60 ball): 50 lik pog'ona amalda
+     qaytarib bo'lmaydigan summa va uni «qulay» deb sanash bahoni
+     ma'nosiz qilardi. */
+  let real = 0;
+  let nice = 0;
+  parts.forEach((p, i) => {
+    if (p.paid <= 0) return;
+    real++;
+    if (refundScore(units[i]) >= 60) nice++;
+  });
+  const roundItems = real ? nice / real : 1;
+
+  const total = r2(parts.reduce((s, p) => s + p.paid, 0));
+
+  /* Tekislik: qatorlar chegirma ULUSHI qanchalik bir-biriga yaqin.
+     Bittasiga 30%, qolganiga 0% berish texnik jihatdan to'g'ri, lekin
+     mijoz chekni ko'rganda «nega faqat bunisi arzonlashdi?» deb
+     so'raydi va kassirda javob bo'lmaydi. */
+  let lo = 1;
+  let hi = 0;
+  rows.forEach((r, i) => {
+    if (r.paid <= 0) return;
+    const rate = add[i] / r.paid;
+    if (rate < lo) lo = rate;
+    if (rate > hi) hi = rate;
+  });
+  const even = real ? Math.max(0, Math.min(1, 1 - (hi - lo))) : 1;
+
+  return { refund, roundItems, roundTotal: refundScore(total), even, total };
+}
+
+/**
+ * Ikki rejani LEKSIKOGRAFIK taqqoslaydi (manfiy = birinchisi yaxshiroq).
+ *
+ * ⚠ Kasr baholar ikki xonagacha kesiladi: 82.3 va 82.31 orasidagi farq
+ * hech narsani anglatmaydi, lekin kesilmasa u keyingi bandlarni —
+ * jumladan byudjetdan foydalanishni — hech qachon ishlatmasdi.
+ */
+function comparePlans(a, b) {
+  const at = (v) => Math.round(v * 100) / 100;
+  return (
+    at(b.score.refund) - at(a.score.refund)
+    || at(b.score.roundItems) - at(a.score.roundItems)
+    || b.score.roundTotal - a.score.roundTotal
+    || b.discount - a.discount
+    || at(b.score.even) - at(a.score.even)
+  );
+}
+
+/**
+ * ENG YAXSHI CHEGIRMA REJALARI.
+ *
+ * @param lines  savat qatorlari `{ salePrice, qty, discount?, minPrice? }`
+ * @param budget kassir bermoqchi bo'lgan ENG KO'P chegirma
+ * @param limit  nechta reja qaytarilsin
+ * @returns `[{ discount, total, add, units, score }]` — yaxshisidan
+ *          yomoniga. `add` — HAR QATORGA qo'shiladigan chegirma.
+ */
+export function optimizeDiscount(lines, budget, limit = 3) {
+  const cap = Math.min(Math.round(Number(budget) || 0), cartRoom(lines));
+  if (!lines?.length || cap <= 0) return [];
+
+  const rows = lines.map(measure);
+  if (rows.every((r) => r.paid <= 0)) return [];
+
+  /* ⚠ HOZIRGI HOLATNING BAHOSI — o'lchov nuqtasi. Chegirmasiz savat
+     ham qulay bo'lishi mumkin (3 × 15 000 — bir donasi tekis 15 000)
+     va bunday savatga «−1 000, jami 44 000» deb taklif berish bir
+     donani 14 666.67 ga tushirardi: jami chiroyli, qaytarish esa
+     imkonsiz. Taklif tizimining butun ma'nosi shuni oldini olish. */
+  const base = cartRefundScore(rows.map((r) => ({ unitRefund: r.unit, qty: r.qty })));
+
+  const zeros = rows.map(() => 0);
+  const steps = REFUND_TIERS.map((t) => t.step);
+  const cands = [];
+
+  /* Faqat bir donaning narxi. */
+  for (const s of steps) cands.push(snapUnits(rows, s, cap));
+  /* Faqat jami — eski xatti-harakat, lekin qatorma-qator taqsimlangan. */
+  for (const s of steps) cands.push(roundTotal(rows, s, cap, zeros));
+  /* Ikkalasi: avval bir dona, qolgan byudjetga jami. */
+  for (const s1 of steps) {
+    const base = snapUnits(rows, s1, cap);
+    if (base.every((v) => v <= EPS)) continue;
+    for (const s2 of steps) cands.push(roundTotal(rows, s2, cap, base));
+  }
+
+  const seen = new Set();
+  const plans = [];
+  for (const add of cands) {
+    const discount = r2(add.reduce((s, v) => s + v, 0));
+    if (discount <= EPS) continue;
+    /* ⚠ XAVFSIZLIK — BAHO EMAS, SARALASH. Chegaradan oshgan reja
+       ro'yxatga kirmaydi: uni bosgan kassir darhol bajik so'raladigan
+       holatga tushardi, ya'ni tizim uni o'zi tuzoqqa boshlagan
+       bo'lardi. */
+    if (discount > cap + EPS) continue;
+    if (add.some((v, i) => v < -EPS || v > rows[i].room + EPS)) continue;
+
+    const key = add.map((v) => v.toFixed(2)).join("|");
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    const score = scorePlan(rows, add);
+    /* ⚠ QAYTARISHNI YOMONLASHTIRADIGAN TAKLIF KO'RSATILMAYDI.
+
+       Kassir ro'yxatdagi tugmani ko'rsa — bosadi; u har bir variantni
+       qaytarish nuqtai nazaridan tekshirib o'tirmaydi, buning uchun
+       tizim bor. Shuning uchun tanlov faqat YAXSHILAYDIGAN yoki
+       hech bo'lmasa buzmaydigan rejalardan iborat bo'ladi.
+
+       Ro'yxat bo'sh chiqsa kassir jim qolmaydi: to'lov oynasi «bu
+       byudjetda qulay variant yo'q» deb aytadi va u chegirmani
+       qo'lda yozishi mumkin — qo'lda yozilgani hech qachon
+       to'silmagan. */
+    if (score.refund < base - EPS) continue;
+
+    plans.push({
+      discount,
+      total: score.total,
+      add,
+      units: rows.map((r, i) => (r.qty > 0 ? r2((r.paid - add[i]) / r.qty) : 0)),
+      score,
+      /** Hozirgi holatga nisbatan qaytarish qulayligining o'sishi. */
+      gain: Math.round(score.refund - base),
+    });
+  }
+
+  plans.sort(comparePlans);
+  return plans.slice(0, limit);
+}
+
+/**
+ * Hozirgi savatning qaytarish bahosi — chegirmasiz holat.
+ *
+ * Taklifni «yaxshilanish» deb ko'rsatish uchun kerak: kassir 60 dan
+ * 100 ga ko'tarilganini ko'rsa, tugmani nega bosayotganini tushunadi.
+ */
+export function currentRefundScore(lines) {
+  const rows = (lines || []).map(measure);
+  return cartRefundScore(rows.map((r) => ({ unitRefund: r.unit, qty: r.qty })));
+}

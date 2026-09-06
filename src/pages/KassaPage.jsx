@@ -39,8 +39,9 @@ import { KASSA_KEYS, keyLabel, resolve as resolveKey } from "../lib/ek-kassa-key
 import { settle, payType as payTypeOf, restFor, effective, savingsMax } from "../lib/ek-payment";
 import { cashSuggestions } from "../lib/ek-cash";
 import * as display from "../lib/ek-display";
-import { spreadDiscount, roundingOffers, budgetOffers, cartRoom,
-         cartLossRoom, discountVerdict } from "../lib/ek-discount";
+import { spreadDiscount, roundingOffers, optimizeDiscount, cartRoom,
+         cartLossRoom, discountVerdict, currentRefundScore } from "../lib/ek-discount";
+import { TIER_BEST } from "../lib/ek-refund";
 import { useScanner } from "../hooks/useScanner";
 import { rankLocal, looksLikeCode } from "../lib/ek-search";
 import { useTileMetrics } from "../hooks/useTileMetrics";
@@ -1468,10 +1469,51 @@ export default function KassaPage({ toast, refreshLowStock }) {
      OSHMAYDIGAN, lekin jamini yaxlit qiladigan variantlarni beradi.
      Boshlang'ich nuqta — kassirning summasi, chekning qoldig'i emas. */
   const budgetNum = Math.max(0, Number(discBudget) || 0);
+  /* ⚠ TAKLIFLAR ENDI QAYTARISHNI HAM O'YLAYDI (V80).
+
+     Ilgari bu yerda `budgetOffers` turardi va u bitta savolga javob
+     berardi: «jami qanday qilib yaxlit bo'ladi?». 44 200 → 44 000
+     chiroyli chiqardi, lekin uchta bir xil tovarning bir donasi
+     14 666.67 ga tushardi — mijoz ertaga bittasini qaytarganda
+     kassirda bunday pul bo'lmasdi.
+
+     `optimizeDiscount` ikkala shartni birga qaraydi va qaytarishni
+     YOMONLASHTIRADIGAN variantni ro'yxatga umuman kiritmaydi:
+     ro'yxatdagi tugmani kassir har doim bosadi, uni tekshirish
+     tizimning ishi. To'liq tartib — `lib/ek-discount.js`. */
   const budgetPicks = useMemo(
-    () => budgetOffers(linesAfterDisc, liveTotal, budgetNum),
-    [linesAfterDisc, liveTotal, budgetNum],
+    () => optimizeDiscount(linesAfterDisc, budgetNum),
+    [linesAfterDisc, budgetNum],
   );
+  /* Hozirgi savatning qaytarish qulayligi — taklif «nima beradi?»
+     degan savolga javob berish uchun. */
+  const refundNow = useMemo(() => currentRefundScore(linesAfterDisc), [linesAfterDisc]);
+
+  /**
+   * Taklifni QO'LLASH — har qatorga O'Z summasi yoziladi.
+   *
+   * ⚠ CHEK CHEGIRMASI SIFATIDA YUBORIB BO'LMAYDI. Server chek
+   * chegirmasini qator QIYMATIGA mutanosib tarqatadi
+   * (`distributeSaleDiscount`) va bu taqsimot optimizator topgan
+   * narsadan boshqa bo'lardi — ya'ni ekranda ko'rsatilgan «bir donasi
+   * 14 500» chekka tushmasdi. Shuning uchun reja qatorma-qator
+   * yoziladi va chek chegirmasi maydoni bo'shatiladi.
+   *
+   * ⚠ Allaqachon yozilgan chek chegirmasi ham qatorlarga KO'CHIRILADI
+   * (serverdagi ayni qoida bo'yicha — `discountSplit`). Aks holda
+   * ikkita taqsimot bir-birining ustiga tushib, ko'rsatilgan narx
+   * bilan chekdagi narx ajralib ketardi. Jami esa o'zgarmaydi.
+   */
+  const applyPlan = (plan) => {
+    setCart((prev) => prev.map((i, idx) => ({
+      ...i,
+      discount: Math.round(((Number(i.discount) || 0)
+        + (discountSplit[idx] || 0) + (plan.add[idx] || 0)) * 100) / 100,
+      _pulse: Date.now(),
+    })));
+    setDiscount("");
+    setDiscBudget("");
+  };
 
   /* ── Chegirma chegaralari ─────────────────────────────────────────────
      Ikkalasi BUTUN savatdan (qator chegirmalarini hisobga olib), chek
@@ -2378,22 +2420,43 @@ export default function KassaPage({ toast, refreshLowStock }) {
             </div>
             <div className="round-offers__row">
               {budgetPicks.map((o) => (
-                <button key={o.target} type="button" className="round-offers__btn"
-                        onClick={() => { setDiscount(String(discountNum + o.discount)); setDiscBudget(""); }}>
-                  <span className="round-offers__target ek-num">{money(o.target)}</span>
+                <button key={o.total} type="button" className="round-offers__btn"
+                        onClick={() => applyPlan(o)}
+                        title={t("kassa.refundScore") + ": " + Math.round(o.score.refund)}>
+                  <span className="round-offers__target ek-num">{money(o.total)}</span>
                   <span className="round-offers__cut ek-num">−{money(o.discount)}</span>
+                  {/* ⚠ QAYTARISH BAHOSI — tugmaning butun MA'NOSI shu.
+                      Usiz kassir eng katta chegirmani tanlardi va tizim
+                      nega boshqasini birinchi qo'yganini bilmasdi.
+
+                      ⚠ BAHONING O'ZI ko'rsatiladi, «o'sish» emas:
+                      «+26» nimadan +26 ekani noma'lum, 100 esa
+                      «bundan yaxshisi yo'q» degani va u har tugmada
+                      bir xil o'lchovda turadi. Eng yuqorisi alohida
+                      ajratiladi — kassirning ko'zi shuni izlaydi. */}
+                  <span className={`round-offers__ret ${o.score.refund >= TIER_BEST ? "is-best" : ""}`}>
+                    <i className="fa-solid fa-rotate-left" aria-hidden="true" />{" "}
+                    {Math.round(o.score.refund)}
+                  </span>
                 </button>
               ))}
             </div>
           </div>
         ) : (
-          /* ⚠ JIM QOLMAYDI. Taklif chiqmasligining ikki sababi
-             bor va ikkalasi ham kassirga aytiladi, aks holda u
-             maydonga yozib turib «nega hech narsa bo'lmadi?»
-             deb qolardi. */
+          /* ⚠ JIM QOLMAYDI. Taklif chiqmasligining UCH sababi bor va
+             uchalasi ham kassirga aytiladi, aks holda u maydonga
+             yozib turib «nega hech narsa bo'lmadi?» deb qolardi.
+
+             ⚠ UCHINCHISI V80 dan: variant bor edi, lekin hammasi
+             qaytarishni yomonlashtirardi (savat allaqachon qulay).
+             Buni «byudjet sig'madi» deb aytish yolg'on bo'lardi —
+             kassir byudjetni oshirib, baribir hech narsa
+             ko'rmasdi. */
           <div className="pay-modal-hint">
             <i className="fa-solid fa-circle-info" style={{ marginRight: 4 }} aria-hidden="true" />
-            {ruleRoom <= 0 ? t("kassa.budgetNoRoom") : t("kassa.budgetNoFit")}
+            {ruleRoom <= 0 ? t("kassa.budgetNoRoom")
+              : refundNow >= TIER_BEST ? t("kassa.budgetAlreadyGood")
+              : t("kassa.budgetNoFit")}
           </div>
         )
       )}

@@ -3364,6 +3364,21 @@ img.logo--dark { display: none; }
    mijozga aytadigan raqam o'sha. */
 .round-offers__cut { font-size: 11px; font-weight: 700; color: var(--fg-danger); }
 
+/* ══ QAYTARISH BELGISI (V80) ═══════════════════════════════════════════
+   Tugmaning butun MA'NOSI shu belgida: usiz kassir eng katta
+   chegirmani tanlardi va tizim nega boshqasini tavsiya qilganini
+   bilmasdi.
+
+   ⚠ Uchinchi qator ATAYLAB kichik va faqat KERAK BO'LGANDA chiqadi
+   (`gain > 0`). Har tugmada uchta bir xil o'lchamdagi raqam turganda
+   kassir hech qaysisini o'qimasdi. */
+.round-offers__ret {
+  font-size: 10px; font-weight: 700; line-height: 1;
+  color: var(--fg-tertiary); font-variant-numeric: tabular-nums;
+}
+/* Eng yuqori baho — kassirning ko'zi aynan shuni izlaydi. */
+.round-offers__ret.is-best { color: var(--fg-success); }
+
 /* ══════════════════════════════════════════════════════════════════════════
    KLAVIATURA YORLIQLARI (V57)
 
@@ -5563,3 +5578,38 @@ button.stk__c:hover { background: var(--bg-hover); }
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .sugg__p { font-size: 11px; font-weight: 800; opacity: .85; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   QAYTARISH SUMMASI VA TAVSIYA (V80)
+
+   ⚠ TIZIM SUMMANI O'ZI O'ZGARTIRMAYDI. Qaytariladigan pul — mijoz
+   TO'LAGAN pul; uni jimgina yaxlitlash mijozning qo'lidagi chekdan
+   chetga chiqish bo'lardi. Shuning uchun tavsiya ALOHIDA tugma:
+   kassir uni ko'radi, o'zi bosadi, farq esa jurnalga tushadi.
+
+   ⚠ Tugma jamining OSTIDA turadi va undan kichikroq: kassirning ko'zi
+   avval haqiqiy summani ko'rishi kerak, tavsiya esa — taklif, buyruq
+   emas.
+   ══════════════════════════════════════════════════════════════════════════ */
+.ret-sum { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+.ret-sum__row {
+  display: flex; align-items: baseline; justify-content: space-between;
+  padding: 8px 12px; border-radius: 10px; background: var(--bg-sunken);
+  font-size: 13px; font-weight: 700; color: var(--fg-secondary);
+}
+.ret-sum__row b {
+  font-size: 18px; color: var(--fg-primary); font-variant-numeric: tabular-nums;
+}
+.ret-sum__tip {
+  display: flex; align-items: center; gap: 8px; width: 100%; cursor: pointer;
+  padding: 7px 12px; border-radius: 10px; text-align: left;
+  border: 1px dashed var(--border-brand); background: transparent;
+  font-size: 12px; font-weight: 600; color: var(--fg-secondary);
+}
+.ret-sum__tip:hover { background: var(--bg-brand-subtle); }
+.ret-sum__tip.is-on { border-style: solid; border-color: var(--border-warning); }
+.ret-sum__tip > span:first-of-type { flex: 1; min-width: 0; }
+.ret-sum__cut { color: var(--fg-danger); font-weight: 700; }
+.ret-sum__apply {
+  font-size: 11px; font-weight: 800; color: var(--fg-brand); white-space: nowrap;
+}
