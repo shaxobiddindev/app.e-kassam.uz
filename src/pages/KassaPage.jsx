@@ -1951,6 +1951,25 @@ export default function KassaPage({ toast, refreshLowStock }) {
      nasiya. */
   const creditReal = creditPart > 0 && !payUntouched;
 
+  /**
+   * HISOBDA KO'RSATILADIGAN qatorlar (V91).
+   *
+   * ⚠ `pay.parts` DAN FARQ QILADI va bu ataylab: `parts` serverga
+   * ketadi va u yerda naqd KESILGAN bo'lishi shart (yashikka faqat
+   * chekka tushgani kiradi). Ekran esa kassir NIMA KIRITGANINI
+   * ko'rsatishi kerak — aks holda kiritilgan pul ko'rinmay,
+   * «Qaytim» yolg'iz qolardi.
+   */
+  const payRows = useMemo(() => {
+    const rows = pay.parts.filter((x) => x.type !== "CREDIT");
+    /* Naqd kiritilgan-u, chekka tushmagan bo'lsa (karta hammasini
+       yopgan) — qatori umuman yo'q edi. Qo'shamiz. */
+    if (pay.cashIn > 0 && !rows.some((x) => x.type === "CASH")) {
+      rows.unshift({ type: "CASH", amount: pay.cashIn });
+    }
+    return rows.map((x) => (x.type === "CASH" ? { ...x, amount: pay.cashIn } : x));
+  }, [pay]);
+
   /* Muddatgacha necha kun (V87). `null` — sana yo'q yoki yaroqsiz. */
   const dueLeft = dueDate ? due.daysLeft(dueDate) : null;
 
@@ -3654,7 +3673,26 @@ export default function KassaPage({ toast, refreshLowStock }) {
               {/* ══ HISOB ══════════════════════════════════════════════
                   Kiritilganlar va qolgani — bir joyda, bir qarashda. */}
               <div className="pay-sum">
-                {pay.parts.filter((x) => x.type !== "CREDIT").map((x) => {
+                {/* ⚠⚠ KASSIR KIRITGAN NAQD DOIM KO'RINADI (V91).
+
+                    Do'kon egasi ko'rsatdi: karta 30 000 chekni to'liq
+                    yopgan, kassir naqdga 50 000 kiritgan — va hisobda
+                    naqd qatori UMUMAN yo'q edi, faqat «Qaytim 50 000»
+                    turardi.
+
+                    Sabab: `settle` chekka tushadigan naqdni KESADI
+                    (`cashPaid`), bu yerda esa 0 dan katta qatorlargina
+                    chiziladi. Hisob to'g'ri, ekran esa YOLG'ON: go'yo
+                    do'kon 50 000 chiqarayotgandek ko'rinardi, holbuki
+                    o'sha 50 000 mijozdan endi olingan edi. Kassir shu
+                    ekranga qarab yashikdan pul berib yuborishi mumkin.
+
+                    Endi naqd qatori KIRITILGAN summani ko'rsatadi
+                    (`cashIn`), qaytim esa uning qanchasi qaytishini.
+                    Bu chekning o'zi ham shunday yoziladi: «olindi —
+                    qaytim». Serverga ketadigan `parts` esa
+                    o'zgarmaydi: u yerda kesilgani turishi SHART. */}
+                {payRows.map((x) => {
                   const m = payMethods.find((k) => k.key === x.type);
                   return (
                     <div className="pay-sum__row" key={x.type} style={{ "--pay-color": m?.color }}>
