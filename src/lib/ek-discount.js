@@ -451,6 +451,48 @@ function roundTotal(rows, step, budget, base) {
   return add;
 }
 
+/**
+ * BYUDJETNI TO'LIQ SARFLASH — bazadagi taqsimot ustiga qolganini
+ * qatorlarning BO'SH JOYIGA tarqatadi.
+ *
+ * ═══ NEGA BU ALOHIDA KERAK ════════════════════════════════════════════
+ *
+ * Qolgan ikki qurilma (`snapUnits`, `roundTotal`) byudjetdan KAM
+ * sarflaydi: birinchisi bir donaning narxini yaxlitlaydi, ikkinchisi
+ * jamini. Ikkalasi ham «shundan oshma» degan javob beradi.
+ *
+ * Lekin kassir ko'pincha AYNAN o'sha summani bermoqchi bo'ladi: «20 000
+ * chegirma qildim» deb mijozga aytib bo'lgan. Bunda savol boshqa —
+ * «20 000 ni QANDAY bo'lish eng qulay?». Javobsiz qolsa, summa serverda
+ * qator QIYMATIGA mutanosib tarqalardi va marjasi past qator o'z
+ * chegarasidan oshib ketishi mumkin edi.
+ *
+ * ⚠ QIYMATGA emas, BO'SH JOYGA mutanosib: `spreadByRoom` bilan bir
+ * qoida. Do'kon egasining misolida piyoz va kartoshka ko'p yutadi,
+ * 700 so'mlik Kola deyarli hech narsa — chunki uning bo'sh joyi kichik.
+ */
+function exactSpend(rows, cap, base) {
+  const add = base.slice();
+  const left = rows.map((r, i) => Math.max(0, r.room - add[i]));
+  const roomLeft = left.reduce((s, v) => s + v, 0);
+  const need = r2(cap - add.reduce((s, v) => s + v, 0));
+  if (need <= EPS || roomLeft <= EPS) return add;
+
+  let given = 0;
+  let biggest = 0;
+  for (let i = 0; i < rows.length; i++) {
+    const share = Math.min(left[i], r2((need * left[i]) / roomLeft));
+    add[i] = r2(add[i] + share);
+    given = r2(given + share);
+    if (left[i] > left[biggest]) biggest = i;
+  }
+  /* Yaxlitlashdan qolgani — bo'sh joyi eng katta qatorga, uning
+     chegarasidan oshmasdan. */
+  const rest = r2(need - given);
+  if (rest > 0) add[biggest] = r2(Math.min(rows[biggest].room, add[biggest] + rest));
+  return add;
+}
+
 /** Rejaning bahosi — ustuvorlik tartibidagi 2–6-bandlar. */
 function scorePlan(rows, add) {
   const parts = rows.map((r, i) => ({
@@ -554,6 +596,17 @@ export function optimizeDiscount(lines, budget, limit = 3) {
     if (base.every((v) => v <= EPS)) continue;
     for (const s2 of steps) cands.push(roundTotal(rows, s2, cap, base));
   }
+  /* ⚠ AYNAN O'SHA SUMMA (V82). Kassir ko'pincha raqamni mijozga
+     ALLAQACHON aytgan bo'ladi va uni kamaytirish mumkin emas; savol
+     esa «bu summani qanday bo'lish eng qulay?» bo'lib qoladi.
+     Birinchisi — sof taqsimot, qolganlari — avval bir donaning
+     narxini yaxlitlab, qolganini tarqatish. */
+  cands.push(exactSpend(rows, cap, zeros));
+  for (const s1 of steps) {
+    const base = snapUnits(rows, s1, cap);
+    if (base.every((v) => v <= EPS)) continue;
+    cands.push(exactSpend(rows, cap, base));
+  }
 
   const seen = new Set();
   const plans = [];
@@ -593,6 +646,8 @@ export function optimizeDiscount(lines, budget, limit = 3) {
       score,
       /** Hozirgi holatga nisbatan qaytarish qulayligining o'sishi. */
       gain: Math.round(score.refund - base),
+      /** Kassir yozgan summaning O'ZI sarflandimi. */
+      exact: discount >= cap - EPS,
     });
   }
 

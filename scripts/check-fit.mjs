@@ -152,7 +152,8 @@ const st = () => page.evaluate(() => {
     savActive: !!document.querySelector(".cust-fact--btn.active"),
     label: document.querySelector('label[for="pay-amount"]')?.textContent.trim(),
     rows: [...document.querySelectorAll(".pay-sum__row")].map((r) => r.textContent.trim().replace(/\s+/g, " ")),
-    two: !!document.querySelector(".pay-two"),
+    disc: !!document.querySelector("#disc-budget"),
+    discCount: document.querySelectorAll(".pay-modal-body input.pay-mixed-input, .pay-modal input.pay-mixed-input").length,
     boxH: box?.getBoundingClientRect().height, vh: innerHeight,
   };
 });
@@ -161,7 +162,11 @@ yes(s.open, "to'lov oynasi ochildi (F9)");
 yes(s.btns.length === 4, "to'lov turlari to'ri — 4 ta (jamg'arma to'rda emas)", s.btns.length);
 yes(s.savBtn, "mijoz kartasida jamg'arma KATAGI (tugma) bor");
 yes(s.facts.length === 4, "mijoz kartasi 4 katak: daraja, jamg'arma, qarz, ball", s.facts.length + " — " + s.facts.join(" | "));
-yes(s.two, "chegirma va byudjet yonma-yon (.pay-two)");
+/* ⚠ CHEGIRMA MAYDONI BITTA (V82). Ilgari ikkita edi — «Chegirma» va
+   «Chegirma byudjeti» — va kassir uchun ular bir xil ko'rinardi:
+   ikkalasiga ham summa yoziladi, farqni faqat izohni o'qigan odam
+   bilardi. Mijoz oldida turgan kassir esa izoh o'qimaydi. */
+yes(s.disc, "chegirma maydoni bor (#disc-budget)");
 yes(s.over <= 1, `1366×768 (oddiy): scrol yo'q (ortiq ${s.over}px, daraja ${s.fit}, zoom ${s.zoom || "1"})`, s.over);
 
 // summalarni yozish
@@ -187,7 +192,6 @@ s = await st();
 yes(s.savActive, "jamg'arma katagi bosilganda FAOL bo'ldi");
 yes(/jamg/i.test(s.label || ""), "summa maydoni jamg'armaga o'tdi: " + s.label, s.label);
 await type("#pay-amount", "1500");
-await type(".pay-two input", "990");
 await type("#disc-budget", "2000");
 await page.focus("#pay-amount");
 s = await st();

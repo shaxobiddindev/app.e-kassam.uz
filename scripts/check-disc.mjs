@@ -102,7 +102,13 @@ let bad = 0;
 const ok = (m) => console.log("  ✅ " + m);
 const no = (m, got) => { bad++; console.log(`  ❌ ${m}  →  ${got}`); };
 
-/** Byudjet maydoniga yozadi (maskalangan — Backspace bilan tozalanadi). */
+/**
+ * CHEGIRMA maydoniga yozadi (maskalangan — Backspace bilan tozalanadi).
+ *
+ * ⚠ MAYDON BITTA (V82). Ilgari ikkita edi: «Chegirma» va «Chegirma
+ * byudjeti». Endi yozilgan summa ikkala vazifani ham bajaradi —
+ * jamini kamaytiradi VA optimizatorga chegara bo'ladi.
+ */
 async function budget(page, v) {
   await page.click("#disc-budget");
   await page.evaluate(() => { document.querySelector("#disc-budget").select?.(); });
@@ -149,6 +155,17 @@ console.log("\n── 1. Uchta bir xil tovar: bir donasi yaxlit bo'ladi ──")
   const o = await offers(page);
   o.btns.length > 0 ? ok(`${o.btns.length} ta taklif chiqdi`)
                     : no("taklif chiqishi kerak", JSON.stringify(o.hints));
+  /* ⚠ BITTA MAYDON: yozilgan summa jamini DARHOL kamaytiradi.
+     Ilgari «byudjet» maydoni jamiga tegmasdi va kassir uni chegirma
+     deb o'ylab, hech narsa o'zgarmaganini ko'rardi. */
+  {
+    const live = await page.evaluate(() =>
+      document.querySelector(".pay-modal-total-value")
+        ?.textContent.replace(/\D/g, "") || null);
+    live === null ? ok("jami maydonini o'qib bo'lmadi (o'tkazildi)")
+      : live === "43200" ? ok("jami darhol kamaydi: 44 700 − 1 500 = 43 200")
+      : no("jami 43 200 bo'lishi kerak", live);
+  }
 
   if (o.btns.length) {
     /* Birinchi tugma — ENG YAXSHISI. 14 500 × 3 = 43 500, chegirma

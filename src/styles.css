@@ -3896,9 +3896,6 @@ img.logo--dark { display: none; }
 .cust-facts__input { grid-column: 1 / -1; min-height: 38px; }
 
 /* Chegirma va byudjet — yonma-yon. */
-.pay-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-.pay-two .pay-modal-section-label { margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
-.pay-two .pay-modal-section-label i { margin-right: 5px; }
 
 /* ══════════════════════════════════════════════════════════════════════════
    SAVAT OSTIDAGI IKKI TUGMA (V66) — chapda jamg'arma, o'ngda to'lov
@@ -5621,3 +5618,13 @@ button.stk__c:hover { background: var(--bg-hover); }
    umuman o'qimasdi. */
 .ret-amt { text-align: right; padding: 6px 8px; font-weight: 700; }
 .ret-amt::placeholder { color: var(--fg-secondary); opacity: 1; font-weight: 700; }
+
+/* ══ SIZ YOZGAN SUMMANING O'ZI (V82) ═══════════════════════════════════
+   Kassir raqamni ko'pincha mijozga ALLAQACHON aytgan bo'ladi («20 ming
+   tushirdim») va uni kamaytirish mumkin emas. Shunday variant
+   ro'yxatda bo'lsa, u ajratib ko'rsatiladi — kassir mijoz bilan
+   bahslashmasdan bosadi.
+
+   ⚠ Ramka bilan, fon bilan emas: fon tanlangan tugmadan farq
+   qilmasdi va kassir «bu allaqachon bosilgan» deb o'ylardi. */
+.round-offers__btn.is-exact { border-color: var(--border-brand); border-width: 1.5px; }

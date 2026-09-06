@@ -168,7 +168,36 @@ yes(pu.every((p) => p.discount + 300 <= (15000 - 14000) * 3),
     "berilgan chegirma bilan birga ham chegaradan oshmaydi");
 yes(pu.every((p) => p.units[0] >= 14000), "bir donaning narxi eng past narxdan pastga tushmaydi");
 
-console.log("\n═══ 13. Reja ichki ziddiyatsiz ═══");
+console.log("\n═══ 13. ⚠ AYNAN YOZILGAN SUMMA (V82) ═══");
+/* Kassir raqamni ko'pincha mijozga ALLAQACHON aytgan bo'ladi («20 ming
+   tushirdim») va uni kamaytirish mumkin emas. Shunda savol boshqa:
+   «bu summani QANDAY bo'lish eng qulay?». Javobsiz qolsa, summa
+   serverda qator QIYMATIGA mutanosib tarqalardi va marjasi past qator
+   o'z chegarasidan oshib ketishi mumkin edi. */
+{
+  const GOOD = [{ salePrice: 15000, qty: 3, discount: 0, minPrice: 12000 }];
+  const p3k = optimizeDiscount(GOOD, 3000);
+  yes(p3k.length > 0, "allaqachon qulay savatda ham 3 000 uchun variant bor");
+  yes(p3k.some((p) => p.exact), "aynan 3 000 lik variant bor");
+  const ex = p3k.find((p) => p.exact);
+  eq(ex.discount, 3000, "aynan yozilgan summa");
+  eq(ex.units[0], 14000, "bir donasi 14 000 — qaytarish qulay");
+
+  /* ⚠ AYNAN SUMMA HAM QAYTARISHNI YOMONLASHTIRA OLMAYDI: 8-bo'limdagi
+     qoida undan ham ustun. Kassir bunday summani qo'lda yozadi. */
+  const B = [{ salePrice: 14900, qty: 3, discount: 0, minPrice: 13000 }];
+  yes(optimizeDiscount(B, 3333).every((p) => p.score.refund >= currentRefundScore(B)),
+      "aynan summa ham bahoni pasaytirmaydi");
+
+  /* Har rejada `exact` bayrog'i to'g'ri qo'yilgan. */
+  for (const p of optimizeDiscount(MIX, 5000)) {
+    eq(p.exact, p.discount >= 5000 - 0.005, `bayroq to'g'ri (−${p.discount})`);
+  }
+  /* Chegara yo'q joyda aynan summa ham chiqmaydi. */
+  eqArr(optimizeDiscount(TIGHT, 3000), [], "bo'sh joysiz qatorda aynan summa ham yo'q");
+}
+
+console.log("\n═══ 14. Reja ichki ziddiyatsiz ═══");
 for (const p of optimizeDiscount(MIX, 5000)) {
   const spent = Math.round(p.add.reduce((s, v) => s + v, 0) * 100) / 100;
   eq(spent, p.discount, `qatorlar yig'indisi chegirmaga teng (${p.discount})`);

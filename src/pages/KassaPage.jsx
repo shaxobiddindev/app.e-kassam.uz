@@ -320,7 +320,6 @@ export default function KassaPage({ toast, refreshLowStock }) {
      Kassir shu maydonga yozadi, tizim esa shundan oshmaydigan yaxlit
      variantlarni taklif qiladi. Tanlanmaguncha chekka hech narsa
      tushmaydi: bu maydon niyat, chegirma esa qaror. */
-  const [discBudget, setDiscBudget] = useState("");
   /* ⚠ TANLANGAN SAVAT QATORI — klaviatura bilan ishlash uchun (V57).
      Sensorsiz monoblokda «−», «+», narx va «✕» tugmalariga yetish
      uchun har safar sichqonchani olish kerak edi. Endi qator ↑/↓ bilan
@@ -1468,7 +1467,15 @@ export default function KassaPage({ toast, refreshLowStock }) {
      Kassir «shuncha bermoqchiman» deb yozadi, tizim esa shu summadan
      OSHMAYDIGAN, lekin jamini yaxlit qiladigan variantlarni beradi.
      Boshlang'ich nuqta — kassirning summasi, chekning qoldig'i emas. */
-  const budgetNum = Math.max(0, Number(discBudget) || 0);
+  /* ⚠ BITTA MAYDON (V82). Ilgari ikkita edi: «Chegirma» (jamini
+     darhol kamaytiradi) va «Chegirma byudjeti» (faqat taklif so'raydi).
+     Kassir uchun ular bir xil ko'rinardi — ikkalasiga ham summa
+     yoziladi — va farqni faqat izohni o'qigan odam bilardi.
+
+     Endi yozilgan summa IKKALA vazifani ham bajaradi: jami darhol
+     shuncha kamayadi VA o'sha summa optimizatorga CHEGARA bo'lib
+     beriladi. Kassir raqamni bir marta yozadi, tizim esa uni qanday
+     bo'lishning eng qulay yo'lini taklif qiladi. */
   /* ⚠ TAKLIFLAR ENDI QAYTARISHNI HAM O'YLAYDI (V80).
 
      Ilgari bu yerda `budgetOffers` turardi va u bitta savolga javob
@@ -1482,12 +1489,24 @@ export default function KassaPage({ toast, refreshLowStock }) {
      ro'yxatdagi tugmani kassir har doim bosadi, uni tekshirish
      tizimning ishi. To'liq tartib — `lib/ek-discount.js`. */
   const budgetPicks = useMemo(
-    () => optimizeDiscount(linesAfterDisc, budgetNum),
-    [linesAfterDisc, budgetNum],
+    /* ⚠ XOM SAVATDAN, `linesAfterDisc` DAN EMAS. Yozilgan summa endi
+       CHEGARA: uni «allaqachon berilgan» deb hisoblasak, reja uning
+       USTIGA yana shuncha qo'shardi va chegirma ikki barobar
+       bo'lib ketardi. */
+    () => optimizeDiscount(cart, discountNum),
+    [cart, discountNum],
   );
-  /* Hozirgi savatning qaytarish qulayligi — taklif «nima beradi?»
-     degan savolga javob berish uchun. */
-  const refundNow = useMemo(() => currentRefundScore(linesAfterDisc), [linesAfterDisc]);
+  /* Hozirgi savatning qaytarish qulayligi — «taklif nega yo'q?» degan
+     savolga javob berish uchun.
+
+     ⚠ XOM SAVATDAN, `linesAfterDisc` DAN EMAS. Maydondagi summa hali
+     BERILGAN chegirma emas, u faqat chegara. Uni qo'shib hisoblasak,
+     3 × 15 000 lik savat (bir donasi tekis 15 000) 1 000 yozilgan
+     zahoti 14 666.67 ga aylanib, baho 100 dan 10 ga tushardi — va
+     tizim «narxlar allaqachon qulay» o'rniga «bu summaga qulayroq
+     bo'linish chiqmadi» deb yolg'on sabab ko'rsatardi. Kassir esa
+     summani oshirib, baribir hech narsa ko'rmasdi. */
+  const refundNow = useMemo(() => currentRefundScore(cart), [cart]);
 
   /**
    * Taklifni QO'LLASH — har qatorga O'Z summasi yoziladi.
@@ -1499,20 +1518,18 @@ export default function KassaPage({ toast, refreshLowStock }) {
    * 14 500» chekka tushmasdi. Shuning uchun reja qatorma-qator
    * yoziladi va chek chegirmasi maydoni bo'shatiladi.
    *
-   * ⚠ Allaqachon yozilgan chek chegirmasi ham qatorlarga KO'CHIRILADI
-   * (serverdagi ayni qoida bo'yicha — `discountSplit`). Aks holda
-   * ikkita taqsimot bir-birining ustiga tushib, ko'rsatilgan narx
-   * bilan chekdagi narx ajralib ketardi. Jami esa o'zgarmaydi.
+   * ⚠ MAYDONDAGI SUMMA QO'SHILMAYDI, O'RNINI BOSADI. U reja uchun
+   * CHEGARA edi, berilgan chegirma emas: qo'shilsa, chegirma ikki
+   * barobar bo'lib ketardi. Shuning uchun maydon bo'shatiladi va
+   * qatorlarda faqat rejaning o'z summasi qoladi.
    */
   const applyPlan = (plan) => {
     setCart((prev) => prev.map((i, idx) => ({
       ...i,
-      discount: Math.round(((Number(i.discount) || 0)
-        + (discountSplit[idx] || 0) + (plan.add[idx] || 0)) * 100) / 100,
+      discount: Math.round(((Number(i.discount) || 0) + (plan.add[idx] || 0)) * 100) / 100,
       _pulse: Date.now(),
     })));
     setDiscount("");
-    setDiscBudget("");
   };
 
   /* ── Chegirma chegaralari ─────────────────────────────────────────────
@@ -1523,8 +1540,8 @@ export default function KassaPage({ toast, refreshLowStock }) {
   const lossLimit = useMemo(() => cartLossRoom(cart), [cart]);
   /** `"ok"` · `"over"` (rahbar tasdig'i) · `"loss"` (zararga sotish). */
   const discVerdict = useMemo(
-    () => discountVerdict(cart, discountNum + budgetNum),
-    [cart, discountNum, budgetNum],
+    () => discountVerdict(cart, discountNum),
+    [cart, discountNum],
   );
 
   const total    = afterDiscount - bonusNum;
@@ -1890,7 +1907,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
   const fitKey = [
     customer?.id, !!tier, savingsLeft > 0, Number(tier?.debtBalance) > 0, bonusAvail > 0,
     Number(tier?.bonusExpiringSoon) > 0, pay.parts.length, pay.change > 0, creditPart > 0,
-    creditBlocked, needCustomer, discountNum > 0, budgetNum > 0, lineDiscounts > 0,
+    creditBlocked, needCustomer, discountNum > 0, lineDiscounts > 0,
     roundOffers.length, budgetPicks.length, discVerdict, cart.length, payUntouched,
     pay.over > 0, payFocus === "SAVINGS",
     /* ⚠ Klaviatura ochilganda oynaga qolgan joy KESKIN kamayadi
@@ -2103,7 +2120,6 @@ export default function KassaPage({ toast, refreshLowStock }) {
        qaytimini jimgina yutib yuborardi. */
     setChangeToSavings(false);
     setDiscount("");
-    setDiscBudget("");
     /* ⚠ Ball ham tozalanadi. Usiz keyingi mijozning chekiga oldingi
        mijozning ball summasi tushib qolardi — va u boshqa odamning
        balansidan yechilardi. */
@@ -2321,17 +2337,24 @@ export default function KassaPage({ toast, refreshLowStock }) {
      qoladi. Bitta JSX, ikki joy — mazmun ikki nusxada yashamaydi. */
   const discountBlock = (
     <>
-      {/* ── Chegirma ────────────────────────────────────────────
+      {/* ══ CHEGIRMA — BITTA MAYDON (V82) ══════════════════════
+
           To'lov turidan OLDIN: chegirma jamini o'zgartiradi, ya'ni
           kassir avval yakuniy summani ko'rib, keyin to'lovni
-          qabul qilishi kerak. Chegara oshsa server bajik so'raydi. */}
-      {/* ⚠ IKKI MAYDON YONMA-YON (V66): chegirma va «bermoqchi
-          bo'lgan summa» ustma-ust ikki qator edi — 130px, va bu
-          ustun oynani scrolga olib borardi. Yonma-yon 65px;
-          izohlar (qator chegirmasi, hisob) to'liq kenglikda,
-          ostida. */}
-      <div className="pay-two">
-      <div>
+          qabul qilishi kerak. Chegara oshsa server bajik so'raydi.
+
+          ⚠ ILGARI IKKITA MAYDON EDI: «Chegirma» (jamini darhol
+          kamaytiradi) va «Chegirma byudjeti» (faqat taklif so'raydi).
+          Kassir uchun ular BIR XIL ko'rinardi — ikkalasiga ham summa
+          yoziladi — va farqni faqat izohni o'qigan odam bilardi.
+          Mijoz oldida turgan kassir esa izoh o'qimaydi: u birinchisiga
+          yozardi va tizimning butun aqli ishlamay qolardi.
+
+          Endi maydon bitta va yozilgan summa IKKALA vazifani ham
+          bajaradi: jami darhol shuncha kamayadi VA o'sha summa
+          optimizatorga CHEGARA bo'lib beriladi. Ostidagi ro'yxat esa
+          «shu summani qanday bo'lish eng qulay?» degan savolga javob
+          beradi — jumladan AYNAN o'sha summani. */}
       <div className="pay-modal-section-label">
         <i className="fa-solid fa-tag" aria-hidden="true" /> {t("kassa.discount")}
       </div>
@@ -2339,44 +2362,12 @@ export default function KassaPage({ toast, refreshLowStock }) {
           qatorlar narxini allaqachon tushirgan bo'lishi mumkin.
           Chek chegirmasi shundan KEYINGI summadan olinadi —
           serverdagi tartib ham shunday. */}
-      <NumField kind="money" max={afterLines}
+      <NumField id="disc-budget" kind="money" max={afterLines}
         className="form-input pay-mixed-input ek-num"
         value={discount}
         onChange={(e) => setDiscount(e.target.value)}
         placeholder="0"
       />
-      </div>
-      <div>
-      {/* ══ BERMOQCHI BO'LGAN SUMMA (V57) ════════════════════
-          ⚠ Do'kon egasining so'rovi AYNAN shunday edi:
-
-            «20 000 chegirma qilmoqchiman. Shundan oshmaydigan,
-             lekin piyoz va kartoshkadagi 500 va 700 ni
-             yo'qotadigan summani tizim taklif qilsin.»
-
-          Ya'ni boshlang'ich nuqta — KASSIRNING SUMMASI, chekning
-          qoldig'i emas. Quyidagi «yaxlitlash takliflari» esa
-          boshqa savolga javob beradi (eng arzon yechim) va
-          ikkalasi bir vaqtda kerak bo'lmaydi: byudjet yozilgan
-          zahoti o'sha ro'yxat almashadi. */}
-      {/* Qisqa yorliq — ikki ustunda uzun savol sig'maydi; to'liq
-          matni `title` da. */}
-      <label className="pay-modal-section-label" htmlFor="disc-budget" title={t("kassa.discBudget")}>
-        <i className="fa-solid fa-hand-holding-dollar" aria-hidden="true" />{" "}
-        {t("kassa.discBudgetShort")}
-      </label>
-      {/* ⚠ Chegara — QOIDA emas, ZARAR chegarasi: kassir undan
-          ortig'ini yozsa ham maydondan qaytarilmaydi, faqat
-          ogohlantiriladi. Niyatni to'sish uni raqamni boshqa
-          joyga yozishga majbur qilardi, xolos. */}
-      <NumField id="disc-budget" kind="money" max={afterLines}
-        className="form-input pay-mixed-input ek-num"
-        value={discBudget}
-        onChange={(e) => setDiscBudget(e.target.value)}
-        placeholder="0"
-      />
-      </div>
-      </div>
       {/* Qatorda tushirilgan narx ham chegirma — kassir uni
           ko'rmasa, chek chegirmasini yana ustiga qo'shib
           yuborardi. */}
@@ -2410,7 +2401,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
         </div>
       )}
 
-      {budgetNum > 0 && (
+      {discountNum > 0 && (
         budgetPicks.length > 0 ? (
           <div className="round-offers">
             <div className="round-offers__label">
@@ -2418,11 +2409,18 @@ export default function KassaPage({ toast, refreshLowStock }) {
               {t("kassa.budgetOffer")}
               <span className="round-offers__hint">{t("kassa.budgetHint")}</span>
             </div>
+            {/* ⚠ `is-exact` — KASSIR YOZGAN SUMMANING O'ZI. U raqamni
+                ko'pincha mijozga ALLAQACHON aytgan bo'ladi («20 ming
+                tushirdim») va uni kamaytirish mumkin emas. Shunday
+                variant ro'yxatda bo'lsa, u ajratib ko'rsatiladi:
+                kassir mijoz bilan bahslashmasdan bosadi. */}
             <div className="round-offers__row">
               {budgetPicks.map((o) => (
-                <button key={o.total} type="button" className="round-offers__btn"
+                <button key={o.total} type="button"
+                        className={`round-offers__btn ${o.exact ? "is-exact" : ""}`}
                         onClick={() => applyPlan(o)}
-                        title={t("kassa.refundScore") + ": " + Math.round(o.score.refund)}>
+                        title={(o.exact ? t("kassa.discExact") + " · " : "")
+                               + t("kassa.refundScore") + ": " + Math.round(o.score.refund)}>
                   <span className="round-offers__target ek-num">{money(o.total)}</span>
                   <span className="round-offers__cut ek-num">−{money(o.discount)}</span>
                   {/* ⚠ QAYTARISH BAHOSI — tugmaning butun MA'NOSI shu.
@@ -2474,7 +2472,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
           ⚠ Jami allaqachon yaxlit bo'lsa taklif CHIQMAYDI:
           maqsad — noqulay qoldiqni yo'qotish, «yaxlit chegirma
           berish» emas. */}
-      {budgetNum <= 0 && roundOffers.length > 0 && (
+      {discountNum <= 0 && roundOffers.length > 0 && (
         <div className="round-offers">
           <div className="round-offers__label">
             <i className="fa-solid fa-wand-magic-sparkles" aria-hidden="true" />{" "}
