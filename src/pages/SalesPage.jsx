@@ -23,6 +23,8 @@ import { useOnline } from "../hooks/useOnline";
 import { parseSaleCode } from "../lib/ek-barcode";
 import { rankItems } from "../lib/ek-search";
 import { refundFor, refundSuggestion } from "../lib/ek-refund";
+import { saleRow, salesTotals } from "../lib/ek-sales-row";
+import { downloadXlsx } from "../lib/ek-xlsx";
 
 /* ── Chekni qayta chiqarish ────────────────────────────────────────────────
    Kassa ekranidagi Ctrl+P faqat OXIRGI chekni chiqaradi. Amalda esa mijoz
@@ -360,6 +362,12 @@ export default function SalesPage({ toast }) {
     { key: "cash",  label: t("sales.colCashier"),   type: "text",   get: (s) => s.cashierName },
     { key: "cust",  label: t("cust.col"),           type: "text",   get: (s) => s.customerName },
     { key: "sum",   label: t("common.sum"),         type: "number", get: (s) => s.totalAmount },
+    /* ⚠ Chegirma va qarz ham FILTRLANADIGAN ustun (V97): egasi
+       «chegirmasi 50 000 dan katta cheklar» yoki «qarzi qolganlar»
+       deb so'raydi va uni ko'z bilan qidirish minglab chekda
+       imkonsiz. */
+    { key: "disc",  label: t("sales.colDiscount"),  type: "number", get: (s) => saleRow(s).discount },
+    { key: "debt",  label: t("sales.colCredit"),    type: "number", get: (s) => saleRow(s).credit },
     { key: "pay",   label: t("sales.colPayment"),   type: "enum",   get: (s) => s.paymentType,
       options: Object.keys(PAYMENT_TYPE).map((k) => ({ value: k, label: paymentEntry(k).label })) },
     { key: "st",    label: t("common.status"),      type: "enum",   get: (s) => s.status,
@@ -373,9 +381,68 @@ export default function SalesPage({ toast }) {
      raqamlarni eslaydi, to'liq raqamni emas — matn qoidasi bunda
      ishlamasdi. */
   const filtered = rankItems(colFlt.apply(byStatus), search, {
-    digits: (s) => [String(s.id)],
-    texts:  (s) => [s.customerName, s.cashierName],
+    /* ⚠ SHTRIX-KOD ham RAQAM sifatida (V97). Do'kon egasining ish
+       oqimi: qaytarib kelingan tovarni skanerlaydi va «bu qaysi
+       chekdan chiqqan?» degan savolga javob oladi — ilgari buni
+       faqat cheklarni birma-bir ochib topsa bo'lardi. */
+    digits: (s) => [String(s.id), ...(s.items || []).map((i) => i.barcode).filter(Boolean)],
+    /* ⚠ NOM YETMAYDI: bir do'konda bir xil nomli o'nlab tovar bo'ladi
+       («Futbolka»), SKU esa yagona. */
+    texts:  (s) => [s.customerName, s.cashierName,
+                    ...(s.items || []).flatMap((i) => [i.productName, i.sku])].filter(Boolean),
   });
+
+  /* ⚠ KPI KO'RINGAN RO'YXATDAN hisoblanadi, alohida so'rovdan EMAS.
+     Egasi filtrni o'zgartirsa raqamlar ham o'zgarishi kerak — aks
+     holda ekranda bir-biriga zid ikkita haqiqat turardi. */
+  const kpi = useMemo(() => salesTotals(filtered), [filtered]);
+
+  /**
+   * KO'RINGAN RO'YXATNI Excel'ga chiqaradi.
+   *
+   * ⚠ Aynan `filtered` — filtr va qidiruvdan O'TGANI. Butun ro'yxatni
+   * chiqarish osonroq bo'lardi, lekin egasi ekranda ko'rgan narsasini
+   * kutadi: «shu uchta kassirning shu haftadagi cheklarini ber»
+   * degani, «hamma narsani» degani emas.
+   *
+   * ⚠ SUMMALAR SON bo'lib ketadi, matn bo'lib emas: Excel'da ular
+   * ustidan yig'indi olinadi. Matn bo'lsa, ustunni qo'lda qayta
+   * terish kerak bo'lardi.
+   */
+  const exportXlsx = () => {
+    const head = (...cols) => cols.map((v) => ({ v, bold: true }));
+    const rows = filtered.map((s) => {
+      const r = saleRow(s);
+      return [
+        s.id,
+        s.createdAt ? new Date(s.createdAt).toLocaleString("uz-UZ") : "",
+        s.cashierName || "",
+        s.customerName || "",
+        Number(s.totalAmount) || 0,
+        r.discount,
+        r.paid,
+        r.credit,
+        paymentEntry(s.paymentType).label,
+        saleStatus(s.status).label,
+        r.returned === "full" ? t("sales.retFull")
+          : r.returned === "partial" ? t("sales.retPartial") : "",
+        /* Chekdagi tovarlar — bitta katakda. Alohida varaq qilish
+           mumkin edi, lekin egasi odatda «shu chekda nima bor edi»
+           deb qaraydi, tovar bo'yicha tahlil esa Hisobotlarda. */
+        (s.items || []).map((i) => `${i.productName} × ${i.quantity}`).join("; "),
+      ];
+    });
+    downloadXlsx(`sotuvlar-${new Date().toISOString().slice(0, 10)}`, [{
+      name: t("sales.title"),
+      rows: [
+        head("#", t("common.date"), t("sales.colCashier"), t("cust.col"),
+             t("common.sum"), t("sales.colDiscount"), t("sales.colPaid"),
+             t("sales.colCredit"), t("sales.colPayment"), t("common.status"),
+             t("sales.colReturned"), t("products.col")),
+        ...rows,
+      ],
+    }]);
+  };
 
   return (
     <div>
@@ -386,10 +453,56 @@ export default function SalesPage({ toast }) {
         <BranchSelector selectedId={branchId} onSelect={setBranchId} />
       </div>
 
+      {/* ══ KPI — KO'RINGAN RO'YXAT BO'YICHA (V97) ═════════════════════
+          Do'kon egasi ro'yxat ustida jamlamani so'radi. Raqamlar
+          alohida so'rovdan EMAS, aynan ekrandagi cheklardan
+          hisoblanadi: filtr o'zgarsa jamlama ham o'zgaradi va ekranda
+          bir-biriga zid ikkita haqiqat qolmaydi.
+
+          ⚠ QAYTARISH MUSBAT ko'rsatiladi, lekin sofdan AYIRILGAN
+          (`salesTotals`). Manfiy son bilan ko'rsatish «−1 200 000»
+          ni ustunga qo'yar va o'qishni qiyinlashtirardi.
+
+          ⚠ Bo'sh ro'yxatda panel CHIZILMAYDI: to'rtta nol egasiga
+          hech narsa aytmaydi va faqat joy egallaydi. */}
+      {filtered.length > 0 && (
+        <div className="sales-kpi">
+          <div className="sales-kpi__item">
+            <span className="sales-kpi__label">{t("sales.kpiSales")}</span>
+            <b className="ek-num">{money(kpi.sales)}</b>
+            <small className="text-muted">{t("sales.kpiCount", { n: kpi.count })}</small>
+          </div>
+          <div className="sales-kpi__item sales-kpi__item--ret">
+            <span className="sales-kpi__label">{t("sales.kpiReturns")}</span>
+            <b className="ek-num">{money(kpi.returns)}</b>
+            <small className="text-muted">{t("sales.kpiCount", { n: kpi.returnCount })}</small>
+          </div>
+          <div className="sales-kpi__item sales-kpi__item--net">
+            <span className="sales-kpi__label">{t("sales.kpiNet")}</span>
+            <b className="ek-num">{money(kpi.net)}</b>
+            <small className="text-muted">{t("sales.kpiNetHint")}</small>
+          </div>
+          <div className="sales-kpi__item sales-kpi__item--debt">
+            <span className="sales-kpi__label">{t("sales.kpiCredit")}</span>
+            <b className="ek-num">{money(kpi.credit)}</b>
+            <small className="text-muted">{t("sales.kpiPaid")}: {money(kpi.paid)}</small>
+          </div>
+        </div>
+      )}
+
       <div className="card">
         <div className="card-header">
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <SearchBar value={search} onChange={setSearch} placeholder={t("sales.search")} style={{ width: 280 }} />
+            {/* ⚠ Faqat KO'RINGAN cheklar bor bo'lganda: bo'sh faylni
+                yuklab olish foydasiz va tugma «ishlamadi» degan
+                taassurot berardi. */}
+            {filtered.length > 0 && (
+              <button className="btn btn-outline btn-sm" onClick={exportXlsx}
+                      title={t("sales.exportHint", { n: filtered.length })}>
+                <i className="fa-solid fa-file-excel" aria-hidden="true" /> Excel
+              </button>
+            )}
             {isCashier && (
               <span style={{ fontSize: 12, fontWeight: 700, color: "var(--blue)", background: "var(--blue-l)", padding: "5px 12px", borderRadius: 20 }}>
                 <i className="fa-solid fa-calendar-day" style={{ marginRight: 5 }} />
@@ -437,7 +550,7 @@ export default function SalesPage({ toast }) {
         </div>
 
         <div className="table-wrap">
-          {busy ? <SkeletonTable rows={8} cols={["narrow", "text", "text", "num", "text", "text", "text"]} /> : (
+          {busy ? <SkeletonTable rows={8} cols={["narrow", "text", "text", "num", "num", "num", "text", "text", "text"]} /> : (
             <table>
               <thead>
                 <tr>
@@ -445,6 +558,8 @@ export default function SalesPage({ toast }) {
                   <SortTh flt={colFlt} col="cash">{t("sales.colCashier")}</SortTh>
                   <SortTh flt={colFlt} col="cust">{t("cust.col")}</SortTh>
                   <SortTh flt={colFlt} col="sum">{t("common.sum")}</SortTh>
+                  <SortTh flt={colFlt} col="disc">{t("sales.colDiscount")}</SortTh>
+                  <SortTh flt={colFlt} col="debt">{t("sales.colPaidCredit")}</SortTh>
                   <SortTh flt={colFlt} col="pay">{t("sales.colPayment")}</SortTh>
                   <SortTh flt={colFlt} col="st">{t("common.status")}</SortTh>
                   <SortTh flt={colFlt} col="date">{t("common.date")}</SortTh>
@@ -454,18 +569,57 @@ export default function SalesPage({ toast }) {
               <tbody>
                 {filtered.length > 0 ? filtered.map((sale) => {
                   const st = statusBadge(sale.status);
+                  const row = saleRow(sale);
                   return (
                     <tr key={sale.id}>
                       <td className="mono fw-800 text-muted">#{sale.id}</td>
                       <td className="fw-700">{sale.cashierName || "—"}</td>
                       <td>{sale.customerName || <span className="text-muted">—</span>}</td>
                       <td><span className="mono fw-700 text-blue">{money(sale.totalAmount)}</span></td>
+                      {/* ⚠ NOL — «—», nol EMAS. Chegirmasiz chekda «0»
+                          ko'z uchun shovqin: ustun raqamlar bilan
+                          to'lib ketar va haqiqiy chegirma ular orasida
+                          yo'qolardi. */}
+                      <td className="mono" style={{ fontSize: 13 }}>
+                        {row.discount > 0
+                          ? <span style={{ color: "var(--fg-warning)" }}>{money(row.discount)}</span>
+                          : <span className="text-muted">—</span>}
+                      </td>
+                      {/* ⚠ TO'LANGAN va QARZGA — BITTA katakda, ikki
+                          qator. Alohida ustun qilinsa jadval sakkizdan
+                          o'nga chiqar va telefon ekranida o'qib
+                          bo'lmasdi. Qarzi bo'lmagan chekda ikkinchi
+                          qator umuman chizilmaydi. */}
+                      <td className="mono" style={{ fontSize: 13, lineHeight: 1.3 }}>
+                        <div className="fw-700">{money(row.paid)}</div>
+                        {row.credit > 0 && (
+                          <div style={{ color: "var(--fg-danger)", fontSize: 12 }}>
+                            {t("sales.creditShort")}: {money(row.credit)}
+                          </div>
+                        )}
+                      </td>
                       {/* Aralash chekda qismlar sichqoncha ostida (V66). */}
                       <td><span style={{ fontSize: 13 }}
                                 title={(sale.payments || []).length > 1
                                   ? sale.payments.map((p) => `${paymentEntry(p.type).label}: ${money(p.amount)}`).join(" · ")
                                   : undefined}><PayLabel type={sale.paymentType} /></span></td>
-                      <td><Badge color={st.color}>{st.label}</Badge></td>
+                      {/* ⚠ QAYTARILGANLIK — STATUS EMAS, alohida belgi.
+                          `SaleStatus` da `RETURNED` yo'q va bo'lmasligi
+                          ham kerak: qaytarish ALOHIDA chek
+                          (`CustomerReceiptService` izohi), asl chek esa
+                          «bu savdo qanday bo'lgan» ni saqlaydi. Shu
+                          sababdan belgi status yonida turadi, uning
+                          o'rnida emas. */}
+                      <td>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                          <Badge color={st.color}>{st.label}</Badge>
+                          {row.returned !== "none" && (
+                            <Badge color={row.returned === "full" ? "danger" : "warning"}>
+                              {row.returned === "full" ? t("sales.retFull") : t("sales.retPartial")}
+                            </Badge>
+                          )}
+                        </div>
+                      </td>
                       <td className="text-muted" style={{ fontSize: 12 }}>
                         {sale.createdAt ? new Date(sale.createdAt).toLocaleString("uz-UZ") : "—"}
                       </td>
@@ -502,7 +656,7 @@ export default function SalesPage({ toast }) {
                     </tr>
                   );
                 }) : (
-                  <tr><td colSpan={8}><Empty icon="fa-receipt" text={t("sales.notFound")} /></td></tr>
+                  <tr><td colSpan={10}><Empty icon="fa-receipt" text={t("sales.notFound")} /></td></tr>
                 )}
               </tbody>
             </table>

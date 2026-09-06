@@ -5730,3 +5730,42 @@ button.stk__c:hover { background: var(--bg-hover); }
    ⚠ Ramka bilan, fon bilan emas: fon tanlangan tugmadan farq
    qilmasdi va kassir «bu allaqachon bosilgan» deb o'ylardi. */
 .round-offers__btn.is-exact { border-color: var(--border-brand); border-width: 1.5px; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SOTUVLAR TARIXI — KPI PANELI (V97)
+
+   ⚠ `auto-fit` bilan: to'rtta katak keng ekranda yonma-yon, telefonda
+   esa o'zi ustma-ust tushadi. Qat'iy `grid-template-columns: repeat(4,…)`
+   390px da har katakni 90px ga siqib, raqamlarni o'rab yuborardi —
+   `check-a11y` aynan shu kenglikda o'lchaydi.
+   ══════════════════════════════════════════════════════════════════════════ */
+.sales-kpi {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.sales-kpi__item {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--fg-brand);
+  border-radius: var(--radius, 10px);
+  /* ⚠ Zaxira qiymatsiz: `--bg-surface` e'lon qilingan. Mavjud
+     bo'lmagan o'zgaruvchiga zaxira yozish keyingi odamni «demak
+     `--bg-card` ham bor» degan xulosaga olib borardi. */
+  background: var(--bg-surface);
+}
+.sales-kpi__label {
+  font-size: 11px; font-weight: 800; letter-spacing: .04em;
+  text-transform: uppercase; color: var(--fg-tertiary);
+}
+.sales-kpi__item b { font-size: 19px; font-weight: 800; color: var(--fg-primary); }
+.sales-kpi__item small { font-size: 11px; }
+
+/* Chap chegara — ma'no bo'yicha: qaytaruv ogohlantirish, sof yashil,
+   qarz qizil. Rang RAQAMDA emas, CHEGARADA: to'rtta rangli katta son
+   bir-biri bilan raqobatlashib, ko'z hech qayerga tushmasdi. */
+.sales-kpi__item--ret  { border-left-color: var(--fg-warning); }
+.sales-kpi__item--net  { border-left-color: var(--fg-success); }
+.sales-kpi__item--debt { border-left-color: var(--fg-danger); }
