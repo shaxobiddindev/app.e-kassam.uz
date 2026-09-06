@@ -5613,3 +5613,11 @@ button.stk__c:hover { background: var(--bg-hover); }
 .ret-sum__apply {
   font-size: 11px; font-weight: 800; color: var(--fg-brand); white-space: nowrap;
 }
+
+/* Qaytarish summasi maydoni — jadval ichida, o'ngga tekislangan.
+   ⚠ TURTKI (placeholder) DEYARLI ODDIY RANGDA: uning ichida
+   muzlatilgan summa turadi va u «bo'sh maydon» emas, «hozircha shu
+   summa qaytadi» degani. Oddiy hira turtki bo'lsa, kassir raqamni
+   umuman o'qimasdi. */
+.ret-amt { text-align: right; padding: 6px 8px; font-weight: 700; }
+.ret-amt::placeholder { color: var(--fg-secondary); opacity: 1; font-weight: 700; }

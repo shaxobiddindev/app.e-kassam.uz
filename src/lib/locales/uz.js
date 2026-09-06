@@ -1218,6 +1218,7 @@ export default {
   "ret.done": "Qaytarish rasmiylashtirildi",
   "ret.badge": "Qaytarish",
   "ret.amount": "Summa",
+  "ret.amountMax": "Ko'pi bilan",
   "ret.perUnit": "dona",
   "ret.total": "Qaytariladi",
   "ret.suggest": "Tavsiya",

@@ -1164,6 +1164,7 @@ export default {
   "ret.done": "Return completed",
   "ret.badge": "Return",
   "ret.amount": "Amount",
+  "ret.amountMax": "At most",
   "ret.perUnit": "unit",
   "ret.total": "To refund",
   "ret.suggest": "Suggestion",

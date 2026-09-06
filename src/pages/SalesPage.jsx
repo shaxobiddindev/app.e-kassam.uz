@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "../lib/ek-i18n";
 import { saleApi } from "../api";
-import { money } from "../utils";
+import { money, fmtMoney } from "../utils";
 import { BranchSelector, Modal } from "../components";
 import { Empty, SearchBar, Badge, Field } from "../components/ui";
 import { useConfirm } from "../context/ConfirmProvider";
@@ -226,7 +226,7 @@ export default function SalesPage({ toast }) {
       const cut = Object.entries(ret.adjust);
       for (const it of items) {
         const found = cut.find(([id]) => Number(id) === it.saleItemId);
-        if (found) it.amount = found[1];
+        if (found && found[1] !== "" && found[1] != null) it.amount = Number(found[1]);
       }
     }
 
@@ -278,7 +278,10 @@ export default function SalesPage({ toast }) {
     if (!ret?.adjust) return retTotal;
     let sum = 0;
     for (const [id, exact] of Object.entries(retExact)) {
-      sum += ret.adjust[id] == null ? exact : ret.adjust[id];
+      /* ⚠ Maydon XOM SATR beradi («3300»), `applyTip` ham shunday
+         yozadi — bitta shakl, bitta o'qish joyi. */
+      const v = ret.adjust[id];
+      sum += v == null || v === "" ? exact : Number(v);
     }
     return Math.round(sum * 100) / 100;
   }, [ret, retExact, retTotal]);
@@ -294,6 +297,32 @@ export default function SalesPage({ toast }) {
    * ma'nosini yo'qotardi. Kassirga esa aynan JAMI kerak: kassadan
    * chiqadigan pul o'sha.
    */
+  /**
+   * Qatorning summasini QO'LDA yozish.
+   *
+   * ⚠ BO'SH MAYDON — «TEGILMAGAN». Kalit o'chiriladi va serverga bu
+   * qator uchun `amount` UMUMAN yuborilmaydi: server o'zining
+   * muzlatilgan suratidan hisoblaydi. Bo'sh maydonni «0 qaytar» deb
+   * o'qish mijozni puldan qilardi, muzlatilgan summani maydonga
+   * QIYMAT qilib qo'yish esa har qaytarishni «qo'lda o'zgartirilgan»
+   * bo'lib jurnalga tushirardi.
+   *
+   * ⚠ Hamma maydon bo'shatilsa `adjust` butunlay `null` bo'ladi —
+   * shundagina tavsiya tugmasi qaytadi va «qo'lda kamaytirildi»
+   * belgisi yo'qoladi. Bo'sh obyekt qolsa, ikkalasi ham noto'g'ri
+   * holatda qotib qolardi.
+   *
+   * Yuqori chegara maydonning O'ZIDA (`max`): kassir to'langandan
+   * ko'p yoza olmaydi. Server ham tekshiradi, lekin kassir buni
+   * tugmani bosishdan OLDIN bilishi kerak.
+   */
+  const setAmount = (id, raw) => {
+    const next = { ...(ret.adjust || {}) };
+    if (raw === "" || raw == null) delete next[id];
+    else next[id] = raw;
+    setRet({ ...ret, adjust: Object.keys(next).length ? next : null });
+  };
+
   const applyTip = () => {
     if (!retTip) return;
     const rows = Object.entries(retExact).sort((a, b) => b[1] - a[1]);
@@ -311,7 +340,7 @@ export default function SalesPage({ toast }) {
     for (const [id, exact] of rows) {
       if (left <= 0) break;
       const cut = Math.min(left, exact);
-      adjust[id] = Math.round((exact - cut) * 100) / 100;
+      adjust[id] = String(Math.round((exact - cut) * 100) / 100);
       left = Math.round((left - cut) * 100) / 100;
     }
     setRet({ ...ret, adjust });
@@ -541,6 +570,8 @@ export default function SalesPage({ toast }) {
                      kassir mijozga bir summani aytib, kassa
                      boshqasini berardi. */
                   const sum = refundFor(paid, it.quantity, it.returnedQuantity, back);
+                  /* Kassir yozgan summa — yozmagan bo'lsa `null`. */
+                  const typed = ret.adjust?.[it.id] ?? null;
                   return (
                     <tr key={it.id}>
                       <td className="fw-700">
@@ -564,8 +595,33 @@ export default function SalesPage({ toast }) {
                                                     adjust: null })}
                         />
                       </td>
-                      <td className="ta-right ek-num fw-700">
-                        {sum > 0 ? money(sum) : "—"}
+                      {/* ══ SUMMANI QO'LDA O'ZGARTIRISH (V80) ═══════
+                          ⚠ MAYDON BO'SH TURADI, ichida esa muzlatilgan
+                          summa TURTKI (placeholder) bo'lib ko'rinadi.
+                          Bu ataylab: bo'sh maydon «tegilmagan» degani
+                          va serverga `amount` UMUMAN yuborilmaydi —
+                          server o'z suratidan hisoblaydi. Maydonga
+                          muzlatilgan summani QIYMAT qilib qo'ysak,
+                          har qaytarish «qo'lda o'zgartirilgan» bo'lib
+                          jurnalga tushardi va 3 333.33 ni 3 333 deb
+                          ko'rsatgani uchun 33 tiyin JIMGINA yo'qolardi.
+
+                          ⚠ Faqat PASAYTIRISH. Oshirish — tovarni
+                          qaytarib, to'langandan ko'p pul olish, ya'ni
+                          kassadan pul chiqarishning eng oson yo'li.
+                          Server ham rad etadi, lekin kassir buni
+                          tugmani bosishdan OLDIN bilishi kerak. */}
+                      <td style={{ width: 140 }}>
+                        {sum > 0 ? (
+                          <Field
+                            kind="money" max={sum}
+                            className="form-input ek-num ret-amt"
+                            placeholder={fmtMoney(sum)}
+                            title={`${t("ret.amountMax")}: ${money(sum)}`}
+                            value={typed ?? ""}
+                            onChange={(e) => setAmount(it.id, e.target.value)}
+                          />
+                        ) : <span className="text-muted">—</span>}
                       </td>
                     </tr>
                   );

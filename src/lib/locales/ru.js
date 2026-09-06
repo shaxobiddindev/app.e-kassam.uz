@@ -1164,6 +1164,7 @@ export default {
   "ret.done": "Возврат оформлен",
   "ret.badge": "Возврат",
   "ret.amount": "Сумма",
+  "ret.amountMax": "Максимум",
   "ret.perUnit": "шт",
   "ret.total": "К возврату",
   "ret.suggest": "Рекомендация",

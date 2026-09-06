@@ -130,7 +130,10 @@ const view = (page) => page.evaluate(() => ({
   total: document.querySelector(".ret-sum__row b")?.textContent.trim() || null,
   tip: document.querySelector(".ret-sum__tip")?.textContent.replace(/\s+/g, " ").trim() || null,
   tipOn: !!document.querySelector(".ret-sum__tip.is-on"),
+  amt: document.querySelector(".ret-amt")?.value ?? null,
+  amtHold: document.querySelector(".ret-amt")?.placeholder ?? null,
 }));
+
 
 const page = await open();
 
@@ -254,6 +257,99 @@ console.log("\n── 7. Taklifsiz qaytarishda summa YUBORILMAYDI ──");
     ? ok("`amount` yuborilmadi — server o'zi hisoblaydi")
     : no("`amount` yuborilmasligi kerak", JSON.stringify(sentBody));
   await p2.close();
+}
+
+console.log("\n── 8. Summa maydoni: BO'SH turadi, ichida muzlatilgani ko'rinadi ──");
+{
+  /* ⚠ Bo'sh maydon «tegilmagan» degani va serverga `amount` umuman
+     yuborilmaydi. Muzlatilgan summani QIYMAT qilib qo'ysak, har
+     qaytarish «qo'lda o'zgartirilgan» bo'lib jurnalga tushardi. */
+  const p3 = await open();
+  await p3.evaluate(() => {
+    const el = document.querySelector(".modal-body tbody tr input");
+    const set = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
+    set?.call(el, "1"); el.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await new Promise((r) => setTimeout(r, 350));
+  const v = await p3.evaluate(() => ({
+    amt: document.querySelector(".ret-amt")?.value ?? null,
+    hold: document.querySelector(".ret-amt")?.placeholder ?? null,
+  }));
+  v.amt === "" ? ok("maydon bo'sh") : no("maydon bo'sh bo'lishi kerak", `«${v.amt}»`);
+  /(3\s?333)/.test(v.hold || "")
+    ? ok(`turtkida muzlatilgan summa: ${v.hold}`) : no("turtkida 3 333 bo'lishi kerak", v.hold);
+
+  console.log("\n── 9. Qo'lda yozilgan summa SERVERGA ketadi ──");
+  await p3.evaluate(() => {
+    const el = document.querySelector(".ret-amt");
+    const set = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
+    set?.call(el, "3000"); el.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await new Promise((r) => setTimeout(r, 350));
+  const tot = await p3.evaluate(() =>
+    document.querySelector(".ret-sum__row b")?.textContent.trim() || null);
+  num(tot) === 3000 ? ok(`jami darhol yangilandi: ${tot}`) : no("jami 3 000 bo'lishi kerak", tot);
+  const chip = await p3.evaluate(() => !!document.querySelector(".ret-sum__tip.is-on"));
+  chip ? ok("«qo'lda kamaytirildi» belgisi chiqdi") : no("belgi chiqishi kerak", "yo'q");
+
+  sentBody = null;
+  await p3.evaluate(() => {
+    const ta = document.querySelectorAll(".modal-body input, .modal-body textarea");
+    const last = ta[ta.length - 1];
+    const set = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
+    set?.call(last, "Buzuq"); last.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await new Promise((r) => setTimeout(r, 250));
+  await p3.evaluate(() => [...document.querySelectorAll("button")]
+    .find((b) => /rasmiylashtir/i.test(b.textContent))?.click());
+  await new Promise((r) => setTimeout(r, 900));
+  sentBody?.items?.[0]?.amount === 3000
+    ? ok("`amount: 3000` yuborildi") : no("`amount: 3000` bo'lishi kerak", JSON.stringify(sentBody));
+  await p3.close();
+}
+
+console.log("\n── 10. ⚠ TO'LANGANDAN KO'P YOZIB BO'LMAYDI ──");
+{
+  /* Oshirish — tovarni qaytarib, to'langandan ko'p pul olish, ya'ni
+     kassadan pul chiqarishning eng oson yo'li. Maydonning O'ZI
+     to'sadi; server ham rad etadi, lekin kassir buni tugmani
+     bosishdan OLDIN bilishi kerak. */
+  const p4 = await open();
+  await p4.evaluate(() => {
+    const el = document.querySelector(".modal-body tbody tr input");
+    const set = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
+    set?.call(el, "1"); el.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await new Promise((r) => setTimeout(r, 350));
+  await p4.evaluate(() => {
+    const el = document.querySelector(".ret-amt");
+    const set = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
+    set?.call(el, "99999"); el.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await new Promise((r) => setTimeout(r, 350));
+  const tot = await p4.evaluate(() =>
+    document.querySelector(".ret-sum__row b")?.textContent.trim() || null);
+  num(tot) <= 3334
+    ? ok(`chegarada qoldi: ${tot}`) : no("to'langandan oshmasligi kerak", tot);
+
+  console.log("\n── 11. Maydon tozalansa — muzlatilganiga QAYTADI ──");
+  await p4.evaluate(() => {
+    const el = document.querySelector(".ret-amt");
+    const set = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
+    set?.call(el, ""); el.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await new Promise((r) => setTimeout(r, 350));
+  const back = await p4.evaluate(() => ({
+    tot: document.querySelector(".ret-sum__row b")?.textContent.trim() || null,
+    on: !!document.querySelector(".ret-sum__tip.is-on"),
+    tip: !!document.querySelector(".ret-sum__tip"),
+  }));
+  num(back.tot) === 3333 ? ok(`muzlatilganiga qaytdi: ${back.tot}`)
+                         : no("3 333 bo'lishi kerak", back.tot);
+  !back.on ? ok("«qo'lda kamaytirildi» belgisi yo'qoldi")
+           : no("belgi yo'qolishi kerak", "turibdi");
+  back.tip ? ok("tavsiya tugmasi qaytdi") : no("tavsiya qaytishi kerak", "yo'q");
+  await p4.close();
 }
 
 if (pageErrors.length) {
