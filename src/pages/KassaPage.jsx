@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspense } from "react";
 import { t } from "../lib/ek-i18n";
-import { productApi, customerApi, saleApi, securityApi, shopApi, mediaApi, fiscalApi, loyaltyApi } from "../api";
+import { productApi, customerApi, saleApi, securityApi, shopApi, mediaApi, fiscalApi, loyaltyApi, reportApi } from "../api";
 import { useBadge } from "../context/BadgeProvider";
 import { useConfirm } from "../context/ConfirmProvider";
 import { money, quantity as fmtQty } from "../utils";
@@ -24,12 +24,12 @@ import ShiftBar from "../components/ShiftBar";
 import * as queue from "../lib/ek-offline";
 import * as cartStore from "../lib/ek-cart-store";
 import { PAYMENT_TYPE, paymentLabel } from "../lib/ek-labels";
-import { shortDate } from "../lib/ek-format";
+import { shortDate, time } from "../lib/ek-format";
 import { useLoading } from "../lib/use-loading";
 import Modal from "../components/Modal";
 import { PhoneField } from "../components/ek/EkFields";
 import Select from "../components/ek/Select";
-import { printReceipt, openDrawer, printDebtReceipt } from "../lib/ek-hardware";
+import { printReceipt, openDrawer, printDebtReceipt, printerHealth } from "../lib/ek-hardware";
 import { getSettings } from "../lib/ek-hw-settings";
 
 /* Jamg'arma kvitansiyasi (V66) — kassada kamdan-kam ochiladi, alohida bo'lakda. */
@@ -247,6 +247,39 @@ export default function KassaPage({ toast, refreshLowStock }) {
      o'zgarganda `ek:hw` hodisasi keladi — Sozlamalar va Kassa bir
      vaqtda ochiq bo'lishi mumkin. */
   const [displayOn, setDisplayOn] = useState(() => getSettings()[display.HW_KEY] === true);
+
+  /* ⚠ PRINTER HOLATI (V79): kassir nosozlikni sotuvdan KEYIN emas,
+     OLDIN bilishi kerak — mijoz pulini bergandan keyin «chek chiqmadi»
+     deyish eng yomon vaqt. Holat oxirgi chop etish urinishidan
+     olinadi (`ek-hardware`), chunki printerni «so'rab» bo'lmaydi. */
+  const [printer, setPrinter] = useState(printerHealth);
+
+  /* ══════════════════════════════════════════════════════════════════
+     OXIRGI CHEKLAR (V79)
+
+     ⚠ NEGA XOTIRADA, serverdan EMAS. Kassirning savoli tor va zudlik
+     bilan tug'iladi: «hozirgina sotganimning cheki qani?» — mijoz
+     hali ketmagan bo'ladi. Server so'rovi buni sekinlashtirardi va
+     internet uzilganda umuman ishlamasdi (kassa esa offline
+     sotaveradi). To'liq tarix «Savdo» bo'limida qoladi.
+
+     ⚠ Ro'yxat SESSIYA bilan yashaydi va saqlanmaydi: chekning to'liq
+     nusxasi `localStorage` da o'nlab kilobayt joy egallardi va
+     brauzer xotirasi to'lganda savatning O'ZI saqlanmay qolardi —
+     ya'ni muhimrog'i qurbon bo'lardi. */
+  const [lastSales, setLastSales] = useState([]);
+  const [salesOpen, setSalesOpen] = useState(false);
+
+  /* ══════════════════════════════════════════════════════════════════
+     BIRGA SOTILADIGAN TOVARLAR (V79)
+
+     ⚠ OCHILISHDA BIR MARTA olinadi va keyin xotiradan qidiriladi:
+     kassirning oldida navbat turadi va har skanerdan keyin serverga
+     borish taklifni foydali emas, xalaqit qiladigan qilardi.
+
+     ⚠ Xatosi JIM yutiladi: taklif — qo'shimcha, uning yo'qligi
+     sotuvga xalaqit bermasligi kerak. */
+  const [pairs, setPairs] = useState([]);
   /* Ball: kassir kiritgan summa + do'kon chegarasi (foizda).
 
      ⚠ SAVATNING O'ZIDA (V57) — `customer` bilan bir qatorda. Sahifa
@@ -477,11 +510,21 @@ export default function KassaPage({ toast, refreshLowStock }) {
     window.addEventListener("ek:hw", on);
     return () => window.removeEventListener("ek:hw", on);
   }, []);
+
+  useEffect(() => {
+    const on = (e) => setPrinter(e.detail || null);
+    window.addEventListener("ek:printer", on);
+    return () => window.removeEventListener("ek:printer", on);
+  }, []);
   const cashier  = localStorage.getItem("ek_fullName") || localStorage.getItem("ek_username") || "";
 
   /* ── Mijozlar ─────────────────────────────────────────────── */
   useEffect(() => {
     customerApi.getAll(branchId).then((r) => setCustomers(r.data || [])).catch(() => {});
+  }, [branchId]);
+
+  useEffect(() => {
+    reportApi.basket(branchId).then((r) => setPairs(r.data || [])).catch(() => setPairs([]));
   }, [branchId]);
 
   /* Tanlangan mijozning darajasi. Xatosi JIM yutiladi: daraja — qo'shimcha
@@ -1674,6 +1717,30 @@ export default function KassaPage({ toast, refreshLowStock }) {
     });
 
   /** «Qolganini» — shu usulga qolgan summani yozadi (ustiga qo'shmaydi). */
+  /* ══════════════════════════════════════════════════════════════════
+     TAKLIF: shu tovar bilan nima olinadi (V79)
+
+     ⚠ FAQAT SAVATDAGI OXIRGI tovar bo'yicha. Butun savat bo'yicha
+     hisoblanganda ro'yxat uzayib ketar va kassir uni o'qimasdi;
+     oxirgi tovar esa aynan hozir muhokama qilinayotgani.
+
+     ⚠ SAVATDA BORI TAKLIF QILINMAYDI: «yana bir marta qo'shing» degan
+     taklif kassirni chalg'itardi.
+
+     ⚠ IKKITA, ko'p emas. Kassa ekranida taklif — YORDAM, ro'yxat
+     emas; uchtadan oshsa u savatning o'zini pastga surib qo'yardi. */
+  const suggest = useMemo(() => {
+    const last = cart[cart.length - 1];
+    if (!last || !pairs.length) return [];
+    const inCart = new Set(cart.map((i) => i.id));
+    return pairs
+      .filter((p) => p.productA === last.id && !inCart.has(p.productB))
+      .sort((a, b) => (b.together || 0) - (a.together || 0))
+      .slice(0, 2)
+      .map((p) => products.find((x) => x.id === p.productB))
+      .filter(Boolean);
+  }, [cart, pairs, products]);
+
   const fillRest = () => setPayValue(String(restFor(paid, total, payFocus)));
 
   /* ══════════════════════════════════════════════════════════════════
@@ -1942,6 +2009,11 @@ export default function KassaPage({ toast, refreshLowStock }) {
     }
 
     lastSale.current = { ...snapshot, saleId: receiptNo, serverSaleId: res_saleId, offline, fiscal, receiptUrl };
+
+    /* ⚠ ENG YANGISI BOSHIDA va ro'yxat BESHTA bilan cheklangan:
+       kassirning savoli «hozirgina nima sotdim?», o'n beshinchi chek
+       esa «Savdo» bo'limining ishi. */
+    setLastSales((prev) => [{ ...lastSale.current, at: Date.now() }, ...prev].slice(0, 5));
     // Chek va pul yashigi — BITTA amalda, kassirdan qo'shimcha bosish
     // talab qilmasdan. Xatosi yutilmaydi, lekin SOTUVNI to'xtatmaydi:
     // sotuv allaqachon qayd etilgan va printer nosozligi uni bekor
@@ -2575,6 +2647,32 @@ export default function KassaPage({ toast, refreshLowStock }) {
                   ko'chdi — u aslida to'sadigan joyga. */}
               <ShiftBar toast={toast} compact onState={onShiftState} />
 
+              {/* ⚠ PRINTER BELGISI FAQAT NOSOZLIKDA (V79). «Hammasi
+                  joyida» degan doimiy yashil nuqta kassa ekranida joy
+                  egallaydi-yu, hech qanday qaror talab qilmaydi —
+                  kassir uni bir kunda ko'rmay qo'yadi. Belgi esa aynan
+                  e'tibor kerak bo'lganda paydo bo'lishi kerak.
+
+                  Bosilganda oxirgi chekni qayta chiqaradi: nosozlikni
+                  ko'rgan kassirning birinchi ishi shu. */}
+              {/* ⚠ TUGMA FAQAT CHEK BO'LSA. Bo'sh ro'yxatni ochadigan
+                  tugma kassa ekranida joy egallaydi-yu, hech narsa
+                  bermaydi — kun boshida u aynan shunday bo'lardi. */}
+              {lastSales.length > 0 && (
+                <button type="button" className="btn-icon" onClick={() => setSalesOpen(true)}
+                        title={t("kassa.lastSales")} aria-label={t("kassa.lastSales")}>
+                  <i className="fa-solid fa-receipt" aria-hidden="true" />
+                </button>
+              )}
+
+              {printer && printer.ok === false && (
+                <button type="button" className="prn-chip" onClick={reprint}
+                        title={printer.error || t("hw.printerFailHint")}>
+                  <i className="fa-solid fa-print" aria-hidden="true" />
+                  <span>{t("hw.printerFail")}</span>
+                </button>
+              )}
+
               {/* Apparat tugmalari FAQAT desktop'da. Brauzerda ular bosilganda
                   hech nima qilmasdi va kassirni chalg'itardi.
                   ⚠ Faqat BELGI qoldi, matn yo'q: qidiruv qatori ustunning
@@ -2755,6 +2853,29 @@ export default function KassaPage({ toast, refreshLowStock }) {
           </div>
 
           <div className="total-card">
+            {/* ══ BIRGA OLINADI (V79) ══════════════════════════════
+                ⚠ SAVAT BILAN JAMI ORASIDA, alohida panel emas: kassir
+                ko'zi baribir shu yerdan o'tadi (oxirgi qator → jami →
+                to'lov) va taklif o'sha yo'lda turishi kerak. Alohida
+                blok bo'lganda u yo ko'rilmasdi, yo tovarlar
+                ro'yxatidan joy o'g'irlardi.
+
+                ⚠ IKKITA tugma, ro'yxat emas — bosilsa darhol savatga
+                tushadi. Kassirning ishi bir bosishdan oshmasligi
+                kerak, aks holda u bu yo'ldan umuman foydalanmaydi. */}
+            {suggest.length > 0 && (
+              <div className="sugg">
+                <span className="sugg__lab">{t("kassa.alsoBought")}</span>
+                {suggest.map((p) => (
+                  <button key={p.id} type="button" className="sugg__b"
+                          onClick={() => addToCart(p)}>
+                    <span className="sugg__n">{p.name}</span>
+                    <span className="sugg__p ek-num">{money(p.salePrice)}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
             {/* ⚠ Miqdorlar YIG'ILMAYDI: 2 dona + 0.35 kg = "2.35" degan
                 raqam ma'nosiz va chalg'ituvchi bo'lardi. Savatdagi SATRLAR
                 soni ko'rsatiladi. */}
@@ -3526,6 +3647,45 @@ export default function KassaPage({ toast, refreshLowStock }) {
             </div>
           </div>
         </Overlay>
+      )}
+
+      {/* ════ OXIRGI CHEKLAR (V79) ════════════════════════════════
+          ⚠ OYNA, doimiy panel EMAS: kassa ekranining har piksели
+          tovarlar ro'yxatiga kerak va bu ro'yxat kamdan-kam
+          ochiladi — «hozirgina sotganimning cheki qani?» degan
+          savol kuniga bir necha marta tug'iladi, doim emas. */}
+      {salesOpen && (
+        <Modal title={t("kassa.lastSales")} onClose={() => setSalesOpen(false)} maxWidth={560}>
+          <div className="lsale">
+            {lastSales.map((x, i) => (
+              <button key={`${x.saleId}-${i}`} type="button" className="lsale__row"
+                      onClick={() => {
+                        /* ⚠ Oyna YOPILADI: chek printerdan chiqadi va
+                           kassir darhol mijozga uzatadi — ro'yxatni
+                           ochiq qoldirish uni yana bir marta
+                           yopishga majbur qilardi. */
+                        setSalesOpen(false);
+                        printReceipt({ ...x, shopName, cashier })
+                          .then(() => toast.success(t("kassa.reprinted")))
+                          .catch((e) => toast.error(e.message));
+                      }}>
+                <span className="lsale__no ek-num">#{x.saleId}</span>
+                <span className="lsale__mid">
+                  <b className="ek-num">{money(x.total)}</b>
+                  <small>
+                    {paymentLabel(x.payType)}
+                    {x.customer?.fullName ? ` · ${x.customer.fullName}` : ""}
+                  </small>
+                </span>
+                <span className="lsale__at ek-num">{time(new Date(x.at).toISOString())}</span>
+                <i className="fa-solid fa-print lsale__ico" aria-hidden="true" />
+              </button>
+            ))}
+          </div>
+          <p className="lsale__note">
+            <i className="fa-solid fa-circle-info" aria-hidden="true" /> {t("kassa.lastSalesNote")}
+          </p>
+        </Modal>
       )}
 
       {/* ════ YAKUNLASH: chek chiqmoqda → ✓ ════ */}

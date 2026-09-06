@@ -5490,3 +5490,76 @@ button.stk__c:hover { background: var(--bg-hover); }
    mijozning puli va uning yo'li bor (jamg'arma). Qizil qator
    kassirni «nimadir buzildi» deb o'ylashga majbur qilardi. */
 .pay-sum__row--over { color: var(--fg-warning); }
+
+/* ══════════════════════════════════════════════════════════════════════
+   PRINTER BELGISI (V79)
+
+   ⚠ FAQAT NOSOZLIKDA chiziladi. «Hammasi joyida» degan doimiy yashil
+   nuqta kassa ekranida joy egallaydi-yu, hech qanday qaror talab
+   qilmaydi — kassir uni bir kunda ko'rmay qo'yadi.
+   ══════════════════════════════════════════════════════════════════════ */
+.prn-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 10px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--border-danger, var(--fg-danger));
+  background: var(--bg-danger-subtle); color: var(--fg-danger);
+  font: inherit; font-size: 12px; font-weight: 700; white-space: nowrap;
+}
+.prn-chip:hover { background: var(--fg-danger); color: #fff; }
+.prn-chip:focus-visible { outline: 2px solid var(--bg-brand); outline-offset: 2px; }
+
+/* ── Oxirgi cheklar (V79) ─────────────────────────────────────────────
+   ⚠ Ro'yxat BESHTA satr bilan cheklangan (`KassaPage`), shuning uchun
+   bu yerda scrol ham, balandlik chegarasi ham kerak emas. */
+.lsale { display: flex; flex-direction: column; }
+.lsale__row {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center; gap: 12px;
+  padding: 11px 4px; cursor: pointer;
+  border: 0; border-bottom: 1px solid var(--border-subtle);
+  background: none; color: inherit; font: inherit; text-align: left;
+}
+.lsale__row:last-child { border-bottom: 0; }
+.lsale__row:hover { background: var(--bg-sunken); }
+.lsale__row:focus-visible { outline: 2px solid var(--bg-brand); outline-offset: -2px; }
+.lsale__no { font-size: 12px; font-weight: 700; color: var(--fg-secondary); }
+.lsale__mid { display: flex; flex-direction: column; min-width: 0; }
+.lsale__mid b { font-size: 15px; font-weight: 800; }
+.lsale__mid small {
+  font-size: 11px; font-weight: 600; color: var(--fg-secondary);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.lsale__at { font-size: 12px; font-weight: 700; color: var(--fg-secondary); }
+.lsale__ico { font-size: 12px; color: var(--fg-tertiary); }
+.lsale__row:hover .lsale__ico { color: var(--bg-brand); }
+.lsale__note {
+  margin: 12px 0 0; font-size: 11px; color: var(--fg-secondary);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   BIRGA OLINADI (V79)
+
+   ⚠ SAVAT BILAN JAMI ORASIDA va BIR QATORDA: kassir ko'zi baribir shu
+   yerdan o'tadi (oxirgi qator → jami → to'lov). Alohida panel bo'lganda
+   u yo ko'rilmasdi, yo tovarlar ro'yxatidan balandlik o'g'irlardi.
+   ══════════════════════════════════════════════════════════════════════ */
+.sugg {
+  display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
+  padding: 8px 0 4px;
+}
+.sugg__lab {
+  font-size: 11px; font-weight: 700; color: var(--fg-secondary); white-space: nowrap;
+}
+.sugg__b {
+  display: inline-flex; align-items: baseline; gap: 7px; min-width: 0;
+  padding: 5px 10px; border-radius: 999px; cursor: pointer;
+  border: 1px dashed var(--border-brand, var(--bg-brand));
+  background: none; color: var(--bg-brand); font: inherit;
+}
+.sugg__b:hover { background: var(--bg-brand); color: var(--fg-on-brand, #fff); }
+.sugg__b:focus-visible { outline: 2px solid var(--bg-brand); outline-offset: 2px; }
+.sugg__n {
+  font-size: 12px; font-weight: 700; max-width: 130px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.sugg__p { font-size: 11px; font-weight: 800; opacity: .85; }

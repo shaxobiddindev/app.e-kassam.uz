@@ -71,15 +71,60 @@ function transportOf(s) {
   return s.transport === "tcp" ? "tcp" : "windows";
 }
 
+/* ══════════════════════════════════════════════════════════════════════
+   PRINTER HOLATI (V79)
+
+   ⚠ NEGA KERAK. Kassir printer ishlamayotganini FAQAT sotuv
+   tugagandan keyin bilib qolardi: chek chiqmas, mijoz esa allaqachon
+   pulini bergan bo'lardi. Bunday paytda chekni qayta chiqarish
+   mumkin, lekin buni bilish uchun avval nosozlikni PAYQASH kerak.
+
+   ⚠ PRINTERNI «SO'RAB» BO'LMAYDI. Brauzerda uni tekshiradigan yo'l
+   yo'q, desktopda esa har so'rov qurilmaga murojaat qiladi va
+   sekinlashtiradi. Shuning uchun holat OXIRGI URINISHDAN olinadi: bu
+   ham «hozir ishlayaptimi?» degan savolga eng ishonchli javob, chunki
+   u haqiqiy chekning natijasi.
+
+   ⚠ HOLAT SAQLANMAYDI (`localStorage` da emas): brauzer yopilib
+   ochilganda «qizil» qolib ketishi noto'g'ri bo'lardi — yangi
+   sessiyada hech narsa chop etilmagan va nosozlik ham noma'lum.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/** `null` — hali hech narsa chop etilmagan. */
+let printerState = null;
+
+/** Oxirgi chop etish natijasi: `{ ok, at, error }` yoki `null`. */
+export const printerHealth = () => printerState;
+
+function markPrinter(ok, error) {
+  printerState = { ok, at: Date.now(), error: error ? String(error.message || error) : null };
+  /* Ochiq ekranlar (Kassa, Sozlamalar) darhol bilsin. */
+  try {
+    window.dispatchEvent(new CustomEvent("ek:printer", { detail: printerState }));
+  } catch { /* SSR yoki sinov muhiti */ }
+}
+
 async function send(bytes) {
   const s = getSettings();
   if (!isDesktop()) throw new Error(t("hw.errNoDesktop"));
 
-  if (transportOf(s) === "tcp") {
-    if (!s.host) throw new Error(t("hw.errNoHost"));
-    return invoke("print_tcp", { host: s.host, port: Number(s.port) || 9100, data: bytes });
+  try {
+    let out;
+    if (transportOf(s) === "tcp") {
+      if (!s.host) throw new Error(t("hw.errNoHost"));
+      out = await invoke("print_tcp", { host: s.host, port: Number(s.port) || 9100, data: bytes });
+    } else {
+      out = await invoke("print_raw", { printer: s.printerName || null, data: bytes });
+    }
+    markPrinter(true, null);
+    return out;
+  } catch (e) {
+    /* ⚠ Xato QAYTA OTILADI: holat belgilash chaqiruvchining xato
+       ishlovini almashtirmaydi — u chekni qayta chiqarishni taklif
+       qilishi kerak. */
+    markPrinter(false, e);
+    throw e;
   }
-  return invoke("print_raw", { printer: s.printerName || null, data: bytes });
 }
 
 /* ── Chek ──────────────────────────────────────────────────────────────── */

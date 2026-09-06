@@ -235,6 +235,13 @@ export const reportApi = {
     if (shopId) q.set("shopId", shopId);
     return request(`/reports/analytics?${q}`);
   },
+
+  /* ⚠ KASSA UCHUN: birga sotiladigan juftliklar (V79). Ochilishda BIR
+     MARTA olinadi va keyin xotiradan qidiriladi — kassirning oldida
+     navbat turadi va har skanerdan keyin serverga borish mumkin
+     emas. To'liq tahlil (`/analytics`) esa o'nlab bo'limni
+     hisoblaydi va kassa uchun juda og'ir. */
+  basket: (shopId) => request(`/reports/basket${shopId ? `?shopId=${shopId}` : ""}`),
 };
 
 // ─── Kalendar va vazifalar (V72) ──────────────────────────────
