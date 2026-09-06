@@ -119,12 +119,22 @@ export function weekdayDate(iso) {
   return `${weekdays()[d.getDay()]}, ${date(d.toISOString())}`;
 }
 
-/** Jadval uchun sana+vaqt: 02.08.2026 14:32 */
+/**
+ * Jadval uchun sana+vaqt: 02-08-2026 14:32
+ *
+ * ⚠ AJRATGICH — CHIZIQCHA, nuqta emas (V76). Ilgari bu yerda nuqta
+ * turardi va u tizimdagi YAGONA joy edi: `shortDate` ham, sana
+ * kiritish niqobi ham (`dateDisplayInput` — foydalanuvchi
+ * `31-01-2026` deb YOZADI) chiziqcha bilan ishlaydi. Partiyalar
+ * jadvalida ikkala format yonma-yon ustunga tushdi va farq darrov
+ * ko'rindi: bir qatorda `06.09.2026`, yonida `11-09-2026`. Ikki xil
+ * ajratgich bir ekranda ikki xil sana tizimi borday tuyulardi.
+ */
 export function dateTime(iso) {
   if (!iso) return "—";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "—";
-  return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return `${pad(d.getDate())}-${pad(d.getMonth() + 1)}-${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 /** Faqat vaqt: 14:32 */

@@ -87,6 +87,7 @@ export default {
   "filter.andHint": "Conditions combine with AND — rows matching all of them are shown",
   "filter.activeN": "{n} conditions applied",
   "filter.none": "No conditions",
+  "filter.noMatch": "Nothing matches the filter",
   "filter.op.has": "contains",
   "filter.op.eq": "equals",
   "filter.op.starts": "starts with",
@@ -1904,6 +1905,11 @@ export default {
   "batch.none.active": "No batches on the shelf",
   "batch.none.expired": "No expired batches",
   "batch.none.archived": "The archive is empty",
+  "batch.value": "Value",
+  "batch.daysLeft": "Days left",
+  "batch.lateDays": "{n} days overdue",
+  "batch.shown": "{n} of {all} batches",
+  "batch.sumHint": "Total for the batches shown",
 
   /* ── Bosh sahifa — boshqaruv paneli (V74) ────────────────────────── */
   "dash.searchAll": "Search",

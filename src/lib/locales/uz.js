@@ -92,6 +92,7 @@ export default {
   "filter.andHint": "Shartlar «VA» bilan birlashadi — hammasiga mos qatorlar ko'rinadi",
   "filter.activeN": "{n} ta shart qo'llanadi",
   "filter.none": "Shart yo'q",
+  "filter.noMatch": "Shartlarga mos partiya topilmadi",
   "filter.op.has": "ichida bor",
   "filter.op.eq": "aynan",
   "filter.op.starts": "boshlanadi",
@@ -1999,6 +2000,11 @@ export default {
   "batch.none.active": "Javonda partiya yo'q",
   "batch.none.expired": "Muddati o'tgan partiya yo'q",
   "batch.none.archived": "Arxiv bo'sh",
+  "batch.value": "Qiymati",
+  "batch.daysLeft": "Kun qoldi",
+  "batch.lateDays": "{n} kun o'tdi",
+  "batch.shown": "{n} / {all} ta partiya",
+  "batch.sumHint": "Ko'rinayotgan partiyalar bo'yicha jami",
 
   /* ── Bosh sahifa — boshqaruv paneli (V74) ────────────────────────── */
   "dash.searchAll": "Qidirish",

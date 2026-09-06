@@ -87,6 +87,7 @@ export default {
   "filter.andHint": "Условия объединяются через «И» — видны строки, подходящие всем",
   "filter.activeN": "Применяется условий: {n}",
   "filter.none": "Условий нет",
+  "filter.noMatch": "По условиям ничего не найдено",
   "filter.op.has": "содержит",
   "filter.op.eq": "равно",
   "filter.op.starts": "начинается с",
@@ -1904,6 +1905,11 @@ export default {
   "batch.none.active": "На полке нет партий",
   "batch.none.expired": "Просроченных партий нет",
   "batch.none.archived": "Архив пуст",
+  "batch.value": "Стоимость",
+  "batch.daysLeft": "Осталось дней",
+  "batch.lateDays": "просрочено {n} дн.",
+  "batch.shown": "{n} / {all} партий",
+  "batch.sumHint": "Итого по показанным партиям",
 
   /* ── Bosh sahifa — boshqaruv paneli (V74) ────────────────────────── */
   "dash.searchAll": "Поиск",

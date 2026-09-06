@@ -13,11 +13,20 @@ import {
 //   kartochka → <SkeletonCards> tugma → <Spinner>
 
 // ─── Empty state ─────────────────────────────────────────────
-export function Empty({ icon = "fa-inbox", text = "Ma'lumot yo'q" }) {
+/**
+ * Bo'sh ro'yxat.
+ *
+ * ⚠ `action` — IXTIYORIY tugma. U «filtr hech narsa topmadi» holati
+ * uchun kerak: bunday paytda ekranda chiqish yo'li ko'rinishi kerak,
+ * aks holda foydalanuvchi ro'yxat bo'sh deb o'ylab, filtrni
+ * tozalash kerakligini bilmasdi.
+ */
+export function Empty({ icon = "fa-inbox", text = "Ma'lumot yo'q", action = null }) {
   return (
     <div className="empty">
       <i className={`fa-solid ${icon}`} />
       <p>{text}</p>
+      {action}
     </div>
   );
 }

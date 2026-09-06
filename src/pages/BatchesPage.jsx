@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { t } from "../lib/ek-i18n";
 import { inventoryApi, shopApi } from "../api";
 import { Empty } from "../components/ui";
+import DataFilter, { useDataFilter, SortTh, FilterChips } from "../components/ek/DataFilter";
 import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { money, quantity as fmtQty } from "../utils";
 import { shortDate, dateTime } from "../lib/ek-format";
@@ -11,7 +12,7 @@ import { DEFAULT_NEAR_EXPIRY_DAYS, daysLeft } from "../lib/ek-expiry";
 import BatchCorrectModal from "../components/BatchCorrectModal";
 
 /* ══════════════════════════════════════════════════════════════════════════
-   PARTIYALAR — SAHIFA (V60)
+   PARTIYALAR — SAHIFA (V60, jadval V76)
 
    ═══ NEGA MODAL EMAS, SAHIFA ═══════════════════════════════════════════
 
@@ -25,9 +26,25 @@ import BatchCorrectModal from "../components/BatchCorrectModal";
      · brauzerning «orqaga» tugmasi ishlaydi. Modalda u BUTUN ilovani
        tark etardi.
 
-   ⚠ ESKI MODAL OLIB TASHLANDI, ikkovi qoldirilmadi. Bitta ish uchun ikki
-   yo'l — o'sha eski chalkashlik: qaysi biri yangilanadi, qaysi birida
-   arxiv tugmasi bor degan savol tug'iladi.
+   ═══ NEGA KARTOCHKA EMAS, JADVAL (V76) ════════════════════════════════
+
+   Do'kon egasining talabi: «omborda ham partiyalarni jadval va filterli
+   ko'rinishga keltir». Ilgari har partiya alohida kartochka edi va bu
+   ombor bo'limidagi YAGONA joy bo'lib qolgandi — qolgan hamma ro'yxat
+   jadval, ustunlari saralanadigan va filtrlanadigan.
+
+   Kartochka bir necha narsani UMUMAN bermasdi:
+
+     · SARALASH. Kartochkalar server tartibida yotardi — «eng katta
+       qoldiq qaysi partiyada?» degan savolga ko'z bilan javob berish
+       kerak edi.
+     · SOLISHTIRISH. Tannarx har kartochkaning ichida, turli joyda
+       turardi; ustunda esa ular bir chiziqda va farq darrov ko'rinadi.
+     · FILTR. «Qoldig'i bor, muddatiga 10 kundan kam qolganlari» —
+       o'ttizta kartochkani ko'z bilan saralashdan boshqa yo'l yo'q edi.
+     · PUL. Endi alohida ustun bor: qoldiq × tannarx. Aynan shu son
+       «bu partiyada qancha pul yotibdi?» degan savolga javob beradi va
+       jadvalning ostida FILTRLANGAN yig'indi turadi.
 
    ═══ NEGA UCHTA BO'LIM ════════════════════════════════════════════════
 
@@ -42,6 +59,11 @@ import BatchCorrectModal from "../components/BatchCorrectModal";
    qilish kerak, uni biror tugma bilan ko'ra olsin, lekin yaqqol
    ogohlantirish berib tursin»). Ular alohida bo'limda va bo'lim
    ochilganda ekranning tepasida qizil ogohlantirish turadi.
+
+   ⚠ FILTR BO'LIMNI ALMASHTIRMAYDI. Bo'lim — «qaysi savolga javob
+   qidiryapman», filtr esa — «shu javobning ichida nimani ko'ray».
+   Filtrga «arxivlangan» sharti qo'yilganda bo'limlarning ma'nosi
+   yo'qolardi.
    ══════════════════════════════════════════════════════════════════════════ */
 
 /** Muddati o'tganmi — ombor sahifasidagi qoida bilan bir xil. */
@@ -49,6 +71,9 @@ const isExpired = (b) => b.status === "EXPIRED" || b.expired;
 
 /** Bo'shab qolgan partiya — faqat shundaylarini arxivlash mumkin. */
 const isEmpty = (b) => (Number(b.quantity) || 0) <= 0;
+
+/** Partiyada yotgan pul: qoldiq × tannarx. */
+const stockValue = (b) => (Number(b.quantity) || 0) * (Number(b.costPrice) || 0);
 
 export default function BatchesPage({ toast }) {
   const { productId } = useParams();
@@ -90,16 +115,87 @@ export default function BatchesPage({ toast }) {
   }, []);
 
   /* Bo'limlarga ajratish — server tartibi (yangilar yuqorida) SAQLANADI. */
-  const active  = useMemo(() => live.filter((b) => !isExpired(b)), [live]);
-  const expired = useMemo(() => live.filter((b) =>  isExpired(b)), [live]);
-  const rows    = tab === "archived" ? archived : tab === "expired" ? expired : active;
+  const activeRows  = useMemo(() => live.filter((b) => !isExpired(b)), [live]);
+  const expiredRows = useMemo(() => live.filter((b) =>  isExpired(b)), [live]);
+  const base = tab === "archived" ? archived : tab === "expired" ? expiredRows : activeRows;
 
   const product = live[0] || archived[0] || null;
   const unit = product?.unit;
-  const emptyCount = active.filter(isEmpty).length;
+  const emptyCount = activeRows.filter(isEmpty).length;
 
-  /* Javonda hozir nima bor — muddati o'tgani ham, arxivi ham sanalmaydi. */
-  const onShelf = active.reduce((s, b) => s + (Number(b.quantity) || 0), 0);
+  /* Javonda hozir nima bor — muddati o'tgani ham, arxivi ham sanalmaydi.
+     ⚠ FILTRDAN MUSTAQIL: savol «hozir sotishga nima bor?» va u
+     ekranda nima ko'rsatilayotganiga bog'liq emas. */
+  const onShelf = activeRows.reduce((s, b) => s + (Number(b.quantity) || 0), 0);
+
+  /* ══════════════════════════════════════════════════════════════════
+     USTUNLAR
+
+     ⚠ `qty` ustuni XOM qoldiq (`quantity`), ombor jadvalidagi kabi
+     «sotiladigan» emas: bu yerda har qator BITTA partiya va uning
+     sotilishi holat ustunida aytilgan. Xom son bo'lmasa «muddati
+     o'tgan partiyada 12 dona yotibdi» degan holat ko'rinmay qolardi —
+     aynan shuni hisobdan chiqarish kerak.
+     ══════════════════════════════════════════════════════════════════ */
+  const COLS_BASE = useMemo(() => [
+    { key: "qty",      label: t("inv.stock"),            type: "number", get: (b) => Number(b.quantity) || 0 },
+    { key: "cost",     label: t("products.costPrice"),   type: "number", get: (b) => b.costPrice },
+    { key: "value",    label: t("batch.value"),          type: "number", get: stockValue },
+    { key: "received", label: t("batch.received"),       type: "date",   get: (b) => b.createdAt },
+    { key: "expiry",   label: t("batch.expiry"),         type: "date",   get: (b) => b.expiryDate },
+    /* ⚠ «Kun qoldi» ALOHIDA ustun, muddat sanasi bo'lgani holda ham:
+       omborchining savoli «sanasi nima?» emas, «necha kun qoldi?».
+       Sana ustunida buni filtrlash uchun bugungi kunni qo'lda hisoblab
+       yozish kerak bo'lardi. Muddatsiz partiyada bo'sh — u hech qachon
+       «kam qolgan» ro'yxatiga tushmaydi. */
+    { key: "left",     label: t("batch.daysLeft"),       type: "number", get: (b) => daysLeft(b.expiryDate) },
+  ], []);
+
+  const stateCol = useMemo(() => ({
+    key: "state", label: t("common.status"), type: "enum",
+    options: [
+      { value: "expired", label: t("enum.inventory.EXPIRED") },
+      { value: "near",    label: t("inv.fltNear") },
+      { value: "empty",   label: t("batch.empty") },
+      { value: "ok",      label: t("enum.inventory.ACTIVE") },
+    ],
+    get: (b) => {
+      if (isExpired(b)) return "expired";
+      if (isEmpty(b)) return "empty";
+      const l = daysLeft(b.expiryDate);
+      return l !== null && l <= nearDays ? "near" : "ok";
+    },
+  }), [nearDays]);
+
+  const COLS     = useMemo(() => [...COLS_BASE, stateCol], [COLS_BASE, stateCol]);
+  const COLS_ARC = useMemo(() => [
+    ...COLS_BASE,
+    { key: "archived", label: t("batch.archivedAt"), type: "date", get: (b) => b.archivedAt },
+    stateCol,
+  ], [COLS_BASE, stateCol]);
+
+  /* ⚠ IKKALA ILGAK HAM SHARTSIZ chaqiriladi va tanlov keyin qilinadi:
+     shart ichidagi ilgak React ning 310-xatosini beradi.
+
+     ⚠ ARXIV O'Z FILTRINI saqlaydi. Uning ustunlari boshqa
+     («arxivlangan» qo'shiladi) va savoli ham boshqa — faol ro'yxatga
+     qo'yilgan shart arxivga o'tganda ma'nosini yo'qotardi. */
+  const fltLive = useDataFilter(COLS,     "batch");
+  const fltArc  = useDataFilter(COLS_ARC, "batchArc");
+  const flt  = tab === "archived" ? fltArc  : fltLive;
+  const cols = tab === "archived" ? COLS_ARC : COLS;
+
+  const rows = useMemo(() => flt.apply(base), [flt, base]);
+
+  /* ⚠ Yig'indi FILTRLANGAN qatorlar bo'yicha: «muddatiga 10 kundan kam
+     qolganlarida qancha pul yotibdi?» degan savolga javob aynan shu
+     yerda ko'rinadi. Butun bo'lim bo'yicha yig'indi bergan bo'lsak,
+     filtr qo'yilgandan keyin ostidagi son o'zgarmay turardi va uni
+     hech kim tushunmasdi. */
+  const sum = useMemo(() => ({
+    qty:   rows.reduce((s, b) => s + (Number(b.quantity) || 0), 0),
+    value: rows.reduce((s, b) => s + stockValue(b), 0),
+  }), [rows]);
 
   const act = async (fn, id) => {
     setBusy(id);
@@ -115,10 +211,12 @@ export default function BatchesPage({ toast }) {
   };
 
   const TABS = [
-    { id: "active",   icon: "fa-box-open",             label: t("batch.tabActive"),   n: active.length },
-    { id: "expired",  icon: "fa-triangle-exclamation", label: t("batch.tabExpired"),  n: expired.length },
+    { id: "active",   icon: "fa-box-open",             label: t("batch.tabActive"),   n: activeRows.length },
+    { id: "expired",  icon: "fa-triangle-exclamation", label: t("batch.tabExpired"),  n: expiredRows.length },
     { id: "archived", icon: "fa-box-archive",          label: t("batch.tabArchived"), n: archived.length },
   ];
+
+  const qtyCell = (b) => `${fmtQty(b.quantity, unitDecimals(b.unit))} ${unitLabel(b.unit)}`;
 
   return (
     <div className="page">
@@ -177,7 +275,7 @@ export default function BatchesPage({ toast }) {
       {/* ⚠ YAQQOL OGOHLANTIRISH (do'kon egasining talabi). Muddati o'tgan
           bo'lim ochilganda u birinchi navbatda ko'rinadi va nima qilish
           kerakligini AYTADI — «diqqat» deyish yetarli emas. */}
-      {tab === "expired" && expired.length > 0 && (
+      {tab === "expired" && expiredRows.length > 0 && (
         <div className="batch-warn" role="alert">
           <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />
           <span>{t("batch.expiredWarn")}</span>
@@ -191,91 +289,159 @@ export default function BatchesPage({ toast }) {
         </div>
       )}
 
-      {loading ? <SkeletonTable rows={4} /> : rows.length === 0 ? (
-        <Empty icon={TABS.find((x) => x.id === tab)?.icon.replace("fa-", "")}
-               title={t(`batch.none.${tab}`)} />
-      ) : (
-        <div className="batch-list">
-          {rows.map((b) => {
-            const left = daysLeft(b.expiryDate);
-            const gone = isExpired(b);
-            const empty = isEmpty(b);
-            const near = !gone && !empty && left !== null && left <= nearDays;
-            return (
-              <div key={b.inventoryId} className={`batch-row ${gone ? "is-expired" : ""} ${empty ? "is-empty" : ""}`}>
-                <div className="batch-row__main">
-                  <div className="batch-row__qty ek-num">
-                    {fmtQty(b.quantity, unitDecimals(b.unit))} {unitLabel(b.unit)}
-                  </div>
-                  <div className="batch-row__meta">
-                    {/* ⚠ HAR SANA O'ZI NIMA EKANINI AYTADI. Ikonka
-                        yolg'iz yetarli emas: yonma-yon turgan ikki sanani
-                        («kelgan» va «muddat») ikonkaga qarab ajratish
-                        uchun avval ikonkaning ma'nosini bilish kerak.
-                        Kirim sanasi bu yerda «yangilar yuqorida»
-                        tartibining ko'rinadigan asosi hamdir. */}
-                    <span>
-                      <i className="fa-solid fa-arrow-down-to-line" aria-hidden="true" />{" "}
-                      {/* ⚠ SANA + VAQT (V70): `createdAt` — LAHZA va bir
-                          kunda bir necha partiya kelishi mumkin. FEFO
-                          tartibida «qaysi biri oldin keldi?» degan
-                          savolga faqat sanadan javob topib bo'lmasdi. */}
-                      {t("batch.received")}: <b>{b.createdAt ? dateTime(b.createdAt) : "—"}</b>
-                    </span>
-                    <span>
-                      <i className="fa-solid fa-hourglass-half" aria-hidden="true" />{" "}
-                      {t("batch.expiry")}:{" "}
-                      <b>{b.expiryDate ? shortDate(b.expiryDate) : t("batch.noExpiry")}</b>
-                    </span>
-                    {b.archivedAt && (
-                      <span>
-                        <i className="fa-solid fa-box-archive" aria-hidden="true" />{" "}
-                        {t("batch.archivedAt")}: <b>{dateTime(b.archivedAt)}</b>
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="batch-row__flags">
-                  {gone && <span className="badge badge-red">{t("enum.inventory.EXPIRED")}</span>}
-                  {near && (
-                    <span className="badge badge-yellow">
-                      {left === 0 ? t("inv.nearToday") : t("inv.nearDays", { n: left })}
-                    </span>
-                  )}
-                  {empty && !gone && <span className="badge badge-grey">{t("batch.empty")}</span>}
-                </div>
-
-                <div className="batch-row__act">
-                  {tab === "archived" ? (
-                    <button className="btn btn-outline btn-sm" disabled={busy === b.inventoryId}
-                            onClick={() => act(() => inventoryApi.unarchiveBatch(b.inventoryId), b.inventoryId)}>
-                      {busy === b.inventoryId ? <Spinner /> : <i className="fa-solid fa-rotate-left" aria-hidden="true" />}
-                      {" "}{t("batch.restore")}
-                    </button>
-                  ) : empty ? (
-                    <button className="btn btn-outline btn-sm" disabled={busy === b.inventoryId}
-                            onClick={() => act(() => inventoryApi.archiveBatch(b.inventoryId), b.inventoryId)}>
-                      {busy === b.inventoryId ? <Spinner /> : <i className="fa-solid fa-box-archive" aria-hidden="true" />}
-                      {" "}{t("batch.archive")}
-                    </button>
-                  ) : (
-                    /* ⚠ Qoldig'i bor partiyada ARXIV tugmasi umuman
-                       chiqmaydi: server ham rad etadi, lekin bo'lmaydigan
-                       tugmani ko'rsatib, keyin xato berish — kassirni
-                       aldash. O'rniga aynan kerakli amal turadi —
-                       qoldiqni to'g'irlash (hisobdan chiqarish). */
-                    <button className="btn btn-outline btn-sm" onClick={() => setCorrect(b)}>
-                      <i className="fa-solid fa-pen-to-square" aria-hidden="true" />{" "}
-                      {t("inv.correctAction")}
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+      <div className="card">
+        <div className="card-header batch-bar">
+          {/* ⚠ Filtr tugmasi jadvalning USTIDA, ombor bo'limidagi kabi:
+              ikkala ekranda bir xil joyda turishi kerak, aks holda
+              omborchi har safar uni qidirardi. */}
+          <DataFilter cols={cols} flt={flt} chips={false} />
+          {/* Nechta qator ko'rinayotgani — filtrdan keyin. */}
+          <span className="batch-bar__n ek-num">
+            {t("batch.shown", { n: rows.length, all: base.length })}
+          </span>
+          <button className="btn btn-outline btn-sm" style={{ marginLeft: "auto" }}
+                  onClick={load} title={t("products.refreshTitle")}>
+            <i className="fa-solid fa-rotate-right" aria-hidden="true" /> {t("common.refresh")}
+          </button>
         </div>
-      )}
+
+        {/* Faol shartlar — TO'LIQ kenglikdagi o'z qatorida. */}
+        <div className="batch-chips"><FilterChips cols={cols} flt={flt} /></div>
+
+        <div className="table-wrap">
+          {loading ? <SkeletonTable rows={4} cols={["num", "num", "num", "text", "text", "num", "text"]} />
+           : base.length === 0 ? (
+            /* ⚠ `text`, `title` EMAS va ikonka TO'LIQ nomi bilan.
+               Ilgari bu yerda `title={...}` va `icon="box-open"`
+               turardi: `Empty` da bunday xossa yo'q, shuning uchun
+               yozuv HECH QACHON ko'rinmagan (standart «Ma'lumot yo'q»
+               chiqardi), ikonka esa umuman chizilmagan. */
+            <Empty icon={TABS.find((x) => x.id === tab)?.icon}
+                   text={t(`batch.none.${tab}`)} />
+          ) : rows.length === 0 ? (
+            /* ⚠ «Bo'lim bo'sh» va «filtr hech narsa topmadi» BOSHQA-BOSHQA
+               holat. Bir xil yozuv bilan omborchi partiyalar yo'q deb
+               o'ylab, filtrni tozalash kerakligini bilmasdi. */
+            <Empty icon="fa-filter" text={t("filter.noMatch")}
+                   action={<button className="btn btn-outline btn-sm" onClick={flt.clear}>
+                             <i className="fa-solid fa-xmark" aria-hidden="true" /> {t("filter.clear")}
+                           </button>} />
+          ) : (
+            <table className="table">
+              <thead>
+                <tr>
+                  <SortTh flt={flt} col="qty">{t("inv.stock")}</SortTh>
+                  <SortTh flt={flt} col="cost">{t("products.costPrice")}</SortTh>
+                  <SortTh flt={flt} col="value">{t("batch.value")}</SortTh>
+                  <SortTh flt={flt} col="received">{t("batch.received")}</SortTh>
+                  <SortTh flt={flt} col="expiry">{t("batch.expiry")}</SortTh>
+                  <SortTh flt={flt} col="left">{t("batch.daysLeft")}</SortTh>
+                  {tab === "archived" &&
+                    <SortTh flt={flt} col="archived">{t("batch.archivedAt")}</SortTh>}
+                  <SortTh flt={flt} col="state">{t("common.status")}</SortTh>
+                  <th className="text-end">{t("common.actions")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((b) => {
+                  const left = daysLeft(b.expiryDate);
+                  const gone = isExpired(b);
+                  const empty = isEmpty(b);
+                  const near = !gone && !empty && left !== null && left <= nearDays;
+                  return (
+                    <tr key={b.inventoryId} className={gone ? "row-danger" : ""}>
+                      {/* ⚠ Yalang'och son emas, BIRLIGI bilan: tarozili
+                          tovarda «1.5» nimani — kilonimi, donanimi
+                          bildirishini jadvalga qarab bilib bo'lmasdi. */}
+                      <td>
+                        <span className={`badge ${gone ? "badge-red" : empty ? "badge-grey" : "badge-green"}`}>
+                          {qtyCell(b)}
+                        </span>
+                      </td>
+                      <td className="mono">{b.costPrice != null ? money(b.costPrice) : "—"}</td>
+                      <td className="mono fw-700">{money(stockValue(b))}</td>
+                      {/* ⚠ SANA + VAQT: `createdAt` — LAHZA va bir kunda
+                          bir necha partiya kelishi mumkin. FEFO tartibida
+                          «qaysi biri oldin keldi?» degan savolga faqat
+                          sanadan javob topib bo'lmasdi. */}
+                      <td className="mono" style={{ whiteSpace: "nowrap" }}>
+                        {b.createdAt ? dateTime(b.createdAt) : "—"}
+                      </td>
+                      <td className="mono" style={{ whiteSpace: "nowrap" }}>
+                        {b.expiryDate ? shortDate(b.expiryDate) : t("batch.noExpiry")}
+                      </td>
+                      <td className="mono">
+                        {left === null ? "—"
+                         : left < 0 ? <span className="batch-late">{t("batch.lateDays", { n: -left })}</span>
+                         : left}
+                      </td>
+                      {tab === "archived" && (
+                        <td className="mono" style={{ whiteSpace: "nowrap" }}>
+                          {b.archivedAt ? dateTime(b.archivedAt) : "—"}
+                        </td>
+                      )}
+                      <td>
+                        {gone ? <span className="badge badge-red">{t("enum.inventory.EXPIRED")}</span>
+                         : near ? (
+                           <span className="badge badge-yellow">
+                             {left === 0 ? t("inv.nearToday") : t("inv.nearDays", { n: left })}
+                           </span>
+                         ) : empty ? <span className="badge badge-grey">{t("batch.empty")}</span>
+                         : <span className="badge badge-green">{t("enum.inventory.ACTIVE")}</span>}
+                      </td>
+                      <td className="text-end">
+                        {tab === "archived" ? (
+                          <button className="btn btn-outline btn-sm" disabled={busy === b.inventoryId}
+                                  onClick={() => act(() => inventoryApi.unarchiveBatch(b.inventoryId), b.inventoryId)}>
+                            {busy === b.inventoryId ? <Spinner /> : <i className="fa-solid fa-rotate-left" aria-hidden="true" />}
+                            {" "}{t("batch.restore")}
+                          </button>
+                        ) : empty ? (
+                          <button className="btn btn-outline btn-sm" disabled={busy === b.inventoryId}
+                                  onClick={() => act(() => inventoryApi.archiveBatch(b.inventoryId), b.inventoryId)}>
+                            {busy === b.inventoryId ? <Spinner /> : <i className="fa-solid fa-box-archive" aria-hidden="true" />}
+                            {" "}{t("batch.archive")}
+                          </button>
+                        ) : (
+                          /* ⚠ Qoldig'i bor partiyada ARXIV tugmasi umuman
+                             chiqmaydi: server ham rad etadi, lekin bo'lmaydigan
+                             tugmani ko'rsatib, keyin xato berish — kassirni
+                             aldash. O'rniga aynan kerakli amal turadi —
+                             qoldiqni to'g'irlash (hisobdan chiqarish). */
+                          <button className="btn btn-outline btn-sm" onClick={() => setCorrect(b)}>
+                            <i className="fa-solid fa-pen-to-square" aria-hidden="true" />{" "}
+                            {t("inv.correctAction")}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              {/* ⚠ YIG'INDI JADVALNING ICHIDA, ustunlar bilan bir
+                  chiziqda: yon tarafdagi alohida raqamni qaysi ustunga
+                  tegishli ekanini o'qish kerak bo'lardi. */}
+              <tfoot>
+                <tr className="batch-sum">
+                  <td className="mono fw-700">
+                    {fmtQty(sum.qty, unitDecimals(unit))} {unitLabel(unit)}
+                  </td>
+                  <td />
+                  <td className="mono fw-700">{money(sum.value)}</td>
+                  {/* ⚠ Qolgan HAMMA ustun, «Amallar» ham: bittasi
+                      qoldirilganda jadvalning o'ng chekkasida oq
+                      teshik qolardi va yig'indi qatori uzilgandek
+                      ko'rinardi. Faol bo'limda 8 ustun (1+1+1+5),
+                      arxivda 9 (1+1+1+6). */}
+                  <td colSpan={tab === "archived" ? 6 : 5} className="batch-sum__lbl">
+                    {t("batch.sumHint")}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          )}
+        </div>
+      </div>
 
       {correct && (
         <BatchCorrectModal batch={correct} toast={toast}
