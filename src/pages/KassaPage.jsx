@@ -1575,7 +1575,12 @@ export default function KassaPage({ toast, refreshLowStock }) {
      sinov bilan qulflangan (`test/payment.test.mjs`). Sabab: bu
      raqamlar CHEKKA va KASSAGA tushadi, bir tiyin xato smena oxirida
      hisobni buzadi. */
-  const pay = useMemo(() => settle(effective(paid, total), total), [paid, total]);
+  /* ⚠ BO'SH MAYDON — TANLANGAN USULGA (V85). Jamg'arma bundan
+     mustasno: maydonni tanlash «mijoz jamg'armasidan to'laydi» degani
+     emas, qancha yechilishini kassir aytishi kerak (`ek-payment.js`). */
+  const payDefault = payFocus === "SAVINGS" ? "CASH" : payFocus;
+  const pay = useMemo(() => settle(effective(paid, total, payDefault), total),
+                      [paid, total, payDefault]);
 
   /**
    * Hech qayerga hech narsa yozilmaganmi.
@@ -1589,7 +1594,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
   const payUntouched = Object.keys(paid).length === 0;
 
   /** Tugmalarda ko'rsatiladigan summalar. */
-  const payShown = payUntouched ? { CASH: total } : paid;
+  const payShown = payUntouched ? { [payDefault]: total } : paid;
 
   /** Tanlangan usulning maydondagi qiymati. */
   const payValue = paid[payFocus] ?? "";
@@ -3528,7 +3533,14 @@ export default function KassaPage({ toast, refreshLowStock }) {
               {payUntouched && (
                 <div className="pay-modal-hint">
                   <i className="fa-solid fa-circle-info" style={{ marginRight: 4 }} aria-hidden="true" />
-                  {t("kassa.emptyIsCash")}
+                  {/* ⚠ QAYSI USUL EKANI AYTILADI (V85). Ilgari matn
+                      «hammasi naqd» deb qotib turardi va Click
+                      tanlangan holatda ham shuni yozardi — ekran
+                      yolg'on gapirardi. */}
+                  {t("kassa.emptyIsAll", {
+                    method: payMethods.find((m) => m.key === payDefault)?.label
+                            || t("enum.payment.CASH"),
+                  })}
                 </div>
               )}
               {/* ⚠ TUGMALAR CHEKKA QARAB QURILADI (V76), qotib qolgan

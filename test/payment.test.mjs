@@ -18,6 +18,11 @@ let pass = 0, fail = 0;
 const ok  = (m) => { pass++; console.log("  ✅ " + m); };
 const bad = (m, got) => { fail++; console.log("  ❌ " + m + (got === undefined ? "" : `\n     olindi: ${got}`)); };
 const eq  = (a, b, m) => (a === b ? ok(m) : bad(m, JSON.stringify(a)));
+/** Obyektlarni kalit tartibidan qat'i nazar solishtiradi. */
+const eqObj = (a, b, m) => {
+  const norm = (o) => JSON.stringify(Object.fromEntries(Object.entries(o).sort()));
+  return norm(a) === norm(b) ? ok(m) : bad(m, JSON.stringify(a));
+};
 const eqArr = (a, b, m) =>
   (JSON.stringify(a) === JSON.stringify(b) ? ok(m) : bad(m, JSON.stringify(a)));
 
@@ -219,6 +224,34 @@ eq(ex4.excess, 0, "aniq to'langan chekda ortiqcha yo'q");
 const ex5 = settle({ CASH: 20000 }, 30000);
 eq(ex5.excess, 0, "kam to'langan chekda ham yo'q");
 eq(ex5.credit, 10000, "qolgani nasiyaga");
+
+console.log("\n═══ ⚠ BO'SH MAYDON — TANLANGAN USULGA (V85) ═══");
+/* Do'kon egasining ekrani: Click tanlangan, maydon bo'sh, hisobda esa
+   «Naqd 20 000» va «Sotish» ochiq. Pul Click orqali kelgan — yashikda
+   20 000 ortiqcha, Click tushumi shuncha kam. Kassir sezmasdi: farq
+   faqat smena yopilganda, qaysi chek ekani topib bo'lmaydigan paytda
+   chiqardi. */
+{
+  eqObj(effective({}, 20000, "CLICK"), { CLICK: 20000 },
+        "Click tanlangan — bo'sh maydon Click bo'ladi");
+  eqObj(effective({}, 20000, "CARD"), { CARD: 20000 }, "Karta ham shunday");
+  /* ⚠ USUL BERILMASA — ESKI XATTI-HARAKAT. Oflayn navbatdagi eski
+     chaqiruvlar va sinovlar buzilmaydi. */
+  eqObj(effective({}, 20000), { CASH: 20000 }, "usul berilmasa — naqd, eskidek");
+  eqObj(effective({}, 20000, null), { CASH: 20000 }, "usul null — naqd");
+  /* ⚠ NIMADIR YOZILGAN bo'lsa qoida umuman ishlamaydi. */
+  eqObj(effective({ CASH: 5000 }, 20000, "CLICK"), { CASH: 5000 },
+        "yozilgan qiymat tanlangan usuldan ustun");
+
+  /* Hisob ham to'g'ri chiqadi: butun chek Click, qaytim yo'q. */
+  const s2 = settle(effective({}, 20000, "CLICK"), 20000);
+  eq(s2.others, 20000, "hammasi naqdsiz usuldan");
+  eq(s2.cashIn, 0, "yashikka pul TUSHMAYDI");
+  eq(s2.change, 0, "qaytim yo'q");
+  eq(s2.credit, 0, "nasiya yo'q");
+  eq(s2.parts.length, 1, "bitta qism");
+  eq(s2.parts[0].type, "CLICK", "va u — Click");
+}
 
 console.log(`\n  ${pass} o'tdi, ${fail} yiqildi`);
 process.exit(fail ? 1 : 0);

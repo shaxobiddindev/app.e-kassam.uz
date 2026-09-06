@@ -1948,7 +1948,7 @@ export default {
 
   /* ── To'lov: bitta maydon, qolgani nasiyaga (V58) ── */
   "kassa.amountFor": "{method} uchun summa",
-  "kassa.emptyIsCash": "Bo'sh qoldirsangiz — hammasi naqd.",
+  "kassa.emptyIsAll": "Bo'sh qoldirsangiz — hammasi {method}.",
   "kassa.fillRest": "Qolganini",
   "kassa.toCredit": "Qolgani nasiyaga",
   "kassa.unpaid": "To'lanmagan qism",

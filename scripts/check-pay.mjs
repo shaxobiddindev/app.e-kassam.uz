@@ -642,6 +642,67 @@ console.log("\n── 8d. Naqd tugmalari ──");
   await pg.close();
 }
 
+console.log("\n── 8h. ⚠ BO'SH MAYDON — TANLANGAN USULGA, NAQDGA EMAS ──");
+/* Do'kon egasining surati: «CLICK UCHUN SUMMA» yozuvi turibdi, maydon
+   bo'sh, hisobda esa «Naqd 20 000 so'm» va «Sotish» ochiq.
+
+   Pul Click orqali kelgan: yashikda 20 000 ortiqcha ko'rinardi, Click
+   tushumi esa shuncha kam. Kassir hech narsa sezmasdi — farq faqat
+   smena yopilganda, qaysi chek ekani topib bo'lmaydigan paytda
+   chiqardi. */
+{
+  const pg = await openKassa({
+    items: [{ id: 1, name: "Kurtka", salePrice: 20000, qty: 1, unit: "DONA", stockQuantity: 9 }],
+  });
+  await pg.evaluate(() => [...document.querySelectorAll("button")]
+    .find((b) => /Sotish|To'lov/i.test(b.textContent))?.click());
+  await new Promise((r) => setTimeout(r, 700));
+
+  const read = () => pg.evaluate(() => ({
+    label: document.querySelector('label[for="pay-amount"]')?.textContent.trim() || null,
+    val: document.querySelector("#pay-amount")?.value ?? null,
+    hint: [...document.querySelectorAll(".pay-modal-hint")].map((h) => h.textContent.trim()),
+    rows: [...document.querySelectorAll(".pay-sum__row")].map((r) => r.textContent.replace(/\s+/g, " ").trim()),
+    btn: [...document.querySelectorAll(".pay-type-btn")]
+           .filter((b) => b.classList.contains("has-amount"))
+           .map((b) => b.textContent.replace(/\s+/g, " ").trim()),
+  }));
+
+  /* Avval: hech narsa tanlanmagan — naqd bo'lishi TO'G'RI. */
+  let v = await read();
+  v.rows.some((r) => /Naqd/i.test(r)) ? ok("boshda naqd — eski xatti-harakat saqlandi")
+    : no("boshda naqd bo'lishi kerak", JSON.stringify(v.rows));
+
+  /* Endi Click tanlanadi va maydon BO'SH qoldiriladi. */
+  await pg.evaluate(() => [...document.querySelectorAll(".pay-type-btn")]
+    .find((x) => /Click/i.test(x.textContent))?.click());
+  await new Promise((r) => setTimeout(r, 400));
+  v = await read();
+
+  v.val === "" ? ok("maydon bo'sh") : no("maydon bo'sh bo'lishi kerak", v.val);
+  /* ⚠ ASOSIY SHART: hisobda NAQD emas, CLICK turishi kerak. */
+  v.rows.some((r) => /Click/i.test(r) && /20 ?000/.test(r))
+    ? ok("hisobda «Click 20 000» — tanlangan usul")
+    : no("hisobda Click bo'lishi kerak", JSON.stringify(v.rows));
+  !v.rows.some((r) => /Naqd/i.test(r))
+    ? ok("«Naqd» qatori YO'Q — ekran yolg'on gapirmaydi")
+    : no("«Naqd» qolmasligi kerak", JSON.stringify(v.rows));
+  v.hint.some((h) => /Click/i.test(h))
+    ? ok("izoh ham Click deydi: " + v.hint.find((h) => /Click/i.test(h)))
+    : no("izohda Click bo'lishi kerak", JSON.stringify(v.hint));
+  v.btn.some((b) => /Click/i.test(b))
+    ? ok("summa Click tugmasida ko'rinadi") : no("Click tugmasida bo'lishi kerak", JSON.stringify(v.btn));
+
+  /* Naqdga qaytsa — yana naqd. */
+  await pg.evaluate(() => [...document.querySelectorAll(".pay-type-btn")]
+    .find((x) => /Naqd/i.test(x.textContent))?.click());
+  await new Promise((r) => setTimeout(r, 400));
+  v = await read();
+  v.rows.some((r) => /Naqd/i.test(r)) ? ok("naqdga qaytsa — yana naqd")
+    : no("naqd bo'lishi kerak", JSON.stringify(v.rows));
+  await pg.close();
+}
+
 console.log("\n── 8g. ⚠ NAQDSIZ ORTIQCHA JAMG'ARMAGA — SOTISH OCHIQ ──");
 /* ═══ EKRAN O'ZI BILAN ZIDDIYATGA TUSHGAN EDI ═══════════════════════
 

@@ -92,9 +92,25 @@ const rank = (t) => {
  * ⚠ TO'LIQ NASIYA baribir mumkin: naqdga `0` yoziladi. Shunda
  * ro'yxat bo'sh emas va bu qoida ishlamaydi.
  */
-export function effective(entered, total) {
+export function effective(entered, total, method = CASH) {
   if (entered && Object.keys(entered).length > 0) return entered;
-  return { [CASH]: Math.max(0, Math.round(Number(total) || 0)) };
+  /* ⚠ TANLANGAN USULGA (V85), har doim naqdga EMAS.
+
+     Ilgari bu yerda `CASH` qotib turardi va kassir Click tugmasini
+     bosib, maydonni bo'sh qoldirsa, chek NAQD bo'lib yozilardi.
+     Ekranda «CLICK UCHUN SUMMA» yozuvi turib, hisobda «Naqd 20 000»
+     chiqardi va «Sotish» ochiq edi.
+
+     Pul esa Click orqali kelgan: yashikda 20 000 ortiqcha ko'rinardi,
+     Click tushumi esa shuncha kam. Kassir hech narsa sezmasdi —
+     farq faqat smena yopilganda, qaysi chek ekani topib bo'lmaydigan
+     paytda chiqardi.
+
+     ⚠ JAMG'ARMA BU QOIDAGA KIRMAYDI va chaqiruvchi uni `CASH` ga
+     almashtiradi: maydonni tanlash «mijoz jamg'armasidan to'laydi»
+     degani emas. Jamg'arma — mijozning puli va undan qancha
+     yechilishini kassir AYTISHI kerak; taxmin qilib bo'lmaydi. */
+  return { [method || CASH]: Math.max(0, Math.round(Number(total) || 0)) };
 }
 
 const num = (v) => {
