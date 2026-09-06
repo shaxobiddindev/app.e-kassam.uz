@@ -89,7 +89,12 @@ const pageErrors = [];
 const ONE = [{ id: 1, name: "Kurtka", salePrice: 100000, qty: 1, unit: "DONA", stockQuantity: 9 }];
 
 /** Tayyor sahifa: soxta API, soxta sessiya va savat bilan. */
-async function openKassa({ w = 1600, h = 950, items = ONE, carts = null } = {}) {
+/* ⚠ MIJOZ RO'YXATI MOCK DAN kelishi SHART. Savatdagi mijoz sahifaning
+   o'z ro'yxatidan tanlanadi (`customers.find(...)`) va ro'yxat bo'sh
+   bo'lsa u NULL ga aylanadi — ya'ni localStorage ga yozib qo'yish
+   yetmaydi. */
+async function openKassa({ w = 1600, h = 950, items = ONE, carts = null,
+                           customers = null, tier = null } = {}) {
   const page = await browser.newPage();
   await page.setViewport({ width: w, height: h });
   await page.setRequestInterception(true);
@@ -97,10 +102,15 @@ async function openKassa({ w = 1600, h = 950, items = ONE, carts = null } = {}) 
     if (!r.url().includes("/api/")) return r.continue();
     const CORS = cors(r);
     if (r.method() === "OPTIONS") return r.respond({ status: 204, headers: CORS });
+    const p = new URL(r.url()).pathname;
     const body = r.url().includes("/shop/profile")
       ? { success: true, data: PROFILE }
       : /\/sales\b/.test(r.url()) && r.method() === "POST"
         ? { success: true, data: { id: 777, receiptUrl: null } }
+      : customers && /\/customers$/.test(p)
+        ? { success: true, data: customers }
+      : tier && /\/tier|\/loyalty/.test(p)
+        ? { success: true, data: tier }
         : { success: true, data: [] };
     return r.respond({ status: 200, contentType: "application/json",
                        headers: CORS, body: JSON.stringify(body) });
@@ -427,6 +437,149 @@ await page.close();
    aylanishi TO'G'RI — 30 ta tovarni ekranga sig'dirib bo'lmaydi.
    To'silishi kerak bo'lgani — OYNANING aylanishi.
    ══════════════════════════════════════════════════════════════════════ */
+
+/**
+ * Mijozni EKRAN ORQALI tanlaydi.
+ *
+ * ⚠ `localStorage` ga yozib qo'yish YETMAYDI: savatdagi mijoz
+ * sahifaning o'z ro'yxatidan olinadi va tiklanganda ro'yxatda
+ * topilmasa bo'shab qoladi. Sinov ham kassir yuradigan yo'ldan
+ * yurishi kerak — o'shanda u haqiqiy xulqni tekshiradi.
+ */
+async function pickCustomer(pg, name) {
+  await pg.evaluate(() => document.querySelector(".cart-cust .ek-select__btn")?.click());
+
+  await new Promise((r) => setTimeout(r, 350));
+  const done = await pg.evaluate((n) => {
+    const opt = [...document.querySelectorAll("[role='option']")]
+      .find((o) => o.textContent.includes(n));
+    if (!opt) return { ok: false };
+    opt.click(); return { ok: true };
+  }, name);
+
+  await new Promise((r) => setTimeout(r, 450));
+  return done.ok === true;
+}
+
+/* ══ 8e. JAMG'ARMA QAYTIM CHIQARA OLMAYDI (V78) ═══════════════════════
+
+   ⚠⚠ XAVFSIZLIK QOIDASI. Jamg'arma oddiy naqdsiz usul bo'lganda
+   30 000 lik chekka 20 000 naqd + 20 000 jamg'arma yozish mumkin edi
+   va ortiqcha 10 000 QAYTIM bo'lib chiqardi — mijoz o'z
+   jamg'armasidan naqd pul yechib olardi.
+
+   ⚠ MAYDONNING O'ZI cheklanadi: hisob qatlamida ham kesiladi, lekin
+   kassirga xatoni QILDIRMASLIK — tuzatishni so'rashdan yaxshiroq.
+   ══════════════════════════════════════════════════════════════════════ */
+console.log("\n── 8e. Jamg'arma chegarasi ──");
+{
+  /* Mijozda katta jamg'arma; chek 100 000. */
+  const CUST = { id: 9, fullName: "Sinov mijoz", phone: "+998900000009", savingsBalance: 500000 };
+  const pg = await openKassa({
+    customers: [CUST],
+    tier: { tierName: null, discountPercent: 0, bonusBalance: 0,
+            debtBalance: 0, savingsBalance: 500000 },
+    carts: [{ id: 1, discount: "", bonusUse: "", customer: null, items: ONE }],
+  });
+  /* ⚠ MIJOZ TANLAGICHI TO'LOV OYNASINING ICHIDA — avval oyna
+     ochiladi. Kassa ekranida bunday tugma yo'q. */
+  await pg.evaluate(() => [...document.querySelectorAll("button")]
+    .find((b) => /Sotish|To'lov|Tolov/i.test(b.textContent))?.click());
+  await new Promise((r) => setTimeout(r, 800));
+  (await pickCustomer(pg, "Sinov mijoz")) ? ok("mijoz tanlandi")
+                                          : no("mijozni tanlab bo'lmadi");
+
+  /* Avval naqd 60 000. */
+  await pg.focus("#pay-amount");
+  await pg.type("#pay-amount", "60000", { delay: 8 });
+  await new Promise((r) => setTimeout(r, 250));
+
+  /* Endi jamg'armaga o'tamiz — qolgani 40 000 bo'lishi kerak. */
+  const gotSavings = await pg.evaluate(() => {
+    const b = [...document.querySelectorAll(".cust-fact--btn")]
+      .find((x) => /jamg/i.test(x.textContent));
+    if (!b || b.disabled) return false;
+    b.click(); return true;
+  });
+  if (!gotSavings) { no("jamg'arma tugmasi topilmadi"); }
+  else {
+    await new Promise((r) => setTimeout(r, 300));
+    const hint = await pg.$eval(".pay-modal-body", (n) => n.innerText);
+    /40\s*000/.test(hint)
+      ? ok("chegara QOLGAN summa (40 000) deb ko'rsatiladi")
+      : no("chegara qoldiq (500 000) bo'lib qoldi", hint.slice(0, 200).replace(/\n/g, " | "));
+
+    /* Chegaradan katta son yozib ko'ramiz — maydon uni O'TKAZMASLIGI kerak. */
+    await pg.focus("#pay-amount");
+    for (let i = 0; i < 20; i++) {
+      if (await pg.$eval("#pay-amount", (el) => el.value === "")) break;
+      await pg.keyboard.press("End"); await pg.keyboard.press("Backspace");
+    }
+    await pg.type("#pay-amount", "200000", { delay: 8 });
+    await new Promise((r) => setTimeout(r, 300));
+    const val = await pg.$eval("#pay-amount", (el) => Number(el.value.replace(/\D/g, "")));
+    val <= 40000 ? ok(`maydon chegaradan o'tkazmadi (${val})`)
+                 : no("jamg'armadan ortiqcha yozib bo'ldi", String(val));
+
+    /* Va QAYTIM chiqmasligi kerak. */
+    const txt = await pg.$eval(".pay-modal-body", (n) => n.innerText);
+    !/qaytim/i.test(txt)
+      ? ok("QAYTIM qatori yo'q — pul chiqarish yo'li yopiq")
+      : no("jamg'armadan qaytim chiqdi", txt.slice(0, 200).replace(/\n/g, " | "));
+  }
+  await pg.close();
+}
+
+/* ══ 8f. MIJOZ KARTOCHKASI — TO'RTALASI HAM (V78) ═════════════════════
+
+   ⚠ Ilgari har katak o'z sharti bilan chizilardi va bir mijozda
+   to'rttasi, boshqasida ikkitasi chiqardi: kassir «jamg'armasi yo'q»
+   bilan «jamg'armasi nol» ni ajrata olmasdi, kataklarning joyi ham
+   har safar siljib turardi.
+   ══════════════════════════════════════════════════════════════════════ */
+console.log("\n── 8f. Mijoz kartochkasi ──");
+{
+  /* HAMMASI NOL bo'lgan mijoz — eng yomon holat. */
+  /* ⚠ HAMMASI NOL bo'lgan mijoz — eng yomon holat: ilgari uning
+     kartochkasida bitta ham katak chizilmasdi. */
+  const NEW_CUST = { id: 9, fullName: "Yangi mijoz", phone: "+998900000009", savingsBalance: 0 };
+  const pg = await openKassa({
+    customers: [NEW_CUST],
+    tier: { tierName: null, discountPercent: 0, bonusBalance: 0,
+            debtBalance: 0, savingsBalance: 0 },
+    carts: [{ id: 1, discount: "", bonusUse: "", customer: null, items: ONE }],
+  });
+  await pg.evaluate(() => [...document.querySelectorAll("button")]
+    .find((b) => /Sotish|To'lov|Tolov/i.test(b.textContent))?.click());
+  await new Promise((r) => setTimeout(r, 800));
+  (await pickCustomer(pg, "Yangi mijoz")) ? ok("mijoz tanlandi")
+                                          : no("mijozni tanlab bo'lmadi");
+
+  const facts = await pg.$$eval(".cust-fact", (n) => n.map((x) => ({
+    lab: x.querySelector(".cust-fact__lab")?.textContent.trim() || "",
+    val: x.querySelector(".cust-fact__val")?.textContent.trim() || "",
+  })));
+  facts.length === 4
+    ? ok(`to'rtala katak ham chizildi (${facts.map((f) => f.lab).join(" · ")})`)
+    : no("kataklar soni noto'g'ri", `${facts.length}: ` + facts.map((f) => f.lab).join(" · "));
+
+  /* ⚠ Nol ham KO'RSATILADI: «yo'q» va «nol» kassir uchun bir xil
+     ma'no, lekin katakning yo'qolishi qolganlarini surib yuborardi. */
+  const zeros = facts.filter((f) => /^0\s/.test(f.val)).length;
+  zeros >= 3 ? ok(`nol qiymatlar ham ko'rinadi (${zeros} ta)`)
+             : no("nol qiymatli katak yashirildi", facts.map((f) => `${f.lab}=${f.val}`).join(" | "));
+
+  /* Jamg'arma tugmasi nolda O'CHIQ bo'lishi kerak. */
+  const off = await pg.evaluate(() => {
+    const b = [...document.querySelectorAll(".cust-fact--btn")]
+      .find((x) => /jamg/i.test(x.textContent));
+    return b ? b.disabled : null;
+  });
+  off === true ? ok("bo'sh jamg'arma tugmasi bosilmaydi")
+               : no("bo'sh jamg'armani tanlab bo'ldi", String(off));
+  await pg.close();
+}
+
 /* ══ 8c2. EKRANDA BUZUQ QIYMAT BO'LMASIN (V76) ════════════════════════
 
    ⚠ HAQIQIY XATO shu yerdan topilgan. Smena javobi kutilmagan shaklda

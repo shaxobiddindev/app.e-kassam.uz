@@ -5405,3 +5405,88 @@ button.stk__c:hover { background: var(--bg-hover); }
   border-left: 1px solid currentColor;
   opacity: .75; font-size: 11px; font-weight: 700;
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   MIJOZ EKRANI — IKKINCHI MONITOR (V77)
+
+   ⚠ Bu ekran MIJOZ uchun, kassir uchun emas: yozuv katta, bosiladigan
+   element yo'q va SCROL YO'Q. Savat uzun bo'lsa oxirgi qatorlar
+   ko'rinadi — mijozning savoli «hozir nima urildi?».
+   ══════════════════════════════════════════════════════════════════════ */
+.cd {
+  position: fixed; inset: 0;
+  display: flex; flex-direction: column;
+  padding: 24px 32px; gap: 14px;
+  background: var(--bg-surface); color: var(--fg-primary);
+  font-size: 20px; overflow: hidden;
+}
+.cd__head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 16px;
+  padding-bottom: 12px; border-bottom: 2px solid var(--border);
+}
+.cd__shop { font-size: 26px; font-weight: 900; letter-spacing: -.01em; }
+.cd__cust { font-size: 18px; font-weight: 700; color: var(--fg-secondary); }
+
+/* ── Qatorlar ─────────────────────────────────────────────────────── */
+.cd__list { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; min-height: 0; }
+.cd__more { font-size: 15px; color: var(--fg-secondary); padding: 4px 0; }
+.cd__empty {
+  margin: auto; font-size: 24px; font-weight: 700; color: var(--fg-secondary);
+}
+.cd__row {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: baseline; gap: 20px;
+  padding: 10px 0; border-bottom: 1px solid var(--border-subtle);
+}
+.cd__name {
+  font-size: 22px; font-weight: 700;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.cd__qty { font-size: 18px; font-weight: 700; color: var(--fg-secondary); white-space: nowrap; }
+.cd__sum { font-size: 22px; font-weight: 800; white-space: nowrap; min-width: 150px; text-align: right; }
+
+/* ── Yakun ────────────────────────────────────────────────────────── */
+.cd__foot { padding-top: 12px; border-top: 2px solid var(--border); }
+.cd__line { display: flex; justify-content: space-between; align-items: baseline; font-size: 20px; padding: 3px 0; }
+.cd__line--big { font-size: 26px; font-weight: 800; }
+.cd__total {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-size: 30px; font-weight: 900; padding: 6px 0;
+}
+.cd__total b { font-size: 46px; letter-spacing: -.02em; }
+
+/* ⚠ QAYTIM — ekrandagi ENG KATTA raqam: aynan shu son uchun bahs
+   chiqadi va mijoz uni bir qarashda o'qishi kerak. */
+.cd__change {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-top: 8px; padding: 10px 16px; border-radius: 12px;
+  background: var(--bg-success-subtle); color: var(--fg-success);
+  font-size: 26px; font-weight: 800;
+}
+.cd__change b { font-size: 44px; letter-spacing: -.02em; }
+
+/* ── Bo'sh ekran ──────────────────────────────────────────────────── */
+.cd__idle { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px; }
+.cd__welcome { font-size: 40px; font-weight: 900; color: var(--fg-secondary); }
+.cd__promo { text-align: center; }
+.cd__promoTag {
+  display: inline-block; padding: 4px 14px; border-radius: 999px;
+  background: var(--bg-brand); color: var(--fg-on-brand, #fff);
+  font-size: 15px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+}
+.cd__promoName { font-size: 34px; font-weight: 800; margin-top: 12px; }
+.cd__promoPrice { display: flex; align-items: baseline; justify-content: center; gap: 14px; margin-top: 6px; }
+.cd__promoWas { font-size: 22px; color: var(--fg-secondary); }
+.cd__promoPrice b { font-size: 40px; font-weight: 900; color: var(--fg-danger); }
+
+/* ── «Rahmat» ─────────────────────────────────────────────────────── */
+.cd__done { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; }
+.cd__doneIco { font-size: 64px; color: var(--fg-success); }
+.cd__thanks { font-size: 44px; font-weight: 900; }
+.cd__done .cd__line, .cd__done .cd__change { min-width: 420px; }
+.cd__receipt { font-size: 16px; color: var(--fg-secondary); }
+
+/* Naqdsiz usuldan ortiqcha — sariq, qizil EMAS: bu xato emas,
+   mijozning puli va uning yo'li bor (jamg'arma). Qizil qator
+   kassirni «nimadir buzildi» deb o'ylashga majbur qilardi. */
+.pay-sum__row--over { color: var(--fg-warning); }

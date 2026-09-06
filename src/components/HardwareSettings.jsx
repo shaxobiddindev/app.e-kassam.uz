@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useT } from "../lib/ek-i18n";
 import { isDesktop } from "../lib/ek-desktop";
 import { getSettings, saveSettings, listPrinters, testPrint, openDrawer } from "../lib/ek-hardware";
+import { HW_KEY as DISPLAY_KEY, openDisplay } from "../lib/ek-display";
 import Select from "./ek/Select";
 import { Spinner } from "./ek/Loading";
 import { NumField } from "./ek/EkFields";
@@ -152,6 +153,28 @@ export default function HardwareSettings({ toast }) {
           <Switch checked={s.scanner} onChange={(v) => set({ scanner: v })}
                   disabled={off} yes={t("common.yes")} no={t("common.no")} />
         </Row>
+
+        {/* ══ MIJOZ EKRANI — IKKINCHI MONITOR (V77) ══════════════════
+            ⚠ `disabled={off}` YO'Q va bu ataylab: bu ekran printerga
+            ham, do'kon ilovasiga ham bog'liq emas — u shu brauzerning
+            ikkinchi oynasi. Printer sozlanmagan do'konda ham
+            ishlaydi. */}
+        <Row label={t("hw.display")} hint={t("hw.displayHint")}>
+          <Switch checked={s[DISPLAY_KEY] === true}
+                  onChange={(v) => set({ [DISPLAY_KEY]: v })}
+                  yes={t("common.yes")} no={t("common.no")} />
+        </Row>
+
+        {s[DISPLAY_KEY] === true && (
+          <Row label={t("hw.displayOpen")}>
+            {/* ⚠ TUGMA SHART: `window.open` ni FOYDALANUVCHI bosganda
+                chaqirish kerak, aks holda brauzer uni qalqib chiquvchi
+                deb to'sadi va kassir hech qanday sabab ko'rmaydi. */}
+            <button className="btn btn-primary btn-sm" onClick={openDisplay}>
+              <i className="fa-solid fa-display" aria-hidden="true" /> {t("hw.displayOpen")}
+            </button>
+          </Row>
+        )}
 
         {/* Sinov — sozlash oxiridagi yagona savolga javob beradi:
             "chindan ham ishlayaptimi?" */}

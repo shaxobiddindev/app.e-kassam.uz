@@ -30,13 +30,15 @@ import Modal from "../components/Modal";
 import { PhoneField } from "../components/ek/EkFields";
 import Select from "../components/ek/Select";
 import { printReceipt, openDrawer, printDebtReceipt } from "../lib/ek-hardware";
+import { getSettings } from "../lib/ek-hw-settings";
 
 /* Jamg'arma kvitansiyasi (V66) — kassada kamdan-kam ochiladi, alohida bo'lakda. */
 const PaymentReceipt = lazy(() => import("../portal/PaymentReceipt"));
 import FacetFilter from "../components/ek/FacetFilter";
 import { KASSA_KEYS, keyLabel, resolve as resolveKey } from "../lib/ek-kassa-keys";
-import { settle, payType as payTypeOf, restFor, effective } from "../lib/ek-payment";
+import { settle, payType as payTypeOf, restFor, effective, savingsMax } from "../lib/ek-payment";
 import { cashSuggestions } from "../lib/ek-cash";
+import * as display from "../lib/ek-display";
 import { spreadDiscount, roundingOffers, budgetOffers, cartRoom,
          cartLossRoom, discountVerdict } from "../lib/ek-discount";
 import { useScanner } from "../hooks/useScanner";
@@ -239,6 +241,12 @@ export default function KassaPage({ toast, refreshLowStock }) {
      ta'sir qilmaydi va shunday bo'lishi ham kerak: front hisoblagan
      chegirma kassir tomonidan o'zgartirilishi mumkin bo'lardi. */
   const [tier, setTier]             = useState(null);
+
+  /* ⚠ MIJOZ EKRANI SOZLAMADAN yoqiladi (V77): ikkinchi monitori yo'q
+     do'konda u `localStorage` ga bekorga yozib turardi. Sozlama
+     o'zgarganda `ek:hw` hodisasi keladi — Sozlamalar va Kassa bir
+     vaqtda ochiq bo'lishi mumkin. */
+  const [displayOn, setDisplayOn] = useState(() => getSettings()[display.HW_KEY] === true);
   /* Ball: kassir kiritgan summa + do'kon chegarasi (foizda).
 
      ⚠ SAVATNING O'ZIDA (V57) — `customer` bilan bir qatorda. Sahifa
@@ -453,6 +461,22 @@ export default function KassaPage({ toast, refreshLowStock }) {
   // Chek sarlavhasi va imzosi. Sessiyadan olinadi — chek uchun alohida
   // so'rov yubormaymiz: kassa ekrani oflaynda ham ishlashi kerak.
   const shopName = localStorage.getItem("ek_shopName") || localStorage.getItem("ek_shopCode") || "";
+
+  /* ⚠ BO'SH EKRAN QORAYIB TURMAYDI: kun bo'yi qorayib turgan monitor
+     buzuq ko'rinadi. Taklif — narxi TUSHIRILGAN tovarlar; ular yo'q
+     bo'lsa ekran shunchaki do'kon nomi bilan qoladi (yolg'on aksiya
+     ko'rsatilmaydi). */
+  const promo = useMemo(() => products
+    .filter((p) => p.oldPrice > 0 && p.salePrice > 0 && p.oldPrice > p.salePrice)
+    .slice(0, 6)
+    .map((p) => ({ name: p.name, price: p.salePrice, was: p.oldPrice })),
+    [products]);
+
+  useEffect(() => {
+    const on = (e) => setDisplayOn(e.detail?.[display.HW_KEY] === true);
+    window.addEventListener("ek:hw", on);
+    return () => window.removeEventListener("ek:hw", on);
+  }, []);
   const cashier  = localStorage.getItem("ek_fullName") || localStorage.getItem("ek_username") || "";
 
   /* ── Mijozlar ─────────────────────────────────────────────── */
@@ -1484,7 +1508,16 @@ export default function KassaPage({ toast, refreshLowStock }) {
   /* ⚠ MAYDON QOLDIQ BILAN CHEGARALANADI. Serverda ham tekshiriladi,
      lekin xatoni SOTUVDAN KEYIN ko'rsatish eng yomon vaqt: chek
      yozilmay qoladi va kassir mijoz oldida boshqatdan boshlaydi. */
-  const payMax = payFocus === "SAVINGS" ? savingsLeft : null;
+  /* ⚠⚠ IKKI CHEGARA: mijozning qoldig'i VA chekning to'lanmagan qismi
+     (V78). Ilgari faqat qoldiq tekshirilardi va 30 000 lik chekka
+     20 000 naqd + 20 000 jamg'arma yozish mumkin edi — ortiqcha
+     10 000 qaytim bo'lib chiqar, ya'ni mijoz o'z jamg'armasidan NAQD
+     yechib olardi. Hisob qatlamida ham kesiladi (`settle`), lekin
+     maydonni cheklash kassirga xatoni QILDIRMAYDI — tuzatishni
+     so'ramaydi. */
+  const payMax = payFocus === "SAVINGS"
+    ? savingsMax(paid, total, savingsLeft)
+    : null;
 
   /**
    * ⚠ USULNI TANLASH — QIYMATNI O'CHIRMAYDI. Kassir naqdga 20 000
@@ -1643,6 +1676,39 @@ export default function KassaPage({ toast, refreshLowStock }) {
   /** «Qolganini» — shu usulga qolgan summani yozadi (ustiga qo'shmaydi). */
   const fillRest = () => setPayValue(String(restFor(paid, total, payFocus)));
 
+  /* ══════════════════════════════════════════════════════════════════
+     MIJOZ EKRANI (V77)
+
+     ⚠ BITTA JOYDAN uzatiladi va bu ataylab: savat, chegirma, mijoz va
+     to'lov holati o'nlab joyda o'zgaradi va har biriga chaqiruv
+     qo'yilganda ulardan bittasi albatta unutilardi — o'shanda mijoz
+     ekrani jimgina eskirib qolardi va buni faqat mijoz payqardi.
+
+     ⚠ SOTUVDAN KEYINGI «rahmat» BU YERDA EMAS: u savatga bog'liq
+     emas va o'z holatidan (`finish`) chiqadi.
+
+     ⚠ Ekran O'CHIQ bo'lsa hech narsa yozilmaydi: `localStorage` ga
+     har tugma bosilishida yozish sekin monoblokda sezilardi. */
+  useEffect(() => {
+    if (!displayOn) return;
+    if (finish?.phase === "done") return;   // «rahmat» ekrani o'z navbatida
+    display.publish(display.buildState({
+      mode: showPayModal ? "pay" : cart.length ? "cart" : "idle",
+      shop: shopName,
+      items: cart.map((i) => ({
+        name: i.name, qty: i.qty, unit: i.unit,
+        price: i.salePrice, sum: i.salePrice * i.qty - (Number(i.discount) || 0),
+      })),
+      total, discount: discountNum + lineDiscounts,
+      customer: customer ? { name: customer.fullName || customer.name, bonus: tier?.bonusBalance } : null,
+      /* To'lov oynasi ochiq bo'lsa — berilgan pul va qaytim. */
+      given: showPayModal ? pay.cashIn : null,
+      change: showPayModal ? pay.change : null,
+      promo,
+    }));
+  }, [displayOn, cart, total, discountNum, lineDiscounts, customer, tier,
+      showPayModal, pay.cashIn, pay.change, shopName, promo, finish?.phase]);
+
   /** Usulni butunlay olib tashlash. */
   const dropMethod = (type) =>
     setPaid((prev) => {
@@ -1769,8 +1835,12 @@ export default function KassaPage({ toast, refreshLowStock }) {
          chegarasini hisoblash uchun kerak: u chekning naqd
          QISMINI biladi, mijoz UZATGAN summani esa faqat kassir
          aytadi. */
-      changeToSavings: changeToSavings && pay.change > 0 ? pay.change : null,
-      cashGiven: changeToSavings && pay.change > 0 ? pay.cashIn : null,
+      /* ⚠ ORTIQCHANING HAMMASI (V78): naqd qaytimi ham, naqdsiz
+         usuldan oshgani ham. Server ikkalasini ham tekshiradi —
+         `cashGiven` naqd qismini, `nonCashOver` esa qolganini. */
+      changeToSavings: changeToSavings && pay.excess > 0 ? pay.excess : null,
+      cashGiven: changeToSavings && pay.excess > 0 ? pay.cashIn : null,
+      nonCashOver: changeToSavings && pay.over > 0 ? pay.over : null,
       /* ⚠ ESKI MAYDONLAR HAM YUBORILADI. Sabab bosqichma-bosqich
          yangilanish: server hali eski bo'lsa (yoki oflayn navbatdagi
          chek eski serverga tushsa) chek baribir yozilishi kerak.
@@ -1881,6 +1951,16 @@ export default function KassaPage({ toast, refreshLowStock }) {
        topmasdi. */
     printReceipt({ saleId: receiptNo, serverSaleId: res_saleId, ...snapshot, offline, shopName, cashier, fiscal, receiptUrl })
       .catch((err) => toast.error(`${t("hw.printFailed")}: ${err.message}`));
+
+    /* ⚠ «RAHMAT» EKRANI shu yerdan, savat kuzatuvchisidan EMAS: sotuv
+       tugagach savat bo'shaydi va kuzatuvchi darhol «bo'sh ekran»
+       yuborardi — mijoz qaytimni ko'rishga ulgurmasdi. */
+    if (displayOn) {
+      display.publish(display.buildState({
+        mode: "done", shop: shopName, items: [], total: snapshot.total,
+        change: pay.change, receiptNo, promo,
+      }));
+    }
 
     setFinish({ phase: "done", total: money(snapshot.total), receiptNo,
                 note: snapshot.toSavings > 0 ? t("savings.finishNote", { n: money(snapshot.toSavings) }) : null });
@@ -3049,22 +3129,29 @@ export default function KassaPage({ toast, refreshLowStock }) {
                   urinib chegaradan oshganini mijoz oldida bilmasin.
                   Ball — do'konning sovg'asi, jamg'arma — mijozning puli:
                   ikkisi alohida katakda, alohida rangda. */}
-              {customer && (tier || savingsLeft > 0) && (
+              {/* ⚠ TO'RTALA KATAK HAM DOIM (do'kon egasining talabi,
+                  V78). Ilgari har biri o'z sharti bilan chizilardi
+                  (`tier &&`, `savingsLeft > 0 &&`, `debtBalance > 0
+                  &&`, `bonusAvail > 0 &&`) va bir mijozda to'rttasi,
+                  boshqasida ikkitasi chiqardi. Natijada kassir
+                  «bu mijozda jamg'arma yo'q» bilan «jamg'arma nol»
+                  ni ajrata olmasdi va kataklarning joyi ham har safar
+                  siljib turardi. Endi yo'qligi NOL bo'lib ko'rinadi. */}
+              {customer && (
                 <div className="cust-facts">
-                  {tier && (
-                    <div className="cust-fact">
+                  <div className="cust-fact">
                       <span className="cust-fact__lab">
                         <i className="fa-solid fa-award" style={{ color: "var(--fg-warning)" }} aria-hidden="true" />
                         {t("loyalty.tier")}
                       </span>
-                      <span className={`cust-fact__val${tier.tierName ? "" : " text-muted"}`}>
-                        {tier.tierName ? <>{tier.tierName} · {tier.discountPercent}%</> : t("loyalty.noTier")}
+                      <span className={`cust-fact__val${tier?.tierName ? "" : " text-muted"}`}>
+                        {tier?.tierName ? <>{tier.tierName} · {tier.discountPercent}%</> : t("loyalty.noTier")}
                       </span>
                       {/* ⚠ Daraja OYNADAN hisoblansa buni aytish shart (V43):
                           aks holda mijoz «men bu do'kondan million so'mlik
                           olganman, nega darajam yo'q?» deb so'raganda kassir
                           javob topa olmasdi. */}
-                      {(tier.toNextTier != null || Number(tier.loyaltyWindowDays) > 0) && (
+                      {(tier?.toNextTier != null || Number(tier?.loyaltyWindowDays) > 0) && (
                         <span className="cust-fact__sub" title={[
                           tier.toNextTier != null && `${t("loyalty.toNext")}: ${money(tier.toNextTier)}`,
                           Number(tier.loyaltyWindowDays) > 0 && t("loyalty.windowNote", { days: tier.loyaltyWindowDays }),
@@ -3075,37 +3162,47 @@ export default function KassaPage({ toast, refreshLowStock }) {
                         </span>
                       )}
                     </div>
-                  )}
-                  {savingsLeft > 0 && (
-                    <button type="button"
-                            className={`cust-fact cust-fact--btn${payFocus === "SAVINGS" ? " active" : ""}`}
-                            aria-pressed={payFocus === "SAVINGS"}
-                            onClick={() => focusMethod("SAVINGS")}
-                            title={t("kbd.paySavings")}>
+                  {/* ⚠ Qoldiq nol bo'lsa ham KATAK QOLADI, faqat tugma
+                      o'chadi: «jamg'armasi yo'q» va «jamg'armasi nol»
+                      kassir uchun bir xil ma'no, lekin katakning
+                      YO'QOLISHI qolgan kataklarni suriб yuborardi va
+                      kassir har mijozda joyni qaytadan qidirardi. */}
+                  <button type="button"
+                          className={`cust-fact cust-fact--btn${payFocus === "SAVINGS" ? " active" : ""}`}
+                          aria-pressed={payFocus === "SAVINGS"}
+                          disabled={savingsLeft <= 0}
+                          onClick={() => focusMethod("SAVINGS")}
+                          title={savingsLeft > 0 ? t("kbd.paySavings") : t("savings.empty")}>
                       <span className="cust-fact__lab">
                         <i className="fa-solid fa-sack-dollar" aria-hidden="true" />
                         {t("savings.short")}
                       </span>
-                      <span className="cust-fact__val">{money(savingsLeft)}</span>
-                      <span className="cust-fact__sub">
-                        <span className="kbd">{keyLabel("paySavings")}</span>{" "}
-                        {payShown.SAVINGS
-                          ? t("savings.inPay", { n: money(payShown.SAVINGS) })
-                          : t("kbd.paySavings")}
+                      <span className={`cust-fact__val${savingsLeft > 0 ? "" : " text-muted"}`}>
+                        {money(savingsLeft)}
                       </span>
-                    </button>
-                  )}
-                  {tier && Number(tier.debtBalance) > 0 && (
-                    <div className="cust-fact cust-fact--debt">
+                      <span className="cust-fact__sub">
+                        {savingsLeft > 0 ? (
+                          <>
+                            <span className="kbd">{keyLabel("paySavings")}</span>{" "}
+                            {payShown.SAVINGS
+                              ? t("savings.inPay", { n: money(payShown.SAVINGS) })
+                              : t("kbd.paySavings")}
+                          </>
+                        ) : t("savings.empty")}
+                      </span>
+                  </button>
+                  <div className={`cust-fact${Number(tier?.debtBalance) > 0 ? " cust-fact--debt" : ""}`}>
                       <span className="cust-fact__lab">
                         <i className="fa-solid fa-hand-holding-dollar" aria-hidden="true" />
                         {t("credit.balance")}
                       </span>
-                      <span className="cust-fact__val">{money(tier.debtBalance)}</span>
+                      <span className={`cust-fact__val${Number(tier?.debtBalance) > 0 ? "" : " text-muted"}`}>
+                        {money(tier?.debtBalance || 0)}
+                      </span>
                       {/* ⚠ MUDDATI O'TGAN qism alohida (V43): umumiy qarz
                           «bor» degani, muddati o'tgani esa «so'rash kerak»
                           degani. Qachondan beri — qarzning YOSHI (V46). */}
-                      {(Number(tier.overdueDebt) > 0 || tier.debtSince) && (
+                      {(Number(tier?.overdueDebt) > 0 || tier?.debtSince) && (
                         <span className="cust-fact__sub" title={[
                           Number(tier.overdueDebt) > 0 && `${t("credit.overdue")}: ${money(tier.overdueDebt)}`,
                           tier.debtSince && `${t("credit.debtSince")} ${shortDate(tier.debtSince)}`,
@@ -3118,18 +3215,21 @@ export default function KassaPage({ toast, refreshLowStock }) {
                         </span>
                       )}
                     </div>
-                  )}
-                  {bonusAvail > 0 && (
-                    <div className="cust-fact cust-fact--bonus">
+                  <div className={`cust-fact${bonusAvail > 0 ? " cust-fact--bonus" : ""}`}>
                       <span className="cust-fact__lab">
                         <i className="fa-solid fa-coins" style={{ color: "var(--fg-warning)" }} aria-hidden="true" />
                         {t("bonus.balance")}
-                        <button type="button" className="cust-fact__act"
-                                onClick={() => setBonusUse(String(bonusAvail))}>
-                          {t("bonus.useMax")}
-                        </button>
+                        {/* «Hammasini» — faqat ishlatiladigan ball bo'lsa. */}
+                        {bonusAvail > 0 && (
+                          <button type="button" className="cust-fact__act"
+                                  onClick={() => setBonusUse(String(bonusAvail))}>
+                            {t("bonus.useMax")}
+                          </button>
+                        )}
                       </span>
-                      <span className="cust-fact__val">{money(tier.bonusBalance)}</span>
+                      <span className={`cust-fact__val${Number(tier?.bonusBalance) > 0 ? "" : " text-muted"}`}>
+                        {money(tier?.bonusBalance || 0)}
+                      </span>
                       {/* Muddat (V30): kassir mijozga aytadi — «shuncha
                           balingiz oy ichida kuyadi, ishlatib qoling». */}
                       {Number(tier?.bonusExpiringSoon) > 0 && (
@@ -3139,8 +3239,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
                           {t("bonus.expiringSoon", { amount: money(tier.bonusExpiringSoon) })}
                         </span>
                       )}
-                    </div>
-                  )}
+                  </div>
                   {/* Ball ishlatish — faqat balans ham, chegara ham noldan
                       katta bo'lganda: bo'sh maydon kassirni «nega
                       ishlamayapti» degan savolga qo'yardi. */}
@@ -3217,7 +3316,11 @@ export default function KassaPage({ toast, refreshLowStock }) {
               {payFocus === "SAVINGS" && (
                 <div className="text-muted" style={{ fontSize: 12, marginTop: 4 }}>
                   <i className="fa-solid fa-sack-dollar" aria-hidden="true" />{" "}
-                  {t("savings.max", { n: money(savingsLeft) })}
+                  {/* ⚠ HAQIQIY chegara, qoldiqning o'zi emas: chek
+                      qisman to'langan bo'lsa jamg'armadan faqat
+                      qolgani yechiladi va kassir buni OLDINDAN
+                      bilishi kerak. */}
+                  {t("savings.max", { n: money(payMax ?? savingsLeft) })}
                 </div>
               )}
               {/* Bo'sh maydonning ma'nosini BIR GAPDA aytamiz —
@@ -3266,9 +3369,24 @@ export default function KassaPage({ toast, refreshLowStock }) {
                   );
                 })}
 
-                {/* ⚠ QAYTIM — faqat naqdda. Terminal aynan so'ralgan
-                    summani oladi va u yerdan pul qaytmaydi. */}
-                {pay.change > 0 && (
+                {/* ⚠ NAQDSIZ USULDAN ORTIQCHA (V78). Terminal naqd
+                    qaytarmaydi, ya'ni bu pulni mijozga qo'lga berib
+                    bo'lmaydi — yagona to'g'ri manzili jamg'arma.
+                    Ilgari u shunchaki «xato» deb turardi va kassirda
+                    hech qanday yo'l yo'q edi. */}
+                {pay.over > 0 && !changeToSavings && (
+                  <div className="pay-sum__row pay-sum__row--over">
+                    <span className="pay-sum__name">
+                      <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />{" "}
+                      {t("kassa.overNonCash")}
+                    </span>
+                    <b className="ek-num">{money(pay.over)}</b>
+                  </div>
+                )}
+
+                {/* ⚠ QAYTIM — faqat NAQDDAN chiqadi: kassir qo'lga
+                    beradigan pul aynan shu. */}
+                {(pay.change > 0 || (changeToSavings && customer && pay.excess > 0)) && (
                   /* Jamg'armaga belgilangan bo'lsa qator YASHIL va «Jamg'armaga
                      +X»: kassir qaytimni qo'lga bermasligini ko'rib turadi. */
                   <div className={`pay-sum__row ${changeToSavings && customer
@@ -3278,7 +3396,10 @@ export default function KassaPage({ toast, refreshLowStock }) {
                                      ? "fa-sack-dollar" : "fa-arrow-rotate-left"}`} aria-hidden="true" />{" "}
                       {changeToSavings && customer ? t("savings.toSavings") : t("kassa.change")}
                     </span>
-                    <b className="ek-num">{changeToSavings && customer ? "+" : ""}{money(pay.change)}</b>
+                    <b className="ek-num">
+                      {changeToSavings && customer ? "+" : ""}
+                      {money(changeToSavings && customer ? pay.excess : pay.change)}
+                    </b>
                   </div>
                 )}
 
@@ -3297,7 +3418,14 @@ export default function KassaPage({ toast, refreshLowStock }) {
                     imkoni bo'lsin — bu muhim» dedi. Summa tugmaning
                     o'zida: kassir «81 010 jamg'armaga» deb mijozga
                     ko'rsatib bosadi. */}
-                {pay.change > 0 && customer && (
+                {/* ⚠ ORTIQCHANING HAMMASI — `pay.excess`, `pay.change`
+                    EMAS (V78). Ilgari faqat NAQD qaytimi taklif
+                    qilinardi: kartadan ortiq to'langan pul ekranda
+                    «xato» bo'lib qolar, uni mijozga qaytarishning yo'li
+                    esa yo'q edi. Endi qaysi usuldan kelganidan qat'i
+                    nazar butun ortiqcha bitta tugma bilan hisobga
+                    tushadi. */}
+                {pay.excess > 0 && customer && (
                   <button type="button"
                           className={`pay-change-sav${changeToSavings ? " active" : ""}`}
                           aria-pressed={changeToSavings}
@@ -3309,8 +3437,8 @@ export default function KassaPage({ toast, refreshLowStock }) {
                       <b>{t("savings.changeHere")}</b>
                       <small>
                         {changeToSavings
-                          ? t("savings.changeOn", { n: money(pay.change) })
-                          : t("savings.changeAsk", { n: money(pay.change) })}
+                          ? t("savings.changeOn", { n: money(pay.excess) })
+                          : t("savings.changeAsk", { n: money(pay.excess) })}
                       </small>
                     </span>
                     <span className="pay-change-sav__switch" aria-hidden="true" />
@@ -3318,7 +3446,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
                 )}
                 {/* Mijozsiz — imkoniyat BORLIGINI aytamiz, aks holda kassir
                     uni hech qachon bilmasdi. */}
-                {pay.change > 0 && !customer && (
+                {pay.excess > 0 && !customer && (
                   <div className="pay-modal-hint">
                     <i className="fa-solid fa-sack-dollar" style={{ marginRight: 4 }} aria-hidden="true" />
                     {t("savings.changeNeedCustomer")}

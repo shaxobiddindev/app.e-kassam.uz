@@ -12,7 +12,7 @@
    Ishga tushirish:  node test/payment.test.mjs
    ══════════════════════════════════════════════════════════════════════════ */
 
-const { settle, payType, restFor, effective } = await import("../src/lib/ek-payment.js");
+const { settle, payType, restFor, effective, savingsMax } = await import("../src/lib/ek-payment.js");
 
 let pass = 0, fail = 0;
 const ok  = (m) => { pass++; console.log("  ✅ " + m); };
@@ -128,6 +128,97 @@ eq(settle({ CASH: 1000 }, 100000).parts.at(-1).type, "CREDIT", "nasiya oxirida")
 eqArr(
   settle({ BONUS: 10000, CASH: 20000 }, 100000).parts.map((x) => x.type),
   ["CASH", "BONUS", "CREDIT"], "notanish usul — oxiriga, yiqilmaydi");
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   JAMG'ARMA — QAYTIM CHIQARA OLMAYDI (V78)
+
+   ⚠⚠ BU XAVFSIZLIK QOIDASI, qulaylik emas. Ilgari jamg'arma oddiy
+   naqdsiz usul edi: 30 000 lik chekka 20 000 boshqa usul + 20 000
+   jamg'arma yozilar, ortiqcha 10 000 esa QAYTIM bo'lib chiqardi —
+   ya'ni mijoz o'z jamg'armasidan naqd pul yechib olardi. Jamg'arma
+   shu bilan do'kondagi hisob bo'lishdan to'xtab, pul chiqarish
+   yo'liga aylanardi.
+   ══════════════════════════════════════════════════════════════════════════ */
+console.log("\n── Jamg'arma: qaytim chiqmaydi ──");
+
+const sv1 = settle({ CASH: 20000, SAVINGS: 20000 }, 30000);
+eq(sv1.savingsPaid, 10000, "jamg'armadan FAQAT qolgan 10 000 yechildi");
+eq(sv1.savingsCut, 10000, "ortiqcha 10 000 hisobda qoldi");
+eq(sv1.change, 0, "QAYTIM YO'Q — pul chiqarish yo'li yopiq");
+eq(sv1.excess, 0, "ortiqcha to'lov ham yo'q");
+eq(sv1.credit, 0, "chek to'liq yopildi");
+eqArr(sv1.parts, [{ type: "CASH", amount: 20000 }, { type: "SAVINGS", amount: 10000 }],
+  "chekka kesilgan qiymat tushadi");
+
+const sv2 = settle({ SAVINGS: 100000 }, 30000);
+eq(sv2.savingsPaid, 30000, "yolg'iz jamg'arma ham chek summasidan oshmaydi");
+eq(sv2.change, 0, "va qaytim bermaydi");
+
+/* Naqd jamg'armadan KEYIN kelsa ham qoida buzilmaydi: chegara
+   boshqa usullarning JAMIDAN hisoblanadi, tartibdan emas. */
+const sv3 = settle({ SAVINGS: 20000, CASH: 40000 }, 30000);
+eq(sv3.savingsPaid, 0, "naqd chekni yopgan bo'lsa jamg'armaga tegilmaydi");
+eq(sv3.change, 10000, "ortiqcha NAQD esa qaytim bo'ladi — u mijozning naqd puli");
+
+const sv4 = settle({ SAVINGS: 30000 }, 30000);
+eq(sv4.savingsPaid, 30000, "aynan chek summasi — to'liq yechiladi");
+eq(sv4.savingsCut, 0, "kesilmadi");
+
+console.log("\n── Jamg'arma chegarasi (savingsMax) ──");
+eq(savingsMax({ CASH: 20000 }, 30000, 500000), 10000,
+   "chegara — QOLGAN summa (qoldiq katta bo'lsa ham)");
+eq(savingsMax({ CASH: 20000 }, 30000, 5000), 5000,
+   "chegara — QOLDIQ (u kichik bo'lsa)");
+eq(savingsMax({ CASH: 40000 }, 30000, 500000), 0,
+   "chek yopilgan bo'lsa jamg'armadan hech narsa yechilmaydi");
+eq(savingsMax({}, 30000, 500000), 30000, "bo'sh chekda — butun summa");
+eq(savingsMax({ SAVINGS: 99999 }, 30000, 500000), 30000,
+   "O'ZINI hisobga olmaydi — aks holda maydon o'zini o'zi qisqartirardi");
+eq(savingsMax({}, 30000, 0), 0, "qoldiqsiz mijozda nol");
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ORTIQCHA TO'LOV — HAR QANDAY USULDAN (V78)
+
+   ⚠ Ilgari faqat naqd qaytimi jamg'armaga yo'naltirilardi. Kartadan
+   ortiq to'langan pulning yo'li umuman yo'q edi: u ekranda «xato»
+   bo'lib turar, lekin bu MIJOZNING puli va uni qaytarishning yagona
+   to'g'ri yo'li — jamg'arma.
+   ══════════════════════════════════════════════════════════════════════════ */
+console.log("\n── Ortiqcha to'lov: har qanday usuldan ──");
+
+const ex1 = settle({ CLICK: 50000 }, 30000);
+eq(ex1.over, 20000, "Click 50 000 → 20 000 ortiqcha");
+eq(ex1.excess, 20000, "va u YO'NALTIRILISHI mumkin");
+eq(ex1.change, 0, "naqd qaytimi esa yo'q — terminal naqd bermaydi");
+
+const ex2 = settle({ CASH: 50000 }, 30000);
+eq(ex2.change, 20000, "naqd 50 000 → 20 000 qaytim");
+eq(ex2.excess, 20000, "u ham yo'naltirilishi mumkin");
+
+/* ⚠ 40 000 naqd + 20 000 karta, chek 30 000. Kartadan keyin naqddan
+   atigi 10 000 kerak bo'ladi — qolgan 30 000 QAYTIM. Ya'ni ortiqcha
+   to'lov naqddan chiqadi, garchi kartaning O'ZI chekdan oshmagan
+   bo'lsa ham. */
+const ex3 = settle({ CASH: 40000, CARD: 20000 }, 30000);
+eq(ex3.excess, 30000, "jami ortiqcha — 60 000 to'landi, 30 000 kerak edi");
+eq(ex3.change, 30000, "hammasi naqd qaytimi: karta chekka to'liq tushdi");
+eq(ex3.over, 0, "karta yolg'iz o'zi chekdan oshmadi");
+eq(ex3.cashPaid, 10000, "chekka faqat kerakli naqd tushadi");
+
+/* Teskarisi: karta chekdan oshsa — naqd qaytimi ham, kartaning
+   ortiqchasi ham bo'ladi va ikkalasi `excess` da qo'shiladi. */
+const ex3b = settle({ CASH: 10000, CARD: 40000 }, 30000);
+eq(ex3b.over, 10000, "kartadan 10 000 ortiq");
+eq(ex3b.change, 10000, "naqdning hammasi ortiqcha — chekka kerak emas");
+eq(ex3b.excess, 20000, "ikkalasi qo'shiladi");
+
+const ex4 = settle({ CASH: 30000 }, 30000);
+eq(ex4.excess, 0, "aniq to'langan chekda ortiqcha yo'q");
+
+const ex5 = settle({ CASH: 20000 }, 30000);
+eq(ex5.excess, 0, "kam to'langan chekda ham yo'q");
+eq(ex5.credit, 10000, "qolgani nasiyaga");
 
 console.log(`\n  ${pass} o'tdi, ${fail} yiqildi`);
 process.exit(fail ? 1 : 0);

@@ -30,6 +30,12 @@ export const DEFAULTS = {
   autoPrint:   true,       // sotuv yakunlanganda chek o'zi chiqsin
   openDrawer:  true,       // naqd to'lovda yashik ochilsin
   scanner:     true,       // global barkod tutish
+
+  /* ⚠ MIJOZ EKRANI standart bo'yicha O'CHIQ (V77): do'konlarning
+     ko'pida ikkinchi monitor yo'q va yoqib qo'yilganda kassa har
+     tugma bosilishida `localStorage` ga bekorga yozardi — sekin
+     monoblokda bu sezilardi. */
+  customerDisplay: false,
 };
 
 export function getSettings() {

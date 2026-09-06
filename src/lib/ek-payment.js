@@ -126,30 +126,70 @@ export function settle(entered, total) {
 
   const cashIn = rows.filter(([t]) => t === CASH)
                      .reduce((s, [, a]) => s + a, 0);
-  const others = rows.filter(([t]) => t !== CASH)
-                     .reduce((s, [, a]) => s + a, 0);
+  /* Jamg'armadan tashqari naqdsiz usullar — karta, Click, Payme. */
+  const cards = rows.filter(([t]) => t !== CASH && t !== SAVINGS)
+                    .reduce((s, [, a]) => s + a, 0);
+  const savingsIn = rows.filter(([t]) => t === SAVINGS)
+                        .reduce((s, [, a]) => s + a, 0);
 
-  /* ⚠ NAQDSIZ USULLAR JAMIDAN OSHSA — bu XATO, qaytim emas. Terminal
-     aynan so'ralgan summani oladi va u yerdan pul qaytmaydi. */
-  const over = Math.max(0, others - goal);
+  /* ══════════════════════════════════════════════════════════════════
+     ⚠⚠ JAMG'ARMA QOLGAN SUMMADAN OSHA OLMAYDI (V78)
+
+     Bu XAVFSIZLIK qoidasi, qulaylik emas. Ilgari jamg'arma oddiy
+     naqdsiz usul edi va 30 000 lik chekka 20 000 boshqa usul + 20 000
+     jamg'arma yozish mumkin edi. Ortiqcha 10 000 esa qaytim bo'lib
+     chiqardi — ya'ni mijoz jamg'armasidan NAQD PUL yechib olardi.
+     Jamg'arma bunday ishlatilganda u do'kondagi hisob bo'lishdan
+     to'xtab, pul chiqarish yo'liga aylanardi.
+
+     Endi jamg'arma FAQAT qolgan summaga teng miqdorda yechiladi:
+     ortiqchasi jimgina tashlanadi va hisobda qoladi.
+
+     ⚠ Chegara BOSHQA USULLARDAN KEYIN hisoblanadi (naqd ham
+     kiradi): mijoz avval naqd bergan bo'lsa, jamg'armadan faqat
+     qolgani yechilishi kerak. */
+  const savingsCap = Math.max(0, goal - cashIn - cards);
+  const savingsPaid = Math.min(savingsIn, savingsCap);
+  /* Yozilgan-u, ishlatilmagan qism — ekran buni aytishi kerak. */
+  const savingsCut = savingsIn - savingsPaid;
+
+  const others = cards + savingsPaid;
+
+  /* ⚠ NAQDSIZ USULLAR JAMIDAN OSHSA — terminal aynan so'ralgan
+     summani oladi va u yerdan NAQD qaytmaydi. Shuning uchun bu pul
+     mijozga qo'lda berilmaydi; uning yagona to'g'ri manzili —
+     mijozning jamg'armasi (`excess`).
+
+     ⚠ Jamg'arma bu yerda QATNASHMAYDI: u yuqorida kesilgan va
+     ta'rifi bo'yicha ortiqcha yarata olmaydi. */
+  const over = Math.max(0, cards - goal);
 
   /* Naqddan qancha kerak — qolganini naqd yopadi. */
   const needCash = Math.max(0, goal - others);
   const cashPaid = Math.min(cashIn, needCash);
   const change = Math.max(0, cashIn - needCash);
 
+  /* ⚠ ORTIQCHA TO'LOVNING HAMMASI — qaysi usuldan kelganidan qat'i
+     nazar (V78). Ilgari faqat naqd qaytimi jamg'armaga yo'naltirilardi
+     va kartadan ortiq to'langan pulning yo'li umuman yo'q edi: u
+     ekranda «xato» bo'lib turar, lekin mijozning puli edi. */
+  const excess = change + over;
+
   const credit = Math.max(0, goal - others - cashPaid);
 
   const parts = rows
     /* ⚠ Naqd KESILGAN qiymati bilan ketadi: ortiqcha pul kassaga
-       tushmaydi, u mijozga qaytariladi. */
-    .map(([type, amount]) => [type, type === CASH ? cashPaid : amount])
+       tushmaydi, u mijozga qaytariladi (yoki jamg'armaga yoziladi).
+       Jamg'arma ham kesilgan qiymati bilan — sabab yuqorida. */
+    .map(([type, amount]) => [type,
+      type === CASH ? cashPaid : type === SAVINGS ? savingsPaid : amount])
     .filter(([, amount]) => amount > 0)
     .map(([type, amount]) => ({ type, amount }));
 
   if (credit > 0) parts.push({ type: CREDIT, amount: credit });
 
-  return { others, cashIn, cashPaid, change, credit, over, parts };
+  return { others, cards, cashIn, cashPaid, change, credit, over, excess,
+           savingsIn, savingsPaid, savingsCap, savingsCut, parts };
 }
 
 /**
@@ -177,4 +217,22 @@ export function restFor(entered, total, type) {
     .filter(([t]) => t !== type)
     .reduce((s, [, a]) => s - num(a), Math.max(0, Math.round(Number(total) || 0)));
   return Math.max(0, rest);
+}
+
+/**
+ * Jamg'armadan ko'pi bilan qancha yechish mumkin.
+ *
+ * ⚠ IKKI CHEGARANING KICHIGI: mijozning qoldig'i va chekning
+ * to'lanmagan qismi. Ikkinchisi XAVFSIZLIK uchun — sabab `settle`
+ * dagi izohda: usiz jamg'arma naqd pul chiqarish yo'liga aylanardi.
+ *
+ * ⚠ EKRANDA HAM, HISOBDA HAM shu qiymat ishlatiladi: maydonni bu son
+ * bilan cheklab, `settle` da yana kesish — ataylab ikki qavat. Ekran
+ * chegarani o'tkazib yuborsa (yangi yo'l, boshqa komponent), hisob
+ * baribir to'g'ri qoladi.
+ */
+export function savingsMax(entered, total, balance) {
+  return Math.max(0, Math.min(
+    Math.max(0, Math.round(Number(balance) || 0)),
+    restFor(entered, total, SAVINGS)));
 }
