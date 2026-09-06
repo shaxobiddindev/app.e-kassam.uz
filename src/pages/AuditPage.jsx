@@ -20,25 +20,20 @@ import { SkeletonTable } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
 import { dateTime } from "../lib/ek-format";
 import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
+import { AUDIT_ACTIONS as ACTIONS, AUDIT_MONEY as MONEY } from "../lib/ek-audit";
 
-/* Ro'yxat qo'lda sanab chiqiladi: server enum'ni qaytarmaydi va uni
-   olish uchun alohida endpoint ochish ortiqcha bo'lardi. Yangi amal
-   qo'shilganda shu yerga ham qo'shiladi (lug'atga ham). */
-const ACTIONS = [
-  "SHIFT_CLOSE", "CASH_MOVEMENT", "SALE_CANCEL", "SALE_RETURN",
-  "PRICE_CHANGE", "PRICE_BULK_CHANGE", "STOCK_TAKE_CLOSE", "STOCK_TAKE_CANCEL",
-  "EXPENSE_CREATE", "EXPENSE_DELETE", "GOODS_RECEIPT", "SUPPLIER_PAYMENT",
-  "CUSTOMER_DEBT_ADJUST", "SHOP_SETTING_CHANGE",
-  "USER_CREATE", "USER_UPDATE", "USER_DELETE", "USER_BLOCK", "USER_UNBLOCK",
-  "USER_PASSWORD_CHANGE",
-];
+/* ⚠ RO'YXAT ENDI `lib/ek-audit.js` DA (V81).
 
-/* Pulga tegadigan amallar ko'zga tashlanadi — jurnalning asosiy
-   maqsadi aynan ularni topish. */
-const MONEY = new Set([
-  "CASH_MOVEMENT", "SALE_CANCEL", "SALE_RETURN", "EXPENSE_DELETE",
-  "CUSTOMER_DEBT_ADJUST", "SHOP_SETTING_CHANGE", "PRICE_BULK_CHANGE",
-]);
+   U shu yerda, sahifaning ichida edi va aynan shuning uchun sinovdan
+   tekshirilmasdi: React sahifasini Node'dan yuklab bo'lmaydi.
+   Natijada ro'yxat jimgina eskirdi — serverda amal qo'shilardi, bu
+   yerda esa yo'q.
+
+   O'shanda yigirmata amal turardi, do'konga esa qirq bittasi kelardi.
+   Qolgani — `TRANSFER_*`, `BONUS_*`, `CART_ABANDONED`, `DEVICE_*` va
+   hatto `SUBSCRIPTION_EXPIRED` — jurnalda KO'RINARDI, lekin
+   tanlanmasdi; ustiga o'n beshtasining yorlig'i ham yo'q edi va ular
+   ekranda xom kalit bo'lib chiqardi («enum.audit.TRANSFER_SEND»). */
 
 /* ⚠ SANA+VAQT — `lib/ek-format.js` dan (V70). Uchta sahifada
    uchta bir xil mahalliy nusxa bor edi va ular `uz-UZ` ni
@@ -149,7 +144,13 @@ export default function AuditPage({ toast }) {
                   <tr key={r.id}>
                     <td style={{ fontSize: 13, whiteSpace: "nowrap" }}>{fmtT(r.createdAt)}</td>
                     <td>
-                      <span className={`badge badge-${MONEY.has(r.action) ? "orange" : "blue"}`}>
+                      {/* ⚠ `badge-orange` USLUBI YO'Q EDI (V81) va natija
+                          maqsadning TESKARISI bo'lardi: pulga tegadigan
+                          qator — jurnalning butun ma'nosi — YAGONA
+                          foni yo'q qator bo'lib chiqardi, qolgan hammasi
+                          esa ko'k belgi bilan turardi. Sariq — `styles.css`
+                          da mavjud va ogohlantirish rangi. */}
+                      <span className={`badge badge-${MONEY.has(r.action) ? "yellow" : "blue"}`}>
                         {t(`enum.audit.${r.action}`)}
                       </span>
                     </td>
