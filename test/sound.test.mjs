@@ -87,19 +87,38 @@ eq(S.decide("ERROR", cfg({ events: { ERROR: false } }), { now: 0 }), null,
    bilan bir xil: har voqeaga qator yozib chiqilmaydi. */
 eq(S.muted("ERROR", cfg({ events: {} })), false, "yozuvsiz voqea standartdan o'qiydi");
 
-console.log("\n── Shovqin chegarasi: oyna ──");
+console.log("\n── ⚠ HAR AMAL — O'Z OVOZI (V90) ──");
 {
+  /* ⚠ BU QOIDA TESKARISIGA O'ZGARDI. Dastlab har voqeaning 400–600 ms
+     «oynasi» bor edi va shu vaqt ichida takrori jim qolardi. Do'kon
+     egasi buni xato deb topdi: kassir tugmani ketma-ket bossa,
+     ikkinchi bosishda ovoz chiqmasdi — ya'ni «tugma ishlamadi» degan
+     taassurot. Brauzer o'lchovi ham shuni ko'rsatdi: 250 ms oraliqda
+     beshta amaldan uchtasi eshitilgan.
+
+     Endi qoida: HAR AMAL O'Z OVOZINI OLADI. */
   const c = cfg();
-  /* Skaner ketma-ket o'nta tovarni o'qiydi — oyna ichida BITTA ovoz. */
-  S.decide("SCAN_MISS", c, { now: 10_000, lastAt: 9_800 })
-    ? bad("400 ms oyna ichida chiqmasligi kerak", "chiqdi") : ok("oyna ichida takrorlanmaydi");
-  S.decide("SCAN_MISS", c, { now: 10_000, lastAt: 9_500 })
-    ? ok("oyna o'tgach yana chiqadi") : bad("chiqishi kerak", "null");
-  /* Chek yopilishi — oynasiz: ikkita chek ketma-ket yopilsa ikkalasi
-     ham eshitilishi kerak. */
-  eq(S.SFX.SALE_DONE.gap, 0, "chek yopilishida oyna yo'q");
-  S.decide("SALE_DONE", c, { now: 100, lastAt: 99 })
+  const human = [120, 200, 350, 600];       // odam ketma-ket bosadigan oraliqlar
+  let all = true;
+  for (const gap of human) {
+    if (!S.decide("SCAN_MISS", c, { now: 10_000, lastAt: 10_000 - gap })) all = false;
+  }
+  all ? ok(`odam tezligidagi takror bosishlar (${human.join(", ")} ms) — hammasi eshitiladi`)
+      : bad("har bosish eshitilishi kerak", "yutildi");
+
+  /* Ketma-ket ikkita chek — ikkalasi ham. */
+  S.decide("SALE_DONE", c, { now: 10_000, lastAt: 9_800 })
     ? ok("ketma-ket ikki chek — ikkalasi ham eshitiladi") : bad("chiqishi kerak", "null");
+  S.decide("ERROR", c, { now: 10_000, lastAt: 9_900 })
+    ? ok("ketma-ket ikki xato — ikkalasi ham eshitiladi") : bad("chiqishi kerak", "null");
+
+  /* ⚠ Yagona to'siq — BITTA amal ikkita ovoz chiqarmasligi uchun.
+     Odam 60 ms dan tez ikki marta bosolmaydi, ya'ni bu chegara
+     foydalanuvchining hech bir harakatini yutmaydi. */
+  eq(S.decide("ERROR", c, { now: 10_000, lastAt: 9_980 }), null,
+     "20 ms — bu bosish emas, bitta amalning ikki marta chaqirilishi");
+  S.decide("ERROR", c, { now: 10_000, lastAt: 9_930 })
+    ? ok("70 ms — allaqachon eshitiladi") : bad("chiqishi kerak", "null");
 }
 
 console.log("\n── Shovqin chegarasi: prioritet ──");

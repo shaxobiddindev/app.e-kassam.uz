@@ -57,50 +57,88 @@ import * as web from "./ek-sound-web.js";
  * ohang bilan kassadagisi bir kuni boshqacha bo'lib qolardi.
  */
 export const TONES = {
-  /* Uch nota yuqoriga — «bo'ldi». Eng uzun ohang, chunki u kunda
-     o'nlab marta emas, chek yopilganda bir marta eshitiladi. */
-  DONE:  { tone: [[784, 80], [988, 80], [1319, 170]], w: "sine",     gain: 0.75 },
-  /* Ikki nota yuqoriga — «yaxshi». */
-  OK:    { tone: [[784, 70], [1047, 110]],            w: "sine",     gain: 0.60 },
-  /* Bitta past — «diqqat». */
-  WARN:  { tone: [[392, 150]],                        w: "triangle", gain: 0.70 },
-  /* Ikki past, orasida pauza — «xato». Kassir buni boshqasi bilan
-     adashtirmasligi kerak, shuning uchun u YAGONA ikki marta past. */
-  ERROR: { tone: [[311, 120], [0, 60], [247, 190]],   w: "square",   gain: 0.55 },
-  /* Juda qisqa — skaner «tik» i. Standart bo'yicha jim. */
-  TICK:  { tone: [[1568, 45]],                        w: "square",   gain: 0.35 },
+  /* ⚠ TO'RT NOTA, YUQORIGA — «bo'ldi». Eng uzun va eng yorqin ohang:
+     u kunda o'nlab marta emas, chek yopilganda bir marta eshitiladi,
+     ya'ni uzun bo'lishi mumkin va SHART — kassir mijozga qaragan
+     holda ham chek o'tganini bilishi kerak. */
+  DONE:  { tone: [[659, 110], [784, 110], [988, 110], [1319, 320]],
+           w: "sine",     gain: 0.75 },
+
+  /* IKKI NOTA, YUQORIGA — «yaxshi». `DONE` bilan bir oilada, lekin
+     nota soni va uzunligi bilan ajraladi (2 ta / 440 ms). */
+  OK:    { tone: [[698, 140], [1047, 300]],
+           w: "sine",     gain: 0.62 },
+
+  /* ⚠ IKKI BARAVAR, BIR XIL BALANDLIKDA — «diqqat».
+     `ERROR` dan YO'NALISHI bilan ajraladi: bu TEKIS turadi, u esa
+     PASAYADI. Quloq balandlik o'zgarishini nota nomidan tez tanidi. */
+  WARN:  { tone: [[523, 170], [0, 90], [523, 270]],
+           w: "triangle", gain: 0.70 },
+
+  /* ⚠ UCH NOTA, PASTGA — «xato». Eng uzun (800 ms), eng past va
+     yagona kvadrat to'lqinli: kassir uni boshqa hech narsa bilan
+     adashtirmasligi kerak, chunki aynan shu ovoz uni ekranga
+     qaratadi. */
+  ERROR: { tone: [[392, 150], [0, 60], [330, 150], [0, 60], [262, 380]],
+           w: "square",   gain: 0.55 },
+
+  /* Eng qisqasi — kunda yuzlab marta takrorlanadigan yagona ohang
+     (savatga qo'shish). Shuning uchun u qisqa QOLADI, lekin endi
+     ikki notali: bitta «chirt» eshitilmay qolardi. */
+  TICK:  { tone: [[1319, 60], [1568, 110]],
+           w: "square",   gain: 0.38 },
 };
 
 /**
  * VOQEALAR — YAGONA MANBA.
  *
- * `pri`  — prioritet (0…3). Yuqorisi pastini KESADI, past yoki teng
- *          bo'lgani esa TASHLANADI. Navbat ataylab yo'q: 3 soniyadan
- *          keyin chiyillagan ovoz allaqachon boshqa harakatga tegishli
- *          bo'ladi va kassirni chalg'itadi.
- * `gap`  — shu voqea qayta ijro etilishidan oldin o'tishi kerak bo'lgan
- *          vaqt. Kassada o'nta tovar ketma-ket skanerlanadi — o'nta
- *          chiyillash o'rniga bittasi kerak.
+ * `pri`  — prioritet (0…3). Muhimroq ovoz chalinayotgan bo'lsa,
+ *          pastrog'i uning BOSHIDA (250 ms) to'siladi — «xato» hech
+ *          qachon «qo'shildi» ostida qolib ketmasligi kerak. Shundan
+ *          keyin esa har narsa o'ta oladi: himoya oynasi ohangning
+ *          butun uzunligi bo'lsa, uzun `ERROR` (800 ms) keyingi
+ *          bosishlarni jimgina yutib yuborardi.
  * `on`   — standart bo'yicha yoqiqmi. ⚠ FAQAT BESHTASI YOQIQ: har
  *          harakatda ovoz chiqaradigan kassa birinchi kuni butunlay
  *          o'chiriladi va shundan keyin MUHIM ovozlar ham yo'qoladi.
  */
 export const SFX = {
   /* ── Standart bo'yicha YOQIQ ─────────────────────────────────────── */
-  SALE_DONE: { t: "DONE",  pri: 3, gap: 0,    on: true  },
-  ERROR:     { t: "ERROR", pri: 3, gap: 600,  on: true  },
-  WARN:      { t: "WARN",  pri: 2, gap: 600,  on: true  },
+  SALE_DONE: { t: "DONE",  pri: 3, on: true  },
+  ERROR:     { t: "ERROR", pri: 3, on: true  },
+  WARN:      { t: "WARN",  pri: 2, on: true  },
   /* Skaner tovarni topmadi — aynan ekranga qaramaydigan paytdagi voqea. */
-  SCAN_MISS: { t: "WARN",  pri: 2, gap: 400,  on: true  },
+  SCAN_MISS: { t: "WARN",  pri: 2, on: true  },
   /* Uzilish: kassir buni BILISHI shart, chunki cheklar navbatga tushadi. */
-  OFFLINE:   { t: "WARN",  pri: 2, gap: 5000, on: true  },
+  OFFLINE:   { t: "WARN",  pri: 2, on: true  },
 
   /* ── Standart bo'yicha JIM ───────────────────────────────────────── */
-  OK:        { t: "OK",    pri: 1, gap: 300,  on: false },
-  INFO:      { t: "TICK",  pri: 1, gap: 300,  on: false },
-  CART_ADD:  { t: "TICK",  pri: 1, gap: 120,  on: false },
-  SYNCED:    { t: "OK",    pri: 2, gap: 3000, on: false },
+  OK:        { t: "OK",    pri: 1, on: false },
+  INFO:      { t: "TICK",  pri: 1, on: false },
+  CART_ADD:  { t: "TICK",  pri: 1, on: false },
+  SYNCED:    { t: "OK",    pri: 2, on: false },
 };
+
+/**
+ * ⚠⚠ IKKI MARTA CHAQIRISHDAN HIMOYA — SHOVQIN CHEGARASI EMAS (V90).
+ *
+ * Dastlab har voqeaning o'z «oynasi» bor edi (400–600 ms): shu vaqt
+ * ichida bir xil voqea qayta chalinmasdi. Maqsad shovqinni kamaytirish
+ * edi, natija esa BOSHQA bo'ldi — do'kon egasi topdi: kassir tugmani
+ * ketma-ket bossa, IKKINCHI BOSISHDA OVOZ CHIQMASDI.
+ *
+ * Brauzer tekshiruvi buni raqam bilan ko'rsatdi: 250 ms oraliqda
+ * beshta amaldan atigi UCHTASI eshitilgan. Kassir uchun bu «tugma
+ * ishlamadi» degani — ya'ni ovoz tinchlantirish o'rniga shubha
+ * uyg'otardi.
+ *
+ * Endi qoida bitta: HAR AMAL — O'Z OVOZI. Bu yerdagi 60 ms esa
+ * shovqin uchun emas, BITTA amal ikkita ovoz chiqarib yubormasligi
+ * uchun (masalan bir xil xato xabari halqada uch marta ko'rsatilsa).
+ * Odam ikki marta bosishi 150 ms dan tez bo'lmaydi, ya'ni u hech
+ * qachon yutilmaydi.
+ */
+const GUARD_MS = 60;
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 
@@ -159,7 +197,7 @@ export function decide(event, cfg, { lastAt = 0, activePri = 0, now = 0 } = {}) 
      chalingan» EMAS. Ilgari bu farq yo'q edi va soat noldan
      boshlanadigan har qanday muhitda (sinov, `performance` asosidagi
      vaqt) birinchi ovoz jimgina yutilardi. */
-  if (def.gap > 0 && lastAt > 0 && now - lastAt < def.gap) return null;
+  if (lastAt > 0 && now - lastAt < GUARD_MS) return null;
   /* ⚠ Muhimroq ovoz ijro etilayotgan bo'lsa — TEGILMAYDI. «Xato»
      hech qachon «qo'shildi» ostida qolib ketmasligi kerak. */
   if (activePri > def.pri) return null;

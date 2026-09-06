@@ -16,6 +16,9 @@
    mumkin. Bularning HECH BIRI istisno bo'lib chiqmasligi kerak.
    ══════════════════════════════════════════════════════════════════════════ */
 
+/** Muhimroq ovoz pastrog'ini to'sib turadigan oyna (soniya). */
+const GUARD_S = 0.25;
+
 let ctx = null;
 let broken = false;
 /** Hozir ijro etilayotgan ohang: `{ nodes, until, pri }`. */
@@ -61,10 +64,20 @@ export function prime() {
  * platformalarda ortiqcha ruxsat so'rovi.
  *
  * Kontekst yo'q bo'lsa hech narsa chalinmayotgan bo'ladi — javob 0.
+ *
+ * ⚠⚠ HIMOYA OYNASI OHANGDAN QISQA (V90). Ilgari u ohangning BUTUN
+ * uzunligiga cho'zilardi: `ERROR` 800 ms chalinayotganda undan
+ * pastroq har qanday ovoz jimgina yutilardi. Ohanglar uzaytirilgach
+ * bu darhol «tugma ishlamadi» holatiga aylanardi — kassir xatodan
+ * keyin darrov boshqa tugmani bosadi va hech narsa eshitmasdi.
+ *
+ * Endi himoya faqat BOSHIDA: «xato» ovozini «qo'shildi» bosib
+ * ketmasligi uchun shuncha yetarli, undan keyin har amal o'z ovozini
+ * oladi.
  */
 export function activePri() {
   if (!ctx || !active) return 0;
-  return ctx.currentTime < active.until ? active.pri : 0;
+  return ctx.currentTime < active.guard ? active.pri : 0;
 }
 
 /**
@@ -124,5 +137,9 @@ export function play(spec) {
     at += dur;
   }
 
-  active = nodes.length ? { nodes, until: at, pri: spec.pri || 0 } : null;
+  /* `guard` — pastroq ovozlarni to'sib turadigan qisqa oyna;
+     `until` esa ohangning haqiqiy oxiri (kesish uchun kerak). */
+  active = nodes.length
+    ? { nodes, until: at, guard: Math.min(at, start + GUARD_S), pri: spec.pri || 0 }
+    : null;
 }

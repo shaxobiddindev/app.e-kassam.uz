@@ -170,7 +170,7 @@ console.log("\n── 2. Autoplay qulfi ──");
 }
 
 /* ══ 3. OVOZ SAHIFANI YIQITMAYDI ══════════════════════════════════════ */
-console.log("\n── 3. Ovoz qatlami sahifani yiqitmaydi ──");
+console.log("\n── 3. Har amal — o'z ovozi, va qatlam sahifani yiqitmaydi ──");
 {
   /* Eng qizg'in yo'l: `toast` orqali ketma-ket o'nlab voqea. Modul
      shu yerda yiqilsa, kassa butunlay to'xtardi. */
@@ -197,16 +197,23 @@ console.log("\n── 3. Ovoz qatlami sahifani yiqitmaydi ──");
   one > base ? ok(`topilmagan barkod ohang chaldi (${one - base} nota)`)
              : no("`SCAN_MISS` chalinishi kerak", one - base);
 
-  /* ⚠ SHOVQIN CHEGARASI: ketma-ket beshta skanerlash beshta
-     chiyillashga aylanmasligi kerak — 400 ms oyna ishlashi shart. */
-  const t0 = await pg.evaluate(() => window.__sfx.osc);
-  for (let i = 0; i < 5; i++) await scan("478000000000" + i);
-  await new Promise((r) => setTimeout(r, 500));
-  const burst = (await pg.evaluate(() => window.__sfx.osc)) - t0;
+  /* ⚠⚠ BU BAND TESKARISIGA O'ZGARDI (V90). Ilgari u «beshta
+     skanerlash beshta ovozga aylanmasin» deb TEKSHIRARDI va o'sha
+     «chegara» aslida nuqson edi: do'kon egasi kassirda tugma ketma-ket
+     bosilganda ikkinchi ovoz chiqmasligini topdi.
+
+     Endi talab aniq: HAR AMAL — O'Z OVOZI. */
   const perTone = one - base;                       // bitta ohangdagi nota soni
-  burst < perTone * 5
-    ? ok(`ketma-ket beshta skanerlash chegaralandi (${burst} nota, ${perTone * 5} o'rniga)`)
-    : no("oyna ishlashi kerak", burst);
+  const t0 = await pg.evaluate(() => window.__sfx.osc);
+  for (let i = 0; i < 5; i++) {
+    await scan("478000000000" + i);
+    await new Promise((r) => setTimeout(r, 120));   // odam tezligi
+  }
+  await new Promise((r) => setTimeout(r, 600));
+  const burst = (await pg.evaluate(() => window.__sfx.osc)) - t0;
+  burst === perTone * 5
+    ? ok(`ketma-ket beshta skanerlash — BESHALASI ham eshitildi (${burst} nota)`)
+    : no(`beshalasi eshitilishi kerak (${perTone * 5} nota)`, burst);
 
   errors.length === before ? ok("skanerlash oqimida birorta JS xatosi tushmadi")
                            : no("xato tushdi", errors.slice(before).join(" | "));
