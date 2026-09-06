@@ -72,6 +72,31 @@ const isExpired = (b) => b.status === "EXPIRED" || b.expired;
 /** Bo'shab qolgan partiya — faqat shundaylarini arxivlash mumkin. */
 const isEmpty = (b) => (Number(b.quantity) || 0) <= 0;
 
+/**
+ * Yakuniy blokdagi bitta katak: yorliq, soni, qoldig'i va puli.
+ *
+ * ⚠ UCHALA RAQAM HAM: partiyalar soni «nechta yozuv bor», qoldiq
+ * «qancha tovar bor», qiymat «qancha pul bor» degan UCH XIL savolga
+ * javob beradi va ularning birortasi qolganini almashtira olmaydi.
+ */
+function Stat({ label, s, unit, big = false, tone, muted = false }) {
+  return (
+    <div className={`batch-stat${big ? " batch-stat--big" : ""}${muted ? " batch-stat--muted" : ""}`}
+         data-tone={s.n > 0 ? tone : undefined}>
+      <div className="batch-stat__l">
+        {label}
+        {/* ⚠ Partiyalar soni yorliq YONIDA, alohida qatorda emas: u
+            qo'shimcha ma'lumot, asosiysi esa qoldiq va pul. */}
+        <span className="batch-stat__n ek-num">{s.n}</span>
+      </div>
+      <div className="batch-stat__q ek-num">
+        {fmtQty(s.qty, unitDecimals(unit))} {unitLabel(unit)}
+      </div>
+      <div className="batch-stat__v ek-num">{money(s.value)}</div>
+    </div>
+  );
+}
+
 /** Partiyada yotgan pul: qoldiq × tannarx. */
 const stockValue = (b) => (Number(b.quantity) || 0) * (Number(b.costPrice) || 0);
 
@@ -117,16 +142,50 @@ export default function BatchesPage({ toast }) {
   /* Bo'limlarga ajratish — server tartibi (yangilar yuqorida) SAQLANADI. */
   const activeRows  = useMemo(() => live.filter((b) => !isExpired(b)), [live]);
   const expiredRows = useMemo(() => live.filter((b) =>  isExpired(b)), [live]);
-  const base = tab === "archived" ? archived : tab === "expired" ? expiredRows : activeRows;
+
+  /* ⚠ «BARCHASI» — bo'limlarning YIG'INDISI, to'rtinchi ro'yxat emas.
+     Omborchining ba'zi savollari bo'limga sig'maydi: «shu tovarning
+     butun tarixi qanday?» yoki «qaysi partiya qachon kelib, qachon
+     tugagan?». Ular uchun uch bo'lim orasida yurish kerak bo'lardi va
+     solishtirish ko'z bilan qilinardi. */
+  const allRows = useMemo(
+    () => [...activeRows, ...expiredRows, ...archived],
+    [activeRows, expiredRows, archived]);
+
+  const base = tab === "all" ? allRows
+             : tab === "archived" ? archived
+             : tab === "expired" ? expiredRows
+             : activeRows;
 
   const product = live[0] || archived[0] || null;
   const unit = product?.unit;
   const emptyCount = activeRows.filter(isEmpty).length;
 
-  /* Javonda hozir nima bor — muddati o'tgani ham, arxivi ham sanalmaydi.
-     ⚠ FILTRDAN MUSTAQIL: savol «hozir sotishga nima bor?» va u
-     ekranda nima ko'rsatilayotganiga bog'liq emas. */
-  const onShelf = activeRows.reduce((s, b) => s + (Number(b.quantity) || 0), 0);
+  /* ══════════════════════════════════════════════════════════════════
+     YAKUNIY RAQAMLAR
+
+     ⚠ AVVAL JAMI, KEYIN BO'LIMLAR (do'kon egasining talabi). Ilgari bu
+     yerda faqat «javonda bor» turardi — ya'ni FAQAT ochiq bo'limning
+     soni. Undan «bu tovarda umuman qancha bor?» degan savolga javob
+     topib bo'lmasdi: muddati o'tgani va arxivi ko'rinmasdi, ular esa
+     ham tovar, ham pul.
+
+     ⚠ FILTRDAN MUSTAQIL. Bu raqamlar tovarning HOLATI haqida va
+     ekranda nima ko'rsatilayotganiga bog'liq emas. Filtrlangan
+     yig'indi alohida qatorda turadi.
+     ══════════════════════════════════════════════════════════════════ */
+  const sumOf = (list) => ({
+    n: list.length,
+    qty: list.reduce((s, b) => s + (Number(b.quantity) || 0), 0),
+    value: list.reduce((s, b) => s + stockValue(b), 0),
+  });
+
+  const stats = useMemo(() => ({
+    all:      sumOf(allRows),
+    active:   sumOf(activeRows),
+    expired:  sumOf(expiredRows),
+    archived: sumOf(archived),
+  }), [allRows, activeRows, expiredRows, archived]);
 
   /* ══════════════════════════════════════════════════════════════════
      USTUNLAR
@@ -167,12 +226,26 @@ export default function BatchesPage({ toast }) {
     },
   }), [nearDays]);
 
+  /* ⚠ «Barchasi» da holat ustuniga ARXIV ham qo'shiladi: aks holda
+     arxivdagi partiya faol qatorlar orasida farqsiz turardi va
+     ro'yxat yolg'on ko'rinardi («javonda bor» deb o'qilardi). Arxiv
+     bo'limining O'ZIDA bu qiymat yo'q — u yerda hamma qator arxiv va
+     ustun bekorga takrorlanardi. */
+  const stateColAll = useMemo(() => ({
+    ...stateCol,
+    options: [{ value: "archived", label: t("batch.tabArchived") }, ...stateCol.options],
+    get: (b) => (b.archivedAt ? "archived" : stateCol.get(b)),
+  }), [stateCol]);
+
+  const archivedCol = useMemo(
+    () => ({ key: "archived", label: t("batch.archivedAt"), type: "date", get: (b) => b.archivedAt }),
+    []);
+
   const COLS     = useMemo(() => [...COLS_BASE, stateCol], [COLS_BASE, stateCol]);
-  const COLS_ARC = useMemo(() => [
-    ...COLS_BASE,
-    { key: "archived", label: t("batch.archivedAt"), type: "date", get: (b) => b.archivedAt },
-    stateCol,
-  ], [COLS_BASE, stateCol]);
+  const COLS_ARC = useMemo(() => [...COLS_BASE, archivedCol, stateCol],
+    [COLS_BASE, archivedCol, stateCol]);
+  const COLS_ALL = useMemo(() => [...COLS_BASE, archivedCol, stateColAll],
+    [COLS_BASE, archivedCol, stateColAll]);
 
   /* ⚠ IKKALA ILGAK HAM SHARTSIZ chaqiriladi va tanlov keyin qilinadi:
      shart ichidagi ilgak React ning 310-xatosini beradi.
@@ -182,8 +255,12 @@ export default function BatchesPage({ toast }) {
      qo'yilgan shart arxivga o'tganda ma'nosini yo'qotardi. */
   const fltLive = useDataFilter(COLS,     "batch");
   const fltArc  = useDataFilter(COLS_ARC, "batchArc");
-  const flt  = tab === "archived" ? fltArc  : fltLive;
-  const cols = tab === "archived" ? COLS_ARC : COLS;
+  const fltAll  = useDataFilter(COLS_ALL, "batchAll");
+  const flt  = tab === "all" ? fltAll : tab === "archived" ? fltArc  : fltLive;
+  const cols = tab === "all" ? COLS_ALL : tab === "archived" ? COLS_ARC : COLS;
+
+  /* Arxiv ustuni ikkita bo'limda ko'rinadi. */
+  const showArchivedCol = tab === "archived" || tab === "all";
 
   const rows = useMemo(() => flt.apply(base), [flt, base]);
 
@@ -211,6 +288,11 @@ export default function BatchesPage({ toast }) {
   };
 
   const TABS = [
+    /* ⚠ «Barchasi» BIRINCHI, lekin STANDART EMAS: kunlik savol —
+       «javonda hozir nima bor?», ya'ni faol bo'lim. Barchasi kamdan-kam
+       kerak bo'ladi (tarix, tekshiruv) va uni standart qilish har
+       ochilishda ortiqcha qatorlarni ko'rsatardi. */
+    { id: "all",      icon: "fa-layer-group",          label: t("batch.tabAll"),      n: allRows.length },
     { id: "active",   icon: "fa-box-open",             label: t("batch.tabActive"),   n: activeRows.length },
     { id: "expired",  icon: "fa-triangle-exclamation", label: t("batch.tabExpired"),  n: expiredRows.length },
     { id: "archived", icon: "fa-box-archive",          label: t("batch.tabArchived"), n: archived.length },
@@ -238,14 +320,19 @@ export default function BatchesPage({ toast }) {
         </div>
       </div>
 
-      {/* Javondagi jami — bo'limlardan mustaqil, chunki savol bitta:
-          «hozir sotishga nima bor?». */}
+      {/* ══ YAKUN — BITTA BLOK ═══════════════════════════════════════
+          ⚠ Ilgari raqamlar IKKI joyda edi: tepada «javonda bor», pastda
+          jadval ostidagi qator. Ular bir-birini takrorlar, lekin
+          boshqa-boshqa narsani sanardi va qaysi biri nimani anglatishi
+          faqat yozuvdan bilinardi — ikkalasini bir qarashda
+          solishtirib bo'lmasdi. Endi hammasi bitta qatorda: avval
+          JAMI, keyin bo'limlar. */}
       <div className="batch-summary">
-        <div>
-          <div className="batch-summary__label">{t("batch.onShelf")}</div>
-          <div className="batch-summary__value ek-num">
-            {fmtQty(onShelf, unitDecimals(unit))} {unitLabel(unit)}
-          </div>
+        <div className="batch-stats">
+          <Stat label={t("batch.allTotal")} s={stats.all} unit={unit} big />
+          <Stat label={t("batch.tabActive")}   s={stats.active}   unit={unit} />
+          <Stat label={t("batch.tabExpired")}  s={stats.expired}  unit={unit} tone="bad" />
+          <Stat label={t("batch.tabArchived")} s={stats.archived} unit={unit} muted />
         </div>
         {emptyCount > 0 && tab === "active" && (
           /* ⚠ Ommaviy arxivlash. Bir yildan keyin ko'p sotiladigan
@@ -296,9 +383,19 @@ export default function BatchesPage({ toast }) {
               omborchi har safar uni qidirardi. */}
           <DataFilter cols={cols} flt={flt} chips={false} />
           {/* Nechta qator ko'rinayotgani — filtrdan keyin. */}
+          {/* ⚠ FILTRLANGAN YIG'INDI SHU YERDA, jadval ostida emas:
+              u filtr tugmasining yonida turgani ma'qul — «nega
+              ro'yxat qisqa?» degan savol aynan shu yerda tug'iladi.
+              Jadval ostidagi qator esa uzun ro'yxatda ko'rinmay
+              qolardi. */}
           <span className="batch-bar__n ek-num">
             {t("batch.shown", { n: rows.length, all: base.length })}
           </span>
+          {rows.length !== base.length && (
+            <span className="batch-bar__sum ek-num">
+              {fmtQty(sum.qty, unitDecimals(unit))} {unitLabel(unit)} · {money(sum.value)}
+            </span>
+          )}
           <button className="btn btn-outline btn-sm" style={{ marginLeft: "auto" }}
                   onClick={load} title={t("products.refreshTitle")}>
             <i className="fa-solid fa-rotate-right" aria-hidden="true" /> {t("common.refresh")}
@@ -336,7 +433,7 @@ export default function BatchesPage({ toast }) {
                   <SortTh flt={flt} col="received">{t("batch.received")}</SortTh>
                   <SortTh flt={flt} col="expiry">{t("batch.expiry")}</SortTh>
                   <SortTh flt={flt} col="left">{t("batch.daysLeft")}</SortTh>
-                  {tab === "archived" &&
+                  {showArchivedCol &&
                     <SortTh flt={flt} col="archived">{t("batch.archivedAt")}</SortTh>}
                   <SortTh flt={flt} col="state">{t("common.status")}</SortTh>
                   <th className="text-end">{t("common.actions")}</th>
@@ -375,13 +472,25 @@ export default function BatchesPage({ toast }) {
                          : left < 0 ? <span className="batch-late">{t("batch.lateDays", { n: -left })}</span>
                          : left}
                       </td>
-                      {tab === "archived" && (
+                      {showArchivedCol && (
                         <td className="mono" style={{ whiteSpace: "nowrap" }}>
                           {b.archivedAt ? dateTime(b.archivedAt) : "—"}
                         </td>
                       )}
                       <td>
-                        {gone ? <span className="badge badge-red">{t("enum.inventory.EXPIRED")}</span>
+                        {/* ⚠ «BARCHASI» da ARXIV birinchi tekshiriladi va
+                            bu sinovda topilgan nomuvofiqlik: filtr
+                            («Holat = Arxiv») arxivdagi qatorni tanlar,
+                            ekrandagi belgi esa «Tugagan» deb turardi.
+                            Ikki xil javob bir ustunda — ro'yxatga
+                            ishonchni yo'qotadigan xato.
+
+                            Boshqa bo'limlarda bu qiymat ko'rsatilmaydi:
+                            arxiv bo'limida hamma qator arxiv va belgi
+                            bekorga takrorlanardi. */}
+                        {tab === "all" && b.archivedAt
+                         ? <span className="badge badge-grey">{t("batch.tabArchived")}</span>
+                         : gone ? <span className="badge badge-red">{t("enum.inventory.EXPIRED")}</span>
                          : near ? (
                            <span className="badge badge-yellow">
                              {left === 0 ? t("inv.nearToday") : t("inv.nearDays", { n: left })}
@@ -390,7 +499,13 @@ export default function BatchesPage({ toast }) {
                          : <span className="badge badge-green">{t("enum.inventory.ACTIVE")}</span>}
                       </td>
                       <td className="text-end">
-                        {tab === "archived" ? (
+                        {/* ⚠ AMAL QATORNING O'ZIGA qarab tanlanadi,
+                            BO'LIMGA emas. «Barchasi» da ikkala tur
+                            yonma-yon turadi va bo'limga qarab
+                            tanlanganda arxivdagi partiyaga «Arxivga»
+                            tugmasi chiqardi — server rad etadigan,
+                            ma'nosiz amal. */}
+                        {b.archivedAt ? (
                           <button className="btn btn-outline btn-sm" disabled={busy === b.inventoryId}
                                   onClick={() => act(() => inventoryApi.unarchiveBatch(b.inventoryId), b.inventoryId)}>
                             {busy === b.inventoryId ? <Spinner /> : <i className="fa-solid fa-rotate-left" aria-hidden="true" />}
@@ -418,26 +533,6 @@ export default function BatchesPage({ toast }) {
                   );
                 })}
               </tbody>
-              {/* ⚠ YIG'INDI JADVALNING ICHIDA, ustunlar bilan bir
-                  chiziqda: yon tarafdagi alohida raqamni qaysi ustunga
-                  tegishli ekanini o'qish kerak bo'lardi. */}
-              <tfoot>
-                <tr className="batch-sum">
-                  <td className="mono fw-700">
-                    {fmtQty(sum.qty, unitDecimals(unit))} {unitLabel(unit)}
-                  </td>
-                  <td />
-                  <td className="mono fw-700">{money(sum.value)}</td>
-                  {/* ⚠ Qolgan HAMMA ustun, «Amallar» ham: bittasi
-                      qoldirilganda jadvalning o'ng chekkasida oq
-                      teshik qolardi va yig'indi qatori uzilgandek
-                      ko'rinardi. Faol bo'limda 8 ustun (1+1+1+5),
-                      arxivda 9 (1+1+1+6). */}
-                  <td colSpan={tab === "archived" ? 6 : 5} className="batch-sum__lbl">
-                    {t("batch.sumHint")}
-                  </td>
-                </tr>
-              </tfoot>
             </table>
           )}
         </div>

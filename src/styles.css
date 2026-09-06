@@ -3602,23 +3602,55 @@ img.logo--dark { display: none; }
    brauzerning «orqaga» tugmasi ishlaydi.
    ══════════════════════════════════════════════════════════════════════════ */
 .batch-summary {
-  display: flex; align-items: center; gap: 16px;
-  margin: 14px 0;
-  padding: 14px 18px;
-  background: var(--bg-sunken);
-  border: 1.5px solid var(--border);
-  border-radius: 14px;
-}
-.batch-summary__label {
-  font-size: 11px; font-weight: 800; letter-spacing: 1px;
-  text-transform: uppercase; color: var(--fg-secondary);
-}
-.batch-summary__value {
-  font-size: 22px; font-weight: 900; font-family: var(--mono);
+  display: flex; align-items: flex-start; gap: 14px; flex-wrap: wrap;
+  padding: 14px 16px; margin-bottom: 14px;
+  border-radius: 12px; background: var(--bg-sunken);
 }
 .batch-summary .btn { margin-left: auto; }
 
-/* ── Bo'limlar ─────────────────────────────────────────────────────── */
+/* ⚠ BITTA QATOR, ikkita blok EMAS (V77). Ilgari raqamlar tepada
+   («javonda bor») va jadval ostida («ko'rinayotganlar bo'yicha jami»)
+   turardi: ular bir-birini takrorlar, boshqa-boshqa narsani sanardi va
+   bir qarashda solishtirib bo'lmasdi. */
+.batch-stats {
+  display: flex; align-items: stretch; gap: 0; flex-wrap: wrap;
+  min-width: 0;
+}
+.batch-stat {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 0 16px;
+  border-left: 1px solid var(--border-subtle);
+}
+.batch-stat:first-child { padding-left: 0; border-left: 0; }
+.batch-stat__l {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .04em; color: var(--fg-secondary); white-space: nowrap;
+}
+/* Partiyalar soni — yorliq yonidagi kichik belgi. */
+.batch-stat__n {
+  padding: 1px 6px; border-radius: 999px;
+  background: var(--bg-surface); color: var(--fg-secondary);
+  font-size: 10px; letter-spacing: 0;
+}
+.batch-stat__q { font-size: 17px; font-weight: 800; white-space: nowrap; }
+.batch-stat__v { font-size: 12px; font-weight: 700; color: var(--fg-secondary); white-space: nowrap; }
+
+/* JAMI — eng katta va birinchi. */
+.batch-stat--big .batch-stat__q { font-size: 22px; font-weight: 900; }
+.batch-stat--big .batch-stat__v { font-size: 13px; color: var(--fg-primary); }
+
+/* ⚠ Bo'sh bo'lim SO'NIQ, lekin YOZUVI o'qiladi: `opacity` bilan
+   bo'yalganda matn kontrasti ham tushib ketardi (09-CHETLANISHLAR). */
+.batch-stat--muted .batch-stat__q { color: var(--fg-secondary); }
+.batch-stat[data-tone="bad"] .batch-stat__q { color: var(--fg-danger); }
+
+/* Filtr qatoridagi yig'indi — faqat filtr qo'yilganda. */
+.batch-bar__sum {
+  font-size: 12px; font-weight: 700; color: var(--fg-primary);
+  padding: 2px 8px; border-radius: 999px; background: var(--bg-sunken);
+}
+
 .batch-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
 
 .batch-tab {
@@ -3697,17 +3729,6 @@ img.logo--dark { display: none; }
 /* «Kun qoldi» ustunida manfiy son o'rniga aniq yozuv: «-3» ni
    omborchi «uch kun qoldi» deb o'qib yuborishi mumkin edi. */
 .batch-late { color: var(--fg-danger); font-weight: 700; }
-
-/* Yig'indi — jadvalning oxirgi qatori, ustunlar bilan bir chiziqda. */
-.table tfoot tr.batch-sum td {
-  border-top: 2px solid var(--border);
-  background: var(--bg-sunken);
-  font-size: 14px;
-}
-.batch-sum__lbl {
-  font-size: 12px; font-weight: 700; color: var(--fg-secondary);
-  text-align: right;
-}
 
 .batch-correct__now {
   background: var(--bg); border-radius: 10px;

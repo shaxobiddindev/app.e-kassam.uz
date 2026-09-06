@@ -498,10 +498,20 @@ console.log("\n── P. Partiyalar jadvali ──");
     (n) => n.map((x) => x.textContent.replace(/\s/g, "")));
   is(vals.some((v) => v.includes("300000")), "qiymat = qoldiq × tannarx", vals.join(" · "));
 
-  /* Yig'indi qatori: 12 + 40 + 0 = 52 dona; 96 000 + 300 000 + 0 = 396 000. */
-  const foot = await p.$eval("tfoot .batch-sum", (n) => n.textContent.replace(/\s/g, ""));
-  is(foot.includes("52") && foot.includes("396000"),
-     "yig'indi qatori to'g'ri hisoblandi", foot);
+  /* ⚠ YAKUN — BITTA BLOKDA (V77). Ilgari raqamlar ikki joyda edi:
+     tepada «javonda bor», pastda jadval ostidagi qator. Endi avval
+     JAMI, keyin bo'limlar — hammasi bir qatorda.
+     Jami: 12 + 40 + 0 + 6 (muddati o'tgan) + 0 (arxiv) = 58 dona. */
+  const stats = await p.$$eval(".batch-stat", (n) => n.map((x) => ({
+    l: x.querySelector(".batch-stat__l").textContent.trim(),
+    q: x.querySelector(".batch-stat__q").textContent.replace(/\s/g, ""),
+    v: x.querySelector(".batch-stat__v").textContent.replace(/\s/g, ""),
+  })));
+  is(stats.length === 4, "yakun bitta blokda: jami + uchta bo'lim", String(stats.length));
+  is(/jami/i.test(stats[0].l), "birinchisi — JAMI", stats[0].l);
+  is(stats[0].q.includes("58"), "jami hamma bo'limni sanaydi", stats[0].q);
+  is(stats[1].q.includes("52"), "faol bo'lim alohida", stats[1].q);
+  is(stats[2].q.includes("6"),  "muddati o'tgani alohida", stats[2].q);
 
   await shot(p, "batch-table");
 
@@ -560,9 +570,9 @@ console.log("\n── P. Partiyalar jadvali ──");
      hisoblangan bo'lsa, shart qo'yilgandan keyin ostidagi son
      o'zgarmay turardi va uni hech kim tushunmasdi.
      Qolgani bitta: 40 dona × 7 500 = 300 000 (52 va 396 000 emas). */
-  const foot2 = await p.$eval("tfoot .batch-sum", (n) => n.textContent.replace(/\s/g, ""));
-  is(foot2.includes("40dona") && foot2.includes("300000") && !foot2.includes("396000"),
-     "yig'indi filtrga ergashdi", foot2);
+  const foot2 = await p.$eval(".batch-bar__sum", (n) => n.textContent.replace(/\s/g, ""));
+  is(foot2.includes("40dona") && foot2.includes("300000"),
+     "filtrlangan yig'indi filtr qatorida ko'rindi", foot2);
 
   const shown = await p.$eval(".batch-bar__n", (n) => n.textContent.trim());
   is(/1\s*\/\s*3/.test(shown), "«nechta ko'rinyapti» yozuvi yangilandi", shown);
@@ -624,6 +634,52 @@ console.log("\n── P2. Bo'limlar ──");
   is(/qaytarish/i.test(act), "arxivda «qaytarish» tugmasi", act);
   is((await p.$(".batch-note")) !== null, "arxiv izohi turadi");
   await shot(p, "batch-archive");
+  await p.close();
+}
+
+/* ══ P2b. «Barchasi» bo'limi (V77) ════════════════════════════════════
+
+   ⚠ Omborchining ba'zi savollari bo'limga sig'maydi: «bu tovarning
+   butun tarixi qanday?». Ular uchun uch bo'lim orasida yurish kerak
+   bo'lardi va solishtirish ko'z bilan qilinardi.
+   ══════════════════════════════════════════════════════════════════════ */
+console.log("\n── P2b. Barchasi ──");
+{
+  const p = await openBatches();
+  const tabs = await p.$$eval(".batch-tab", (n) => n.map((x) => x.textContent.trim()));
+  is(/barchasi/i.test(tabs[0] || ""), "«Barchasi» birinchi turadi", tabs.join(" | "));
+
+  /* ⚠ STANDART EMAS: kunlik savol — «javonda hozir nima bor?». */
+  const on = await p.$eval(".batch-tab.is-on", (n) => n.textContent.trim());
+  is(/faol/i.test(on), "standart bo'lim FAOL bo'lib qoladi", on);
+
+  await p.evaluate(() => {
+    [...document.querySelectorAll(".batch-tab")]
+      .find((b) => /barchasi/i.test(b.textContent))?.click();
+  });
+  await wait(400);
+  is((await rowCount(p)) === 5, "barcha partiyalar bitta ro'yxatda (3+1+1)",
+     String(await rowCount(p)));
+
+  /* Arxivdagi qator faol qatorlar orasida FARQLANISHI kerak. */
+  const badges = await p.$$eval("tbody tr td:nth-last-child(2)",
+    (n) => n.map((x) => x.textContent.trim()));
+  is(badges.some((x) => /arxiv/i.test(x)),
+     "arxivdagi partiya holat ustunida ajratilgan", badges.join(" · "));
+
+  const th3 = await p.$$eval("table.table thead th", (n) => n.map((x) => x.textContent.trim()));
+  is(th3.some((x) => /arxivlangan/i.test(x)), "arxiv sanasi ustuni ham bor", th3.join(" | "));
+
+  /* ⚠ AMAL QATORGA qarab tanlanishi kerak, BO'LIMGA emas: bo'limga
+     qarab tanlanganda arxivdagi partiyaga «Arxivga» tugmasi
+     chiqardi — server rad etadigan, ma'nosiz amal. */
+  const acts = await p.$$eval("tbody tr td:last-child button",
+    (n) => n.map((x) => x.textContent.trim()));
+  is(acts.filter((x) => /qaytarish/i.test(x)).length === 1,
+     "arxivdagi qatorda «Qaytarish» tugmasi", acts.join(" · "));
+  is(!acts.some((x, i) => /arxivga/i.test(x) && i === acts.length - 1),
+     "arxivdagi qatorga «Arxivga» tugmasi chiqmaydi", acts.join(" · "));
+  await shot(p, "batch-all");
   await p.close();
 }
 

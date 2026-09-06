@@ -32,6 +32,7 @@ const CustomerLogin = lazy(() => import("./customer/CustomerLogin"));
 const CustomerApp = lazy(() => import("./customer/CustomerApp"));
 /* Mijoz ilovasi BRAUZERDA (V40) — Telegram OIDC dan qaytish ham shu yerda */
 const CustomerWeb = lazy(() => import("./customer/CustomerWeb"));
+const DisplayPage = lazy(() => import("./pages/DisplayPage"));
 import { getAppToken } from "./customer/customerApi";
 
 // ⚠ Tilni URL dan olish MODUL TANASIDA, `replaceState` dan OLDIN bo'lishi
@@ -229,6 +230,31 @@ export default function App() {
      ⚠ Mijoz tokeni bo'lsa, xodim kirishi umuman chizilmaydi: bitta
      qurilmada ikkalasi ham bo'lishi mumkin, lekin bir vaqtda bittasi
      ko'rinadi (do'kon egasi ham oddiy mijoz). */
+  /* ══ MIJOZ EKRANI — IKKINCHI MONITOR (V77) ═══════════════════════════
+
+     ⚠ ENG BIRINCHI TEKSHIRUV va bu ataylab. Bu ekran:
+
+       · SESSIYA SO'RAMAYDI. U hech qanday so'rov yubormaydi va faqat
+         kassa oynasi shu brauzerda saqlagan holatni chizadi. Sessiya
+         tekshiruvi kutilganda mijoz kassirning ishini ko'rmay,
+         yuklanish belgisiga qarab turardi — internet uzilganda esa
+         umuman ochilmasdi (kassa esa offline sotaveradi).
+
+       · YON MENYU VA SARLAVHASIZ. `Layout` ichida bo'lganda mijozga
+         qaragan monitorda do'konning ichki bo'limlari ko'rinardi.
+
+     ⚠ Manzil `window.location` dan o'qiladi, `useLocation` dan emas:
+     bu tekshiruv `BrowserRouter` DAN OLDIN turadi. */
+  if (typeof window !== "undefined" && window.location.pathname === "/display") {
+    return (
+      <ErrorBoundary>
+        <Suspense fallback={null}>
+          <DisplayPage />
+        </Suspense>
+      </ErrorBoundary>
+    );
+  }
+
   if (isMobileApp() && !user && !staffMode) {
     return (
       <ErrorBoundary>
