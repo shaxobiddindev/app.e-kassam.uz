@@ -21,28 +21,74 @@ export const lineNet = (l) =>
  * @param total  chek bo'yicha chegirma (so'm)
  * @returns har qatorga tushgan ulush (`lines` bilan bir tartibda)
  */
-export function spreadDiscount(lines, total) {
-  const d = Number(total) || 0;
-  const out = lines.map(() => 0);
-  if (d <= 0 || !lines.length) return out;
+/**
+ * Qatorning TAN NARXIGACHA bo'lgan joyi — undan pastda zarar boshlanadi.
+ *
+ * ⚠ TAN NARX NOMA'LUM bo'lsa qatorning BUTUN jami bo'sh joy deb
+ * olinadi. Shunda qoida eski (qiymatga mutanosib) qoidaga aylanadi va
+ * hech narsa buzilmaydi: bilmagan narsani «marjasi yo'q» deb aytish
+ * qatorni chegirmadan butunlay chetlatardi.
+ *
+ * ⚠ `lineLossRoom` DAN BOSHQA. U tan narx bo'lmaganda `lineRoom` ga
+ * (eng past narx — `minPrice`) qaytadi, `minPrice` esa SERVERDA yo'q.
+ * Taqsimot qoidasi ikki tomonda AYNAN bir xil bo'lishi shart, shuning
+ * uchun bu yerda faqat ikkala tomonda ham bor bo'lgan ma'lumot
+ * ishlatiladi.
+ */
+const marginRoom = (l) => {
+  const net = lineNet(l);
+  if (net <= 0) return 0;
+  const cost = l.costPrice == null ? null : Number(l.costPrice);
+  if (cost == null || !Number.isFinite(cost)) return net;
+  const room = net - cost * (Number(l.qty) || 0);
+  return room > 0 ? room : 0;
+};
 
-  const nets = lines.map(lineNet);
-  const base = nets.reduce((s, n) => s + n, 0);
-  if (base <= 0) return out;
-
+/** Bitta o'lchov bo'yicha mutanosib taqsimlash (ulushlar ustiga qo'shiladi). */
+function addSpread(out, lines, amount, base, weight) {
   let given = 0;
   let biggest = 0;
+  let biggestW = -1;
   for (let i = 0; i < lines.length; i++) {
+    const w = weight(lines[i]);
     /* ⚠ PASTGA yaxlitlash (`floor`), yumaloqlash emas — serverda ham
        `RoundingMode.DOWN`. Aks holda ulushlar yig'indisi chegirmadan
        oshib ketishi mumkin edi. */
-    const share = Math.floor((d * nets[i]) / base * 100) / 100;
-    out[i] = share;
+    const share = Math.floor((amount * w) / base * 100) / 100;
+    out[i] = Math.round((out[i] + share) * 100) / 100;
     given += share;
-    if (nets[i] > nets[biggest]) biggest = i;
+    if (w > biggestW) { biggestW = w; biggest = i; }
   }
-  const rest = Math.round((d - given) * 100) / 100;
+  const rest = Math.round((amount - given) * 100) / 100;
   if (rest !== 0) out[biggest] = Math.round((out[biggest] + rest) * 100) / 100;
+}
+
+export function spreadDiscount(lines, total) {
+  const d = Number(total) || 0;
+  const out = (lines || []).map(() => 0);
+  if (d <= 0 || !lines?.length) return out;
+
+  /* ── 1-bosqich: MARJA ICHIDA ────────────────────────────────────
+     Har qator o'z bo'sh joyiga mutanosib oladi — «bu qatordan yana
+     qancha berish mumkin, zararga tushmasdan». */
+  const rooms = lines.map(marginRoom);
+  const room = rooms.reduce((s, v) => s + v, 0);
+  let left = d;
+  if (room > 0) {
+    const cap = Math.min(left, room);
+    left = Math.round((left - cap) * 100) / 100;
+    addSpread(out, lines, cap, room, marginRoom);
+  }
+
+  /* ── 2-bosqich: MARJADAN TASHQARI ───────────────────────────────
+     Bo'sh joy yetmadi — chek zararga ketyapti va bu ALOHIDA
+     qo'riqlanadi (`SALE_BELOW_COST` bajigi). Bu yerda to'sish kech:
+     chegirma tasdiqlangan va u BIRON JOYGA yozilishi shart, aks
+     holda qatorlar jami chek jamiga teng bo'lmay qolardi. */
+  if (left > 0) {
+    const base = lines.reduce((s, l) => s + lineNet(l), 0);
+    if (base > 0) addSpread(out, lines, left, base, lineNet);
+  }
   return out;
 }
 

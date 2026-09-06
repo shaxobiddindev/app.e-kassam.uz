@@ -203,5 +203,81 @@ const NOCOST = [{ salePrice: 10000, qty: 1, minPrice: 9000 }];
 eq(lineLossRoom(NOCOST[0]), lineRoom(NOCOST[0]),
    "tan narxsiz qator qoida chegarasidan oshmaydi");
 
+/* ══════════════════════════════════════════════════════════════════════════
+   MARJAGA MUTANOSIB TAQSIMOT (V83)
+
+   ⚠⚠ SERVERDAGI `SaleService.distributeSaleDiscount` NING AYNAN NUSXASI.
+   Ikkalasi ajralib ketsa, to'lov oynasida ko'rsatilgan «qaysi tovarga
+   qancha» chekdagidan boshqa chiqadi — va qaytarish AYNAN o'sha
+   taqsimotdan hisoblanadi.
+
+   ═══ NEGA QIYMATGA MUTANOSIB YETMADI ═══════════════════════════════
+
+   Chek chegirmasi qator QIYMATIGA tarqalardi va marja umuman
+   qaralmasdi: qimmat, lekin marjasi yupqa tovar chegirmaning katta
+   qismini yutib, TAN NARXDAN PAST sotilardi. Arzon, lekin marjasi
+   keng tovar esa deyarli tegilmasdi.
+   ══════════════════════════════════════════════════════════════════════════ */
+console.log("\n═══ 10. ⚠ MARJASI YUPQA QATOR ZARARGA TUSHMAYDI ═══");
+{
+  /* Televizor: 95 000, tan narxi 94 500 → bo'sh joyi atigi 500.
+     Non: 5 000, tan narxi 1 000 → bo'sh joyi 4 000. */
+  const TV = [
+    { salePrice: 95000, qty: 1, costPrice: 94500 },
+    { salePrice: 5000,  qty: 1, costPrice: 1000 },
+  ];
+  const sp = spreadDiscount(TV, 4000);
+  eq(sum(sp), 4000, "yig'indi chegirmaga teng");
+  yes(sp[0] < 500, `televizorga oz tushdi: ${sp[0]}`);
+  yes(sp[1] > 3000, `nonga ko'p tushdi: ${sp[1]}`);
+  /* ⚠ ASOSIY SHART: hech bir qator tan narxidan past tushmaydi.
+     Eski qoida televizorga 3 800 berardi va u tan narxidan 3 300
+     PAST sotilardi. */
+  yes(95000 - sp[0] >= 94500, "televizor tan narxidan past emas");
+  yes(5000 - sp[1] >= 1000, "non tan narxidan past emas");
+}
+
+console.log("\n═══ 11. Bo'sh joy yetsa — faqat marjaga mutanosib ═══");
+{
+  const M = [
+    { salePrice: 95000, qty: 1, costPrice: 80000 },  // joyi 15 000
+    { salePrice: 5000,  qty: 1, costPrice: 1000 },   // joyi 4 000
+  ];
+  const sp = spreadDiscount(M, 10000);
+  eq(sum(sp), 10000, "yig'indi chegirmaga teng");
+  /* 15 000 : 4 000 nisbatida — qiymat nisbati (95:5) EMAS. */
+  yes(sp[1] > 2000, `nonning ulushi marjasiga yarasha: ${sp[1]}`);
+  yes(sp[0] < 8000, `televizornikini qiymat emas, marja belgiladi: ${sp[0]}`);
+}
+
+console.log("\n═══ 12. ⚠ BO'SH JOY YETMASA — CHEGIRMA BARIBIR YOZILADI ═══");
+{
+  /* Zararga sotish ALOHIDA qo'riqlanadi (`SALE_BELOW_COST` bajigi).
+     Taqsimot bosqichida uni to'sish kech: chegirma tasdiqlangan va u
+     biron joyga yozilishi SHART, aks holda qatorlar jami chek jamiga
+     teng bo'lmay qolardi. */
+  const T = [
+    { salePrice: 95000, qty: 1, costPrice: 94500 },
+    { salePrice: 5000,  qty: 1, costPrice: 1000 },
+  ];
+  eq(sum(spreadDiscount(T, 20000)), 20000, "bo'sh joydan katta chegirma ham to'liq yoziladi");
+  eq(sum(spreadDiscount(T, 100000)), 100000, "butun chekka teng chegirma ham");
+}
+
+console.log("\n═══ 13. Tan narx noma'lum — ESKI qoida, hech narsa buzilmaydi ═══");
+{
+  /* ⚠ Bilmagan narsani «marjasi yo'q» deb aytish qatorni chegirmadan
+     butunlay chetlatardi. Shuning uchun tan narxsiz qatorning BUTUN
+     jami bo'sh joy deb olinadi — va qoida qiymatga mutanosib bo'lib
+     qoladi (yuqoridagi 2–5-bo'limlar aynan shuni tekshiradi). */
+  eqArr(spreadDiscount([{ salePrice: 75000, qty: 1 }, { salePrice: 25000, qty: 1 }], 20000),
+        [15000, 5000], "tan narxsiz — 75/25 nisbatida, eski qoidadek");
+  /* Aralash: biri tan narxli, biri yo'q — ikkalasi ham hisobga kiradi. */
+  const MIXED = [{ salePrice: 50000, qty: 1, costPrice: 49000 }, { salePrice: 50000, qty: 1 }];
+  const sm = spreadDiscount(MIXED, 5000);
+  eq(sum(sm), 5000, "aralash savatda ham yig'indi to'g'ri");
+  yes(sm[1] > sm[0], "tan narxi noma'lum qator ko'proq oladi (uning joyi keng)");
+}
+
 console.log(`  ${pass} o'tdi, ${fail} yiqildi`);
 process.exit(fail ? 1 : 0);
