@@ -15,7 +15,17 @@ const SHELL = `${VERSION}-shell`;
 
 self.addEventListener("install", (e) => {
   e.waitUntil(
-    caches.open(SHELL).then((c) => c.addAll(["/", "/index.html", "/icon-512.png", "/manifest.webmanifest"]))
+    caches.open(SHELL).then((c) =>
+      c.addAll(["/", "/index.html", "/icon-512.png", "/manifest.webmanifest"])
+        /* ⚠ OVOZ ALOHIDA VA O'Z `catch` I BILAN (V93). `addAll` ATOMAR:
+           ro'yxatdagi bitta manzil xato bersa, HAMMASI keshlanmaydi.
+           Chek ovozini o'sha ro'yxatga qo'shish — yo'lda bitta xato
+           bo'lsa BUTUN oflayn rejimni o'chirish degani bo'lardi, va uni
+           hech kim sezmasdi.
+
+           Ovoz esa ixtiyoriy: yetib kelmasa `ek-sound-web.js` ohangга
+           tushadi. Shuning uchun uning xatosi shu yerda yutiladi. */
+        .then(() => c.add("/sfx/done.mp3").catch(() => {})))
       .then(() => self.skipWaiting())
       .catch(() => self.skipWaiting())
   );

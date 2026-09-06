@@ -157,6 +157,37 @@ console.log("\n── config(): buzuq saqlangan holat ──");
   eq(S.config(null).on, true, "butunlay bo'sh sozlama ham ishlaydi");
 }
 
+console.log("\n── YOZILGAN OVOZ VA UNING ZAXIRASI (V93) ──");
+{
+  /* Do'kon egasi chek yopilishiga o'zi yuborgan ovozni so'radi. Bu
+     yerda qulflanadigan narsa — ZAXIRA: fayl yetib kelmasa kassa jim
+     qolmasligi kerak, ya'ni ohang HAM hamisha qaytarilishi shart. */
+  const cfg = S.config({ on: true, volume: 1, events: { SALE_DONE: true } });
+  const d = S.decide("SALE_DONE", cfg, { lastAt: 0, activePri: 0, now: 1000 });
+
+  eq(d.url, "/sfx/done.mp3", "`SALE_DONE` yozuv manzilini qaytaradi");
+  eq(Array.isArray(d.tone) && d.tone.length > 0, true,
+     "⚠ OHANG HAM QAYTADI — fayl yo'q bo'lsa shu chalinadi");
+  eq(d.vol, 1, "sozlamadagi balandlik ALOHIDA uzatiladi (yozuv uchun)");
+  eq(d.gain > 0 && d.gain !== d.vol, true,
+     "`gain` ohang uchun — oila balandligiga ko'paytirilgan");
+
+  /* ⚠ Boshqa voqealarda fayl YO'Q va bo'lmasligi ham kerak: har
+     voqeaga fayl qo'yish aynan `ek-sound.js` sarlavhasidagi qoidani
+     buzardi (byudjet, disk, oflayn). */
+  const other = S.decide("ERROR", S.config({ on: true, volume: 1, events: { ERROR: true } }),
+                         { lastAt: 0, activePri: 0, now: 1000 });
+  eq(other.url, null, "qolgan voqealar sintez bo'lib qoladi");
+
+  /* Ovoz o'chirilgan bo'lsa yozuv ham chalinmaydi — «fayl bor» degan
+     sabab chegaralarni chetlab o'tishga asos bo'lmasin. */
+  eq(S.decide("SALE_DONE", S.config({ on: false }), { lastAt: 0, activePri: 0, now: 1000 }),
+     null, "ovoz o'chiq bo'lsa yozuv ham chalinmaydi");
+  eq(S.decide("SALE_DONE", S.config({ on: true, volume: 0, events: { SALE_DONE: true } }),
+              { lastAt: 0, activePri: 0, now: 1000 }),
+     null, "balandlik nol bo'lsa ham jim");
+}
+
 console.log("\n── ⚠ SOTUVNI BUZMASLIK ──");
 {
   /* Eng muhim kafolat. `sfx()` istisno tashlasa yoki `Promise`

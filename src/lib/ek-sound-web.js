@@ -24,6 +24,16 @@ let broken = false;
 /** Hozir ijro etilayotgan ohang: `{ nodes, until, pri }`. */
 let active = null;
 
+/* ══ YOZILGAN OVOZLAR (V93) ════════════════════════════════════════════
+   Kalit — manzil, qiymat — dekodlangan `AudioBuffer` yoki `null`.
+
+   ⚠ `null` — «URINDIK VA BO'LMADI», «hali urinmadik» EMAS. Farq muhim:
+   birinchisida qayta urinmaymiz (har chek yopilishida 404 so'rov
+   yuborish oflayn kassani sekinlashtirardi), ikkinchisida esa
+   yuklashni boshlaymiz. Shuning uchun kalitning BORLIGI tekshiriladi,
+   qiymati emas. */
+const buffers = Object.create(null);
+
 function context() {
   if (ctx || broken) return ctx;
   try {
@@ -47,10 +57,38 @@ function context() {
  * Chaqiruvchi (`App.jsx`) buni birinchi bosish/tugma bosishida bir
  * marta chaqiradi.
  */
-export function prime() {
+export function prime(urls) {
   const c = context();
   if (!c) return;
   if (c.state === "suspended") c.resume().catch(() => {});
+  /* ⚠ YOZUVLAR SHU YERDA OLINADI — birinchi sotuvda emas. Kassir
+     kunning birinchi chekini yopganda bufer allaqachon tayyor bo'lsin:
+     aks holda birinchi chek ohang bilan, qolganlari yozuv bilan
+     chalinib, ovoz «beqaror» bo'lib tuyulardi. */
+  for (const u of urls || []) load(u);
+}
+
+/**
+ * Yozilgan ovozni oladi va dekodlaydi. HECH QACHON kutilmaydi.
+ *
+ * ⚠ `sfx()` bu yerni kutmaydi va kuta olmaydi ham: ovoz `Promise`
+ * qaytarmaydi (`ek-sound.js` sarlavhasidagi qoida — V58 pretsedenti).
+ * Fayl tayyor bo'lgunicha ohang chalinaveradi.
+ *
+ * ⚠ HAR XATO YUTILADI va manzil `null` bilan BELGILANADI: shundan
+ * keyin qayta urinilmaydi. Oflayn kassada har chek yopilishida
+ * muvaffaqiyatsiz so'rov yuborish — bekorga kechikish.
+ */
+function load(url) {
+  if (!url || url in buffers) return;
+  const c = context();
+  if (!c) return;
+  buffers[url] = undefined;            // «yuklanmoqda» — takror boshlanmasin
+  fetch(url)
+    .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error("http"))))
+    .then((buf) => c.decodeAudioData(buf))
+    .then((decoded) => { buffers[url] = decoded; })
+    .catch(() => { buffers[url] = null; });
 }
 
 /**
@@ -97,7 +135,7 @@ function stop() {
 /**
  * Ohangni chaladi.
  *
- * @param spec `{ tone: [[gts, ms], …], w, gain, pri }` — `ek-sound.js` dan.
+ * @param spec `{ tone: [[gts, ms], …], w, gain, pri, url }` — `ek-sound.js` dan.
  */
 export function play(spec) {
   const c = context();
@@ -109,6 +147,37 @@ export function play(spec) {
   stop();
 
   const start = c.currentTime + 0.01;   // kichik zaxira: uzilib qolmasin
+
+  /* ══ YOZILGAN OVOZ — BO'LSA (V93) ══════════════════════════════════
+     ⚠ TARTIB AYNAN SHUNDAY: avval bufer tekshiriladi, YO'Q BO'LSA
+     ohangga tushiladi. Teskarisi (avval yuklashni kutish) kassani jim
+     qoldirardi — tarmoq sekin bo'lsa chek yopilgani eshitilmasdi.
+
+     ⚠ `load()` shu yerda ham chaqiriladi: `prime()` o'tkazib
+     yuborilgan bo'lsa (boshqa sahifadan kirish, eski sessiya) ovoz
+     KEYINGI safar to'g'ri chiqsin. */
+  if (spec.url) {
+    const buf = buffers[spec.url];
+    if (buf) {
+      const src = c.createBufferSource();
+      const gain = c.createGain();
+      src.buffer = buf;
+      /* ⚠ Yozuv allaqachon normallangan (cho'qqi 0.92), shuning uchun
+         bu yerda faqat SOZLAMADAGI ovoz balandligi qo'llanadi. Ohang
+         `gain` iga ko'paytirilsa, yozuv undan ikki barobar jim
+         chiqardi — oilalarning `gain` i sintez uchun tanlangan. */
+      gain.gain.setValueAtTime(Math.min(1, Math.max(0.0001, spec.vol ?? 1)), start);
+      src.connect(gain);
+      gain.connect(c.destination);
+      src.start(start);
+      const until = start + buf.duration;
+      active = { nodes: [src], until,
+                 guard: Math.min(until, start + GUARD_S), pri: spec.pri || 0 };
+      return;
+    }
+    if (!(spec.url in buffers)) load(spec.url);
+  }
+
   let at = start;
   const nodes = [];
 

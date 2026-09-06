@@ -28,7 +28,17 @@ const lang = initLang();
 // umuman yuklanmaydi va ilova QORA BO'SH OYNA bo'lib ochiladi. Aynan shu
 // bo'lgan: keshda `index-CPDSY6t0.js` qolib, build `index-D04lIaqz.js` so'ragan.
 // Eski o'rnatmalarni tozalash `index.html` dagi inline skriptda.
-if ("serviceWorker" in navigator && import.meta.env.PROD && !isDesktop()) {
+/* ⚠ `navigator.serviceWorker` NING O'ZI tekshiriladi, `"…" in navigator`
+   EMAS (V93). Farq amalda chiqadi: XAVFSIZ BO'LMAGAN manbada (LAN
+   ichidagi oddiy `http://192.168.…`) Chrome xossani prototipda
+   QOLDIRADI, lekin `undefined` qaytaradi. `in` esa `true` deydi va
+   keyingi qatordagi `.register` «Cannot read properties of undefined»
+   bilan yiqilardi — ILOVA ISHGA TUSHISHIDA, ya'ni kassa umuman
+   ochilmasdi.
+
+   ⚠ Ovoz tekshiruvi topdi (`check-sfx.mjs` 7-band): u SW ni o'chirib
+   ko'rgan va o'sha zahoti shu xato tushgan. */
+if (navigator.serviceWorker && import.meta.env.PROD && !isDesktop()) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("/sw.js").catch(() => {});
   });

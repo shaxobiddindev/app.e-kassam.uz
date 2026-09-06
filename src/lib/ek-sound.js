@@ -19,7 +19,7 @@
       turi «xato/muvaffaqiyat» dan boshqa narsa ayta olmaydi, kassir
       esa AYNAN QAYSI voqea bo'lganini eshitishi kerak.
 
-   ═══ ⚠ FAYL YO'Q, OHANG SINTEZ QILINADI ════════════════════════════════
+   ═══ ⚠ OHANGLAR SINTEZ QILINADI, FAYL — FAQAT ISTISNO ══════════════════
 
    `.mp3` fayllari ATAYLAB ishlatilmadi:
 
@@ -30,6 +30,22 @@
      · OFLAYN majburiy: yuklanmagan fayl — ovozsiz kassa.
 
    Butun to'plam ~1 KB kod bo'lib chiqadi va uzilishda ham ishlaydi.
+
+   ⚠⚠ BITTA ISTISNO — `SALE_DONE` (V93). Do'kon egasi aynan o'zi
+   yuborgan ovozni chek yopilishiga so'radi. U sintez emas, YOZUV: ikki
+   zarbli, keng spektrli (234–1125 Gts va 3.6 kGts) — ikki-uch
+   ostsillyator bilan takrorlab bo'lmaydi.
+
+   Yuqoridagi uchala sabab ham YOPILGAN, e'tiborsiz qoldirilmagan:
+
+     · byudjet — fayl `public/sfx/` da, ya'ni `dist/` ildizida va JS
+       byudjetiga KIRMAYDI (9.3 KB, mono 32 kGts);
+     · disk — u Netlify beradigan statik fayl, VPS diskiga tegmaydi;
+     · oflayn — SW uni o'rnatishda keshlaydi VA eng muhimi: OHANG
+       ZAXIRA BO'LIB QOLADI. Bufer tayyor bo'lmasa (birinchi ochilish,
+       kesh bo'sh, dekod xatosi) `DONE` ohangi chalinadi. Ya'ni kassa
+       hech qachon jim qolmaydi — fayl ovozni YAXSHILAYDI, unga
+       ASOSLANMAYDI.
 
    ═══ ⚠ OVOZ HECH QACHON SOTUVNI BUZMAYDI ═══════════════════════════════
 
@@ -104,7 +120,9 @@ export const TONES = {
  */
 export const SFX = {
   /* ── Standart bo'yicha YOQIQ ─────────────────────────────────────── */
-  SALE_DONE: { t: "DONE",  pri: 3, on: true  },
+  /* ⚠ `url` — YOZILGAN OVOZ, `t` esa uning ZAXIRASI (V93). Ikkalasi
+     ham turadi: fayl yetib kelmasa ohang chalinadi. Sabab sarlavhada. */
+  SALE_DONE: { t: "DONE",  pri: 3, on: true, url: "/sfx/done.mp3" },
   ERROR:     { t: "ERROR", pri: 3, on: true  },
   WARN:      { t: "WARN",  pri: 2, on: true  },
   /* Skaner tovarni topmadi — aynan ekranga qaramaydigan paytdagi voqea. */
@@ -205,7 +223,16 @@ export function decide(event, cfg, { lastAt = 0, activePri = 0, now = 0 } = {}) 
   const base = TONES[def.t];
   const gain = base.gain * cfg.volume;
   if (gain <= 0) return null;
-  return { tone: base.tone, w: base.w, gain, pri: def.pri };
+  /* ⚠ `url` SHUNCHAKI UZATILADI — bu funksiya SOF qoladi va fayl bor-
+     yo'qligini BILMAYDI. Tanlov adapterda: bufer tayyor bo'lsa yozuv,
+     bo'lmasa ohang. Shu sababdan `decide` ning javobi hamisha bir xil
+     va uni sinovdan o'tkazish uchun brauzer kerak emas. */
+  /* ⚠ `gain` OHANG uchun (oila balandligiga ko'paytirilgan), `vol` esa
+     YOZUV uchun (faqat sozlamadagi balandlik). Yozuv allaqachon
+     normallangan — unga oilaning `gain` ini qo'llash uni ikki barobar
+     jim qilardi, chunki o'sha son sintez ostsillyatoriga tanlangan. */
+  return { tone: base.tone, w: base.w, gain, vol: cfg.volume,
+           pri: def.pri, url: def.url || null };
 }
 
 /**
@@ -253,7 +280,13 @@ export function sfx(event) {
  * aytadi. Kassa uchun bu «ishlamayapti» degani.
  */
 export function prime() {
-  try { web.prime(); } catch (_) { /* jim */ }
+  /* ⚠ Manzillar SHU YERDAN yig'iladi, adapterda yozilmaydi: adapter
+     voqealarni bilmasligi kerak (sinf sarlavhasidagi qoida). Yangi
+     yozuv qo'shilsa, u faqat `SFX` ga yoziladi va bu yer o'zi
+     topadi. */
+  try {
+    web.prime(Object.values(SFX).map((d) => d.url).filter(Boolean));
+  } catch (_) { /* jim */ }
 }
 
 /**
@@ -268,7 +301,12 @@ export function preview(event, cfg) {
     const def = SFX[event];
     if (!def) return;
     const base = TONES[def.t];
-    const gain = base.gain * (c.volume || 0.7);
-    web.play({ tone: base.tone, w: base.w, gain, pri: 3 });
+    const vol = c.volume || 0.7;
+    const gain = base.gain * vol;
+    /* ⚠ `url` bu yerda ham uzatiladi (V93): aks holda egasi sozlamada
+       ▶ ni bosib OHANGNI eshitar, kassada esa YOZUV chalinardi — ya'ni
+       tekshirish o'zi tekshiradigan narsani ko'rsatmasdi. */
+    web.play({ tone: base.tone, w: base.w, gain, vol, pri: 3,
+               url: def.url || null });
   } catch (_) { /* jim */ }
 }

@@ -16,6 +16,12 @@
         sanaladi — ya'ni «chalindi» degan gap tekshiriladigan faktga
         aylanadi.
      4. Sozlama bo'limi chizilади va sozlama SAQLANADI.
+     5. CHEK OVOZI (V93) — yozilgan fayl haqiqatan beriladi,
+        dekodlanadi va `AudioBufferSourceNode` orqali chalinadi.
+     6. OFLAYNDA ham chalinadi — SW keshidan.
+     7. O'SHA FAYL UMUMAN YO'Q BO'LSA — ohang zaxira bo'lib chalinadi.
+        ⚠ Aynan shu band eng muhimi: fayl qo'shish kassani jim
+        qoldirish xavfini tug'diradi va bu yerda u o'lchanadi.
 
    Ishga tushirish:  node scripts/check-sfx.mjs
    ══════════════════════════════════════════════════════════════════════════ */
@@ -31,7 +37,8 @@ const CHROME = process.env.CHROME_PATH || "/usr/bin/google-chrome";
 
 const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css",
                ".svg": "image/svg+xml", ".png": "image/png", ".webp": "image/webp",
-               ".json": "application/json", ".woff2": "font/woff2" };
+               ".json": "application/json", ".woff2": "font/woff2",
+               ".mp3": "audio/mpeg" };
 
 const server = http.createServer((req, res) => {
   const url = req.url.split("?")[0];
@@ -88,13 +95,19 @@ async function open(route, seed) {
     })) localStorage.setItem(k, v);
     if (s) localStorage.setItem("ek_hw", s);
 
-    window.__sfx = { osc: 0, ctx: 0 };
+    window.__sfx = { osc: 0, ctx: 0, buf: 0 };
     const AC = window.AudioContext;
     window.AudioContext = function (...a) {
       window.__sfx.ctx++;
       const c = new AC(...a);
       const orig = c.createOscillator.bind(c);
       c.createOscillator = () => { window.__sfx.osc++; return orig(); };
+      /* ⚠ YOZILGAN OVOZ OSTSILLYATOR YARATMAYDI (V93). Faqat
+         `createOscillator` sanalsa, chek ovozi fayldan chalinganda bu
+         sinov «0 nota» ko'rib NOSOZLIK deb baqirardi — aslida hammasi
+         to'g'ri ishlab turgan bo'lardi. */
+      const bsrc = c.createBufferSource.bind(c);
+      c.createBufferSource = () => { window.__sfx.buf++; return bsrc(); };
       window.__sfx.state = () => c.state;
       return c;
     };
@@ -149,8 +162,13 @@ console.log("\n── 1. Sozlama bo'limi ──");
   });
   await new Promise((r) => setTimeout(r, 400));
   const c = await pg.evaluate(() => window.__sfx);
-  c.osc > 0 ? ok(`«eshitib ko'rish» ohang chaldi (${c.osc} nota)`)
-            : no("tugma ohang chalishi kerak", c.osc);
+  /* ⚠ IKKALASI HAM QABUL QILINADI: `SALE_DONE` ro'yxatda birinchi va
+     unda YOZUV bor (V93). Bufer tayyor bo'lsa yozuv, bo'lmasa ohang —
+     ikkalasi ham TO'G'RI natija. Faqat ohangni talab qilish sinovni
+     poygaga (yuklandimi-yo'qmi) bog'lab qo'yardi. */
+  c.osc + c.buf > 0
+    ? ok(`«eshitib ko'rish» ovoz chaldi (${c.osc} nota, ${c.buf} yozuv)`)
+    : no("tugma ovoz chalishi kerak", `${c.osc}/${c.buf}`);
   await pg.close();
 }
 
@@ -250,6 +268,139 @@ console.log("\n── 4. `AudioContext` umuman yo'q bo'lsa ──");
   local.length === 0 ? ok("ovozsiz muhitda ham xato tushmadi") : no("xato tushdi", local.join(" | "));
   alive ? ok("sahifa ishlayveradi — ovoz shunchaki yo'q") : no("sahifa chizilishi kerak", "bo'sh");
   await pg.close();
+}
+
+/* ══ 5. CHEK OVOZI — YOZUV VA UNING ZAXIRASI ══════════════════════════ */
+console.log("\n── 5. Chek yopilishi: yozilgan ovoz va uning zaxirasi ──");
+{
+  /* ⚠ NEGA IKKI QISM. Do'kon egasi aynan o'zi yuborgan ovozni so'radi,
+     ya'ni u CHALINISHI shart. Lekin fayl yetib kelmasligi ham mumkin
+     (birinchi ochilish, kesh bo'sh, dekod xatosi) va o'shanda kassa
+     JIM QOLMASLIGI kerak. Ikkalasi ham tekshiriladi — bittasi
+     tekshirilmasa, nuqson jimgina yashirinardi. */
+
+  /* ── 5a. Fayl haqiqatan beriladi ─────────────────────────────────── */
+  const head = await new Promise((res) => {
+    http.get(`http://127.0.0.1:${PORT}/sfx/done.mp3`, (r) => {
+      let n = 0;
+      r.on("data", (d) => { n += d.length; });
+      r.on("end", () => res({ status: r.statusCode, type: r.headers["content-type"], n }));
+    }).on("error", () => res({ status: 0, n: 0 }));
+  });
+  /* ⚠ HAJM HAM TEKSHIRILADI, faqat 200 emas: SPA serveri topilmagan
+     yo'lni `index.html` bilan javob beradi, ya'ni o'chib ketgan fayl
+     ham «200» bo'lib ko'rinardi. */
+  head.status === 200 && head.type === "audio/mpeg" && head.n > 4000
+    ? ok(`/sfx/done.mp3 berildi (${(head.n / 1024).toFixed(1)} KB, ${head.type})`)
+    : no("chek ovozi `dist/sfx/done.mp3` da bo'lishi kerak", JSON.stringify(head));
+
+  /* ── 5b. Yozuv dekodlanadi va CHALINADI ──────────────────────────── */
+  const pg = await open("/settings");
+  await pg.mouse.click(700, 400);                 // autoplay qulfini ochamiz
+  /* Bufer yuklanishini kutamiz — `prime()` uni birinchi imo-ishorada
+     boshlaydi. */
+  await new Promise((r) => setTimeout(r, 1500));
+  const b0 = await pg.evaluate(() => window.__sfx.buf);
+  await pg.evaluate(() => {
+    const card = [...document.querySelectorAll(".set-card")]
+      .find((c) => /Ovozli bildirishnoma/i.test(c.textContent));
+    // ⚠ BIRINCHI ▶ — `SALE_DONE` (`SoundSettings.jsx: ORDER`).
+    card.querySelector("button .fa-play")?.closest("button")?.click();
+  });
+  await new Promise((r) => setTimeout(r, 500));
+  const b1 = await pg.evaluate(() => window.__sfx.buf);
+  b1 > b0 ? ok(`chek ovozi YOZUVDAN chalindi (${b1 - b0} ta bufer)`)
+          : no("yozuv chalinishi kerak edi", `buf ${b0} → ${b1}`);
+  await pg.close();
+}
+
+/* ══ 6. OFLAYN — SW KESHI ═════════════════════════════════════════════ */
+console.log("\n── 6. Tarmoq yo'q: ovoz service worker keshidan keladi ──");
+{
+  /* ⚠ BU BAND TASODIFAN TOPILDI va shuning uchun ham qoldirildi.
+     7-bandni yozayotganda tarmoq to'sildi-yu, ovoz baribir YOZUVDAN
+     chalindi: SW uni o'rnatishda keshlab qo'ygan ekan. Ya'ni oflayn
+     kafolat HAQIQATAN ishlayapti — va aynan shu kassa uchun eng
+     muhim shart (`ek-sound.js` sarlavhasidagi uchinchi sabab).
+
+     ⚠ Sahifa darajasidagi to'siq SW ORQALI ketgan so'rovni KO'RMAYDI.
+     Shu sababdan bu band «tarmoq to'sildi» deb emas, «ovoz baribir
+     chalindi» deb o'lchaydi. */
+  const pg = await open("/settings");
+  await pg.mouse.click(700, 400);
+  await new Promise((r) => setTimeout(r, 1500));
+  /* Endi tarmoqni butunlay uzamiz — SW keshi qoladi. */
+  await pg.setOfflineMode(true);
+  await pg.evaluate(() => { window.__sfx.buf = 0; window.__sfx.osc = 0; });
+  await pg.evaluate(() => {
+    const card = [...document.querySelectorAll(".set-card")]
+      .find((c) => /Ovozli bildirishnoma/i.test(c.textContent));
+    card.querySelector("button .fa-play")?.closest("button")?.click();
+  });
+  await new Promise((r) => setTimeout(r, 500));
+  const c = await pg.evaluate(() => window.__sfx);
+  c.osc + c.buf > 0
+    ? ok(`tarmoqsiz ham ovoz chiqdi (${c.buf} yozuv, ${c.osc} nota)`)
+    : no("oflaynda ovoz yo'qolmasligi kerak", `${c.osc}/${c.buf}`);
+  await pg.close();
+}
+
+/* ══ 7. FAYL UMUMAN YO'Q — OHANG ZAXIRA ═══════════════════════════════ */
+console.log("\n── 7. Ovoz fayli umuman yo'q bo'lsa — kassa jim qolmaydi ──");
+{
+  /* ⚠⚠ ENG MUHIM BAND. Fayl qo'shish kassani jim qoldirish xavfini
+     tug'diradi va u shu yerda o'lchanadi.
+
+     ⚠ IKKI QAVAT KERAK, bittasi YETMAYDI:
+       · ajratilgan kontekst — 5-band keshini olib kelmasin;
+       · `navigator.serviceWorker` o'chiriladi — aks holda SW faylni
+         KESHDAN beradi va «to'sildi» degan da'vo YOLG'ON bo'ladi.
+         Birinchi urinishda aynan shu bo'ldi: sinov «zaxira ishladi»
+         deb yozmoqchi edi, aslida esa YOZUV chalinayotgan edi. */
+  const isolated = await browser.createBrowserContext();
+  const pg = await isolated.newPage();
+  await pg.setRequestInterception(true);
+  pg.on("request", (r) => (r.url().includes("/sfx/") ? r.abort() : r.continue()));
+  const local = [];
+  pg.on("pageerror", (e) => local.push(e.message));
+  await pg.evaluateOnNewDocument(() => {
+    for (const [k, v] of Object.entries({
+      ek_token: "v", ek_type: "user", ek_role: "OWNER", ek_username: "v",
+      ek_fullName: "V", ek_shopCode: "v", ek_deviceId: "v", ek_lang: "uz", ek_theme: "light",
+    })) localStorage.setItem(k, v);
+    try {
+      Object.defineProperty(navigator, "serviceWorker", { get() { return undefined; } });
+    } catch (_) { /* muhim emas: kontekst baribir toza */ }
+    window.__sfx = { osc: 0, ctx: 0, buf: 0 };
+    const AC = window.AudioContext;
+    window.AudioContext = function (...a) {
+      window.__sfx.ctx++;
+      const c = new AC(...a);
+      const o = c.createOscillator.bind(c);
+      c.createOscillator = () => { window.__sfx.osc++; return o(); };
+      const b = c.createBufferSource.bind(c);
+      c.createBufferSource = () => { window.__sfx.buf++; return b(); };
+      return c;
+    };
+  });
+  await pg.goto(`http://127.0.0.1:${PORT}/settings`, { waitUntil: "networkidle2", timeout: 30_000 });
+  await pg.mouse.click(700, 400);
+  await new Promise((r) => setTimeout(r, 1200));
+  await pg.evaluate(() => {
+    const card = [...document.querySelectorAll(".set-card")]
+      .find((c) => /Ovozli bildirishnoma/i.test(c.textContent));
+    card.querySelector("button .fa-play")?.closest("button")?.click();
+  });
+  await new Promise((r) => setTimeout(r, 500));
+  const c = await pg.evaluate(() => window.__sfx);
+  c.osc > 0 ? ok(`fayl yo'q — OHANG chalindi (${c.osc} nota), kassa jim qolmadi`)
+            : no("zaxira ohang chalinishi kerak", `${c.osc} nota / ${c.buf} bufer`);
+  c.buf === 0 ? ok("fayl yo'q ekani TO'G'RI aniqlandi (bufer yaratilmadi)")
+              : no("bufer bo'lmasligi kerak edi", c.buf);
+  local.length === 0 ? ok("yuklanmagan fayl birorta JS xatosi bermadi")
+                     : no("xato tushdi", local.join(" | "));
+  await pg.close();
+  await isolated.close();
 }
 
 await browser.close();
