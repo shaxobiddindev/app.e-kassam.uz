@@ -1493,8 +1493,13 @@ select.form-input { cursor: pointer; }
 }
 .pay-sum__x:hover { background: var(--bg-danger-subtle); color: var(--fg-danger); }
 
+/* ⚠ `min-height`, `height` EMAS (V86). Ilgari bu yerda faqat ikki
+   so'zlik «Summani kiriting» turardi va 36px yetardi. Endi u nega
+   «Sotish» yopiqligini bir gapda aytadi — qat'iy balandlikda gap
+   qutidan chiqib ketardi. */
 .pay-sum__empty {
-  height: 36px; display: grid; place-items: center;
+  min-height: 36px; display: grid; place-items: center;
+  padding: 7px 10px; text-align: center; line-height: 1.35;
   font-size: 12px; font-weight: 600; color: var(--fg-muted);
 }
 

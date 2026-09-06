@@ -12,7 +12,7 @@
    Ishga tushirish:  node test/payment.test.mjs
    ══════════════════════════════════════════════════════════════════════════ */
 
-const { settle, payType, restFor, effective, savingsMax } = await import("../src/lib/ek-payment.js");
+const { settle, payType, restFor, savingsMax } = await import("../src/lib/ek-payment.js");
 
 let pass = 0, fail = 0;
 const ok  = (m) => { pass++; console.log("  ✅ " + m); };
@@ -92,24 +92,42 @@ eq(restFor({ CASH: 20000 }, 100000, "CLICK"), 80000, "Click uchun qolgani 80 000
 eq(restFor({ CASH: 20000, CLICK: 15000 }, 100000, "CARD"), 65000, "kartaga qolgani 65 000");
 eq(restFor({ CASH: 200000 }, 100000, "CARD"), 0, "ortiqcha to'langanda — nol");
 
-console.log("\n── Bo'sh maydon: hammasi naqd ──");
+console.log("\n── Bo'sh maydon: to'lov yo'q (V86) ──");
 
-/* ⚠ Do'kon egasining talabi: maydon BO'SH ochilsin, unga summa
-   yozilmasin. Lekin bo'sh maydon «to'lanmadi» degani EMAS — odatiy
-   chekda mijoz butun summani naqd beradi va kassir hech narsa
-   yozmasdan «Sotish» ni bosadi. Bo'sh = nol deb olinsa, o'sha odatiy
-   chek BUTUNLAY nasiyaga yozilardi. */
-eqArr(effective({}, 100000), { CASH: 100000 }, "hech narsa yozilmadi — hammasi naqd");
-eqArr(effective(null, 100000), { CASH: 100000 }, "kirish yo'q — hammasi naqd");
-eqArr(effective({ CLICK: 15000 }, 100000), { CLICK: 15000 }, "yozilgan bo'lsa — tegilmaydi");
-/* ⚠ NOL — «yozilgan» hisoblanadi: to'liq nasiya shu yo'l bilan
-   qilinadi va qoida uni bosib ketmasligi kerak. */
-eqArr(effective({ CASH: "0" }, 100000), { CASH: "0" }, "nol ham yozuv — bosib ketilmaydi");
-eq(settle(effective({}, 100000), 100000).credit, 0, "bo'sh chekda nasiya yo'q");
-eq(settle(effective({}, 100000), 100000).parts[0].type, "CASH", "chekka naqd tushadi");
-eq(payType(settle(effective({}, 100000), 100000).parts), "CASH", "turi — naqd");
-eq(settle(effective({ CASH: "0" }, 100000), 100000).credit, 100000, "naqdga 0 — to'liq nasiya");
-eqArr(effective({}, 0), { CASH: 0 }, "jami nol — nol naqd");
+/* ══ SUMMA KIRITILMASA — TO'LOV YO'Q (V86) ═══════════════════════════
+
+   ⚠ ILGARI BO'SH MAYDON «HAMMASI NAQD» DEGANI EDI (`effective`) va bu
+   qulaylik deb qo'yilgan edi. Amalda esa pul hisobini buzardi:
+   hisobda kassir YOZMAGAN «Naqd 20 000» qatori o'zi paydo bo'lardi,
+   uni ✕ bilan o'chirib ham bo'lmasdi (u `paid` da yo'q edi), Click
+   tanlangan bo'lsa ham «naqd» derdi. Yashikda bo'lmagan pul
+   ko'rinardi va farq faqat smena yopilganda chiqardi.
+
+   Endi qoida bitta va istisnosiz: kiritilmagan pul — to'lov emas.
+   `settle` bo'sh kirishda hech qanday qism qaytarmaydi; ekran esa
+   «Sotish» tugmasini yopiq tutadi (`canSubmit`). */
+{
+  const empty = settle({}, 100000);
+  const methods = empty.parts.filter((p) => p.type !== "CREDIT");
+  eq(methods.length, 0, "bo'sh kirish — birorta TO'LOV qismi yo'q");
+  eq(empty.cashIn, 0, "yashikka pul tushmaydi");
+  eq(empty.change, 0, "qaytim yo'q");
+  /* ⚠ QOLDIQ NASIYAGA TUSHADI va bu HISOBNING to'g'ri javobi: pul
+     kelmagan bo'lsa, chek qarzda. Lekin EKRAN buni ko'rsatmasligi
+     kerak — kassir hali hech narsa yozmagan va «Nasiya 20 000»
+     degan qator uni chalg'itardi. Shuning uchun `KassaPage` nasiya
+     qatorini `payUntouched` holatida yashiradi va o'rniga «Summani
+     kiriting» deb aytadi. */
+  eq(empty.credit, 100000, "hisobda qoldiq nasiyada — matematik javob");
+  eq(settle(null, 100000).parts.filter((p) => p.type !== "CREDIT").length, 0,
+     "kirish umuman yo'q — baribir to'lov qismi yo'q");
+}
+/* ⚠ NOL — «YOZILGAN» hisoblanadi va to'liq nasiya shu yo'l bilan
+   qilinadi. Ekran uni `payUntouched` orqali ajratadi: `{CASH:"0"}`
+   bo'sh emas, ya'ni kassir NIYATINI bildirgan va sotuv ochiq. */
+eq(settle({ CASH: "0" }, 100000).credit, 100000, "naqdga 0 — to'liq nasiya");
+eq(settle({ CLICK: 15000 }, 100000).credit, 85000, "yozilgani olinadi, qolgani nasiya");
+eq(payType(settle({ CASH: 100000 }, 100000).parts), "CASH", "to'liq naqd — turi naqd");
 
 console.log("\n── Qatorlar tartibi ──");
 
@@ -225,32 +243,23 @@ const ex5 = settle({ CASH: 20000 }, 30000);
 eq(ex5.excess, 0, "kam to'langan chekda ham yo'q");
 eq(ex5.credit, 10000, "qolgani nasiyaga");
 
-console.log("\n═══ ⚠ BO'SH MAYDON — TANLANGAN USULGA (V85) ═══");
-/* Do'kon egasining ekrani: Click tanlangan, maydon bo'sh, hisobda esa
-   «Naqd 20 000» va «Sotish» ochiq. Pul Click orqali kelgan — yashikda
-   20 000 ortiqcha, Click tushumi shuncha kam. Kassir sezmasdi: farq
-   faqat smena yopilganda, qaysi chek ekani topib bo'lmaydigan paytda
-   chiqardi. */
+console.log("\n═══ ⚠ KIRITILMAGAN PUL — TO'LOV EMAS (V86) ═══");
+/* Do'kon egasining ikki suratI:
+     1) «CLICK UCHUN SUMMA» turibdi, maydon bo'sh — hisobda «Naqd»;
+     2) o'sha «Naqd 20 000» qatorini ✕ bilan o'chirib bo'lmaydi.
+   Ikkalasining sababi bitta: qator `paid` dan emas, SINTETIK
+   qiymatdan chizilardi. ✕ esa `paid` dan o'chiradi — o'chiradigan
+   narsa yo'q edi. */
 {
-  eqObj(effective({}, 20000, "CLICK"), { CLICK: 20000 },
-        "Click tanlangan — bo'sh maydon Click bo'ladi");
-  eqObj(effective({}, 20000, "CARD"), { CARD: 20000 }, "Karta ham shunday");
-  /* ⚠ USUL BERILMASA — ESKI XATTI-HARAKAT. Oflayn navbatdagi eski
-     chaqiruvlar va sinovlar buzilmaydi. */
-  eqObj(effective({}, 20000), { CASH: 20000 }, "usul berilmasa — naqd, eskidek");
-  eqObj(effective({}, 20000, null), { CASH: 20000 }, "usul null — naqd");
-  /* ⚠ NIMADIR YOZILGAN bo'lsa qoida umuman ishlamaydi. */
-  eqObj(effective({ CASH: 5000 }, 20000, "CLICK"), { CASH: 5000 },
-        "yozilgan qiymat tanlangan usuldan ustun");
-
-  /* Hisob ham to'g'ri chiqadi: butun chek Click, qaytim yo'q. */
-  const s2 = settle(effective({}, 20000, "CLICK"), 20000);
-  eq(s2.others, 20000, "hammasi naqdsiz usuldan");
-  eq(s2.cashIn, 0, "yashikka pul TUSHMAYDI");
-  eq(s2.change, 0, "qaytim yo'q");
-  eq(s2.credit, 0, "nasiya yo'q");
-  eq(s2.parts.length, 1, "bitta qism");
-  eq(s2.parts[0].type, "CLICK", "va u — Click");
+  /* Har usul uchun: yozilmagan — qator ham yo'q. */
+  for (const m of ["CASH", "CARD", "CLICK", "PAYME", "SAVINGS"]) {
+    eq(settle({}, 20000).parts.find((p) => p.type === m), undefined, `${m}: yozilmagan — qator yo'q`);
+  }
+  /* Yozilgan zahoti — bor, va u O'CHIRILADIGAN qator (`paid` da bor). */
+  const one = settle({ CLICK: 20000 }, 20000);
+  eq(one.parts.length, 1, "Click yozildi — bitta qator");
+  eq(one.parts[0].type, "CLICK", "va u Click");
+  eq(one.cashIn, 0, "yashikka pul TUSHMAYDI");
 }
 
 console.log(`\n  ${pass} o'tdi, ${fail} yiqildi`);

@@ -167,6 +167,8 @@ const state = () => page.evaluate(() => ({
     active: b.classList.contains("active"),
     has: b.classList.contains("has-amount"),
   })),
+  /* «Summani kiriting» — hisobning ichidagi bo'sh qator (V86). */
+  empty: document.querySelector(".pay-sum__empty")?.textContent.trim() || null,
   submit: !document.querySelector(".pay-modal-submit")?.disabled,
   scroll: (() => { const m = document.querySelector(".pay-modal-body") || document.querySelector(".pay-modal");
                    return m ? m.scrollHeight - m.clientHeight : -1; })(),
@@ -212,23 +214,41 @@ if (pageErrors.length) {
   console.log("\n  ✅ Sahifada birorta JS xatosi tushmadi");
 } process.exit(1); }
 
-console.log("\n── 1. Maydon BO'SH ochiladi, lekin chek naqd ──");
-/* ⚠ Do'kon egasining talabi: «inputda summa yozilib turmasin, bo'sh
-   tursin, lekin placeholder bo'lishi mumkin». Bo'sh maydon esa
-   «to'lanmadi» degani emas — odatiy chek to'liq naqd. */
+console.log("\n── 1. Maydon BO'SH ochiladi — VA TO'LOV YO'Q (V86) ──");
+/* ⚠ BU BO'LIM 2026-09-06 DA TESKARISIGA O'ZGARDI.
+
+   Ilgari u «maydon bo'sh ochiladi, LEKIN chek naqd» qoidasini
+   qulflab turardi: hisobda kassir yozmagan «Naqd 100 000» qatori
+   paydo bo'lar, «Sotish» esa ochiq turardi. Do'kon egasi buni xato
+   deb ko'rsatdi va u haq — pul hisobi buziladi:
+
+     · yashikda bo'lmagan naqd ko'rinadi;
+     · Click tanlangan bo'lsa ham «naqd» deyiladi;
+     · o'sha qatorni ✕ bilan o'chirib bo'lmaydi (u `paid` da yo'q).
+
+   Yangi qoida: PUL KIRITILMAGUNCHA TO'LOV YO'Q. Maydon baribir bo'sh
+   ochiladi (bu talab kuchida) va placeholder chek summasini
+   ko'rsatadi — lekin bu TAKLIF, yozilgan qiymat emas. */
 s.input === "" ? ok("maydon bo'sh") : no("maydon bo'sh bo'lishi kerak", `«${s.input}»`);
 (s.hold || "").replace(/\D/g, "") === "100000"
   ? ok(`placeholder: ${s.hold}`) : no("placeholder 100 000 ko'rsatishi kerak", s.hold);
-{
-  const naqd = s.rows.find((r) => /Naqd/i.test(r.name || ""));
-  (naqd?.val || "").replace(/\D/g, "") === "100000"
-    ? ok(`hisobda naqd ${naqd.val}`) : no("hisobda naqd 100 000 bo'lishi kerak", naqd?.val ?? "yo'q");
-}
-s.btns.find((b) => b.txt.includes("Naqd"))?.has
-  ? ok("Naqd tugmasida summa ko'rinadi") : no("Naqd tugmasi belgilanishi kerak", "yo'q");
+s.rows.length === 0
+  ? ok("hisobda birorta qator yo'q — ekran yolg'on gapirmaydi")
+  : no("hisob bo'sh bo'lishi kerak", JSON.stringify(s.rows));
+s.btns.some((b) => b.has)
+  ? no("birorta tugma belgilanmasligi kerak", s.btns.filter((b) => b.has).map((b) => b.txt).join(" | "))
+  : ok("birorta tugmada summa yo'q");
 s.rows.some((r) => r.credit) ? no("nasiya bo'lmasligi kerak", "bor") : ok("nasiya yo'q");
 s.custNeed ? no("mijoz so'ralmasligi kerak", "ishora bor") : ok("mijoz so'ralmaydi");
-s.submit ? ok("«Sotish» ochiq — hech narsa yozmasdan sotiladi") : no("«Sotish» ochiq bo'lishi kerak", "yopiq");
+/* ⚠ ASOSIY BAND: tugma YOPIQ. Do'kon egasi: «to'lov miqdorini
+   kiritmasdan turib to'lash tugmasi ochilmasligi kerak». */
+s.submit ? no("«Sotish» YOPIQ bo'lishi kerak", "ochiq") : ok("«Sotish» yopiq — summa kiritilmagan");
+/* ⚠ VA NEGA yopiqligi AYTILADI. Jimgina o'chirilgan tugma kassirni
+   «nega ishlamayapti» deb qidirishga majbur qilardi — bu do'kon
+   egasining oldingi shikoyati edi («nega tolovga ruxsat bermayapti?»). */
+/Summani kiriting/i.test(s.empty || "")
+  ? ok(`sabab aytiladi: «${s.empty}»`)
+  : no("«Summani kiriting» yozuvi bo'lishi kerak", s.empty ?? "yo'q");
 s.btns.length === 4 ? ok("to'rt usul: " + s.btns.map((b) => b.txt.split(" ")[0]).join(", "))
                     : no("to'rtta usul bo'lishi kerak", s.btns.length);
 /Aralash|Nasiya/i.test(s.btns.map((b) => b.txt).join(" "))
@@ -377,7 +397,11 @@ console.log("\n── 8c. Sotuv oxirigacha o'tadi ──");
 {
   await pick("Karta"); await type("");
   await pick("Click"); await type("");
-  await pick("Naqd");  await type("");        // hammasi naqd
+  /* ⚠ NAQD ENDI YOZILADI (V86). Ilgari bu yerda uchala maydon
+     bo'shatilar va «hammasi naqd» degan taxminga tayanilardi — o'sha
+     taxmin olib tashlandi: kiritilmagan pul to'lov emas. Kassir
+     yuradigan yo'l ham shu: summani yozadi, keyin «Sotish». */
+  await pick("Naqd");  await type("100000");
   await page.click(".pay-modal-submit");
   await new Promise((r) => setTimeout(r, 1600));
 
@@ -412,7 +436,18 @@ console.log("\n── 8c. Sotuv oxirigacha o'tadi ──");
   again.modal ? ok("keyingi chek uchun to'lov oynasi yana ochildi")
               : no("to'lov oynasi ochilishi kerak", "ochilmadi");
   again.busy ? no("tugma bo'sh bo'lishi kerak", "«Bajarilmoqda»") : ok("tugma bo'sh");
-  again.can ? ok("ikkinchi sotuv ham qilinadi") : no("ikkinchi sotuv qilinishi kerak", "tugma yopiq");
+  /* ⚠ YANGI CHEK — YANGI SUMMA (V86). Oyna bo'sh ochiladi, ya'ni
+     tugma HAM yopiq bo'lishi kerak: oldingi chekning summasi
+     keyingisiga o'tib ketmaydi. Bu §1 dagi qoidaning ikkinchi
+     chekdagi takrori — aynan shu yerda u eng oson buzilardi. */
+  again.can ? no("yangi chekda tugma yopiq bo'lishi kerak", "ochiq")
+            : ok("yangi chek bo'sh boshlanadi — tugma yopiq");
+  /* ⚠ ASOSIY BAND SHU: summa yozilgach ikkinchi sotuv HAM o'tadi.
+     Do'kon egasining shikoyati aynan ikkinchi sotuvda edi. */
+  await type("100000");
+  (await page.evaluate(() => !document.querySelector(".pay-modal-submit")?.disabled))
+    ? ok("summa yozilgach ikkinchi sotuv ham qilinadi")
+    : no("ikkinchi sotuv qilinishi kerak", "tugma yopiq");
 }
 
 await page.close();
@@ -642,14 +677,24 @@ console.log("\n── 8d. Naqd tugmalari ──");
   await pg.close();
 }
 
-console.log("\n── 8h. ⚠ BO'SH MAYDON — TANLANGAN USULGA, NAQDGA EMAS ──");
-/* Do'kon egasining surati: «CLICK UCHUN SUMMA» yozuvi turibdi, maydon
-   bo'sh, hisobda esa «Naqd 20 000 so'm» va «Sotish» ochiq.
+console.log("\n── 8h. ⚠ KIRITILMAGAN PUL — TO'LOV EMAS (V86) ──");
+/* ═══ IKKI SURAT, BITTA SABAB ═══════════════════════════════════════
 
-   Pul Click orqali kelgan: yashikda 20 000 ortiqcha ko'rinardi, Click
-   tushumi esa shuncha kam. Kassir hech narsa sezmasdi — farq faqat
-   smena yopilganda, qaysi chek ekani topib bo'lmaydigan paytda
-   chiqardi. */
+   1-surat: «CLICK UCHUN SUMMA» yozuvi turibdi, maydon bo'sh, hisobda
+   esa «Naqd 20 000 so'm». Pul Click orqali kelgan — yashikda 20 000
+   ortiqcha, Click tushumi shuncha kam.
+
+   2-surat: o'sha «Naqd 20 000 so'm ✕» qatori, yashil «Sotish» tugmasi
+   ochiq. Do'kon egasi: «x ni bossa ham ketmayapti».
+
+   IKKALASINING SABABI BITTA: qator kassir yozgan pulni emas, `paid`
+   bo'sh bo'lganda o'zi qo'shiladigan «hammasi naqd» taxminini
+   ko'rsatardi. Shuning uchun ✕ ham ish bermasdi — `paid` da o'chirsa
+   bo'ladigan narsa yo'q edi.
+
+   Taxmin olib tashlandi. Endi hisobda faqat KIRITILGAN pul turadi,
+   ya'ni har qatorning `paid` da egasi bor va ✕ uni haqiqatan
+   o'chiradi. */
 {
   const pg = await openKassa({
     items: [{ id: 1, name: "Kurtka", salePrice: 20000, qty: 1, unit: "DONA", stockQuantity: 9 }],
@@ -661,45 +706,69 @@ console.log("\n── 8h. ⚠ BO'SH MAYDON — TANLANGAN USULGA, NAQDGA EMAS ─
   const read = () => pg.evaluate(() => ({
     label: document.querySelector('label[for="pay-amount"]')?.textContent.trim() || null,
     val: document.querySelector("#pay-amount")?.value ?? null,
-    hint: [...document.querySelectorAll(".pay-modal-hint")].map((h) => h.textContent.trim()),
+    empty: document.querySelector(".pay-sum__empty")?.textContent.trim() || null,
     rows: [...document.querySelectorAll(".pay-sum__row")].map((r) => r.textContent.replace(/\s+/g, " ").trim()),
+    xs: document.querySelectorAll(".pay-sum__x").length,
     btn: [...document.querySelectorAll(".pay-type-btn")]
            .filter((b) => b.classList.contains("has-amount"))
            .map((b) => b.textContent.replace(/\s+/g, " ").trim()),
+    submit: !document.querySelector(".pay-modal-submit")?.disabled,
   }));
+  const put = async (v) => {
+    await pg.focus("#pay-amount");
+    for (let i = 0; i < 30; i++) {
+      if (await pg.$eval("#pay-amount", (el) => el.value === "")) break;
+      await pg.keyboard.press("End"); await pg.keyboard.press("Backspace");
+    }
+    if (v !== "") await pg.type("#pay-amount", v, { delay: 12 });
+    await new Promise((r) => setTimeout(r, 260));
+  };
+  const tap = async (name) => {
+    await pg.evaluate((n) => [...document.querySelectorAll(".pay-type-btn")]
+      .find((x) => new RegExp(n, "i").test(x.textContent))?.click(), name);
+    await new Promise((r) => setTimeout(r, 300));
+  };
 
-  /* Avval: hech narsa tanlanmagan — naqd bo'lishi TO'G'RI. */
+  /* ── a. Ochilishda: hech narsa yo'q, tugma yopiq ── */
   let v = await read();
-  v.rows.some((r) => /Naqd/i.test(r)) ? ok("boshda naqd — eski xatti-harakat saqlandi")
-    : no("boshda naqd bo'lishi kerak", JSON.stringify(v.rows));
+  v.rows.length === 0 ? ok("ochilishda hisob bo'sh") : no("hisob bo'sh bo'lishi kerak", JSON.stringify(v.rows));
+  v.submit ? no("«Sotish» yopiq bo'lishi kerak", "ochiq") : ok("«Sotish» yopiq");
+  /Summani kiriting/i.test(v.empty || "")
+    ? ok(`sabab aytiladi: «${v.empty}»`) : no("sabab yozilishi kerak", v.empty ?? "yo'q");
 
-  /* Endi Click tanlanadi va maydon BO'SH qoldiriladi. */
-  await pg.evaluate(() => [...document.querySelectorAll(".pay-type-btn")]
-    .find((x) => /Click/i.test(x.textContent))?.click());
-  await new Promise((r) => setTimeout(r, 400));
+  /* ── b. Click tanlanib summa yozilsa — qator CLICK bo'ladi ── */
+  await tap("Click");
+  await put("20000");
   v = await read();
-
-  v.val === "" ? ok("maydon bo'sh") : no("maydon bo'sh bo'lishi kerak", v.val);
-  /* ⚠ ASOSIY SHART: hisobda NAQD emas, CLICK turishi kerak. */
   v.rows.some((r) => /Click/i.test(r) && /20 ?000/.test(r))
     ? ok("hisobda «Click 20 000» — tanlangan usul")
     : no("hisobda Click bo'lishi kerak", JSON.stringify(v.rows));
   !v.rows.some((r) => /Naqd/i.test(r))
     ? ok("«Naqd» qatori YO'Q — ekran yolg'on gapirmaydi")
     : no("«Naqd» qolmasligi kerak", JSON.stringify(v.rows));
-  v.hint.some((h) => /Click/i.test(h))
-    ? ok("izoh ham Click deydi: " + v.hint.find((h) => /Click/i.test(h)))
-    : no("izohda Click bo'lishi kerak", JSON.stringify(v.hint));
   v.btn.some((b) => /Click/i.test(b))
     ? ok("summa Click tugmasida ko'rinadi") : no("Click tugmasida bo'lishi kerak", JSON.stringify(v.btn));
+  v.submit ? ok("summa kiritilgach «Sotish» ochildi") : no("«Sotish» ochilishi kerak", "yopiq");
 
-  /* Naqdga qaytsa — yana naqd. */
-  await pg.evaluate(() => [...document.querySelectorAll(".pay-type-btn")]
-    .find((x) => /Naqd/i.test(x.textContent))?.click());
-  await new Promise((r) => setTimeout(r, 400));
+  /* ── c. ✕ HAQIQATAN O'CHIRADI (do'kon egasining shikoyati) ── */
+  v.xs === 1 ? ok("qatorda ✕ bor") : no("bitta ✕ bo'lishi kerak", v.xs);
+  await pg.evaluate(() => document.querySelector(".pay-sum__x")?.click());
+  await new Promise((r) => setTimeout(r, 300));
   v = await read();
-  v.rows.some((r) => /Naqd/i.test(r)) ? ok("naqdga qaytsa — yana naqd")
-    : no("naqd bo'lishi kerak", JSON.stringify(v.rows));
+  v.rows.length === 0
+    ? ok("✕ bosilgach qator KETDI")
+    : no("✕ qatorni o'chirishi kerak", JSON.stringify(v.rows));
+  v.submit ? no("qator o'chgach «Sotish» yana yopilishi kerak", "ochiq") : ok("«Sotish» yana yopildi");
+  v.btn.length === 0 ? ok("tugmadagi belgi ham ketdi") : no("tugma belgisi qolmasligi kerak", JSON.stringify(v.btn));
+  v.val === "" ? ok("maydon ham bo'shadi") : no("maydon bo'shashi kerak", v.val);
+
+  /* ── d. Naqdga yozilsa — qator NAQD bo'ladi ── */
+  await tap("Naqd");
+  await put("20000");
+  v = await read();
+  v.rows.some((r) => /Naqd/i.test(r) && /20 ?000/.test(r))
+    ? ok("naqdga yozilsa — «Naqd 20 000»")
+    : no("naqd qatori bo'lishi kerak", JSON.stringify(v.rows));
   await pg.close();
 }
 

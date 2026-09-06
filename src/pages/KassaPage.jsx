@@ -36,7 +36,7 @@ import { getSettings } from "../lib/ek-hw-settings";
 const PaymentReceipt = lazy(() => import("../portal/PaymentReceipt"));
 import FacetFilter from "../components/ek/FacetFilter";
 import { KASSA_KEYS, keyLabel, resolve as resolveKey } from "../lib/ek-kassa-keys";
-import { settle, payType as payTypeOf, restFor, effective, savingsMax } from "../lib/ek-payment";
+import { settle, payType as payTypeOf, restFor, savingsMax } from "../lib/ek-payment";
 import { cashSuggestions } from "../lib/ek-cash";
 import * as display from "../lib/ek-display";
 import { spreadDiscount, roundingOffers, optimizeDiscount, cartRoom,
@@ -1575,26 +1575,40 @@ export default function KassaPage({ toast, refreshLowStock }) {
      sinov bilan qulflangan (`test/payment.test.mjs`). Sabab: bu
      raqamlar CHEKKA va KASSAGA tushadi, bir tiyin xato smena oxirida
      hisobni buzadi. */
-  /* ⚠ BO'SH MAYDON — TANLANGAN USULGA (V85). Jamg'arma bundan
-     mustasno: maydonni tanlash «mijoz jamg'armasidan to'laydi» degani
-     emas, qancha yechilishini kassir aytishi kerak (`ek-payment.js`). */
-  const payDefault = payFocus === "SAVINGS" ? "CASH" : payFocus;
-  const pay = useMemo(() => settle(effective(paid, total, payDefault), total),
-                      [paid, total, payDefault]);
+  /* ══ SUMMA KIRITILMASA — TO'LOV YO'Q (V86) ═══════════════════════
+
+     ⚠ ILGARI BO'SH MAYDON «HAMMASI NAQD» DEGANI EDI va bu qulaylik
+     deb qo'yilgan edi: odatiy chekda kassir hech narsa yozmasdan
+     «Sotish» ni bosardi.
+
+     Amalda esa u PUL HISOBINI BUZARDI. Hisobda «Naqd 20 000» degan
+     qator O'ZI paydo bo'lardi — kassir uni yozmagan, ✕ bilan
+     o'chirib ham bo'lmasdi (u `paid` da yo'q edi, ya'ni o'chiradigan
+     narsa yo'q). Click tanlangan bo'lsa ham naqd derdi. Natijada
+     yashikda bo'lmagan pul ko'rinardi va farq faqat smena
+     yopilganda chiqardi.
+
+     Endi qoida bitta va istisnosiz: PUL KIRITILMAGUNCHA TO'LOV
+     YO'Q. Hisob bo'sh turadi, «Sotish» yopiq.
+
+     ⚠ TO'LIQ NASIYA baribir mumkin va yo'li o'zgarmadi: naqdga `0`
+     yoziladi. Shunda `paid` bo'sh emas — kassir NIYATINI bildirgan. */
+  const pay = useMemo(() => settle(paid, total), [paid, total]);
 
   /**
    * Hech qayerga hech narsa yozilmaganmi.
    *
-   * ⚠ BU HOLAT ALOHIDA. Do'kon egasining talabi bilan maydon BO'SH
-   * ochiladi — kassir «108 000» ni o'chirib o'tirmaydi. Lekin bo'sh
-   * maydon «to'lanmadi» degani emas: hech narsa yozilmasa chek to'liq
-   * naqd bo'ladi (`effective`). Shu holatda placeholder o'sha summani
-   * ko'rsatadi va tugmada ham o'sha turadi.
+   * ⚠ Maydon BO'SH ochiladi (do'kon egasining talabi) — kassir
+   * «108 000» ni o'chirib o'tirmaydi. Placeholder chek summasini
+   * ko'rsatadi, lekin bu TAKLIF, yozilgan qiymat EMAS: kassir uni
+   * tasdiqlamaguncha hisobda hech narsa turmaydi va «Sotish» yopiq
+   * qoladi (V86).
+   *
+   * ⚠ «Tegilmagan» — «to'lanmagan» emas: naqdga `0` yozilgan chek
+   * ham `paid` ni to'ldiradi. Farq ataylab: `0` — kassirning ongli
+   * qarori (to'liq nasiya), bo'sh maydon esa hali qaror emas.
    */
   const payUntouched = Object.keys(paid).length === 0;
-
-  /** Tugmalarda ko'rsatiladigan summalar. */
-  const payShown = payUntouched ? { [payDefault]: total } : paid;
 
   /** Tanlangan usulning maydondagi qiymati. */
   const payValue = paid[payFocus] ?? "";
@@ -1858,10 +1872,11 @@ export default function KassaPage({ toast, refreshLowStock }) {
        kassir avval o'sha raqamni O'CHIRISHI kerak edi — navbat
        oldida ortiqcha ish.
 
-       ⚠ Bo'sh maydon «to'lanmadi» DEGANI EMAS: hech narsa
-       yozilmasa chek to'liq naqd bo'ladi (`effective`), placeholder
-       esa o'sha summani ko'rsatib turadi. Aks holda chalg'igan
-       kassir «Sotish» ni bosib butun chekni qarzga yozib qo'yardi. */
+       ⚠ BO'SH MAYDON — «TO'LANMADI» (V86). Ilgari u «hammasi naqd»
+       degani edi va hisobda kassir yozmagan «Naqd 20 000» qatori
+       o'zi paydo bo'lardi. Endi hisob bo'sh turadi va «Sotish»
+       yopiq: placeholder chek summasini ko'rsatadi, lekin bu
+       TAKLIF — kassir uni tasdiqlashi kerak. */
     setPaid({});
     setPayFocus("CASH");
     /* ⚠ Bayroq HAR CHEKDA tushadi: qolgani keyingi mijozning
@@ -1887,17 +1902,32 @@ export default function KassaPage({ toast, refreshLowStock }) {
   const creditPart = pay.credit;
   const creditOk   = creditPart <= 0 || !!customer;
 
+  /* ⚠ KIRITILMAGAN PUL — NASIYA EMAS (V86).
+
+     `settle` bo'sh maydonlarda butun summani nasiyaga yozadi — bu
+     hisobning to'g'ri javobi («qoldiq shuncha»), lekin ekran uchun
+     u YOLG'ON: kassir hali hech narsa kiritmadi, hech kimga qarz
+     bermadi. V86 gacha shu farq yo'q edi va oyna ochilishi bilanoq
+     «mijozni tanlang», nasiyasiz do'konda esa qizil «nasiya
+     o'chirilgan» chiqib turardi — kassir hech narsa qilmasidan
+     oldin xato qilgan bo'lib chiqardi.
+
+     Shuning uchun nasiyaga oid HAMMA ko'rsatma shu bitta shartdan
+     boshlanadi: pul kiritilgan bo'lsa va qoldiq qolsa — o'shanda
+     nasiya. */
+  const creditReal = creditPart > 0 && !payUntouched;
+
   /* ⚠ NASIYA O'CHIRILGAN DO'KONDA qoldiq QOLMASLIGI shart: u yerda
      yozilmagan qismni yozadigan joy yo'q. Ilgari bu holat umuman
      bo'lmasdi — «Aralash» da qoldiq nolga tenglashtirilardi. */
-  const creditBlocked = creditPart > 0 && !creditEnabled;
+  const creditBlocked = creditReal && !creditEnabled;
 
   /* ⚠ MIJOZ TANLAGICHNING O'ZI ISHORA QILADI (do'kon egasining
      talabi). Ilgari ogohlantirish to'lov ustunida — mijoz tanlagichdan
      ikki ustun narida — chiqardi va kassir «nima qilishim kerak?» deb
      ekranni qidirardi. Endi belgi aynan bosilishi kerak bo'lgan
      joyda turadi. */
-  const needCustomer = creditPart > 0 && !creditBlocked && !customer;
+  const needCustomer = creditReal && !creditBlocked && !customer;
 
   /* ══ TO'LOV OYNASI O'ZINI O'ZI SIG'DIRADI (V66) ══════════════════════
      Do'kon egasi: «scrol hech qachon bo'lmasin, nima bo'lganda ham».
@@ -1942,8 +1972,15 @@ export default function KassaPage({ toast, refreshLowStock }) {
      yo'naltirilgan bo'lsa: o'shanda pulning manzili bor. */
   const overOk = pay.over === 0 || overToSavings;
 
+  /* ⚠ SUMMA KIRITILMAGUNCHA SOTIB BO'LMAYDI (V86). Bo'sh maydon
+     «hammasi naqd» degani emas: kassir hech narsa aytmagan va tizim
+     uning o'rniga qaror qabul qila olmaydi.
+
+     ⚠ `payUntouched` — «bironta maydonga tegilmadi», «to'landi» emas.
+     Naqdga `0` yozilgan to'liq nasiya chekida u `false` bo'ladi va
+     sotuv ochiq qoladi: kassir niyatini bildirgan. */
   const canSubmit = cart.length > 0 && !processing
-                    && creditOk && !creditBlocked && overOk;
+                    && creditOk && !creditBlocked && overOk && !payUntouched;
 
   /* ── Sotuvni yakunlash ────────────────────────────────────── */
   /** Sotuvning O'ZI — tugmaning holati pastdagi `handleSubmit` da. */
@@ -3388,8 +3425,8 @@ export default function KassaPage({ toast, refreshLowStock }) {
                         {savingsLeft > 0 ? (
                           <>
                             <span className="kbd">{keyLabel("paySavings")}</span>{" "}
-                            {payShown.SAVINGS
-                              ? t("savings.inPay", { n: money(payShown.SAVINGS) })
+                            {paid.SAVINGS
+                              ? t("savings.inPay", { n: money(paid.SAVINGS) })
                               : t("kbd.paySavings")}
                           </>
                         ) : t("savings.empty")}
@@ -3475,7 +3512,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
                   <button
                     key={key}
                     className={`pay-type-btn ${payFocus === key ? "active" : ""}${
-                      payShown[key] ? " has-amount" : ""}`}
+                      paid[key] ? " has-amount" : ""}`}
                     style={{ "--pay-color": color }}
                     aria-pressed={payFocus === key}
                     onClick={() => focusMethod(key)}
@@ -3525,22 +3562,6 @@ export default function KassaPage({ toast, refreshLowStock }) {
                       qolgani yechiladi va kassir buni OLDINDAN
                       bilishi kerak. */}
                   {t("savings.max", { n: money(payMax ?? savingsLeft) })}
-                </div>
-              )}
-              {/* Bo'sh maydonning ma'nosini BIR GAPDA aytamiz —
-                  ro'yxatda «Naqd 108 000» chiqqanida kassir «men-ku
-                  hech narsa yozmadim» deb qolmasin. */}
-              {payUntouched && (
-                <div className="pay-modal-hint">
-                  <i className="fa-solid fa-circle-info" style={{ marginRight: 4 }} aria-hidden="true" />
-                  {/* ⚠ QAYSI USUL EKANI AYTILADI (V85). Ilgari matn
-                      «hammasi naqd» deb qotib turardi va Click
-                      tanlangan holatda ham shuni yozardi — ekran
-                      yolg'on gapirardi. */}
-                  {t("kassa.emptyIsAll", {
-                    method: payMethods.find((m) => m.key === payDefault)?.label
-                            || t("enum.payment.CASH"),
-                  })}
                 </div>
               )}
               {/* ⚠ TUGMALAR CHEKKA QARAB QURILADI (V76), qotib qolgan
@@ -3666,7 +3687,13 @@ export default function KassaPage({ toast, refreshLowStock }) {
 
                 {/* ⚠ QOLGANI — AVTOMATIK NASIYA. Kassir uni yozmaydi,
                     tizim o'zi hisoblaydi va shu yerda ko'rsatadi. */}
-                {creditPart > 0 && (
+                {/* ⚠ FAQAT PUL KIRITILGACH (V86). Hech narsa
+                    yozilmagan holatda `settle` butun chekni nasiyaga
+                    yozadi — bu hisobning to'g'ri javobi, lekin ekranda
+                    «Nasiya 20 000» degan qator kassirni chalg'itardi:
+                    u hali hech narsa aytmagan. O'rniga «Summani
+                    kiriting» deb aytiladi. */}
+                {creditReal && (
                   <div className={`pay-sum__row pay-sum__row--credit ${creditBlocked ? "is-blocked" : ""}`}>
                     <span className="pay-sum__name">
                       <i className="fa-solid fa-hand-holding-dollar" aria-hidden="true" />{" "}
@@ -3676,7 +3703,23 @@ export default function KassaPage({ toast, refreshLowStock }) {
                   </div>
                 )}
 
-                {pay.parts.length === 0 && creditPart === 0 && (
+                {/* ⚠ NEGA «SOTISH» YOPIQ — AYNAN SHU YERDA AYTILADI
+                    (V86). Ikki sabab bilan hisobning ichida:
+
+                    1. Ilgari xuddi shu joyda kassir yozmagan «Naqd
+                       20 000» qatori turardi. Endi o'sha o'rinda
+                       nima qilish kerakligi yozilib turadi — kassir
+                       ko'zini boshqa joyga ko'chirmaydi.
+                    2. Maydon ostidagi `pay-modal-hint` kichik
+                       ekranda (`data-fit="2"`) YASHIRILADI — ya'ni
+                       aynan joy tor bo'lganda tushuntirish yo'qolardi.
+                       `pay-sum__empty` hech qachon yashirilmaydi. */}
+                {payUntouched && (
+                  <div className="pay-sum__empty">{t("kassa.needAmount")}</div>
+                )}
+                {/* Chek summasi nol bo'lgan (hammasi chegirmaga ketgan)
+                    kamdan-kam holat: yozadigan narsa yo'q. */}
+                {!payUntouched && pay.parts.length === 0 && creditPart === 0 && (
                   <div className="pay-sum__empty">{t("kassa.payEmpty")}</div>
                 )}
               </div>

@@ -75,43 +75,6 @@ const rank = (t) => {
   return i < 0 ? ORDER.length : i;
 };
 
-/**
- * Hech narsa yozilmagan chek — TO'LIQ NAQD.
- *
- * ⚠ NEGA SHUNDAY. Do'kon egasining talabi bilan summa maydoni endi
- * BO'SH ochiladi: kassir «108 000» ni avval o'chirib, keyin o'zining
- * raqamini yozishi kerak emas. Lekin bo'sh maydon «hech kim hech
- * narsa to'lamadi» degani EMAS: odatiy chekda mijoz butun summani
- * naqd beradi va kassir hech narsa yozmasdan «Sotish» ni bosadi.
- *
- * Agar bo'sh maydon nol deb olinsa, o'sha odatiy chek BUTUNLAY
- * NASIYAGA yozilardi — kassir buni sezmasdi ham. Shuning uchun:
- * hech qayerga hech narsa yozilmagan bo'lsa, chek to'liq naqd.
- * Maydonning placeholder'i aynan shu summani ko'rsatib turadi.
- *
- * ⚠ TO'LIQ NASIYA baribir mumkin: naqdga `0` yoziladi. Shunda
- * ro'yxat bo'sh emas va bu qoida ishlamaydi.
- */
-export function effective(entered, total, method = CASH) {
-  if (entered && Object.keys(entered).length > 0) return entered;
-  /* ⚠ TANLANGAN USULGA (V85), har doim naqdga EMAS.
-
-     Ilgari bu yerda `CASH` qotib turardi va kassir Click tugmasini
-     bosib, maydonni bo'sh qoldirsa, chek NAQD bo'lib yozilardi.
-     Ekranda «CLICK UCHUN SUMMA» yozuvi turib, hisobda «Naqd 20 000»
-     chiqardi va «Sotish» ochiq edi.
-
-     Pul esa Click orqali kelgan: yashikda 20 000 ortiqcha ko'rinardi,
-     Click tushumi esa shuncha kam. Kassir hech narsa sezmasdi —
-     farq faqat smena yopilganda, qaysi chek ekani topib bo'lmaydigan
-     paytda chiqardi.
-
-     ⚠ JAMG'ARMA BU QOIDAGA KIRMAYDI va chaqiruvchi uni `CASH` ga
-     almashtiradi: maydonni tanlash «mijoz jamg'armasidan to'laydi»
-     degani emas. Jamg'arma — mijozning puli va undan qancha
-     yechilishini kassir AYTISHI kerak; taxmin qilib bo'lmaydi. */
-  return { [method || CASH]: Math.max(0, Math.round(Number(total) || 0)) };
-}
 
 const num = (v) => {
   const n = Number(v);
