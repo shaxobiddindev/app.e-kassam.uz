@@ -36,6 +36,7 @@ const PaymentReceipt = lazy(() => import("../portal/PaymentReceipt"));
 import FacetFilter from "../components/ek/FacetFilter";
 import { KASSA_KEYS, keyLabel, resolve as resolveKey } from "../lib/ek-kassa-keys";
 import { settle, payType as payTypeOf, restFor, effective } from "../lib/ek-payment";
+import { cashSuggestions } from "../lib/ek-cash";
 import { spreadDiscount, roundingOffers, budgetOffers, cartRoom,
          cartLossRoom, discountVerdict } from "../lib/ek-discount";
 import { useScanner } from "../hooks/useScanner";
@@ -2090,6 +2091,9 @@ export default function KassaPage({ toast, refreshLowStock }) {
         lineMinus: () => { if (picked) { endQtyTyping(); updateQty(picked.id, -1); } },
         linePrice: () => picked && picked.discountAllowed !== false && setPriceModal(picked),
         lineDrop:  () => picked && removeFromCart(picked.id),
+        /* ⚠ `restoreUndo` O'ZI hech narsa qilmaydi, agar tiklanadigan
+           narsa bo'lmasa — shuning uchun qo'shimcha shart yo'q. */
+        undo:      restoreUndo,
         drawer:    kickDrawer,
         reprint,
         pay:       () => { if (showPayModal) handleSubmit(); else openPayModal(); },
@@ -3225,8 +3229,15 @@ export default function KassaPage({ toast, refreshLowStock }) {
                   {t("kassa.emptyIsCash")}
                 </div>
               )}
+              {/* ⚠ TUGMALAR CHEKKA QARAB QURILADI (V76), qotib qolgan
+                  50 000 / 100 000 / 200 000 EMAS. Eski ro'yxat aynan
+                  kerak bo'lgan paytda kerak bo'lmagan sonni
+                  ko'rsatardi: 8 000 lik chekda uchalasi ham juda
+                  katta, 420 000 likda uchalasi ham kichik edi va
+                  kassir baribir qo'lda yozardi. Mantiq `ek-cash.js`
+                  da — u SINALADIGAN qaror. */}
               <div className="ek-quick-cash">
-                {[50000, 100000, 200000].map((v) => (
+                {cashSuggestions(restFor(paid, total, payFocus)).map((v) => (
                   <button key={v} type="button" onClick={() => setPayValue(String(v))}>
                     {v.toLocaleString("uz-UZ")}
                   </button>

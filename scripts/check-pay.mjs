@@ -427,6 +427,68 @@ await page.close();
    aylanishi TO'G'RI — 30 ta tovarni ekranga sig'dirib bo'lmaydi.
    To'silishi kerak bo'lgani — OYNANING aylanishi.
    ══════════════════════════════════════════════════════════════════════ */
+/* ══ 8c2. EKRANDA BUZUQ QIYMAT BO'LMASIN (V76) ════════════════════════
+
+   ⚠ HAQIQIY XATO shu yerdan topilgan. Smena javobi kutilmagan shaklda
+   kelganda (bu sinovdagi mock aynan shunday qaytaradi — bo'sh massiv)
+   `new Date(undefined).toLocaleTimeString()` ekranga «Invalid Date»
+   deb YOZARDI va kassir tepada shu yozuvni ko'rib turardi. Sahifada
+   JS xatosi tushmasdi, shuning uchun birorta tekshiruv bundan xabar
+   bermasdi.
+
+   Endi butun kassa ekrani buzuq qiymatlarga qaraladi: noma'lum vaqt
+   ekranga son yoki inglizcha xato matni bo'lib chiqmasligi kerak.
+   ══════════════════════════════════════════════════════════════════════ */
+console.log("\n── 8c2. Ekranda buzuq qiymat ──");
+{
+  const pg = await openKassa();
+  const junk = await pg.evaluate(() => {
+    const txt = document.body.innerText || "";
+    return ["Invalid Date", "NaN", "undefined", "[object Object]"]
+      .filter((w) => txt.includes(w));
+  });
+  junk.length === 0 ? ok("ekranda «Invalid Date» / «NaN» / «undefined» yo'q")
+                    : no("ekranda buzuq qiymat bor", junk.join(", "));
+  await pg.close();
+}
+
+/* ══ 8d. NAQD TUGMALARI CHEKKA QARAB QURILADI (V76) ═══════════════════
+
+   ⚠ Ilgari bu yerda qotib qolgan uchta son turardi: 50 000, 100 000,
+   200 000. Chek 100 000 bo'lganda ular hech qanday foyda bermasdi —
+   birinchisi to'lovni YOPA OLMASDI (summadan kichik), ikkinchisi
+   «Qolganini» tugmasini takrorlardi. Ya'ni to'rtta tugmadan bittasi
+   ishlardi.
+   ══════════════════════════════════════════════════════════════════════ */
+console.log("\n── 8d. Naqd tugmalari ──");
+{
+  /* `ONE` — 100 000 so'mlik bitta tovar, ya'ni chek AYNAN yumaloq. */
+  const pg = await openKassa();
+  await pg.evaluate(() => [...document.querySelectorAll("button")]
+    .find((b) => /Sotish|To'lov|Tolov/i.test(b.textContent))?.click());
+  await new Promise((r) => setTimeout(r, 700));
+
+  const cash = await pg.$$eval(".ek-quick-cash button",
+    (n) => n.map((x) => x.textContent.replace(/\s/g, "")));
+  /* Oxirgisi — «Qolganini», qolgani takliflar. */
+  const sug = cash.slice(0, -1);
+
+  sug.length > 0 ? ok(`taklif bor: ${sug.join(" · ")}`)
+                 : no("yumaloq chekda naqd tugmalari YO'QOLDI", cash.join(" · "));
+
+  sug.every((v) => Number(v.replace(/\D/g, "")) > 100000)
+    ? ok("har bir taklif chekdan KATTA — to'lovni yopa oladi")
+    : no("chekni yopa olmaydigan taklif bor", sug.join(" · "));
+
+  !sug.some((v) => v.replace(/\D/g, "") === "100000")
+    ? ok("summaning O'ZI takrorlanmaydi — «Qolganini» tugmasi bor")
+    : no("aniq summa ikki marta chiqdi", sug.join(" · "));
+
+  sug.length <= 3 ? ok(`taklif soni uchtadan oshmadi (${sug.length})`)
+                  : no("juda ko'p tugma — qator ikkinchi satrga tushadi", String(sug.length));
+  await pg.close();
+}
+
 console.log("\n── 9. Scrol bo'lmasin — har ekranda ──");
 
 const MANY = Array.from({ length: 9 }, (_, i) => ({

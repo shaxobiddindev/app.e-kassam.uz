@@ -20,11 +20,28 @@ import { securityApi } from "../api";
 import { Modal } from "../components";
 import { Field } from "./ui";
 import { money } from "../utils";
+import { time as fmtTime, dateTime } from "../lib/ek-format";
 import { paymentLabel } from "../lib/ek-labels";
 import { printShiftReport } from "../lib/ek-hardware";
 import { isDesktop } from "../lib/ek-desktop";
 import { useBadge } from "../context/BadgeProvider";
 import { useOnline } from "../hooks/useOnline";
+
+/**
+ * Smena ochilganidan beri qancha vaqt o'tdi: «3 s 36 d».
+ *
+ * ⚠ Sana noto'g'ri bo'lsa `null` — «Invalid Date» yoki «NaN s» EMAS.
+ * Bu butun fayl bo'ylab bir xil qoida: noma'lum vaqt ekranga son
+ * bo'lib chiqmasligi kerak.
+ */
+function elapsed(iso) {
+  if (!iso) return null;
+  const ms = Date.now() - new Date(iso).getTime();
+  if (!Number.isFinite(ms) || ms < 0) return null;
+  const min = Math.floor(ms / 60000);
+  const h = Math.floor(min / 60);
+  return h > 0 ? `${h} ${t("shift.h")} ${min % 60} ${t("shift.m")}` : `${min} ${t("shift.m")}`;
+}
 
 /** Kiritilgan matndan son — bo'sh bo'lsa 0. */
 const num = (v) => {
@@ -189,7 +206,12 @@ export default function ShiftBar({ toast, compact = false, onState }) {
     }
   };
 
-  const fmtT = (iso) => (iso ? new Date(iso).toLocaleString("uz-UZ", { dateStyle: "short", timeStyle: "short" }) : "-");
+  /* ⚠ TIZIMNING O'Z formatlagichi, `toLocaleString` EMAS. Ikkita
+     sabab: (1) u noto'g'ri sanada «Invalid Date» deb YOZADI —
+     `dateTime` esa «—» beradi; (2) `uz-UZ` locale brauzerga qarab
+     boshqa-boshqa ko'rinish berardi va u tizimdagi qolgan sanalarga
+     (`dd-mm-yyyy hh:mm`) mos kelmasdi. */
+  const fmtT = dateTime;
 
   if (shift === undefined) return null;
 
@@ -393,9 +415,22 @@ export default function ShiftBar({ toast, compact = false, onState }) {
      tugma.
      ══════════════════════════════════════════════════════════════════ */
   if (compact) {
-    const at = shift
-      ? new Date(shift.openedAt).toLocaleTimeString("uz-UZ", { hour: "2-digit", minute: "2-digit" })
-      : null;
+    /* ⚠⚠ «INVALID DATE» SHU YERDA CHIQARDI. `shift` — server javobi va
+       u kutilmagan shaklda kelishi mumkin (bo'sh massiv, sanasiz
+       obyekt); `new Date(undefined).toLocaleTimeString()` esa
+       ekranga «Invalid Date» deb yozardi. Kassir tepada shu yozuvni
+       ko'rib turardi va u hech narsani anglatmasdi.
+
+       `time()` bunday holatda «—» qaytaradi — ya'ni «ma'lum emas»
+       degan ma'no ekranda TO'G'RI ko'rinadi. */
+    const at = shift ? fmtTime(shift.openedAt) : null;
+
+    /* ⚠ QANCHA VAQT O'TGANI — smenaning eng foydali raqami.
+       Ochilish soati «08:42» o'zi savolga javob bermaydi: kassir
+       «hozir soat nechada?» ni ham bilishi kerak. Davomiylik esa
+       to'g'ridan-to'g'ri javob va u uzoq smenani (unutib qo'yilganini)
+       darrov ko'rsatadi. */
+    const dur = shift ? elapsed(shift.openedAt) : null;
     const label = shift ? `${t("shift.openSince")} ${at}` : t("shift.closedShort");
 
     return (
@@ -409,6 +444,10 @@ export default function ShiftBar({ toast, compact = false, onState }) {
           <i className={`fa-solid ${shift ? "fa-circle-check" : "fa-triangle-exclamation"}`}
              aria-hidden="true" />
           <span className={shift ? "ek-num" : ""}>{shift ? at : t("shift.closedShort")}</span>
+          {/* ⚠ Davomiylik ALOHIDA element emas, o'sha tugmaning
+              ichida: kassa ekranida har qo'shimcha qutichaning narxi
+              — tovarlar ro'yxatidan o'g'irlangan balandlik. */}
+          {dur && <span className="shift-chip__dur ek-num">{dur}</span>}
         </button>
 
         {panel && shift && (
@@ -448,7 +487,7 @@ export default function ShiftBar({ toast, compact = false, onState }) {
         <span style={{ fontSize: 13, fontWeight: 700, color: shift ? "var(--green-d, #166534)" : "#92400e" }}>
           <i className={`fa-solid ${shift ? "fa-circle-check" : "fa-triangle-exclamation"}`} aria-hidden="true" />{" "}
           {shift
-            ? `${t("shift.openSince")} ${new Date(shift.openedAt).toLocaleTimeString("uz-UZ", { hour: "2-digit", minute: "2-digit" })}`
+            ? `${t("shift.openSince")} ${fmtTime(shift.openedAt)}`
             : t("shift.closedWarn")}
         </span>
         <span style={{ display: "flex", gap: 8 }}>

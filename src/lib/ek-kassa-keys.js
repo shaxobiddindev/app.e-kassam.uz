@@ -64,6 +64,13 @@ export const KASSA_KEYS = [
   { id: "lineMinus", combo: "-",         scope: "cart", label: "kbd.lineMinus" },
   { id: "linePrice", combo: "Enter",     scope: "cart", label: "kbd.linePrice" },
   { id: "lineDrop",  combo: "Delete",    scope: "cart", label: "kbd.lineDrop" },
+  /* ⚠ BEKOR QILISH allaqachon bor edi, lekin FAQAT sichqoncha bilan:
+     o'chirilgandan keyin chiqadigan qalqib chiquvchi yozuvdagi tugma.
+     Kassirning qo'li klaviaturada bo'ladi va u tugmaga yetguncha
+     yozuv o'z vaqtini o'tab yo'qolardi — ya'ni imkoniyat bor-u,
+     amalda yetib bo'lmasdi. `Ctrl+Z` — butun dunyoda bitta ma'noli
+     yorliq, uni o'rganish kerak emas. */
+  { id: "undo",      combo: "Ctrl+Z",    scope: "cart", label: "kbd.undo" },
   /* ⚠ «0-9» — HUJJAT UCHUN QATOR, `resolve` unga hech qachon mos
      kelmaydi (uch belgili «tugma» yo'q). Raqamlar `KassaPage` da
      jadvaldan OLDIN tutiladi (`ek-qty-type.js`): ular yorliq emas,
