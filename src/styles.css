@@ -5580,7 +5580,6 @@ button.stk__c:hover { background: var(--bg-hover); }
 /* Naqdsiz usuldan ortiqcha — sariq, qizil EMAS: bu xato emas,
    mijozning puli va uning yo'li bor (jamg'arma). Qizil qator
    kassirni «nimadir buzildi» deb o'ylashga majbur qilardi. */
-.pay-sum__row--over { color: var(--fg-warning); }
 
 /* ══════════════════════════════════════════════════════════════════════
    PRINTER BELGISI (V79)

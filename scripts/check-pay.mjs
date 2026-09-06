@@ -383,6 +383,23 @@ s.warns.length ? ok("ogohlantirish: " + s.warns[0].replace(/\s+/g, " ")) : no("o
 s.submit ? no("«Sotish» yopilishi kerak", "ochiq") : ok("«Sotish» yopiq");
 /{|}/.test(s.warns.join(" ")) ? no("yozuvda to'ldirilmagan {…} qolgan", s.warns.join(" ")) : ok("yozuvda {…} qolmagan");
 
+/* ⚠⚠ QATOR OLIB TASHLANDI, RAQAM QOLDI (V95).
+
+   Do'kon egasi «Naqdsiz usuldan ortiq» qatorini olib tashlashni
+   so'radi — u qizil ogohlantirish bilan bir xil shartda, bir xil
+   raqamni ko'rsatardi.
+
+   Bu ikki band shu ikkisini birga qulflaydi: qator QAYTA
+   QO'SHILMASIN, lekin summa ekrandan YO'QOLIB HAM KETMASIN. Ikkinchisi
+   birinchisidan muhimroq: ortiqcha pulning miqdorini ko'rsatmasdan
+   sotuvni to'sish — kassirni sababsiz qamab qo'yish bo'lardi. */
+s.rows.some((r) => /ortiq/i.test(r.name || ""))
+  ? no("hisobdagi «ortiq» qatori olib tashlangan bo'lishi kerak", "bor")
+  : ok("hisobda takroriy «ortiq» qatori yo'q");
+/471\s?010|400\s?000|\d/.test(s.warns.join(" ")) && /\d[\d\s]{4,}/.test(s.warns.join(" "))
+  ? ok("ortiqcha summasi ogohlantirishda ko'rinadi: " + s.warns.join(" ").replace(/\s+/g, " "))
+  : no("ogohlantirishda summa bo'lishi kerak", s.warns.join(" "));
+
 console.log("\n── 8. Klaviatura: F1..F4 usulni tanlaydi ──");
 await pick("Click"); await type("");
 for (const [key, name] of [["F1", "Naqd"], ["F2", "Karta"], ["F3", "Click"], ["F4", "Payme"]]) {
@@ -1066,7 +1083,6 @@ console.log("\n── 8k. ⚠ MIJOZDAN JAMI (V94) ──");
       val: r ? Number(r.querySelector("b").textContent.replace(/\D/g, "")) : null,
       rows: [...document.querySelectorAll(".pay-sum__row")]
         .filter((x) => !x.classList.contains("pay-sum__row--taken")
-                    && !x.classList.contains("pay-sum__row--over")
                     && !x.classList.contains("pay-sum__row--change")
                     && !x.classList.contains("pay-sum__row--credit"))
         .map((x) => Number(x.querySelector("b")?.textContent.replace(/\D/g, "") || 0)),

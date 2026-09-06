@@ -3806,21 +3806,26 @@ export default function KassaPage({ toast, refreshLowStock }) {
                   </div>
                 )}
 
-                {/* ⚠ NAQDSIZ USULDAN ORTIQCHA (V78). Terminal naqd
-                    qaytarmaydi, ya'ni bu pulni mijozga qo'lga berib
-                    bo'lmaydi — yagona to'g'ri manzili jamg'arma.
-                    Ilgari u shunchaki «xato» deb turardi va kassirda
-                    hech qanday yo'l yo'q edi. */}
-                {pay.over > 0 && !overToSavings && (
-                  <div className="pay-sum__row pay-sum__row--over">
-                    <span className="pay-sum__name">
-                      <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />{" "}
-                      {t("kassa.overNonCash")}
-                    </span>
-                    <b className="ek-num">{money(pay.over)}</b>
-                  </div>
-                )}
+                {/* ⚠ «NAQDSIZ USULDAN ORTIQ» QATORI OLIB TASHLANDI (V95).
+                    Do'kon egasi so'radi: «bu narsa nega kerak, muhim
+                    bo'lmasa olib tashla».
 
+                    U V78 da qo'shilgan edi va o'shanda yagona xabar
+                    edi. Keyin uning yoniga yana ikkitasi qo'shilib
+                    ketdi — HAMMASI BIR XIL SHART bilan
+                    (`pay.over > 0 && !overToSavings`) va bir xil
+                    raqamni ko'rsatib:
+
+                      · qizil ogohlantirish «Ortiqcha 89 010 so'm.
+                        Qaytim faqat naqddan bo'ladi.» — u SABABNI ham
+                        aytadi va silkiydi;
+                      · «Qaytim jamg'armaga» tugmasi — u YO'L
+                        ko'rsatadi.
+
+                    Ya'ni qator uchinchi nusxa edi: yangi hech narsa
+                    aytmasdi, faqat joy egallardi. Qolgan ikkitasi
+                    o'rnida — sotuv baribir to'silgan (`overOk`) va
+                    kassir nima qilishni ko'rib turadi. */}
                 {/* ⚠ QAYTIM — faqat NAQDDAN chiqadi: kassir qo'lga
                     beradigan pul aynan shu. */}
                 {(pay.change > 0 || overToSavings) && (

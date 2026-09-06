@@ -1200,7 +1200,6 @@ export default {
   "kbd.topUp": "Пополнить депозит клиента",
   "kbd.lineQty": "Выбранный товар: ввести количество цифрами",
   "savings.empty": "Накоплений нет",
-  "kassa.overNonCash": "Сверх суммы (безнал)",
   "kassa.takenTotal": "Итого от клиента",
   "savings.short": "Депозит клиента",
   "savings.pickHint": "На чей депозит вносятся деньги — выберите клиента",
