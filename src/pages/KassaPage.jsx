@@ -26,6 +26,7 @@ import * as cartStore from "../lib/ek-cart-store";
 import { PAYMENT_TYPE, paymentLabel } from "../lib/ek-labels";
 import { shortDate, time } from "../lib/ek-format";
 import * as due from "../lib/ek-due";
+import { sfx } from "../lib/ek-sound";
 import { useLoading } from "../lib/use-loading";
 import Modal from "../components/Modal";
 import { PhoneField } from "../components/ek/EkFields";
@@ -1087,7 +1088,16 @@ export default function KassaPage({ toast, refreshLowStock }) {
       if (local) { addToCart(local, 1); return; }
     }
 
-    // Xato ovozi emas, taklif (06-APP-KASSIR.md).
+    /* ⚠ AYNAN SHU VOQEA UCHUN OVOZ BOR (V89). Kassir skanerlaganda
+       ekranga QARAMAYDI — u tovarga va mijozga qaraydi. Topilmagan
+       barkod ekranda jimgina o'tib ketar, kassir esa keyingisini
+       skanerlashda davom etardi va buni faqat mijoz ketganda
+       payqardi.
+
+       ⚠ Bu XATO ovozi emas, OGOHLANTIRISH: tovar shunchaki
+       bazada yo'q, kassir noto'g'ri ish qilmadi. */
+    sfx("SCAN_MISS");
+    // Ekranda esa — xato emas, taklif (06-APP-KASSIR.md).
     toast.info(t("kassa.barcodeNotFound", { code, section: t("products.title") }));
   };
 
@@ -2197,6 +2207,11 @@ export default function KassaPage({ toast, refreshLowStock }) {
       }));
     }
 
+    /* ⚠ ANIQ VOQEA, toast emas (V89). Chek yopilishi — kassirning
+       kunidagi yagona «tugadi» lahzasi va u boshqa hamma narsadan
+       farqli eshitilishi kerak: kassir mijozga qaragan holda ham
+       chek o'tganini biladi. */
+    sfx("SALE_DONE");
     setFinish({ phase: "done", total: money(snapshot.total), receiptNo,
                 note: snapshot.toSavings > 0 ? t("savings.finishNote", { n: money(snapshot.toSavings) }) : null });
     if (refreshLowStock) refreshLowStock();

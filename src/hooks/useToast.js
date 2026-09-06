@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import { sfx, fromToast } from "../lib/ek-sound";
 
 /* ══════════════════════════════════════════════════════════════════════════
    Toast — xabarlar navbati.
@@ -40,6 +41,21 @@ export function useToast() {
   const seq = useRef(0);
 
   const showToast = useCallback((msg, type = "success") => {
+    /* ══ OVOZ SHU YERGA ULANADI (V89) ═══════════════════════════════
+       ⚠ ILOVADA 138 TA `toast.*` CHAQIRUVI BOR va ularning bittasiga
+       ham tegilmadi: hammasi shu funksiyadan o'tadi. Chaqiruvlarga
+       voqea nomi qo'shish katta diff va katta regressiya xavfi
+       bo'lardi, foydasi esa kichik — toast baribir faqat OG'IRLIKNI
+       biladi («xato» / «muvaffaqiyat»).
+
+       Aynan qaysi voqea bo'lgani muhim bo'lgan bir nechta joyda
+       (`SALE_DONE`, `SCAN_MISS`, `OFFLINE`…) `sfx()` qo'lda
+       chaqiriladi.
+
+       ⚠ `setToasts` DAN OLDIN va uning ICHIDA emas: yangilovchi
+       funksiya React tomonidan ikki marta chaqirilishi mumkin
+       (StrictMode) va ovoz ikki marta chiqardi. */
+    sfx(fromToast(type));
     setToasts((prev) => {
       const now = Date.now();
       const at = prev.findIndex((x) => x.msg === msg && x.type === type);

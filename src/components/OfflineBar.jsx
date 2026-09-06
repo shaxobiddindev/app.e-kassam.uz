@@ -2,6 +2,7 @@ import { useT } from "../lib/ek-i18n";
 import { useEffect, useState } from "react";
 import * as queue from "../lib/ek-offline";
 import { money, time } from "../lib/ek-format";
+import { sfx } from "../lib/ek-sound";
 
 /**
  * Oflayn / sinxronizatsiya tasmasi.
@@ -22,12 +23,24 @@ export default function OfflineBar() {
 
   useEffect(() => {
     let prevPending = 0;
+    let prevOnline = true;
     return queue.subscribe((s) => {
       // Navbat bo'shadi va oldin to'la edi → "yuborildi" holatini ko'rsatamiz
       if (prevPending > 0 && s.pending === 0 && s.online) {
         setJustSynced(prevPending);
         setTimeout(() => setJustSynced(0), 4000);
+        /* Standart bo'yicha JIM: bu quvonchli, lekin shoshilinch
+           bo'lmagan xabar va uni har uzilishdan keyin eshitish shart
+           emas. Kerak bo'lsa sozlamadan yoqiladi. */
+        sfx("SYNCED");
       }
+      /* ⚠ UZILISH — KASSIR BILISHI SHART BO'LGAN VOQEA. Chek endi
+         navbatga tushadi va serverga keyin ketadi; buni sezmagan
+         kassir «chek chiqmadi» deb ikkinchi marta sotib yuborardi.
+         Yuqoridagi qator faqat ekranga yozadi, ekranga esa u
+         qaramaydi. */
+      if (prevOnline && !s.online) sfx("OFFLINE");
+      prevOnline = s.online;
       prevPending = s.pending;
       setState(s);
     });

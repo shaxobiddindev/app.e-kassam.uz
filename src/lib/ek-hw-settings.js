@@ -36,6 +36,19 @@ export const DEFAULTS = {
      tugma bosilishida `localStorage` ga bekorga yozardi — sekin
      monoblokda bu sezilardi. */
   customerDisplay: false,
+
+  /* ══ OVOZLI BILDIRISHNOMA (V89) ═══════════════════════════════════
+     ⚠ NEGA APPARAT SOZLAMASI, do'kon sozlamasi EMAS. Bir do'konning
+     zaldagi kassasi shovqinli joyda, ofisdagisi jim xonada turadi —
+     ovoz balandligi QURILMANING xususiyati. Server tomonda terminal
+     registri ham yo'q (`Shift.terminal_id` — erkin satr), ya'ni buni
+     bazaga yozish yangi jadval va yangi identifikatsiya talab
+     qilardi. Ustiga-ustak sozlama TARMOQSIZ o'qilishi kerak: kassa
+     uzilishda ham ishlaydi.
+
+     `events` — faqat STANDARTDAN farqli voqealar (`ek-sound.js`
+     dagi `SFX[...].on` standart). Yozuv yo'q = standart. */
+  sound: { on: true, volume: 0.7, events: {} },
 };
 
 export function getSettings() {

@@ -11,6 +11,7 @@ import { FISCAL_UI } from "../config";
 import UpdatePanel from "../components/UpdatePanel";
 import TelegramPanel from "../components/TelegramPanel";
 import HardwareSettings from "../components/HardwareSettings";
+import SoundSettings from "../components/SoundSettings";
 import ScaleSettings from "../components/ScaleSettings";
 import Select from "../components/ek/Select";
 import { DEFAULT_NEAR_EXPIRY_DAYS } from "../lib/ek-expiry";
@@ -635,6 +636,12 @@ export default function SettingsPage({ toast }) {
           </button>
         </Row>
       </Section>
+
+      {/* ⚠ OVOZ — APPARATLARDAN OLDIN va ULARDAN TASHQARIDA (V89).
+          Apparatlar bo'limi `.exe` bilan cheklangan, ovoz esa
+          brauzerda ham ishlaydi: uni o'sha bo'limga qo'yish
+          brauzerdagi kassirdan yashirardi. */}
+      <SoundSettings />
 
       {/* Apparatlar — hisobdan OLDIN: kassir bu ekranga aynan printer
           ishlamay qolganda keladi, "hisob" bo'limiga esa deyarli hech qachon. */}

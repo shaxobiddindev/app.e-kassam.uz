@@ -1,6 +1,6 @@
 import "./styles.css";
 /* BUILD_ID: EMERGENCY_FIX_V3_0116 */
-import { useState, Suspense, lazy } from "react";
+import { useState, useEffect, Suspense, lazy } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { LOGIN_URL } from "./config";
 import { initLang, withLang, useT } from "./lib/ek-i18n";
@@ -15,6 +15,7 @@ import { ConfirmProvider } from "./context/ConfirmProvider";
 import LoginPage       from "./pages/LoginPage";
 import NotFound from "./pages/NotFound";
 import { isDesktop, isNativeShell, isMobileApp } from "./lib/ek-desktop";
+import { prime as sfxPrime } from "./lib/ek-sound";
 import MobileApp from "./mobile/MobileApp";
 import { hasRole, roleSet } from "./lib/ek-roles";
 import ErrorBoundary, { RouteErrorBoundary } from "./components/ek/ErrorBoundary";
@@ -198,6 +199,26 @@ export default function App() {
   const { user, login, logout }                           = useAuth();
   const { toasts, toast, dismiss }                        = useToast();
   const { lowStockItems, lowStockCount, refreshLowStock } = useLowStock();
+
+  /* ══ OVOZ QULFI — BIRINCHI IMO-ISHORADA OCHILADI (V89) ═════════════
+     ⚠ USIZ BIRINCHI OVOZ JIMGINA YO'QOLADI. Brauzer `AudioContext` ni
+     foydalanuvchi sahifaga TEGMAGUNCHA `suspended` holatda tutadi va
+     rad etilgan ijro haqida faqat konsolda aytadi. Kassa uchun bu
+     «ishlamayapti» degani: eng birinchi xato ovozi — aynan kassir
+     e'tibor berishi kerak bo'lgani — chiqmasdi.
+
+     ⚠ `once: true` va HUJJAT darajasida: qaysi tugma bosilgani muhim
+     emas, faqat BIRINCHI tegish muhim. Shundan keyin tinglovchi o'zi
+     olib tashlanadi va hech qanday doimiy yuk qolmaydi. */
+  useEffect(() => {
+    const open = () => sfxPrime();
+    document.addEventListener("pointerdown", open, { once: true });
+    document.addEventListener("keydown", open, { once: true });
+    return () => {
+      document.removeEventListener("pointerdown", open);
+      document.removeEventListener("keydown", open);
+    };
+  }, []);
 
 
   /* Mijoz ilovasi (V37): sessiya kaliti va «xodim rejimi» bayrog'i.
