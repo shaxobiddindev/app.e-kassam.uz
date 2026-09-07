@@ -733,6 +733,7 @@ export default {
   "audit.title": "Amallar jurnali",
   "audit.hint": "Do'kon puliga va tovariga tegadigan amallar. Bajik tasdiqlari alohida — «Xavfsizlik» bo'limida.",
   "audit.action": "Amal",
+  "audit.terminal": "Kassa",
   "audit.actor": "Kim",
   "audit.actorSupport": "e-Kassam qo'llab-quvvatlash",
   "audit.actorSystem": "Tizim",

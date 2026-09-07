@@ -97,10 +97,19 @@ export default function AuditPage({ toast }) {
     { key: "act",   label: t("audit.action"),   type: "enum",
       options: ACTIONS.map((a) => ({ value: a, label: t(`enum.audit.${a}`) })),
       get: (r) => r.action },
+    /* ⚠ QIYMATLAR HAM QIDIRUVGA KIRADI (V106). Tekshiruv ko'pincha
+       raqamdan boshlanadi — «9 000 ga kim tushirgan?» — va u faqat
+       shu ikki ustunda turadi. */
     { key: "sum",   label: t("audit.summary"),  type: "text",
-      get: (r) => `${r.summary || ""} ${r.details || ""}` },
+      get: (r) => `${r.summary || ""} ${r.details || ""} ${r.oldValue || ""} ${r.newValue || ""}` },
     { key: "actor", label: t("audit.actor"),    type: "text",
       get: (r) => (r.actorType === "ADMIN" ? t("audit.actorSupport") : r.actorUsername) },
+    /* ⚠ TERMINAL — ALOHIDA FILTR (V106): «shu kassada nima bo'ldi?»
+       degan savol tekshiruvning o'zagi va IP unga javob bermaydi —
+       bitta do'kondagi hamma terminal bitta routerdan chiqadi.
+       Server ham aynan shu ustun uchun indeks yaratgan (V77). */
+    { key: "term",  label: t("audit.terminal"), type: "text",
+      get: (r) => r.terminalId || "" },
   ], []);
   const colFlt = useDataFilter(COLS, "audit");
   const shown = colFlt.apply(rows);
@@ -156,6 +165,29 @@ export default function AuditPage({ toast }) {
                     </td>
                     <td style={{ fontSize: 13 }}>
                       {r.summary}
+                      {/* ⚠ OLDINGI → YANGI (V106). Server buni V101 dan
+                          beri yozadi, ekran esa ko'rsatmasdi: ya'ni
+                          tekshiruvda birinchi so'raladigan ikki raqam
+                          bazada bor-u, egasining ko'zi oldida yo'q edi.
+
+                          Matn ichida emas, ALOHIDA qatorda: «narx
+                          12 000 dan 9 000 ga tushirildi» degan gapni
+                          o'qish kerak, `12 000 → 9 000` esa bir
+                          qarashda ko'rinadi.
+
+                          ⚠ Faqat bittasi bo'lsa o'q CHIZILMAYDI:
+                          yaratishda eski qiymat yo'q va «→ 9 000»
+                          «nimadandir 9 000 ga» degan yolg'on taassurot
+                          berardi. */}
+                      {(r.oldValue || r.newValue) && (
+                        <div className="audit-chg mono">
+                          {r.oldValue && <span className="audit-chg__old">{r.oldValue}</span>}
+                          {r.oldValue && r.newValue && (
+                            <i className="fa-solid fa-arrow-right-long audit-chg__arrow" aria-hidden="true" />
+                          )}
+                          {r.newValue && <span className="audit-chg__new">{r.newValue}</span>}
+                        </div>
+                      )}
                       {r.details && (
                         <div className="text-muted mono" style={{ fontSize: 11 }}>{r.details}</div>
                       )}
@@ -175,6 +207,20 @@ export default function AuditPage({ toast }) {
                           <i className="fa-solid fa-robot" aria-hidden="true" /> {t("audit.actorSystem")}
                         </span>
                       ) : r.actorUsername}
+                      {/* ⚠ QAYSI KASSADAN (V106) — «kim» bilan bir
+                          katakda: tekshiruvda ular birga so'raladi
+                          («kim, qayerdan») va alohida ustun jadvalni
+                          kengaytirib, telefonda yon-tomonga surardi.
+
+                          Eski yozuvlarda bo'sh — o'shanda hech narsa
+                          chizilmaydi: bo'sh chip «noma'lum terminal»
+                          degan yolg'on ma'lumot bo'lardi. */}
+                      {r.terminalId && (
+                        <div className="audit-term" title={t("audit.terminal")}>
+                          <i className="fa-solid fa-cash-register" aria-hidden="true" />
+                          {r.terminalId}
+                        </div>
+                      )}
                     </td>
                   </tr>
                 )) : (

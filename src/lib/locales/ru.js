@@ -707,6 +707,7 @@ export default {
   "audit.title": "Журнал действий",
   "audit.hint": "Действия, затрагивающие деньги и товар магазина. Подтверждения бейджем — отдельно, в разделе «Безопасность».",
   "audit.action": "Действие",
+  "audit.terminal": "Касса",
   "audit.actor": "Кто",
   "audit.actorSupport": "Поддержка e-Kassam",
   "audit.actorSystem": "Система",

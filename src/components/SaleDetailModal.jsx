@@ -99,7 +99,29 @@ export default function SaleDetailModal({ sale, onClose, onReprint, printing = f
               const net = Math.max(0, (Number(item.subtotal) || 0) - disc);
               return (
                 <tr key={i}>
-                  <td className="fw-700">{item.productName}</td>
+                  <td className="fw-700">
+                    {item.productName}
+                    {/* ⚠ QAYTARILGAN TOVAR QAYERGA KETDI (V107).
+                        Server buni V103 dan beri saqlaydi, ekran esa
+                        ko'rsatmasdi: do'kon egasi «bu tovar javonga
+                        qaytganmi yoki chiqit bo'lganmi?» degan savolga
+                        javob topa olmasdi — holbuki javob bazada
+                        yotardi.
+
+                        ⚠ Faqat QAYTARISH hujjatida chiziladi va
+                        `null` da hech narsa yozilmaydi: sotuv
+                        qatorida bunday qaror umuman yo'q, eski
+                        qaytarishlarda esa u qilinmagan — «javonga»
+                        deb yozib qo'yish taxminni FAKT qilib
+                        ko'rsatardi. */}
+                    {item.returnDisposition && (
+                      <div className={`sale-disp sale-disp--${item.returnDisposition === "WRITE_OFF" ? "off" : "back"}`}>
+                        <i className={`fa-solid ${item.returnDisposition === "WRITE_OFF"
+                            ? "fa-trash-can" : "fa-rotate-left"}`} aria-hidden="true" />
+                        {t(`enum.disposition.${item.returnDisposition}`)}
+                      </div>
+                    )}
+                  </td>
                   <td><Badge color="blue">{item.quantity}</Badge></td>
                   <td className="mono">{money(item.price)}</td>
                   {hasDiscount && (

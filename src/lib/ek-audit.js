@@ -53,7 +53,7 @@ export const AUDIT_ACTIONS = [
   "EXPENSE_CREATE", "EXPENSE_DELETE", "SUPPLIER_PAYMENT",
 
   /* ── Mijoz ── */
-  "CUSTOMER_DEBT_ADJUST", "CUSTOMER_ARCHIVE", "LOYALTY_TIER_CHANGE",
+  "CUSTOMER_DEBT_ADJUST", "CREDIT_PAYMENT_REVERSE", "CUSTOMER_ARCHIVE", "LOYALTY_TIER_CHANGE",
   "BONUS_SPEND", "BONUS_ADJUST", "BONUS_EXPIRE",
 
   /* ── Xodim va qurilma ── */
@@ -84,4 +84,8 @@ export const AUDIT_MONEY = new Set([
   "CASH_MOVEMENT", "SALE_CANCEL", "SALE_RETURN", "EXPENSE_DELETE",
   "CUSTOMER_DEBT_ADJUST", "SHOP_SETTING_CHANGE", "PRICE_BULK_CHANGE",
   "BONUS_ADJUST",
+  /* ⚠ TO'LOVNI BEKOR QILISH (V102) — bu ro'yxatdagi eng o'tkir amal:
+     u YASHIKDAN NAQD CHIQARADI. Aynan «bu pulni kim chiqardi?» degan
+     savolning javobi va u ko'zga birinchi tashlanishi kerak. */
+  "CREDIT_PAYMENT_REVERSE",
 ]);

@@ -707,6 +707,7 @@ export default {
   "audit.title": "Activity log",
   "audit.hint": "Actions that touch the shop's money and stock. Badge confirmations are separate, under «Security».",
   "audit.action": "Action",
+  "audit.terminal": "Register",
   "audit.actor": "Who",
   "audit.actorSupport": "e-Kassam support",
   "audit.actorSystem": "System",

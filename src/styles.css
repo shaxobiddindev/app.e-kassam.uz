@@ -783,6 +783,28 @@ select.form-input { cursor: pointer; }
                     font-size: 12.5px; font-weight: 700; color: var(--fg-secondary);
                     margin-bottom: 10px; line-height: 18px; min-height: 18px; }
 .qty-modal__stock.is-over { color: var(--fg-danger); }
+/* ── Qaytarilgan tovar taqdiri chekda (V107) ───────────────────────────
+   Tovar nomi ostida, mayda: bu qatorning O'ZI emas, uning tarixi.
+   Chiqit ogohlantirish rangida — u do'konning yo'qotishi. */
+.sale-disp             { display: inline-flex; align-items: center; gap: 5px; margin-top: 2px;
+                         font-size: 11px; font-weight: 700; }
+.sale-disp--back       { color: var(--fg-success); }
+.sale-disp--off        { color: var(--fg-warning); }
+
+/* ── Audit: oldingi → yangi qiymat va terminal (V106) ──────────────────
+   ⚠ ESKISI CHIZIB TASHLANMAYDI. Chizilgan matn «bekor qilindi» degan
+   ma'no beradi, bu yerda esa u ALMASHTIRILGAN — va tekshiruvda aynan
+   eski qiymat o'qiladi. Shuning uchun u xira, lekin butun. */
+.audit-chg      { display: inline-flex; align-items: center; gap: 8px; margin-top: 3px;
+                  font-size: 12.5px; font-weight: 700; }
+.audit-chg__old { color: var(--fg-secondary); }
+.audit-chg__new { color: var(--fg-primary); }
+.audit-chg__arrow { color: var(--fg-tertiary); font-size: 11px; }
+/* Terminal — «kim» ning ostida, mayda va xira: u javobning o'zi emas,
+   javobning joyi. */
+.audit-term     { display: inline-flex; align-items: center; gap: 5px; margin-top: 3px;
+                  font-size: 11px; font-weight: 700; color: var(--fg-secondary); }
+
 /* ── Miqdor yoki summa (V104) ──────────────────────────────────────────
    Ikki tugma teng ikkiga bo'lingan: kassir qaysi biri yoqilganini bir
    qarashda ko'radi. Balandligi 42px — bu «tanlov», «amal» emas, shuning
