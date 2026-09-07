@@ -13,6 +13,7 @@ import TelegramPanel from "../components/TelegramPanel";
 import HardwareSettings from "../components/HardwareSettings";
 import SoundSettings from "../components/SoundSettings";
 import ScaleSettings from "../components/ScaleSettings";
+import ScaleLive from "../components/ScaleLive";
 import Select from "../components/ek/Select";
 import { DEFAULT_NEAR_EXPIRY_DAYS } from "../lib/ek-expiry";
 import { Field } from "../components/ui";
@@ -654,6 +655,12 @@ export default function SettingsPage({ toast }) {
           do'konida bu blokning mavjudligi noto'g'ri taassurot
           beradi — «demak bu yerda tarozi ishlaydi». */}
       {isOwner && hasFeature("SCALE") && <ScaleSettings toast={toast} />}
+      {/* ⚠ JONLI TAROZI — BARKOD SOZLAMASIDAN ALOHIDA (V111). Ular
+          bir-birini almashtirmaydi: yorliq chiqaradigan tarozi
+          barkod bilan, sticker chiqarmaydigani esa to'g'ridan-to'g'ri
+          port orqali ishlaydi. Do'konda ikkalasi ham bo'lishi
+          mumkin. */}
+      {isOwner && hasFeature("SCALE") && <ScaleLive toast={toast} />}
 
       <Section
         icon="fa-user"
