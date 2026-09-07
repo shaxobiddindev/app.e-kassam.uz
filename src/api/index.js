@@ -381,6 +381,23 @@ export const markingApi = {
 };
 
 // ─── Fiskal cheklar ───────────────────────────────────────────
+/**
+ * KASSALAR (V81) — fiskal zanjirning oxirgi bo'g'ini.
+ *
+ * ⚠ O'CHIRISH YO'Q va bo'lmaydi ham: kassa fiskal identifikator va unga
+ * ishora qiladigan cheklar bor. Kerak bo'lmaganda `INACTIVE` qilinadi
+ * va tarixda qoladi (server ham `DELETE` ni qo'llamaydi).
+ */
+export const cashRegisterApi = {
+  list:   ()          => request("/shop/cash-registers"),
+  create: (body)      => request("/shop/cash-registers",
+                                 { method: "POST", body: JSON.stringify(body) }),
+  update: (id, body)  => request(`/shop/cash-registers/${id}`,
+                                 { method: "PUT", body: JSON.stringify(body) }),
+  setStatus: (id, status) =>
+    request(`/shop/cash-registers/${id}/status?status=${status}`, { method: "PATCH" }),
+};
+
 export const fiscalApi = {
   status:   ()        => request("/fiscal/status"),
   receipts: (status, page = 0, size = 50) => {
@@ -805,6 +822,24 @@ export const shopApi = {
     request("/shop/scale", { method: "PATCH", body: JSON.stringify(data || {}) }),
   /** Faoliyat turi — tayyor katalog va kassa ekrani standartini belgilaydi. */
   setBusinessType: (type) => request(`/shop/business-type?type=${type}`, { method: "PATCH" }),
+  /* ══ FISKAL REKVIZITLAR (V81) ═══════════════════════════════════════
+     Hamma maydon ixtiyoriy: rekvizit bosqichma-bosqich to'ldiriladi va
+     yarim to'ldirilgan holat ham saqlanadi.
+
+     ⚠ Bo'sh maydon ham YUBORILADI (`?tin=&fiscalAddress=`): server
+     bo'sh satrni «tozalash» deb o'qiydi. Yubormaslik «tegilmasin»
+     degani bo'lardi va o'shanda noto'g'ri kiritilgan STIRni o'chirish
+     yo'li qolmasdi. */
+  setFiscalRequisites: ({ tin, tinType, fiscalAddress, commissionAgentTin }) => {
+    const q = new URLSearchParams({
+      tin: tin ?? "",
+      tinType: tinType ?? "",
+      fiscalAddress: fiscalAddress ?? "",
+      commissionAgentTin: commissionAgentTin ?? "",
+    });
+    return request(`/shop/fiscal-requisites?${q}`, { method: "PATCH" });
+  },
+
   /** Kamomad chegarasi — faqat egasi. */
   setCashTolerance: (value) => request(`/shop/cash-tolerance?value=${value}`, { method: "PATCH" }),
   /** Do'kon bo'yicha eng katta chegirma foizi. */

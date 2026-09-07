@@ -7,6 +7,7 @@ import LangSelect from "../components/ek/LangSelect";
 import { useConfirm } from "../context/ConfirmProvider";
 import { useAuth } from "../hooks/useAuth";
 import FiscalPanel from "../components/FiscalPanel";
+import FiscalSetupPanel from "../components/FiscalSetupPanel";
 import { FISCAL_UI } from "../config";
 import UpdatePanel from "../components/UpdatePanel";
 import TelegramPanel from "../components/TelegramPanel";
@@ -89,6 +90,9 @@ export default function SettingsPage({ toast }) {
   const isOwner = roleSet(user?.role).has("OWNER");
   // Teginish rejimi QURILMAGA tegishli (localStorage), hisobga emas.
   const [touchMode, setTouch] = useState(() => getTouchMode());
+  /* Fiskal rekvizitlar (V85) — do'kon profilining fiskal qismi. */
+  const [fiscalProfile, setFiscalProfile] = useState(null);
+  const [profileNonce, setProfileNonce] = useState(0);
   // Kamomad chegarasi — do'kon profilidan keladi (server saqlaydi).
   const [tolerance, setTolerance] = useState("");
   const [discountLimit, setDiscountLimit] = useState("");
@@ -149,9 +153,14 @@ export default function SettingsPage({ toast }) {
            «rejamiz nol» degani va hisobotda bajarilish har doim
            100% bo'lib chiqardi. */
         setSalesTarget(r?.data?.monthlySalesTarget == null ? "" : String(r.data.monthlySalesTarget));
+        /* ⚠ Fiskal maydonlar BUTUN javob bilan saqlanadi, bittalab
+           emas: ular bitta panelga uzatiladi va u yerda birga
+           tahrirlanadi. Bittalab holat qilinsa, panel ochilganda
+           to'rttasi alohida sinxronlanishi kerak bo'lardi. */
+        setFiscalProfile(r?.data || null);
       })
       .catch(() => {});
-  }, [isOwner]);
+  }, [isOwner, profileNonce]);
 
   /* Har uchala sozlama bir xil yo'l bilan saqlanadi: maydondan chiqilganda.
      Alohida «Saqlash» tugmasi qo'yilmadi — bitta raqam uchun tugma bosish
@@ -712,6 +721,30 @@ export default function SettingsPage({ toast }) {
           ishi yo'q va backend ham uni bu yo'lga qo'ymaydi. */}
       {/* ⚠ Fiskal panel MVP da yashirin (`FISCAL_UI`) — izohi
           `config.js` da. Kod o'chirilmadi: modul ulanganda kerak. */}
+      {/* ══ FISKAL REKVIZITLAR VA KASSALAR (V85) ═══════════════════════
+          ⚠ SHART UCHTA VA UCHALASI HAM «YO'Q» BO'LSA — BLOK UMUMAN
+          CHIZILMAYDI. Fiskalizatsiyani xohlamagan do'kon uchun bu
+          sahifada bir piksel ham o'zgarmaydi va aynan shu maqsad.
+
+          Ko'rinish sharti — «fiskal yo'lga kirilganmi»:
+            · `fiscalEnabled` — rejim yoqilgan (superadmin yoqadi);
+            · `tin` bor — superadmin rekvizitni kiritib qo'ygan, ya'ni
+              ulanish boshlangan va ega endi kassalarini qo'shishi
+              kerak;
+            · `FISCAL_UI` — ishlab chiquvchi bayrog'i.
+
+          ⚠ Ikkinchi shart SHART: usiz ega panelni faqat rejim
+          yoqilgandan KEYIN ko'rardi, kassa esa yoqishdan OLDIN
+          qo'shilishi kerak — ya'ni sozlashning iloji bo'lmasdi. */}
+      {isOwner
+        && (FISCAL_UI || fiscalProfile?.fiscalEnabled || fiscalProfile?.tin) && (
+        <FiscalSetupPanel
+          profile={fiscalProfile}
+          toast={toast}
+          onSaved={() => setProfileNonce((n) => n + 1)}
+        />
+      )}
+
       {FISCAL_UI && isManager && <FiscalPanel toast={toast} />}
 
       {/* Telegram hisobot boti (V32) — kunlik PUL hisoboti, faqat rahbarga */}

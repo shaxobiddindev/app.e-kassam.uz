@@ -64,7 +64,12 @@ const BADGES = new Set([
  */
 const ABBR = new RegExp(
   "\\b(QQS|MXIK|IKPU|PLU|SMS|QR|API|PDF|XML|JSON|CSV|URL|ID|TIN|INN|POS|USB|IP"
-  + "|МХИК|ИКПУ|НДС|ОФД|СМС|ИНН|КПП)\\b", "g");
+  /* ⚠ STIR, JSHSHIR va PINFL — QQS bilan bir xil turdagi qisqartma.
+     Ular bosh harfda YOZILISHI kerak: boshqacha yozilsa do'kon egasi
+     ularni tanimasdi va soliq hujjatidagi nom bilan solishtira
+     olmasdi. Serverdagi jufti — `MessagesSimpleTest.ABBR`. */
+  + "|STIR|JSHSHIR|PINFL"
+  + "|МХИК|ИКПУ|НДС|ОФД|СМС|ИНН|КПП|ПИНФЛ)\\b", "g");
 
 const langs = ["uz", "ru", "en"];
 const problems = { warn: [], caps: [], long: [], many: [] };
