@@ -623,6 +623,30 @@ select.form-input { cursor: pointer; }
 /* Kategoriya tanlagichi — qidiruv yonida, o'zining aniq kengligida.
    Cho'zilib ketmasin: qidiruv maydoni undan muhimroq. */
 /* ══════════════════════════════════════════════════════════════════════
+   SAHIFA SARLAVHASI TOR OYNADA SINADI (V84)
+
+   ⚠ TOVARLAR SAHIFASI 980px DA YON TOMONGA SURILARDI (1014 > 980).
+   Sarlavha qatorida oltitagacha tugma bor — «Yangilash», «Yorliqlar»,
+   filial tanlagichi, «Katalogdan», «Taroziga», «Yangi tovar» — va
+   ular bitta qatorga sig'masdi.
+
+   ⚠ GORIZONTAL SURILISH KASSA MONOBLOKIDA ENG YOMON NOSOZLIK: sichqoncha
+   g'ildiragi uni surmaydi, sensorli ekranda esa yon tomonga surish
+   odati yo'q. Ya'ni «Yangi tovar» tugmasi bor, lekin unga yetib
+   bo'lmaydi.
+
+   Yechim — qatorni sindirish. Balandlik ozgina oshadi, lekin hamma
+   tugma joyida qoladi.
+
+   ⚠ SINF 13 TA SAHIFADA ishlatiladi, ya'ni tuzatish hammasiga
+   tegishli: bugun faqat tovarlar sahifasi sig'masdi, ertaga
+   boshqasiga yana bitta tugma qo'shiladi. */
+.page-header     { flex-wrap: wrap; row-gap: 10px; }
+/* Tugmalar guruhi ham sinadi va o'ngga tiralib qoladi. */
+.page-actions    { display: flex; align-items: center; gap: 10px;
+                   flex-wrap: wrap; justify-content: flex-end; min-width: 0; }
+
+/* ══════════════════════════════════════════════════════════════════════
    KASSA ASBOBLAR QATORI (V84)
 
    Do'kon: «savat ekranini kengaytirganimda qidirish oynasi to'liq

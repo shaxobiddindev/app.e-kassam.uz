@@ -387,7 +387,12 @@ export default function ProductsPage({ toast }) {
         <div>
           <h2 className="page-title">{t("products.title")}</h2>
         </div>
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+        {/* ⚠ SINF ORQALI (V84): oltita tugma 980px da bitta qatorga
+            sig'masdi va sahifa YON TOMONGA surilardi. Kassa
+            monoblokida bu eng yomon nosozlik — sichqoncha g'ildiragi
+            uni surmaydi va tugma bor bo'lsa ham unga yetib
+            bo'lmaydi. */}
+        <div className="page-actions">
           <button className="btn btn-outline btn-sm" onClick={loadData} title={t("products.refreshTitle")}>
             <i className="fa-solid fa-rotate-right" /> {t("common.refresh")}
           </button>
