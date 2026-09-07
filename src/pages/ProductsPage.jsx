@@ -469,10 +469,28 @@ export default function ProductsPage({ toast }) {
                     <tr key={p.id}>
                       <td className="fw-700">
                         <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-                          {p.thumbUrl && (
-                            <img src={mediaApi.url(p.thumbUrl)} alt="" width={30} height={30} loading="lazy"
-                                 style={{ borderRadius: 6, objectFit: "cover", flex: "0 0 auto" }} />
-                          )}
+                          {/* ⚠ RASM O'RNI HAR DOIM QOLADI (V108, do'kon
+                              egasi so'radi). Ilgari rasm shartli edi va
+                              rasmsiz tovarning nomi 39px chapga surilib
+                              ketardi: ro'yxat zinapoyaga o'xshab qolar,
+                              ko'z esa nomlarni ustma-ust taqqoslay
+                              olmasdi — jadvalning butun ma'nosi shu.
+
+                              ⚠ O'rin BO'SH qoldiriladi, «rasm yo'q»
+                              belgisi qo'yilmaydi: ko'p do'konda tovarlar
+                              rasmsiz va har qatordagi kulrang katakcha
+                              jadvalni shovqinga ko'mardi. Bo'sh joy
+                              tekislaydi, lekin ko'zga ko'rinmaydi.
+
+                              ⚠ Balandlik BERILMAYDI (`inline-flex`,
+                              bo'sh): aks holda rasmsiz do'konda har
+                              qator 30px ga cho'zilib, ro'yxat sababsiz
+                              uzayib ketardi. */}
+                          <span className="prod-thumb">
+                            {p.thumbUrl && (
+                              <img src={mediaApi.url(p.thumbUrl)} alt="" width={30} height={30} loading="lazy" />
+                            )}
+                          </span>
                           <span>
                             {p.name}
                             {p.markingGroup && (

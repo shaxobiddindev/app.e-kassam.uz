@@ -783,6 +783,13 @@ select.form-input { cursor: pointer; }
                     font-size: 12.5px; font-weight: 700; color: var(--fg-secondary);
                     margin-bottom: 10px; line-height: 18px; min-height: 18px; }
 .qty-modal__stock.is-over { color: var(--fg-danger); }
+/* ── Tovar ro'yxatidagi rasm o'rni (V108) ─────────────────────────────
+   Kenglik QAT'IY: rasm bor-yo'qligidan qat'i nazar nomlar bitta
+   chiziqdan boshlanadi. Balandlik esa berilmaydi — bo'sh element
+   qatorni cho'zmasligi kerak (`ProductsPage.jsx` izohi). */
+.prod-thumb     { flex: 0 0 30px; width: 30px; display: inline-flex; }
+.prod-thumb img { width: 30px; height: 30px; border-radius: 6px; object-fit: cover; }
+
 /* ── Qaytarilgan tovar taqdiri chekda (V107) ───────────────────────────
    Tovar nomi ostida, mayda: bu qatorning O'ZI emas, uning tarixi.
    Chiqit ogohlantirish rangida — u do'konning yo'qotishi. */
