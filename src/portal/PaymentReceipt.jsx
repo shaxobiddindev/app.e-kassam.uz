@@ -172,6 +172,30 @@ export default function PaymentReceipt({
               </div>
             </div>
 
+            {/* ══ ⚠ BEKOR QILINGAN TO'LOV (V109) ═══════════════════════
+                Sarlavhaning O'ZIDAN KEYIN, summadan OLDIN: chekni
+                qo'lida ushlab turgan odam raqamga yetib bormasdan
+                oldin uning haqiqiy holatini bilishi kerak.
+
+                Ilgari bunday chek O'ZGARMAGAN holicha chiqardi —
+                «500 000 to'landi, qoldiq 0» — holbuki pul qaytarilgan
+                va qarz joyida. Ya'ni do'kon o'z blankasida YOLG'ON
+                hujjat tarqatardi, tortishuvda esa aynan qog'oz
+                ko'rsatiladi.
+
+                ⚠ Summa O'CHIRILMAYDI va o'zgarmaydi: to'lov bo'lgan,
+                keyin bekor qilingan — ikkalasi ham haqiqat va chek
+                ikkalasini ham ko'rsatishi kerak. */}
+            {data.reversedAt && (
+              <div className="pt-void">
+                <div className="pt-void__title">BEKOR QILINGAN</div>
+                <div className="pt-void__when">{when(data.reversedAt)}</div>
+                {data.reversedReason && (
+                  <div className="pt-void__why">{data.reversedReason}</div>
+                )}
+              </div>
+            )}
+
             <div className="pt-hr" />
 
             <div className="pt-tape__row"><span>Chek</span><span>{data.receiptNo}</span></div>

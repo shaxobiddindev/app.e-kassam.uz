@@ -66,12 +66,31 @@ body {
 /* Qator chegirmasi — qog'oz chekdagi bilan bir xil, ichkariroq va
    so'nikroq: u qatorning IZOHI, alohida qator emas. */
 .pt-line__cut { padding-left: 10px; opacity: .75; }
+/* ⚠ CHEK TURI (V61) — «QARZ TO'LOVI». Bu qator EKRANDA bor edi, PDF
+   da esa yo'q: saqlangan nusxada u oddiy mayda matnga aylanib,
+   xarid chekidan ajralib turmay qolardi — holbuki uni ajratib
+   turadigan YAGONA narsa shu (V109 da topildi). */
+.pt-tape__kind {
+  margin-top: 6px; padding-top: 5px; border-top: 1px solid #111111;
+  font-size: 11px; font-weight: 800; letter-spacing: .18em;
+}
 .pt-total { font-size: 14px; font-weight: 800; padding: 6px 0; border-top: 1px solid #111111; margin-top: 4px; }
 .pt-earn { font-weight: 700; }
 .pt-returned {
   margin: 10px 0; padding: 6px; text-align: center; font-weight: 800; letter-spacing: .2em;
   border: 2px solid #111111; border-radius: 4px;
 }
+/* ⚠ BEKOR QILINGAN TO'LOV (V109) — «pt-returned» bilan bir oilada:
+   ikkalasi ham «bu hujjat endi boshqa narsani anglatadi» deydi va
+   mijoz ularni bir xil tanishi kerak. Farqi — bu yerda uch qator
+   (nima · qachon · nega), chunki «nega?» savoli darhol tug'iladi. */
+.pt-void {
+  margin: 10px 0; padding: 6px; text-align: center;
+  border: 2px solid #111111; border-radius: 4px;
+}
+.pt-void__title { font-weight: 800; letter-spacing: .2em; }
+.pt-void__when  { font-size: 11px; margin-top: 2px; }
+.pt-void__why   { font-size: 11px; margin-top: 2px; }
 .pt-center { text-align: center; }
 .pt-tape__no { font-size: 12px; font-weight: 800; margin-top: 2px; }
 .pt-thanks { margin-top: 10px; font-weight: 700; }

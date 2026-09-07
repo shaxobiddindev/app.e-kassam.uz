@@ -2685,6 +2685,22 @@ img.logo--dark { display: none; }
   margin: 10px 0; padding: 6px; text-align: center; font-weight: 800; letter-spacing: .2em;
   border: 2px solid #111111; border-radius: 4px;
 }
+/* ⚠ BEKOR QILINGAN TO'LOV (V109) — `.pt-returned` bilan bir oilada:
+   ikkalasi ham «bu hujjat endi boshqa narsani anglatadi» deydi va
+   mijoz ularni bir xil tanishi kerak. Farqi — bu yerda uch qator
+   (nima · qachon · nega), chunki «nega?» savoli darhol tug'iladi. */
+.pt-void {
+  margin: 10px 0; padding: 6px; text-align: center;
+  border: 2px solid #111111; border-radius: 4px;
+}
+.pt-void__title { font-weight: 800; letter-spacing: .2em; }
+.pt-void__when  { font-size: 11px; margin-top: 2px; }
+.pt-void__why   { font-size: 11px; margin-top: 2px; }
+/* ⚠ Qator chegirmasi — qog'oz chekdagi bilan bir xil: ichkariroq va
+   so'nikroq, chunki u qatorning IZOHI, alohida qator emas. Bu qoida
+   PDF jadvalida bor edi, EKRANDA esa yo'q — mijoz ekranda bir xil,
+   qog'ozda boshqa chek ko'rardi (V109 da topildi). */
+.pt-line__cut { padding-left: 10px; opacity: .75; }
 .pt-fiscalqr { display: grid; place-items: center; margin: 8px 0; }
 .pt-barcode svg { width: 100%; max-width: 240px; height: auto; }
 .pt-tape__no { font-size: 13px; font-weight: 800; margin-top: 2px; }
