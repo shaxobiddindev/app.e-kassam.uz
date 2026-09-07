@@ -141,6 +141,34 @@ eq(flatten([{ items: CART }, { items: OTHER }]).length, 3, "barcha savatlar bitt
 eq(blank(7).id, 7, "bo'sh savat berilgan raqam bilan tug'iladi");
 eq(blank(7).items.length, 0, "va tarkibi bo'sh");
 
+console.log("\n═══ 12. ⚠ Savat jamisi — QATOR CHEGIRMASI bilan ═══");
+/* ⚠ Bu raqamni KASSIR MIJOZGA AYTADI. Savat yorlig'idagi summa
+   to'lov oynasidagidan farq qilsa, mijoz oldida chalkashlik
+   bo'ladi va aybdor kassir bo'lib qoladi.
+
+   ⚠ Ilgari faqat chegirmasiz holat sinalardi — ya'ni V48 da
+   qo'shilgan qator chegirmasi qoidasining O'ZI qo'riqlanmagandi. */
+eq(totalOf([{ salePrice: 5000, qty: 2, discount: 1000 }]), 9000,
+   "qator chegirmasi AYIRILADI: 2×5 000 − 1 000");
+eq(totalOf([{ salePrice: 5000, qty: 2, discount: 1000 },
+            { salePrice: 4000, qty: 1 }]), 13000,
+   "chegirmali va chegirmasiz qatorlar aralash");
+
+/* ⚠ CHEGIRMA QATORDAN KATTA BO'LSA — NOL, MANFIY EMAS. Aks holda
+   bitta qator butun savat summasini kamaytirib yuborardi va
+   kassir mijozdan kam pul olardi. */
+eq(totalOf([{ salePrice: 5000, qty: 1, discount: 9000 }]), 0,
+   "chegirma qatordan katta — qator NOLGA tushadi, manfiyga emas");
+eq(totalOf([{ salePrice: 5000, qty: 1, discount: 9000 },
+            { salePrice: 3000, qty: 1 }]), 3000,
+   "manfiy qator qo'shni qatorni YEB QO'YMAYDI");
+
+/* Serverdan yoki `localStorage` dan matn bo'lib kelgan raqamlar. */
+eq(totalOf([{ salePrice: "5000", qty: "2" }]), 10000, "matn ko'rinishidagi raqamlar");
+eq(totalOf([{ salePrice: 5000 }]), 0, "miqdorsiz qator — nol");
+eq(totalOf([{ qty: 3 }]), 0, "narxsiz qator — nol");
+eq(totalOf([{ salePrice: "yo'q", qty: 2 }]), 0, "raqam bo'lmagan narx — nol, NaN emas");
+
 console.log("\n─────────────────────────────");
 console.log(`  ${pass} o'tdi, ${fail} yiqildi`);
 process.exit(fail ? 1 : 0);
