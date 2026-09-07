@@ -552,23 +552,35 @@ export default function CustomersPage({ toast }) {
                               API da ham joyida edi; yetishmagani eshik
                               edi.
 
-                              Balansning o'zi yetarli emas: nol balans
-                              «hech qachon qarz olmagan» va «olib, to'lab
-                              bo'lgan» ni ajratmaydi. Shu sabab server
-                              `hasDebtHistory` ni aytadi.
-
                               Qarzi borida — to'lash, tugaganida —
                               tarix: ikkalasi bitta oyna, lekin tugma
                               nima qilishini aniq aytishi kerak. */}
-                          {(Number(c.balance) > 0 || c.hasDebtHistory) && (
-                            <button className="btn-icon"
-                                    title={Number(c.balance) > 0 ? t("credit.pay") : t("credit.history")}
-                                    aria-label={Number(c.balance) > 0 ? t("credit.pay") : t("credit.history")}
-                                    onClick={() => openDebt(c)}>
-                              <i className={`fa-solid ${Number(c.balance) > 0
-                                  ? "fa-hand-holding-dollar" : "fa-clock-rotate-left"}`} />
-                            </button>
-                          )}
+                          {/* ⚠ ENDI SHARTSIZ (V105). `hasDebtHistory`
+                              qolgan oxirgi darvoza edi: hech qachon qarz
+                              olmagan mijozda tugma umuman chizilmas va
+                              qatorda uchta emas, ikkita tugma turardi.
+                              Do'kon egasi buni ayni xato deb ko'rsatdi:
+                              «qarz olmagani uchun tarix ko'rsatmayapti,
+                              bunda ham ko'rsatsin — faqat 0 bosa 0 deb».
+
+                              Sabab shunchaki bir tugma emas: bir xil
+                              qatorda tugmalar soni mijozdan mijozga
+                              o'zgarsa, qolganlari SURILADI — kassir
+                              «tahrirlash» ni mo'ljallab bosgan barmog'i
+                              qo'shni mijozda «jamg'arma» ga tushadi.
+
+                              Bo'sh javob ham javob: oyna qoldiqni 0 deb
+                              ko'rsatadi, jurnal o'rnida «Qarz yo'q»
+                              turadi, «To'lash» va «Hisobot» esa o'chiq —
+                              yo'q narsani to'lab ham, chop etib ham
+                              bo'lmaydi. */}
+                          <button className="btn-icon"
+                                  title={Number(c.balance) > 0 ? t("credit.pay") : t("credit.history")}
+                                  aria-label={Number(c.balance) > 0 ? t("credit.pay") : t("credit.history")}
+                                  onClick={() => openDebt(c)}>
+                            <i className={`fa-solid ${Number(c.balance) > 0
+                                ? "fa-hand-holding-dollar" : "fa-clock-rotate-left"}`} />
+                          </button>
                           {/* Qarzdorlar ro'yxatida tahrirlash/o'chirish YO'Q:
                               u yerdagi qator to'liq mijoz yozuvi emas (server
                               faqat qarz uchun kerakli maydonlarni yuboradi)
