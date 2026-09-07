@@ -363,6 +363,11 @@ export default {
   "badge.readyTitle": "Bajik tayyor",
   "badge.onceWarn": "Bajik kodi faqat hozir ko'rinadi. Chop eting. Kerak bo'lsa keyin qayta chiqarasiz.",
   "badge.print": "Chop etish",
+  /* ── Bajikni faylga saqlash (V110) ───────────────────────────────
+     Do'kon egasi: «har doim ham printer bo'lmasligi mumkin». */
+  "badge.saveFile": "Faylga saqlash",
+  "badge.saved": "Bajik fayli tayyorlandi",
+  "badge.fileHint": "Chek printeri faqat ish stoli ilovasida ishlaydi. Printersiz «Faylga saqlash» ni bosing. Kartochka PDF bo'lib saqlanadi.",
   "badge.desktopOnly": "Chop etish faqat desktop ilovada ishlaydi (printer u yerga ulangan). Bu oynani yopib, desktop ilovada qayta chiqaring.",
   "shift.title": "Smena",
   "shift.openSince": "Smena ochiq:",
