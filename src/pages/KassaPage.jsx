@@ -1420,7 +1420,19 @@ export default function KassaPage({ toast, refreshLowStock }) {
   };
   /* ⚠ «Oraliq jami» — chegirmalardan OLDINGI summa (server ham shunday
      hisoblaydi): chek chegirmasi foizini aynan shundan olish kerak. */
-  const subtotal = cart.reduce((sum, i) => sum + i.salePrice * i.qty, 0);
+  const subtotal = cart.reduce((sum, i) => sum + Math.floor(i.salePrice * i.qty), 0);
+  /* ══ ⚠ YAXLITLASHDA MIJOZGA BERIB YUBORILGAN SUMMA (V80) ═══════════
+     Tortiladigan tovarda pul o'zi kasr bo'ladi: 6.667 kg × 7 500 =
+     50 002.5 so'm. Tiyin muomalada yo'q va do'kon shu chekni UMUMAN
+     sota olmagan edi — kassa 50 003 yuborar, server 50 002.50 talab
+     qilardi.
+
+     Endi qator jamisi butun so'mga PASTGA yaxlitlanadi (serverda ham
+     — `Money.charge`), yarim so'm esa mijozda qoladi. Farq chekda
+     alohida qator bo'lib chiqadi va hisobotda jamlanadi: yashirilgan
+     yaxlitlash — o'g'irlikning eng sekin turi. */
+  const rounding = cart.reduce(
+    (sum, i) => sum + (i.salePrice * i.qty - Math.floor(i.salePrice * i.qty)), 0);
   /* Qator chegirmalari jami — to'lov oynasida alohida ko'rsatiladi. */
   const lineDiscounts = cart.reduce((sum, i) => sum + (Number(i.discount) || 0), 0);
   /* ⚠ QATOR CHEGIRMALARIDAN KEYINGI summa (V48) — chek chegirmasi
@@ -2182,7 +2194,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
     /* ⚠ Chekka TAQSIMOT ham tushadi (V53): «Aralash» degan bitta so'z
        mijozga hech narsa aytmaydi va u ertaga «karta bilan qancha
        to'lagan edim?» deb do'kon bilan tortishadi. */
-    const snapshot = { cart: [...cart], total, subtotal, discount: discountNum,
+    const snapshot = { cart: [...cart], total, subtotal, discount: discountNum, rounding,
                        payType: saleType, customer,
                        payments: payload.payments, credit: creditInfo,
                        /* Qaytim jamg'armaga (V66) — chekda va yakun oynasida. */

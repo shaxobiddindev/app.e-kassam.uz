@@ -7,14 +7,35 @@
    hisobotda turishi kerak. Ikki joyda ikki xil yaxlitlash bo'lsa, mijoz
    chekni ko'rib «siz boshqa aytdingiz» derdi.
 
-   Qoida: ulush = chegirma × qator jami / hammasining jami, ikki xonagacha
-   PASTGA yaxlitlanadi; yaxlitlashdan qolgan tiyin esa ENG KATTA qatorga
-   qo'shiladi (u yerda u eng kam seziladi).
+   Qoida: ulush = chegirma × qator jami / hammasining jami, BUTUN SO'MGA
+   pastga yaxlitlanadi; qolgani esa ENG KATTA qatorga qo'shiladi (u yerda
+   eng kam seziladi).
    ══════════════════════════════════════════════════════════════════════════ */
 
-/** Bitta qatorning o'z chegirmasidan keyingi jami. */
+/**
+ * Qatorning ANIQ jamisi — yaxlitlanmagan.
+ *
+ * ⚠ Tortiladigan tovarda u kasr bo'ladi: 6.667 × 7 500 = 50 002.5.
+ * Chekda AYNAN shu son ko'rinadi, ostida esa «Yaxlitlash» qatori —
+ * shundagina chek o'zi-o'ziga to'g'ri keladi.
+ */
+export const lineGross = (l) =>
+  (Number(l.salePrice) || 0) * (Number(l.qty) || 0);
+
+/**
+ * Qatorning MIJOZ TO'LAYDIGAN jamisi — butun so'm.
+ *
+ * ⚠⚠ PASTGA YAXLITLANADI VA BU SERVER BILAN BIR XIL BO'LISHI SHART
+ * (`Money.charge`). Ilgari bu yerda ham, serverda ham yaxlitlash yo'q
+ * edi va do'kon 6.667 kg kartoshkani UMUMAN SOTA OLMADI: kassa 50 003
+ * yuborardi, server 50 002.50 talab qilardi va chek ikki tomondan ham
+ * yopilmasdi.
+ *
+ * ⚠ Tiyin muomalada yo'q. Yarim so'm mijozda qoladi — bu do'kon
+ * egasining qarori va u chekda «Yaxlitlash» qatori bo'lib ko'rinadi.
+ */
 export const lineNet = (l) =>
-  Math.max(0, (Number(l.salePrice) || 0) * (Number(l.qty) || 0) - (Number(l.discount) || 0));
+  Math.max(0, Math.floor(lineGross(l)) - (Number(l.discount) || 0));
 
 /**
  * @param lines  `{ salePrice, qty, discount? }` ro'yxati
@@ -53,14 +74,19 @@ function addSpread(out, lines, amount, base, weight) {
     const w = weight(lines[i]);
     /* ⚠ PASTGA yaxlitlash (`floor`), yumaloqlash emas — serverda ham
        `RoundingMode.DOWN`. Aks holda ulushlar yig'indisi chegirmadan
-       oshib ketishi mumkin edi. */
-    const share = Math.floor((amount * w) / base * 100) / 100;
-    out[i] = Math.round((out[i] + share) * 100) / 100;
+       oshib ketishi mumkin edi.
+
+       ⚠⚠ BUTUN SO'MGA, ikki xonaga EMAS (V80). Ilgari ulush 333.33
+       bo'lib chiqar va o'sha tiyin qator jamisiga o'tib, chek jamisini
+       yana kasr qilib qo'yardi — ya'ni tiyin bir eshikdan
+       chiqarilib, ikkinchisidan kirib kelardi. */
+    const share = Math.floor((amount * w) / base);
+    out[i] += share;
     given += share;
     if (w > biggestW) { biggestW = w; biggest = i; }
   }
-  const rest = Math.round((amount - given) * 100) / 100;
-  if (rest !== 0) out[biggest] = Math.round((out[biggest] + rest) * 100) / 100;
+  const rest = Math.round(amount - given);
+  if (rest !== 0) out[biggest] += rest;
 }
 
 export function spreadDiscount(lines, total) {
@@ -76,7 +102,7 @@ export function spreadDiscount(lines, total) {
   let left = d;
   if (room > 0) {
     const cap = Math.min(left, room);
-    left = Math.round((left - cap) * 100) / 100;
+    left = Math.round(left - cap);
     addSpread(out, lines, cap, room, marginRoom);
   }
 

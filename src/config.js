@@ -51,10 +51,18 @@ export {
   phone as fmtPhone, initials,
 } from "./lib/ek-format";
 
-import { money as _money } from "./lib/ek-format";
+import { money as _money, moneyFine as _moneyFine } from "./lib/ek-format";
 
 /** Pul + "so'm". Jadval ustunida birlik sarlavhada bo'lsa `fmtMoney` ishlating. */
 export const money = (n) => _money(n, { withUnit: true });
+
+/**
+ * Pul + "so'm", TIYINI bilan — faqat u bor bo'lganda (V80).
+ *
+ * Chekdagi ikkita joyda ataylab ishlatiladi: tortiladigan qatorning
+ * aniq jamisi va «Yaxlitlash» qatori. Sababi `ek-format.js` da.
+ */
+export const moneyFine = (n) => _moneyFine(n, { withUnit: true });
 
 export const maskPhone = (val) => {
   let v = (val || "").replace(/\D/g, "");

@@ -825,6 +825,19 @@ function Profit({ d, k, p }) {
     { label: t("rpt2.netProfit"),   value: k.netProfit,   total: true },
   ];
 
+  /* ⚠ YAXLITLASH — FOYDA ZANJIRIDAN TASHQARIDA (V80). U tushumga
+     allaqachon kirmagan (chek jamisining o'zi yaxlitlangan), shuning
+     uchun ro'yxatga qo'shilsa foyda ikki marta kamayardi.
+
+     Lekin u KO'RINISHI kerak: son kutilmaganda o'sib ketsa, demak
+     biror joyda xato bor — narx kasr qo'yilgan, tarozi noto'g'ri
+     o'qiyapti yoki chegirma formulasi buzilgan. Ko'rinmaydigan
+     yaxlitlash — o'g'irlikning eng sekin turi.
+
+     Nolda umuman chizilmaydi: donalab sotadigan do'konda bu qator
+     hech qachon kerak bo'lmaydi. */
+  const rounding = num(k.roundingGiven);
+
   return (
     <>
       <div className="kpi-grid">
@@ -859,6 +872,13 @@ function Profit({ d, k, p }) {
               ))}
             </tbody>
           </table>
+          {rounding > 0 && (
+            <div className="text-muted" style={{ fontSize: 12.5, lineHeight: 1.6, marginTop: 10 }}>
+              <i className="fa-solid fa-circle-info" aria-hidden="true" />{" "}
+              {t("rpt2.rounding")}: <b className="ek-num">{money(rounding)}</b>
+              {" — "}{t("rpt2.roundingHint")}
+            </div>
+          )}
         </div>
       </Panel>
 

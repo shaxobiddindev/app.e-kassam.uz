@@ -47,12 +47,18 @@ const mix = [{ salePrice: 75000, qty: 1 }, { salePrice: 25000, qty: 1 }];
 eqArr(spreadDiscount(mix, 20000), [15000, 5000], "75/25 nisbatida");
 
 console.log("\n═══ 4. ⚠ Yaxlitlash qoldig'i YO'QOLMAYDI ═══");
-/* 100 ni uchga bo'lish — klassik holat: 33.33 + 33.33 + 33.33 = 99.99,
-   qolgan 0.01 esa eng katta qatorga qo'shiladi. */
+/* 100 ni uchga bo'lish — klassik holat: 33 + 33 + 33 = 99, qolgan 1
+   esa eng katta qatorga qo'shiladi.
+
+   ⚠ ILGARI ULUSH 33.33 EDI (ikki xona) va aynan o'sha tiyin qator
+   jamisiga o'tib, chek jamisini kasr qilib qo'yardi — ya'ni tiyin bir
+   eshikdan chiqarilib, ikkinchisidan kirib kelardi (V80). Endi ulush
+   ham BUTUN SO'M. */
 const three = [{ salePrice: 100, qty: 1 }, { salePrice: 100, qty: 1 }, { salePrice: 100, qty: 1 }];
 const s3 = spreadDiscount(three, 100);
 eq(sum(s3), 100, "yig'indi chegirmaga teng");
-eq(s3.filter((v) => v === 33.33).length >= 2, true, "ikkitasi pastga yaxlitlangan");
+eq(s3.every((v) => Number.isInteger(v)), true, "⚠ har ulush BUTUN so'm");
+eq(s3.filter((v) => v === 33).length >= 2, true, "ikkitasi pastga yaxlitlangan");
 
 console.log("\n═══ 5. ⚠ Qoldiq ENG KATTA qatorga tushadi ═══");
 /* 10 000 ni 70 000 / 20 000 / 10 000 ga bo'lganda ham bir tiyin qoladi. */

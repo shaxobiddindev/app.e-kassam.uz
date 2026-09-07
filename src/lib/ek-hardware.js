@@ -22,7 +22,7 @@ import { isDesktop, invoke } from "./ek-desktop";
 import { Receipt, WIDTH_80, WIDTH_58, drawerKickBytes } from "./ek-escpos";
 import { t } from "./ek-i18n";
 import { shopHead } from "./ek-shop-print";
-import { money, quantity } from "../utils";
+import { money, moneyFine, quantity } from "../utils";
 import { paymentLabel, unitLabel } from "./ek-labels";
 import { code128Svg, saleCode } from "./ek-barcode";
 import { spreadDiscount } from "./ek-discount";
@@ -137,7 +137,7 @@ async function send(bytes) {
  */
 export function buildReceipt({ saleId, serverSaleId, cart = [], total = 0, subtotal, discount = 0,
                                payType, payments, customer, offline, shopName, cashier, fiscal, receiptUrl,
-                               credit, toSavings }) {
+                               credit, toSavings, rounding = 0 }) {
   const s = getSettings();
   const r = new Receipt(s.width === 58 ? WIDTH_58 : WIDTH_80);
 
@@ -171,7 +171,11 @@ export function buildReceipt({ saleId, serverSaleId, cart = [], total = 0, subto
     // Miqdor birligi bilan: "0.35 kg x 95 000". Birliksiz "0.35 x 95 000"
     // mijozga nima sotilganini aytmasdi.
     const qtyText = `${quantity(i.qty, i.unitDecimals)}${i.unit ? " " + unitLabel(i.unit) : ""}`;
-    r.row(`  ${qtyText} x ${money(i.salePrice)}`, money(i.salePrice * i.qty));
+    /* ⚠ QATOR JAMISI ANIQ KO'RSATILADI (V80): tortiladigan tovarda u
+       kasr bo'ladi (50 002.50) va pastdagi «Yaxlitlash» qatori bilan
+       birga chek o'zi-o'ziga to'g'ri keladi. Butun sonda hech narsa
+       o'zgarmaydi. */
+    r.row(`  ${qtyText} x ${money(i.salePrice)}`, moneyFine(i.salePrice * i.qty));
 
     /* Qator chegirmasi = kassir tushirgan narx + chek chegirmasidan
        tushgan ulush. Chegirmasiz qatorda satr umuman chiqmaydi —
@@ -191,6 +195,18 @@ export function buildReceipt({ saleId, serverSaleId, cart = [], total = 0, subto
     r.row(t("kassa.receiptSubtotal"), money(subtotal ?? (total + discTotal)));
     r.row(t("kassa.discount"), "-" + money(discTotal));
   }
+  /* ══ ⚠ YAXLITLASH QATORI (V80) ══════════════════════════════════════
+     Tortiladigan tovarda pul o'zi kasr bo'ladi: 6.667 kg × 7 500 =
+     50 002.5 so'm. Tiyin muomalada yo'q, shuning uchun chek butun
+     so'mga PASTGA yaxlitlanadi va yarim so'm mijozda qoladi.
+
+     ⚠ CHEKDA KO'RINADI, chunki usiz chek O'ZI-O'ZIGA to'g'ri kelmasdi:
+     mijoz qatorlarni qo'shsa 50 002.50 chiqar, pastda esa 50 002
+     turardi. «Hisob noto'g'ri» degan bahs aynan shu farqdan boshlanadi.
+
+     ⚠ NOL BO'LSA CHIQMAYDI. Donalab sotiladigan chekda yaxlitlash
+     umuman bo'lmaydi va bo'sh qator faqat qog'ozni yeyardi. */
+  if (Number(rounding) > 0) r.row(t("kassa.rounding"), "-" + moneyFine(rounding));
   r.bold().double().row(t("kassa.receiptTotal"), money(total)).double(false).bold(false);
   r.row(t("kassa.receiptPayment"), paymentLabel(payType));
   /* ⚠ ARALASH TO'LOVDA TAQSIMOT HAM CHIQADI (V53). «Aralash» degan
@@ -873,7 +889,7 @@ export async function testPrint() {
 function printInBrowser({ saleId, serverSaleId, cart = [], total = 0, subtotal, discount = 0,
                           payType, payments, customer, offline, shopName, cashier, receiptUrl,
                           credit, __debt, amount, balanceAfter, balanceBefore, method, date,
-                          receiptNo, qrUrl, toSavings, bonusEarned, kind, linkedNo }) {
+                          receiptNo, qrUrl, toSavings, bonusEarned, kind, linkedNo , rounding = 0 }) {
   const win = window.open("", "_blank", "width=360,height=640,toolbar=no,menubar=no");
   if (!win) throw new Error(t("hw.errPopup"));
   /* Qarz cheki yoki jamg'arma kvitansiyasi — so'zlar `kind` dan (V66). */
@@ -974,6 +990,7 @@ function printInBrowser({ saleId, serverSaleId, cart = [], total = 0, subtotal, 
       <div class="hr"></div>
       ${discTotal > 0 ? `<div class="row"><span>${esc(t("kassa.receiptSubtotal"))}</span><span>${esc(money(subtotal ?? (total + discTotal)))}</span></div>
       <div class="row"><span>${esc(t("kassa.discount"))}</span><span>-${esc(money(discTotal))}</span></div>` : ""}
+      ${Number(rounding) > 0 ? `<div class="row"><span>${esc(t("kassa.rounding"))}</span><span>-${esc(moneyFine(rounding))}</span></div>` : ""}
       <div class="row"><b>${esc(t("kassa.receiptTotal"))}</b><b>${esc(money(total))}</b></div>
       <div class="row"><span>${esc(t("kassa.receiptPayment"))}</span><span>${esc(paymentLabel(payType))}</span></div>
       ${Array.isArray(payments) && payments.length > 1

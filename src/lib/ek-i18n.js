@@ -30,7 +30,7 @@ import { useCallback, useSyncExternalStore } from "react";
    2. u YETISHMAYOTGAN kalitlar uchun zaxira (`t()` quyida shundan
       oladi) — kechiktirilsa, yangi kalit tarjima qilinmagan tilda
       kalitning o'zi bo'lib chiqib qolardi. */
-import uz from "./locales/uz";
+import uz from "./locales/uz.js";
 
 const KEY = "ek_lang";
 

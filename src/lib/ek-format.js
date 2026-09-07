@@ -13,7 +13,7 @@
    (docs/09-CHETLANISHLAR.md ga qarang).
    ========================================================================== */
 
-import { t, getLang } from "./ek-i18n";
+import { t, getLang } from "./ek-i18n.js";
 
 const NNBSP = " ";           // tor bo'shliq — razryad ajratgichi
 /* Oy va hafta nomlari — TILGA BOG'LIQ (`locales/*.js` dagi `fmt.*`).
@@ -45,6 +45,37 @@ export function groupDigits(n) {
 export function money(n, { withUnit = false } = {}) {
   const s = groupDigits(n);
   return withUnit ? `${s}${NNBSP}${t("fmt.currency")}` : s;
+}
+
+/**
+ * Pul, TIYINI BILAN — faqat u bor bo'lganda.
+ *
+ * ⚠ `money()` HAR DOIM yaxlitlaydi (`Math.round`) va bu odatda to'g'ri:
+ * tiyin muomalada yo'q. Lekin chekda ikkita joyda u ATAYLAB
+ * ko'rsatiladi (V80):
+ *
+ *   · tortiladigan qatorning aniq jamisi — `6.667 kg × 7 500 =
+ *     50 002.50`;
+ *   · uning ostidagi «Yaxlitlash −0.50» qatori.
+ *
+ * ⚠ Usiz chek O'ZI-O'ZIGA to'g'ri kelmasdi: qatorda 50 003, pastda esa
+ * 50 002 turar va mijoz «hisob noto'g'ri» derdi. Farqni yashirish emas,
+ * KO'RSATISH kerak.
+ *
+ * Butun sonda hech narsa o'zgarmaydi — `money()` bilan bir xil chiqadi.
+ */
+export function moneyFine(n, { withUnit = false } = {}) {
+  const num = Number(n);
+  const unit = withUnit ? `${NNBSP}${t("fmt.currency")}` : "";
+  if (!Number.isFinite(num)) return `0${unit}`;
+  /* Tiyin darajasida taqqoslanadi: 0.005 dan kichik farq — suzuvchi
+     nuqta changi, tiyin emas. */
+  if (Math.abs(num - Math.round(num)) < 0.005) return `${groupDigits(num)}${unit}`;
+  const sign = num < 0 ? "-" : "";
+  const abs = Math.abs(num);
+  const whole = Math.floor(abs);
+  const cents = Math.round((abs - whole) * 100);
+  return `${sign}${groupDigits(whole)}.${String(cents).padStart(2, "0")}${unit}`;
 }
 
 /** Miqdor: butun yoki 3 xonagacha (24 · 1.250) */
