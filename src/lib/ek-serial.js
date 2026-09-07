@@ -98,6 +98,15 @@ export async function open(port, opts = {}, onData = () => {}) {
   const reader = port.readable.getReader();
   const closed = Promise.resolve();
 
+  /* ⚠ Yozuvchi o'qish halqasidan OLDIN olinadi: halqa ichida ACK ga
+     javob yuboriladi va u paytda `writer` allaqachon tayyor
+     bo'lishi kerak. */
+  const writer = port.writable?.getWriter?.() || null;
+  async function ask(bytes) {
+    if (!writer || !bytes?.length) return;
+    try { await writer.write(new Uint8Array(bytes)); } catch (_) { /* port yopildi */ }
+  }
+
   let stopped = false;
   let state = null;
 
@@ -108,6 +117,21 @@ export async function open(port, opts = {}, onData = () => {}) {
         if (done || stopped) break;
         if (!value?.length) continue;
         state = feed(state, latin1(value));
+
+        /* ══ ⚠ QO'L BERISH: ENQ → ACK → BUYRUQ ═══════════════════════
+           Do'kon oqimida ketma-ket «06 06 06…» chiqdi. `06` — ACK,
+           ya'ni tarozi so'rovni OLDI va «eshitdim» dedi, lekin
+           og'irlikni bermadi.
+
+           Bu keng tarqalgan uch qadamli suhbat: kassa ENQ yuboradi,
+           tarozi ACK bilan javob beradi, keyin kassa ASOSIY buyruqni
+           yuboradi va shundagina o'lchov keladi. Ikkinchi qadamda
+           to'xtab qolgan kassa abadiy «06» yig'ib o'tiraveradi.
+
+           ⚠ Javob HAR ACK ga yuboriladi: suhbat sikli shunday va
+           bittasini o'tkazib yuborish oqimni to'xtatib qo'yardi. */
+        if (opts.after?.length && value.includes(0x06)) ask(opts.after);
+
         onData(state, value);
       }
     } catch (_) {
@@ -130,13 +154,7 @@ export async function open(port, opts = {}, onData = () => {}) {
 
      Buyruq har tarozida boshqacha (`ENQ`, «W», «S», «P»…), shuning
      uchun u TANLANADI, kodga yozib qo'yilmaydi. */
-  const writer = port.writable?.getWriter?.() || null;
   let timer = null;
-
-  async function ask(bytes) {
-    if (!writer || !bytes?.length) return;
-    try { await writer.write(new Uint8Array(bytes)); } catch (_) { /* port yopildi */ }
-  }
 
   if (opts.poll?.length) {
     /* ⚠ Birinchi so'rov DARHOL: kassir tugmani bosgach javobni
@@ -167,6 +185,19 @@ export const POLL = {
   NONE: { label: "—", bytes: [] },
   /* `ENQ` (0x05) — CAS va unga o'xshaganlarda eng keng tarqalgani. */
   ENQ:  { label: "ENQ (05)", bytes: [0x05] },
+
+  /* ══ ⚠ UCH QADAMLI SUHBAT ═══════════════════════════════════════════
+     Do'kon tarozisi ENQ ga «06» (ACK) bilan javob berdi va to'xtadi —
+     demak u ikkinchi buyruqni kutmoqda. `after` aynan shu: ACK
+     kelganda yuboriladigan ASOSIY buyruq.
+
+     Qaysi bayt to'g'ri ekanini tarozining o'zi ko'rsatadi, shuning
+     uchun bir nechtasi tayyor turadi va birma-bir sinaladi. */
+  ENQ_DC1: { label: "ENQ → ACK → DC1 (11)", bytes: [0x05], after: [0x11] },
+  ENQ_DC2: { label: "ENQ → ACK → DC2 (12)", bytes: [0x05], after: [0x12] },
+  ENQ_ENQ: { label: "ENQ → ACK → ENQ (05)", bytes: [0x05], after: [0x05] },
+  ENQ_W:   { label: "ENQ → ACK → W",        bytes: [0x05], after: [0x57, 0x0D, 0x0A] },
+
   /* Ba'zi tarozilar harf kutadi. */
   W:    { label: "W", bytes: [0x57, 0x0D, 0x0A] },
   S:    { label: "S (SICS)", bytes: [0x53, 0x0D, 0x0A] },

@@ -903,7 +903,7 @@ export default {
   "scale.liveStop": "Disconnect",
   "scale.liveNoSupport": "This browser cannot read the port. Use Chrome or Edge on the monoblock.",
   "scale.poll": "Request",
-  "scale.pollHint": "If nothing arrives: many scales stay silent until asked. Set “Request” to ENQ and reconnect, then try W, S, P.",
+  "scale.pollHint": "If nothing arrives: many scales stay silent until asked. Set “Request” to ENQ. If only 06 comes back, try “ENQ → ACK → DC1”.",
   "scale.baud": "Baud rate",
   "scale.steady": "steady",
   "scale.moving": "moving",

@@ -82,7 +82,10 @@ export default function ScaleLive({ toast }) {
            yubormaydi va port ochiq bo'lgani holda hech narsa
            kelmaydi; buni «tarozi buzuq» deb o'ylash juda oson. */
         poll: POLL[poll]?.bytes || [],
-        pollMs: 500,
+        /* ⚠ ACK javobi: tarozi «06» desa, asosiy buyruq yuboriladi
+           (`ek-serial.js` dagi izoh). */
+        after: POLL[poll]?.after || [],
+        pollMs: 700,
       }, (st, chunk) => {
         setKg(st.kg);
         setStable(st.stable);
