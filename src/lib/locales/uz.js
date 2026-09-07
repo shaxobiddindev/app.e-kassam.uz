@@ -710,6 +710,7 @@ export default {
   "enum.audit.CASH_MOVEMENT": "Naqd harakati",
   "enum.audit.SALE_CANCEL": "Sotuv bekor qilindi",
   "enum.audit.SALE_RETURN": "Tovar qaytarildi",
+  "enum.audit.SALE_CORRECTION": "Tuzatuvchi chek",
   "enum.audit.PRICE_CHANGE": "Narx o'zgardi",
   "enum.audit.PRICE_BULK_CHANGE": "Ommaviy narx o'zgardi",
   "enum.audit.STOCK_TAKE_CLOSE": "Inventarizatsiya yakunlandi",
@@ -1959,6 +1960,22 @@ export default {
   "kassa.qtyFromLabels": "Miqdor yorliqlardan olinadi",
 
   /* ── v2: markirovka (Asl Belgisi) ───────────────────────── */
+  /* ── Tuzatuvchi chek (V86) ── */
+  "corr.title": "Tuzatuvchi chek",
+  "corr.whatIsIt": "Soliqqa yuborilgan summani rasman to'g'rilaydi. Tovar qaytgan bo'lsa qaytarish qiling, chek xato chiqqan bo'lsa bekor qiling.",
+  "corr.forReceipt": "Tuzatilayotgan chek",
+  "corr.direction": "Soliqqa qanday summa ketgan",
+  "corr.dirLess": "Ko'p ketgan",
+  "corr.dirMore": "Kam ketgan",
+  "corr.amount": "Tuzatish summasi",
+  "corr.payment": "Qaysi pul bo'yicha",
+  "corr.paymentHint": "Naqd tanlansa smenaning kutilgan naqdi shu summaga o'zgaradi.",
+  "corr.reason": "Sabab",
+  "corr.reasonPlaceholder": "Masalan: summa ikki marta kiritilgan",
+  "corr.reasonHint": "Tekshiruvda birinchi so'raladigan savol shu. Sabab jurnalda qoladi.",
+  "corr.issue": "Chiqarish",
+  "corr.done": "Tuzatuvchi chek chiqarildi",
+
   "marking.scanTitle": "Markirovka yorliqlarini skanerlang",
   "marking.pcs": "dona",
   "marking.scanArrived": "Kelganini skanerlash",

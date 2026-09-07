@@ -682,6 +682,7 @@ export default {
   "enum.audit.CASH_MOVEMENT": "Cash movement",
   "enum.audit.SALE_CANCEL": "Sale cancelled",
   "enum.audit.SALE_RETURN": "Goods returned",
+  "enum.audit.SALE_CORRECTION": "Correction receipt",
   "enum.audit.PRICE_CHANGE": "Price changed",
   "enum.audit.PRICE_BULK_CHANGE": "Bulk price change",
   "enum.audit.STOCK_TAKE_CLOSE": "Stock-take finished",
@@ -1856,6 +1857,22 @@ export default {
   "kassa.qtyFromLabels": "Quantity comes from the labels",
 
   /* ── v2: marking (Asl Belgisi) ──────────────────────────── */
+  /* ── Tuzatuvchi chek (V86) ── */
+  "corr.title": "Correction receipt",
+  "corr.whatIsIt": "Officially fixes the amount sent to the tax office. If goods came back, make a return; if the receipt was wrong, cancel it.",
+  "corr.forReceipt": "Receipt being corrected",
+  "corr.direction": "What went to the tax office",
+  "corr.dirLess": "Too much",
+  "corr.dirMore": "Too little",
+  "corr.amount": "Correction amount",
+  "corr.payment": "Which payment type",
+  "corr.paymentHint": "Choosing cash changes the expected cash of the shift by this amount.",
+  "corr.reason": "Reason",
+  "corr.reasonPlaceholder": "For example: the amount was entered twice",
+  "corr.reasonHint": "This is the first question in an inspection. The reason stays in the journal.",
+  "corr.issue": "Issue",
+  "corr.done": "Correction receipt issued",
+
   "marking.scanTitle": "Scan the marking labels",
   "marking.pcs": "pcs",
   "marking.scanArrived": "Scan what arrived",

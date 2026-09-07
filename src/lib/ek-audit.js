@@ -40,7 +40,8 @@
  */
 export const AUDIT_ACTIONS = [
   /* ── Kassa ── */
-  "SHIFT_CLOSE", "CASH_MOVEMENT", "SALE_CANCEL", "SALE_RETURN", "CART_ABANDONED",
+  "SHIFT_CLOSE", "CASH_MOVEMENT", "SALE_CANCEL", "SALE_RETURN", "SALE_CORRECTION",
+  "CART_ABANDONED",
 
   /* ── Narx ── */
   "PRICE_CHANGE", "PRICE_BULK_CHANGE",
@@ -82,6 +83,12 @@ export const AUDIT_ACTIONS = [
  */
 export const AUDIT_MONEY = new Set([
   "CASH_MOVEMENT", "SALE_CANCEL", "SALE_RETURN", "EXPENSE_DELETE",
+  /* ⚠ TUZATUVCHI CHEK (V86) — bu ro'yxatga tegishli eng o'tkir
+     amallardan biri. Qaytarish va bekor qilish MAVJUD chekka
+     tayanadi, tuzatishda esa summani ODAM yozadi: hisobotdagi tushum
+     bir kishi yozgan raqamga o'zgaradi. Egasi buni yuzta qator
+     orasidan qidirmasligi kerak. */
+  "SALE_CORRECTION",
   "CUSTOMER_DEBT_ADJUST", "SHOP_SETTING_CHANGE", "PRICE_BULK_CHANGE",
   "BONUS_ADJUST",
   /* ⚠ TO'LOVNI BEKOR QILISH (V102) — bu ro'yxatdagi eng o'tkir amal:

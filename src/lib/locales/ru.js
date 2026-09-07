@@ -682,6 +682,7 @@ export default {
   "enum.audit.CASH_MOVEMENT": "Движение наличных",
   "enum.audit.SALE_CANCEL": "Продажа отменена",
   "enum.audit.SALE_RETURN": "Товар возвращён",
+  "enum.audit.SALE_CORRECTION": "Чек коррекции",
   "enum.audit.PRICE_CHANGE": "Цена изменена",
   "enum.audit.PRICE_BULK_CHANGE": "Массовое изменение цен",
   "enum.audit.STOCK_TAKE_CLOSE": "Инвентаризация завершена",
@@ -1856,6 +1857,22 @@ export default {
   "kassa.qtyFromLabels": "Количество берётся из марок",
 
   /* ── v2: маркировка (Asl Belgisi) ───────────────────── */
+  /* ── Tuzatuvchi chek (V86) ── */
+  "corr.title": "Чек коррекции",
+  "corr.whatIsIt": "Официально исправляет сумму, ушедшую в налоговую. Если товар вернули — оформите возврат, если чек ошибочный — отмену.",
+  "corr.forReceipt": "Исправляемый чек",
+  "corr.direction": "Какая сумма ушла в налоговую",
+  "corr.dirLess": "Ушло больше",
+  "corr.dirMore": "Ушло меньше",
+  "corr.amount": "Сумма коррекции",
+  "corr.payment": "По какому виду оплаты",
+  "corr.paymentHint": "При выборе наличных ожидаемая наличность смены изменится на эту сумму.",
+  "corr.reason": "Причина",
+  "corr.reasonPlaceholder": "Например: сумма введена дважды",
+  "corr.reasonHint": "Это первый вопрос при проверке. Причина остаётся в журнале.",
+  "corr.issue": "Оформить",
+  "corr.done": "Чек коррекции оформлен",
+
   "marking.scanTitle": "Отсканируйте коды маркировки",
   "marking.pcs": "шт",
   "marking.scanArrived": "Сканировать пришедшее",

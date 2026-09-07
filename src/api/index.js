@@ -734,6 +734,19 @@ export const saleApi = {
   /** Qaytarish — tanlangan qatorlar bo'yicha. Bekor qilishdan BOSHQA amal:
       bu yerda tovar javonga qaytadi va qoldiq tiklanadi. */
   returnSale: (id, data) => request(`/sales/${id}/return`, { method: "POST", body: JSON.stringify(data) }),
+
+  /**
+   * TUZATUVCHI CHEK (V86) — soliqqa yuborilgan SUMMANI to'g'rilaydi.
+   *
+   * ⚠ URL da chek `id` si YO'Q va bu ataylab: tuzatiladigan chek
+   * IXTIYORIY. Umuman qayd etilmagan tushum topilganda ota-chek
+   * bo'lmaydi va uni majburiy qilish do'konni soxta chek tanlashga
+   * majbur qilardi.
+   *
+   * ⚠ Faqat fiskal rejim yoqilgan do'konda ishlaydi — server rad
+   * etadi, ekranda esa tugma umuman chizilmaydi.
+   */
+  correct: (data) => request("/sales/correction", { method: "POST", body: JSON.stringify(data) }),
 };
 
 

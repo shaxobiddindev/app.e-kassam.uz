@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "../lib/ek-i18n";
-import { saleApi } from "../api";
+import { saleApi, shopApi } from "../api";
 import { money, fmtMoney } from "../utils";
 import { BranchSelector, Modal } from "../components";
 import { Empty, SearchBar, Badge, Field } from "../components/ui";
@@ -18,6 +18,7 @@ import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
 import { printReceipt } from "../lib/ek-hardware";
 import SaleDetailModal from "../components/SaleDetailModal";
+import SaleCorrectionModal from "../components/SaleCorrectionModal";
 import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
 import Select from "../components/ek/Select";
 import { topRole } from "../lib/ek-roles";
@@ -101,6 +102,17 @@ export default function SalesPage({ toast }) {
        SHOP_ADMIN + CASHIER → SHOP_ADMIN → hamma sotuv
        faqat CASHIER        → CASHIER    → bugungi (ataylab shunday) */
   const isCashier                 = topRole(user?.role) === "CASHIER";
+  /* ══ TUZATUVCHI CHEK (V86) ═══════════════════════════════════════════
+     ⚠ FAQAT FISKAL REJIMDA VA FAQAT RAHBARGA. Ikkala shart ham kerak:
+
+       · fiskal rejimsiz do'kon soliqqa hech narsa yubormagan, ya'ni
+         tuzatadigan narsaning O'ZI yo'q — server ham rad etadi, tugma
+         esa umuman chizilmaydi. Bugungi do'konlar uchun bu qator
+         mavjud emasdek;
+       · kassirga ko'rinmaydi: bu tizimdagi yagona joy, bir kishi
+         hisobotdagi tushumni o'zi yozgan raqamga o'zgartira oladi. */
+  const [fiscalOn, setFiscalOn]   = useState(false);
+  const [corr, setCorr]           = useState(null);
   const [printing, setPrinting]   = useState(null);
   const [sales, setSales]         = useState([]);
   const [loading, setLoading]     = useState(true);
@@ -136,6 +148,21 @@ export default function SalesPage({ toast }) {
   }, [branchId]);
 
   useEffect(() => { loadSales(); }, [loadSales]);
+
+  /* Do'kon fiskal rejimda ishlayaptimi (V86).
+
+     ⚠ XATO JIMGINA YUTILADI va bu ataylab: bu so'rov sotuvlar
+     tarixining ishlashi uchun KERAK EMAS. U yiqilsa tugma
+     chizilmaydi — ya'ni sahifa bugungi holatiga qaytadi, xato
+     xabari bilan kassirni bezovta qilmaydi. */
+  useEffect(() => {
+    if (isCashier) return;
+    let alive = true;
+    shopApi.getProfile()
+      .then((r) => { if (alive) setFiscalOn(Boolean(r?.data?.fiscalEnabled)); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [isCashier]);
 
   // CASHIER uchun faqat bugungi sotuvlar
   const todayStart = new Date();
@@ -678,6 +705,26 @@ export default function SalesPage({ toast }) {
                               <i className="fa-solid fa-rotate-left" />
                             </button>
                           )}
+                          {/* ⚠ TUZATUVCHI CHEK — QAYTARISHDAN BOSHQA AMAL
+                              va tugmasi ham boshqa (qalam, aylanma
+                              strelka emas). Ikkalasi bir xil ko'rinsa,
+                              kassir tovar qaytmagan holatda ham
+                              qaytarishni bosardi va qoldiq sababsiz
+                              tiklanardi.
+
+                              Faqat FISKAL hujjatda: bo'nak va bo'lib
+                              to'lash cheklari soliqqa umuman ketmaydi,
+                              ya'ni ularda tuzatadigan narsa yo'q. */}
+                          {fiscalOn && sale.status !== "CANCELLED"
+                            && sale.type !== "RETURN" && sale.type !== "CORRECTION" && (
+                            <button
+                              className="btn-icon"
+                              title={t("corr.title")}
+                              onClick={() => setCorr(sale)}
+                            >
+                              <i className="fa-solid fa-file-pen" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -697,6 +744,16 @@ export default function SalesPage({ toast }) {
           ajralib ketardi. */}
       <SaleDetailModal sale={detail} onClose={() => setDetail(null)}
                        onReprint={handleReprint} printing={printing === detail?.id} />
+
+      {/* ── Tuzatuvchi chek (V86) ── */}
+      {corr && (
+        <SaleCorrectionModal
+          sale={corr}
+          toast={toast}
+          onClose={() => setCorr(null)}
+          onDone={() => { setCorr(null); toast.success(t("corr.done")); loadSales(); }}
+        />
+      )}
 
       {/* ── Qaytarish oynasi ─────────────────────────────────────────────
           Kassir QAYSI tovarni va NECHTASINI qaytarayotganini tanlaydi.
