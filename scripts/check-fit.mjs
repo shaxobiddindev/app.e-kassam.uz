@@ -391,6 +391,56 @@ await page.keyboard.press("+"); await sleep(120);
 q = await qty(0);
 yes(q.text === "9" && !q.typing, "«+» → 9, yozish holati tugadi", JSON.stringify(q));
 
+/* ══ ⚠ QIDIRUV QATORI TORAYGANDA YOPILIB QOLMAYDI (V84) ═════════════════
+   Do'kon: «savat ekranini kengaytirganimda qidirish oynasi to'liq
+   yopilib ketyapti».
+
+   Ilgari qatorda faqat qidiruv cho'ziluvchan edi, qolgani esa
+   qat'iy: butun qisqarish bitta elementdan olinar va qidiruv lupa
+   ikonkasigacha yig'ilib qolardi. Kassa ekranida esa u eng ko'p
+   ishlatiladigan maydon. */
+console.log("\n══ QIDIRUV QATORI (V84) ══");
+{
+  /* Panel kengligi ekran kengligiga bog'liq — tor oynada `.kassa-left`
+     ham torayadi va konteyner so'rovi aynan shunda ishlaydi. */
+  const widths = [1920, 1600, 1366, 1180, 1024, 980];
+  const bads = [];
+  for (const w of widths) {
+    await page.setViewport({ width: w, height: 768 });
+    await sleep(320);
+    const m = await page.evaluate(() => {
+      const row = document.querySelector(".kassa-tools");
+      const bar = row?.querySelector(".search-bar");
+      const inp = bar?.querySelector("input");
+      if (!row || !bar || !inp) return null;
+      const rb = row.getBoundingClientRect();
+      const bb = bar.getBoundingClientRect();
+      /* Kesilib qolgan tugma bormi — karta `overflow: hidden`. */
+      const spill = [...row.children].some((c) => {
+        const r = c.getBoundingClientRect();
+        /* ⚠ YASHIRILGAN ELEMENT O'TKAZIB YUBORILADI. `display: none`
+           to'rtburchagi (0,0,0,0) bo'ladi va uning `left` i qatorning
+           chap chekkasidan kichik chiqadi — sinov buni «chiqib
+           ketdi» deb o'qir va joylashuv to'g'ri bo'lsa ham
+           yiqilardi. Aynan shunday bo'ldi. */
+        if (r.width === 0 && r.height === 0) return false;
+        return r.right > rb.right + 1 || r.left < rb.left - 1;
+      });
+      return { bar: Math.round(bb.width), input: Math.round(inp.getBoundingClientRect().width), spill };
+    });
+    if (!m) { bads.push(`${w}: qator topilmadi`); continue; }
+    /* 180px — «Кока-кола» kabi so'z ko'rinadigan eng kichik kenglik. */
+    if (m.bar < 179) bads.push(`${w}px → qidiruv ${m.bar}px`);
+    /* Maydonning O'ZI ham yozish uchun yetarli bo'lsin. */
+    if (m.input < 80) bads.push(`${w}px → maydon ${m.input}px`);
+    if (m.spill) bads.push(`${w}px → qatordan chiqib ketdi`);
+  }
+  bads.length === 0
+    ? ok(`qidiruv hamma kenglikda ochiq qoldi (${widths.length} o'lcham)`)
+    : no("⚠ qidiruv yopilib qoldi", bads.join(" | "));
+}
+await page.setViewport({ width: 1366, height: 768 }); await sleep(300);
+
 if (pageErrors.length) { bad += pageErrors.length; console.log("\n  ❌ JS xatolari:"); for (const e of [...new Set(pageErrors)]) console.log("     " + e); }
 else console.log("\n  ✅ Sahifada JS xatosi tushmadi");
 console.log(`\n  ${bad ? "❌ " + bad + " ta yiqildi" : "✅ HAMMASI O'TDI"}`);

@@ -2817,9 +2817,14 @@ export default function KassaPage({ toast, refreshLowStock }) {
               «qaysi maydonga yozay?» degan savoldan qutuladi. */}
 
           <div className="card" style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflow: "hidden" }}>
-            <div style={{ padding: "11px 14px", borderBottom: "1px solid var(--border-subtle)", flexShrink: 0,
-                          display: "flex", alignItems: "center", gap: 8 }}>
-              <div className="search-bar" style={{ flex: 1, minWidth: 0 }}>
+            {/* ⚠ ASBOBLAR QATORI — SINF ORQALI (V84). Ilgari joylashuv
+                shu yerda, inline uslubda edi va panel torayganda uni
+                boshqarib bo'lmasdi: qidiruv lupa ikonkasigacha
+                yig'ilib qolardi (do'kon so'rovi). Endi qoida
+                `styles.css` da — u yerda konteyner kengligiga qarab
+                nima birinchi ketishini aytish mumkin. */}
+            <div className="kassa-tools">
+              <div className="search-bar">
                 <i className="fa-solid fa-magnifying-glass" aria-hidden="true" />
                 <input
                   ref={searchRef}
@@ -3161,18 +3166,17 @@ export default function KassaPage({ toast, refreshLowStock }) {
               <span className="ek-num">{money(total)}</span>
             </div>
 
-            {/* ⚠ OGOHLANTIRISH AYNAN SHU YERDA (foydalanuvchi so'rovi).
-                Ilgari u sahifaning tepasida butun kenglikdagi sariq
-                qator edi: joy egallar, kassir esa uni har kuni ko'rib
-                o'qimay qo'yardi. Endi u to'lov tugmasining ustida —
-                yopiq smena aynan shu tugmani to'sadi va kassir
-                ogohlantirishni aynan kerak bo'lgan daqiqada ko'radi. */}
-            {!shiftOpen && (
-              <div className="total-warn" role="status">
-                <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />
-                <span>{t("shift.closedWarn")}</span>
-              </div>
-            )}
+            {/* ⚠ OGOHLANTIRISH BU YERDAN OLIB TASHLANDI (V83).
+
+                U ikki qatorli sariq quti edi va JAMI bilan to'lov
+                tugmasi orasida turardi — do'kon: «bu joyni isrof
+                qilyapti». Kassa ekranida har piksel tovarlar
+                ro'yxatidan olinadi.
+
+                ⚠ MA'LUMOT YO'QOLMADI: smena tugmasining O'ZI sariq
+                bo'lib «Smena yopiq» deb turadi (ikonkasi ham boshqa),
+                to'liq izoh esa unga hover qilganda chiqadi. Ya'ni
+                signal joyida, matn esa faqat so'ralganda. */}
 
             {/* ── IKKI TUGMA YONMA-YON (V66): chapda JAMG'ARMA, o'ngda
                 TO'LOV. Ilgari jamg'arma tugmasi to'lov ostida, mijozsiz

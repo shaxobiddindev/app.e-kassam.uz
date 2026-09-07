@@ -622,7 +622,51 @@ select.form-input { cursor: pointer; }
 
 /* Kategoriya tanlagichi — qidiruv yonida, o'zining aniq kengligida.
    Cho'zilib ketmasin: qidiruv maydoni undan muhimroq. */
-.kassa-cat       { flex: 0 0 auto; width: clamp(130px, 22%, 200px); }
+/* ══════════════════════════════════════════════════════════════════════
+   KASSA ASBOBLAR QATORI (V84)
+
+   Do'kon: «savat ekranini kengaytirganimda qidirish oynasi to'liq
+   yopilib ketyapti».
+
+   ⚠ SABAB: qatorda faqat qidiruv cho'ziluvchan edi (`flex: 1`),
+   qolgani esa `flex: 0 0 auto`. Ya'ni panel torayganda BUTUN
+   qisqarish bitta elementdan — qidiruvdan — olinardi va u lupa
+   ikonkasigacha yig'ilib qolardi. Kassa ekranida esa qidiruv eng
+   ko'p ishlatiladigan maydon.
+
+   ⚠ QOIDA: ENG KAM KERAKLISI BIRINCHI KETADI. Tartib kassirning
+   ishiga qarab: «/» maslahati (sichqonchasiz ishlaydiganga xolos),
+   keyin ko'rinish almashtirgichi (bir marta tanlanadi va
+   unutiladi), kategoriya esa faqat SIQILADI — u bilan tovar
+   qidiriladi va yo'qotib bo'lmaydi.
+
+   ⚠ KONTEYNER SO'ROVI, `@media` EMAS: kenglik EKRANNIKI emas,
+   PANELNIKI — do'kon savatni kengaytirganda oyna o'lchami umuman
+   o'zgarmaydi va `@media` hech narsa sezmasdi.
+
+   ⚠ OXIRGI CHORA — QATORNI IKKIGA BO'LISH (`flex-wrap`). Sig'masa
+   elementlar pastga tushadi; kesilib qolish esa mumkin emas, chunki
+   karta `overflow: hidden` bilan yopilgan va kesilgan tugmani
+   kassir umuman topa olmasdi. */
+.kassa-tools     { container-type: inline-size;
+                   display: flex; align-items: center; gap: 8px; row-gap: 8px;
+                   flex-wrap: wrap; flex-shrink: 0;
+                   padding: 11px 14px; border-bottom: 1px solid var(--border-subtle); }
+/* ⚠ 180px — «Кока-кола» kabi so'z ko'rinadigan eng kichik kenglik.
+   Undan pastda maydon o'z vazifasini bajarmaydi. */
+.kassa-tools .search-bar { flex: 1 1 220px; min-width: 180px; }
+
+.kassa-cat       { flex: 0 1 auto; width: clamp(130px, 22%, 200px); min-width: 0; }
+
+@container (max-width: 620px) {
+  /* Klaviatura maslahati — birinchi navbatda ortiqcha. */
+  .kassa-tools .search-bar .kbd { display: none; }
+  .kassa-cat { width: clamp(104px, 20%, 150px); }
+}
+@container (max-width: 470px) {
+  /* Ko'rinish almashtirgichi bir marta tanlanadi va unutiladi. */
+  .kassa-tools .view-switch { display: none; }
+}
 
 /* Smena ixcham tugmasi — qidiruv qatorida, yashil holat belgisi. */
 .shift-chip      { flex: 0 0 auto; display: flex; align-items: center; gap: 6px;
@@ -635,12 +679,49 @@ select.form-input { cursor: pointer; }
 .shift-chip--off { background: var(--bg-warning-subtle); border-color: var(--border-warning);
                    color: var(--fg-warning); }
 
-/* Jami kartochkasidagi ogohlantirish — to'lov tugmasining ustida.
-   ⚠ Fon YORUG': kartochka o'zi to'q ko'k va oddiy matn u yerda
-   yo'qolib ketardi. */
-.total-warn      { display: flex; align-items: center; gap: 8px; margin-top: 10px;
-                   padding: 8px 10px; border-radius: 9px; font-size: 12.5px; font-weight: 700;
-                   background: var(--bg-warning-subtle); color: var(--fg-warning); }
+/* ══ SMENA TUGMASIGA HOVER — TO'LIQ IZOH (V83) ═══════════════════════
+   Do'kon so'rovi: ogohlantirish JAMI kartochkasidan olib tashlansin va
+   «smena tugmasiga hover bo'lganda chiqadigan» bo'lsin.
+
+   ⚠ BRAUZERNING O'Z `title` I YETARLI EMAS: u bir soniyacha
+   kechikadi, kichkina va tizim uslubida chiqadi — monoblokning
+   yaltiroq ekranida uni o'qib bo'lmaydi. Shuning uchun o'z
+   maslahatimiz: darhol, kattaroq va do'kon ranglarida.
+
+   ⚠ PASTGA ochiladi: tugma qidiruv qatorida, ekranning eng tepasida
+   turadi va yuqoriga ochilgan quti kesilib qolardi. */
+.shift-chip { position: relative; }
+
+/* ⚠ HAQIQIY ELEMENT, `::after` EMAS — va bu sinov aytgan qaror (V83).
+
+   Avval maslahat `::after` bilan chizilgan edi va brauzer sinovi uni
+   darhol rad etdi: `.card` ham, `.kassa-left` ham `overflow: hidden`
+   bilan yopiladi. Soxta element o'lchab bo'lmaydi, ya'ni «kesildimi
+   yo'qmi» degan savolga JAVOB BERIB BO'LMASDI. Haqiqiy element esa
+   o'lchanadi va sinov uning ekranda ko'rinishini har safar
+   tekshiradi.
+
+   ⚠ PASTGA VA O'NGGA TIRALIB ochiladi: tugma qidiruv qatorining
+   o'ng chekkasida turadi, yuqoriga yoki o'ngga ochilgan quti
+   kartadan chiqib ketardi. */
+.shift-chip__tip {
+  position: absolute; top: calc(100% + 6px); right: 0; z-index: 40;
+  width: max-content; max-width: 250px; padding: 8px 10px;
+  border-radius: 9px; box-shadow: var(--sh2, 0 6px 16px rgba(0,0,0,.18));
+  background: var(--bg-warning-subtle); color: var(--fg-warning);
+  border: 1px solid var(--border-warning);
+  font-size: 12.5px; font-weight: 700; line-height: 1.5; text-align: left;
+  white-space: normal;
+  /* `display:none` emas — o'tish silliq bo'lsin. */
+  opacity: 0; visibility: hidden; transition: opacity .12s ease;
+  pointer-events: none;
+}
+.shift-chip:hover  .shift-chip__tip,
+.shift-chip:focus-visible .shift-chip__tip { opacity: 1; visibility: visible; }
+
+/* ⚠ `.total-warn` OLIB TASHLANDI (V83) — do'kon: «bu joyni isrof
+   qilyapti». Ogohlantirish endi smena tugmasiga hover qilganda
+   chiqadi (`.shift-chip[data-tip]` — yuqorida). */
 
 .view-switch     { display: flex; gap: 3px; background: var(--bg-sunken); border-radius: 9px; padding: 3px; flex: 0 0 auto; }
 .view-switch button { width: var(--hit-md); height: var(--hit-md); border: none; border-radius: 7px; background: transparent;
@@ -932,7 +1013,25 @@ select.form-input { cursor: pointer; }
                    transition: border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), transform var(--dur-instant) var(--ease-out); }
 .qty-btn:hover   { border-color: var(--blue); color: var(--blue); }
 .qty-btn:active  { transform: scale(.92); }
-.qty-num         { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 14px; font-weight: 700; min-width: 26px; text-align: center; }
+/* ⚠ SON UCHUN QAT'IY KENGLIK (V83) — do'kon so'rovi: «bu joyda ham
+   tugmalar tag-matag turishi shart».
+
+   Ilgari `min-width: 26px` edi va u faqat «1» ga yetardi: donalab
+   tovarda son 26px, tortiladigan tovarda esa «0.333» — 40px dan
+   ortiq. Natijada har qatorning «+» va «×» tugmalari BOSHQA joyda
+   turardi.
+
+   ⚠ VA BU SHUNCHAKI CHIROYSIZLIK EMAS. Kassir «+» ni mo'ljallab
+   barmog'ini qo'yadi, qator esa surilgan bo'lsa barmoq «×» ga
+   tushadi — ya'ni miqdor oshishi o'rniga TOVAR O'CHADI. Aynan
+   shu sabab bilan mijozlar ro'yxatidagi tugmalar ham tekislangan
+   edi (V105).
+
+   60px — «999.999» ga yetadi (mono 14px), ya'ni amaldagi hamma
+   miqdorga. Undan uzuni bo'lsa katakcha KENGAYADI, kesilmaydi:
+   raqamning bir qismini yashirish alohida, ancha yomon xato
+   bo'lardi. */
+.qty-num         { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 14px; font-weight: 700; min-width: 60px; text-align: center; }
 /* Miqdor SONI bosiladi — «+» ni 200 marta bosmaslik uchun. Tugma ekani
    ko'rinib tursin (ostida punktir), lekin «+/−» bilan raqobatlashmasin:
    foni ham, ramkasi ham yo'q. */

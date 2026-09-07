@@ -439,8 +439,12 @@ export default function ShiftBar({ toast, compact = false, onState }) {
                 className={`shift-chip ${shift ? "" : "shift-chip--off"}`}
                 onClick={() => (shift ? setPanel(true) : askOpen())}
                 disabled={busy}
-                title={shift ? label : t("shift.closedWarn")}
-                aria-label={label}>
+                /* ⚠ YOPIQ SMENADA — O'Z MASLAHATIMIZ (V83), brauzerniki
+                   emas: u sekin va kichkina, monoblokda o'qib
+                   bo'lmaydi. Ochiq smenada esa oddiy `title` yetarli —
+                   u yerda gap bir qatorlik ma'lumotda. */
+                {...(shift ? { title: label } : {})}
+                aria-label={shift ? label : `${label} — ${t("shift.closedWarn")}`}>
           <i className={`fa-solid ${shift ? "fa-circle-check" : "fa-triangle-exclamation"}`}
              aria-hidden="true" />
           <span className={shift ? "ek-num" : ""}>{shift ? at : t("shift.closedShort")}</span>
@@ -448,6 +452,18 @@ export default function ShiftBar({ toast, compact = false, onState }) {
               ichida: kassa ekranida har qo'shimcha qutichaning narxi
               — tovarlar ro'yxatidan o'g'irlangan balandlik. */}
           {dur && <span className="shift-chip__dur ek-num">{dur}</span>}
+          {/* ⚠ TO'LIQ IZOH — FAQAT HOVERDA (V83). Do'kon so'rovi:
+              ogohlantirish JAMI kartochkasidan olib tashlansin, u
+              «joyni isrof qilyapti».
+
+              ⚠ `aria-hidden`: matn tugmaning `aria-label` ida
+              allaqachon bor va ekran o'quvchi uni ikki marta
+              o'qimasligi kerak. */}
+          {!shift && (
+            <span className="shift-chip__tip" aria-hidden="true">
+              {t("shift.closedWarn")}
+            </span>
+          )}
         </button>
 
         {panel && shift && (

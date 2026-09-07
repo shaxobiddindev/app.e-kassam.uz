@@ -208,8 +208,54 @@ q = await cartQty(page);
 q === "3" ? ok("savatda 3 dona") : no("savatga kasr tushdi", q);
 await page.close();
 
+/* ── §7 ⚠ SAVATDA TUGMALAR TAG-MATAG ──────────────────────────────── */
+console.log("\n§7 \u26a0 Savat tugmalari tag-matag turadi");
+/* Do'kon so'rovi: «bu joyda ham tugmalar tag-matag turishi shart».
+
+   ⚠ VA BU CHIROYSIZLIK EMAS. Donalab tovarda son «1», tortiladigan
+   tovarda «0.333» — kenglik farq qilsa, «+» va «×» har qatorda
+   BOSHQA joyda turadi. Kassir «+» ni mo'ljallab barmog'ini qo'yadi,
+   qator surilgan bo'lsa barmoq «×» ga tushadi va miqdor oshishi
+   o'rniga TOVAR O'CHADI. */
+page = await openKassa([MEAT, PIECE]);
+{
+  /* Ikkala tovarni ham savatga qo'shamiz: biri kasr, biri butun. */
+  await openModal(page);
+  await type(page, "0.333");
+  await page.click(".pay-modal-footer .btn-green");
+  await waitFor(page, () => !document.querySelector(".qty-modal"));
+
+  await page.evaluate(() => {
+    const cards = [...document.querySelectorAll(".prod-card, .product-card, [data-product]")];
+    (cards[1] || cards[0])?.click();
+  });
+  await new Promise((r) => setTimeout(r, 400));
+
+  const cols = await page.evaluate(() => {
+    const rows = [...document.querySelectorAll(".qty-ctrl")];
+    return rows.map((row) => {
+      const btns = [...row.querySelectorAll("button")];
+      return {
+        qty: row.querySelector(".qty-num")?.textContent.trim(),
+        x: btns.map((b) => Math.round(b.getBoundingClientRect().left)),
+      };
+    });
+  });
+
+  if (cols.length < 2) {
+    no("ikkita qator kerak edi", `${cols.length} ta`);
+  } else {
+    const uniq = [...new Set(cols.map((c) => c.x.join(",")))];
+    uniq.length === 1
+      ? ok(`tugmalar bir xil ustunda (${cols.map((c) => c.qty).join(" / ")})`)
+      : no("\u26a0 tugmalar surilgan — barmoq «\u00d7» ga tushadi",
+           cols.map((c) => `${c.qty}: ${c.x.join("/")}`).join("  |  "));
+  }
+}
+await page.close();
+
 /* ── Sahifa xatolari ──────────────────────────────────────────────── */
-console.log("\n§7 Sahifa xatolari");
+console.log("\n§8 Sahifa xatolari");
 pageErrors.length === 0 ? ok("JS xatosi yo'q")
                         : no("sahifada xato", pageErrors.join(" | "));
 
