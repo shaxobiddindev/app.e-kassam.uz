@@ -22,6 +22,11 @@ import { isDesktop, invoke } from "./ek-desktop";
 import { Receipt, WIDTH_80, WIDTH_58, drawerKickBytes } from "./ek-escpos";
 import { t } from "./ek-i18n";
 import { shopHead } from "./ek-shop-print";
+import { qrModuleSize } from "./ek-qr-size";
+/* ⚠ Qoida ALOHIDA modulda — sabab o'sha faylda: bu fayl
+   brauzer modullariga bog'langan va uni Node'dan yuklab
+   bo'lmaydi, ya'ni qoida sinovsiz qolardi. */
+import { isFiscalReceipt } from "./ek-receipt-type";
 import { money, moneyFine, quantity } from "../utils";
 import { paymentLabel, unitLabel } from "./ek-labels";
 import { code128Svg, saleCode } from "./ek-barcode";
@@ -137,7 +142,7 @@ async function send(bytes) {
  */
 export function buildReceipt({ saleId, serverSaleId, cart = [], total = 0, subtotal, discount = 0,
                                payType, payments, customer, offline, shopName, cashier, fiscal, receiptUrl,
-                               credit, toSavings, rounding = 0 }) {
+                               credit, toSavings, rounding = 0, saleType = "SALE" }) {
   const s = getSettings();
   const r = new Receipt(s.width === 58 ? WIDTH_58 : WIDTH_80);
 
@@ -265,15 +270,31 @@ export function buildReceipt({ saleId, serverSaleId, cart = [], total = 0, subto
   /* ── Fiskal blok ───────────────────────────────────────────────────
      Faqat fiskal belgi HAQIQATAN olingan bo'lsa chiqadi. Belgisiz
      "fiskal chek" ko'rinishini yasash — xaridorni ham, do'konni ham
-     aldash bo'lardi. */
-  if (fiscal?.fiscalSign) {
+     aldash bo'lardi.
+
+     ══ ⚠ IKKINCHI QOROVUL: CHEK TURI (V85) ═══════════════════════════
+     943-son qaror bo'nak, bo'lib to'lash va kredit cheklarida fiskal
+     belgi va QR CHIQMASLIGINI talab qiladi. Server bunday chek uchun
+     fiskal yozuv umuman yaratmaydi (`SaleType.isFiscalDocument`), ya'ni
+     `fiscal` bu yerga `null` bo'lib keladi.
+
+     Shunda ham tur BU YERDA qayta tekshiriladi va bu ataylab: chek
+     qayta chop etilganda yoki eski keshdan qurilganda `fiscal`
+     obyekti qolib ketishi mumkin. Bitta qorovulga tayanish —
+     tekshiruv kunida bilib qolinadigan turdagi xato. */
+  if (fiscal?.fiscalSign && isFiscalReceipt(saleType)) {
     r.rule();
     r.center().line(t("kassa.receiptFiscal")).left();
     r.row(t("kassa.receiptFiscalSign"), fiscal.fiscalSign);
     if (fiscal.terminalId) r.row(t("kassa.receiptTerminal"), fiscal.terminalId);
     if (fiscal.receiptNo) r.row(t("kassa.receiptFiscalNo"), fiscal.receiptNo);
     if (fiscal.qrUrl) {
-      r.feed().center().qr(fiscal.qrUrl).left();
+      /* ⚠ MODUL KATTALIGI HISOBLANADI (V85). Ilgari standart `8`
+         ishlatilardi va qisqa havolada QR atigi 21 mm chiqardi —
+         943-qaror esa kamida 30 mm talab qiladi. Xato jimgina edi:
+         chek chiqadi, QR ko'rinadi, faqat kichik va eski telefon
+         kamerasi uni o'qiy olmaydi. */
+      r.feed().center().qr(fiscal.qrUrl, qrModuleSize(fiscal.qrUrl, s.width)).left();
     }
   }
 

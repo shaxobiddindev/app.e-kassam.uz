@@ -62,6 +62,10 @@ function saleToReceipt(sale) {
     customer: sale.customerName ? { fullName: sale.customerName } : null,
     shopName: localStorage.getItem("ek_shopName") || localStorage.getItem("ek_shopCode") || "",
     cashier:  sale.cashierName || "",
+    /* ⚠ CHEK TURI (V85). Qayta chop etishda u SERVERDAN olinishi shart:
+       bo'nak yoki bo'lib to'lash chekida fiskal belgi CHIQMASLIGI
+       kerak va standart `"SALE"` bu qoidani jimgina buzardi. */
+    saleType: sale.type || "SALE",
   };
 }
 
