@@ -250,7 +250,12 @@ console.log("\n§5 Navbat yoshi (V85)");
       body = { success: true, data: {
         provider: "none", enabled: false, moduleEnabled: true,
         pending: 3, sent: 0, failed: 0,
-        oldestPendingHours: 41, queueAlert: "CRITICAL" } };
+        oldestPendingHours: 41, queueAlert: "CRITICAL",
+        /* ⚠ Zanjir BUZILGAN holat: panel uni qizil bilan va
+           bo'g'in raqami bilan ko'rsatishi kerak. */
+        chainBroken: true, chainBrokenSeq: 417,
+        chainCheckedAt: "2026-09-07T03:00:00Z",
+        blockOnChainBreak: false } };
     } else if (/\/shop\/cash-registers$/.test(p)) {
       body = { success: true, data: [] };
     } else if (/\/fiscal\/receipts/.test(p)) {
@@ -289,13 +294,44 @@ console.log("\n§5 Navbat yoshi (V85)");
     no("⚠ fiskal holat UMUMAN so'ralmadi — panel chizilmagan", "so'rov yo'q");
   } else if (/41/.test(t)) {
     ok("navbat yoshi ekranda ko'rindi (41 soat)");
+    /* ⚠ Zanjir buzilgani ham ko'rinishi kerak — u navbat yoshidan
+       ham jiddiyroq signal. */
+    if (/417/.test(t)) ok("buzuq bo'g'in raqami ko'rindi (417)");
+    else no("zanjir buzilgani chizilmadi", "417 yo'q");
   } else {
     no("holat so'raldi, lekin yosh chizilmadi", t.slice(0, 120));
   }
   await page.close();
 }
 
-console.log("\n§6 Sahifa xatolari");
+/* ── §6 ZANJIR ─────────────────────────────────────────────────────── */
+console.log("\n§6 Cheklar zanjiri (V85)");
+{
+  const page = await makePage(
+    { fiscalEnabled: false, tin: "123456789", tinType: "LEGAL",
+      fiscalAddress: "Chilonzor 19", blockOnChainBreak: true });
+  const t = await text(page);
+
+  /* ⚠ BLOKLASH KALITI KO'RINISHI SHART va oqibati bilan: uni
+     bosayotgan odam kassa to'xtashini bilishi kerak. */
+  if (/Zanjir buzilsa sotuvni to'xtatish/i.test(t)) ok("bloklash kaliti bor");
+  else no("bloklash kaliti topilmadi", "yo'q");
+
+  if (/kassa ishlamay qoladi/i.test(t)) ok("oqibati ochiq yozilgan");
+  else no("oqibat yozilmagan — kalit sababsiz bosilardi", "yo'q");
+
+  /* ⚠ Kalit profildagi qiymatdan o'qilishi kerak: aks holda ega uni
+     yoqib qo'yib, sahifani qayta ochganda «o'chiq» ko'rardi. */
+  const on = await page.evaluate(() =>
+    [...document.querySelectorAll('[role="switch"]')]
+      .some((b) => b.getAttribute("aria-checked") === "true"
+                   && /to'xtatish/i.test(b.closest(".set-row")?.innerText || "")));
+  if (on) ok("kalit profildagi qiymat bilan yoqilgan");
+  else no("kalit profildan o'qilmadi", "o'chiq");
+  await page.close();
+}
+
+console.log("\n§7 Sahifa xatolari");
 if (pageErrors.length) no("konsolda xato bor", pageErrors.slice(0, 3).join(" | "));
 else ok("konsol toza");
 

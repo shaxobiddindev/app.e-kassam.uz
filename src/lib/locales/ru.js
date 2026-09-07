@@ -2270,4 +2270,17 @@ export default {
   "fiscal.queueAgeHours": "часов в очереди",
   "fiscal.queueWarn": "Чек не уходит больше суток. Проверьте модуль.",
   "fiscal.queueCritical": "Срок близко. Чек должен уйти сегодня.",
+
+  /* ══ Cheklar zanjiri (V85) ══ */
+  "fiscal.chain": "Цепочка чеков",
+  "fiscal.chainOk": "Цела",
+  "fiscal.chainBroken": "Нарушена",
+  "fiscal.chainUnknown": "Ещё не проверялась",
+  "fiscal.chainLink": "звено",
+  "fiscal.chainChecked": "Последняя проверка",
+  "fiscal.chainHint": "Каждый чек подписывает предыдущий. Проверка проходит ночью.",
+  "fiscal.chainCheck": "Проверить",
+  "fiscal.chainBlocking": "продажа остановлена",
+  "fiscalSetup.chainBlock": "Останавливать продажу при нарушении",
+  "fiscalSetup.chainBlockHint": "По умолчанию выдаётся только предупреждение. При включении касса перестаёт работать.",
 };

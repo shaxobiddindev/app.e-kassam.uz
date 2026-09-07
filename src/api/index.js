@@ -408,6 +408,11 @@ export const fiscalApi = {
   // Kassa chek chop etishdan oldin bir marta so'raydi (kutib qolmaydi).
   bySale:   (saleId)  => request(`/fiscal/by-sale/${saleId}`),
   retry:    (id)      => request(`/fiscal/receipts/${id}/retry`, { method: "POST" }),
+  /* Zanjirni QO'LDA tekshirish (V85).
+     ⚠ `POST`, `GET` emas: tekshiruv natijani YOZADI va minglab
+     qatorni o'qiydi — `GET` bo'lsa brauzer uni keshlashi yoki
+     oldindan yuklashi mumkin edi. */
+  checkChain: ()      => request("/fiscal/chain/check", { method: "POST" }),
 };
 
 // ─── Rasmlar ──────────────────────────────────────────────────
@@ -844,6 +849,10 @@ export const shopApi = {
      ⚠ Bo'sh qiymat ham yuboriladi — server uni «o'chirish» deb
      o'qiydi va aks holda bir marta yozilgan matnni olib tashlashning
      yo'li qolmasdi. */
+  /* Zanjir buzilganda sotuv to'xtasinmi (V85). Standart — yo'q. */
+  setChainBlock: (value) =>
+    request(`/shop/chain-block?value=${value}`, { method: "PATCH" }),
+
   setReceiptFooter: (value) =>
     request(`/shop/receipt-footer?value=${encodeURIComponent(value ?? "")}`,
             { method: "PATCH" }),

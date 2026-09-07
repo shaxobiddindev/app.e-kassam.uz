@@ -35,6 +35,8 @@ export default function FiscalSetupPanel({ profile, toast, onSaved }) {
   const [address, setAddress] = useState("");
   const [agentTin, setAgentTin] = useState("");
   const [saving, setSaving] = useState(false);
+  /* Zanjir buzilganda sotuv to'xtasinmi (V85). Standart — yo'q. */
+  const [chainBlock, setChainBlock] = useState(false);
 
   /* ── Kassalar ─────────────────────────────────────────────────── */
   const [registers, setRegisters] = useState([]);
@@ -51,6 +53,7 @@ export default function FiscalSetupPanel({ profile, toast, onSaved }) {
     setTinType(profile?.tinType || "LEGAL");
     setAddress(profile?.fiscalAddress || "");
     setAgentTin(profile?.commissionAgentTin || "");
+    setChainBlock(Boolean(profile?.blockOnChainBreak));
   }, [profile]);
 
   const loadRegisters = useCallback(async () => {
@@ -73,6 +76,22 @@ export default function FiscalSetupPanel({ profile, toast, onSaved }) {
   }, [toast]);
 
   useEffect(() => { loadRegisters(); }, [loadRegisters]);
+
+  /* ⚠ Kalit DARHOL saqlanadi, «Saqlash» tugmasini kutmaydi: u
+     rekvizit emas, ALOHIDA qaror va uni boshqa maydonlar bilan
+     birga yuborish «manzilni tuzatdim, zanjir bloklashini ham
+     yoqib yubordim» degan holatga olib kelardi. */
+  const toggleChainBlock = async () => {
+    const next = !chainBlock;
+    try {
+      await shopApi.setChainBlock(next);
+      setChainBlock(next);
+      toast.success(t("common.saved"));
+      onSaved?.();
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
 
   const saveRequisites = async () => {
     setSaving(true);
@@ -194,6 +213,36 @@ export default function FiscalSetupPanel({ profile, toast, onSaved }) {
             <input className="input ek-num" inputMode="numeric" value={agentTin} maxLength={14}
                    aria-label={t("fiscalSetup.agentTin")}
                    onChange={(e) => setAgentTin(e.target.value.replace(/\D/g, ""))} />
+          </div>
+        </div>
+
+        {/* ══ ZANJIR BUZILGANDA BLOKLASH (V85) ═══════════════════════
+            ⚠ STANDART — O'CHIQ va bu ongli qaror. Zanjir uzilishi har
+            doim ham yomon niyat emas: migratsiya, qo'lda tuzatish yoki
+            qo'llab-quvvatlash ishi ham uni uzadi. Standart holatda
+            do'kon OGOHLANTIRISH oladi va ishlayveradi.
+
+            Yoqilsa — sotuv to'xtaydi. Shuning uchun izohda oqibat
+            ochiq yozilgan: kalitni bosayotgan odam nima bo'lishini
+            bilishi kerak. */}
+        <div className="set-row">
+          <div className="set-row__text">
+            <div className="set-row__label">{t("fiscalSetup.chainBlock")}</div>
+            <div className="set-row__hint">{t("fiscalSetup.chainBlockHint")}</div>
+          </div>
+          <div className="set-row__control">
+            <button
+              type="button"
+              role="switch"
+              aria-checked={chainBlock}
+              className={`ek-switch ${chainBlock ? "on" : ""}`}
+              onClick={toggleChainBlock}
+            >
+              <span className="ek-switch__knob" />
+              <span className="ek-switch__text">
+                {chainBlock ? t("common.yes") : t("common.no")}
+              </span>
+            </button>
           </div>
         </div>
 

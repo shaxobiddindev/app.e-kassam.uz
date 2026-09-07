@@ -23,6 +23,7 @@ export default function FiscalPanel({ toast }) {
   const [receipts, setReceipts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState(null);
+  const [checking, setChecking] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -41,6 +42,23 @@ export default function FiscalPanel({ toast }) {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  /* Zanjirni qo'lda tekshirish. Reja bo'yicha u kuniga bir marta
+     ishlaydi; do'kon shubhalansa yoki qo'llab-quvvatlash ishidan
+     keyin javobni darhol bilishi kerak. */
+  const runCheck = async () => {
+    setChecking(true);
+    try {
+      const r = await fiscalApi.checkChain();
+      if (r?.data?.ok) toast.success(t("fiscal.chainOk"));
+      else toast.error(`${t("fiscal.chainBroken")}: ${r?.data?.reason || ""}`);
+      load();
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setChecking(false);
+    }
+  };
 
   const retry = async (id) => {
     setBusyId(id);
@@ -112,6 +130,43 @@ export default function FiscalPanel({ toast }) {
             </div>
           </div>
         )}
+
+        {/* ══ ZANJIR HOLATI (V85) ═══════════════════════════════════════
+            ⚠ UCHTA holat, ikkitasi emas. «Buzilmagan» va
+            «tekshirilmagan» bir xil ko'rinsa, birinchisi tinch,
+            ikkinchisi esa xavfli holat bir xil o'qilardi:
+              · tekshirilmagan → kulrang, «hali tekshirilmagan»;
+              · butun          → yashil, oxirgi tekshiruv vaqti bilan;
+              · buzilgan       → qizil, qaysi bo'g'inda ekani bilan. */}
+        <div className={`ek-note ${status.chainBroken ? "ek-note--danger" : ""}`}
+             style={{ marginTop: 12 }}>
+          <i className={`fa-solid ${status.chainBroken
+                          ? "fa-link-slash" : "fa-link"}`} />
+          <div style={{ flex: 1 }}>
+            <div>
+              <b>{t("fiscal.chain")}</b>:{" "}
+              {status.chainBroken
+                ? t("fiscal.chainBroken")
+                : status.chainCheckedAt ? t("fiscal.chainOk") : t("fiscal.chainUnknown")}
+              {status.chainBroken && status.chainBrokenSeq != null
+                && ` (${t("fiscal.chainLink")} ${status.chainBrokenSeq})`}
+            </div>
+            <div className="form-hint">
+              {status.chainCheckedAt
+                ? `${t("fiscal.chainChecked")}: ${fmtDateTime(status.chainCheckedAt)}`
+                : t("fiscal.chainHint")}
+              {/* ⚠ Bloklash yoqilganini AYTIB TURISH shart: sotuv
+                  to'xtaganda kassir sababni shu yerdan topadi. */}
+              {status.chainBroken && status.blockOnChainBreak
+                && ` — ${t("fiscal.chainBlocking")}`}
+            </div>
+          </div>
+          <button className="btn btn-outline btn-sm" disabled={checking}
+                  onClick={runCheck}>
+            {checking ? <Spinner /> : <i className="fa-solid fa-magnifying-glass" />}{" "}
+            {t("fiscal.chainCheck")}
+          </button>
+        </div>
 
         <div style={{ display: "flex", gap: 18, marginTop: 14, flexWrap: "wrap" }}>
           <Stat label={t("fiscal.pending")} value={status.pending} tone={status.pending ? "warning" : null} />

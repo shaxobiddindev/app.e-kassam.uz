@@ -2378,4 +2378,17 @@ export default {
   "fiscal.queueAgeHours": "soatdan beri navbatda",
   "fiscal.queueWarn": "Chek bir kundan beri yuborilmayapti. Modulni tekshiring.",
   "fiscal.queueCritical": "Muddat yaqin. Chek bugun yuborilishi kerak.",
+
+  /* ══ Cheklar zanjiri (V85) ══ */
+  "fiscal.chain": "Cheklar zanjiri",
+  "fiscal.chainOk": "Butun",
+  "fiscal.chainBroken": "Buzilgan",
+  "fiscal.chainUnknown": "Hali tekshirilmagan",
+  "fiscal.chainLink": "bo'g'in",
+  "fiscal.chainChecked": "Oxirgi tekshiruv",
+  "fiscal.chainHint": "Har chek oldingisini imzolaydi. Tekshiruv har kuni tunda o'tadi.",
+  "fiscal.chainCheck": "Tekshirish",
+  "fiscal.chainBlocking": "sotuv to'xtatilgan",
+  "fiscalSetup.chainBlock": "Zanjir buzilsa sotuvni to'xtatish",
+  "fiscalSetup.chainBlockHint": "Standart holatda faqat ogohlantirish beriladi. Yoqilsa kassa ishlamay qoladi.",
 };

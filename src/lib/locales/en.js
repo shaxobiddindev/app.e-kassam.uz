@@ -2270,4 +2270,17 @@ export default {
   "fiscal.queueAgeHours": "hours in the queue",
   "fiscal.queueWarn": "A receipt has been stuck for over a day. Check the module.",
   "fiscal.queueCritical": "The deadline is close. This must be sent today.",
+
+  /* ══ Cheklar zanjiri (V85) ══ */
+  "fiscal.chain": "Receipt chain",
+  "fiscal.chainOk": "Intact",
+  "fiscal.chainBroken": "Broken",
+  "fiscal.chainUnknown": "Not checked yet",
+  "fiscal.chainLink": "link",
+  "fiscal.chainChecked": "Last check",
+  "fiscal.chainHint": "Each receipt signs the previous one. The check runs nightly.",
+  "fiscal.chainCheck": "Check",
+  "fiscal.chainBlocking": "sales stopped",
+  "fiscalSetup.chainBlock": "Stop sales if the chain breaks",
+  "fiscalSetup.chainBlockHint": "By default only a warning is shown. Once on, the register stops working.",
 };
