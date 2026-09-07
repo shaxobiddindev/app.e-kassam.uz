@@ -9,6 +9,7 @@ import { SkeletonList, Spinner } from "../../components/ek/Loading";
 import { useLoading } from "../../lib/use-loading";
 import Select from "../../components/ek/Select";
 import { UNIT, MARKING_GROUP, options, unitLabel } from "../../lib/ek-labels";
+import { asArray } from "../../lib/ek-array";
 
 /* ══════════════════════════════════════════════════════════════════════════
    Kategoriyalar — endi DARAXT va STANDART QIYMATLAR manbai.
@@ -63,7 +64,7 @@ export default function CategoriesPage({ toast }) {
     setLoading(true);
     try {
       const res = await productApi.getCategories(branchId);
-      setCategories(res.data || []);
+      setCategories(asArray(res.data));
     } catch (err) {
       toast.error(err.message);
     } finally {

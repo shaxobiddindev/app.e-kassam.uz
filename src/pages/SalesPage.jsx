@@ -10,6 +10,7 @@ import { useAuth } from "../hooks/useAuth";
 import { PAYMENT_TYPE, SALE_STATUS, paymentEntry, saleStatus,
          dispositionOptions, writeOffOptions,
          RETURN_WRITE_OFF_EXCLUDE } from "../lib/ek-labels";
+import { asArray } from "../lib/ek-array";
 // ⚠ `Spinner` HAM shu yerdan. U chek chiqarish va bekor qilish tugmalarida
 // FAQAT amal davomida chiziladi — shuning uchun import unutilgani sahifa
 // ochilganda bilinmasdi, tugma bosilgan zahoti esa render'da
@@ -134,7 +135,7 @@ export default function SalesPage({ toast }) {
     try {
       const res = await saleApi.getAll(branchId);
       // Teskari tartib: yangi sotuvlar yuqorida
-      const sorted = (res.data || []).sort((a, b) => {
+      const sorted = (asArray(res.data)).sort((a, b) => {
         const da = new Date(a.createdAt || 0).getTime();
         const db = new Date(b.createdAt || 0).getTime();
         return db - da;

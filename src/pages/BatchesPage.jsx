@@ -10,6 +10,7 @@ import { shortDate, dateTime } from "../lib/ek-format";
 import { unitLabel, unitDecimals } from "../lib/ek-labels";
 import { DEFAULT_NEAR_EXPIRY_DAYS, daysLeft } from "../lib/ek-expiry";
 import BatchCorrectModal from "../components/BatchCorrectModal";
+import { asArray } from "../lib/ek-array";
 
 /* ══════════════════════════════════════════════════════════════════════════
    PARTIYALAR — SAHIFA (V60, jadval V76)
@@ -122,8 +123,8 @@ export default function BatchesPage({ toast }) {
         inventoryApi.batches(productId, false),
         inventoryApi.batches(productId, true),
       ]);
-      setLive(a?.data || []);
-      setArchived(b?.data || []);
+      setLive(asArray(a?.data));
+      setArchived(asArray(b?.data));
     } catch (e) {
       toast?.error(e.message);
     } finally {

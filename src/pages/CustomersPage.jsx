@@ -11,6 +11,7 @@ import { useAuth } from "../hooks/useAuth";
 import { shortDate, dateTime } from "../lib/ek-format";
 import SaleDetailModal from "../components/SaleDetailModal";
 import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
+import { asArray } from "../lib/ek-array";
 /* ⚠ SEKIN YUKLANADI: to'lov cheki kunda bir necha marta ochiladi,
    mijozlar sahifasi esa doim. Chekni asosiy bo'lakka qo'shish uni
    hech qachon ochmaydigan kassirga ham yuklatardi. */
@@ -123,7 +124,7 @@ export default function CustomersPage({ toast }) {
       const res = view === "debtors"
         ? await customerApi.debtors()
         : await customerApi.getAll(branchId);
-      setCustomers(res.data || []);
+      setCustomers(asArray(res.data));
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -145,7 +146,7 @@ export default function CustomersPage({ toast }) {
     setPayOpen(false);
     try {
       const r = await customerApi.ledger(c.id);
-      setDebt((d) => (d && d.customer.id === c.id ? { ...d, ledger: r.data || [] } : d));
+      setDebt((d) => (d && d.customer.id === c.id ? { ...d, ledger: asArray(r.data) } : d));
     } catch (_) { /* jurnal kelmasa ham to'lov qabul qilinaveradi */ }
   };
 
@@ -224,7 +225,7 @@ export default function CustomersPage({ toast }) {
       toast.success(t("credit.reversed"));
       setReverse(null);
       const r = await customerApi.ledger(debt.customer.id);
-      setDebt((d) => (d ? { ...d, ledger: r.data || [] } : d));
+      setDebt((d) => (d ? { ...d, ledger: asArray(r.data) } : d));
       loadData();
     } catch (err) {
       toast.error(err.message);

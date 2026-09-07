@@ -21,6 +21,7 @@ import { useLoading } from "../lib/use-loading";
 import { dateTime } from "../lib/ek-format";
 import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
 import { AUDIT_ACTIONS as ACTIONS, AUDIT_MONEY as MONEY } from "../lib/ek-audit";
+import { asArray } from "../lib/ek-array";
 
 /* ⚠ RO'YXAT ENDI `lib/ek-audit.js` DA (V81).
 
@@ -63,7 +64,7 @@ export default function AuditPage({ toast }) {
     setLoading(true);
     try {
       const r = await shopApi.audit({ action: action || null, actor: actor || null, page, size: 50 });
-      setRows(r.data?.items || []);
+      setRows(asArray(r.data?.items));
       setTotal(r.data?.totalItems || 0);
       setPages(r.data?.totalPages || 0);
     } catch (err) {

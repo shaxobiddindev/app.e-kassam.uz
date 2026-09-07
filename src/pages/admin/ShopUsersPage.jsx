@@ -11,6 +11,7 @@ import { roleSet } from "../../lib/ek-roles";
 import Select from "../../components/ek/Select";
 import { SkeletonList, Spinner } from "../../components/ek/Loading";
 import { useLoading } from "../../lib/use-loading";
+import { asArray } from "../../lib/ek-array";
 
 /* Rollar yagona lug'atdan (src/lib/ek-labels.js). `roleLabel` Spring'ning
    `ROLE_` prefiksini ham, katta-kichik harf farqini ham o'zi hal qiladi —
@@ -45,7 +46,7 @@ export default function ShopUsersPage({ toast }) {
     try {
       const res = await shopApi.getUsers(branchId);
       // Backend allaqachon filtrlaydi, lekin ishonch uchun frontend-da ham o'zini o'chirib tashlaymiz
-      const filtered = (res.data || []).filter(u => u.username !== currentUser?.username);
+      const filtered = (asArray(res.data)).filter(u => u.username !== currentUser?.username);
       setUsers(filtered);
     } catch (err) {
       toast.error(t("staff.loadFailed"));

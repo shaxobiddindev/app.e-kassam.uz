@@ -20,6 +20,7 @@ import { NumField, DateField } from "../components/ek/EkFields";
 import { DEFAULT_NEAR_EXPIRY_DAYS, daysLeft } from "../lib/ek-expiry";
 import { printExpiryLabels } from "../lib/ek-hardware";
 import { rankItems } from "../lib/ek-search";
+import { asArray } from "../lib/ek-array";
 
 /* Jurnal turlari — rang bilan: kirim yashil, chiqim qizil, to'g'irlash sariq.
    Omborchi ro'yxatga qarab o'qimasdan ham manzarani ko'rsin. */
@@ -255,7 +256,7 @@ export default function InventoryPage({ toast }) {
     if (!silent) setLoading(true);
     try {
       const res = await inventoryApi.getAll(branchId);
-      setItems(res.data || []);
+      setItems(asArray(res.data));
     } catch (err) {
       if (!silent) toast.error(err.message);
     } finally {
@@ -309,7 +310,7 @@ export default function InventoryPage({ toast }) {
     setMovLoading(true);
     try {
       const res = await inventoryApi.getMovements();
-      setMovements(res.data || []);
+      setMovements(asArray(res.data));
     } catch (err) {
       toast.error(err.message);
     } finally {

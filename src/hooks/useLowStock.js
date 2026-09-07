@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { inventoryApi } from "../api";
 import { useShopFeatures } from "./useShopFeatures";
+import { asArray } from "../lib/ek-array";
 
 /* Kam qoldiq ogohlantirishi — har 60 soniyada tekshiriladi.
    Sotuvdan keyin `refresh()` chaqirilsa darhol yangilanadi.
@@ -23,7 +24,7 @@ export function useLowStock() {
     try {
       setLoading(true);
       const res = await inventoryApi.getLow();
-      setItems(res.data || []);
+      setItems(asArray(res.data));
     } catch (_) {
       // Xato bo'lsa jimgina o'tkazib yuboramiz
     } finally {

@@ -24,6 +24,7 @@ import { TRANSFER_STATUS, transferStatus, unitLabel,
 import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
 import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
+import { asArray } from "../lib/ek-array";
 
 const TONE_COLOR = { success: "green", danger: "red", warning: "yellow", info: "blue", neutral: "gray" };
 
@@ -64,9 +65,9 @@ export default function TransfersPage({ toast }) {
       const [tg, out, inc] = await Promise.all([
         transferApi.targets(), transferApi.outgoing(), transferApi.incoming(),
       ]);
-      setTargets(tg.data || []);
-      setOutgoing(out.data || []);
-      setIncoming(inc.data || []);
+      setTargets(asArray(tg.data));
+      setOutgoing(asArray(out.data));
+      setIncoming(asArray(inc.data));
     } catch (err) {
       toast?.error(err.message);
     } finally {
@@ -91,7 +92,7 @@ export default function TransfersPage({ toast }) {
     if (q.trim().length < 2) { setFound([]); return; }
     try {
       const r = await productApi.search(q.trim(), 0, 12);
-      setFound(r.data || []);
+      setFound(asArray(r.data));
     } catch (_) { setFound([]); }
   };
 

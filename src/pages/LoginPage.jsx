@@ -7,6 +7,7 @@ import ThemeSelect from "../components/ek/ThemeSelect";
 import { CodeField, UsernameField, OtpField } from "../components/ek/EkFields";
 import { isMobileApp } from "../lib/ek-desktop";
 import EkIntro from "../components/EkIntro";
+import { asArray } from "../lib/ek-array";
 
 /* ══════════════════════════════════════════════════════════════════════════
    Kirish — ILOVA ICHIDA (desktop)
@@ -115,7 +116,7 @@ export default function LoginPage({ onLogin }) {
       let me = {};
       try { me = (await get("/auth/me", r.data.accessToken)).data || {}; } catch (_) {}
 
-      const roles = me.roles || r.data?.roles || [];
+      const roles = me.roles || asArray(r.data?.roles);
       const roleStr = roles.map((x) => x?.type || x?.name || String(x || "")).filter(Boolean).join(",");
 
       onLogin({

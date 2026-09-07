@@ -23,6 +23,7 @@ import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
 import { NumField, DateField } from "../components/ek/EkFields";
 import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
+import { asArray } from "../lib/ek-array";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -42,8 +43,8 @@ export default function SupplyPage({ toast }) {
     setLoading(true);
     try {
       const [r, s] = await Promise.all([supplyApi.receipts(), supplyApi.suppliers()]);
-      setReceipts(r.data || []);
-      setSuppliers(s.data || []);
+      setReceipts(asArray(r.data));
+      setSuppliers(asArray(s.data));
     } catch (err) {
       toast?.error(err.message);
     } finally {
@@ -162,7 +163,7 @@ export default function SupplyPage({ toast }) {
     setPay({ supplier: s, entered: {}, focus: "CASH", ledger: null });
     try {
       const r = await supplyApi.ledger(s.id);
-      setPay((p) => (p && p.supplier.id === s.id ? { ...p, ledger: r.data || [] } : p));
+      setPay((p) => (p && p.supplier.id === s.id ? { ...p, ledger: asArray(r.data) } : p));
     } catch (_) { /* jurnal kelmasa ham to'lov qabul qilinaveradi */ }
   };
 

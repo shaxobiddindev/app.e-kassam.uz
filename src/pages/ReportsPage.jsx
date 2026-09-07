@@ -373,8 +373,16 @@ export default function ReportsPage({ toast }) {
   useEffect(() => { load(); }, [load]);
   useEffect(() => { localStorage.setItem("ek_rpt_period", period); }, [period]);
 
-  const k = data?.now;
-  const p = data?.prev;
+  /* ⚠ `|| {}` — javobda `now` bo'lmasa ham sahifa TIRIK qolsin.
+     Ilgari bu yerda `data?.now` turardi va u `undefined` bo'lganda
+     quyidagi `k.netSales` BUTUN hisobot sahifasini yiqitardi
+     (React'da render ichidagi istisno butun daraxtni o'chiradi).
+
+     ⚠ Xuddi shu faylning eksport qismida (`d.now || {}`) allaqachon
+     to'g'ri yozilgan edi — ya'ni bitta sahifada ikki xil odat bor
+     edi va ulardan biri xavfli. Xatoni `check-crash.mjs` topdi. */
+  const k = data?.now || {};
+  const p = data?.prev || {};
 
   /* ── Dinamika nuqtalari ──────────────────────────────────────────── */
   const points = useMemo(() => (data?.series || []).map((s) => ({

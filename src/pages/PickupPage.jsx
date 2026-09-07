@@ -11,6 +11,7 @@ import { parseSaleCode } from "../lib/ek-barcode";
 import { printPickupSlip } from "../lib/ek-hardware";
 import Modal from "../components/Modal";
 import { rankItems } from "../lib/ek-search";
+import { asArray } from "../lib/ek-array";
 
 /* ══════════════════════════════════════════════════════════════════════════
    OMBORDAN BERIB YUBORISH (V48)
@@ -64,8 +65,8 @@ export default function PickupPage({ toast }) {
     if (!silent) setLoading(true);
     try {
       const res = view === "history" ? await pickupApi.history() : await pickupApi.queue();
-      setOrders(res.data || []);
-      return res.data || [];
+      setOrders(asArray(res.data));
+      return asArray(res.data);
     } catch (err) {
       if (!silent) toast.error(err.message);
       return [];

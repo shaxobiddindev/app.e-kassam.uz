@@ -22,6 +22,7 @@ import { useBadge } from "../context/BadgeProvider";
 import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
 import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
+import { asArray } from "../lib/ek-array";
 
 /* ⚠ SANA+VAQT — `lib/ek-format.js` dan (V70). Uchta sahifada
    uchta bir xil mahalliy nusxa bor edi va ular `uz-UZ` ni
@@ -48,8 +49,8 @@ export default function PricesPage({ toast }) {
         productApi.getCategories().catch(() => ({ data: [] })),
         productApi.shopPriceHistory(),
       ]);
-      setCats(c.data || []);
-      setHistory(h.data || []);
+      setCats(asArray(c.data));
+      setHistory(asArray(h.data));
     } catch (err) {
       toast?.error(err.message);
     } finally {

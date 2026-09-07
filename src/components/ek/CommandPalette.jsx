@@ -7,6 +7,7 @@ import { roleSet } from "../../lib/ek-roles";
 import { NAV } from "../Layout";
 import { productApi, customerApi } from "../../api";
 import { money } from "../../utils";
+import { asArray } from "../../lib/ek-array";
 
 /* ══════════════════════════════════════════════════════════════════════════
    BUYRUQ QATORI — Ctrl+K (V74)
@@ -118,8 +119,8 @@ export default function CommandPalette({ open, onClose, role, branchId }) {
     setBusy(true);
     const id = setTimeout(() => {
       Promise.all([
-        productApi.search(text, 0, LIMIT_SECTION, branchId).then((r) => r.data?.content || r.data || []).catch(() => []),
-        customerApi.getAll(branchId).then((r) => r.data || []).catch(() => []),
+        productApi.search(text, 0, LIMIT_SECTION, branchId).then((r) => asArray(r.data)).catch(() => []),
+        customerApi.getAll(branchId).then((r) => asArray(r.data)).catch(() => []),
       ]).then(([products, customers]) => {
         if (mine !== seq.current) return;      // eskirgan javob — tashlanadi
         const n = normSearch(text);

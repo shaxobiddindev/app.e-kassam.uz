@@ -19,6 +19,7 @@ import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
 import { money } from "../utils";
 import { NumField } from "../components/ek/EkFields";
+import { asArray } from "../lib/ek-array";
 
 const EMPTY_FORM = { name: "", minSpent: "", discountPercent: "", cashbackPercent: "" };
 
@@ -49,7 +50,7 @@ export default function LoyaltyPage({ toast }) {
         loyaltyApi.tiers(),
         shopApi.getProfile().catch(() => null),
       ]);
-      setTiers(tierRes.data || []);
+      setTiers(asArray(tierRes.data));
       if (profile?.data?.bonusMaxPercent != null) {
         const v = String(Number(profile.data.bonusMaxPercent));
         setMaxPercent(v);

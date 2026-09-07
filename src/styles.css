@@ -4731,7 +4731,17 @@ body.osk-open .mark-modal {
 }
 .kpi--bad .kpi__value { color: var(--fg-danger); }
 .kpi__foot { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; }
-.kpi__sub { color: var(--fg-tertiary); font-weight: 600; }
+/* ⚠ `--fg-secondary`, `--fg-tertiary` EMAS (V86). 12px matnda
+   uchinchi daraja oq fonda 2.64 kontrast beradi — WCAG talabi 4.5.
+   Qolgan hamma mayda izoh (`.form-hint`, `.auth__sub`) allaqachon
+   ikkinchi darajada; bu qator yagona istisno edi.
+
+   ⚠ XATO NEGA KO'RINMAGAN: hisobot sahifasi `check-a11y` mockida
+   yiqilardi (`data?.now` bo'sh bo'lganda), ya'ni bu elementlar
+   UMUMAN chizilmasdi va o'lchanmasdi ham. Yiqilish tuzatilgach
+   ular ko'rindi va kontrast xatosi darrov chiqdi — bitta xato
+   ikkinchisini yashirib turgan ekan. */
+.kpi__sub { color: var(--fg-secondary); font-weight: 600; }
 .kpi__delta { font-weight: 800; font-variant-numeric: tabular-nums; }
 .kpi__delta.is-up   { color: var(--fg-success); }
 .kpi__delta.is-down { color: var(--fg-danger); }
@@ -4756,9 +4766,14 @@ body.osk-open .mark-modal {
 .chart { position: relative; }
 .chart--empty {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 8px; color: var(--fg-tertiary); font-size: 13px;
+  /* ⚠ Matn `--fg-secondary` (V86): 13px da uchinchi daraja 2.64
+     kontrast beradi, WCAG talabi 4.5. «Ma'lumot yo'q» yozuvi
+     BO'SH ekrandagi yagona matn — uni o'qib bo'lmasa, foydalanuvchi
+     sahifa yuklanmadi deb o'ylaydi. */
+  gap: 8px; color: var(--fg-secondary); font-size: 13px;
 }
-.chart--empty > i { font-size: 22px; opacity: .4; }
+/* Ikonka hira qolaveradi — u bezak, ma'lumot emas. */
+.chart--empty > i { font-size: 22px; opacity: .4; color: var(--fg-tertiary); }
 .chart__legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 8px; }
 .chart__key { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--fg-secondary); }
 .chart__key i, .chart__tip i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }

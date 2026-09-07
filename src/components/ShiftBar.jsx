@@ -26,6 +26,7 @@ import { printShiftReport } from "../lib/ek-hardware";
 import { isDesktop } from "../lib/ek-desktop";
 import { useBadge } from "../context/BadgeProvider";
 import { useOnline } from "../hooks/useOnline";
+import { asArray } from "../lib/ek-array";
 
 /**
  * Smena ochilganidan beri qancha vaqt o'tdi: «3 s 36 d».
@@ -139,7 +140,7 @@ export default function ShiftBar({ toast, compact = false, onState }) {
   const askClose = async () => {
     let types = [];
     try {
-      types = (await securityApi.nonCashTypes()).data || [];
+      types = asArray((await securityApi.nonCashTypes()).data);
     } catch (_) {
       // Ro'yxat kelmasa ham yopishga yo'l ochiq qoldiramiz: server
       // yetishmagan turni baribir o'zi aytadi.

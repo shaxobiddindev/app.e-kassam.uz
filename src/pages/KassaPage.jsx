@@ -6,6 +6,7 @@ import { useConfirm } from "../context/ConfirmProvider";
 import { money, quantity as fmtQty } from "../utils";
 import { unitLabel } from "../lib/ek-labels";
 import ProductTile from "../components/ProductTile";
+import { asArray } from "../lib/ek-array";
 /* Jamg'armaga pul qo'yish (V64) — qarz to'lovi oynasining «savings» rejimi. */
 import DebtPayModal from "../components/DebtPayModal";
 import QuantityModal from "../components/QuantityModal";
@@ -535,11 +536,11 @@ export default function KassaPage({ toast, refreshLowStock }) {
 
   /* ── Mijozlar ─────────────────────────────────────────────── */
   useEffect(() => {
-    customerApi.getAll(branchId).then((r) => setCustomers(r.data || [])).catch(() => {});
+    customerApi.getAll(branchId).then((r) => setCustomers(asArray(r.data))).catch(() => {});
   }, [branchId]);
 
   useEffect(() => {
-    reportApi.basket(branchId).then((r) => setPairs(r.data || [])).catch(() => setPairs([]));
+    reportApi.basket(branchId).then((r) => setPairs(asArray(r.data))).catch(() => setPairs([]));
   }, [branchId]);
 
   /* Tanlangan mijozning darajasi. Xatosi JIM yutiladi: daraja — qo'shimcha
@@ -584,7 +585,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
   useEffect(() => {
     productApi.getCategories(branchId)
       .then((r) => {
-        const list = (r.data || []).filter((c) => c.productCount > 0);
+        const list = (asArray(r.data)).filter((c) => c.productCount > 0);
         setCategories(list);
         /* ⚠ SAQLANGAN TAB HALI BORMI. Kategoriya o'chirilgan yoki
            tovarsiz qolgan bo'lsa, saqlangan raqam katalogni BO'SH
@@ -685,7 +686,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
     try {
       const res = await productApi.search(q, 0, 60, branchId,
         { categoryId, favorites: favOnly, ...filter });
-      const list = res.data || [];
+      const list = asArray(res.data);
       if (!q) baseProducts.current = list;
       /* ⚠ FAQAT FON yangilanishida belgilanadi. Kassirning o'z sotuvidan
          keyin ham qoldiq o'zgaradi, lekin uni kassir allaqachon biladi —

@@ -18,6 +18,7 @@ import {
   buildAlerts, moneyAtRisk, countBySeverity, changes, opportunities,
   healthTone, readLayout, saveLayout, move, toggle, comparePoints,
 } from "../lib/ek-dash";
+import { asArray } from "../lib/ek-array";
 
 /* ══════════════════════════════════════════════════════════════════════════
    BOSH SAHIFA — boshqaruv paneli (V74)
@@ -1072,9 +1073,9 @@ function PlannerModal({ open, onClose, shopId, canEdit, toast, onChanged }) {
   const load = useCallback(() => {
     setBusy(true);
     Promise.all([
-      plannerApi.tasks(status, shopId).then((r) => r.data || []).catch(() => []),
+      plannerApi.tasks(status, shopId).then((r) => asArray(r.data)).catch(() => []),
       plannerApi.events(null, isoDay(new Date(Date.now() + 365 * 864e5)), shopId)
-        .then((r) => r.data || []).catch(() => []),
+        .then((r) => asArray(r.data)).catch(() => []),
     ]).then(([tk, ev]) => { setTasks(tk); setEvents(ev); }).finally(() => setBusy(false));
   }, [status, shopId]);
 
@@ -1083,7 +1084,7 @@ function PlannerModal({ open, onClose, shopId, canEdit, toast, onChanged }) {
   /* Xodimlar ro'yxati faqat rahbarga va faqat BIR MARTA kerak. */
   useEffect(() => {
     if (!open || !canEdit || staff.length) return;
-    shopApi.getUsers(shopId).then((r) => setStaff(r.data || [])).catch(() => setStaff([]));
+    shopApi.getUsers(shopId).then((r) => setStaff(asArray(r.data))).catch(() => setStaff([]));
   }, [open, canEdit, shopId, staff.length]);
 
   const done = (p) => p.then(() => { load(); onChanged(); })
@@ -1447,8 +1448,8 @@ export default function DashboardPage({ toast }) {
        qachon ko'rmasdi, holbuki uni bajaradigan odam aynan u. */
     if (!canMoney) {
       Promise.all([
-        plannerApi.events(null, null, branchId).then((r) => r.data || []).catch(() => []),
-        plannerApi.tasks("OPEN", branchId).then((r) => r.data || []).catch(() => []),
+        plannerApi.events(null, null, branchId).then((r) => asArray(r.data)).catch(() => []),
+        plannerApi.tasks("OPEN", branchId).then((r) => asArray(r.data)).catch(() => []),
       ]).then(([events, open]) => {
         if (!alive) return;
         const today = new Date().toISOString().slice(0, 10);
@@ -1470,7 +1471,7 @@ export default function DashboardPage({ toast }) {
          bo'yicha ishlaydi. Rahbarda bu raqamlar `pulse.incoming` dan
          olinadi (u filialni biladi); shu ro'yxat faqat omborchi uchun
          zaxira. Argument berish uni filtrlaydi deb o'ylatardi. */
-      inventoryApi.getLow().then((r) => r.data || []).catch(() => []),
+      inventoryApi.getLow().then((r) => asArray(r.data)).catch(() => []),
     ];
     if (canMoney) {
       jobs.push(
@@ -1498,8 +1499,8 @@ export default function DashboardPage({ toast }) {
   const reloadPlan = useCallback(() => {
     if (canMoney) return;
     Promise.all([
-      plannerApi.events(null, null, branchId).then((r) => r.data || []).catch(() => []),
-      plannerApi.tasks("OPEN", branchId).then((r) => r.data || []).catch(() => []),
+      plannerApi.events(null, null, branchId).then((r) => asArray(r.data)).catch(() => []),
+      plannerApi.tasks("OPEN", branchId).then((r) => asArray(r.data)).catch(() => []),
     ]).then(([events, open]) => {
       const today = new Date().toISOString().slice(0, 10);
       setPlanned({

@@ -23,6 +23,7 @@ import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
 import { DateField } from "../components/ek/EkFields";
 import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
+import { asArray } from "../lib/ek-array";
 
 /** Oyning birinchi kuni va bugun — `YYYY-MM-DD`. */
 const monthRange = () => {
@@ -53,7 +54,7 @@ export default function ExpensesPage({ toast }) {
         expenseApi.categories(),
       ]);
       setData(list.data);
-      setCats(c.data || []);
+      setCats(asArray(c.data));
     } catch (err) {
       toast?.error(err.message);
     } finally {

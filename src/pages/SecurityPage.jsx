@@ -26,6 +26,7 @@ import { printHtml } from "../lib/ek-receipt-pdf";
 import BadgeCard from "../components/BadgeCard";
 import { isDesktop } from "../lib/ek-desktop";
 import { useSuspiciousCount } from "../hooks/useSuspiciousCount";
+import { asArray } from "../lib/ek-array";
 
 const TABS = ["badges", "log", "policies", "shifts", "billing"];
 
@@ -84,13 +85,13 @@ export default function SecurityPage({ toast }) {
         // Ro'yxat TO'LIQ /security/badges dan: shopApi.getUsers joriy
         // foydalanuvchini chiqarib tashlaydi, ega esa O'ZIGA ham bajik
         // chiqarishi kerak (MANAGER tasdiqlarda ega bajigi skanerlanadi).
-        setBadges((await securityApi.badges()).data || []);
+        setBadges(asArray((await securityApi.badges()).data));
       } else if (tab === "log") {
-        setLog((await securityApi.log(onlySuspicious)).data || []);
+        setLog(asArray((await securityApi.log(onlySuspicious)).data));
       } else if (tab === "policies" && isOwner) {
-        setPolicies((await securityApi.policies()).data || []);
+        setPolicies(asArray((await securityApi.policies()).data));
       } else if (tab === "shifts") {
-        setShifts((await securityApi.openShifts()).data || []);
+        setShifts(asArray((await securityApi.openShifts()).data));
       } else if (tab === "billing" && isOwner) {
         setBilling((await securityApi.billing()).data || null);
       }

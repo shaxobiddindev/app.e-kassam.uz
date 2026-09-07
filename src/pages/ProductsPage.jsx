@@ -21,6 +21,7 @@ import { NumField, BarcodeField } from "../components/ek/EkFields";
 import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
 import { checkPrices, marginPercent, VIOLATION } from "../lib/ek-prices";
 import { rankItems, PRODUCT_SPEC } from "../lib/ek-search";
+import { asArray } from "../lib/ek-array";
 
 /* ══════════════════════════════════════════════════════════════════════════
    Tovarlar.
@@ -125,8 +126,8 @@ export default function ProductsPage({ toast }) {
         productApi.getAll(branchId),
         productApi.getCategories(),
       ]);
-      setProducts(prodRes.data || []);
-      setCategories(catRes.data || []);
+      setProducts(asArray(prodRes.data));
+      setCategories(asArray(catRes.data));
     } catch (err) {
       toast.error(err.message);
     } finally {
