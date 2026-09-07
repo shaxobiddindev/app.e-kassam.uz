@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { t } from "../lib/ek-i18n";
 import Select from "./ek/Select";
 import { available, known, pick, hexDump, POLL } from "../lib/ek-serial";
-import { subscribe, start, stop, readCfg, writeCfg } from "../lib/ek-scale-live";
+import { subscribe, start, stop, forget, pickPort, readCfg } from "../lib/ek-scale-live";
 import { quantity as fmtQty } from "../utils";
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -56,6 +56,10 @@ export default function ScaleLive({ toast }) {
      ko'chirib ulgurmay, hammasi yo'qolib qolardi. Endi u qaytganda
      joyida turadi. */
   const [raw, setRaw] = useState("");
+  /* ⚠ TAROZI TANISHTIRILGANMI. Ruxsat brauzerda saqlangan bo'lsa,
+     panel «o'zi ulanadi» deb aytadi va do'kon har safar shu yerga
+     kirib o'tirmaydi. */
+  const [paired, setPaired] = useState(Boolean(cfg.enabled || cfg.id));
 
   /* ⚠ ULANISH PANELGA TEGISHLI EMAS (V111). Ilgari port shu
      komponentning ichida ochilardi va do'kon boshqa bo'limga o'tib
@@ -68,11 +72,23 @@ export default function ScaleLive({ toast }) {
     setKg(st.kg);
     setStable(st.stable);
     setRaw(st.bytes.length ? hexDump(st.bytes) : "");
+    /* `||` qisqa tutashadi — bir marta topilgach, sozlama boshqa o'qilmaydi. */
+    setPaired((prev) => prev || st.on || Boolean(readCfg().id));
   }), []);
 
-  const connect = async () => {
+  /**
+   * Tarozini ulaydi.
+   *
+   * ⚠ ILGARI RUXSAT BERILGAN PORT BIRINCHI (V112). Do'kon: «har safar
+   * tarozini ulayverish yaxshi emas». Brauzer ruxsatni eslab qoladi,
+   * shuning uchun tanlash oynasi FAQAT tarozi hali tanishtirilmaganda
+   * chiqadi — keyin esa umuman chiqmaydi.
+   *
+   * @param force  `true` — oyna majburan ochiladi (tarozi almashtirilgan)
+   */
+  const connect = async (force) => {
     try {
-      const port = await pick();
+      const port = (!force && pickPort(await known(), readCfg().id)) || await pick();
       await start(port, { baudRate: Number(baud), poll });
     } catch (err) {
       /* Foydalanuvchi tanlash oynasini yopdi — bu xato emas. */
@@ -82,15 +98,14 @@ export default function ScaleLive({ toast }) {
     }
   };
 
-  /** Ilgari ruxsat berilgan port — oyna ochilmaydi. */
-  const reconnect = async () => {
-    const ports = await known();
-    if (!ports.length) return connect();
-    try { await start(ports[0], { baudRate: Number(baud), poll }); }
-    catch (err) { toast?.error(String(err?.message || err)); }
-  };
-
   const disconnect = () => stop();
+
+  /* Brauzer ruxsati ham qaytariladi — boshqa tarozi ulanganda kerak. */
+  const forgetPort = async () => {
+    await forget();
+    setPaired(false);
+    toast?.success(t("scale.forgot"));
+  };
 
   if (!available()) {
     return (
@@ -122,6 +137,16 @@ export default function ScaleLive({ toast }) {
         <p className="text-muted" style={{ fontSize: 12.5, lineHeight: 1.6, marginTop: -6 }}>
           {t("scale.pollHint")}
         </p>
+        {/* ⚠ «O'ZI ULANADI» DEB AYTILADI (V112). Do'kon buni BILMASA,
+            har smenada shu sahifaga kirib ulash odat bo'lib qolardi —
+            aynan shundan shikoyat qilingan edi. */}
+        {paired && (
+          <p style={{ fontSize: 12.5, lineHeight: 1.6, marginTop: -6,
+                      color: on ? "var(--fg-success)" : "var(--fg-warning)" }}>
+            <i className={`fa-solid ${on ? "fa-circle-check" : "fa-rotate"}`} aria-hidden="true" />{" "}
+            {on ? t("scale.auto") : t("scale.autoWait")}
+          </p>
+        )}
 
         <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginBottom: 14 }}>
           <div style={{ width: 140 }}>
@@ -142,14 +167,20 @@ export default function ScaleLive({ toast }) {
               <i className="fa-solid fa-plug-circle-xmark" aria-hidden="true" /> {t("scale.liveStop")}
             </button>
           ) : (
-            <>
-              <button className="btn btn-primary" onClick={connect}>
-                <i className="fa-solid fa-plug" aria-hidden="true" /> {t("scale.liveConnect")}
-              </button>
-              <button className="btn btn-outline" onClick={reconnect}>
-                {t("scale.liveAgain")}
-              </button>
-            </>
+            <button className="btn btn-primary" onClick={() => connect(false)}>
+              <i className="fa-solid fa-plug" aria-hidden="true" /> {t("scale.liveConnect")}
+            </button>
+          )}
+          {/* ⚠ TANLASH OYNASI ALOHIDA TUGMADA. Asosiy tugma eslab
+              qolingan portni ochadi; oyna esa faqat tarozi
+              almashtirilganda kerak bo'ladi. */}
+          <button className="btn btn-outline" onClick={() => connect(true)}>
+            {t("scale.liveAgain")}
+          </button>
+          {paired && (
+            <button className="btn btn-outline" onClick={forgetPort}>
+              {t("scale.liveForget")}
+            </button>
           )}
         </div>
 

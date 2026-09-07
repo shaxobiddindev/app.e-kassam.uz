@@ -56,6 +56,14 @@ const pageErrors = [];
 const FRAME = [0x06, 0x01, 0x02, 0x53, 0x20, 0x30, 0x30, 0x2e,
                0x34, 0x38, 0x38, 0x6b, 0x67, 0x65, 0x03, 0x04];
 
+/**
+ * Soxta tarozili sahifa.
+ *
+ * @param extraLS  ochilishdan OLDIN yoziladigan localStorage kalitlari.
+ *                 Avtomatik ulanish aynan shu bilan tekshiriladi:
+ *                 sozlama sahifa yuklanguncha joyida bo'lishi kerak.
+ */
+async function makePage(extraLS = {}) {
 const page = await browser.newPage();
 await page.setViewport({ width: 1600, height: 950 });
 await page.setRequestInterception(true);
@@ -82,10 +90,11 @@ page.on("pageerror", (e) => { pageErrors.push(e.message); });
 /* ⚠ SOXTA PORT. Brauzerda haqiqiy tarozi yo'q, lekin YO'LNING QOLGAN
    HAMMASI haqiqiy: o'qish halqasi, ramkalarga bo'lish, og'irlikni
    ajratish va chizish. */
-await page.evaluateOnNewDocument((frame) => {
+await page.evaluateOnNewDocument((frame, extra) => {
   for (const [k, v] of Object.entries({
     ek_token: "v", ek_type: "user", ek_role: "OWNER", ek_username: "v",
     ek_fullName: "V", ek_shopCode: "v", ek_deviceId: "v", ek_lang: "uz", ek_theme: "light",
+    ...extra,
   })) localStorage.setItem(k, v);
 
   const bytes = new Uint8Array(frame);
@@ -93,6 +102,9 @@ await page.evaluateOnNewDocument((frame) => {
     open: async () => {},
     close: async () => {},
     setSignals: async () => {},
+    forget: async () => {},
+    /* Haqiqiy USB-COM adapterining raqamlari — port shu bilan tanaladi. */
+    getInfo: () => ({ usbVendorId: 1659, usbProductId: 8963 }),
     writable: { getWriter: () => ({ write: async () => {}, releaseLock: () => {} }) },
     readable: new ReadableStream({
       start(c) {
@@ -101,14 +113,25 @@ await page.evaluateOnNewDocument((frame) => {
       },
     }),
   };
+  /* ⚠ `addEventListener` ham kerak: avtomatik ulanish qurilma qaytib
+     ulanganini shu orqali eshitadi va uni topa olmasa yiqilardi. */
   Object.defineProperty(navigator, "serial", {
     configurable: true,
-    value: { requestPort: async () => port, getPorts: async () => [port] },
+    value: {
+      requestPort: async () => port,
+      getPorts: async () => [port],
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    },
   });
-}, FRAME);
+}, FRAME, extraLS);
 
 await page.goto(`http://127.0.0.1:${PORT}/settings`, { waitUntil: "networkidle2", timeout: 30_000 });
 await new Promise((r) => setTimeout(r, 1500));
+return page;
+}
+
+const page = await makePage();
 
 console.log("\n══ TAROZI (V111) ══");
 
@@ -158,6 +181,31 @@ console.log("\n§6 Sahifa xatolari");
 pageErrors.length === 0 ? ok("JS xatosi yo'q") : no("sahifada xato", pageErrors.join(" | "));
 
 await page.close();
+
+/* ══ §7 ⚠ AVTOMATIK ULANISH ══════════════════════════════════════════
+   Do'kon: «har safar tarozini ulayverish yaxshi emas».
+
+   Bu bandning butun ma'nosi shunda: sahifa ochiladi va HECH QANDAY
+   TUGMA BOSILMAYDI. Og'irlik shundoq ham chiqishi kerak. */
+console.log("\n§7 ⚠ TUGMA BOSILMASDAN O'ZI ULANADI");
+const auto = await makePage({
+  ek_scale_port: JSON.stringify({
+    enabled: true, poll: "ENQ_DC1", baudRate: 9600, id: "1659:8963",
+  }),
+});
+await new Promise((r) => setTimeout(r, 1200));
+const autoView = await auto.evaluate(() => {
+  const txt = document.body.innerText;
+  const m = txt.match(/([\d.,]+)\s*kg/i);
+  return { weight: m ? m[1] : null, says: /o'zi ishga tushadi/i.test(txt) };
+});
+autoView.weight === "0.488"
+  ? ok(`ulanish oynasisiz og'irlik chizildi: ${autoView.weight} kg`)
+  : no("tugmasiz ham 0.488 kg chizilishi kerak", autoView.weight ?? "tire");
+autoView.says ? ok("panel «o'zi ishga tushadi» deb aytdi")
+              : no("avtomatik holat yozilishi kerak", "yozilmadi");
+await auto.close();
+
 await browser.close();
 server.close();
 console.log(bad === 0 ? "\n✅ Tarozi: hammasi joyida\n" : `\n❌ ${bad} ta muammo\n`);

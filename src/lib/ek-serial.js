@@ -136,8 +136,17 @@ export async function open(port, opts = {}, onData = () => {}) {
       }
     } catch (_) {
       /* Kabel sug'urib olindi yoki port yo'qoldi — bu XATO EMAS,
-         odatiy hol. Chaqiruvchi buni `stop()` orqali biladi. */
+         odatiy hol. Chaqiruvchi buni `onEnd` orqali biladi. */
     }
+
+    /* ⚠ OQIM O'LGANI AYTILADI (V112). Ilgari halqa jimgina
+       tugardi va yuqoridagi qatlam «ulangan» deb turaverardi:
+       ekranda oxirgi og'irlik QOTIB qolardi va kassir uni
+       yangi tovarniki deb o'ylashi mumkin edi.
+
+       Biz o'zimiz to'xtatgan bo'lsak — xabar yo'q, bu odatiy
+       yopilish. */
+    if (!stopped) { try { opts.onEnd?.(); } catch (_) { /* chaqiruvchi xatosi */ } }
   })();
 
   /* ══ ⚠ SO'ROV YUBORISH ═══════════════════════════════════════════════
@@ -172,6 +181,25 @@ export async function open(port, opts = {}, onData = () => {}) {
     try { await closed; } catch (_) { /* yuqoridagi bilan bir xil */ }
     try { await port.close(); } catch (_) { /* allaqachon yopiq */ }
   };
+}
+
+/**
+ * Portning belgisi — QAYSI qurilma ekanini eslab qolish uchun.
+ *
+ * ⚠ Port obyektining O'ZI saqlab bo'lmaydi: u sahifa bilan birga
+ * yo'qoladi. `getInfo()` esa USB sotuvchi/mahsulot raqamlarini
+ * beradi va monoblokka bir nechta qurilma ulangan bo'lsa
+ * (chek printeri, skaner, tarozi) aynan tarozini tanlashga yetadi.
+ *
+ * Ichki COM portlarda (RS-232) bu raqamlar bo'lmaydi — o'shanda
+ * bo'sh satr qaytadi va tanlov boshqa yo'l bilan qilinadi.
+ */
+export function portId(port) {
+  try {
+    const i = port?.getInfo?.() || {};
+    if (i.usbVendorId == null && i.usbProductId == null) return "";
+    return `${i.usbVendorId ?? "?"}:${i.usbProductId ?? "?"}`;
+  } catch (_) { return ""; }
 }
 
 /**

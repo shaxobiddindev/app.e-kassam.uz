@@ -6,6 +6,7 @@ import { initTheme } from "./lib/ek-theme";
 import { initLang, loadLocale } from "./lib/ek-i18n";
 import { isDesktop } from "./lib/ek-desktop";
 import { initStatusBar } from "./lib/ek-statusbar";
+import { autoConnect as scaleAutoConnect } from "./lib/ek-scale-live";
 
 // Tema — index.html dagi inline skript birinchi bo'yoqni to'g'ri qiladi,
 // bu yerda tizim sozlamasi o'zgarishini kuzatish yoqiladi.
@@ -14,6 +15,16 @@ initTheme();
 // Android status-bar foni temaga ergashsin (ekran tepasidagi ko'k
 // ajratuvchi chiziq shu bilan yo'qoladi). Telefondan boshqa joyda — jim.
 initStatusBar();
+
+/* ⚠ TAROZI O'ZI ULANADI (V112). Do'kon: «har safar tarozini
+   ulayverish yaxshi emas». Brauzer port ruxsatini eslab qoladi,
+   demak «tanlash» bir marta, «ochish» esa har safar oynasiz
+   bo'lishi mumkin — kassir smenani sozlamalar sahifasidan
+   boshlamaydi.
+
+   ⚠ Tarozisi YO'Q do'konda hech narsa qilinmaydi: modul do'kon
+   o'zi yoqib qo'ygan bo'lsagina portni qidiradi. */
+scaleAutoConnect();
 
 // Til — URL dagi `?lang=` (ilovalararo yo'naltirishdan) localStorage ga
 // ko'chiriladi va <html lang> qo'yiladi. Faqat INTERFEYSGA ta'sir qiladi.

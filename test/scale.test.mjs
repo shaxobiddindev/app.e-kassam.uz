@@ -127,5 +127,36 @@ console.log("\n── Tarix cheklangan ──");
                           : bad("tarix cheksiz o'smasin", st.history.length);
 }
 
+console.log("\n\u2500\u2500 Qaysi port TAROZI (V112) \u2500\u2500");
+{
+  const { portId } = await import("../src/lib/ek-serial.js");
+  const { pickPort } = await import("../src/lib/ek-scale-live.js");
+
+  const usb = (v, pr) => ({ getInfo: () => ({ usbVendorId: v, usbProductId: pr }) });
+  /* Monoblokning ichki RS-232 porti — USB raqamlari yo'q. */
+  const com = { getInfo: () => ({}) };
+
+  eq(portId(usb(1659, 8963)), "1659:8963", "USB porti belgisi bilan tanildi");
+  eq(portId(com), "", "ichki COM portda belgi yo'q");
+  eq(portId(undefined), "", "port bo'lmasa ham yiqilmaydi");
+
+  const printer = usb(1046, 20497);
+  const scale   = usb(1659, 8963);
+
+  eq(pickPort([], "1659:8963"), null, "port topilmasa \u2014 null");
+  eq(pickPort([printer, scale], ""), printer, "belgi yo'q \u2014 birinchisi olinadi");
+
+  /* ⚠ ASOSIY HOL. Monoblokka chek printeri ham, tarozi ham ulangan va
+     ro'yxatda printer birinchi turadi. Belgisiz tanlovda tarozi
+     jim qolar, printer esa axlat qabul qilardi. */
+  eq(pickPort([printer, scale], "1659:8963"), scale,
+     "\u26a0 bir nechta qurilmadan AYNAN tarozi tanlanadi");
+
+  eq(pickPort([printer, scale], "9:9"), null,
+     "\u26a0 belgi mos kelmadi va port ko'p \u2014 taxmin qilinmaydi");
+  eq(pickPort([scale], "9:9"), scale,
+     "port bitta \u2014 adapter almashgan bo'lsa ham o'sha qurilma");
+}
+
 console.log(`\n  ${pass} o'tdi, ${fail} yiqildi`);
 process.exit(fail ? 1 : 0);
