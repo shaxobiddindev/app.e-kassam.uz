@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { t } from "../lib/ek-i18n";
 import Select from "./ek/Select";
-import { available, known, pick, open, visible, POLL } from "../lib/ek-serial";
+import { available, known, pick, open, hexDump, POLL } from "../lib/ek-serial";
 import { quantity as fmtQty } from "../utils";
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -59,8 +59,15 @@ export default function ScaleLive({ toast }) {
   const [on, setOn] = useState(false);
   const [kg, setKg] = useState(null);
   const [stable, setStable] = useState(false);
-  const [raw, setRaw] = useState("");
+  /* ⚠ OXIRGI TUTILGAN OQIM SAQLANADI. Boshqa bo'limga o'tib qaytganda
+     panel qaytadan yig'iladi va port yopiladi — do'kon esa yozuvni
+     ko'chirib ulgurmay, hammasi yo'qolib qolardi. Endi u qaytganda
+     joyida turadi. */
+  const [raw, setRaw] = useState(() => cfg.lastDump || "");
   const stopRef = useRef(null);
+  /* Baytlar to'planib boradi: hex ko'rinish har bo'lakda qaytadan
+     yig'iladi va bo'lak chegarasi qatorni buzmasligi kerak. */
+  const bytesRef = useRef([]);
 
   /* ⚠ Port ochiq qolmasin: sahifadan chiqilganda o'qish to'xtatiladi,
      aks holda port band bo'lib qolar va ikkinchi marta ochib
@@ -79,13 +86,18 @@ export default function ScaleLive({ toast }) {
       }, (st, chunk) => {
         setKg(st.kg);
         setStable(st.stable);
-        /* Oxirgi 600 belgi yetarli: bir necha ramka ko'rinsa format
-           aniqlanadi, uzunroq matn esa sahifani cho'zardi. */
-        setRaw((prev) => (prev + visible(chunk)).slice(-600));
+        /* ⚠ OXIRGI 128 BAYT. Protokolni aniqlash uchun bir necha ramka
+           yetarli; uzunroq oqim sahifani cho'zib, ko'chirishni
+           qiyinlashtirardi. */
+        const next = bytesRef.current.concat(Array.from(chunk)).slice(-128);
+        bytesRef.current = next;
+        const dump = hexDump(next);
+        setRaw(dump);
+        writeCfg({ ...readCfg(), lastDump: dump });
       });
       stopRef.current = stop;
       setOn(true);
-      writeCfg({ baudRate: Number(baud), poll });
+      writeCfg({ ...readCfg(), baudRate: Number(baud), poll });
     } catch (err) {
       toast?.error(err?.message === "no-serial" ? t("scale.liveNoSupport") : String(err?.message || err));
     }
@@ -200,7 +212,21 @@ export default function ScaleLive({ toast }) {
             ko'chirib yuboradi va format aynan shunga qarab sozlanadi;
             «tarozi ishlamayapti» degan xabardan ko'ra bu ancha
             foydali. */}
-        <div className="form-label">{t("scale.rawStream")}</div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div className="form-label" style={{ margin: 0 }}>{t("scale.rawStream")}</div>
+          {/* ⚠ NUSXA TUGMASI — panelning ma'nosi shu yozuvni YUBORISHDA.
+              Uni sichqoncha bilan belgilash hex jadvalida noqulay va
+              do'kon aksar hollarda skrinshot yuborishga o'tib ketardi;
+              skrinshotdan esa baytlarni aniq o'qib bo'lmaydi. */}
+          <button className="btn btn-outline btn-sm" disabled={!raw}
+                  onClick={() => {
+                    navigator.clipboard?.writeText(raw)
+                      .then(() => toast?.success(t("scale.copied")))
+                      .catch(() => { /* ruxsat yo'q — qo'lda belgilanadi */ });
+                  }}>
+            <i className="fa-solid fa-copy" aria-hidden="true" /> {t("common.copy")}
+          </button>
+        </div>
         <pre className="mono" style={{
           margin: 0, padding: "10px 12px", minHeight: 90, maxHeight: 160, overflow: "auto",
           background: "var(--bg-sunken)", borderRadius: 10, fontSize: 12,

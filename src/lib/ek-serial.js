@@ -82,12 +82,21 @@ export async function open(port, opts = {}, onData = () => {}) {
     await port.setSignals({ dataTerminalReady: true, requestToSend: true });
   } catch (_) { /* adapter bu signallarni bilmaydi */ }
 
-  const decoder = new TextDecoderStream();
-  /* ⚠ Oqim ulanishi SAQLANADI: `stop()` da uni kutmasak, port band
-     bo'lib qolar va ikkinchi marta ochib bo'lmasdi — kassir esa
-     «tarozi ishlamayapti» deb monoblokni qayta yoqardi. */
-  const closed = port.readable.pipeTo(decoder.writable).catch(() => {});
-  const reader = decoder.readable.getReader();
+  /* ⚠⚠ XOM BAYTLAR O'QILADI, MATN EMAS.
+
+     Birinchi urinishda `TextDecoderStream` (UTF-8) ishlatilgan edi va u
+     aynan tashxis qo'yish kerak bo'lgan narsani YO'Q QILARDI: tarozi
+     ikkilik protokolda gapirsa, baytlar «▯» (almashtirish belgisi)
+     bo'lib qolar va ularning HAQIQIY QIYMATI butunlay yo'qolardi.
+     Do'kon ekranda kvadratchalar ko'rdi, men esa ulardan hech narsa
+     ayta olmadim.
+
+     Endi baytlar o'z holicha keladi: ular HEX bo'lib ko'rsatiladi
+     (protokolni aynan shu aniqlaydi), matnga esa `latin1` bilan
+     o'giriladi — har bayt bitta belgiga to'g'ri keladi va ASCII
+     raqamlar buzilmaydi. */
+  const reader = port.readable.getReader();
+  const closed = Promise.resolve();
 
   let stopped = false;
   let state = null;
@@ -97,8 +106,8 @@ export async function open(port, opts = {}, onData = () => {}) {
       for (;;) {
         const { value, done } = await reader.read();
         if (done || stopped) break;
-        if (!value) continue;
-        state = feed(state, value);
+        if (!value?.length) continue;
+        state = feed(state, latin1(value));
         onData(state, value);
       }
     } catch (_) {
@@ -166,11 +175,40 @@ export const POLL = {
   ESC_P:{ label: "ESC P", bytes: [0x1B, 0x50] },
 };
 
-/** Xom baytlarni O'QILADIGAN qilib ko'rsatish — formatni aniqlash uchun. */
-export function visible(text) {
-  return String(text ?? "")
-    .replace(/\r/g, "␍")
-    .replace(/\n/g, "␊\n")
-    .replace(/\x02/g, "␂")
-    .replace(/\x03/g, "␃");
+/**
+ * Baytlarni matnga — HAR BAYT BITTA BELGI (`latin1`).
+ *
+ * ⚠ UTF-8 EMAS. Ikkilik protokolda UTF-8 dekodlash baytlarni «▯» ga
+ * aylantirib, qiymatini yo'qotadi. `latin1` esa hech qachon
+ * yiqilmaydi va ASCII raqamlar (tarozilarning ko'pchiligi shunday
+ * yuboradi) o'z holicha qoladi.
+ */
+export function latin1(bytes) {
+  let out = "";
+  for (const b of bytes) out += String.fromCharCode(b);
+  return out;
+}
+
+/**
+ * HEX ko'rinish — PROTOKOLNI AYNAN SHU ANIQLAYDI.
+ *
+ * ⚠ Yonida ASCII ustuni ham bo'ladi: ko'p tarozi raqamlarni matn
+ * bilan yuboradi va o'shanda javob bir qarashda ko'rinadi. Faqat hex
+ * bo'lsa, oddiy «ST,GS,0.123kg» ni ham o'qish uchun jadval kerak
+ * bo'lardi.
+ *
+ * @param bytes  `Uint8Array` yoki baytlar massivi
+ * @param width  bir qatordagi bayt soni
+ */
+export function hexDump(bytes, width = 16) {
+  const arr = Array.from(bytes || []);
+  const lines = [];
+  for (let i = 0; i < arr.length; i += width) {
+    const row = arr.slice(i, i + width);
+    const hex = row.map((b) => b.toString(16).padStart(2, "0").toUpperCase()).join(" ");
+    /* Ko'rinmaydigan baytlar nuqta bilan — aks holda qator buzilardi. */
+    const txt = row.map((b) => (b >= 0x20 && b <= 0x7e ? String.fromCharCode(b) : ".")).join("");
+    lines.push(`${hex.padEnd(width * 3 - 1)}  ${txt}`);
+  }
+  return lines.join("\n");
 }
