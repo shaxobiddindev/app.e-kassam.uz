@@ -941,6 +941,8 @@ export default {
   "scale.liveAgain": "Ulangan portni ochish",
   "scale.liveStop": "Uzish",
   "scale.liveNoSupport": "Bu brauzer portni o'qiy olmaydi. Monoblokda Chrome yoki Edge dan foydalaning.",
+  "scale.poll": "So'rov",
+  "scale.pollHint": "Ekran bo'sh bo'lsa: ko'p tarozi so'ralmaguncha gapirmaydi. «So'rov» ni ENQ ga qo'yib qayta ulang, keyin W, S, P ni sinang.",
   "scale.baud": "Tezlik",
   "scale.steady": "barqaror",
   "scale.moving": "tebranmoqda",

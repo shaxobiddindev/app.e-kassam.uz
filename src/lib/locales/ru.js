@@ -902,6 +902,8 @@ export default {
   "scale.liveAgain": "Открыть подключённый порт",
   "scale.liveStop": "Отключить",
   "scale.liveNoSupport": "Этот браузер не читает порт. Используйте Chrome или Edge на моноблоке.",
+  "scale.poll": "Запрос",
+  "scale.pollHint": "Если пусто: многие весы молчат, пока их не спросят. Поставьте «Запрос» в ENQ и подключитесь снова, затем попробуйте W, S, P.",
   "scale.baud": "Скорость",
   "scale.steady": "стабильно",
   "scale.moving": "колеблется",

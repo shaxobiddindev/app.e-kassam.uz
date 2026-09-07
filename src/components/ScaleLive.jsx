@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { t } from "../lib/ek-i18n";
 import Select from "./ek/Select";
-import { available, known, pick, open, visible } from "../lib/ek-serial";
+import { available, known, pick, open, visible, POLL } from "../lib/ek-serial";
 import { quantity as fmtQty } from "../utils";
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -47,9 +47,15 @@ const writeCfg = (v) => {
 
 const BAUDS = [4800, 9600, 19200, 38400, 57600, 115200];
 
+/* ⚠ SO'ROV RO'YXATI — TANLOV, TAXMIN EMAS. Qaysi buyruq to'g'ri
+   ekanini faqat tarozining o'zi ko'rsatadi: birma-bir sinaladi va
+   javob kelgani xom oqimda darhol ko'rinadi. */
+const POLLS = Object.entries(POLL).map(([k, v]) => ({ value: k, label: v.label }));
+
 export default function ScaleLive({ toast }) {
   const cfg = readCfg();
   const [baud, setBaud] = useState(cfg.baudRate || 9600);
+  const [poll, setPoll] = useState(cfg.poll || "NONE");
   const [on, setOn] = useState(false);
   const [kg, setKg] = useState(null);
   const [stable, setStable] = useState(false);
@@ -63,7 +69,14 @@ export default function ScaleLive({ toast }) {
 
   const start = async (port) => {
     try {
-      const stop = await open(port, { baudRate: Number(baud) }, (st, chunk) => {
+      const stop = await open(port, {
+        baudRate: Number(baud),
+        /* ⚠ Tarozi jim tursa — biz so'raymiz. Ko'p model uzluksiz
+           yubormaydi va port ochiq bo'lgani holda hech narsa
+           kelmaydi; buni «tarozi buzuq» deb o'ylash juda oson. */
+        poll: POLL[poll]?.bytes || [],
+        pollMs: 500,
+      }, (st, chunk) => {
         setKg(st.kg);
         setStable(st.stable);
         /* Oxirgi 600 belgi yetarli: bir necha ramka ko'rinsa format
@@ -72,7 +85,7 @@ export default function ScaleLive({ toast }) {
       });
       stopRef.current = stop;
       setOn(true);
-      writeCfg({ baudRate: Number(baud) });
+      writeCfg({ baudRate: Number(baud), poll });
     } catch (err) {
       toast?.error(err?.message === "no-serial" ? t("scale.liveNoSupport") : String(err?.message || err));
     }
@@ -128,12 +141,26 @@ export default function ScaleLive({ toast }) {
         <p className="text-muted" style={{ fontSize: 13, lineHeight: 1.6, marginTop: 0 }}>
           {t("scale.liveHint")}
         </p>
+        {/* ⚠ Jimlikning eng ko'p uchraydigan sababi — tarozi
+            so'ralmaguncha gapirmasligi. Buni kassirga AYTIB qo'yish
+            uni «tarozi buzuq» degan xulosadan qaytaradi. */}
+        <p className="text-muted" style={{ fontSize: 12.5, lineHeight: 1.6, marginTop: -6 }}>
+          {t("scale.pollHint")}
+        </p>
 
         <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginBottom: 14 }}>
-          <div style={{ width: 150 }}>
+          <div style={{ width: 140 }}>
             <Select value={String(baud)} onChange={(v) => setBaud(Number(v))} block
                     ariaLabel={t("scale.baud")} disabled={on}
                     options={BAUDS.map((b) => ({ value: String(b), label: `${b} bod` }))} />
+          </div>
+          {/* ⚠ SO'ROV — ENG KO'P VAQT YEYDIGAN SOZLAMA. Tarozi
+              uzluksiz yubormasa, port ochiq bo'lsa ham ekranda
+              jimlik bo'ladi. */}
+          <div style={{ width: 160 }}>
+            <Select value={poll} onChange={setPoll} block
+                    ariaLabel={t("scale.poll")} disabled={on}
+                    options={POLLS} />
           </div>
           {on ? (
             <button className="btn btn-outline" onClick={disconnect}>

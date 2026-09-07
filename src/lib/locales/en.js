@@ -902,6 +902,8 @@ export default {
   "scale.liveAgain": "Open the connected port",
   "scale.liveStop": "Disconnect",
   "scale.liveNoSupport": "This browser cannot read the port. Use Chrome or Edge on the monoblock.",
+  "scale.poll": "Request",
+  "scale.pollHint": "If nothing arrives: many scales stay silent until asked. Set “Request” to ENQ and reconnect, then try W, S, P.",
   "scale.baud": "Baud rate",
   "scale.steady": "steady",
   "scale.moving": "moving",

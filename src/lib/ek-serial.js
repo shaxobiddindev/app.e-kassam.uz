@@ -71,6 +71,17 @@ export async function open(port, opts = {}, onData = () => {}) {
     parity:   opts.parity   ?? "none",
   });
 
+  /* ⚠ DTR/RTS KO'TARILADI. Ko'p USB-tarozi va RS-232 qurilma bu ikki
+     signalsiz UMUMAN gapirmaydi: kabel ulangan, port ochiq, ekranda
+     esa jimlik. Windows dasturlari ularni o'zi ko'taradi va shu sabab
+     «boshqa dasturda ishlaydi-ku» degan holat kelib chiqadi.
+
+     Qo'llab-quvvatlamaydigan adapterda xato tashlanadi va u
+     yutiladi — signalsiz ham ishlaydigan tarozilar bor. */
+  try {
+    await port.setSignals({ dataTerminalReady: true, requestToSend: true });
+  } catch (_) { /* adapter bu signallarni bilmaydi */ }
+
   const decoder = new TextDecoderStream();
   /* ⚠ Oqim ulanishi SAQLANADI: `stop()` da uni kutmasak, port band
      bo'lib qolar va ikkinchi marta ochib bo'lmasdi — kassir esa
@@ -96,13 +107,64 @@ export async function open(port, opts = {}, onData = () => {}) {
     }
   })();
 
+  /* ══ ⚠ SO'ROV YUBORISH ═══════════════════════════════════════════════
+
+     Tarozilar ikki xil ishlaydi va bu FARQ eng ko'p vaqt yeydigan joy:
+
+       · UZLUKSIZ — ustiga narsa qo'yilishi bilan o'zi yuboraveradi;
+       · SO'ROV BO'YICHA — kassa so'ramaguncha JIM turadi.
+
+     Ikkinchisida port ochiq bo'ladi, kabel joyida bo'ladi, ekranda esa
+     hech narsa chiqmaydi — va buni «tarozi buzuq» deb o'ylash juda
+     oson. Shuning uchun so'rov yuborish YO'LI BOR va u sozlamalarda
+     tanlanadi.
+
+     Buyruq har tarozida boshqacha (`ENQ`, «W», «S», «P»…), shuning
+     uchun u TANLANADI, kodga yozib qo'yilmaydi. */
+  const writer = port.writable?.getWriter?.() || null;
+  let timer = null;
+
+  async function ask(bytes) {
+    if (!writer || !bytes?.length) return;
+    try { await writer.write(new Uint8Array(bytes)); } catch (_) { /* port yopildi */ }
+  }
+
+  if (opts.poll?.length) {
+    /* ⚠ Birinchi so'rov DARHOL: kassir tugmani bosgach javobni
+       kutadi, bir soniya jimlik esa «ishlamadi» degan taassurot
+       beradi. */
+    ask(opts.poll);
+    timer = setInterval(() => ask(opts.poll), Math.max(200, opts.pollMs ?? 500));
+  }
+
   return async function stop() {
     stopped = true;
+    if (timer) clearInterval(timer);
+    try { writer?.releaseLock(); } catch (_) { /* allaqachon bo'shatilgan */ }
     try { await reader.cancel(); } catch (_) { /* allaqachon yopiq */ }
     try { await closed; } catch (_) { /* yuqoridagi bilan bir xil */ }
     try { await port.close(); } catch (_) { /* allaqachon yopiq */ }
   };
 }
+
+/**
+ * Keng tarqalgan so'rov buyruqlari.
+ *
+ * ⚠ RO'YXAT — TAXMIN EMAS, TANLOV. Qaysi biri to'g'ri ekanini faqat
+ * tarozining o'zi ko'rsatadi: sozlamalarda birma-bir sinaladi va
+ * javob kelgani XOM OQIMDA darhol ko'rinadi.
+ */
+export const POLL = {
+  NONE: { label: "—", bytes: [] },
+  /* `ENQ` (0x05) — CAS va unga o'xshaganlarda eng keng tarqalgani. */
+  ENQ:  { label: "ENQ (05)", bytes: [0x05] },
+  /* Ba'zi tarozilar harf kutadi. */
+  W:    { label: "W", bytes: [0x57, 0x0D, 0x0A] },
+  S:    { label: "S (SICS)", bytes: [0x53, 0x0D, 0x0A] },
+  P:    { label: "P", bytes: [0x50, 0x0D, 0x0A] },
+  /* «Штрих» oilasidagi ba'zi modellar. */
+  ESC_P:{ label: "ESC P", bytes: [0x1B, 0x50] },
+};
 
 /** Xom baytlarni O'QILADIGAN qilib ko'rsatish — formatni aniqlash uchun. */
 export function visible(text) {
