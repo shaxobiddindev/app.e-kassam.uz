@@ -434,9 +434,22 @@ export function discountVerdict(lines, amount) {
 
 import { refundScore, cartRefundScore, REFUND_TIERS } from "./ek-refund.js";
 
-/** Pul aniqligi — ikki xona. */
-const r2 = (v) => Math.round((Number(v) || 0) * 100) / 100;
-/** Yarim tiyin — suzuvchi nuqta xatosidan himoya. */
+/**
+ * Pul aniqligi — BUTUN SO'M (V82).
+ *
+ * ⚠⚠ ILGARI IKKI XONA EDI VA BU SOTUVNI BLOKLARDI. Optimizator qator
+ * chegirmasini `333.33` kabi qaytarar, `applyPlan` uni savatga
+ * shundayligicha yozar va serverga yuborardi. Server esa chegirmani
+ * mijoz foydasiga YUQORIGA yaxlitlaydi (`Money.credit` — V80):
+ * kassada 333.33, serverda 334, farq 0.67 va chek «kam to'landi»
+ * bilan rad etilardi — aynan tortiladigan tovarda tuzatilgan
+ * nosozlikning boshqa eshikdan qaytishi.
+ *
+ * Endi optimizator ham butun so'mda ishlaydi va ikki tomon bir xil
+ * sonni ko'radi.
+ */
+const r2 = (v) => Math.round(Number(v) || 0);
+/** Yarim so'mdan kichik farq — suzuvchi nuqta xatosi, pul emas. */
 const EPS = 0.005;
 
 /**
@@ -513,7 +526,9 @@ function roundTotal(rows, step, budget, base) {
   let given = 0;
   let biggest = 0;
   for (let i = 0; i < rows.length; i++) {
-    const share = Math.min(left[i], r2((need * left[i]) / roomLeft));
+    /* ⚠ PASTGA: ulushlar yig'indisi kerakligidan oshib ketmasin;
+       qoldiq quyida eng katta bo'sh joyli qatorga qo'shiladi. */
+    const share = Math.min(left[i], Math.floor((need * left[i]) / roomLeft));
     add[i] = r2(add[i] + share);
     given = r2(given + share);
     if (left[i] > left[biggest]) biggest = i;

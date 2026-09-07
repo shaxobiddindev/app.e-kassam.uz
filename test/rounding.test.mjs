@@ -19,7 +19,8 @@
 
    Ishga tushirish:  node test/rounding.test.mjs
    ══════════════════════════════════════════════════════════════════════════ */
-const { lineGross, lineNet, spreadDiscount } = await import("../src/lib/ek-discount.js");
+const { lineGross, lineNet, spreadDiscount, optimizeDiscount, budgetOffers }
+  = await import("../src/lib/ek-discount.js");
 const { moneyFine } = await import("../src/lib/ek-format.js");
 
 let pass = 0, fail = 0;
@@ -92,6 +93,40 @@ console.log("\n── 6. Chekda tiyin KO'RSATILADI (yashirilmaydi) ──");
   eq(moneyFine(50002), `50${NNBSP}002`, "butun sonda hech narsa o'zgarmaydi");
   eq(moneyFine(50002.0001), `50${NNBSP}002`, "suzuvchi nuqta changi tiyin emas");
   eq(moneyFine(-0.5), "-0.50", "manfiy qiymat ham to'g'ri");
+}
+
+console.log("\n\u2500\u2500 7. \u26a0 Optimizator ham BUTUN so'm beradi \u2500\u2500");
+{
+  /* ⚠ NEGA JIDDIY. Optimizator qaytargan chegirma savatga yoziladi va
+     serverga yuboriladi. Kasr chiqsa (333.33), server uni mijoz
+     foydasiga 334 ga ko'taradi va chek «kam to'landi» bilan rad
+     etiladi — tortiladigan tovarda tuzatilgan nosozlik boshqa
+     eshikdan qaytardi. */
+  const lines = [
+    { salePrice: 7500, qty: 6.667, costPrice: 5000, minPrice: 6000 },
+    { salePrice: 12300, qty: 1.234, costPrice: 9000, minPrice: 10000 },
+    { salePrice: 4300, qty: 3, costPrice: 3000, minPrice: 3500 },
+  ];
+
+  const bads = [];
+  for (const budget of [500, 1000, 5000, 12345, 30000]) {
+    for (const offer of optimizeDiscount(lines, budget) || []) {
+      const frac = (offer.add || []).filter((v) => !Number.isInteger(Number(v)));
+      if (frac.length) bads.push(`byudjet ${budget}: ${frac.join(",")}`);
+      if (!Number.isInteger(Number(offer.discount))) {
+        bads.push(`byudjet ${budget}: jami ${offer.discount}`);
+      }
+    }
+  }
+  for (const budget of [500, 5000, 30000]) {
+    for (const offer of budgetOffers(lines, 0, budget) || []) {
+      const frac = (offer.add || []).filter((v) => !Number.isInteger(Number(v)));
+      if (frac.length) bads.push(`byudjet taklifi ${budget}: ${frac.join(",")}`);
+    }
+  }
+  bads.length === 0
+    ? ok("hamma byudjetda ulushlar ham, jami ham butun")
+    : bad("\u26a0 kasr chegirma qaytdi — server uni rad etardi", bads.slice(0, 3).join(" | "));
 }
 
 console.log(`\n  ${pass} o'tdi, ${fail} yiqildi`);

@@ -1562,7 +1562,11 @@ export default function KassaPage({ toast, refreshLowStock }) {
   const applyPlan = (plan) => {
     setCart((prev) => prev.map((i, idx) => ({
       ...i,
-      discount: Math.round(((Number(i.discount) || 0) + (plan.add[idx] || 0)) * 100) / 100,
+      /* ⚠ BUTUN SO'M (V82). Ilgari ikki xonaga yaxlitlanardi va
+         optimizator bergan `333.33` savatga shundayligicha tushardi;
+         server esa uni 334 ga ko'tarib, chekni «kam to'landi» bilan
+         rad etardi. Chegirma ham pul — u ham butun so'mda. */
+      discount: Math.round((Number(i.discount) || 0) + (plan.add[idx] || 0)),
       _pulse: Date.now(),
     })));
     setDiscount("");
