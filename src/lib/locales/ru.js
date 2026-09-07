@@ -1865,6 +1865,7 @@ export default {
   "marking.noneScanned": "Пока ни одной этикетки",
   "marking.confirmCount": "Подтвердить ({n})",
   "marking.otherProduct": "Этот код от другого товара",
+  "marking.codeExpiry": "Срок годности, записанный в коде",
   "marking.required": "Маркированный товар — этикетки обязательны",
   "marking.title": "Маркировка",
   "marking.inStock": "На полке",

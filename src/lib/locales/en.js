@@ -1865,6 +1865,7 @@ export default {
   "marking.noneScanned": "No labels scanned yet",
   "marking.confirmCount": "Confirm ({n})",
   "marking.otherProduct": "This code belongs to another product",
+  "marking.codeExpiry": "Expiry date written inside the code",
   "marking.required": "Marked goods — labels must be scanned",
   "marking.title": "Marking",
   "marking.inStock": "On shelf",

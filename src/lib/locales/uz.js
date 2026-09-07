@@ -1968,6 +1968,7 @@ export default {
   "marking.noneScanned": "Hali birorta yorliq skanerlanmadi",
   "marking.confirmCount": "Tasdiqlash ({n})",
   "marking.otherProduct": "Bu kod boshqa tovarga tegishli",
+  "marking.codeExpiry": "Kod ichidagi yaroqlilik muddati",
   "marking.required": "Markirovkali tovar — yorliqlar skanerlanishi shart",
   "marking.title": "Markirovka",
   "marking.inStock": "Javonda",

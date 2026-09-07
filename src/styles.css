@@ -1150,6 +1150,20 @@ select.form-input { cursor: pointer; }
 .mark-row__code  { flex: 1; min-width: 0; font-family: var(--font-mono); overflow: hidden;
                    text-overflow: ellipsis; white-space: nowrap; }
 .mark-row__reason{ color: var(--fg-danger); font-weight: 700; white-space: nowrap; }
+/* Kod ichidagi yaroqlilik muddati (V85).
+
+   ⚠ RANGI YASHIL EMAS. `.mark-row i` butun qatordagi ikonkani
+   `--fg-success` qiladi va sana ham o'sha rangda chiqardi — bu esa
+   «sana yaxshi» degan ma'no berardi. Holbuki sana ertaga tugashi
+   ham mumkin: yaroqlilikni ko'rsatuvchi belgi qatorning boshidagi
+   ikonka, sana esa MA'LUMOT. Shuning uchun u bo'g'iq rangda va
+   qatorning holatiga aralashmaydi. */
+.mark-row__expiry{ color: var(--fg-muted); font-weight: 700; white-space: nowrap;
+                   font-variant-numeric: tabular-nums; }
+.mark-row__expiry i { color: inherit; }
+/* Muddati o'tgan bo'lsa qator allaqachon `is-bad` — sana ham qizil
+   bo'lib, sabab RAQAM bilan ko'rinadi. */
+.mark-row__expiry.is-bad, .mark-row__expiry.is-bad i { color: var(--fg-danger); }
 
 /* ══ Kategoriya daraxti ══════════════════════════════════════════════════ */
 .cat-list        { padding: 16px; display: flex; flex-direction: column; gap: 14px; }
