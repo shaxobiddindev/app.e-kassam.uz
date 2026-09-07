@@ -206,6 +206,26 @@ autoView.says ? ok("panel «o'zi ishga tushadi» deb aytdi")
               : no("avtomatik holat yozilishi kerak", "yozilmadi");
 await auto.close();
 
+/* ══ §8 ⚠ KASSIR HAM ULAY OLADI ══════════════════════════════════════
+   Tarozi monoblokning O'ZIGA bog'lanadi: brauzer ruxsati va shu
+   qurilmaning sozlamasi. Panelni egaga cheklab qo'yish amalda
+   «ega har bir monoblokka borib kirmaguncha tarozi ishlamaydi»
+   degani edi — kassir esa aynan tarozi yonida turadi.
+
+   ⚠ Barkod formati BOSHQA GAP va u egada qoladi: uni server ham
+   `/shop/scale` da egaga cheklaydi. */
+console.log("\n§8 ⚠ KASSIRDA: jonli tarozi bor, barkod formati yo'q");
+const cash = await makePage({ ek_role: "CASHIER" });
+const cashView = await cash.evaluate(() => {
+  const txt = document.body.innerText;
+  return { live: /jonli tarozi/i.test(txt), fmt: /tarozi barkodi/i.test(txt) };
+});
+cashView.live ? ok("kassirga «Jonli tarozi» ko'rindi")
+              : no("kassirga panel ko'rinishi kerak", "yo'q");
+cashView.fmt ? no("barkod formati kassirda CHIZILMASIN", "chizildi")
+             : ok("barkod formati kassirda yo'q — server ham uni bermaydi");
+await cash.close();
+
 await browser.close();
 server.close();
 console.log(bad === 0 ? "\n✅ Tarozi: hammasi joyida\n" : `\n❌ ${bad} ta muammo\n`);

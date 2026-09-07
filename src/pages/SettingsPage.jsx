@@ -659,8 +659,25 @@ export default function SettingsPage({ toast }) {
           bir-birini almashtirmaydi: yorliq chiqaradigan tarozi
           barkod bilan, sticker chiqarmaydigani esa to'g'ridan-to'g'ri
           port orqali ishlaydi. Do'konda ikkalasi ham bo'lishi
-          mumkin. */}
-      {isOwner && hasFeature("SCALE") && <ScaleLive toast={toast} />}
+          mumkin.
+
+          ⚠ VA U EGAGA CHEKLANMAYDI (V114). Yuqoridagi blokning
+          `isOwner` i serverdan kelib chiqadi — `/shop/scale` egadan
+          boshqasiga 403 beradi va bo'limni ko'rsatib qo'yish faqat
+          umid uyg'otardi. Jonli tarozining esa SERVERDA HECH NIMASI
+          YO'Q: u sof qurilma ishi va sozlamasi monoblokning o'ziga
+          bog'lanadi (brauzer ruxsati + shu qurilmaning
+          `localStorage` i).
+
+          Cheklab qo'yish amalda shuni anglatardi: ega har bir
+          monoblokka borib, o'z hisobi bilan kirmaguncha tarozi
+          ulanmaydi. Windows qayta o'rnatilsa yoki brauzer profili
+          tozalansa — yana o'sha. Kassir esa aynan shu tarozi
+          yonida turadi.
+
+          ⚠ MODUL CHEKLOVI QOLADI: tarozisi yo'q do'konda blok
+          chizilmaydi. */}
+      {hasFeature("SCALE") && <ScaleLive toast={toast} />}
 
       <Section
         icon="fa-user"

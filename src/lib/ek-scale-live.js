@@ -130,12 +130,18 @@ export async function start(port, opts = {}) {
          xotirani cheksiz o'stirardi. */
       const bytes = state.bytes.concat(Array.from(chunk)).slice(-128);
       lastAt = Date.now();
+      /* ⚠ HISOB PORT OCHILGANDA EMAS, BAYT KELGANDA tozalanadi
+         (V114). Tarozi o'chiq bo'lsa port BARIBIR ochiladi: kabel
+         joyida, adapter javob beradi, o'lchov esa yo'q. Hisob
+         o'shanda ham nolga tushsa, kutish oralig'i hech qachon
+         o'smas va ilova har 11 soniyada portni ochib-yopib turardi —
+         panelda holat yashildan sariqqa sakrab, «ishlayaptimi yoki
+         yo'qmi?» degan savol tug'dirardi. */
+      if (fails) { fails = 0; retryAt = 0; }
       state = { on: true, kg: st.kg, stable: st.stable, bytes };
       emit();
     });
     state = { ...state, on: true };
-    fails = 0;
-    retryAt = 0;
     writeCfg({ ...readCfg(), baudRate, poll: key, id: portId(port), enabled: true });
     emit();
   })();
@@ -202,7 +208,13 @@ async function tick() {
 
   if (stopFn) {
     const polling = (POLL[cfg.poll]?.bytes || []).length > 0;
-    if (polling && state.on && Date.now() - lastAt > SILENT_MS) await close(true);
+    if (polling && state.on && Date.now() - lastAt > SILENT_MS) {
+      await close(true);
+      /* Ochildi, lekin jim — bu ham muvaffaqiyatsizlik: keyingi
+         urinish kechroq bo'ladi. */
+      fails += 1;
+      retryAt = Date.now() + Math.min(RETRY_MAX, 2000 * fails);
+    }
     return;
   }
 
