@@ -4,7 +4,8 @@ import { unitLabel } from "../lib/ek-labels";
 import { money, quantity as fmtQty } from "../utils";
 import { NumField } from "./ek/EkFields";
 import Overlay from "./ek/Overlay";
-import { MODE_QTY, MODE_SUM, qtyFromSum, switchMode } from "../lib/ek-qty-sum";
+import { MODE_QTY, MODE_SUM, floorTo, qtyFromSum, switchMode } from "../lib/ek-qty-sum";
+import { weightQty } from "../lib/ek-scale";
 import { subscribe as scaleSubscribe, resume as scaleResume } from "../lib/ek-scale-live";
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -56,6 +57,10 @@ export default function QuantityModal({ product, initial, stock: stockProp, onCo
      mumkin — ekranda ikkalasi ham ko'rinadi va tanlovni kassir
      qiladi. */
   const [scale, setScale] = useState(null);
+  /* ⚠ TAROZI KILOGRAMM BERADI, oyna esa LITR va METR uchun ham
+     ochiladi (V113). O'girish `weightQty` da: og'irlik bo'lmagan
+     birlikda `null` qaytadi va tugma umuman chizilmaydi. */
+  const scaleQty = weightQty(product?.unit, scale?.kg);
   useEffect(() => {
     /* Ilgari ruxsat berilgan port — oynasiz ochiladi. */
     scaleResume();
@@ -212,15 +217,20 @@ export default function QuantityModal({ product, initial, stock: stockProp, onCo
             aria-label={sumMode ? t("kassa.enterSum") : t("kassa.enterQuantity")}
           />
 
-          {/* ⚠ TAROZI TUGMASI FAQAT ULANGANDA (V111). Ulanmagan
-              do'konda o'chiq tugma turgani kassirni «nega
-              ishlamayapti?» degan savolga olib borardi — holbuki
-              tarozi umuman yo'q. */}
-          {scale?.kg > 0 && !sumMode && (
+          {/* ⚠ TAROZI TUGMASI FAQAT ULANGANDA (V111) VA FAQAT
+              OG'IRLIK BIRLIGIDA (V113). Ulanmagan do'konda o'chiq
+              tugma turgani kassirni «nega ishlamayapti?» degan
+              savolga olib borardi — holbuki tarozi umuman yo'q.
+              Metr yoki soat sotilayotganda esa tugma bo'lmasligi
+              KERAK: tarozi ularni o'lchay olmaydi. */}
+          {scaleQty != null && !sumMode && (
             <button type="button" className="btn btn-outline qty-modal__scale"
-                    onClick={() => setValue(String(scale.kg))}>
+                    /* ⚠ Birlik xonasiga QIRQILADI: grammga o'girishda
+                       `0.488 × 1000` suzuvchi chang qoldirishi mumkin
+                       va maydonga `488.00000000000006` tushardi. */
+                    onClick={() => setValue(String(floorTo(scaleQty, decimals)))}>
               <i className="fa-solid fa-scale-balanced" aria-hidden="true" />
-              <span className="ek-num">{fmtQty(scale.kg, decimals)} {unitLabel(product?.unit)}</span>
+              <span className="ek-num">{fmtQty(scaleQty, decimals)} {unitLabel(product?.unit)}</span>
               {/* Tarozi hali tebranayotgan bo'lsa — belgisi bilan:
                   kassir barqarorlashishini kutadi. */}
               <span className={scale.stable ? "text-success" : "text-muted"} style={{ fontSize: 11 }}>

@@ -15,7 +15,7 @@
 
    Ishga tushirish:  node test/scale.test.mjs
    ══════════════════════════════════════════════════════════════════════════ */
-const { splitFrames, parseFrame, stableOf, feed } = await import("../src/lib/ek-scale.js");
+const { splitFrames, parseFrame, stableOf, feed, weightQty } = await import("../src/lib/ek-scale.js");
 
 let pass = 0, fail = 0;
 const ok  = (m) => { pass++; console.log("  ✅ " + m); };
@@ -125,6 +125,28 @@ console.log("\n── Tarix cheklangan ──");
   for (let i = 0; i < 50; i++) st = feed(st, `${i / 1000}\r\n`);
   st.history.length <= 20 ? ok(`tarix ${st.history.length} ta bilan cheklangan`)
                           : bad("tarix cheksiz o'smasin", st.history.length);
+}
+
+console.log("\n\u2500\u2500 Tarozi KILOGRAMM beradi (V113) \u2500\u2500");
+{
+  eq(weightQty("KG", 0.488), 0.488, "kg tovarda og'irlik o'z holicha");
+  eq(weightQty("GRAM", 0.488), 488, "gramm tovarda 1000 ga ko'paytiriladi");
+  eq(weightQty("kg", 0.488), 0.488, "registr farqi ahamiyatsiz");
+
+  /* ⚠ ASOSIY HOL. Miqdor oynasi LITR va METR uchun ham ochiladi va
+     tugma ilgari ULARDA HAM chizilardi: mato sotayotgan do'konda
+     «0.488 metr» deb turar, bosilsa chekka o'sha son tushardi. */
+  eq(weightQty("METR", 0.488), null, "\u26a0 metrda tugma chizilmaydi");
+  eq(weightQty("LITR", 1.5), null, "\u26a0 litrda tugma chizilmaydi");
+  eq(weightQty("METR_KV", 2), null, "\u26a0 kvadrat metrda tugma chizilmaydi");
+  eq(weightQty("SOAT", 1), null, "\u26a0 soatda tugma chizilmaydi");
+  eq(weightQty("DONA", 3), null, "donada tugma chizilmaydi");
+
+  /* Tarozi bo'sh yoki hali o'qimagan — tugma ham yo'q. */
+  eq(weightQty("KG", 0), null, "nol og'irlikda tugma yo'q");
+  eq(weightQty("KG", null), null, "og'irlik kelmagan bo'lsa tugma yo'q");
+  eq(weightQty("KG", -1), null, "manfiy og'irlik o'tmaydi");
+  eq(weightQty(null, 0.488), null, "birligi noma'lum tovarda tugma yo'q");
 }
 
 console.log("\n\u2500\u2500 Qaysi port TAROZI (V112) \u2500\u2500");

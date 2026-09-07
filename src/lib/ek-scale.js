@@ -172,3 +172,42 @@ export function feed(state, chunk, { stableCount = 4 } = {}) {
 
   return { rest, history: history.slice(-20), kg, stable };
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ⚠ TAROZI KILOGRAMM BERADI — TOVAR BIRLIGI ESA HAR XIL (V113)
+
+   Miqdor oynasi BO'LINADIGAN har qanday birlikda ochiladi: KG, LITR,
+   METR, METR_KV, METR_KUB, SOAT. Jonli og'irlik tugmasi esa ularning
+   HAMMASIDA chizilardi va tarozining kilogrammi tovar birligining
+   nomi bilan yozilardi.
+
+   Ya'ni mato sotayotgan do'konda tugmada «0.488 metr» deb turardi —
+   va bir bosishda chekka SHU son tushardi. Bu jimgina noto'g'ri
+   miqdor: ekranda ishonchli ko'rinadi, hisobda esa mato ham,
+   pul ham to'g'ri kelmaydi.
+
+   Shuning uchun o'girish shu yerda va u FAQAT OG'IRLIKNI taniydi.
+   Boshqa birlikda `null` qaytadi va tugma umuman chizilmaydi:
+   tarozi metr o'lchay olmaydi, «taxminan» ham qila olmaydi.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/** Og'irlik birliklari va bitta kilogrammda nechtaligi. */
+const WEIGHT_UNITS = { KG: 1, GRAM: 1000 };
+
+/**
+ * Tarozining kilogrammini TOVAR birligiga o'giradi.
+ *
+ * @param unit  tovar birligi (`KG`, `GRAM`, `LITR`…)
+ * @param kg    tarozidan kelgan og'irlik, kilogrammda
+ * @returns     tovar birligidagi miqdor, yoki `null` — birlik
+ *              og'irlik EMAS (o'shanda tugma chizilmaydi)
+ */
+export function weightQty(unit, kg) {
+  if (!Number.isFinite(kg) || kg <= 0) return null;
+  /* Backend enum'i ba'zan `ROLE_` kabi qo'shimchasiz, lekin turli
+     registrda keladi — solishtirish oldidan bir ko'rinishga keltiriladi. */
+  const key = String(unit ?? "").trim().toUpperCase();
+  const per = WEIGHT_UNITS[key];
+  if (!per) return null;
+  return kg * per;
+}

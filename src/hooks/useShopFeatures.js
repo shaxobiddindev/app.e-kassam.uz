@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { shopApi } from "../api";
+import { isOn as scaleOn, stop as scaleStop } from "../lib/ek-scale-live";
 
 /* ══════════════════════════════════════════════════════════════════════════
    DO'KONDA QAYSI BO'LIMLAR BOR (V49)
@@ -48,6 +49,20 @@ function load() {
         directions: d?.directions || [],
         unconfigured: !!d?.unconfigured,
       };
+
+      /* ⚠ «TAROZI» MODULI O'CHIRILSA — PORT HAM YOPILADI (V113).
+
+         Tarozi ilova ochilganda O'ZI ulanadi va uni boshqaradigan
+         panel sozlamalarda shu modul bilan chiziladi. Modul
+         o'chirilgach panel yo'qoladi, port esa ochiqligicha
+         qolardi: kassada og'irlik ko'rinaverar, uni to'xtatadigan
+         tugma esa hech qayerda yo'q edi.
+
+         ⚠ FAQAT javob ANIQ bo'lganda. `features === null` — «noma'lum»
+         (tarmoq uzildi, eski backend) va bu faylning bosh qoidasi
+         bo'yicha o'shanda hech narsa yopilmaydi. */
+      if (cache.features && !cache.features.has("SCALE") && scaleOn()) scaleStop();
+
       return cache;
     })
     .catch(() => {
