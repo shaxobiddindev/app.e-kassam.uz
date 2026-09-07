@@ -27,6 +27,102 @@ const eqObj = (a, b, m) => {
 const eqArr = (a, b, m) =>
   (JSON.stringify(a) === JSON.stringify(b) ? ok(m) : bad(m, JSON.stringify(a)));
 
+console.log("\n══ ⚠ SETTLE — qaytim, nasiya va jamg'arma chegarasi ══");
+/* ⚠ `settle` — bu moduldagi ENG KATTA funksiya va unda birorta
+   sinov yo'q edi. U chekka tushadigan taqsimotni, QAYTIMNI,
+   NASIYANI va jamg'arma chegarasini belgilaydi: bu yerdagi xato
+   to'g'ridan-to'g'ri kassadagi pulga tegadi. */
+
+console.log("\n─ Naqd: aniq, ortiqcha, kam ─");
+{
+  const s = settle({ CASH: 50000 }, 50000);
+  eq(s.cashPaid, 50000, "aniq to'langanda hammasi chekka tushadi");
+  eq(s.change, 0, "qaytim yo'q");
+  eq(s.credit, 0, "nasiya yo'q");
+}
+{
+  const s = settle({ CASH: 100000 }, 73000);
+  eq(s.cashPaid, 73000, "ortiqcha berilganda chekka FAQAT chek summasi tushadi");
+  eq(s.change, 27000, "qolgani qaytim");
+  eq(s.credit, 0, "nasiya yo'q");
+  eqArr(s.parts, [{ type: "CASH", amount: 73000 }],
+        "qatorga KESILGAN naqd ketadi - ortiqcha pul kassaga tushmaydi");
+}
+{
+  const s = settle({ CASH: 30000 }, 50000);
+  eq(s.cashPaid, 30000, "kam berilganda bergani chekka tushadi");
+  eq(s.credit, 20000, "qolgani NASIYAGA yoziladi");
+  eqArr(s.parts.map((p) => p.type), ["CASH", "CREDIT"],
+        "nasiya qatori qo'shiladi");
+}
+
+console.log("\n─ ⚠⚠ JAMG'ARMADAN NAQD YECHIB BO'LMAYDI (V78 xavfsizlik qoidasi) ─");
+{
+  /* Ilgari jamg'arma oddiy naqdsiz usul edi: 30 000 lik chekka
+     20 000 karta + 20 000 jamg'arma yozilsa, ortiqcha 10 000 QAYTIM
+     bo'lib chiqardi — ya'ni mijoz jamg'armasidan NAQD PUL yechib
+     olardi va jamg'arma hisob bo'lishdan to'xtardi. */
+  const s = settle({ CARD: 20000, SAVINGS: 20000 }, 30000);
+  eq(s.savingsPaid, 10000, "jamg'armadan FAQAT qolgan summa yechildi");
+  eq(s.savingsCut, 10000, "ortiqchasi kesildi va hisobda qoldi");
+  eq(s.change, 0,
+     "QAYTIM YO'Q - aks holda mijoz jamg'armasidan naqd pul yechib olardi");
+  eq(s.credit, 0, "chek to'liq yopildi");
+  eqObj(Object.fromEntries(s.parts.map((p) => [p.type, p.amount])),
+        { CARD: 20000, SAVINGS: 10000 },
+        "qatorga kesilgan jamg'arma ketadi");
+}
+{
+  /* ⚠ Chegara NAQDDAN KEYIN ham hisoblanadi. */
+  const s = settle({ CASH: 20000, SAVINGS: 20000 }, 30000);
+  eq(s.savingsPaid, 10000, "naqd bergan bo'lsa jamg'armadan faqat qolgani yechiladi");
+  eq(s.change, 0, "naqd ham to'liq ishlatildi, qaytim yo'q");
+}
+{
+  const s = settle({ SAVINGS: 90000 }, 30000);
+  eq(s.savingsPaid, 30000, "jamg'arma yolg'iz bo'lsa ham chek summasidan oshmaydi");
+  eq(s.savingsCut, 60000, "qolgani tegilmadi");
+  eq(s.change, 0, "va qaytim yaratmadi");
+}
+
+console.log("\n─ ⚠ NAQDSIZ ORTIQCHA — qaytim emas, JAMG'ARMAGA ─");
+{
+  /* Terminal aynan so'ralgan summani oladi va u yerdan naqd
+     QAYTMAYDI. Shuning uchun bu pulni mijozga qo'lda berib
+     bo'lmaydi - uning yagona to'g'ri manzili jamg'arma. */
+  const s = settle({ CARD: 50000 }, 30000);
+  eq(s.over, 20000, "naqdsiz ortiqcha alohida hisoblanadi");
+  eq(s.change, 0, "QAYTIM EMAS - kartadan naqd qaytmaydi");
+  eq(s.excess, 20000, "ortiqcha jamg'armaga yo'naltiriladi");
+  eq(s.credit, 0, "nasiya yo'q");
+}
+{
+  /* Ikkala ortiqcha ham bitta raqamga yig'iladi. */
+  const s = settle({ CASH: 40000, CARD: 50000 }, 30000);
+  eq(s.excess, s.change + s.over, "ortiqcha = qaytim + naqdsiz ortiqcha");
+}
+
+console.log("\n─ Aralash va tartib ─");
+{
+  const s = settle({ CLICK: 15000, CASH: 20000 }, 100000);
+  eq(s.others, 15000, "naqdsiz jami");
+  eq(s.cashPaid, 20000, "naqd to'liq ishlatildi");
+  eq(s.credit, 65000, "qolgani nasiyaga");
+  eqArr(s.parts.map((p) => p.type), ["CASH", "CLICK", "CREDIT"],
+        "qatorlar TARTIBDA: naqd birinchi, nasiya oxirida");
+}
+
+console.log("\n─ Buzuq kiritish yiqitmaydi ─");
+{
+  eq(settle(null, 50000).credit, 50000, "kiritish yo'q - hammasi nasiya");
+  eq(settle({}, 0).credit, 0, "bo'sh chek - nol");
+  eq(settle({ CASH: "30000" }, 50000).cashPaid, 30000, "matn ko'rinishidagi raqam");
+  eq(settle({ CASH: -5000 }, 50000).cashPaid, 0, "manfiy kiritish e'tiborsiz");
+  eq(settle({ CASH: "abc" }, 50000).cashPaid, 0, "raqam bo'lmagan qiymat - nol, NaN emas");
+  eq(settle({ CASH: 50000 }, null).change, 50000, "chek summasi yo'q - hammasi qaytim");
+  eqArr(settle({ CASH: 0, CARD: 0 }, 0).parts, [], "nol qatorlar tashlanadi");
+}
+
 console.log("── Do'kon egasining misoli ──");
 
 const s1 = settle({ CASH: 20000 }, 100000);
