@@ -7,7 +7,8 @@
      2. Chek darhol chop etiladi, UI muvaffaqiyat ko'rsatadi
      3. Fon jarayoni navbatni serverga yuboradi
      4. Server tasdiqlasa → o'chiriladi
-     5. Xato bo'lsa → exponential backoff, maksimum 10 urinish
+     5. Tarmoq xatosi bo'lsa → exponential backoff, urinish CHEKSIZ
+     6. Server RAD ETSA (4xx) → «failed», kassir ko'radi (V85)
 
    Har bir sotuvda klient tomonida yaratilgan `idempotencyKey` (UUID) bo'ladi.
    Server bir xil kalitli so'rovni ikki marta qayd etmaydi — takroriy sotuv
@@ -21,9 +22,47 @@ const DB_NAME = "ekassam";
 const DB_VERSION = 1;
 const STORE = "sales_queue";
 
-const MAX_ATTEMPTS = 10;
-/** Exponential backoff, ms. 10-urinishdan keyin sotuv "failed" bo'ladi. */
+/* ══════════════════════════════════════════════════════════════════════════
+   ⚠ URINISHLAR SONI BO'YICHA CHEGARA OLIB TASHLANDI (V85)
+
+   Ilgari 10 urinishdan keyin sotuv «failed» bo'lardi. Urinishlar har
+   15 soniyada bo'lgani uchun bu IKKI YARIM DAQIQADA tugardi: kassa
+   internetsiz qolgan har qanday holatda — Wi-Fi qayta ulanayotgan
+   payt, provayder uzilishi, noutbukni ko'chirish — SOTUV YO'QOLARDI.
+
+   Kassaning eng asosiy va'dasi shu: oflaynda ishlaydi. Sotuvni ikki
+   yarim daqiqadan keyin tashlab yuborish o'sha va'dani buzadi va
+   bunda pul allaqachon olingan, tovar allaqachon berilgan bo'ladi.
+
+   Endi TARMOQ xatosida urinish CHEKSIZ. Lekin bu hamma xatoga
+   tegishli emas — pastdagi `isPermanent` izohiga qarang.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/** Exponential backoff, ms. Chegara 60 s: sotuv eng tez yuborilishi kerak. */
 const backoff = (attempt) => Math.min(60_000, 1000 * 2 ** attempt);
+
+/**
+ * Server SOTUVNI RAD ETDIMI yoki shunchaki YETIB BORMADIMI.
+ *
+ * ⚠ IKKALASINI AJRATISH SHART va bu yangi qoida (V85). Ilgari ular
+ * bir xil edi va ikkalasi ham 10 urinishdan keyin tashlanardi.
+ *
+ *   TARMOQ (internet yo'q, server javob bermadi, 5xx) — sotuv hali
+ *   YETIB BORMAGAN. Uni tashlash pul olingan-u chek yo'q degani.
+ *   Cheksiz urinamiz.
+ *
+ *   SERVER RAD ETDI (4xx: smena yopiq, tovar o'chirilgan, miqdor
+ *   yetmaydi) — javob KELDI va u «yo'q» deydi. Uni cheksiz qayta
+ *   yuborish hech qachon yordam bermaydi, faqat jurnalni to'ldiradi
+ *   va haqiqiy muammoni yashiradi. Bunday sotuv `failed` bo'lib
+ *   KO'RINADI: kassir uni ko'rishi va qo'lda hal qilishi kerak.
+ *
+ * ⚠ 401 bu yerga YETIB KELMAYDI — `api/index.js` uni o'zi ushlab,
+ * tokenni yangilaydi yoki kirish sahifasiga yuboradi.
+ */
+const isPermanent = (err) =>
+  !err?.offline && typeof err?.status === "number"
+  && err.status >= 400 && err.status < 500;
 
 let dbPromise = null;
 
@@ -171,9 +210,13 @@ export async function flush() {
       } catch (err) {
         item.attempts += 1;
         item.lastError = err?.message || "Noma'lum xato";
-        if (item.attempts >= MAX_ATTEMPTS) {
+        if (isPermanent(err)) {
+          /* Server javob berdi va «yo'q» dedi — qayta yuborish
+             yordam bermaydi. Kassir ko'rishi kerak. */
           item.status = "failed";
         } else {
+          /* ⚠ URINISHLAR SONI TEKSHIRILMAYDI. Tarmoq tiklanmaguncha
+             sotuv navbatda kutadi — qancha kerak bo'lsa shuncha. */
           item.nextAttemptAt = Date.now() + backoff(item.attempts);
         }
         await update(item);

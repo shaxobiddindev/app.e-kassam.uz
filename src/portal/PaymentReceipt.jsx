@@ -302,7 +302,14 @@ export default function PaymentReceipt({
             <div className="pt-hr" />
             <div className="pt-center pt-tape__no">{data.receiptNo}</div>
             <div className="pt-center pt-thanks">Rahmat!</div>
-            <div className="pt-center pt-tape__site">e-kassam.uz</div>
+            {/* ⚠ «e-kassam.uz» OLIB TASHLANDI (V85). Elektron chek ham
+                CHEK: mijoz uni QR orqali ochadi va unda begona brend
+                turishi qog'oz chekdagi bilan bir xil xato edi.
+                O'rniga do'kon o'zi yozgan matn — bo'sh bo'lsa hech
+                narsa chizilmaydi. */}
+            {data.shopFooter && (
+              <div className="pt-center pt-tape__site">{data.shopFooter}</div>
+            )}
           </div>
         )}
 

@@ -2262,4 +2262,12 @@ export default {
   "fiscalSetup.active": "Running",
   "fiscalSetup.inactive": "Stopped",
   "fiscalSetup.notReady": "Fiscal numbers are not filled in",
+
+  /* ══ Chek osti va navbat yoshi (V85) ══ */
+  "settings.receiptFooter": "Receipt footer",
+  "settings.receiptFooterHint": "Printed at the end of every receipt. Leave it empty for nothing.",
+  "fiscal.queueAge": "Oldest receipt",
+  "fiscal.queueAgeHours": "hours in the queue",
+  "fiscal.queueWarn": "A receipt has been stuck for over a day. Check the module.",
+  "fiscal.queueCritical": "The deadline is close. This must be sent today.",
 };

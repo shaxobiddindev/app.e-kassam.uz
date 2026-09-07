@@ -840,6 +840,14 @@ export const shopApi = {
     return request(`/shop/fiscal-requisites?${q}`, { method: "PATCH" });
   },
 
+  /* Chek ostidagi ixtiyoriy matn (V85).
+     ⚠ Bo'sh qiymat ham yuboriladi — server uni «o'chirish» deb
+     o'qiydi va aks holda bir marta yozilgan matnni olib tashlashning
+     yo'li qolmasdi. */
+  setReceiptFooter: (value) =>
+    request(`/shop/receipt-footer?value=${encodeURIComponent(value ?? "")}`,
+            { method: "PATCH" }),
+
   /** Kamomad chegarasi — faqat egasi. */
   setCashTolerance: (value) => request(`/shop/cash-tolerance?value=${value}`, { method: "PATCH" }),
   /** Do'kon bo'yicha eng katta chegirma foizi. */

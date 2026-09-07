@@ -2370,4 +2370,12 @@ export default {
   "fiscalSetup.active": "Ishlayapti",
   "fiscalSetup.inactive": "To'xtatilgan",
   "fiscalSetup.notReady": "Fiskal raqamlari to'ldirilmagan",
+
+  /* ══ Chek osti va navbat yoshi (V85) ══ */
+  "settings.receiptFooter": "Chek ostidagi matn",
+  "settings.receiptFooterHint": "Har chek oxirida chiqadi. Bo'sh qoldirilsa hech narsa chiqmaydi.",
+  "fiscal.queueAge": "Eng eski chek",
+  "fiscal.queueAgeHours": "soatdan beri navbatda",
+  "fiscal.queueWarn": "Chek bir kundan beri yuborilmayapti. Modulni tekshiring.",
+  "fiscal.queueCritical": "Muddat yaqin. Chek bugun yuborilishi kerak.",
 };

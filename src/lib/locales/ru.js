@@ -2262,4 +2262,12 @@ export default {
   "fiscalSetup.active": "Работает",
   "fiscalSetup.inactive": "Остановлена",
   "fiscalSetup.notReady": "Фискальные номера не заполнены",
+
+  /* ══ Chek osti va navbat yoshi (V85) ══ */
+  "settings.receiptFooter": "Текст внизу чека",
+  "settings.receiptFooterHint": "Печатается в конце каждого чека. Если пусто - ничего не выводится.",
+  "fiscal.queueAge": "Самый старый чек",
+  "fiscal.queueAgeHours": "часов в очереди",
+  "fiscal.queueWarn": "Чек не уходит больше суток. Проверьте модуль.",
+  "fiscal.queueCritical": "Срок близко. Чек должен уйти сегодня.",
 };

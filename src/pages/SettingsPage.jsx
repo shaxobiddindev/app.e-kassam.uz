@@ -116,6 +116,8 @@ export default function SettingsPage({ toast }) {
      yuklanmagan bir lahzada kalit «o'chiq» bo'lib turib, keyin
      sakrab yonishi noto'g'ri taassurot berardi. */
   const [receiptShowPhone, setReceiptShowPhone] = useState(true);
+  /* Chek ostidagi ixtiyoriy matn (V85). Bo'sh — hech narsa chiqmaydi. */
+  const [receiptFooter, setReceiptFooter] = useState("");
   /* Nasiya muddati (V43), kunlarda. "0" — muddatsiz. */
   const [creditDueDays, setCreditDueDays] = useState("0");
   /* Mijozga qarz eslatmasi (V44). */
@@ -141,6 +143,7 @@ export default function SettingsPage({ toast }) {
         setCreditConfirm(Boolean(r?.data?.creditConfirmEnabled));
         setPickupEnabled(Boolean(r?.data?.pickupEnabled));
         setReceiptShowPhone(r?.data?.receiptShowPhone !== false);
+        setReceiptFooter(r?.data?.receiptFooter || "");
         setCreditDueDays(String(r?.data?.creditDueDays ?? 0));
         setCreditRemind(Boolean(r?.data?.creditRemindEnabled));
         setBaseCashback(String(r?.data?.baseCashbackPercent ?? 0));
@@ -578,6 +581,26 @@ export default function SettingsPage({ toast }) {
                 </span>
               </button>
             </Row>
+            {/* ⚠ CHEK OSTIDAGI MATN (V85). Ilgari bu yerda «e-kassam.uz»
+                turardi — mijozning qo'lidagi qog'ozdagi BEGONA brend:
+                do'kon uni tanlamagan va soliq hujjatida uning o'rni
+                yo'q. Olib tashlandi; o'rniga do'kon O'ZI yozadigan
+                matn. Bo'sh — hech narsa chiqmaydi va bu STANDART. */}
+            <Row label={t("settings.receiptFooter")}
+                 hint={t("settings.receiptFooterHint")}>
+              <input
+                className="input"
+                maxLength={120}
+                value={receiptFooter}
+                aria-label={t("settings.receiptFooter")}
+                onChange={(e) => setReceiptFooter(e.target.value)}
+                /* ⚠ Fokus ketganda saqlanadi, har harfda emas: matn
+                   yozilayotganda har bosishga so'rov yuborish
+                   serverni ham, keshni ham bekorga charchatardi. */
+                onBlur={() => saveToggle(
+                  shopApi.setReceiptFooter, receiptFooter, setReceiptFooter)}
+              />
+            </Row>
             {/* ⚠ ALOHIDA SOZLAMA, muddatning davomi emas. Muddat do'konning
                 ichki qoidasi, bu esa do'kon nomidan MIJOZGA boradigan
                 xabar — uni ongli ravishda yoqish kerak. Izohda mijoz
@@ -745,7 +768,18 @@ export default function SettingsPage({ toast }) {
         />
       )}
 
-      {FISCAL_UI && isManager && <FiscalPanel toast={toast} />}
+      {/* ⚠ HOLAT PANELI ENDI DO'KON BAYROG'IGA BOG'LIQ (V85), faqat
+          `FISCAL_UI` ga emas. Sabab: fiskal rejim endi HAR DO'KON
+          uchun alohida yoqiladi, ya'ni «kimga ko'rsatamiz» degan
+          savolga javob build vaqtidagi bayroqda emas, do'konning
+          o'zida turadi.
+
+          ⚠ Fiskal rejimni yoqmagan do'kon uchun hech narsa
+          o'zgarmaydi: panel ham chizilmaydi, `/fiscal/status`
+          so'rovi ham YUBORILMAYDI. */}
+      {isManager && (FISCAL_UI || fiscalProfile?.fiscalEnabled) && (
+        <FiscalPanel toast={toast} />
+      )}
 
       {/* Telegram hisobot boti (V32) — kunlik PUL hisoboti, faqat rahbarga */}
       {isManager && <TelegramPanel toast={toast} />}

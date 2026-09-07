@@ -51,8 +51,30 @@ console.log("═══ Do'kon nomi ═══");
   eq("u ham yo'q — do'kon kodi", shopHead().name, "ulash01");
 }
 {
+  /* ══ ⚠ BEGONA BREND ZAXIRASI OLIB TASHLANDI (V85) ═══════════════════
+     Ilgari nom topilmasa chekda «E-KASSAM.UZ» chiqardi. Bu mijozning
+     qo'lidagi qog'ozda do'kon tanlamagan brend edi, soliq hujjatida
+     esa uning o'rni umuman yo'q.
+
+     Endi qator BO'SH qoladi. Birovning brendini bosishdan ko'ra hech
+     narsa bosmaslik to'g'riroq — va bo'sh sarlavha muammoni
+     YASHIRMAYDI: do'kon uni darhol ko'radi va profilni to'ldiradi. */
   store.clear();
-  eq("hech narsa yo'q — tizim nomi", shopHead().name, "E-KASSAM.UZ");
+  eq("hech narsa yo'q — qator BO'SH, begona brend emas", shopHead().name, "");
+}
+{
+  /* Chek ostidagi matn (V85) — do'kon o'zi yozadi. */
+  store.clear();
+  store.set("ek_shopHead", JSON.stringify({ name: "Gulzor", footer: "Qaytarish 3 kun" }));
+  eq("chek osti profildan olinadi", shopHead().footer, "Qaytarish 3 kun");
+
+  store.clear();
+  store.set("ek_shopHead", JSON.stringify({ name: "Gulzor" }));
+  eq("matn yo'q — bo'sh, hech narsa chizilmaydi", shopHead().footer, "");
+
+  store.clear();
+  store.set("ek_shopHead", JSON.stringify({ name: "Gulzor", footer: "   " }));
+  eq("faqat probel — ham bo'sh deb hisoblanadi", shopHead().footer, "");
 }
 {
   /* ⚠ KESH USTUN TURADI. Chaqiruvchilar `ek_shopName` dan o'qiydi va

@@ -29,7 +29,10 @@ export default function FiscalPanel({ toast }) {
     try {
       const [s, r] = await Promise.all([fiscalApi.status(), fiscalApi.receipts()]);
       setStatus(s.data);
-      setReceipts(r.data || []);
+      /* ⚠ Massivligi tekshiriladi — `FiscalSetupPanel` dagi bilan bir
+         xil sabab: `{}` `|| []` dan o'tib ketadi va `.slice` butun
+         sahifani yiqitadi. */
+      setReceipts(Array.isArray(r?.data) ? r.data : []);
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -84,6 +87,31 @@ export default function FiscalPanel({ toast }) {
             {!status.enabled && <div className="form-hint">{t("fiscal.legalNote")}</div>}
           </div>
         </div>
+
+        {/* ══ ⚠ NAVBAT YOSHI — SONDAN MUHIMROQ (V85) ═══════════════════
+            «Navbatda 12 ta chek» degan raqam o'zi hech narsa aytmaydi:
+            12 tasi bir daqiqa oldin tushgan bo'lsa hammasi joyida,
+            ikki kun oldin tushgan bo'lsa do'kon allaqachon 48 soatlik
+            muddatni o'tkazib yuborgan va bundan xabari yo'q.
+
+            Shu sababli yosh sonlardan YUQORIDA va rangli turadi. */}
+        {status.queueAlert && status.queueAlert !== "NONE" && (
+          <div className={`ek-note ${status.queueAlert === "CRITICAL"
+                            ? "ek-note--danger" : "ek-note--warn"}`}
+               style={{ marginTop: 12 }}>
+            <i className="fa-solid fa-clock" />
+            <div>
+              <div>
+                <b>{t("fiscal.queueAge")}</b>: {status.oldestPendingHours}{" "}
+                {t("fiscal.queueAgeHours")}
+              </div>
+              <div className="form-hint">
+                {status.queueAlert === "CRITICAL"
+                  ? t("fiscal.queueCritical") : t("fiscal.queueWarn")}
+              </div>
+            </div>
+          </div>
+        )}
 
         <div style={{ display: "flex", gap: 18, marginTop: 14, flexWrap: "wrap" }}>
           <Stat label={t("fiscal.pending")} value={status.pending} tone={status.pending ? "warning" : null} />

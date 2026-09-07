@@ -234,7 +234,14 @@ export default function Receipt({ token, appToken, customerId, id, signedId, sig
                     dangerouslySetInnerHTML={{ __html: code128Svg(`S-${String(data.id).padStart(6, "0")}`) }} />
             <div className="pt-center pt-tape__no">S-{String(data.id).padStart(6, "0")}</div>
             <div className="pt-center pt-thanks">Xarid uchun rahmat!</div>
-            <div className="pt-center pt-tape__site">e-kassam.uz</div>
+            {/* ⚠ «e-kassam.uz» OLIB TASHLANDI (V85). Elektron chek ham
+                CHEK: mijoz uni QR orqali ochadi va unda begona brend
+                turishi qog'oz chekdagi bilan bir xil xato edi.
+                O'rniga do'kon o'zi yozgan matn — bo'sh bo'lsa hech
+                narsa chizilmaydi. */}
+            {data.shopFooter && (
+              <div className="pt-center pt-tape__site">{data.shopFooter}</div>
+            )}
           </div>
         )}
 

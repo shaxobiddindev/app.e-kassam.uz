@@ -195,7 +195,107 @@ console.log("\n§3 Kassir");
   await page.close();
 }
 
-console.log("\n§4 Sahifa xatolari");
+/* ── §4 CHEK OSTIDAGI MATN ─────────────────────────────────────────── */
+console.log("\n§4 Chek osti (V85)");
+{
+  const page = await makePage(
+    { fiscalEnabled: false, tin: null, receiptFooter: "Qaytarish 3 kun" });
+  const t = await text(page);
+
+  /* ⚠ Bu qator BEGONA BREND o'rniga keldi. Ilgari chekda «CRM Tizimi»
+     va «e-kassam.uz» turardi — do'kon tanlamagan, soliq hujjatida
+     o'rni bo'lmagan matn. */
+  const brand = await page.evaluate(() => {
+    const src = document.documentElement.outerHTML;
+    return /CRM Tizimi/.test(src);
+  });
+  if (brand) no("Sozlamalar sahifasida «CRM Tizimi» qoldi", "bor");
+  else ok("«CRM Tizimi» yozuvi yo'q");
+
+  const hasField = /Chek ostidagi matn/i.test(t);
+  if (hasField) ok("«Chek ostidagi matn» maydoni bor");
+  else no("maydon topilmadi", "yo'q");
+
+  const filled = await page.$$eval("input", (els) =>
+    els.some((e) => e.value === "Qaytarish 3 kun"));
+  if (filled) ok("profildagi matn maydonga tushdi");
+  else no("matn maydonga tushmadi", "bo'sh");
+  await page.close();
+}
+
+/* ── §5 NAVBAT YOSHI ───────────────────────────────────────────────── */
+console.log("\n§5 Navbat yoshi (V85)");
+{
+  /* ⚠ Fiskal PANEL alohida so'rovga (`/fiscal/status`) tayanadi va u
+     `moduleEnabled` bo'lmasa umuman chizilmaydi. Shu sababli bu band
+     panelning O'ZINI emas, uning MANBASINI tekshiradi: server
+     yuborgan daraja frontga yetib kelyaptimi. */
+  const seen = [];
+  const page = await browser.newPage();
+  await page.setRequestInterception(true);
+  page.on("request", (r) => {
+    if (!r.url().includes("/api/")) return r.continue();
+    const CORS = {
+      "Access-Control-Allow-Origin": `http://127.0.0.1:${PORT}`,
+      "Access-Control-Allow-Credentials": "true",
+      "Access-Control-Allow-Headers":
+        r.headers()["access-control-request-headers"] || "authorization,content-type",
+      "Access-Control-Allow-Methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+    };
+    if (r.method() === "OPTIONS") return r.respond({ status: 204, headers: CORS });
+    const p = new URL(r.url()).pathname;
+    if (/\/fiscal\/status$/.test(p)) seen.push(p);
+    let body = { success: true, data: {} };
+    if (/\/fiscal\/status$/.test(p)) {
+      body = { success: true, data: {
+        provider: "none", enabled: false, moduleEnabled: true,
+        pending: 3, sent: 0, failed: 0,
+        oldestPendingHours: 41, queueAlert: "CRITICAL" } };
+    } else if (/\/shop\/cash-registers$/.test(p)) {
+      body = { success: true, data: [] };
+    } else if (/\/fiscal\/receipts/.test(p)) {
+      /* ⚠ RO'YXAT MASSIV BO'LISHI SHART. `{}` qaytarilsa panel
+         `receipts.slice` da yiqiladi va butun blok chizilmay
+         qoladi — sinov esa «yosh ko'rinmadi» deb noto'g'ri
+         sababni ko'rsatardi. */
+      body = { success: true, data: [] };
+    } else if (/\/shop\/profile$/.test(p)) {
+      /* ⚠ Panel do'kon bayrog'iga bog'liq (V85) — usiz u chizilmaydi
+         va sinov BO'SH o'tib ketardi. */
+      body = { success: true, data: { name: "Gulzor", fiscalEnabled: true,
+                                      tin: "123456789", tinType: "LEGAL",
+                                      fiscalAddress: "Chilonzor 19" } };
+    }
+    return r.respond({ status: 200, contentType: "application/json",
+                       headers: CORS, body: JSON.stringify(body) });
+  });
+  page.on("pageerror", (e) => { pageErrors.push(e.message); });
+  await page.evaluateOnNewDocument(() => {
+    for (const [k, v] of Object.entries({
+      ek_token: "v", ek_type: "user", ek_role: "OWNER", ek_username: "v",
+      ek_fullName: "V", ek_shopCode: "v", ek_deviceId: "monoblok-1",
+      ek_lang: "uz", ek_theme: "light",
+    })) localStorage.setItem(k, v);
+  });
+  await page.goto(`http://127.0.0.1:${PORT}/settings`,
+                  { waitUntil: "networkidle2", timeout: 30_000 });
+  await new Promise((r) => setTimeout(r, 900));
+
+  /* ⚠ Panel `FISCAL_UI` bayrog'i bilan yashirilgan bo'lishi mumkin —
+     unda so'rov ham yuborilmaydi. Ikkala holat ham to'g'ri; sinov
+     faqat «so'rov ketgan bo'lsa, javob to'g'ri o'qildimi» deydi. */
+  const t = await text(page);
+  if (seen.length === 0) {
+    no("⚠ fiskal holat UMUMAN so'ralmadi — panel chizilmagan", "so'rov yo'q");
+  } else if (/41/.test(t)) {
+    ok("navbat yoshi ekranda ko'rindi (41 soat)");
+  } else {
+    no("holat so'raldi, lekin yosh chizilmadi", t.slice(0, 120));
+  }
+  await page.close();
+}
+
+console.log("\n§6 Sahifa xatolari");
 if (pageErrors.length) no("konsolda xato bor", pageErrors.slice(0, 3).join(" | "));
 else ok("konsol toza");
 

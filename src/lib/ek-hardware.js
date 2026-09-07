@@ -147,10 +147,15 @@ export function buildReceipt({ saleId, serverSaleId, cart = [], total = 0, subto
      («ulash01») yoki «E-KASSAM.UZ» chiqardi. Mijoz qo'lidagi qog'ozda
      do'konning haqiqiy nomi hech qachon bo'lmagan. */
   const head = shopHead(shopName);
-  r.center().double().line(head.name).double(false);
+  /* ⚠ Nom BO'SH bo'lsa qator umuman chizilmaydi (V85): bo'sh qalin
+     satr chekning boshida sababsiz oq joy qoldirardi. */
+  if (head.name) r.center().double().line(head.name).double(false);
+  else r.center();
   /* Telefon — nom ostida, sozlama yoqilgan bo'lsa (`shopHead` izohi). */
   if (head.phone) r.line(head.phone);
-  r.line(t("kassa.receiptSystem"));
+  /* ⚠ «CRM Tizimi» satri OLIB TASHLANDI (V85). Do'kon nomi ostida
+     dasturning nomi turishi mijozga hech narsa bermasdi va soliq
+     hujjatida uning o'rni yo'q edi. */
   r.left().rule();
 
   r.row(`${t("kassa.receiptNo")} ${saleId ?? "-"}`, new Date().toLocaleString("uz-UZ"));
@@ -301,7 +306,16 @@ export function buildReceipt({ saleId, serverSaleId, cart = [], total = 0, subto
   }
 
   r.rule();
-  r.center().line(t("kassa.receiptThanks")).line("e-kassam.uz");
+  r.center().line(t("kassa.receiptThanks"));
+  /* ══ ⚠ CHEK OSTI (V85) ════════════════════════════════════════════
+     Ilgari bu yerda «e-kassam.uz» turardi — mijozning qo'lidagi
+     qog'ozdagi BEGONA brend. Do'kon uni tanlamagan va soliq
+     hujjatida uning o'rni yo'q. Olib tashlandi.
+
+     O'rniga do'kon O'ZI yozadigan matn (Sozlamalar → chek osti).
+     Bo'sh bo'lsa hech narsa chizilmaydi va bu standart. */
+  if (head.footer) r.wrap(head.footer);
+  r.left();
   return r;
 }
 
@@ -360,7 +374,10 @@ export function buildDebtReceipt({ customer, amount, balanceAfter, balanceBefore
   const L = debtLabels(kind);
 
   const head = shopHead(shopName);
-  r.center().double().line(head.name).double(false);
+  /* ⚠ Nom BO'SH bo'lsa qator umuman chizilmaydi (V85): bo'sh qalin
+     satr chekning boshida sababsiz oq joy qoldirardi. */
+  if (head.name) r.center().double().line(head.name).double(false);
+  else r.center();
   if (head.phone) r.line(head.phone);
   r.line(L.title);
   r.left().rule();
@@ -400,7 +417,16 @@ export function buildDebtReceipt({ customer, amount, balanceAfter, balanceBefore
   }
 
   r.rule();
-  r.center().line(t("kassa.receiptThanks")).line("e-kassam.uz");
+  r.center().line(t("kassa.receiptThanks"));
+  /* ══ ⚠ CHEK OSTI (V85) ════════════════════════════════════════════
+     Ilgari bu yerda «e-kassam.uz» turardi — mijozning qo'lidagi
+     qog'ozdagi BEGONA brend. Do'kon uni tanlamagan va soliq
+     hujjatida uning o'rni yo'q. Olib tashlandi.
+
+     O'rniga do'kon O'ZI yozadigan matn (Sozlamalar → chek osti).
+     Bo'sh bo'lsa hech narsa chizilmaydi va bu standart. */
+  if (head.footer) r.wrap(head.footer);
+  r.left();
   return r;
 }
 
@@ -517,7 +543,9 @@ export async function printShiftReport(r, shopName) {
     }
   }
   rc.rule();
-  rc.center().line(new Date().toLocaleString("uz-UZ")).line("e-kassam.uz");
+  /* ⚠ Bu ICHKI hujjat (smena hisoboti), mijozga bermaydi — lekin
+     begona brend bu yerda ham keraksiz (V85). */
+  rc.center().line(new Date().toLocaleString("uz-UZ"));
   rc.cut();
   await send(rc.build());
 }
@@ -944,7 +972,8 @@ function printInBrowser({ saleId, serverSaleId, cart = [], total = 0, subtotal, 
         <small>${esc(t("kassa.receiptQrHint"))}</small>
       </div>` : ""}
       <div class="hr"></div>
-      <div class="c"><p>${esc(t("kassa.receiptThanks"))}</p><small>e-kassam.uz</small></div>`;
+      <div class="c"><p>${esc(t("kassa.receiptThanks"))}</p>${
+        head.footer ? `<small>${esc(head.footer)}</small>` : ""}</div>`;
 
   win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(__debt ? L.title : t("kassa.receiptNo") + " " + saleId)}</title>
     <style>
@@ -981,8 +1010,7 @@ function printInBrowser({ saleId, serverSaleId, cart = [], total = 0, subtotal, 
       ${debtBody}
       ${__debt ? "" : `
       <div class="c"><div class="logo">${esc(head.name)}</div>
-        ${head.phone ? `<small>${esc(head.phone)}</small><br>` : ""}
-        <small>${esc(t("kassa.receiptSystem"))}</small></div>
+        ${head.phone ? `<small>${esc(head.phone)}</small>` : ""}</div>
       <div class="hr"></div>
       <div class="row"><span>${esc(t("kassa.receiptNo"))} ${esc(saleId)}</span><span>${esc(new Date().toLocaleString("uz-UZ"))}</span></div>
       <div class="hr"></div>
@@ -1014,7 +1042,8 @@ function printInBrowser({ saleId, serverSaleId, cart = [], total = 0, subtotal, 
         <small>${esc(t("kassa.receiptQrHint"))}</small>
       </div>` : ""}
       <div class="hr"></div>
-      <div class="c"><p>${esc(t("kassa.receiptThanks"))}</p><small>e-kassam.uz</small></div>`}
+      <div class="c"><p>${esc(t("kassa.receiptThanks"))}</p>${
+        head.footer ? `<small>${esc(head.footer)}</small>` : ""}</div>`}
     </body></html>`);
   win.document.close();
   /* Tizim shrifti ishlatilgani uchun kutish shart emas — bir kadr yetadi.

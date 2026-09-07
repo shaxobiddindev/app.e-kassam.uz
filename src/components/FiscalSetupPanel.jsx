@@ -57,7 +57,14 @@ export default function FiscalSetupPanel({ profile, toast, onSaved }) {
     setLoading(true);
     try {
       const r = await cashRegisterApi.list();
-      setRegisters(r?.data || []);
+      /* ⚠ MASSIVLIGI TEKSHIRILADI, `|| []` YETARLI EMAS. `{}` ham,
+         `null` ham «yolg'on» emas — ya'ni `|| []` ularni o'tkazib
+         yuboradi va keyingi `.map` BUTUN SAHIFANI yiqitadi
+         (ErrorBoundary). Eski server, xato javob shakli yoki
+         proksining oraliq javobi — hammasi shu holatga olib keladi.
+         Kassalar bo'limi ishlamasligi mumkin, lekin Sozlamalar
+         sahifasi ochilishi SHART. */
+      setRegisters(Array.isArray(r?.data) ? r.data : []);
     } catch (err) {
       toast.error(err.message);
     } finally {

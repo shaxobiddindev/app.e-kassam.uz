@@ -43,6 +43,8 @@ export function rememberShopHead(profile) {
       /* ⚠ `!== false`: maydon yo'q bo'lsa KO'RSATILADI. Eski serverga
          ulangan yangi ilova telefonni jimgina yo'qotmasligi kerak. */
       showPhone: profile.receiptShowPhone !== false,
+      /* Chek ostidagi ixtiyoriy matn (V85) — do'kon o'zi yozadi. */
+      footer: profile.receiptFooter || "",
     }));
   } catch { /* xotira to'la yoki shaxsiy rejim — chek baribir chiqadi */ }
 }
@@ -58,8 +60,12 @@ export function shopHead(given = "") {
   let c = {};
   try { c = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch { c = {}; }
 
-  const name = c.name || given
-    || localStorage.getItem("ek_shopCode") || "E-KASSAM.UZ";
+  /* ⚠ «E-KASSAM.UZ» ZAXIRASI OLIB TASHLANDI (V85). U mijozning
+     qo'lidagi qog'ozda BEGONA brend edi: do'kon uni tanlamagan va
+     soliq hujjatida uning o'rni yo'q. Nom umuman topilmasa qator
+     bo'sh qoladi — birovning brendini bosishdan ko'ra hech narsa
+     bosmaslik to'g'riroq. */
+  const name = c.name || given || localStorage.getItem("ek_shopCode") || "";
 
   /* ⚠ Telefon FAQAT sozlama yoqilganda. Bu qoida qog'ozda ham,
      elektron chekda ham (serverda) bir xil: bittasi e'tiborsiz
@@ -67,5 +73,9 @@ export function shopHead(given = "") {
      ko'raverardi. */
   const phone = c.showPhone === false ? "" : (c.phone || "");
 
-  return { name, phone };
+  /* ⚠ Matn faqat do'kon O'ZI yozgan bo'lsa chiqadi. Bo'sh — hech
+     narsa chizilmaydi va bu STANDART. */
+  const footer = (c.footer || "").trim();
+
+  return { name, phone, footer };
 }

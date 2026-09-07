@@ -111,8 +111,11 @@ export default function StatementModal({ customer, ledger, shopName, onClose, to
             <td class="n">${esc(money(st.closing))}</td>
           </tr></tfoot>
         </table>
-        <div class="foot"><span>${esc(new Date().toLocaleString("uz-UZ"))}</span>
-          <span>${esc(t("kassa.receiptSystem"))}</span></div>`,
+        <div class="foot"><span>${esc(new Date().toLocaleString("uz-UZ"))}</span></div>`,
+        /* ⚠ Ostidagi «CRM Tizimi» olib tashlandi (V85): bu hujjat
+           MIJOZGA beriladi va unda dasturning nomi turishi begona
+           brend bo'lardi. Izoh SHABLON SATRIDAN TASHQARIDA — ichiga
+           yozilsa chekka bosilib chiqardi. */
         title, PRINT_CSS, "width=820,height=900");
     } catch (err) {
       toast?.error(err.message);

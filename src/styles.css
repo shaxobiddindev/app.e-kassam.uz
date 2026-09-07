@@ -1090,6 +1090,11 @@ select.form-input { cursor: pointer; }
                    background: var(--bg-brand-subtle); border: 1px solid var(--border-brand);
                    color: var(--fg-brand); font-size: 12px; font-weight: 600; line-height: 1.45; }
 .ek-note--warn   { background: var(--bg-warning-subtle); border-color: var(--border-warning); color: var(--fg-warning); }
+/* ⚠ «Xavfli» variant (V85) — fiskal navbat muddati yaqin bo'lganda.
+   Ogohlantirishdan RANG bilan ajraladi: sariq «ko'rib qo'ying»,
+   qizil esa «bugun hal qiling». Ikkalasi bir xil ko'rinsa,
+   ikkinchisi ham e'tibordan qolardi. */
+.ek-note--danger { background: var(--bg-danger-subtle); border-color: var(--border-danger); color: var(--fg-danger); }
 
 /* ══ Forma bo'limlari (mahsulot formasi) ═════════════════════════════════
    Mahsulotda endi 20 dan ortiq maydon bor. Ularni bitta uzun ro'yxatda
