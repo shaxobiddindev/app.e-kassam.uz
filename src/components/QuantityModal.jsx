@@ -5,6 +5,7 @@ import { money, quantity as fmtQty } from "../utils";
 import { NumField } from "./ek/EkFields";
 import Overlay from "./ek/Overlay";
 import { MODE_QTY, MODE_SUM, qtyFromSum, switchMode } from "../lib/ek-qty-sum";
+import { subscribe as scaleSubscribe, resume as scaleResume } from "../lib/ek-scale-live";
 
 /* ══════════════════════════════════════════════════════════════════════════
    Miqdor kiritish — FAQAT bo'linadigan birliklar uchun (kg, litr, metr).
@@ -43,6 +44,23 @@ export default function QuantityModal({ product, initial, stock: stockProp, onCo
      aylanib qolardi. */
   const [mode, setMode] = useState(MODE_QTY);
   const inputRef = useRef(null);
+
+  /* ══ TAROZIDAN JONLI OG'IRLIK (V111) ═══════════════════════════════
+     Do'kon egasi: «tarozi sticker chiqarmaydi, kassa bilan aloqa
+     qilishi kerak».
+
+     ⚠ MAYDONGA O'ZI YOZILMAYDI. Og'irlik tugmada ko'rinadi va
+     kassir uni BOSIB oladi. Sabab shu oynaning boshidagi qoida bilan
+     bir xil: noto'g'ri o'qilgan og'irlik jimgina chekka tushib
+     qolmasligi kerak. Tarozida boshqa tovar turgan bo'lishi ham
+     mumkin — ekranda ikkalasi ham ko'rinadi va tanlovni kassir
+     qiladi. */
+  const [scale, setScale] = useState(null);
+  useEffect(() => {
+    /* Ilgari ruxsat berilgan port — oynasiz ochiladi. */
+    scaleResume();
+    return scaleSubscribe((st) => setScale(st.on ? st : null));
+  }, []);
 
   useEffect(() => { inputRef.current?.focus(); inputRef.current?.select(); }, []);
 
@@ -193,6 +211,23 @@ export default function QuantityModal({ product, initial, stock: stockProp, onCo
             placeholder="0"
             aria-label={sumMode ? t("kassa.enterSum") : t("kassa.enterQuantity")}
           />
+
+          {/* ⚠ TAROZI TUGMASI FAQAT ULANGANDA (V111). Ulanmagan
+              do'konda o'chiq tugma turgani kassirni «nega
+              ishlamayapti?» degan savolga olib borardi — holbuki
+              tarozi umuman yo'q. */}
+          {scale?.kg > 0 && !sumMode && (
+            <button type="button" className="btn btn-outline qty-modal__scale"
+                    onClick={() => setValue(String(scale.kg))}>
+              <i className="fa-solid fa-scale-balanced" aria-hidden="true" />
+              <span className="ek-num">{fmtQty(scale.kg, decimals)} {unitLabel(product?.unit)}</span>
+              {/* Tarozi hali tebranayotgan bo'lsa — belgisi bilan:
+                  kassir barqarorlashishini kutadi. */}
+              <span className={scale.stable ? "text-success" : "text-muted"} style={{ fontSize: 11 }}>
+                {scale.stable ? t("scale.steady") : t("scale.moving")}
+              </span>
+            </button>
+          )}
 
           {/* ⚠ QATOR HAR DOIM TURADI, faqat MATNI paydo bo'ladi.
 

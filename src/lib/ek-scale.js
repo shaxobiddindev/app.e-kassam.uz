@@ -92,7 +92,28 @@ export function parseFrame(frame) {
      majbur qilardi. */
   const hasSt = /\bST\b/i.test(raw);
   const hasUs = /\bUS\b/i.test(raw);
-  const stable = hasSt ? true : hasUs ? false : null;
+  let stable = hasSt ? true : hasUs ? false : null;
+
+  /* ══ ⚠ STX DAN KEYINGI BELGI — HOLAT (V111) ═════════════
+     Do'kondagi M-ER 328AC aynan shunday yuboradi (haqiqiy oqimdan
+     olingan):
+
+         06 01 02 53 20 30 30 2E 34 38 38 6B 67 65 03 04
+         ACK SOH STX «S» « » «00.488» «kg» «e» ETX EOT
+
+     Ya'ni holat `ST`/`US` so'zlari bilan emas, BITTA HARF bilan
+     aytiladi: `S` — barqaror, `U` — tebranmoqda.
+
+     ⚠ Buni o'qimaslik ham «ishlardi» — kuzatuv (`stableOf`) to'rtta
+     bir xil o'lchovdan keyin baribir barqaror deb topardi. Lekin
+     o'shanda kassir har tortishda ortiqcha kutar, tarozining o'zi
+     esa allaqachon «barqaror» deb turgan bo'lardi. */
+  const stx = raw.indexOf("\u0002");
+  if (stx >= 0) {
+    const flag = raw[stx + 1];
+    if (flag === "S" || flag === "s") stable = true;
+    else if (flag === "U" || flag === "u") stable = false;
+  }
 
   const hasNt = /\bNT\b/i.test(raw);
   const hasGs = /\bGS\b/i.test(raw);

@@ -5868,3 +5868,10 @@ button.stk__c:hover { background: var(--bg-hover); }
    ko'rinadi.
    ══════════════════════════════════════════════════════════════════════════ */
 .ta-right { text-align: right; }
+
+/* ── Kassadagi tarozi tugmasi (V111) ───────────────────────────────────
+   Miqdor maydoni bilan jami qatori orasida. Kenglik to'liq: kassir
+   uni tortish bilan bir vaqtda, ko'zini ekrandan olmasdan bosadi. */
+.qty-modal__scale { width: 100%; margin-top: 10px; min-height: var(--hit-pos);
+                    display: flex; align-items: center; justify-content: center; gap: 10px;
+                    font-size: 15px; font-weight: 800; }

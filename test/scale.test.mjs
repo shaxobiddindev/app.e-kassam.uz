@@ -35,6 +35,37 @@ console.log("── CAS / Mettler-Toledo ramkasi ──");
   eq(r.net, true, "«NT» — netto");
 }
 
+console.log("\n\u2500\u2500 \u26a0 HAQIQIY TAROZI: M-ER 328ACPX \u2500\u2500");
+/* Do'kondagi tarozidan olingan ramka (o'ylab topilmagan):
+
+     06 01 02 53 20 30 30 2E 34 38 38 6B 67 65 03 04
+     ACK SOH STX \u00abS\u00bb \u00ab \u00bb \u00ab00.488\u00bb \u00abkg\u00bb \u00abe\u00bb ETX EOT
+
+   Holat `ST`/`US` so'zlari bilan emas, BITTA HARF bilan aytiladi va
+   ramka boshi/oxiri boshqaruv baytlari bilan o'ralgan. */
+{
+  const B = [0x06, 0x01, 0x02, 0x53, 0x20, 0x30, 0x30, 0x2e,
+             0x34, 0x38, 0x38, 0x6b, 0x67, 0x65, 0x03, 0x04];
+  const raw = B.map((b) => String.fromCharCode(b)).join("");
+
+  const st = feed(null, raw + raw);
+  eq(st.kg, 0.488, "haqiqiy ramkadan 0.488 kg o'qildi");
+  eq(st.stable, true, "\u26a0 \u00abS\u00bb bayrog'i \u2014 tarozining O'ZI barqaror dedi");
+
+  /* \u26a0 \u00abkge\u00bb dagi \u00abg\u00bb GRAMM deb o'qilmasligi kerak: o'shanda
+     0.488 kg jimgina 0.000488 kg bo'lib qolardi. */
+  eq(feed(null, raw).kg, 0.488, "\u00abkge\u00bb gramm deb o'qilmadi");
+
+  const moving = raw.replace("S", "U");
+  eq(feed(null, moving).stable, false, "\u00abU\u00bb \u2014 tebranmoqda");
+
+  /* Oqim bo'lak-bo'lak keladi: ramka O'RTASIDAN bo'linsa ham
+     natija butun bo'lishi shart. */
+  let s2 = feed(null, raw.slice(0, 7));
+  s2 = feed(s2, raw.slice(7) + raw);
+  eq(s2.kg, 0.488, "ramka o'rtasidan bo'linsa ham to'g'ri o'qiladi");
+}
+
 console.log("\n── Sodda ASCII ──");
 eq(parseFrame("  0.250 kg").kg, 0.25, "faqat son va birlik");
 eq(parseFrame("0,250").kg, 0.25, "vergul ham nuqta kabi");

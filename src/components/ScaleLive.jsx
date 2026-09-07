@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { t } from "../lib/ek-i18n";
 import Select from "./ek/Select";
-import { available, known, pick, open, hexDump, POLL } from "../lib/ek-serial";
+import { available, known, pick, hexDump, POLL } from "../lib/ek-serial";
+import { subscribe, start, stop, readCfg, writeCfg } from "../lib/ek-scale-live";
 import { quantity as fmtQty } from "../utils";
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -36,15 +37,6 @@ import { quantity as fmtQty } from "../utils";
    mumkin. M-ER 328AC odatda 9600, 8, N, 1 da ishlaydi.
    ══════════════════════════════════════════════════════════════════════════ */
 
-/** Portning eslab qolingan sozlamasi — har smenada qayta terilmasin. */
-const LS = "ek_scale_port";
-const readCfg = () => {
-  try { return JSON.parse(localStorage.getItem(LS) || "{}"); } catch (_) { return {}; }
-};
-const writeCfg = (v) => {
-  try { localStorage.setItem(LS, JSON.stringify(v)); } catch (_) { /* shaxsiy oyna */ }
-};
-
 const BAUDS = [4800, 9600, 19200, 38400, 57600, 115200];
 
 /* ⚠ SO'ROV RO'YXATI — TANLOV, TAXMIN EMAS. Qaysi buyruq to'g'ri
@@ -63,54 +55,25 @@ export default function ScaleLive({ toast }) {
      panel qaytadan yig'iladi va port yopiladi — do'kon esa yozuvni
      ko'chirib ulgurmay, hammasi yo'qolib qolardi. Endi u qaytganda
      joyida turadi. */
-  const [raw, setRaw] = useState(() => cfg.lastDump || "");
-  const stopRef = useRef(null);
-  /* Baytlar to'planib boradi: hex ko'rinish har bo'lakda qaytadan
-     yig'iladi va bo'lak chegarasi qatorni buzmasligi kerak. */
-  const bytesRef = useRef([]);
+  const [raw, setRaw] = useState("");
 
-  /* ⚠ Port ochiq qolmasin: sahifadan chiqilganda o'qish to'xtatiladi,
-     aks holda port band bo'lib qolar va ikkinchi marta ochib
-     bo'lmasdi. */
-  useEffect(() => () => { stopRef.current?.(); }, []);
+  /* ⚠ ULANISH PANELGA TEGISHLI EMAS (V111). Ilgari port shu
+     komponentning ichida ochilardi va do'kon boshqa bo'limga o'tib
+     qaytganda ulanish uzilib qolardi — kassada esa tarozi umuman
+     yo'q edi. Endi port modul darajasida yashaydi
+     (`ek-scale-live.js`), panel esa uni faqat KO'RSATADI va
+     boshqaradi. */
+  useEffect(() => subscribe((st) => {
+    setOn(st.on);
+    setKg(st.kg);
+    setStable(st.stable);
+    setRaw(st.bytes.length ? hexDump(st.bytes) : "");
+  }), []);
 
-  const start = async (port) => {
-    try {
-      const stop = await open(port, {
-        baudRate: Number(baud),
-        /* ⚠ Tarozi jim tursa — biz so'raymiz. Ko'p model uzluksiz
-           yubormaydi va port ochiq bo'lgani holda hech narsa
-           kelmaydi; buni «tarozi buzuq» deb o'ylash juda oson. */
-        poll: POLL[poll]?.bytes || [],
-        /* ⚠ ACK javobi: tarozi «06» desa, asosiy buyruq yuboriladi
-           (`ek-serial.js` dagi izoh). */
-        after: POLL[poll]?.after || [],
-        pollMs: 700,
-      }, (st, chunk) => {
-        setKg(st.kg);
-        setStable(st.stable);
-        /* ⚠ OXIRGI 128 BAYT. Protokolni aniqlash uchun bir necha ramka
-           yetarli; uzunroq oqim sahifani cho'zib, ko'chirishni
-           qiyinlashtirardi. */
-        const next = bytesRef.current.concat(Array.from(chunk)).slice(-128);
-        bytesRef.current = next;
-        const dump = hexDump(next);
-        setRaw(dump);
-        writeCfg({ ...readCfg(), lastDump: dump });
-      });
-      stopRef.current = stop;
-      setOn(true);
-      writeCfg({ ...readCfg(), baudRate: Number(baud), poll });
-    } catch (err) {
-      toast?.error(err?.message === "no-serial" ? t("scale.liveNoSupport") : String(err?.message || err));
-    }
-  };
-
-  /** Tugmadan — brauzer port tanlashni FAQAT shundan ruxsat beradi. */
   const connect = async () => {
     try {
       const port = await pick();
-      await start(port);
+      await start(port, { baudRate: Number(baud), poll });
     } catch (err) {
       /* Foydalanuvchi tanlash oynasini yopdi — bu xato emas. */
       if (err?.name !== "NotFoundError") {
@@ -123,14 +86,11 @@ export default function ScaleLive({ toast }) {
   const reconnect = async () => {
     const ports = await known();
     if (!ports.length) return connect();
-    await start(ports[0]);
+    try { await start(ports[0], { baudRate: Number(baud), poll }); }
+    catch (err) { toast?.error(String(err?.message || err)); }
   };
 
-  const disconnect = async () => {
-    await stopRef.current?.();
-    stopRef.current = null;
-    setOn(false);
-  };
+  const disconnect = () => stop();
 
   if (!available()) {
     return (
