@@ -1869,6 +1869,13 @@ export default {
   "kassa.outOfStock": "Qolmagan",
   "kassa.noPriceWarn": "Narx qo'yilmagan — sotib bo'lmaydi",
   "kassa.confirmQty": "Tasdiqlash",
+  /* ── Miqdor yoki summa (V104) ──────────────────────────────────────
+     Mijoz «yarim kilo» emas, «50 minglik» deb so'raydi: kassir pulni
+     yozadi, miqdorni tizim chiqaradi. */
+  "kassa.entryMode": "Nima kiritiladi",
+  "kassa.byQty": "Miqdor",
+  "kassa.bySum": "Summa",
+  "kassa.enterSum": "Summani kiriting",
   /* Miqdor oynasida ombordagi qoldiq KO'RSATILADI: kassir «qancha bor?» deb
      savatni yopib, tovar ro'yxatiga qaytmasin. */
   "kassa.inStock": "Omborda: {qty}",
