@@ -7,7 +7,8 @@ import { Empty, SearchBar, Badge, Field } from "../components/ui";
 import { useConfirm } from "../context/ConfirmProvider";
 import { useBadge } from "../context/BadgeProvider";
 import { useAuth } from "../hooks/useAuth";
-import { PAYMENT_TYPE, SALE_STATUS, paymentEntry, saleStatus } from "../lib/ek-labels";
+import { PAYMENT_TYPE, SALE_STATUS, paymentEntry, saleStatus,
+         dispositionOptions, writeOffOptions } from "../lib/ek-labels";
 // ⚠ `Spinner` HAM shu yerdan. U chek chiqarish va bekor qilish tugmalarida
 // FAQAT amal davomida chiziladi — shuning uchun import unutilgani sahifa
 // ochilganda bilinmasdi, tugma bosilgan zahoti esa render'da
@@ -17,6 +18,7 @@ import { useLoading } from "../lib/use-loading";
 import { printReceipt } from "../lib/ek-hardware";
 import SaleDetailModal from "../components/SaleDetailModal";
 import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
+import Select from "../components/ek/Select";
 import { topRole } from "../lib/ek-roles";
 import { useScanner } from "../hooks/useScanner";
 import { useOnline } from "../hooks/useOnline";
@@ -217,6 +219,20 @@ export default function SalesPage({ toast }) {
       .filter((x) => x.quantity > 0);
     if (!items.length) return;
 
+    /* ⚠ QAYERGA KETADI (V103). Do'kon egasi: «qaytarilgan tovar qayta
+       sotuvga chiqarilishi yoki hisobdan chiqarilishi kerak».
+
+       ⚠ `RESALE` da MAYDON UMUMAN YUBORILMAYDI: server bo'sh qiymatni
+       ilgarigidek tushunadi va shu bilan oflayn navbatdagi eski
+       so'rovlar bilan bir xil yo'ldan yuradi — ikkita xatti-harakat
+       o'rniga bitta. */
+    for (const it of items) {
+      const d = ret.disp?.[it.saleItemId];
+      if (d !== "WRITE_OFF") continue;
+      it.disposition = "WRITE_OFF";
+      it.writeOffReason = ret.woReason?.[it.saleItemId] || null;
+    }
+
     /* ⚠ SUMMA FAQAT KASSIR O'ZI TAKLIFNI BOSGANDA YUBORILADI.
 
        Bo'sh qoldirilsa server muzlatilgan taqsimotdan hisoblaydi va bu
@@ -231,6 +247,12 @@ export default function SalesPage({ toast }) {
         if (found && found[1] !== "" && found[1] != null) it.amount = Number(found[1]);
       }
     }
+
+    /* ⚠ SABAB TANLANMAGAN BO'LSA TO'XTATILADI. Server ham rad etadi,
+       lekin kassir buni «Qaytarish» ni bosgandan KEYIN emas, OLDIN
+       bilishi kerak — mijoz kassa oldida turibdi. */
+    const noReason = items.find((it) => it.disposition === "WRITE_OFF" && !it.writeOffReason);
+    if (noReason) { toast.error(t("ret.writeOffReasonRequired")); return; }
 
     setReturning(true);
     try {
@@ -710,6 +732,11 @@ export default function SalesPage({ toast }) {
                       keyin ma'lum bo'lardi: chegirma bilan sotilgan
                       chekda kassir e'lon narxini aytib qo'yib, keyin
                       kamroq pul berardi. */}
+                  {/* ⚠ QAYERGA KETADI (V103) — do'kon egasining talabi.
+                      Ilgari HAR qaytarish qoldiqni tiklardi va tizim
+                      uchun ochilgan qadoq ham sotiladigan tovar edi:
+                      qoldiq bor-u, javonda yo'q. */}
+                  <th>{t("ret.disposition")}</th>
                   <th className="ta-right">{t("ret.amount")}</th>
                 </tr>
               </thead>
@@ -765,6 +792,48 @@ export default function SalesPage({ toast }) {
                           kassadan pul chiqarishning eng oson yo'li.
                           Server ham rad etadi, lekin kassir buni
                           tugmani bosishdan OLDIN bilishi kerak. */}
+                      {/* ⚠ FAQAT MIQDOR KIRITILGANDA ma'noli: qaytarilmayotgan
+                          qatorda «qayerga?» degan savol yo'q va tanlov
+                          kassirni bo'sh qarorga majburlardi. */}
+                      <td style={{ width: 190 }}>
+                        {back > 0 ? (
+                          <>
+                            <Select
+                              value={ret.disp?.[it.id] || "RESALE"}
+                              onChange={(v) => setRet({
+                                ...ret,
+                                disp: { ...(ret.disp || {}), [it.id]: v },
+                                /* Javonga qaytarilsa chiqit sababi
+                                   ma'nosini yo'qotadi — u bilan birga
+                                   tozalanadi, aks holda keyingi
+                                   almashtirishda eski sabab qayta
+                                   paydo bo'lardi. */
+                                woReason: v === "WRITE_OFF"
+                                  ? (ret.woReason || {})
+                                  : { ...(ret.woReason || {}), [it.id]: undefined },
+                              })}
+                              options={dispositionOptions()}
+                            />
+                            {ret.disp?.[it.id] === "WRITE_OFF" && (
+                              /* ⚠ TURKUM MAJBURIY (server ham talab
+                                 qiladi): usiz «shu oy qaytarishdan
+                                 qancha va NEGA yo'qotdik?» degan savol
+                                 javobsiz qolardi. */
+                              <div style={{ marginTop: 6 }}>
+                                <Select
+                                  value={ret.woReason?.[it.id] || ""}
+                                  placeholder={t("ret.writeOffReason")}
+                                  onChange={(v) => setRet({
+                                    ...ret,
+                                    woReason: { ...(ret.woReason || {}), [it.id]: v },
+                                  })}
+                                  options={writeOffOptions()}
+                                />
+                              </div>
+                            )}
+                          </>
+                        ) : <span className="text-muted">—</span>}
+                      </td>
                       <td style={{ width: 140 }}>
                         {sum > 0 ? (
                           <Field

@@ -17,6 +17,7 @@ import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
 const PaymentReceipt = lazy(() => import("../portal/PaymentReceipt"));
 import DebtPayModal from "../components/DebtPayModal";
 import StatementModal from "../components/StatementModal";
+import ReversePaymentModal from "../components/ReversePaymentModal";
 import ManualDebtModal from "../components/ManualDebtModal";
 import SavingsModal from "../components/SavingsModal";
 import { printDebtReceipt } from "../lib/ek-hardware";
@@ -81,6 +82,9 @@ export default function CustomersPage({ toast }) {
   const [payOpen, setPayOpen] = useState(false);
   /* Mijoz hisoboti (V98) — qarz oynasidan ochiladi. */
   const [stOpen, setStOpen] = useState(false);
+  /* To'lovni bekor qilish (V102): bekor qilinayotgan jurnal qatori. */
+  const [reverse, setReverse] = useState(null);
+  const [reversing, setReversing] = useState(false);
   /* Ekranda turgan to'lov cheki: to'lovdan keyin darhol, yoki jurnaldagi
      tugmadan. `null` — yopiq. */
   const [receipt, setReceipt] = useState(null);
@@ -197,6 +201,35 @@ export default function CustomersPage({ toast }) {
       toast.error(err.message);
     } finally {
       setPaying(false);
+    }
+  };
+
+  /**
+   * TO'LOVNI BEKOR QILISH (V102).
+   *
+   * ⚠ HECH NARSA O'CHIRILMAYDI: server to'lov qatorini joyida
+   * qoldirib, ustiga bog'langan kompensatsiya qatorini yozadi. Bu
+   * yerdagi ish — sababni olish va jurnalni yangilash.
+   *
+   * ⚠ JURNAL QAYTA O'QILADI, qo'lda tuzatilmaydi. Bekor qilish qarzni
+   * ham, qoldiqni ham, ochiq qarzlar ro'yxatini ham o'zgartiradi;
+   * ekrandagi nusxani «taxminan» to'g'irlash u bilan bazadagi
+   * haqiqatni ajratib yuborardi.
+   */
+  const submitReverse = async (reason) => {
+    if (!reverse || !debt) return;
+    setReversing(true);
+    try {
+      await customerApi.reverseDebtPayment(debt.customer.id, reverse.id, { reason });
+      toast.success(t("credit.reversed"));
+      setReverse(null);
+      const r = await customerApi.ledger(debt.customer.id);
+      setDebt((d) => (d ? { ...d, ledger: r.data || [] } : d));
+      loadData();
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setReversing(false);
     }
   };
 
@@ -819,6 +852,16 @@ export default function CustomersPage({ toast }) {
                             : t("credit.settled")}
                         </div>
                       )}
+                      {/* ⚠ BEKOR QILINGAN TO'LOV QATORDA QOLADI (V102) —
+                          moliyaviy yozuv o'chirilmaydi. Belgisiz esa u
+                          jurnalda haqiqiy to'lovdek ko'rinar va do'kon
+                          egasi bir pulni ikki marta sanardi. */}
+                      {l.reversed && (
+                        <div className="text-danger" style={{ fontSize: 11, fontWeight: 700 }}>
+                          <i className="fa-solid fa-rotate-left" aria-hidden="true" />
+                          {" "}{t("credit.reversedBadge")}
+                        </div>
+                      )}
                     </td>
                     {/* ⚠ CHEK FAQAT TO'LOVDA (V61). Qarz qatorining
                         cheki — o'sha sotuvning cheki va u yonidagi
@@ -826,7 +869,7 @@ export default function CustomersPage({ toast }) {
                         umuman chek yo'q (mijoz pul bermagan). Har
                         qatorga tugma qo'yish jurnalni tugmalar
                         devoriga aylantirardi. */}
-                    <td style={{ width: 34, textAlign: "right" }}>
+                    <td style={{ width: 72, textAlign: "right", whiteSpace: "nowrap" }}>
                       {/* ⚠ QARZ QATORIDA HAM CHEK BOR (V62). Ilgari
                           faqat to'lovda edi va qarz olgan mijozning
                           qo'lida hech narsa qolmasdi — ayniqsa QO'LDA
@@ -836,6 +879,25 @@ export default function CustomersPage({ toast }) {
                           TO'G'IRLASHDA tugma YO'Q: uni mijoz emas,
                           do'kon qiladi (kechirdi, xato tuzatdi) va
                           server ham uni ochmaydi. */}
+                      {/* ⚠ BEKOR QILISH — FAQAT RAHBARGA va faqat
+                          TO'LOVDA (V102). Amal yashikdan naqd
+                          chiqaradi: kassirga ochiq bo'lsa, u mijozdan
+                          pul olib, chekni berib, keyin to'lovni «bekor
+                          qilib» pulni o'zida qoldira olardi. Server ham
+                          shu qoidani tekshiradi — bu yerdagi shart
+                          tugmani ko'rsatmaslik uchun, himoya uchun
+                          emas.
+
+                          Bir marta bekor qilingan qator ikkinchi marta
+                          bosilmaydi: tugma umuman chizilmaydi. */}
+                      {l.type === "PAYMENT" && isManager && !l.reversed && (
+                        <button type="button" className="btn-icon danger"
+                                title={t("credit.reverseTitle")}
+                                aria-label={t("credit.reverseTitle")}
+                                onClick={() => setReverse(l)}>
+                          <i className="fa-solid fa-rotate-left" />
+                        </button>
+                      )}
                       {l.type !== "ADJUSTMENT" && (
                         <button type="button" className="btn-icon"
                                 title={t("credit.receipt")}
@@ -881,6 +943,20 @@ export default function CustomersPage({ toast }) {
           shopName={localStorage.getItem("ek_shopName") || ""}
           toast={toast}
           onClose={() => setStOpen(false)}
+        />
+      )}
+
+      {/* ⚠ QARZ OYNASINING USTIDAN chiziladi (V102) va uni YOPMAYDI:
+          bekor qilingandan keyin kassir o'sha jurnalga qaytadi va
+          natijani ko'radi. `Overlay` ustki qatlamni o'zi belgilaydi,
+          shuning uchun DOM tartibi yetarli. */}
+      {debt && reverse && (
+        <ReversePaymentModal
+          entry={reverse}
+          customer={debt.customer}
+          busy={reversing}
+          onClose={() => setReverse(null)}
+          onSubmit={submitReverse}
         />
       )}
 

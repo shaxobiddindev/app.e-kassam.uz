@@ -711,6 +711,7 @@ export default {
   "enum.audit.EXPENSE_DELETE": "Xarajat o'chirildi",
   "enum.audit.GOODS_RECEIPT": "Kirim hujjati",
   "enum.audit.SUPPLIER_PAYMENT": "Yetkazib beruvchiga to'lov",
+  "enum.audit.CREDIT_PAYMENT_REVERSE": "Qarz to'lovi bekor qilindi",
   "enum.audit.CUSTOMER_DEBT_ADJUST": "Qarz qo'lda to'g'irlandi",
   "enum.audit.SHOP_SETTING_CHANGE": "Do'kon chegarasi o'zgardi",
   "enum.audit.ANNOUNCEMENT_CHANGE": "E'lon o'zgardi",
@@ -1248,6 +1249,21 @@ export default {
   "ret.submit": "Qaytarishni rasmiylashtirish",
   "ret.done": "Qaytarish rasmiylashtirildi",
   "ret.badge": "Qaytarish",
+  /* ── Qaytarilgan tovar qayerga (V103) ─────────────────────────────
+     Do'kon egasi: «qayta sotuvga chiqarilsin yoki hisobdan
+     chiqarilsin — tanlov bo'lsin». */
+  "ret.disposition": "Qayerga",
+  "ret.writeOffReason": "Chiqit sababi",
+  "ret.writeOffReasonRequired": "Chiqit sababini tanlang",
+  "enum.disposition.RESALE": "Javonga",
+  "enum.disposition.WRITE_OFF": "Chiqit",
+  "enum.writeOff.BREAKAGE": "Sindi",
+  "enum.writeOff.SPOILAGE": "Buzildi",
+  "enum.writeOff.EXPIRY": "Muddati o'tdi",
+  "enum.writeOff.THEFT": "Yo'qoldi",
+  "enum.writeOff.SUPPLIER_RETURN": "Ta'minotchiga qaytarildi",
+  "enum.writeOff.OWN_USE": "Do'kon o'zi oldi",
+  "enum.writeOff.OTHER": "Boshqa",
   "ret.amount": "Summa",
   "ret.amountMax": "Ko'pi bilan",
   "ret.perUnit": "dona",
@@ -1329,6 +1345,16 @@ export default {
   "credit.receipt": "To'lov cheki",
   "credit.wasDebt": "Qarz edi",
   "credit.payAmount": "To'lov summasi",
+  /* ── To'lovni bekor qilish (V102) ─────────────────────────────────
+     Moliyaviy yozuv o'chirilmaydi: ustiga bog'langan bekor qilish
+     qatori yoziladi va qarz qaytadan ochiladi. */
+  "credit.reverseTitle": "To'lovni bekor qilish",
+  "credit.reverseDo": "Bekor qilinsin",
+  "credit.reverseReason": "Bekor qilish sababi",
+  "credit.reverseReasonPh": "Masalan: boshqa mijozga yozib yuborilgan",
+  "credit.reverseHint": "Qarz qaytadan ochiladi, naqd qismi kassadan chiqadi va keshbek qaytarib olinadi. Yozuv o'chirilmaydi — jurnalda ikkalasi ham qoladi.",
+  "credit.reversed": "To'lov bekor qilindi",
+  "credit.reversedBadge": "Bekor qilingan",
   "credit.statement": "Qarzdorlik hisoboti",
   "credit.stOpening": "Boshlang'ich qoldiq",
   "credit.stCharge": "Qarz",

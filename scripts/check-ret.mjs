@@ -352,6 +352,112 @@ console.log("\n── 10. ⚠ TO'LANGANDAN KO'P YOZIB BO'LMAYDI ──");
   await p4.close();
 }
 
+/* ══ QAYTARILGAN TOVAR QAYERGA KETADI (V103) ══════════════════════════
+
+   Do'kon egasi: «qaytarilgan tovar qayta sotuvga chiqarilishi yoki
+   hisobdan chiqarilishi kerak — tanlov bo'lsin».
+
+   ⚠ Bu yerda EKRAN emas, SERVERGA KETGAN TANA o'qiladi: tanlov
+   chizilib turib, so'rovga tushmasa, tovar jimgina javonga qaytardi
+   va kassir buni oylar keyin inventarizatsiyada bilardi. */
+
+/** Qatordagi «Qayerga» tanlovini ochib, berilgan yorliqni bosadi. */
+const pickInRow = async (pg, selectIndex, label) => {
+  await pg.evaluate((i) => {
+    const sel = document.querySelectorAll(".modal-body tbody .ek-select__btn, "
+                                        + ".modal-body tbody button.ek-select");
+    (sel[i] || document.querySelectorAll(".modal-body tbody [role='combobox']")[i])?.click();
+  }, selectIndex);
+  await new Promise((r) => setTimeout(r, 250));
+  const hit = await pg.evaluate((txt) => {
+    const opt = [...document.querySelectorAll("[role='option'], .ek-select__opt")]
+      .find((o) => o.textContent.trim().toLowerCase().includes(txt.toLowerCase()));
+    if (!opt) return false;
+    opt.click();
+    return true;
+  }, label);
+  await new Promise((r) => setTimeout(r, 250));
+  return hit;
+};
+
+/** Sababni yozib, «Rasmiylashtirish» ni bosadi. */
+const finish = async (pg) => {
+  await pg.evaluate(() => {
+    const ta = document.querySelectorAll(".modal-body input, .modal-body textarea");
+    const last = ta[ta.length - 1];
+    if (!last) return;
+    const proto = last.tagName === "TEXTAREA"
+      ? window.HTMLTextAreaElement.prototype : window.HTMLInputElement.prototype;
+    Object.getOwnPropertyDescriptor(proto, "value")?.set?.call(last, "Buzuq");
+    last.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await new Promise((r) => setTimeout(r, 250));
+  await pg.evaluate(() => [...document.querySelectorAll("button")]
+    .find((b) => /rasmiylashtir/i.test(b.textContent))?.click());
+  await new Promise((r) => setTimeout(r, 900));
+};
+
+console.log("\n── 12. Standart yo'l: `disposition` YUBORILMAYDI ──");
+/* ⚠ Eski ilova va oflayn navbatdagi so'rov bu maydonni yubormaydi va
+   ularning qaytarishi bugungidek javonga qaytishi kerak. Standart
+   yo'lni ham maydon bilan to'ldirib yuborish ikkita xatti-harakat
+   yasardi. */
+{
+  sentBody = null;
+  const p5 = await open();
+  await p5.click(".modal-body tbody tr input");
+  await p5.type(".modal-body tbody tr input", "1", { delay: 15 });
+  await new Promise((r) => setTimeout(r, 300));
+  await finish(p5);
+  sentBody?.items?.[0]?.disposition === undefined
+    ? ok("`disposition` yuborilmadi — server ilgarigidek javonga qaytaradi")
+    : no("standart yo'lda maydon yuborilmasligi kerak", JSON.stringify(sentBody?.items?.[0]));
+  await p5.close();
+}
+
+console.log("\n── 13. ⚠ CHIQIT tanlansa — SERVERGA turkumi bilan ketadi ──");
+{
+  sentBody = null;
+  const p6 = await open();
+  await p6.click(".modal-body tbody tr input");
+  await p6.type(".modal-body tbody tr input", "1", { delay: 15 });
+  await new Promise((r) => setTimeout(r, 350));
+
+  const gotDisp = await pickInRow(p6, 0, "chiqit");
+  gotDisp ? ok("«Chiqit» tanlandi") : no("«Chiqit» tanlanishi kerak", "topilmadi");
+
+  /* Chiqit tanlangach IKKINCHI tanlov paydo bo'ladi — sababi. */
+  const gotReason = await pickInRow(p6, 1, "sindi");
+  gotReason ? ok("chiqit sababi tanlandi") : no("sabab tanlanishi kerak", "topilmadi");
+
+  await finish(p6);
+  const it = sentBody?.items?.[0];
+  it?.disposition === "WRITE_OFF"
+    ? ok("`disposition: WRITE_OFF` yuborildi")
+    : no("`disposition: WRITE_OFF` kutilgandi", JSON.stringify(it));
+  it?.writeOffReason === "BREAKAGE"
+    ? ok("`writeOffReason: BREAKAGE` yuborildi — chiqit hisoboti shu bo'yicha yig'iladi")
+    : no("turkum yuborilishi kerak", JSON.stringify(it));
+  await p6.close();
+}
+
+console.log("\n── 14. ⚠ SABABSIZ chiqit SERVERGA KETMAYDI ──");
+/* Server ham rad etadi, lekin kassir buni tugmani bosgandan KEYIN
+   emas, o'sha zahoti bilishi kerak — mijoz kassa oldida turibdi. */
+{
+  sentBody = null;
+  const p7 = await open();
+  await p7.click(".modal-body tbody tr input");
+  await p7.type(".modal-body tbody tr input", "1", { delay: 15 });
+  await new Promise((r) => setTimeout(r, 350));
+  await pickInRow(p7, 0, "chiqit");
+  await finish(p7);
+  sentBody === null
+    ? ok("so'rov to'xtatildi")
+    : no("sababsiz chiqit yuborilmasligi kerak", JSON.stringify(sentBody));
+  await p7.close();
+}
+
 if (pageErrors.length) {
   bad += pageErrors.length;
   console.log("\n  ❌ Sahifada JS xatolari tushdi:");

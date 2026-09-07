@@ -64,6 +64,44 @@ export const SALE_STATUS = dict("enum.sale", {
   CANCELLED: { tone: "danger",  icon: "fa-circle-xmark" },
 });
 
+/* ── Qaytarilgan tovar qayerga ketadi — ReturnDisposition (V103) ─────────
+   Do'kon egasi: «qaytarilgan tovar qayta sotuvga chiqarilishi yoki
+   hisobdan chiqarilishi kerak — tanlov bo'lsin».
+
+   ⚠ `RESALE` — STANDART va ko'k emas, YASHIL: bu odatdagi, yaxshi
+   yakun (tovar javonga qaytdi). Chiqit esa ogohlantirish rangida —
+   u do'konning YO'QOTISHI va kassir uni tasodifan tanlab
+   qo'ymasligi kerak. */
+export const RETURN_DISPOSITION = dict("enum.disposition", {
+  RESALE:    { icon: "fa-rotate-left",  color: "var(--fg-success)" },
+  WRITE_OFF: { icon: "fa-trash-can",    color: "var(--fg-warning)" },
+});
+
+/* ── Chiqit sababi — WriteOffReason ──────────────────────────────────────
+   Ro'yxat SERVERDAGI enum bilan bir xil tartibda: xodim ikkala joyda
+   bir xil ketma-ketlikni ko'rsin. `RECOUNT` bu yerda ATAYLAB YO'Q —
+   u hisob xatosi, qaytarishda esa tovar QO'LDA turadi va «raqam
+   noto'g'ri edi» degan javob ma'nosiz. */
+export const WRITE_OFF_REASON = dict("enum.writeOff", {
+  BREAKAGE:        { icon: "fa-hammer" },
+  SPOILAGE:        { icon: "fa-jar" },
+  EXPIRY:          { icon: "fa-hourglass-end" },
+  THEFT:           { icon: "fa-user-secret" },
+  SUPPLIER_RETURN: { icon: "fa-truck-ramp-box" },
+  OWN_USE:         { icon: "fa-store" },
+  OTHER:           { icon: "fa-ellipsis" },
+});
+
+/** `Select` uchun tayyor ro'yxat — yorliqlar TILGA bog'liq, shuning
+    uchun funksiya (modul yuklanganda emas, chizilganda o'qiladi). */
+export const dispositionOptions = () =>
+  Object.entries(RETURN_DISPOSITION).map(([value, m]) =>
+    ({ value, label: m.label, icon: m.icon }));
+
+export const writeOffOptions = () =>
+  Object.entries(WRITE_OFF_REASON).map(([value, m]) =>
+    ({ value, label: m.label, icon: m.icon }));
+
 /* ── Ko'chirish holati — TransferStatus (V22) ────────────────────────────── */
 export const TRANSFER_STATUS = dict("enum.transferStatus", {
   /* «Yo'lda» — ogohlantirish rangida: bu tugallanmagan ish. Tovar hech

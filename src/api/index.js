@@ -658,6 +658,13 @@ export const customerApi = {
   payDebt:   (id, data) => request(`/customers/${id}/payment`, { method: "POST", body: JSON.stringify(data) }),
   adjustDebt:(id, data) => request(`/customers/${id}/adjust`,  { method: "POST", body: JSON.stringify(data) }),
   ledger:    (id) => request(`/customers/${id}/ledger`),
+  /* ⚠ TO'LOVNI BEKOR QILISH (V102) — faqat rahbar (server ham
+     tekshiradi). Yo'lda MIJOZ ham bor: bekor qilish pulga tegadi va
+     «boshqa mijozning qatori» degan xatoni jimgina bajarib qo'yish
+     mumkin emas — chek yo'lidan farqi shunda. */
+  reverseDebtPayment: (id, ledgerId, data) =>
+    request(`/customers/${id}/ledger/${ledgerId}/reverse`,
+            { method: "POST", body: JSON.stringify(data) }),
   /* TO'LOV CHEKI (V61) — jurnal qatorining `id` si bo'yicha.
      ⚠ Mijoz `id` si SO'RALMAYDI: qator o'zi mijozni ham, do'konni ham
      biladi va uni ikkinchi marta yuborish faqat ikkalasi bir-biriga
