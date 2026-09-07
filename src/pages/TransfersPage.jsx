@@ -19,23 +19,22 @@ import MarkingScanModal from "../components/MarkingScanModal";
 import { Empty, Field, FormGroup, SearchBar } from "../components/ui";
 import Select from "../components/ek/Select";
 import { money, shortDate, dateTime } from "../lib/ek-format";
-import { TRANSFER_STATUS, transferStatus, unitLabel } from "../lib/ek-labels";
+import { TRANSFER_STATUS, transferStatus, unitLabel,
+         writeOffOptions, TRANSFER_SHORTAGE_EXCLUDE } from "../lib/ek-labels";
 import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
 import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
 
 const TONE_COLOR = { success: "green", danger: "red", warning: "yellow", info: "blue", neutral: "gray" };
 
-/* Chiqit turkumlari — yetishmovchilikda so'raladi. Ro'yxat `InventoryPage`
-   dagi bilan bir xil tartibda: xodim ikkala joyda bir xil narsani ko'rsin.
-   ⚠ RECOUNT bu yerda YO'Q: yo'lda yo'qolgan tovar hisob xatosi emas. */
-const SHORTAGE_REASONS = [
-  { value: "BREAKAGE",        icon: "fa-hammer" },
-  { value: "SPOILAGE",        icon: "fa-triangle-exclamation" },
-  { value: "THEFT",           icon: "fa-user-secret" },
-  { value: "EXPIRY",          icon: "fa-hourglass-end" },
-  { value: "OTHER",           icon: "fa-ellipsis" },
-];
+/* ⚠ Chiqit turkumlari `ek-labels.js` da — bitta joyda (V116).
+
+   Bu yerda ular qayta terilgan edi va yonidagi izoh «ro'yxat
+   InventoryPage dagi bilan bir xil tartibda» derdi. Aslida shu
+   paytda ham EMAS edi: bu yerda THEFT muddatdan oldin turardi,
+   `SPOILAGE` esa boshqa ikonka bilan chizilardi. Ko'chirma nusxa
+   shunday yashaydi — izoh o'z holicha qoladi, ro'yxat esa
+   uzoqlashaveradi. */
 
 const num = (v) => (v == null || v === "" ? 0 : Number(v));
 
@@ -579,9 +578,7 @@ export default function TransfersPage({ toast }) {
                               <Select variant="field" ariaLabel={t("transfer.shortage")}
                                       value={row.reason}
                                       onChange={(v) => setAcceptLine(l.id, "reason", v)}
-                                      options={SHORTAGE_REASONS.map((r) => ({
-                                        value: r.value, icon: r.icon, label: t(`enum.writeOff.${r.value}`),
-                                      }))} />
+                                      options={writeOffOptions({ exclude: TRANSFER_SHORTAGE_EXCLUDE })} />
                               <Field style={{ flex: 1, minWidth: 180 }}
                                      placeholder={t("inv.reason")}
                                      value={row.note}

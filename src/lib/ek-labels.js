@@ -89,6 +89,11 @@ export const WRITE_OFF_REASON = dict("enum.writeOff", {
   THEFT:           { icon: "fa-user-secret" },
   SUPPLIER_RETURN: { icon: "fa-truck-ramp-box" },
   OWN_USE:         { icon: "fa-store" },
+  /* ⚠ HISOB XATOSI — TOVAR YO'QOLGANI YO'Q, RAQAM noto'g'ri edi.
+     Serverda ham u «yo'qotish» sifatida sanalmaydi
+     (`WriteOffReason.RECOUNT`): aralashtirish «shu oy 4 million
+     yo'qotdik» degan yolg'on xulosaga olib kelardi. */
+  RECOUNT:         { icon: "fa-calculator" },
   OTHER:           { icon: "fa-ellipsis" },
 });
 
@@ -98,9 +103,43 @@ export const dispositionOptions = () =>
   Object.entries(RETURN_DISPOSITION).map(([value, m]) =>
     ({ value, label: m.label, icon: m.icon }));
 
-export const writeOffOptions = () =>
-  Object.entries(WRITE_OFF_REASON).map(([value, m]) =>
-    ({ value, label: m.label, icon: m.icon }));
+/**
+ * Chiqit sabablari — `Select` uchun.
+ *
+ * ⚠ RO'YXAT BITTA JOYDA (V116). Ilgari u uch joyda yozilgan edi —
+ * shu yerda, `InventoryPage.jsx` da va `BatchCorrectModal.jsx` da —
+ * va ular allaqachon ayni bir xil emas edi: `RECOUNT` shu yerdan
+ * tushib qolgan, `SPOILAGE` ning ikonkasi esa ikki xil bo'lgan
+ * (bir ekranda ko'za, boshqasida ogohlantirish uchburchagi).
+ *
+ * Ko'chirmaning yagona natijasi shu bo'ladi: ular bir-biridan
+ * asta-sekin uzoqlashadi va buni hech kim sezmaydi.
+ *
+ * @param exclude  ko'rsatilmaydigan sabablar
+ */
+export const writeOffOptions = ({ exclude = [] } = {}) =>
+  Object.entries(WRITE_OFF_REASON)
+    .filter(([value]) => !exclude.includes(value))
+    .map(([value, m]) => ({ value, label: m.label, icon: m.icon }));
+
+/**
+ * QAYTARISHDA hisob xatosi bo'lishi MUMKIN EMAS.
+ *
+ * ⚠ Qaytarilgan tovar qo'lda turibdi: uni «raqam noto'g'ri edi» deb
+ * hisobdan chiqarish ma'nosiz va hisobotni buzardi — `RECOUNT`
+ * yo'qotish sifatida sanalmaydi, ya'ni rostdan yo'q bo'lgan tovar
+ * hech qaerda ko'rinmay qolardi.
+ */
+export const RETURN_WRITE_OFF_EXCLUDE = ["RECOUNT"];
+
+/**
+ * KO'CHIRISHDA YO'LDA YO'QOLGAN tovar uchun sabablar.
+ *
+ * ⚠ Uchtasi tushib qoladi: yo'ldagi tovarni yetkazib beruvchiga
+ * qaytarib bo'lmaydi, do'kon o'z ehtiyoji uchun ham olmagan, va
+ * yo'qolish hisob xatosi emas — u ikki do'kon o'rtasida sanalgan.
+ */
+export const TRANSFER_SHORTAGE_EXCLUDE = ["SUPPLIER_RETURN", "OWN_USE", "RECOUNT"];
 
 /* ── Ko'chirish holati — TransferStatus (V22) ────────────────────────────── */
 export const TRANSFER_STATUS = dict("enum.transferStatus", {

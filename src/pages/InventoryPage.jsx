@@ -13,7 +13,7 @@ import { useAuth } from "../hooks/useAuth";
 import { useBadge } from "../context/BadgeProvider";
 import { money, quantity as fmtQty } from "../utils";
 import { shortDate, dateTime } from "../lib/ek-format";
-import { unitLabel, unitDecimals } from "../lib/ek-labels";
+import { unitLabel, unitDecimals, writeOffOptions } from "../lib/ek-labels";
 import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
 import { NumField, DateField } from "../components/ek/EkFields";
@@ -88,18 +88,9 @@ function flagsOf(g, nearDays) {
   };
 }
 
-/* Chiqit turkumlari — qoldiq KAMAYGANDA so'raladi.
-   Ro'yxat serverdagi `WriteOffReason` bilan bir xil tartibda. */
-const WRITE_OFF_REASONS = [
-  { value: "BREAKAGE",        icon: "fa-hammer" },
-  { value: "SPOILAGE",        icon: "fa-triangle-exclamation" },
-  { value: "EXPIRY",          icon: "fa-hourglass-end" },
-  { value: "THEFT",           icon: "fa-user-secret" },
-  { value: "SUPPLIER_RETURN", icon: "fa-truck-arrow-right" },
-  { value: "OWN_USE",         icon: "fa-store" },
-  { value: "RECOUNT",         icon: "fa-calculator" },
-  { value: "OTHER",           icon: "fa-ellipsis" },
-];
+/* ⚠ Chiqit turkumlari BU YERDA YOZILMAYDI (V116) — ular
+   `ek-labels.js` dagi yagona ro'yxatdan keladi. Ko'chirma nusxa
+   allaqachon asosiy ro'yxatdan farq qila boshlagan edi. */
 
 /**
  * Partiyalarni MAHSULOT bo'yicha guruhlash.
@@ -1472,9 +1463,7 @@ export default function InventoryPage({ toast }) {
                 invalid={!woReason}
                 placeholder={t("inv.writeOffReasonPh")}
                 ariaLabel={t("inv.writeOffReason")}
-                options={WRITE_OFF_REASONS.map((r) => ({
-                  value: r.value, icon: r.icon, label: t(`enum.writeOff.${r.value}`),
-                }))}
+                options={writeOffOptions()}
               />
               <div className="text-muted" style={{ fontSize: 12, marginTop: 4 }}>
                 {t("inv.writeOffHint")}

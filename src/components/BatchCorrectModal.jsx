@@ -8,7 +8,7 @@ import { inventoryApi } from "../api";
 import { useBadge } from "../context/BadgeProvider";
 import { shortDate } from "../lib/ek-format";
 import { quantity as fmtQty } from "../utils";
-import { unitLabel, unitDecimals } from "../lib/ek-labels";
+import { unitLabel, unitDecimals, writeOffOptions } from "../lib/ek-labels";
 
 /* ══════════════════════════════════════════════════════════════════════════
    PARTIYA QOLDIG'INI TO'G'IRLASH — UMUMIY OYNA (V60)
@@ -27,17 +27,7 @@ import { unitLabel, unitDecimals } from "../lib/ek-labels";
    uchun: xatoni yuborishdan OLDIN ko'rsatgan yaxshi.
    ══════════════════════════════════════════════════════════════════════════ */
 
-/* Ro'yxat serverdagi `WriteOffReason` bilan bir xil tartibda. */
-const WRITE_OFF_REASONS = [
-  { value: "BREAKAGE",        icon: "fa-hammer" },
-  { value: "SPOILAGE",        icon: "fa-triangle-exclamation" },
-  { value: "EXPIRY",          icon: "fa-hourglass-end" },
-  { value: "THEFT",           icon: "fa-user-secret" },
-  { value: "SUPPLIER_RETURN", icon: "fa-truck-arrow-right" },
-  { value: "OWN_USE",         icon: "fa-store" },
-  { value: "RECOUNT",         icon: "fa-calculator" },
-  { value: "OTHER",           icon: "fa-ellipsis" },
-];
+/* ⚠ Ro'yxat `ek-labels.js` da — bitta joyda (V116). */
 
 /**
  * @param batch    to'g'irlanadigan partiya
@@ -116,9 +106,7 @@ export default function BatchCorrectModal({ batch, onClose, onSaved, toast }) {
           <Select value={woReason} onChange={setWoReason} block variant="field"
                   invalid={!woReason} placeholder={t("inv.writeOffReasonPh")}
                   ariaLabel={t("inv.writeOffReason")}
-                  options={WRITE_OFF_REASONS.map((r) => ({
-                    value: r.value, icon: r.icon, label: t(`enum.writeOff.${r.value}`),
-                  }))} />
+                  options={writeOffOptions()} />
           <div className="text-muted" style={{ fontSize: 12, marginTop: 4 }}>{t("inv.writeOffHint")}</div>
         </div>
       )}

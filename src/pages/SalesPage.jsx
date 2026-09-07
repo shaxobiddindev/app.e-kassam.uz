@@ -8,7 +8,8 @@ import { useConfirm } from "../context/ConfirmProvider";
 import { useBadge } from "../context/BadgeProvider";
 import { useAuth } from "../hooks/useAuth";
 import { PAYMENT_TYPE, SALE_STATUS, paymentEntry, saleStatus,
-         dispositionOptions, writeOffOptions } from "../lib/ek-labels";
+         dispositionOptions, writeOffOptions,
+         RETURN_WRITE_OFF_EXCLUDE } from "../lib/ek-labels";
 // ⚠ `Spinner` HAM shu yerdan. U chek chiqarish va bekor qilish tugmalarida
 // FAQAT amal davomida chiziladi — shuning uchun import unutilgani sahifa
 // ochilganda bilinmasdi, tugma bosilgan zahoti esa render'da
@@ -827,7 +828,7 @@ export default function SalesPage({ toast }) {
                                     ...ret,
                                     woReason: { ...(ret.woReason || {}), [it.id]: v },
                                   })}
-                                  options={writeOffOptions()}
+                                  options={writeOffOptions({ exclude: RETURN_WRITE_OFF_EXCLUDE })}
                                 />
                               </div>
                             )}
