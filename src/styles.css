@@ -1012,19 +1012,56 @@ select.form-input { cursor: pointer; }
 .cart-item:hover { background: var(--bg-hover); }
 .cart-item-info  { flex: 1; min-width: 0; }
 .cart-item-name  { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.cart-item-price { font-size: 12px; color: var(--text2); font-family: var(--mono); }
+/* ⚠ NARX QATORI — FLEKS, IKKI BOLASI BOR (V99).
+   Chegirmali qatorda ikkita son yonma-yon turadi: ustidan chizilgan
+   eskisi va joriysi. Tor savatda ular sig'masligi mumkin va SHUNDA
+   QAYSI BIRI QISQARISHI shu yerda hal qilinadi.
+
+   ⚠ Ilgari ikkalasi bitta matn edi va himoya umuman yo'q edi:
+   joriy narx miqdor tugmalari ostiga kirib, ekranda «13 222 so»
+   qolardi (do'kon egasining ekran rasmi). Qirqilgan NARX nomdan
+   yomonroq — kassir noto'g'ri raqamni o'qib mijozga aytadi. */
+.cart-item-price {
+  display: flex; align-items: baseline; gap: 6px;
+  min-width: 0; max-width: 100%; overflow: hidden; white-space: nowrap;
+  /* ⚠ 12px EMAS, 11px (V99). Eng tor savatda (340px) narx uchun atigi
+     ~100px qoladi va `58 504 so'm/kg` 12px da 101px chiqardi — bir
+     piksel uchun kassir raqamni to'liq ko'ra olmasdi. Bu qator
+     IKKILAMCHI: birinchi qatorda qalin tovar nomi turadi. */
+  font-size: 11px; color: var(--text2); font-family: var(--mono);
+}
+/* JORIY NARX — kassir mijozga AYTADIGAN raqam. Hech qachon qisqarmaydi. */
+.cart-item-price__now { flex: 0 0 auto; white-space: nowrap; }
+/* ⚠ NARX HECH QACHON QIRQILMASIN (V99). `.cart-item-name` da bu himoya
+   bor edi, narxda esa YO'Q edi: chegirmali qatorda ikkita son yonma-yon
+   turadi va ular yon tomondagi miqdor tugmalari ostiga kirib ketardi —
+   ekranda «13 222 so» qolardi. Pul yarim ko'rinishi nomdan ham
+   yomonroq: kassir noto'g'ri raqamni o'qib mijozga aytardi. */
+
 /* Savatdagi NARX bosiladi — «belgilangan narxdan arzonroq berish» (V48).
    Tugma ekani ko'rinib turishi kerak, aks holda kassir bu imkoniyat
    borligini bilmasdi; shu bilan birga u oddiy matndek yengil qolishi
    kerak — savatda asosiy narsa tovar nomi. */
-.cart-item-price--edit { display: block; width: 100%; text-align: left; padding: 1px 0;
+/* ⚠ `display: block` EMAS (V99). U shu yerda turgani uchun yuqoridagi
+   `display: flex` ni JIMGINA bosib ketardi — tartib bo'yicha keyingi va
+   xuddi shu og'irlikdagi tanlagich. Natijada narxlar oddiy inline matn
+   bo'lib qolar, qisqarish ishlamas va joriy narx miqdor tugmalari
+   ostiga kirib ketardi. */
+.cart-item-price--edit { width: 100%; text-align: left; padding: 1px 0;
                          background: none; border: none; cursor: pointer; color: var(--text2);
                          border-bottom: 1px dashed transparent; transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out); }
 .cart-item-price--edit:hover { color: var(--blue); border-bottom-color: var(--blue); }
 .cart-item-price--edit:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; border-radius: 4px; }
 /* Eski narx ustidan chizilgan holda QOLADI: kassir ham, mijoz ham
    qanchadan qanchaga tushganini ko'rishi kerak. */
-.cart-item-price__was { color: var(--text3); text-decoration-thickness: 1px; margin-right: 6px; }
+/* ⚠ ESKI NARX BIRINCHI BO'LIB QISQARADI va kerak bo'lsa BUTUNLAY
+   yo'qoladi (`clip`, `ellipsis` emas). Ustidan chizilgan «…» hech
+   qanday ma'no bermaydi — u faqat joriy narxdan joy o'g'irlaydi. */
+.cart-item-price__was {
+  flex: 0 1 auto; min-width: 0;
+  overflow: hidden; text-overflow: clip; white-space: nowrap;
+  color: var(--text3); text-decoration-thickness: 1px;
+}
 
 /* ── Chegirma taqsimoti (V48) ──────────────────────────────────────────
    «Umumiy summadan 50 ming tushiray» deyilganda darhol savol tug'iladi:

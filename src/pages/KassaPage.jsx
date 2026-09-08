@@ -19,7 +19,7 @@ import { isTouch } from "../lib/ek-touch";
 import { FinishOverlay, SkeletonTiles, Spinner } from "../components/ek/Loading";
 import Overlay from "../components/ek/Overlay";
 import { layerCount } from "../lib/modal-stack";
-import { FISCAL_UI } from "../config";
+import { FISCAL_UI, moneyBare } from "../config";
 import OfflineBar from "../components/OfflineBar";
 import ShiftBar from "../components/ShiftBar";
 import * as queue from "../lib/ek-offline";
@@ -3111,12 +3111,34 @@ export default function KassaPage({ toast, refreshLowStock }) {
                                 ? t("products.discountHint") : t("kassa.linePrice")}
                               onClick={() => setPriceModal(item)}
                               aria-label={`${item.name} — ${t("kassa.linePrice")}`}>
+                        {/* ⚠ ESKI NARX BIRLIKSIZ (V99): ikkala songa ham
+                            «so'm» qo'yilsa qator sig'masdi va narx
+                            O'RTASIDAN QIRQILARDI. Birlik bir marta,
+                            yangi narxda turadi va shu yetarli. */}
                         {item.discount > 0 && (
-                          <s className="cart-item-price__was">{money(item.salePrice)}</s>
+                          <s className="cart-item-price__was">{moneyBare(item.salePrice)}</s>
                         )}
-                        {isDivisible(item)
-                          ? `${fmtQty(item.qty, item.unitDecimals)} ${unitLabel(item.unit)} × ${money(unitPriceOf(item))}`
-                          : money(unitPriceOf(item))}
+                        {/* ⚠ JORIY NARX ALOHIDA ELEMENTDA (V99) va u
+                            HECH QACHON qisqarmaydi. Tor savatda
+                            siqiladigan narsa — ustidan chizilgan ESKI
+                            narx: u ma'lumot, joriy narx esa kassir
+                            mijozga AYTADIGAN raqam. Ilgari ikkalasi
+                            bitta matn edi va qisqarish oxiridan
+                            boshlanardi, ya'ni aynan kerakli sondan.
+
+                            ⚠ TAROZILI TOVARDA MIQDOR OLIB TASHLANDI.
+                            Ilgari «1.235 kg × 58 504 so'm» yozilardi va
+                            u eng tor savatga (340px) 62px SIG'MASDI —
+                            eski narx butunlay yo'qolsa ham. Miqdor esa
+                            o'ng tomondagi tugmada ALLAQACHON turibdi:
+                            «1.235 kg ×» uni ikkinchi marta takrorlardi.
+                            Endi dona narxi «58 504 so'm/kg» ko'rinishida
+                            — tarozining o'zi ham shunday yozadi. */}
+                        <span className="cart-item-price__now">
+                          {isDivisible(item)
+                            ? `${money(unitPriceOf(item))}/${unitLabel(item.unit)}`
+                            : money(unitPriceOf(item))}
+                        </span>
                       </button>
                     </div>
                     <div className="qty-ctrl">

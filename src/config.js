@@ -57,6 +57,16 @@ import { money as _money, moneyFine as _moneyFine } from "./lib/ek-format";
 export const money = (n) => _money(n, { withUnit: true });
 
 /**
+ * Pul, BIRLIKSIZ — yonida allaqachon «so'm» turgan joyda (V99).
+ *
+ * ⚠ Savatdagi chegirmali qatorda ikkita narx yonma-yon turadi:
+ * ustidan chizilgan eskisi va yangisi. Ikkalasiga ham «so'm» qo'yilsa
+ * qator sig'may qolardi va narx O'RTASIDAN QIRQILARDI — «13 222 so»
+ * (foydalanuvchi ekranidan). Birlik bir marta, oxirgi sonda yetarli.
+ */
+export const moneyBare = (n) => _money(n);
+
+/**
  * Pul + "so'm", TIYINI bilan — faqat u bor bo'lganda (V80).
  *
  * Chekdagi ikkita joyda ataylab ishlatiladi: tortiladigan qatorning
