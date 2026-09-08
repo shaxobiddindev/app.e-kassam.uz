@@ -62,6 +62,14 @@ const cors = (req) => ({
 });
 
 const pageErrors = [];
+/* ⚠ TAVSIYANI QO'LLASH tugmasi YUBORGAN tana (V100). Faqat
+   tugma bosildimi degan sinov yetarli emas: tugma bosilib,
+   ichida esa noto'g'ri narx ketsa ekran «qo'yildi» deb
+   yozardi-yu, do'kon hamon zarariga sotardi. */
+let priceSent = null;
+/* ⚠ Bajik oqimini sinash uchun: yoqilganda narx yangilash
+   so'rovi serverdagidek 428 qaytaradi. */
+let put428 = false;
 let pass = 0, fail = 0;
 const ok  = (m, extra = "") => { pass++; console.log(`  ✅ ${m}${extra ? ` (${extra})` : ""}`); };
 const bad = (m, extra = "") => { fail++; console.log(`  ❌ ${m}${extra ? ` — ${extra}` : ""}`); };
@@ -174,6 +182,18 @@ async function openInv(items, advice = null) {
        manba nomi ham `api.e-kassam.uz` va oddiy `includes("/api")`
        xostga ham tushib, mos kelmagan javob berardi. */
     const p = new URL(r.url()).pathname;
+    /* ⚠ NARX YANGILASH TANASI USHLANADI (V100): «Tavsiya bo'yicha
+       qo'yish» tugmasi aynan shu so'rovni yuboradi. */
+    if (r.method() === "PUT" && /^\/api\/products\/\d+$/.test(p)) {
+      try { priceSent = JSON.parse(r.postData() || "null"); } catch { priceSent = "PARSE_XATO"; }
+      if (put428) {
+        return r.respond({
+          status: 428, contentType: "application/json", headers: CORS,
+          body: JSON.stringify({ success: false, badgeRequired: true,
+                                 action: "PRICE_CHANGE", message: "Bajikni skanerlang" }),
+        });
+      }
+    }
     /* ⚠ KIRIM JAVOBI ALOHIDA (V99): narx tavsiyasi aynan shu yo'ldan
        qaytadi va umumiy `data: []` javobi bilan u hech qachon
        ko'rinmasdi — tavsiya oynasi umuman ochilmasdi. */
@@ -814,6 +834,119 @@ console.log("\n── Q. Narx tavsiyasi: optom narx (V99) ──");
      + "do'kon egasi bir haftadan keyin ogohlantirishga qaramay qo'yadi",
      notes.join(" | "));
   await p.close();
+}
+
+/* ══ R. TAVSIYANI BIR BOSISHDA QO'YISH (V100) ══════════════════════════
+
+   Tavsiya ekranda turardi-yu, uni qo'yish uchun do'kon egasi oynani
+   yopib, Tovarlar sahifasiga o'tib, tovarni topib, ikkita narxni
+   qo'lda ko'chirishi kerak edi. Amalda esa u shunchaki «OK» bosib
+   ketardi — va tovar zarariga sotilaverardi.
+
+   ⚠ SHU YERDA UCH NARSA O'LCHANADI, VA UCHALASI HAM MUHIM:
+     1. IKKALA narx yuboriladimi — faqat chakanani qo'yish optomni
+        tan narxdan pastda qoldirardi va do'kon egasi «tuzatdim» deb
+        o'ylab, har optom sotuvda zarar ko'raverardi;
+     2. tavsiya yo'q bo'lganda tugma umuman chizilmaydimi — bosilib
+        hech narsa qilmaydigan tugma ishonchni yo'qotadi;
+     3. bajik SO'RALADIMI — tugma nazoratni chetlab o'tmasligi kerak. */
+console.log("\n── R. Tavsiyani qo'llash (V100) ──");
+
+/** Kirim qo'shib, narx tavsiyasi oynasini ochadi. */
+async function openAdvice(advice) {
+  const p = await openInv(GOOD, advice);
+  await p.evaluate(() => {
+    const b = [...document.querySelectorAll("table.table tbody .inv-acts button")]
+      .find((x) => x.querySelector("i.fa-plus"));
+    b?.click();
+  });
+  await p.waitForSelector(".modal-box input", { timeout: 8000 });
+  await p.evaluate(() => {
+    const inp = document.querySelector(".modal-box input");
+    const set = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
+    set.call(inp, "5");
+    inp.dispatchEvent(new Event("input", { bubbles: true }));
+    const b = [...document.querySelectorAll(".modal-box button")]
+      .find((x) => x.querySelector("i.fa-check"));
+    b?.click();
+  });
+  await p.waitForFunction(
+    () => [...document.querySelectorAll(".modal-box .inv-detail__row")].length > 0,
+    { timeout: 8000 },
+  ).catch(() => {});
+  return p;
+}
+
+/** Tavsiya oynasidagi «Tavsiya bo'yicha qo'yish» tugmasini bosadi. */
+const clickApply = (p) => p.evaluate(() => {
+  const b = [...document.querySelectorAll(".modal-box button")]
+    .find((x) => x.querySelector("i.fa-wand-magic-sparkles"));
+  if (!b) return false;
+  b.click();
+  return true;
+});
+
+const ADV_BOTH = {
+  oldCost: 8000, newCost: 9500, salePrice: 10000,
+  recommendedSale: 11875, marginPercent: 5.0, belowCost: false,
+  wholesalePrice: 9000, recommendedWholesale: 10688,
+  wholesaleMarginPercent: -5.56, belowWholesale: true,
+};
+
+{
+  priceSent = null;
+  const p = await openAdvice(ADV_BOTH);
+  const clicked = await clickApply(p);
+  is(clicked, "«Tavsiya bo'yicha qo'yish» tugmasi chizilgan");
+  await p.waitForFunction(() => !document.querySelector(".inv-detail__row"),
+                          { timeout: 8000 }).catch(() => {});
+
+  is(priceSent && typeof priceSent === "object",
+     "narx yangilash so'rovi ketdi", JSON.stringify(priceSent));
+  is(priceSent?.salePrice === 11875,
+     "tavsiya qilingan CHAKANA narx yuborildi", JSON.stringify(priceSent));
+  /* ⚠ ENG MUHIM QATOR. Optom narx tushib qolsa, so'rov baribir
+     muvaffaqiyatli qaytadi va ekran «Narxlar yangilandi» deb yozadi —
+     lekin optom narx (9 000) tan narxdan (9 500) past qolaveradi. */
+  is(priceSent?.wholesalePrice === 10688,
+     "tavsiya qilingan OPTOM narx ham yuborildi — aks holda zarar qoladi",
+     JSON.stringify(priceSent));
+  await shot(p, "advice-apply");
+  await p.close();
+}
+
+/* ⚠ TAVSIYA YO'Q BO'LSA TUGMA HAM YO'Q. Eski tan narx noma'lum
+   bo'lganda server tavsiya bermaydi; tugma esa bosilib hech narsa
+   qilmasdi. */
+{
+  priceSent = null;
+  const p = await openAdvice({
+    oldCost: null, newCost: 9500, salePrice: 10000,
+    recommendedSale: null, marginPercent: 5.0, belowCost: false,
+    wholesalePrice: null, recommendedWholesale: null,
+    wholesaleMarginPercent: null, belowWholesale: false,
+  });
+  const clicked = await clickApply(p);
+  is(!clicked, "tavsiya yo'q bo'lganda tugma umuman chizilmaydi");
+  is(priceSent === null, "hech qanday narx so'rovi ketmadi", JSON.stringify(priceSent));
+  await p.close();
+}
+
+/* ⚠ TUGMA BAJIKNI CHETLAB O'TMAYDI. Nazorat serverda: 428 kelganda
+   `guard` skanerlash oynasini ochadi. Bu qator o'chsa — narx bir
+   bosishda, hech kim ruxsatisiz o'zgarardi. */
+{
+  priceSent = null;
+  put428 = true;
+  const p = await openAdvice(ADV_BOTH);
+  await clickApply(p);
+  const asked = await p.waitForFunction(
+    () => [...document.querySelectorAll(".modal-title")].some((n) => /bajik/i.test(n.textContent)),
+    { timeout: 8000 },
+  ).then(() => true).catch(() => false);
+  is(asked, "428 kelganda BAJIK so'raldi — tugma nazoratni chetlab o'tmaydi");
+  await p.close();
+  put428 = false;
 }
 
 is(pageErrors.length === 0, "sahifada JS xatosi tushmadi", pageErrors.join(" | "));

@@ -1979,6 +1979,8 @@ export default {
   "inv.adviceBelowWholesale": "Careful: the wholesale price is now below cost — every wholesale sale loses money",
   "inv.adviceWholesaleMargin": "Wholesale margin",
   "inv.adviceRecommendWholesale": "Wholesale price that keeps the old margin",
+  "inv.adviceApply": "Apply the recommendation",
+  "inv.adviceApplied": "Prices updated",
 
   /* ── To'lov: bitta maydon, qolgani nasiyaga (V58) ── */
   "kassa.amountFor": "Amount for {method}",

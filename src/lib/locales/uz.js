@@ -2087,6 +2087,8 @@ export default {
   "inv.adviceBelowWholesale": "Diqqat: optom narx endi tan narxdan past — har optom sotuv zarar keltiradi",
   "inv.adviceWholesaleMargin": "Optom marja",
   "inv.adviceRecommendWholesale": "Eski marjani saqlash uchun optom narx",
+  "inv.adviceApply": "Tavsiya bo'yicha qo'yish",
+  "inv.adviceApplied": "Narxlar yangilandi",
 
   /* ── To'lov: bitta maydon, qolgani nasiyaga (V58) ── */
   "kassa.amountFor": "{method} uchun summa",

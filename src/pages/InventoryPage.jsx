@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { t } from "../lib/ek-i18n";
-import { inventoryApi, shopApi } from "../api";
+import { inventoryApi, productApi, shopApi } from "../api";
 import { BranchSelector, Modal } from "../components";
 import MarkingScanModal from "../components/MarkingScanModal";
 import { Empty, SearchBar } from "../components/ui";
@@ -188,6 +188,8 @@ export default function InventoryPage({ toast }) {
      ⚠ Hech narsani MAJBURLAMAYDI: bozor narxi tan narxga har doim ham
      ergashavermaydi va buni faqat do'kon egasi biladi. */
   const [advice, setAdvice] = useState(null);
+  /* Tavsiyani qo'llash — server javobini kutish. */
+  const [applying, setApplying] = useState(false);
   /* Chiqit turkumi — faqat to'g'irlashda va faqat qoldiq kamayganda. */
   const [woReason, setWoReason] = useState("");
   /* Markirovkali tovar kirimida skanerlangan yorliqlar. Miqdor shu
@@ -567,6 +569,43 @@ export default function InventoryPage({ toast }) {
   // kabi tovarda muddat unutilsa, o'sha partiya nazoratsiz qolardi.
   const productHasExpiry = (g) =>
     items.some((i) => i.productId === g.productId && i.expiryDate);
+
+  /**
+   * Tavsiya qilingan narxlarni tovarga qo'yadi.
+   *
+   * ⚠ `guard` ORQALI: narx o'zgarishi serverda bajik talab qiladi
+   * (`GuardedAction.PRICE_CHANGE`). Server 428 qaytaradi, `guard` esa
+   * skanerlash oynasini ochib so'rovni qaytadan yuboradi — ya'ni bu
+   * tugma nazoratni chetlab o'tmaydi.
+   */
+  const applyAdvice = async () => {
+    const id = modal?.productId;
+    if (!id || !advice || applying) return;
+
+    /* ⚠ FAQAT TAVSIYA BOR NARXLAR YUBORILADI. `null` yuborilsa server
+       uni «tegilmasin» deb tushunadi — bu to'g'ri; lekin `undefined`
+       maydonlarni umuman qo'shmaganimiz aniqroq. */
+    const body = {};
+    if (advice.recommendedSale != null) body.salePrice = Number(advice.recommendedSale);
+    if (advice.recommendedWholesale != null) {
+      body.wholesalePrice = Number(advice.recommendedWholesale);
+    }
+    if (!Object.keys(body).length) return;
+
+    setApplying(true);
+    try {
+      await guard(() => productApi.update(id, body));
+      toast.success(t("inv.adviceApplied"));
+      setAdvice(null);
+      if (backTo != null) goBack(); else setModal(null);
+      loadData();
+    } catch (err) {
+      /* Bajik oynasi bekor qilingani xato emas — `check-cancel.mjs`. */
+      if (!err?.cancelled) toast.error(err.message);
+    } finally {
+      setApplying(false);
+    }
+  };
 
   const handleAddStock = async () => {
     const marked = !!modal.markingGroup;
@@ -1346,16 +1385,46 @@ export default function InventoryPage({ toast }) {
           bo'lib qoldi» degan xabar bir necha soniyada yo'qolib ketsa,
           omborchi uni ko'rmay qolardi va do'kon har sotuvda zarar
           ko'raverardi. */}
+      {/* ══ TAVSIYANI QO'LLASH (V100) ═══════════════════════════════════
+          Ilgari bu oynada faqat RAQAM turardi. Uni qo'llash uchun do'kon
+          egasi oynani yopib, Tovarlar sahifasiga o'tib, tovarni qidirib,
+          tahrirni ochib, ikkala narxni qo'lda yozishi kerak edi — olti
+          qadam. Amalda hech kim qilmasdi va ogohlantirish bekorga
+          chiqardi.
+
+          ⚠ BAJIK CHETLAB O'TILMAYDI. Narx o'zgarishi serverda
+          `GuardedAction.PRICE_CHANGE` bilan qo'riqlanadi: server 428
+          qaytaradi, `guard` esa skanerlash oynasini ochib so'rovni
+          qaytadan yuboradi. Ya'ni tugma nazoratni emas, faqat
+          QADAMLAR SONINI kamaytiradi.
+
+          ⚠ IKKALA NARX BIRGA yuboriladi. Faqat chakanani qo'yish
+          optomni tan narxdan pastda qoldirar va tovar ro'yxatda
+          «zarariga» belgisi bilan turaverardi — do'kon egasi esa
+          tuzatdim deb o'ylardi. */}
       {advice && (
         <Modal
           title={t("inv.priceAdvice")}
           onClose={() => { setAdvice(null); if (backTo != null) goBack(); else setModal(null); }}
           maxWidth={420}
           footer={
-            <button className="btn btn-primary btn-sm"
-                    onClick={() => { setAdvice(null); if (backTo != null) goBack(); else setModal(null); }}>
-              <i className="fa-solid fa-check" aria-hidden="true" /> {t("common.ok")}
-            </button>
+            <>
+              {/* ⚠ TUGMA FAQAT TAVSIYA BOR BO'LGANDA. Tavsiya
+                  hisoblanmagan bo'lsa (eski tan narx noma'lum) tugma
+                  bosilsa hech narsa o'zgarmas va do'kon egasi uni
+                  «ishlamayapti» deb hisoblardi. */}
+              {(advice.recommendedSale != null || advice.recommendedWholesale != null) && (
+                <button className="btn btn-primary btn-sm" onClick={applyAdvice}
+                        disabled={applying}>
+                  <i className="fa-solid fa-wand-magic-sparkles" aria-hidden="true" />
+                  {t("inv.adviceApply")}
+                </button>
+              )}
+              <button className="btn btn-outline btn-sm"
+                      onClick={() => { setAdvice(null); if (backTo != null) goBack(); else setModal(null); }}>
+                {t("common.ok")}
+              </button>
+            </>
           }
         >
           {advice.belowCost && (

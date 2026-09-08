@@ -1979,6 +1979,8 @@ export default {
   "inv.adviceBelowWholesale": "Внимание: оптовая цена теперь ниже себестоимости — каждая оптовая продажа в убыток",
   "inv.adviceWholesaleMargin": "Оптовая маржа",
   "inv.adviceRecommendWholesale": "Оптовая цена для сохранения прежней маржи",
+  "inv.adviceApply": "Установить по рекомендации",
+  "inv.adviceApplied": "Цены обновлены",
 
   /* ── To'lov: bitta maydon, qolgani nasiyaga (V58) ── */
   "kassa.amountFor": "Сумма для «{method}»",

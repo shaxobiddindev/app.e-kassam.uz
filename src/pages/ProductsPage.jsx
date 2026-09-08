@@ -377,7 +377,8 @@ export default function ProductsPage({ toast }) {
       closeModal();
       loadData();
     } catch (err) {
-      toast.error(err.message);
+      /* Bajik oynasi bekor qilingani xato emas — `check-cancel.mjs`. */
+      if (!err?.cancelled) toast.error(err.message);
     } finally {
       setSaving(false);
     }

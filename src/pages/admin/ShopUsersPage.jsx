@@ -84,7 +84,8 @@ export default function ShopUsersPage({ toast }) {
       setForm(EMPTY_USER_FORM);
       loadUsers();
     } catch (err) {
-      toast.error(err.message || t("common.unknownError"));
+      /* Bajik oynasi bekor qilingani xato emas — `check-cancel.mjs`. */
+      if (!err?.cancelled) toast.error(err.message || t("common.unknownError"));
     } finally {
       setSaving(false);
     }
@@ -114,7 +115,8 @@ export default function ShopUsersPage({ toast }) {
       toast.success(t("staff.deleted"));
       loadUsers();
     } catch (err) {
-      toast.error(err.message);
+      /* Bajik oynasi bekor qilingani xato emas — `check-cancel.mjs`. */
+      if (!err?.cancelled) toast.error(err.message);
     }
   };
 
@@ -134,7 +136,8 @@ export default function ShopUsersPage({ toast }) {
       toast.success(t("staff.statusChanged"));
       loadUsers();
     } catch (err) {
-      toast.error(err.message);
+      /* Bajik oynasi bekor qilingani xato emas — `check-cancel.mjs`. */
+      if (!err?.cancelled) toast.error(err.message);
     }
   };
 
