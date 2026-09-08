@@ -11,6 +11,7 @@ import { PAYMENT_TYPE, SALE_STATUS, paymentEntry, saleStatus,
          dispositionOptions, writeOffOptions,
          RETURN_WRITE_OFF_EXCLUDE } from "../lib/ek-labels";
 import { asArray } from "../lib/ek-array";
+import { PERIODS, periodRange, isoInstant } from "../lib/ek-period";
 // ⚠ `Spinner` HAM shu yerdan. U chek chiqarish va bekor qilish tugmalarida
 // FAQAT amal davomida chiziladi — shuning uchun import unutilgani sahifa
 // ochilganda bilinmasdi, tugma bosilgan zahoti esa render'da
@@ -130,10 +131,26 @@ export default function SalesPage({ toast }) {
   const [returning, setReturning] = useState(false);
   const [branchId, setBranchId]   = useState(null);
 
+  /* ══ DAVR (V100) ═══════════════════════════════════════════════════
+     Ilgari sahifa do'konning BUTUN tarixini yuklardi va javob hech
+     qachon kichraymasdi — u faqat o'sardi. Kuniga 200 chek qiladigan
+     do'kon bir yilda 73 000 qatorga yetadi va monoblokdagi brauzer
+     bunday javobni ochib ulgurmasdi.
+
+     ⚠ DAVR KO'RINIB TURADI. Serverda jimgina oyna qo'yish oson
+     bo'lardi-yu, do'kon egasi «sotuvlarim yo'qolibdi» deb o'ylardi.
+     Endi u qaysi davrni ko'rayotganini biladi va o'zi kengaytira
+     oladi.
+
+     ⚠ Standart — JORIY OY. «Bugun» juda tor (kechagi chekni qidirish
+     ko'p uchraydi), «yil» esa yana o'sha muammoni qaytarardi. */
+  const [period, setPeriod] = useState("month");
+  const range = useMemo(() => periodRange(period, new Date()), [period]);
+
   const loadSales = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await saleApi.getAll(branchId);
+      const res = await saleApi.getAll(branchId, isoInstant(range.from), isoInstant(range.to));
       // Teskari tartib: yangi sotuvlar yuqorida
       const sorted = (asArray(res.data)).sort((a, b) => {
         const da = new Date(a.createdAt || 0).getTime();
@@ -146,7 +163,7 @@ export default function SalesPage({ toast }) {
     } finally {
       setLoading(false);
     }
-  }, [branchId]);
+  }, [branchId, range.from, range.to]);
 
   useEffect(() => { loadSales(); }, [loadSales]);
 
@@ -505,7 +522,22 @@ export default function SalesPage({ toast }) {
         <div>
           <h2 className="page-title">{t("sales.title")}</h2>
         </div>
-        <BranchSelector selectedId={branchId} onSelect={setBranchId} />
+        <div className="sales-head">
+          {/* ⚠ «custom» YO'Q: u ikkita sana maydonini talab qiladi va
+              bu yerda joy yo'q. Tayyor davrlar kassirning kundalik
+              savoliga («kechagi chek qani?») yetarli; kengroq tahlil
+              Hisobot bo'limida. */}
+          <div className="rpt-bar__periods" role="tablist" aria-label={t("rpt2.period")}>
+            {PERIODS.filter((x) => x !== "custom").map((x) => (
+              <button key={x} type="button" role="tab" aria-selected={period === x}
+                      className={`rpt-seg${period === x ? " is-on" : ""}`}
+                      onClick={() => setPeriod(x)}>
+                {t(`rpt2.p.${x}`)}
+              </button>
+            ))}
+          </div>
+          <BranchSelector selectedId={branchId} onSelect={setBranchId} />
+        </div>
       </div>
 
       {/* ══ KPI — KO'RINGAN RO'YXAT BO'YICHA (V97) ═════════════════════

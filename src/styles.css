@@ -6244,3 +6244,14 @@ button.stk__c:hover { background: var(--bg-hover); }
   color: #fff;
   background: var(--danger, #D64545);
 }
+
+/* ══ SOTUVLAR TARIXI SARLAVHASI (V100) ═══════════════════════════════
+   Davr tanlagichi va filial tanlagichi yonma-yon. Tor ekranda ular
+   yopishib qolmasin — `gap` va `wrap` bilan. */
+.sales-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}

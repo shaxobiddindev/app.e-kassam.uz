@@ -880,7 +880,19 @@ export const customerApi = {
 
 // ─── Sotuvlar ─────────────────────────────────────────────────
 export const saleApi = {
-  getAll:  (shopId) => request(`/sales${shopId ? `?shopId=${shopId}` : ""}`),
+  /* ⚠ DAVR MAJBURIY EMAS, LEKIN KERAK (V100). Usiz server oxirgi 30
+     kunni beradi — ilgari esa do'konning BUTUN tarixi qaytardi va
+     javob hech qachon kichraymasdi. Davr juda keng bo'lsa server
+     xato qaytaradi va JIMGINA QIRQMAYDI: yarim tarixni to'liq deb
+     ko'rsatish eng yomon yechim bo'lardi. */
+  getAll:  (shopId, from, to) => {
+    const q = new URLSearchParams();
+    if (shopId) q.set("shopId", shopId);
+    if (from) q.set("from", from);
+    if (to) q.set("to", to);
+    const s = q.toString();
+    return request(`/sales${s ? `?${s}` : ""}`);
+  },
   getById: (id)          => request(`/sales/${id}`),
   create:  (data)        => request("/sales",       { method: "POST",  body: JSON.stringify(data) }),
   cancel:  (id)          => request(`/sales/${id}/cancel`, { method: "PATCH" }),
