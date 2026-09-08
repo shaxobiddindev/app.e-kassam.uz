@@ -404,6 +404,23 @@ export const catalogApi = {
     return request(`/catalog/global/similar?${q}`);
   },
 
+  /* ══ UMUMIY BAZADAGI YANGILANISH (V93) ═══════════════════════════
+     ⚠ AVTOMATIK QO'LLANMAYDI. Do'kon nomni ATAYLAB o'zgartirgan
+     bo'lishi mumkin («Kola katta») va uni bir kechada qaytarib
+     qo'yish do'kon egasi uchun tushunarsiz yo'qotish bo'lardi.
+     Shuning uchun ro'yxat ko'rsatiladi va har biriga do'kon o'zi
+     qaror qiladi. */
+  globalUpdates: () => request("/catalog/global/updates"),
+
+  /* ⚠ `accept` da bo'lmagan maydon o'zgarmaydi, lekin qaror ESDA
+     QOLADI: «meniki qolsin» ham qaror va u ertaga yana
+     so'ralmasligi kerak. */
+  applyGlobalUpdate: (productId, accept) =>
+    request("/catalog/global/updates/apply", {
+      method: "POST",
+      body: JSON.stringify({ productId, accept: accept || [] }),
+    }),
+
   /* ⚠ Serverga AYNAN belgilanganlar ketadi. «Hammasini ol, keyin
      keraksizini o'chir» degan yo'l yo'q: o'chirish tarixga tegadi. */
   globalImport: (ids, targetCategoryId) =>

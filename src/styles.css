@@ -1183,6 +1183,29 @@ select.form-input { cursor: pointer; }
 .gcat-pager      { display: flex; align-items: center; justify-content: center; gap: 10px; padding-top: 8px; }
 .gcat-pager span { font-size: 12px; color: var(--fg-secondary); font-weight: 700; }
 
+/* ══ Umumiy bazadagi yangilanish (V93) ══ */
+.gcat-upd        { max-height: 52vh; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+.gcat-upd__item  { border: 1.5px solid var(--border-subtle); border-radius: 11px; padding: 10px 12px; }
+.gcat-upd__head  { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.gcat-upd__name  { font-size: 13.5px; font-weight: 800; color: var(--fg-primary);
+                   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gcat-upd__code  { font-size: 11px; color: var(--fg-secondary); }
+
+.gcat-upd__field { display: flex; align-items: flex-start; gap: 10px; margin-top: 8px;
+                   padding: 8px 10px; border-radius: 9px; background: var(--bg-sunken);
+                   border: 1.5px solid transparent; cursor: pointer; }
+.gcat-upd__field.on { border-color: var(--border-brand); background: var(--bg-brand-subtle); }
+.gcat-upd__field input { accent-color: var(--bg-brand); margin-top: 2px; flex: none; }
+.gcat-upd__label { font-size: 11.5px; font-weight: 800; color: var(--fg-secondary);
+                   display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+/* ⚠ Ziddiyat belgisi ko'zga tashlanishi SHART: qabul qilish do'konning
+   o'z tahririni yo'qotadi va u buni BILIB bosishi kerak. */
+.gcat-upd__conflict { color: var(--fg-warning); font-weight: 800; }
+.gcat-upd__diff  { display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+                   font-size: 12.5px; margin-top: 3px; }
+.gcat-upd__old   { color: var(--fg-secondary); text-decoration: line-through; }
+.gcat-upd__new   { color: var(--fg-primary); font-weight: 700; }
+
 .gcat-result     { display: flex; flex-direction: column; gap: 8px; }
 /* O'xshash yozuvlar ro'yxati — tovar formasidagi kichik eslatma. */
 .gcat-hint       { margin: 6px 0; padding-inline-start: 18px; font-size: 12px; line-height: 1.6; }

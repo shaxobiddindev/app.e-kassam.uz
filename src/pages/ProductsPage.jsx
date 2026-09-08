@@ -4,6 +4,7 @@ import { productApi, mediaApi, shopApi, catalogApi, downloadScaleExport } from "
 import { BranchSelector, Modal } from "../components";
 import CatalogWizard from "../components/CatalogWizard";
 import GlobalCatalogImport from "../components/GlobalCatalogImport";
+import GlobalCatalogUpdates from "../components/GlobalCatalogUpdates";
 import { Empty, Field, SearchBar, FormGroup } from "../components/ui";
 import { useConfirm } from "../context/ConfirmProvider";
 import { useAuth } from "../hooks/useAuth";
@@ -116,6 +117,9 @@ export default function ProductsPage({ toast }) {
   const [gcat,   setGcat]           = useState(false);
   /* Umumiy bazadagi o'xshash yozuvlar — YANGI tovar kiritilayotganda. */
   const [gcatHint, setGcatHint]     = useState([]);
+  const [gupd,   setGupd]           = useState(false);
+  /* Umumiy bazada nechta tovarda yangilanish bor — tugmadagi son. */
+  const [gupdCount, setGupdCount]   = useState(0);
   const [fiscal, setFiscal]         = useState(null);
   /* Do'kon yo'nalishi — kiyim maydonlari shu asosda ko'rsatiladi. */
   const [bizType, setBizType]       = useState("");
@@ -154,6 +158,15 @@ export default function ProductsPage({ toast }) {
        Xatosi JIM yutiladi: yo'nalish noma'lum bo'lsa maydonlar
        ko'rinmaydi, lekin forma baribir ishlaydi. */
     shopApi.getProfile().then((r) => setBizType(r?.data?.businessType || "")).catch(() => {});
+    /* ⚠ Umumiy bazadagi yangilanishlar SONI. Tugma soni bilan
+       ko'rinmasa, do'kon bu bo'lim borligini ham bilmasdi va umumiy
+       baza tuzatilgani unga hech qachon yetib bormasdi.
+
+       ⚠ Xatosi JIM yutiladi va son 0 bo'lib qoladi: bu yordamchi
+       xususiyat, tovarlar ro'yxatiga hech qanday aloqasi yo'q. */
+    catalogApi.globalUpdates()
+      .then((r) => setGupdCount(asArray(r.data).length))
+      .catch(() => setGupdCount(0));
   }, [branchId, products.length]);
 
   /* ══ UMUMIY BAZADA O'XSHASHI BORMI (V91) ═══════════════════════════
@@ -506,6 +519,15 @@ export default function ProductsPage({ toast }) {
               <button className="btn btn-outline btn-sm" onClick={() => setGcat(true)}>
                 <i className="fa-solid fa-cloud-arrow-down" /> {t("gcat.button")}
               </button>
+              {/* ⚠ TUGMA FAQAT YANGILANISH BOR BO'LSA. Doim ko'rinsa,
+                  do'kon uni bosib har safar bo'sh ro'yxat ko'rardi va
+                  bir haftadan keyin unga umuman qaramay qo'yardi. */}
+              {gupdCount > 0 && (
+                <button className="btn btn-outline btn-sm" onClick={() => setGupd(true)}>
+                  <i className="fa-solid fa-rotate" /> {t("gcat.updButton")}
+                  <span className="ek-num"> ({gupdCount})</span>
+                </button>
+              )}
               {/* Taroziga eksport (V42) — faqat PLU biriktirilgan tovarlar
                   chiqadi. Tugma HAR DOIM ko'rinadi: PLU'li tovar yo'q bo'lsa
                   ham odam qayerdan boshlashni bilishi kerak, bo'sh fayl esa
@@ -679,6 +701,15 @@ export default function ProductsPage({ toast }) {
         />
       )}
 
+      {/* ── Umumiy bazadagi yangilanishlar (V93) ── */}
+      {gupd && (
+        <GlobalCatalogUpdates
+          toast={toast}
+          onClose={() => setGupd(false)}
+          onDone={() => { setGupd(false); loadData(); }}
+        />
+      )}
+
       {/* ── Umumiy katalogdan olish (V90) ── */}
       {gcat && (
         <GlobalCatalogImport
@@ -773,22 +804,52 @@ export default function ProductsPage({ toast }) {
                 shu kichik panelda takrorlash — ikkinchi nusxa yozish
                 va ertami-kechmi ikki xil natija demakdir. Shuning
                 uchun odam «Umumiy bazadan» oynasiga yuboriladi. */}
-            {gcatHint.length > 0 && (
-              <div className="ek-note ek-note--warn" style={{ marginBottom: 12 }}>
-                <i className="fa-solid fa-clone" aria-hidden="true" />
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontWeight: 700 }}>{t("gcat.similarTitle")}</div>
-                  <ul className="gcat-hint">
-                    {gcatHint.slice(0, 3).map((r) => (
-                      <li key={r.id}>
-                        <span className="ek-num">{r.barcode}</span> — {r.name}
-                      </li>
-                    ))}
-                  </ul>
-                  <div style={{ fontSize: 11.5 }}>{t("gcat.similarHint")}</div>
+            {gcatHint.length > 0 && (() => {
+              /* ⚠ AYNAN SHU BARKOD topilgan bo'lsa — bu «o'xshash» emas,
+                 «shu tovarning o'zi». Unda taklif ham boshqacha:
+                 ro'yxat emas, bitta tugma. Do'kon nomni qo'lda terib
+                 o'tirmaydi va butun tizimda bir xil nom bo'ladi. */
+              const exact = gcatHint.find(
+                (r) => (r.barcode || "").trim() === (form.barcode || "").trim());
+              if (exact) {
+                return (
+                  <div className="ek-note" style={{ marginBottom: 12 }}>
+                    <i className="fa-solid fa-cloud-arrow-down" aria-hidden="true" />
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ fontWeight: 700 }}>{t("gcat.exactTitle")}</div>
+                      <div style={{ fontSize: 12.5 }}>{exact.name}</div>
+                    </div>
+                    {/* ⚠ FAQAT NOM VA BREND. Narx, qoldiq va soliq
+                        maydonlari ko'chirilmaydi: ular do'konning o'z
+                        ishi va «taxminan» to'ldirish eng xavfli yechim
+                        bo'lardi. */}
+                    <button type="button" className="btn btn-sm btn-outline"
+                            onClick={() => setForm((f) => ({
+                              ...f, name: exact.name, brand: exact.brand || f.brand,
+                            }))}>
+                      <i className="fa-solid fa-wand-magic-sparkles" aria-hidden="true" />{" "}
+                      {t("gcat.exactFill")}
+                    </button>
+                  </div>
+                );
+              }
+              return (
+                <div className="ek-note ek-note--warn" style={{ marginBottom: 12 }}>
+                  <i className="fa-solid fa-clone" aria-hidden="true" />
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 700 }}>{t("gcat.similarTitle")}</div>
+                    <ul className="gcat-hint">
+                      {gcatHint.slice(0, 3).map((r) => (
+                        <li key={r.id}>
+                          <span className="ek-num">{r.barcode}</span> — {r.name}
+                        </li>
+                      ))}
+                    </ul>
+                    <div style={{ fontSize: 11.5 }}>{t("gcat.similarHint")}</div>
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* PLU — TAROZIdagi tovar kodi (V42).
 
