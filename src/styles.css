@@ -1870,6 +1870,8 @@ select.form-input { cursor: pointer; }
 }
 .pay-due__input:focus { outline: none; border-color: var(--blue); }
 .pay-due__left {
+/* O'tmishdagi muddat — xato, ma'lumot emas (V99). */
+.pay-due__left.is-bad { color: var(--fg-danger, var(--red)); font-weight: 700; }
   flex: none; font-size: 11.5px; font-weight: 700; color: var(--fg-muted);
   font-family: var(--font-mono);
 }

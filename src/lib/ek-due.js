@@ -61,6 +61,27 @@ export function plus(days, now = new Date()) {
  * 0, ba'zan −1 chiqar va ekranda «muddati o'tgan» degan yozuv soatga
  * qarab paydo bo'lib turardi.
  */
+/**
+ * Sana BUGUNDAN OLDINMI (V99).
+ *
+ * ⚠ NEGA ALOHIDA FUNKSIYA KERAK BO'LDI. Qarz muddati maydonida
+ * `min={today()}` turardi, lekin `<input type="date">` da `min`
+ * KALENDARNI cheklaydi, QO'LDA TERISHNI emas: brauzer maydonni
+ * `:invalid` deb belgilaydi-yu, qiymatni baribir beradi. Ya'ni
+ * kassir «20.08.2025» deb terib qo'ysa, qarz TUG'ILGAN ZAHOTI
+ * muddati o'tgan bo'lib yozilardi.
+ *
+ * Do'kon egasining xabari: «qarz berishda bugundan eski muddat ham
+ * kiritish mumkin bo'lyapti».
+ *
+ * `null` — sana yo'q yoki tushunarsiz; bunda «o'tmishda emas»
+ * deyiladi: muddatsiz qarz qonuniy («qachon bo'lsa ham»).
+ */
+export function isPast(value, now = new Date()) {
+  const d = daysLeft(value, now);
+  return d != null && d < 0;
+}
+
 export function daysLeft(value, now = new Date()) {
   const d = parse(value);
   if (!d) return null;

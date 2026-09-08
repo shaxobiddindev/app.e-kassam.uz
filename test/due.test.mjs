@@ -82,5 +82,50 @@ eq(due.iso(due.parse("2026-10-20")), "2026-10-20", "to'g'ri sana o'qiladi");
 eq(due.parse("2026-10-20").getHours(), 0, "mahalliy tun yarmi (UTC emas)");
 eq(due.parse("2026-10-20").getDate(), 20, "kun aynan o'sha");
 
+/* ── ⚠ O'TMISHDAGI QARZ MUDDATI (V99) ────────────────────────────────
+   Do'kon egasining xabari: «qarz berishda bugundan eski muddat ham
+   kiritish mumkin bo'lyapti».
+
+   ⚠ SABAB. Maydonda `min={today()}` turardi, lekin
+   `<input type="date">` da `min` KALENDARNI cheklaydi, QO'LDA
+   TERISHNI emas: brauzer maydonni `:invalid` deb belgilaydi-yu,
+   qiymatni baribir beradi. Ya'ni kassir «20.08.2025» deb terib
+   qo'ysa, qarz TUG'ILGAN ZAHOTI muddati o'tgan bo'lib yozilardi. */
+console.log("\n── isPast(): o'tmishdagi muddat ──");
+eq(due.isPast("2026-09-07", at(2026, 9, 8)), true, "kechagi sana — o'tmish");
+eq(due.isPast("2025-01-01", at(2026, 9, 8)), true, "o'tgan yil — o'tmish");
+eq(due.isPast("2026-09-08", at(2026, 9, 8)), false, "BUGUN — o'tmish emas");
+eq(due.isPast("2026-09-09", at(2026, 9, 8)), false, "ertaga — o'tmish emas");
+
+/* Muddatsiz qarz qonuniy («qachon bo'lsa ham») — u xato emas. */
+for (const v of ["", null, undefined, "abc", "2026-13-40"]) {
+  eq(due.isPast(v, at(2026, 9, 8)), false, `«${v}» — muddatsiz, xato emas`);
+}
+
+/* ⚠ Kun chegarasida soatga bog'liq emas — `daysLeft` bilan bir xil
+   sabab: aks holda «muddati o'tgan» yozuvi soatga qarab paydo
+   bo'lib turardi. */
+eq(due.isPast("2026-09-08", at(2026, 9, 8, 0, 1)), false, "tundan keyin ham bugun");
+eq(due.isPast("2026-09-08", at(2026, 9, 8, 23, 59)), false, "kechqurun ham bugun");
+eq(due.isPast("2026-09-07", at(2026, 9, 8, 0, 1)), true, "tunda ham kechagisi o'tmish");
+
+/* ── ULANISH QO'RIQCHISI ──────────────────────────────────────────────
+   ⚠ YUQORIDAGI SINOVLAR `isPast` NI SINAYDI, ULANISHNI EMAS.
+
+   Bu farq shu sessiyada uch marta qimmatga tushdi: qoida to'g'ri
+   yozilgan, lekin chaqirilmagan — va hamma sinov yashil turgan.
+   Shuning uchun bu yerda KASSA SAHIFASINING O'ZI o'qiladi: sotish
+   tugmasi haqiqatan o'tmishdagi muddatda to'siladimi. */
+console.log("\n── Sotish tugmasi o'tmishdagi muddatda to'siladi ──");
+{
+  const src = await (await import("node:fs/promises")).readFile("src/pages/KassaPage.jsx", "utf8");
+  const m = /const canSubmit =[^;]*;/.exec(src);
+  eq(!!m, true, "`canSubmit` topildi");
+  eq(m ? /duePast/.test(m[0]) : false, true,
+     "⚠ `canSubmit` o'tmishdagi muddatni HISOBGA OLMAYDI — tugma ochiq qolardi");
+  eq(/const duePast\s*=[^;]*isPast\(/.test(src), true,
+     "`duePast` `isPast` orqali hisoblanmayapti");
+}
+
 console.log(`\n${fail === 0 ? "✅" : "❌"} due: ${pass} o'tdi, ${fail} yiqildi\n`);
 process.exit(fail === 0 ? 0 : 1);

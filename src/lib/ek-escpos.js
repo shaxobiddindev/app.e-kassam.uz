@@ -233,6 +233,40 @@ export class Receipt {
     return true;
   }
 
+  /**
+   * EAN-8 barkod — DO'KONNING O'Z KODI uchun (V98).
+   *
+   * ⚠ NEGA ALOHIDA. Do'kon barkodsiz tovarga `2 NNNNNN C` ko'rinishidagi
+   * sakkiz xonali kod beradi. `barcodeEan13` uni rad etadi (uzunligi
+   * boshqa) va yorliq CODE 128 bo'lib chiqardi — o'qiladi, lekin
+   * kengroq va ekrandagi ko'rinishga mos kelmasdi. Kichik stikerda
+   * kenglik muhim: Code 128 bilan sakkiz raqam 40 mm lik yorliqqa
+   * zo'rg'a sig'adi.
+   *
+   * ⚠ Nazorat raqami TEKSHIRILADI va noto'g'ri bo'lsa `false` qaytadi —
+   * `barcodeEan13` bilan bir xil sabab: printer noto'g'ri EAN ni
+   * jimgina chiqarmaydi va yorliq BARKODSIZ chiqib ketardi.
+   */
+  barcodeEan8(digits) {
+    const raw = String(digits ?? "").replace(/\D/g, "");
+    if (raw.length !== 8) return false;
+
+    /* ⚠ Vazn OXIRIDAN sanaladi — EAN-8 va EAN-13 uchun bir xil qoida.
+       Boshidan sanash EAN-13 da to'g'ri, EAN-8 da NOTO'G'RI natija
+       berardi va yorliq barkodsiz chiqardi. */
+    let sum = 0;
+    for (let i = 0; i < 7; i++) sum += Number(raw[i]) * ((7 - i) % 2 === 1 ? 3 : 1);
+    if ((10 - (sum % 10)) % 10 !== Number(raw[7])) return false;
+
+    this.raw([GS, 0x68, 60]);           // balandlik
+    this.raw([GS, 0x77, 2]);            // modul kengligi
+    this.raw([GS, 0x48, 2]);            // raqam barkod OSTIDA
+    const data = [...raw].map((d) => d.charCodeAt(0));
+    this.raw([GS, 0x6b, 68, data.length]);   // GS k 68 — EAN8
+    this.raw(data);
+    return true;
+  }
+
   /** Qog'ozni surib kesish. Kesuvchisi yo'q printerda buyruq e'tiborsiz qoladi. */
   cut() { return this.feed(4).raw(CMD.cut); }
 

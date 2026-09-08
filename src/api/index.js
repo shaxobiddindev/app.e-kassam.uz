@@ -405,6 +405,14 @@ export const productApi = {
      yoki umuman mumkin emasmi. Ilgari front «o'chirasizmi?» deb
      so'rab, keyin serverning rad javobini xato sifatida ko'rsatardi
      — foydalanuvchi nima bo'lganini tushunmasdi. */
+  /**
+   * Barkodsiz tovarga do'konning o'z kodini beradi (V98).
+   *
+   * ⚠ KOD SERVERDA YARALADI, frontda emas: u do'kon hisoblagichiga
+   * tayanadi va ikki kassir bir vaqtda bosganda bitta raqam ikki
+   * marta berilmasligi kerak.
+   */
+  generateCode: (id) => request(`/products/${id}/generate-code`, { method: "POST" }),
   deletePreview: (id)      => request(`/products/${id}/delete-preview`),
   toggleActive: (id)       => request(`/products/${id}/toggle-active`, { method: "PATCH" }),
   fiscalReadiness: ()      => request("/products/fiscal-readiness"),

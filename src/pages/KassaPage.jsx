@@ -2122,8 +2122,15 @@ export default function KassaPage({ toast, refreshLowStock }) {
      ⚠ `payUntouched` — «bironta maydonga tegilmadi», «to'landi» emas.
      Naqdga `0` yozilgan to'liq nasiya chekida u `false` bo'ladi va
      sotuv ochiq qoladi: kassir niyatini bildirgan. */
+  /* ⚠ O'TMISHDAGI QARZ MUDDATI SOTUVNI TO'SADI (V99).
+     Maydondagi `min` faqat kalendarni cheklaydi — qo'lda terilgan
+     sana baribir o'tib ketardi va qarz TUG'ILGAN ZAHOTI muddati
+     o'tgan bo'lib yozilardi. */
+  const duePast = creditPart > 0 && due.isPast(dueDate);
+
   const canSubmit = cart.length > 0 && !processing
-                    && creditOk && !creditBlocked && overOk && !payUntouched;
+                    && creditOk && !creditBlocked && overOk && !payUntouched
+                    && !duePast;
 
   /* ── Sotuvni yakunlash ────────────────────────────────────── */
   /** Sotuvning O'ZI — tugmaning holati pastdagi `handleSubmit` da. */
@@ -4064,7 +4071,15 @@ export default function KassaPage({ toast, refreshLowStock }) {
                     />
                     {/* Necha kun qolgani — kassir sanani ko'rib
                         «bu qancha bo'ladi?» deb sanamasin. */}
-                    {dueLeft != null && (
+                    {/* ⚠ O'TMISHDAGI SANA — XATO, «necha kun qoldi» EMAS.
+                        Ilgari bu yerda «−12 kun» degan yozuv chiqar va u
+                        xato ekanini aytmasdi. */}
+                    {duePast ? (
+                      <span className="pay-due__left is-bad">
+                        <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />{" "}
+                        {t("credit.duePast")}
+                      </span>
+                    ) : dueLeft != null && (
                       <span className="pay-due__left">
                         {dueLeft === 0 ? t("credit.dueToday") : t("credit.dueInDays", { n: dueLeft })}
                       </span>

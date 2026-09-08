@@ -644,7 +644,11 @@ export function buildPriceLabels(items = [], { copies = 1, shopName, width } = {
       }
       r.feed();
       if (item.barcode) {
-        if (!r.barcodeEan13(item.barcode)) r.barcode128(item.barcode, { hri: true });
+        /* ⚠ TARTIB: EAN-13 → EAN-8 → Code 128 (V98). EAN-8 do'konning
+           o'z kodi uchun; usiz u Code 128 bo'lib chiqar va kichik
+           stikerga zo'rg'a sig'ardi. */
+        if (!r.barcodeEan13(item.barcode)
+            && !r.barcodeEan8(item.barcode)) r.barcode128(item.barcode, { hri: true });
         r.feed();
       }
       r.line(new Date().toLocaleDateString("uz-UZ"));
@@ -714,7 +718,11 @@ export function buildExpiryLabels(items = [], { copies = 1, shopName, width } = 
       if (item.salePrice != null) r.line(money(item.salePrice, { withUnit: true }));
       r.feed();
       if (item.barcode) {
-        if (!r.barcodeEan13(item.barcode)) r.barcode128(item.barcode, { hri: true });
+        /* ⚠ TARTIB: EAN-13 → EAN-8 → Code 128 (V98). EAN-8 do'konning
+           o'z kodi uchun; usiz u Code 128 bo'lib chiqar va kichik
+           stikerga zo'rg'a sig'ardi. */
+        if (!r.barcodeEan13(item.barcode)
+            && !r.barcodeEan8(item.barcode)) r.barcode128(item.barcode, { hri: true });
         r.feed();
       }
       // Kesish chizig'i — sabab `buildPriceLabels` izohida.

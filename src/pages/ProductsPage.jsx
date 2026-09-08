@@ -25,6 +25,7 @@ import { checkPrices, marginPercent, VIOLATION } from "../lib/ek-prices";
 import { rankItems, PRODUCT_SPEC } from "../lib/ek-search";
 import { asArray } from "../lib/ek-array";
 import { barcodeSuspicious } from "../lib/ek-barcode-check";
+import { isStoreCode, prettyStoreCode, storeCodeShort } from "../lib/ek-store-code";
 
 /* ══════════════════════════════════════════════════════════════════════════
    Tovarlar.
@@ -119,6 +120,28 @@ export default function ProductsPage({ toast }) {
   const [gcatHint, setGcatHint]     = useState([]);
   const [gupd,   setGupd]           = useState(false);
   /* Umumiy bazada nechta tovarda yangilanish bor — tugmadagi son. */
+  /* Kod yaratish — server javobini kutish. Ikki marta bosilsa ikkita
+     raqam sarflanardi (hisoblagich orqaga qaytmaydi). */
+  const [codeBusy, setCodeBusy] = useState(false);
+
+  const makeStoreCode = async () => {
+    if (!editing?.id || codeBusy) return;
+    setCodeBusy(true);
+    try {
+      const r = await productApi.generateCode(editing.id);
+      const code = r?.data?.barcode;
+      if (code) {
+        setForm((p) => ({ ...p, barcode: code }));
+        toast.success(t("products.codeMade", { code: prettyStoreCode(code) }));
+        load();
+      }
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setCodeBusy(false);
+    }
+  };
+
   const [gupdCount, setGupdCount]   = useState(0);
   const [fiscal, setFiscal]         = useState(null);
   /* Do'kon yo'nalishi — kiyim maydonlari shu asosda ko'rsatiladi. */
@@ -785,6 +808,40 @@ export default function ProductsPage({ toast }) {
                   <div className="form-hint form-hint--warn">
                     <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />{" "}
                     {t("products.barcodeCheckWarn")}
+                  </div>
+                )}
+
+                {/* ⚠ BARKODSIZ TOVAR UCHUN O'Z KODI (V98).
+                    Bozordan olingan ko'ylakda, tikuv sexidan kelgan
+                    pardada barkod YO'Q — do'kon o'zi kod yaratib
+                    stikerga chiqaradi.
+
+                    ⚠ Tugma FAQAT maydon bo'sh bo'lganda ko'rinadi:
+                    qadoqdagi haqiqiy barkod ustidan yozib yuborish
+                    tovarni skanerdan «yo'qotardi». Server ham buni
+                    rad etadi — bu yerdagisi shunchaki tugmani
+                    ko'rsatmaslik.
+
+                    ⚠ Kod SERVERDA yaraladi: u do'kon hisoblagichiga
+                    tayanadi va ikki kassir bir vaqtda bosganda bitta
+                    raqam ikki marta berilmasligi kerak. */}
+                {!form.barcode && editing?.id && (
+                  <button type="button" className="btn btn-sm btn-outline"
+                          style={{ marginTop: 6 }}
+                          disabled={codeBusy}
+                          onClick={makeStoreCode}>
+                    <i className="fa-solid fa-wand-magic-sparkles" aria-hidden="true" />{" "}
+                    {t("products.makeCode")}
+                  </button>
+                )}
+
+                {/* Yaratilgan kod odam o'qiydigan ko'rinishda: kassir
+                    yodida O'RTADAGI son qoladi — «yuz qirq ikki». */}
+                {isStoreCode(form.barcode) && (
+                  <div className="form-hint">
+                    <i className="fa-solid fa-tag" aria-hidden="true" />{" "}
+                    {t("products.storeCodeHint", { code: prettyStoreCode(form.barcode),
+                                                   n: storeCodeShort(form.barcode) })}
                   </div>
                 )}
               </FormGroup>
