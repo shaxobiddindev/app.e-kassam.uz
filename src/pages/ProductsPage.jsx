@@ -125,15 +125,25 @@ export default function ProductsPage({ toast }) {
   const [codeBusy, setCodeBusy] = useState(false);
 
   const makeStoreCode = async () => {
-    if (!editing?.id || codeBusy) return;
+    /* ⚠ TAHRIRLASH HOLATI `modal` DA: `null | "add" | { type, product }`.
+       Bu yerda boshida `editing` deb yozilgan edi — bunday o'zgaruvchi
+       umuman yo'q va sahifa OCHILISHIDA yiqilardi («editing is not
+       defined»), ya'ni tovar qo'shish ham, tahrirlash ham ishlamay
+       qolgan edi. */
+    const id = modal?.product?.id;
+    if (!id || codeBusy) return;
     setCodeBusy(true);
     try {
-      const r = await productApi.generateCode(editing.id);
+      const r = await productApi.generateCode(id);
       const code = r?.data?.barcode;
       if (code) {
         setForm((p) => ({ ...p, barcode: code }));
         toast.success(t("products.codeMade", { code: prettyStoreCode(code) }));
-        load();
+        /* ⚠ RO'YXAT NOMI `loadData`. Bu yerda ham `load()` deb
+           yozilgan edi: muvaffaqiyatli kod berilganidan KEYIN
+           «load is not defined» xatosi `catch` ga tushib, kassirga
+           yashil xabardan so'ng darhol qizil xato ko'rsatardi. */
+        loadData();
       }
     } catch (e) {
       toast.error(e.message);
@@ -825,7 +835,7 @@ export default function ProductsPage({ toast }) {
                     ⚠ Kod SERVERDA yaraladi: u do'kon hisoblagichiga
                     tayanadi va ikki kassir bir vaqtda bosganda bitta
                     raqam ikki marta berilmasligi kerak. */}
-                {!form.barcode && editing?.id && (
+                {!form.barcode && modal?.product?.id && (
                   <button type="button" className="btn btn-sm btn-outline"
                           style={{ marginTop: 6 }}
                           disabled={codeBusy}
