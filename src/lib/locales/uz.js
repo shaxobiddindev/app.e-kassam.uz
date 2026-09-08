@@ -933,7 +933,7 @@ export default {
   "products.name": "Mahsulot nomi",
   "products.barcode": "Barkod",
   /* QISQA RAQAM (V107) — kassir yodida turadigan kod. Barkod bilan
-     bitta manba: 142 → 2 000142 7. */
+     bitta manba: 142 → 2 000142 1. */
   "products.shortCode": "Qisqa raqam",
   "products.shortCodeHint": "Kassada shu raqamni yozsangiz, tovar birinchi chiqadi",
   "products.salePrice": "Sotuv narxi",
@@ -1236,6 +1236,8 @@ export default {
   "kassa.reprint": "Chekni qayta chiqarish",
   "kassa.reprintHint": "Oxirgi chekni qayta chop etadi",
   "kassa.barcodeNotFound": "Bu barkod bazada yo'q: {code}. Tovarni \"{section}\" bo'limidan qo'shing.",
+  /* BEGONA FILIAL KODI (V108) — jim «topilmadi» o'rniga sabab. */
+  "kassa.otherBranchCode": "Bu «{shop}» filialining ichki kodi — bu yerda bunday tovar yo'q",
 
   "hw.title": "Kassa apparatlari",
   "hw.subtitle": "Chek printeri va pul yashigi shu kompyuterga tegishli, hisobga emas.",
@@ -1613,6 +1615,21 @@ export default {
   "sale.loyaltyDiscount": "Sodiqlik chegirmasi",
   /* ── Narx yorliqlari ──────────────────────────────────────────────── */
   "label.print": "Yorliq chiqarish",
+  /* JAVON YORLIG'I OYNASI (V108) */
+  "label.title": "Javon yorlig'i",
+  "label.where": "Qayerga chiqarilsin",
+  "label.modeSheet": "A4 varaq",
+  "label.modeTape": "Chek printeri",
+  "label.tapeNeedsDesktop": "Chek printeriga faqat kompyuter ilovasidan (.exe) chiqariladi",
+  "label.size": "Yorliq o'lchami",
+  "label.sizeBig": "Katta ({w}×{h} mm)",
+  "label.sizeSmall": "Kichik ({w}×{h} mm)",
+  "label.copies": "Har tovardan nechta",
+  "label.summarySheet": "{n} ta yorliq — {s} varaq",
+  "label.summaryTape": "{n} ta yorliq lentaga chiqadi",
+  "label.preview": "Qanday chiqadi",
+  "label.printNow": "Chop etish",
+  "label.sheetTitle": "Javon yorliqlari",
   "label.printFiltered": "Yorliq ({n} ta)",
   "label.printFilteredHint": "Ro'yxatda ko'rinib turgan tovarlar uchun yorliq lentasi chiqadi",
   "label.sent": "{n} ta yorliq printerga yuborildi",

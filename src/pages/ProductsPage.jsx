@@ -4,6 +4,7 @@ import { productApi, mediaApi, shopApi, catalogApi, downloadScaleExport } from "
 import { BranchSelector, Modal } from "../components";
 import CatalogWizard from "../components/CatalogWizard";
 import GlobalCatalogImport from "../components/GlobalCatalogImport";
+import LabelPrintModal from "../components/LabelPrintModal";
 import GlobalCatalogUpdates from "../components/GlobalCatalogUpdates";
 import { Empty, Field, SearchBar, FormGroup } from "../components/ui";
 import { useConfirm } from "../context/ConfirmProvider";
@@ -13,9 +14,7 @@ import { money, quantity as fmtQty } from "../utils";
 import Select from "../components/ek/Select";
 import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
-import { isDesktop } from "../lib/ek-desktop";
 import { FISCAL_UI } from "../config";
-import { printPriceLabels } from "../lib/ek-hardware";
 import {
   UNIT, PRODUCT_TYPE, MARKING_GROUP, options, unitLabel, unitDecimals,
 } from "../lib/ek-labels";
@@ -518,20 +517,26 @@ export default function ProductsPage({ toast }) {
     }
   };
 
-  const labelsOn = isDesktop();
-  const printLabels = async (items) => {
+  /* ⚠ TUGMA ENDI HAMMA JOYDA (V108). Ilgari u `isDesktop()` bilan
+     yashiringan edi, chunki yorliq faqat chek printeriga —
+     ya'ni faqat `.exe` dan — chiqarilardi. Brauzerdan yoki
+     telefondan ishlaydigan do'kon javoniga yorliq QO'YA OLMASDI va
+     buning sababini ham ko'rmasdi: tugma shunchaki yo'q edi.
+
+     Endi ikkita yo'l bor va tanlov oynada: A4 varaq (har joyda
+     ishlaydi) yoki chek printeri (faqat `.exe`). */
+  const [labelItems, setLabelItems] = useState(null);
+  const openLabels = (items) => {
     /* Xizmatda javon yorliq ham bo'lmaydi: «soch olish» ni javonga
        qo'yib bo'lmaydi va barkodi ham yo'q. */
     const printable = items.filter((p) => p.type !== "SERVICE");
     if (!printable.length) { toast?.error(t("label.nothing")); return; }
-    try {
-      await printPriceLabels(
-        printable.map((p) => ({ name: p.name, salePrice: p.salePrice, barcode: p.barcode })),
-        { copies: 1, shopName: localStorage.getItem("ek_shopName") || "" });
-      toast?.success(t("label.sent", { n: printable.length }));
-    } catch (err) {
-      toast?.error(err.message);
-    }
+    setLabelItems(printable.map((p) => ({
+      name: p.name, salePrice: p.salePrice, barcode: p.barcode,
+      /* ⚠ QISQA RAQAM (V107) — yorliqning eng muhim yangiligi:
+         kassir uni javonga qarab eslab qoladi. */
+      shortCode: p.shortCode,
+    })));
   };
 
   return (
@@ -553,8 +558,8 @@ export default function ProductsPage({ toast }) {
               keyin yorliq kerak bo'ladi va bu odatda bitta kategoriya
               yoki qidiruv natijasi — 800 ta tovarni lenta qilib chiqarish
               hech kimga kerak emas va bir rulon qog'ozni yeydi. */}
-          {labelsOn && filtered.length > 0 && (
-            <button className="btn btn-outline btn-sm" onClick={() => printLabels(filtered)}
+          {filtered.length > 0 && (
+            <button className="btn btn-outline btn-sm" onClick={() => openLabels(filtered)}
                     title={t("label.printFilteredHint")}>
               <i className="fa-solid fa-tags" /> {t("label.printFiltered", { n: filtered.length })}
             </button>
@@ -759,14 +764,12 @@ export default function ProductsPage({ toast }) {
                       </td>
                       <td>
                         <div style={{ display: "flex", gap: 6 }}>
-                          {/* Yorliq — faqat `.exe` da: chek printeriga
-                              brauzerdan bayt yuborib bo'lmaydi. */}
-                          {labelsOn && (
-                            <button className="btn-icon" onClick={() => printLabels([p])}
-                                    aria-label={t("label.print")} title={t("label.print")}>
-                              <i className="fa-solid fa-tag" />
-                            </button>
-                          )}
+                          {/* Yorliq — endi brauzerda ham: A4 varaqqa
+                              chiqadi (V108). */}
+                          <button className="btn-icon" onClick={() => openLabels([p])}
+                                  aria-label={t("label.print")} title={t("label.print")}>
+                            <i className="fa-solid fa-tag" />
+                          </button>
                           <button className="btn-icon" onClick={() => openEdit(p)} aria-label={t("common.edit")}>
                             <i className="fa-solid fa-pen" />
                           </button>
@@ -815,6 +818,12 @@ export default function ProductsPage({ toast }) {
           onClose={() => setGcat(false)}
           onDone={() => { setGcat(false); loadData(); }}
         />
+      )}
+
+      {/* ── Javon yorlig'i (V108) ── */}
+      {labelItems && (
+        <LabelPrintModal items={labelItems} toast={toast}
+                         onClose={() => setLabelItems(null)} />
       )}
 
       {/* ── Mahsulot formasi ── */}

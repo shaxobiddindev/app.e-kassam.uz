@@ -633,6 +633,17 @@ export function buildPriceLabels(items = [], { copies = 1, shopName, width } = {
       // yorliqni foydasiz qiladi — «Sut 2,5% 1l» ning «Sut 2,5%» qismi
       // yonidagi boshqa qadoqdan farq qilmaydi.
       r.bold().wrap(item.name || "-").bold(false);
+      /* ⚠ QISQA RAQAM (V108) — kassir yorliqdan aynan shuni o'qib,
+         kassada yozadi. Ekranda raqam har doim ko'rinmaydi (kassa
+         katakchasida faqat raqam bilan qidirilganda), javonda esa
+         DOIM turadi — raqam yodda qolishining asosiy yo'li shu.
+
+         ⚠ «№» EMAS, «KOD» — ATAYLAB. `toBytes` ASCII bo'lmagan har
+         qanday belgini `?` ga aylantiradi va yorliqda «?142» chiqardi.
+         Ekranda va A4 varaqda «№142» qoladi — u yerda UTF-8 ishlaydi. */
+      if (item.shortCode != null && item.shortCode !== "") {
+        r.bold().line(`KOD ${item.shortCode}`).bold(false);
+      }
       r.feed();
       // ⚠ Narx IKKI BARAVAR shriftda: yorliqning butun ma'nosi shu raqamda
       // va u bir metr naridan o'qilishi kerak.

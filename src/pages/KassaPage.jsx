@@ -1081,6 +1081,24 @@ export default function KassaPage({ toast, refreshLowStock }) {
         return;
       }
 
+      /* ⚠ BEGONA FILIALNING ICHKI KODI (V108). Do'kon ichki kodi
+         (`2 NNNNNN C`) faqat do'kon ichida yagona — kod qisqa qolsin
+         deb ataylab shunday. Ya'ni 1-filialda chop etilgan yorliq bu
+         yerda hech nima ochmaydi.
+
+         Ilgari kassir jimgina «topilmadi» ni ko'rardi: yorliqni
+         qayta-qayta skanerlar, keyin qo'lda qidirar va oxirida
+         «skaner buzilibdi» deb o'ylardi. Endi sabab aytiladi va u
+         bir soniyada tushunadi.
+
+         ⚠ Bu XATO emas — kassir noto'g'ri ish qilmadi, shuning uchun
+         `info`, `error` emas. */
+      if (r.source === "OTHER_BRANCH") {
+        sfx("SCAN_MISS");
+        toast.info(t("kassa.otherBranchCode", { shop: r.otherShopName }));
+        return;
+      }
+
       if (r.source === "GLOBAL") {
         // Do'konda yo'q, lekin umumiy bazada bor: kassir uni yaratmaydi
         // (narx qo'yish — egasining ishi), lekin nomi aytiladi, aks holda
