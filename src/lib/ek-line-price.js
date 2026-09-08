@@ -84,6 +84,12 @@ export function initialPrice(item) {
  * ko'rinmaydi.
  */
 export function wholesaleOffer(item) {
+  /* ⚠ CHEGIRMA BERILMAYDIGAN TOVAR — optom narx ham qo'yilmaydi.
+     Server ham rad etadi (`lineRoom` nol qaytaradi), lekin bu qoida
+     shu yerda ham turishi kerak: savatga optom narx qo'yish yo'li
+     oynani ochmaydi va oynadagi `disabled` ni ko'rmaydi. */
+  if (item?.discountAllowed === false) return null;
+
   const base = lineBase(item);
   const w = Math.round(n(item?.wholesalePrice));
   if (!(w > 0) || w >= base) return null;
@@ -197,4 +203,77 @@ export function priceDiscount(item, num) {
 /** Chegirmadan keyingi qator jamisi — CHEKDAGI son bilan bir xil. */
 export function lineNetTotal(item, num) {
   return lineBase(item) * lineQty(item) - priceDiscount(item, num);
+}
+
+/**
+ * SAVATGA OPTOM NARX — REJA (V97).
+ *
+ * <p>Optom mijoz 20 ta tovar olganda kassir har qatorning oynasini
+ * ochib o'tira olmaydi. Bu funksiya bitta bosishda nima o'zgarishini
+ * OLDINDAN hisoblaydi: qaysi qator, qaysi narxga, qancha chegirma.
+ *
+ * ⚠ CHEGIRMANI HECH QACHON KAMAYTIRMAYDI. Kassir biror qatorga
+ * qo'lda kattaroq chegirma bergan bo'lsa, optom narx uni
+ * o'chirmaydi — bu narxni KO'TARIB yuborardi va mijoz oldida
+ * tushuntirib bo'lmaydigan holat bo'lardi. Shuning uchun
+ * `canApply` faqat TUSHADIGAN qatorlarni sanaydi.
+ *
+ * ⚠ BEKOR QILISH FAQAT O'ZI QO'YGANINI OLADI (`isOn`): qatorning
+ * hozirgi chegirmasi optom chegirmaga AYNAN teng bo'lsagina
+ * nolga tushadi. Keyin qo'lda o'zgartirilgan qator tegilmaydi.
+ *
+ * @param lines savat qatorlari
+ * @return `{ rows, canApply, isOn }` — `rows` har biri
+ *         `{ index, price, discount }`
+ */
+export function wholesalePlan(lines) {
+  const list = Array.isArray(lines) ? lines : [];
+
+  const rows = [];
+  list.forEach((l, index) => {
+    const price = wholesaleOffer(l);
+    if (price == null) return;
+    /* ⚠ Chegirma NOL holatdan hisoblanadi: `priceDiscount` da
+       «tegilmagan narx — asl chegirma» tarmog'i bor va u shu yerda
+       eski qiymatni qaytarib yuborishi mumkin edi. */
+    const discount = priceDiscount({ ...l, discount: 0 }, price);
+    if (discount > 0) rows.push({ index, price, discount });
+  });
+
+  const cur = (i) => n(list[i]?.discount);
+  const canApply = rows.some((r) => r.discount > cur(r.index));
+
+  return {
+    rows,
+    canApply,
+    /* ⚠ «QO'YADIGAN NARSA QOLMADI» — «hammasi aynan optomda» EMAS.
+       Boshida `every(teng)` edi va u O'LIK TUGMA yasardi: kassir
+       tugmani bosgach bitta qatorga qo'lda kattaroq chegirma bersa,
+       tugma «Optom narxlar» ga qaytardi-yu, bosilganda HECH NARSA
+       qilmasdi (o'sha qatorga qo'yadigan narsa yo'q, qolganlari
+       allaqachon o'z joyida). Bu sinovda ushlandi. */
+    isOn: rows.length > 0 && !canApply,
+  };
+}
+
+/**
+ * REJANI QO'LLASH yoki BEKOR QILISH — yangi savat qaytaradi.
+ *
+ * ⚠ Reja `next` ning O'ZIDAN qayta hisoblanadi, tashqaridagi
+ * eslab qolingan rejadan emas: savat oradagi bir bosishda
+ * o'zgargan bo'lishi mumkin.
+ */
+export function applyWholesale(lines) {
+  const list = Array.isArray(lines) ? lines : [];
+  const plan = wholesalePlan(list);
+  const off = plan.isOn;                       // hammasi optomda — bekor qilamiz
+  const byIndex = new Map(plan.rows.map((r) => [r.index, r]));
+
+  return list.map((l, index) => {
+    const row = byIndex.get(index);
+    if (!row) return l;
+    const cur = n(l.discount);
+    if (off) return cur === row.discount ? { ...l, discount: 0 } : l;
+    return row.discount > cur ? { ...l, discount: row.discount } : l;
+  });
 }

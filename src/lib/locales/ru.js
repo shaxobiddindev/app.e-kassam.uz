@@ -1982,6 +1982,10 @@ export default {
   "products.minPriceHint": "До неё кассир может опустить цену без бейджа",
   "kassa.priceTooLow": "Ниже опускать нельзя",
   "kassa.lowestPrice": "Минимальная цена",
+  "kassa.wholesaleAll": "Оптовые цены",
+  "kassa.wholesaleAllOff": "Отменить оптовые цены",
+  "kassa.wholesaleApplied": "Оптовая цена применена к {{count}} товарам",
+  "kassa.wholesaleCleared": "Оптовые цены отменены",
   /* ── Скидка в пределах суммы (V57) ────────────────────────────────── */
   "kassa.items": "Товары",
   "kassa.discExact": "Ровно та сумма, что вы ввели",

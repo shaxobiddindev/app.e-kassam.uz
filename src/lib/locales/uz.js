@@ -2090,6 +2090,10 @@ export default {
   "products.minPriceHint": "Kassir bajiksiz shu narxgacha tushira oladi",
   "kassa.priceTooLow": "Bundan past tushib bo'lmaydi",
   "kassa.lowestPrice": "Eng past narx",
+  "kassa.wholesaleAll": "Optom narxlar",
+  "kassa.wholesaleAllOff": "Optom narxni bekor qilish",
+  "kassa.wholesaleApplied": "{{count}} ta tovarga optom narx qo'yildi",
+  "kassa.wholesaleCleared": "Optom narx bekor qilindi",
   /* ── Byudjetli chegirma (V57) ─────────────────────────────────────── */
   "kassa.items": "Tovarlar",
   "kassa.discExact": "Siz yozgan summaning o'zi",

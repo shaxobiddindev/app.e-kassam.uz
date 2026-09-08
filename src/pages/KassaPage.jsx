@@ -44,6 +44,7 @@ import { cashSuggestions } from "../lib/ek-cash";
 import * as display from "../lib/ek-display";
 import { spreadDiscount, roundingOffers, optimizeDiscount, cartRoom,
          cartLossRoom, discountVerdict, currentRefundScore } from "../lib/ek-discount";
+import { wholesalePlan, applyWholesale } from "../lib/ek-line-price";
 import { TIER_BEST } from "../lib/ek-refund";
 import { useScanner } from "../hooks/useScanner";
 import { rankLocal, looksLikeCode } from "../lib/ek-search";
@@ -1239,6 +1240,27 @@ export default function KassaPage({ toast, refreshLowStock }) {
       return [...prev, { ...product, qty: roundQty(product, amount), _added: Date.now() }];
     });
     resetSearch();
+  };
+
+  /* ══ SAVATGA OPTOM NARX (V97) ═══════════════════════════════════════
+     ⚠ NEGA BUTUN SAVATGA. Optom mijoz 20 ta tovar oladi va kassir har
+     qatorning narx oynasini ochib o'tira olmaydi — mijoz oldida bu
+     bir necha daqiqa. Bitta bosish har mos qatorga o'z optom narxini
+     qo'yadi.
+
+     ⚠ HISOB QATOR OYNASI BILAN BITTA MANBADAN (`ek-line-price.js`):
+     ikkisi ajralib ketsa, bitta bosish bilan qo'yilgan narx qatorni
+     ochib qaraganda boshqacha ko'rinardi. */
+  const wsPlan = useMemo(() => wholesalePlan(cart), [cart]);
+
+  const toggleWholesale = () => {
+    const off = wsPlan.isOn;
+    /* ⚠ Reja `prev` dan QAYTA hisoblanadi: yuqoridagi `wsPlan` faqat
+       tugmani chizish uchun, savat oradagi skanerda o'zgargan
+       bo'lishi mumkin. */
+    setCart((prev) => applyWholesale(prev));
+    if (off) toast.info(t("kassa.wholesaleCleared"));
+    else toast.success(t("kassa.wholesaleApplied", { count: wsPlan.rows.length }));
   };
 
   /** Kasrli qo'shishda 0.1 + 0.2 = 0.30000000000000004 bo'lmasin. */
@@ -3132,12 +3154,27 @@ export default function KassaPage({ toast, refreshLowStock }) {
                 ))
               )}
             </div>
-            {/* Savatni tozalash — endi ro'yxat OSTIDA, jami yonida. */}
+            {/* Savat amallari — ro'yxat OSTIDA, jami yonida.
+                ⚠ QATOR, ustun emas: kassa ustunida har piksel
+                tovarlar ro'yxatiniki va scrol bo'lmasligi kerak. */}
             {cart.length > 0 && (
-              <button className="btn btn-sm cart-clear" onClick={handleClearCart}>
-                <i className="fa-solid fa-trash" aria-hidden="true" /> {t("common.reset")}
-                <span className="kbd">Esc</span>
-              </button>
+              <div className="cart-acts">
+                {/* ⚠ FAQAT MOS TOVAR BO'LGANDA KO'RINADI: optom narxi
+                    yo'q savatda bu tugma hech narsa qilmasdi va
+                    kassirni chalg'itardi. */}
+                {wsPlan.rows.length > 0 && (
+                  <button className={`btn btn-sm cart-wholesale${wsPlan.isOn ? " is-on" : ""}`}
+                          onClick={toggleWholesale}
+                          title={`${wsPlan.rows.length} ta tovar`}>
+                    <i className="fa-solid fa-boxes-stacked" aria-hidden="true" />{" "}
+                    {wsPlan.isOn ? t("kassa.wholesaleAllOff") : t("kassa.wholesaleAll")}
+                  </button>
+                )}
+                <button className="btn btn-sm cart-clear" onClick={handleClearCart}>
+                  <i className="fa-solid fa-trash" aria-hidden="true" /> {t("common.reset")}
+                  <span className="kbd">Esc</span>
+                </button>
+              </div>
             )}
           </div>
 

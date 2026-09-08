@@ -1982,6 +1982,10 @@ export default {
   "products.minPriceHint": "The cashier can go down to this without a badge",
   "kassa.priceTooLow": "Cannot go below this",
   "kassa.lowestPrice": "Lowest price",
+  "kassa.wholesaleAll": "Wholesale prices",
+  "kassa.wholesaleAllOff": "Undo wholesale prices",
+  "kassa.wholesaleApplied": "Wholesale price applied to {{count}} items",
+  "kassa.wholesaleCleared": "Wholesale prices undone",
   /* ── Budgeted discount (V57) ──────────────────────────────────────── */
   "kassa.items": "Items",
   "kassa.discExact": "Exactly the amount you entered",

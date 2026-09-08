@@ -972,8 +972,19 @@ select.form-input { cursor: pointer; }
                    border-bottom: 1px solid var(--border-subtle); flex-shrink: 0; }
 .cart-head__add  { flex-shrink: 0; }
 /* Savatni tozalash — ro'yxat OSTIDA, jami summaning ustida. */
-.cart-clear      { flex: 0 0 auto; margin: 6px 10px 8px; align-self: flex-start;
+/* ⚠ SAVAT AMALLARI — BITTA QATOR (V97). Ilgari «Tozalash» yolg'iz
+   turardi va `align-self` bilan chapga qo'yilardi. Optom narx tugmasi
+   qo'shilganda ikkisi ustma-ust tushib, tovarlar ro'yxatidan bir qator
+   joy o'g'irlardi — kassa ustunida esa har piksel ro'yxatniki va scrol
+   bo'lmasligi kerak (V47, V70). */
+.cart-acts       { display: flex; flex-wrap: wrap; gap: 6px;
+                   flex: 0 0 auto; margin: 6px 10px 8px; }
+.cart-clear      { flex: 0 0 auto; margin: 0;
                    background: var(--bg-danger-subtle); color: var(--fg-danger); }
+.cart-wholesale  { flex: 0 0 auto; margin: 0;
+                   background: var(--bg-sunken); color: var(--fg-secondary); }
+.cart-wholesale:hover { background: var(--bg-brand-subtle); color: var(--fg-brand); }
+.cart-wholesale.is-on { background: var(--bg-brand-subtle); color: var(--fg-brand); }
 .cart-tabs       { display: flex; gap: 6px; overflow-x: auto; flex: 1; min-width: 0; }
 .cart-tab        { display: flex; align-items: stretch; flex-shrink: 0;
                    border: 1.5px solid var(--border-subtle); border-radius: 10px;

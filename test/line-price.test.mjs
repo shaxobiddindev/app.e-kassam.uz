@@ -16,6 +16,7 @@ import assert from "node:assert/strict";
 import {
   lineFloor, initialPrice, wholesaleOffer, quickPrices,
   priceVerdict, priceDiscount, lineNetTotal, parsePrice,
+  wholesalePlan, applyWholesale,
 } from "../src/lib/ek-line-price.js";
 
 /* ── 1. Chegirma surilishi ──────────────────────────────────────────── */
@@ -178,4 +179,80 @@ test("kasrli narx savatga 10 baravar tushmaydi", () => {
   const num = parsePrice("14667.5");
   // 146675 bo'lganida chegaradan o'tib ketardi — endi «juda past» deydi
   assert.equal(priceVerdict(item, num), "low");
+});
+
+/* ── 7. Savatga optom narx ──────────────────────────────────────────── */
+
+const CART = () => [
+  { id: 1, salePrice: 22000, qty: 2, wholesalePrice: 20000, minPrice: 20000, discount: 0 },
+  { id: 2, salePrice: 15000, qty: 1, minPrice: 12000, discount: 0 },          // optom yo'q
+  { id: 3, salePrice: 30000, qty: 3, wholesalePrice: 27000, minPrice: 27000, discount: 0 },
+];
+
+test("reja faqat mos qatorlarni oladi", () => {
+  const p = wholesalePlan(CART());
+  assert.deepEqual(p.rows.map((r) => r.index), [0, 2]);
+  assert.deepEqual(p.rows.map((r) => r.discount), [4000, 9000]);
+  assert.equal(p.canApply, true);
+  assert.equal(p.isOn, false);
+});
+
+test("qo'yish va bekor qilish — aylanib qaytadi", () => {
+  const on = applyWholesale(CART());
+  assert.deepEqual(on.map((l) => l.discount), [4000, 0, 9000]);
+  assert.equal(wholesalePlan(on).isOn, true);
+
+  const off = applyWholesale(on);
+  assert.deepEqual(off.map((l) => l.discount), [0, 0, 0]);
+});
+
+test("⚠ QO'LDAGI KATTA CHEGIRMA KAMAYTIRILMAYDI", () => {
+  // 1-qatorga kassir 6000 bergan — optomniki 4000, ya'ni narxni
+  // KO'TARIB yuborardi. Tegilmasligi kerak.
+  const cart = CART();
+  cart[0].discount = 6000;
+  const out = applyWholesale(cart);
+  assert.equal(out[0].discount, 6000, "qo'ldagi chegirma kamaydi");
+  assert.equal(out[2].discount, 9000, "qolgan qator baribir optomga tushishi kerak");
+});
+
+test("bekor qilish FAQAT o'zi qo'yganini oladi", () => {
+  const on = applyWholesale(CART());
+  on[2] = { ...on[2], discount: 12000 };        // kassir keyin qo'lda oshirdi
+  const off = applyWholesale(on);
+  assert.equal(off[0].discount, 0, "optom qo'ygani nolga tushishi kerak");
+  assert.equal(off[2].discount, 12000, "qo'lda o'zgartirilgan qator tegilmasligi kerak");
+});
+
+test("chegirma berilmaydigan tovarga optom narx qo'yilmaydi", () => {
+  const item = { salePrice: 22000, qty: 1, wholesalePrice: 20000, minPrice: 20000,
+                 discountAllowed: false };
+  assert.equal(wholesaleOffer(item), null);
+  assert.equal(wholesalePlan([item]).rows.length, 0);
+});
+
+test("mos tovar yo'q — reja bo'sh, tugma ko'rinmaydi", () => {
+  const p = wholesalePlan([{ salePrice: 15000, qty: 1, minPrice: 12000, discount: 0 }]);
+  assert.equal(p.rows.length, 0);
+  assert.equal(p.canApply, false);
+  assert.equal(p.isOn, false, "bo'sh rejada `isOn` HECH QACHON rost bo'lmasligi kerak");
+});
+
+test("bo'sh savat yiqitmaydi", () => {
+  for (const v of [[], null, undefined]) {
+    assert.equal(wholesalePlan(v).rows.length, 0);
+    assert.deepEqual(applyWholesale(v), []);
+  }
+});
+
+test("⚠ SAVAT TUGMASI VA QATOR OYNASI BIR XIL NARXNI BERADI", () => {
+  // Ikkisi ajralib ketsa, bitta bosish bilan qo'yilgan narx qatorni
+  // ochib qaraganda boshqacha ko'rinardi.
+  for (const l of CART()) {
+    const w = wholesaleOffer(l);
+    if (w == null) continue;
+    const fromCart = wholesalePlan([l]).rows[0].discount;
+    const fromModal = priceDiscount(l, w);
+    assert.equal(fromCart, fromModal, `${l.id}: savat ${fromCart} ≠ oyna ${fromModal}`);
+  }
 });
