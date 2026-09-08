@@ -655,12 +655,27 @@ export default function CustomersPage({ toast }) {
                             <i className={`fa-solid ${Number(c.balance) > 0
                                 ? "fa-hand-holding-dollar" : "fa-clock-rotate-left"}`} />
                           </button>
-                          {/* Qarzdorlar ro'yxatida tahrirlash/o'chirish YO'Q:
-                              u yerdagi qator to'liq mijoz yozuvi emas (server
-                              faqat qarz uchun kerakli maydonlarni yuboradi)
-                              va formani undan to'ldirish chegarani jimgina
-                              buzardi. */}
-                          {view === "all" && (
+                          {/* ⚠ CHEGARA «hammasi» EMAS, «qarzdor emas» (V105).
+
+                              Ilgari bu yerda `view === "all"` turardi va
+                              JAMG'ARMA ro'yxatida — aynan jamg'arma uchun
+                              ochilgan ro'yxatda — jamg'arma tugmasi
+                              YO'QOLARDI. Do'kon egasi «kimda pulim
+                              turibdi» ni ko'rar, lekin o'sha qatorning
+                              o'zidan pul QO'SHA olmasdi: «hammasi» ga
+                              qaytib, mijozni qaytadan qidirishi kerak
+                              edi — ro'yxat nima uchun ochilgan bo'lsa,
+                              aynan o'sha ish undan chiqib ketgandi.
+
+                              Chegaraning haqiqiy sababi ro'yxat NOMIDA
+                              emas, MA'LUMOTIDA: qarzdorlar qatori to'liq
+                              mijoz yozuvi emas (server faqat qarz uchun
+                              kerakli maydonlarni yuboradi) va formani
+                              undan to'ldirish chegarani jimgina buzardi.
+                              Jamg'arma ro'yxati esa o'sha `/customers`
+                              dan keladi — to'liq yozuv, ya'ni to'siq
+                              hech qachon kerak emas edi. */}
+                          {view !== "debtors" && (
                             <>
                               <button className="btn-icon" onClick={() => openEdit(c)}>
                                 <i className="fa-solid fa-pen" />
@@ -703,8 +718,19 @@ export default function CustomersPage({ toast }) {
                 ) : (
                   <tr>
                     <td colSpan={view === "debtors" ? 6 : 5}>
-                      <Empty icon="fa-users"
-                             text={view === "debtors" ? t("credit.noDebtors") : t("cust.notFound")} />
+                      {/* ⚠ HAR RO'YXAT O'Z SABABINI AYTADI (V105).
+                          Jamg'arma ro'yxati bo'sh qolganda «Mijoz
+                          topilmadi» yozilardi va bu YOLG'ON edi:
+                          mijozlar bor, jamg'armasi bor mijoz yo'q.
+                          Do'kon egasi buni «ro'yxat ishlamayapti» deb
+                          o'qirdi — bo'sh natija va buzuq ekran bir xil
+                          ko'rinardi. */}
+                      <Empty icon={view === "savings" ? "fa-sack-dollar" : "fa-users"}
+                             text={view === "debtors"
+                                 ? t("credit.noDebtors")
+                                 : view === "savings"
+                                   ? t("savings.noneYet")
+                                   : t("cust.notFound")} />
                     </td>
                   </tr>
                 )}

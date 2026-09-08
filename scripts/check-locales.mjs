@@ -66,6 +66,24 @@ for (const lang of langs.slice(1)) {
   if (missing.length || extra.length) gaps.push([lang, missing, extra]);
 }
 
+/* ── 3. TAKRORLANGAN KALIT (V105) ─────────────────────────────────────
+   ⚠ NEGA 2-BO'LIM BUNI KO'RMAGAN: u kalitlarni `new Set` ga soladi,
+   Set esa takrorni O'ZI yutadi. Ya'ni qo'riqchining o'zida ko'r nuqta
+   bor edi va u 15 ta takror kalitni yillar davomida o'tkazib yubordi.
+
+   ⚠ NEGA MUHIM: obyekt literalida bir kalit ikki marta yozilsa,
+   JavaScript XATO BERMAYDI — KEYINGISI oldingisini jimgina bosadi.
+   Ya'ni tarjimon yozgan matn ekranga umuman chiqmaydi va buni
+   bilishning yagona yo'li — ekranga qarab, boshqa matn turganini
+   payqash. Topilgan 15 tadan olti tasida matn HAR XIL edi:
+   `nav.audit` da «Audit» o'lik, «Jurnal» ko'rinardi. */
+const dupsOf = (lang) => {
+  const seen = new Map();
+  for (const k of keysOf(lang)) seen.set(k, (seen.get(k) || 0) + 1);
+  return [...seen].filter(([, n]) => n > 1).map(([k]) => k);
+};
+const dups = langs.map((l) => [l, dupsOf(l)]).filter(([, d]) => d.length);
+
 let bad = 0;
 
 if (dead.length) {
@@ -84,5 +102,13 @@ for (const [lang, missing, extra] of gaps) {
   for (const k of extra.slice(0, 5)) console.log(`       ortiqcha: ${k}`);
 }
 if (!gaps.length) console.log(`  ✅ Uchala til mos (${base.size} kalit)`);
+
+for (const [lang, ks] of dups) {
+  bad++;
+  console.log(`  ❌ ${lang}: ${ks.length} ta kalit IKKI MARTA yozilgan —`
+            + " oldingisi jimgina o'ladi:");
+  for (const k of ks.slice(0, 10)) console.log(`       ${k}`);
+}
+if (!dups.length) console.log("  ✅ Takrorlangan kalit yo'q (uchala tilda)");
 
 process.exit(bad ? 1 : 0);
