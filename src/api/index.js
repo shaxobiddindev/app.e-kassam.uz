@@ -11,14 +11,79 @@ import { rememberShopHead } from "../lib/ek-shop-print";
  * O'rniga sessiya tozalanadi va oyna qayta yuklanadi — `App.jsx` kirish
  * ekranini shu oynada chizadi.
  */
-function forceLogout() {
+function forceLogout(reason) {
   const lang = localStorage.getItem("ek_lang");
   localStorage.clear();
   if (lang) localStorage.setItem("ek_lang", lang);
 
+  const flag = reason === "taken-over" ? "session_taken_over=1" : "logged_out=1";
+
   // Nativ qobiqda (desktop/mobil) yo'naltirish yo'q — qayta yuklash kirish ekranini chizadi
   if (isNativeShell()) window.location.reload();
-  else window.location.replace(withLang(`${LOGIN_URL}?logged_out=1`));
+  else window.location.replace(withLang(`${LOGIN_URL}?${flag}`));
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SESSIYA BOSHQA QURILMAGA O'TDI (V97)
+
+   ⚠ JIMGINA CHIQARIB YUBORISH YETMAYDI. Kassir ekranda savat bilan
+   turadi va birdan kirish sahifasiga tushadi — u buni «ilova buzildi»
+   deb tushunadi va do'kon egasiga shunday aytadi. Sabab aytilishi
+   SHART: «hisobingizga boshqa qurilmadan kirildi».
+
+   ⚠ NEGA REACT EMAS, ODDIY DOM. Bu holatga tushganda ilovaning butun
+   ma'lumot qatlami o'lik: har so'rov 401 qaytaradi va React daraxti
+   xato holatida bo'lishi mumkin. Ogohlantirish esa ALBATTA
+   ko'rinishi kerak — u hech qanday holatga, hech qanday provayderga
+   bog'liq bo'lmasligi lozim.
+
+   ⚠ BIR MARTA. Bir vaqtda ketgan o'nta so'rov o'nta 401 qaytaradi va
+   o'nta oyna chizilardi.
+   ══════════════════════════════════════════════════════════════════════════ */
+let takenOverShown = false;
+
+function showTakenOver() {
+  if (takenOverShown) return;
+  takenOverShown = true;
+
+  const box = document.createElement("div");
+  box.setAttribute("role", "alertdialog");
+  box.setAttribute("aria-modal", "true");
+  box.style.cssText =
+    "position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;" +
+    "justify-content:center;padding:24px;background:rgba(10,12,18,.72);" +
+    "font-family:system-ui,-apple-system,'Segoe UI',sans-serif";
+
+  const card = document.createElement("div");
+  card.style.cssText =
+    "max-width:420px;width:100%;background:#fff;color:#101828;border-radius:16px;" +
+    "padding:28px 26px;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,.35)";
+
+  const title = document.createElement("div");
+  title.textContent = t("auth.takenOverTitle");
+  title.style.cssText = "font-size:19px;font-weight:800;margin-bottom:10px";
+
+  const body = document.createElement("div");
+  body.textContent = t("auth.takenOverBody");
+  body.style.cssText = "font-size:14px;line-height:1.55;color:#475467;margin-bottom:22px";
+
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.textContent = t("auth.takenOverAction");
+  btn.style.cssText =
+    "width:100%;min-height:48px;border:0;border-radius:12px;cursor:pointer;" +
+    "background:#1570ef;color:#fff;font-size:15px;font-weight:700";
+  btn.onclick = () => forceLogout("taken-over");
+
+  card.append(title, body, btn);
+  box.append(card);
+  document.body.append(box);
+  btn.focus();
+
+  /* ⚠ O'ZI HAM KETADI. Kassir ekran oldida bo'lmasligi mumkin
+     (monoblok kun bo'yi ochiq turadi) va ochiq sessiya ekranda
+     qolib ketmasligi kerak. */
+  setTimeout(() => forceLogout("taken-over"), 15000);
 }
 
 let refreshPromise = null;
@@ -141,6 +206,17 @@ async function request(path, options = {}, _retry = false) {
     const err = new Error(t("common.offline"));
     err.offline = true;
     throw err;
+  }
+
+  /* ⚠ SESSIYA BOSHQA QURILMAGA O'TDI — REFRESH QILINMAYDI (V97).
+     Refresh urinishi baribir muvaffaqiyatsiz tugaydi (eski refresh
+     token bekor qilingan), lekin u sababni YASHIRARDI: kassir
+     «AUTH_FAILED» degan umumiy yo'l bilan jimgina chiqib ketardi.
+     Sarlavha bo'yicha ajratiladi, chunki bu holatda javob tanasi
+     o'qilishi shart emas. */
+  if (res.status === 401 && res.headers.get("X-Session-Taken-Over") === "true") {
+    showTakenOver();
+    throw new Error("SESSION_TAKEN_OVER");
   }
 
   // Token muddati o'tgan — refresh qilib qayta urinib ko'r
