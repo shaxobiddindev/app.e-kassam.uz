@@ -3075,9 +3075,19 @@ export default function KassaPage({ toast, refreshLowStock }) {
                       <button type="button"
                               className={`cart-item-price ek-num${item.discountAllowed === false ? "" : " cart-item-price--edit"}`}
                               disabled={item.discountAllowed === false}
-                              title={item.discountAllowed === false ? t("products.discountHint") : undefined}
+                              /* ⚠ BITTA `title` (V97). Ilgari shu tugmada
+                                 IKKITA `title` turardi va JSX da keyingisi
+                                 oldingisini JIMGINA yeb ketardi: chegirma
+                                 berilmaydigan tovarda «nega ochilmayapti»
+                                 degan izoh HECH QACHON ko'rinmasdi —
+                                 yuqoridagi izohda yozilgan maqsadning
+                                 aynan teskarisi. Yig'ish faqat
+                                 OGOHLANTIRISH berardi, shuning uchun uzoq
+                                 sezilmadi. `scripts/check-dupattr.mjs`
+                                 endi buni to'sadi. */
+                              title={item.discountAllowed === false
+                                ? t("products.discountHint") : t("kassa.linePrice")}
                               onClick={() => setPriceModal(item)}
-                              title={t("kassa.linePrice")}
                               aria-label={`${item.name} — ${t("kassa.linePrice")}`}>
                         {item.discount > 0 && (
                           <s className="cart-item-price__was">{money(item.salePrice)}</s>

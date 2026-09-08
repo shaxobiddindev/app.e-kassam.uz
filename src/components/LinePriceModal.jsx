@@ -5,6 +5,10 @@ import { quantity as fmtQty } from "../utils";
 import { unitLabel } from "../lib/ek-labels";
 import { NumField } from "./ek/EkFields";
 import Overlay from "./ek/Overlay";
+import {
+  lineBase, lineQty, lineFloor, initialPrice, wholesaleOffer,
+  quickPrices, priceVerdict, priceDiscount, lineNetTotal, parsePrice,
+} from "../lib/ek-line-price";
 
 /* ══════════════════════════════════════════════════════════════════════════
    QATOR NARXINI TUSHIRISH (V48)
@@ -22,42 +26,38 @@ import Overlay from "./ek/Overlay";
    ⚠ Do'kon chegarasi (`maxDiscountPercent`) SERVERDA tekshiriladi va
    oshsa bajik so'raladi — bu yerda takrorlanmaydi: ikki joyda ikki xil
    chegara bo'lib qolishi mumkin edi.
+
+   ⚠ HISOB BU YERDA EMAS (V97). U `lib/ek-line-price.js` da va u yerda
+   sinaladi: ilgari hisob shu faylda, JSX bilan aralash turgani uchun
+   uchta pul xatosi uzoq vaqt sezilmay yotdi. Bu fayl endi faqat
+   chizadi.
    ══════════════════════════════════════════════════════════════════════════ */
 export default function LinePriceModal({ item, onClose, onApply }) {
-  const base = Number(item?.salePrice) || 0;
-  const qty = Number(item?.qty) || 0;
-  const current = base - (Number(item?.discount) || 0) / (qty || 1);
-  const [price, setPrice] = useState(String(Math.round(current)));
+  const base = lineBase(item);
+  const qty = lineQty(item);
+  const [price, setPrice] = useState(String(initialPrice(item)));
 
-  const num = Number(String(price).replace(/\D/g, "")) || 0;
+  const num = parsePrice(price);
 
-  /* ⚠ ENG PAST NARXNI SERVER BERADI (`ProductResponse.minPrice`).
-     Front uni O'ZI hisoblamaydi va bu ataylab: hisobda tovar foizi,
-     do'kon foizi va kassirning shaxsiy chegarasi qatnashadi, ya'ni
-     formula ikki joyda yozilsa ular ajralib ketishi va kassir
-     «ekranda ruxsat edi, saqlaganda rad etildi» degan holatga
-     tushishi mumkin edi. Eski serverda maydon yo'q — bunda chegara
-     ko'rsatilmaydi va tekshiruv faqat serverda qoladi. */
-  const minPrice = item?.minPrice == null ? null : Math.ceil(Number(item.minPrice));
-  const hasLimit = minPrice != null && Number.isFinite(minPrice) && minPrice < base;
+  const minPrice = lineFloor(item);
+  const hasLimit = minPrice != null && minPrice < base;
 
-  const tooHigh = num > base;
-  const tooLow  = minPrice != null && num > 0 && num < minPrice;
-  const ok = num > 0 && !tooHigh && !tooLow;
+  const verdict = priceVerdict(item, num);
+  const tooHigh = verdict === "high";
+  const tooLow  = verdict === "low";
+  const ok = verdict === "ok";
+
   /* Chegirma — QATOR bo'yicha jami summa (server aynan shuni kutadi). */
-  const discount = ok ? Math.max(0, Math.round((base - num) * qty * 100) / 100) : 0;
+  const discount = priceDiscount(item, num);
+
+  /* ⚠ OPTOM NARX — EGASI RUXSAT BERGAN NARX (V97). Kassir uni qo'lda
+     terib o'tirmasin: mijoz oldida har soniya sanaladi va qo'lda
+     terilgan raqamda xato ham bo'ladi. */
+  const wholesale = wholesaleOffer(item);
 
   /* Yaxlit narx tugmalari — eng past narxdan e'lon narxigacha.
      ⚠ Kassir raqam yozmasdan bosadi: mijoz oldida har soniya sanaladi. */
-  const quickPrices = (() => {
-    if (!hasLimit) return [];
-    const step = base >= 100000 ? 5000 : base >= 20000 ? 1000 : 500;
-    const out = [];
-    for (let v = Math.floor(base / step) * step; v >= minPrice && out.length < 4; v -= step) {
-      if (v < base && v > 0) out.push(v);
-    }
-    return out;
-  })();
+  const quick = quickPrices(item).filter((v) => v !== wholesale);
 
   return (
     <Overlay className="pay-modal-overlay ek-overlay" role="dialog" aria-modal="true"
@@ -83,16 +83,24 @@ export default function LinePriceModal({ item, onClose, onApply }) {
             {qty > 1 && <> · {fmtQty(qty, item?.unitDecimals)} {unitLabel(item?.unit)}</>}
           </div>
 
-          <NumField kind="money" autoFocus
+          {/* ⚠ `decimals={0}` — PUL BUTUN SO'M (V80). Ilgari bu yerda
+              maydonning odatiy ikki kasr xonasi turardi va nuqta
+              yozilsa narx 10 baravar o'qilardi (`parsePrice` izohiga
+              qarang). Endi nuqtani yozib bo'lmaydi. */}
+          <NumField kind="money" decimals={0} autoFocus
                     className="form-input qty-modal__input ek-num"
                     value={price} onChange={(e) => setPrice(e.target.value)} />
 
           {/* ⚠ NATIJA DARHOL KO'RINADI: kassir mijozga aytadigan raqam —
-              qatorning yangi jamisi, chegirma esa uning izohi. */}
+              qatorning yangi jamisi, chegirma esa uning izohi.
+
+              ⚠ JAMI `narx × miqdor` EMAS, chegirmadan keyingi HAQIQIY
+              jami: chekka aynan shu son tushadi. Ikkisi kasrli
+              miqdorda bir-biridan farq qilishi mumkin edi. */}
           <div className={`qty-modal__total ${tooHigh || tooLow ? "is-over" : ""}`}>
             {tooHigh ? t("kassa.priceTooHigh")
               : tooLow ? `${t("kassa.priceTooLow")}: ${money(minPrice)}`
-              : <>{money(num * qty)}{discount > 0 && <> · −{money(discount)}</>}</>}
+              : <>{money(lineNetTotal(item, num))}{discount > 0 && <> · −{money(discount)}</>}</>}
           </div>
 
           {/* ⚠ CHEGARA HAR DOIM KO'RINADI, xato bo'lganda emas. Kassir
@@ -109,9 +117,24 @@ export default function LinePriceModal({ item, onClose, onApply }) {
             </div>
           )}
 
-          {quickPrices.length > 0 && (
+          {/* ⚠ OPTOM NARX ALOHIDA VA NOMI BILAN, yaxlit tugmalar orasiga
+              qorishmaydi: kassir «21 000» degan yalang'och raqamdan uning
+              nima ekanini bilolmasdi. */}
+          {wholesale != null && (
+            <button type="button"
+                    className={`line-wholesale ${num === wholesale ? "is-on" : ""}`}
+                    onClick={() => setPrice(String(wholesale))}>
+              <span>
+                <i className="fa-solid fa-boxes-stacked" aria-hidden="true" />{" "}
+                {t("products.wholesalePrice")}
+              </span>
+              <b className="ek-num">{money(wholesale)}</b>
+            </button>
+          )}
+
+          {quick.length > 0 && (
             <div className="line-quick">
-              {quickPrices.map((v) => (
+              {quick.map((v) => (
                 <button key={v} type="button"
                         className={`line-quick__btn ${num === v ? "is-on" : ""}`}
                         onClick={() => setPrice(String(v))}>
