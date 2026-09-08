@@ -869,6 +869,7 @@ export default {
   "products.edit": "Edit product",
   "products.added": "Product added",
   "products.updated": "Product updated",
+  "products.barcodeCheckWarn": "The barcode check digit does not add up. Please verify.",
   "products.deleteTitle": "Delete product",
   "products.search": "Search by name or barcode…",
   "products.notFound": "No product found",
@@ -2304,6 +2305,8 @@ export default {
   "fiscalSetup.chainBlockHint": "By default only a warning is shown. Once on, the register stops working.",
 
   /* ══ Shared catalog and the deletion rules (V90) ══ */
+  "gcat.similarTitle": "The shared base has something similar",
+  "gcat.similarHint": "If it is the same product, take it via «From shared base» instead of typing it.",
   "gcat.button": "From shared base",
   "gcat.title": "Take from the shared catalog",
   "gcat.hint": "Ticked products go into your catalog. You set the price and stock yourself.",

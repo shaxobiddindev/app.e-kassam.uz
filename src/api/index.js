@@ -388,6 +388,22 @@ export const catalogApi = {
     return request(`/catalog/global/browse?${q}`);
   },
 
+  /**
+   * «Bunga o'xshash tovar bazada bormi?»
+   *
+   * ⚠ MAQSAD — DUBLIKATNI KIRISHDAN OLDIN TO'XTATISH. Umumiy bazada
+   * yagonalik faqat aniq shtrix-kod bo'yicha, ya'ni «Coca-Cola 0.5»
+   * va «Кока-Кола 0,5 л» bir raqami xato terilgan barkod bilan
+   * bemalol yonma-yon yashaydi. Do'kon tovarni qo'lda terishdan
+   * oldin bazadagini ko'rsa, ikkinchi nusxa umuman yaralmaydi.
+   */
+  globalSimilar: (name, barcode) => {
+    const q = new URLSearchParams();
+    if (name)    q.set("name", name);
+    if (barcode) q.set("barcode", barcode);
+    return request(`/catalog/global/similar?${q}`);
+  },
+
   /* ⚠ Serverga AYNAN belgilanganlar ketadi. «Hammasini ol, keyin
      keraksizini o'chir» degan yo'l yo'q: o'chirish tarixga tegadi. */
   globalImport: (ids, targetCategoryId) =>

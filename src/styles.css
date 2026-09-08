@@ -1086,6 +1086,10 @@ select.form-input { cursor: pointer; }
 /* Izoh matni — `--fg-tertiary` EMAS (CLAUDE.md 6b: u bezak rangi, o'qish
    uchun kontrasti yetmaydi). */
 .form-hint       { font-size: 11.5px; color: var(--fg-secondary); margin-top: 5px; line-height: 1.4; }
+/* ⚠ Ogohlantiruvchi izoh — xato EMAS. Maydon qizil ramka olmaydi va
+   saqlash to'silmaydi: bu «tekshirib ko'ring» degani, «noto'g'ri»
+   degani emas. Xato uchun alohida uslub bor (`.form-input.is-bad`). */
+.form-hint--warn { color: var(--fg-warning); font-weight: 600; }
 .ek-note         { display: flex; gap: 9px; align-items: flex-start; padding: 10px 12px; border-radius: 9px;
                    background: var(--bg-brand-subtle); border: 1px solid var(--border-brand);
                    color: var(--fg-brand); font-size: 12px; font-weight: 600; line-height: 1.45; }
@@ -1180,6 +1184,10 @@ select.form-input { cursor: pointer; }
 .gcat-pager span { font-size: 12px; color: var(--fg-secondary); font-weight: 700; }
 
 .gcat-result     { display: flex; flex-direction: column; gap: 8px; }
+/* O'xshash yozuvlar ro'yxati — tovar formasidagi kichik eslatma. */
+.gcat-hint       { margin: 6px 0; padding-inline-start: 18px; font-size: 12px; line-height: 1.6; }
+.gcat-hint li    { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 .gcat-result__row{ display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 9px;
                    background: var(--bg-sunken); font-size: 13px; font-weight: 700; color: var(--fg-primary); }
 

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { t } from "../lib/ek-i18n";
-import { productApi, mediaApi, shopApi, downloadScaleExport } from "../api";
+import { productApi, mediaApi, shopApi, catalogApi, downloadScaleExport } from "../api";
 import { BranchSelector, Modal } from "../components";
 import CatalogWizard from "../components/CatalogWizard";
 import GlobalCatalogImport from "../components/GlobalCatalogImport";
@@ -23,6 +23,7 @@ import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
 import { checkPrices, marginPercent, VIOLATION } from "../lib/ek-prices";
 import { rankItems, PRODUCT_SPEC } from "../lib/ek-search";
 import { asArray } from "../lib/ek-array";
+import { barcodeSuspicious } from "../lib/ek-barcode-check";
 
 /* ══════════════════════════════════════════════════════════════════════════
    Tovarlar.
@@ -113,6 +114,8 @@ export default function ProductsPage({ toast }) {
   const [branchId, setBranchId]     = useState(null);
   const [wizard, setWizard]         = useState(false);
   const [gcat,   setGcat]           = useState(false);
+  /* Umumiy bazadagi o'xshash yozuvlar — YANGI tovar kiritilayotganda. */
+  const [gcatHint, setGcatHint]     = useState([]);
   const [fiscal, setFiscal]         = useState(null);
   /* Do'kon yo'nalishi — kiyim maydonlari shu asosda ko'rsatiladi. */
   const [bizType, setBizType]       = useState("");
@@ -152,6 +155,35 @@ export default function ProductsPage({ toast }) {
        ko'rinmaydi, lekin forma baribir ishlaydi. */
     shopApi.getProfile().then((r) => setBizType(r?.data?.businessType || "")).catch(() => {});
   }, [branchId, products.length]);
+
+  /* ══ UMUMIY BAZADA O'XSHASHI BORMI (V91) ═══════════════════════════
+     ⚠ MAQSAD — DUBLIKATNI KIRISHDAN OLDIN TO'XTATISH. Umumiy bazada
+     yagonalik faqat aniq shtrix-kod bo'yicha, ya'ni «Coca-Cola 0.5»
+     va «Кока-Кола 0,5 л» bir raqami xato terilgan barkod bilan
+     bemalol yonma-yon yashaydi. Do'kon tovarni qo'lda terishdan
+     oldin bazadagini ko'rsa, ikkinchi nusxa umuman yaralmaydi.
+
+     ⚠ FAQAT YANGI TOVARDA. Mavjud tovarni tahrirlayotgan odam uni
+     allaqachon o'ziniki deb biladi va «o'xshashi bor» degan gap
+     unga xalaqit berardi.
+
+     ⚠ KUTISH (500 ms) SHART: usiz har bosilgan harf serverga
+     so'rov yuborardi. Forma yopilganda taymer ham bekor qilinadi.
+
+     ⚠ Xatosi JIM yutiladi: bu yordamchi, tovar saqlashga hech
+     qanday aloqasi yo'q. */
+  useEffect(() => {
+    if (modal !== "add") { setGcatHint([]); return undefined; }
+    const name = (form.name || "").trim();
+    const code = (form.barcode || "").trim();
+    if (name.length < 3 && code.length < 6) { setGcatHint([]); return undefined; }
+    const timer = setTimeout(() => {
+      catalogApi.globalSimilar(name, code)
+        .then((r) => setGcatHint(asArray(r.data)))
+        .catch(() => setGcatHint([]));
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [modal, form.name, form.barcode]);
 
   // ── Modal ochish ───────────────────────────────────────────
   const openAdd = () => { setForm(EMPTY_FORM); setModal("add"); };
@@ -703,11 +735,60 @@ export default function ProductsPage({ toast }) {
             <div className="grid-2">
               <FormGroup label={t("products.barcode")}>
                 <Field className="form-input ek-num" kind="barcode" value={form.barcode} onChange={setField("barcode")} placeholder="4780001111111" />
+                {/* ══ NAZORAT RAQAMI — OGOHLANTIRISH, TO'SIQ EMAS ══════
+                    Shtrix-kodning oxirgi raqami qolganlaridan
+                    hisoblanadi. Bitta raqamni noto'g'ri tergan odamning
+                    kodi bu tekshiruvdan o'tmaydi.
+
+                    ⚠ NEGA AYNAN SHU YERDA MUHIM: bu tovar umumiy
+                    bazaga ham taklif qilinadi. Xato kod tasdiqlansa,
+                    u yuzlab do'konga tarqaladi va ularning hech
+                    birida skaner uni topa olmaydi.
+
+                    ⚠ SAQLASHNI TO'SMAYDI: ichki kod, artikul va
+                    ITF-14 nazorat raqamiga bo'ysunmaydi va ular
+                    qonuniy. `barcodeSuspicious` ularni belgilamaydi
+                    ham — faqat standart uzunlikdagi RAQAMLI kodning
+                    nazorat raqami noto'g'ri bo'lsa ogohlantiradi. */}
+                {barcodeSuspicious(form.barcode) && (
+                  <div className="form-hint form-hint--warn">
+                    <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />{" "}
+                    {t("products.barcodeCheckWarn")}
+                  </div>
+                )}
               </FormGroup>
               <FormGroup label={t("products.sku")}>
                 <Field kind="sku" className="form-input mono" value={form.sku} onChange={setField("sku")} placeholder="ART-001" />
               </FormGroup>
             </div>
+
+            {/* ══ UMUMIY BAZADA O'XSHASHI BOR ═══════════════════════════
+                ⚠ TAKLIF, TO'SIQ EMAS. «Boshqa hajmdagi shu tovar» bilan
+                «o'sha tovarning xato yozilgani» ni faqat odam ajrata
+                oladi. Ro'yxat faqat savolni qo'yadi.
+
+                ⚠ Bu yerdan TO'G'RIDAN-TO'G'RI olib bo'lmaydi va bu
+                ataylab: import o'z qoidalariga ega (kategoriya
+                tanlash, takrorni to'sish, barkod to'qnashuvi). Ularni
+                shu kichik panelda takrorlash — ikkinchi nusxa yozish
+                va ertami-kechmi ikki xil natija demakdir. Shuning
+                uchun odam «Umumiy bazadan» oynasiga yuboriladi. */}
+            {gcatHint.length > 0 && (
+              <div className="ek-note ek-note--warn" style={{ marginBottom: 12 }}>
+                <i className="fa-solid fa-clone" aria-hidden="true" />
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontWeight: 700 }}>{t("gcat.similarTitle")}</div>
+                  <ul className="gcat-hint">
+                    {gcatHint.slice(0, 3).map((r) => (
+                      <li key={r.id}>
+                        <span className="ek-num">{r.barcode}</span> — {r.name}
+                      </li>
+                    ))}
+                  </ul>
+                  <div style={{ fontSize: 11.5 }}>{t("gcat.similarHint")}</div>
+                </div>
+              </div>
+            )}
 
             {/* PLU — TAROZIdagi tovar kodi (V42).
 

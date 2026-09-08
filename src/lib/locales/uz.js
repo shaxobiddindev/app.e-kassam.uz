@@ -905,6 +905,7 @@ export default {
   "products.edit": "Mahsulotni tahrirlash",
   "products.added": "Mahsulot qo'shildi",
   "products.updated": "Mahsulot yangilandi",
+  "products.barcodeCheckWarn": "Shtrix-kodning nazorat raqami to'g'ri kelmadi. Tekshirib ko'ring.",
   "products.deleteTitle": "Mahsulotni o'chirish",
   "products.search": "Nom yoki barkod bo'yicha qidirish…",
   "products.notFound": "Mahsulot topilmadi",
@@ -2412,6 +2413,8 @@ export default {
   "fiscalSetup.chainBlockHint": "Standart holatda faqat ogohlantirish beriladi. Yoqilsa kassa ishlamay qoladi.",
 
   /* ══ Umumiy katalogdan olish va o'chirish siyosati (V90) ══ */
+  "gcat.similarTitle": "Umumiy bazada o'xshashi bor",
+  "gcat.similarHint": "Agar shu tovar bo'lsa, «Umumiy bazadan» orqali oling — qo'lda terish shart emas.",
   "gcat.button": "Umumiy bazadan",
   "gcat.title": "Umumiy katalogdan olish",
   "gcat.hint": "Belgilangan tovarlar katalogingizga qo'shiladi. Narx va qoldiqni keyin o'zingiz qo'yasiz.",
