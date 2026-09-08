@@ -324,6 +324,12 @@ export const productApi = {
   create:       (data)     => request("/products",     { method: "POST",   body: JSON.stringify(data) }),
   update:       (id, data) => request(`/products/${id}`, { method: "PUT",  body: JSON.stringify(data) }),
   delete:       (id)       => request(`/products/${id}`, { method: "DELETE" }),
+  /* ⚠ O'CHIRISHDAN OLDIN SO'RALADI. Server tovarni ko'radi va nima
+     bo'lishini aytadi: haqiqatan o'chiriladimi, arxivga tushadimi
+     yoki umuman mumkin emasmi. Ilgari front «o'chirasizmi?» deb
+     so'rab, keyin serverning rad javobini xato sifatida ko'rsatardi
+     — foydalanuvchi nima bo'lganini tushunmasdi. */
+  deletePreview: (id)      => request(`/products/${id}/delete-preview`),
   toggleActive: (id)       => request(`/products/${id}/toggle-active`, { method: "PATCH" }),
   fiscalReadiness: ()      => request("/products/fiscal-readiness"),
 
@@ -359,6 +365,36 @@ export const catalogApi = {
   global:     (barcode) => request(`/catalog/global/${encodeURIComponent(barcode)}`),
   globalSearch: (q, page = 0, size = 30) =>
                   request(`/catalog/global?q=${encodeURIComponent(q)}&page=${page}&size=${size}`),
+
+  /* ══ UMUMIY KATALOGDAN TANLAB OLISH (V90) ═══════════════════════════
+     ⚠ `globalSearch` DAN BOSHQA NARSA. U kassadagi barkod qidiruvi
+     uchun: bitta tovar topiladi va shu zahoti formaga qo'yiladi.
+     Bu yerdagi `browse` esa RO'YXAT: do'kon uni ko'zdan kechiradi,
+     keraksizini belgidan chiqaradi va bir bosishda o'ziga oladi.
+
+     ⚠ `imported` bayrog'i server tomondan keladi va u shu ekranning
+     butun ma'nosi: usiz do'kon qaysi tovarni allaqachon olganini
+     bilmasdi va qayta olib, katalogida ikki nusxaga ega bo'lardi. */
+  globalCategories: () => request("/catalog/global/categories"),
+
+  globalBrowse: ({ search, categoryId, businessType, onlyNew, page = 0, size = 50 } = {}) => {
+    const q = new URLSearchParams();
+    if (search)       q.set("search", search);
+    if (categoryId)   q.set("categoryId", categoryId);
+    if (businessType) q.set("businessType", businessType);
+    if (onlyNew)      q.set("onlyNew", "true");
+    q.set("page", page);
+    q.set("size", size);
+    return request(`/catalog/global/browse?${q}`);
+  },
+
+  /* ⚠ Serverga AYNAN belgilanganlar ketadi. «Hammasini ol, keyin
+     keraksizini o'chir» degan yo'l yo'q: o'chirish tarixga tegadi. */
+  globalImport: (ids, targetCategoryId) =>
+    request("/catalog/global/import", {
+      method: "POST",
+      body: JSON.stringify({ ids, targetCategoryId: targetCategoryId || null }),
+    }),
 };
 
 // ─── Markirovka ("Asl Belgisi") ───────────────────────────────

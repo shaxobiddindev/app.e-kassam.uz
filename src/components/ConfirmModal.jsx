@@ -29,6 +29,20 @@ export default function ConfirmModal({
   type = "info",
   confirmText,
   cancelText,
+  /**
+   * XABAR OYNASI — savol emas, TUSHUNTIRISH.
+   *
+   * ⚠ Nima uchun kerak. «Bu amalni bajarib bo'lmaydi, mana sababi»
+   * degan holat tizimda bor edi, lekin uni ko'rsatadigan joy yo'q
+   * edi: kod qizil «toast» chiqarardi va u uch soniyada yo'qolardi.
+   * Foydalanuvchi «omborda 12 dona qoldiq bor» degan gapni o'qib
+   * ulgurmasdi va tugmani yana bosardi.
+   *
+   * ⚠ «Bekor qilish» tugmasi CHIZILMAYDI: bekor qiladigan narsa
+   * yo'q. Ikkita bir xil ishni qiladigan tugma — foydalanuvchini
+   * qaysi biri xavfsiz deb o'ylashga majbur qiladi.
+   */
+  acknowledge = false,
   onConfirm,
   onCancel,
 }) {
@@ -41,11 +55,14 @@ export default function ConfirmModal({
       maxWidth={400}
       footer={
         <div style={{ display: "flex", gap: 12, justifyContent: "flex-end", width: "100%" }}>
-          <button className="btn btn-outline btn-sm" onClick={onCancel}>
-            {cancelText || t("common.cancel")}
-          </button>
-          <button className={`btn btn-sm ${s.btn}`} onClick={onConfirm} autoFocus>
-            {confirmText || t("common.confirm")}
+          {!acknowledge && (
+            <button className="btn btn-outline btn-sm" onClick={onCancel}>
+              {cancelText || t("common.cancel")}
+            </button>
+          )}
+          <button className={`btn btn-sm ${acknowledge ? "btn-primary" : s.btn}`}
+                  onClick={onConfirm} autoFocus>
+            {confirmText || t(acknowledge ? "common.close" : "common.confirm")}
           </button>
         </div>
       }

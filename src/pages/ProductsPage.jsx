@@ -3,6 +3,7 @@ import { t } from "../lib/ek-i18n";
 import { productApi, mediaApi, shopApi, downloadScaleExport } from "../api";
 import { BranchSelector, Modal } from "../components";
 import CatalogWizard from "../components/CatalogWizard";
+import GlobalCatalogImport from "../components/GlobalCatalogImport";
 import { Empty, Field, SearchBar, FormGroup } from "../components/ui";
 import { useConfirm } from "../context/ConfirmProvider";
 import { useAuth } from "../hooks/useAuth";
@@ -111,6 +112,7 @@ export default function ProductsPage({ toast }) {
   const [uploading, setUploading]   = useState(false);
   const [branchId, setBranchId]     = useState(null);
   const [wizard, setWizard]         = useState(false);
+  const [gcat,   setGcat]           = useState(false);
   const [fiscal, setFiscal]         = useState(null);
   /* Do'kon yo'nalishi — kiyim maydonlari shu asosda ko'rsatiladi. */
   const [bizType, setBizType]       = useState("");
@@ -302,17 +304,68 @@ export default function ProductsPage({ toast }) {
     }
   };
 
-  // ── O'chirish ──────────────────────────────────────────────
+  /* ══ O'CHIRISH — AVVAL SO'RAYMIZ, KEYIN SO'RAYMIZ (V90) ═══════════════
+
+     ⚠ ILGARI QANDAY EDI. Ekran «o'chirishni tasdiqlaysizmi?» deb
+     so'rardi, odam «ha» bosardi, server esa rad etardi va javob
+     qizil «toast» bo'lib chiqardi. Ya'ni foydalanuvchi HAR SAFAR
+     bir xil yo'ldan o'tardi: tasdiqla → xato → nima qilishni o'yla.
+
+     ⚠ TOVARNI O'CHIRISH BITTA AMAL EMAS, UCHTASI. Server qaysi biri
+     ekanini oldindan aytadi (`delete-preview`):
+
+       · BLOCKED      — omborda qoldiq bor. O'chirish mumkin emas:
+                        qoldiqni yo'q qilish tannarxni ham, hisobotni
+                        ham buzadi. Avval sotiladi yoki hisobdan
+                        chiqariladi. Bu yerda TUSHUNTIRISH oynasi
+                        chiqadi, savol emas.
+       · ARCHIVE_ONLY — tovar sotilgan yoki hujjatlarda bor. Yozuv
+                        qoladi, faqat ro'yxatdan chiqadi: uni
+                        o'chirish eski cheklarni nomsiz qoldirardi.
+       · HARD_DELETE  — hech qayerda ishlatilmagan, haqiqatan
+                        o'chiriladi.
+
+     ⚠ MATN SERVERDAN KELADI (`message`) va u foydalanuvchi tilida.
+     Uni bu yerda takrorlash — ikkita manba, ya'ni ertami-kechmi
+     ikki xil javob demakdir. */
   const handleDelete = async (product) => {
+    let verdict;
+    try {
+      verdict = (await productApi.deletePreview(product.id)).data || {};
+    } catch (err) {
+      toast.error(err.message);
+      return;
+    }
+
+    if (verdict.action === "BLOCKED") {
+      await confirm({
+        title: t("products.deleteBlockedTitle"),
+        message: `${product.name}\n\n${verdict.message || ""}`,
+        type: "warning",
+        acknowledge: true,
+      });
+      return;
+    }
+
+    const archive = verdict.action === "ARCHIVE_ONLY";
     const ok = await confirm({
-      title: t("products.deleteTitle"),
-      message: `"${product.name}" mahsulotini o'chirishni tasdiqlaysizmi?`,
-      type: "danger",
+      title: t(archive ? "products.archiveTitle" : "products.deleteTitle"),
+      /* ⚠ Sotuv va hujjat SONI ko'rsatiladi. «Tarixda bor» degan gap
+         mavhum; «7 marta sotilgan» esa qaror qabul qilish uchun
+         yetarli ma'lumot. */
+      message: archive
+        ? `${product.name}\n\n${verdict.message || ""}\n\n${
+            t("products.archiveCounts", {
+              sales: verdict.saleCount || 0, docs: verdict.documentCount || 0 })}`
+        : `${product.name}\n\n${verdict.message || ""}`,
+      type: archive ? "warning" : "danger",
+      confirmText: t(archive ? "products.archive" : "common.delete"),
     });
     if (!ok) return;
+
     try {
       await productApi.delete(product.id);
-      toast.success(t("common.deleted"));
+      toast.success(t(archive ? "products.archived" : "common.deleted"));
       loadData();
     } catch (err) {
       toast.error(err.message);
@@ -412,6 +465,14 @@ export default function ProductsPage({ toast }) {
             <>
               <button className="btn btn-outline btn-sm" onClick={() => setWizard(true)}>
                 <i className="fa-solid fa-wand-magic-sparkles" /> {t("products.fromCatalog")}
+              </button>
+              {/* ⚠ TAYYOR KATALOG BILAN BIR XIL EMAS. Yuqoridagi tugma —
+                  bo'sh do'kon uchun tipik tovarlar shabloni (bir marta,
+                  boshlanishida). Bu esa UMUMIY BAZA: unda haqiqiy
+                  shtrix-kodlar bor va u kundan kunga o'sib boradi —
+                  yangi tovar kelganda shu yerdan qidiriladi. */}
+              <button className="btn btn-outline btn-sm" onClick={() => setGcat(true)}>
+                <i className="fa-solid fa-cloud-arrow-down" /> {t("gcat.button")}
               </button>
               {/* Taroziga eksport (V42) — faqat PLU biriktirilgan tovarlar
                   chiqadi. Tugma HAR DOIM ko'rinadi: PLU'li tovar yo'q bo'lsa
@@ -583,6 +644,15 @@ export default function ProductsPage({ toast }) {
           toast={toast}
           onClose={() => setWizard(false)}
           onDone={() => { setWizard(false); loadData(); }}
+        />
+      )}
+
+      {/* ── Umumiy katalogdan olish (V90) ── */}
+      {gcat && (
+        <GlobalCatalogImport
+          toast={toast}
+          onClose={() => setGcat(false)}
+          onDone={() => { setGcat(false); loadData(); }}
         />
       )}
 

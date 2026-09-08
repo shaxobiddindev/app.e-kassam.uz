@@ -1137,6 +1137,52 @@ select.form-input { cursor: pointer; }
 .cat-chip.on     { border-color: var(--border-brand); background: var(--bg-brand-subtle); color: var(--fg-brand); }
 .cat-chip input  { accent-color: var(--bg-brand); }
 
+/* ══ Umumiy katalogdan olish (V90) ═══════════════════════════════════════
+   ⚠ Qator BOSILADIGAN: katakcha 20px, barmoq esa undan katta. Butun
+   qator `<label>` bo'lgani uchun har joyga tegish belgilaydi. */
+.gcat-bar        { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
+.gcat-only       { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px;
+                   font-weight: 700; color: var(--fg-secondary); cursor: pointer; white-space: nowrap; }
+.gcat-only input { accent-color: var(--bg-brand); }
+.gcat-head       { display: flex; align-items: center; justify-content: space-between;
+                   padding: 6px 2px; border-bottom: 1px solid var(--border-subtle); }
+.gcat-all        { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px;
+                   font-weight: 800; color: var(--fg-primary); cursor: pointer; }
+.gcat-all input  { accent-color: var(--bg-brand); }
+.gcat-count      { font-size: 11.5px; color: var(--fg-secondary); font-weight: 700; }
+
+.gcat-list       { max-height: 44vh; overflow-y: auto; display: flex; flex-direction: column; gap: 4px;
+                   padding: 8px 0; }
+.gcat-row        { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 9px;
+                   border: 1.5px solid transparent; background: var(--bg-sunken); cursor: pointer;
+                   transition: border-color var(--dur-fast) var(--ease-out); }
+.gcat-row:hover  { border-color: var(--border-brand); }
+.gcat-row.on     { border-color: var(--border-brand); background: var(--bg-brand-subtle); }
+/* ⚠ Olingan qator XIRALASHTIRILADI, YASHIRILMAYDI: do'kon uni ko'rib
+   «bazada bor ekan» deb tushunishi kerak, aks holda qo'lda qayta
+   kiritardi. */
+.gcat-row.taken  { opacity: .62; cursor: default; }
+.gcat-row.taken:hover { border-color: transparent; }
+.gcat-row input  { accent-color: var(--bg-brand); flex: none; }
+.gcat-row__main  { flex: 1; min-width: 0; }
+.gcat-row__name  { font-size: 13px; font-weight: 700; color: var(--fg-primary);
+                   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gcat-row__meta  { font-size: 11px; color: var(--fg-secondary);
+                   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.gcat-badge      { flex: none; display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px;
+                   border-radius: 999px; font-size: 10.5px; font-weight: 800; white-space: nowrap; }
+.gcat-badge--taken { background: var(--bg-success-subtle); color: var(--fg-success); }
+.gcat-badge--mine  { background: var(--bg-warning-subtle); color: var(--fg-warning); }
+.gcat-badge--no    { background: var(--bg-danger-subtle);  color: var(--fg-danger); }
+
+.gcat-pager      { display: flex; align-items: center; justify-content: center; gap: 10px; padding-top: 8px; }
+.gcat-pager span { font-size: 12px; color: var(--fg-secondary); font-weight: 700; }
+
+.gcat-result     { display: flex; flex-direction: column; gap: 8px; }
+.gcat-result__row{ display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 9px;
+                   background: var(--bg-sunken); font-size: 13px; font-weight: 700; color: var(--fg-primary); }
+
 /* ══ Markirovka yorliqlari ═══════════════════════════════════════════════ */
 .mark-modal      { width: min(560px, 94vw); }
 .mark-modal__body{ padding: 18px; }
