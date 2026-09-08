@@ -896,6 +896,8 @@ export default {
   "products.notFound": "Товар не найден",
   "products.name": "Название товара",
   "products.barcode": "Штрихкод",
+  "products.shortCode": "Короткий номер",
+  "products.shortCodeHint": "Введите этот номер на кассе — товар выйдет первым",
   "products.salePrice": "Цена продажи",
   "products.costPrice": "Себестоимость",
   "products.category": "Категория",

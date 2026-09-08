@@ -226,6 +226,10 @@ export default function KassaPage({ toast, refreshLowStock }) {
       : c)));
   const [search, setSearch]         = useState("");
   const [searching, setSearching]   = useState(true);   // birinchi yuklash
+  /* Qidiruv qatorida FAQAT raqam turibdimi — qisqa raqamni katakchada
+     ko'rsatish uchun (V107). Bo'sh so'rov emas: bo'shda butun katalog
+     chiqadi va har katakchada raqam turishi shovqin bo'lardi. */
+  const numericSearch = /^\d{1,6}$/.test(search.trim());
   const tilesBusy = useLoading(searching);
   /* ══ TO'LOV (V58) ═══════════════════════════════════════════════════
      ⚠ `payType` VA `split` O'RNIGA IKKI HOLAT. Ilgari to'lov turi
@@ -3042,6 +3046,13 @@ export default function KassaPage({ toast, refreshLowStock }) {
                   view={view}
                   onPick={pickProduct}
                   changed={flash.has(p.id)}
+                  /* ⚠ RAQAM FAQAT RAQAM BILAN QIDIRILGANDA (V107).
+                     Kassir «142» deb yozganda katakchalarda o'z
+                     raqamlari chiqadi va u qaysi raqam qaysi tovarni
+                     ochganini KO'RADI — keyingi safar to'g'ridan-to'g'ri
+                     yozadi. Qolgan paytda raqam ko'rinmaydi: bu ekranda
+                     har piksel tovarlar ro'yxatidan olinadi. */
+                  showCode={numericSearch}
                 />
               ))}
               {products.length === 0 && !searching && (

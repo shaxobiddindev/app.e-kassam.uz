@@ -896,6 +896,8 @@ export default {
   "products.notFound": "No product found",
   "products.name": "Product name",
   "products.barcode": "Barcode",
+  "products.shortCode": "Short number",
+  "products.shortCodeHint": "Type this number at the till and the product comes up first",
   "products.salePrice": "Sale price",
   "products.costPrice": "Cost price",
   "products.category": "Category",

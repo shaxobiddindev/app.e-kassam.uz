@@ -45,7 +45,8 @@ function initialsOf(name) {
  * ishlaydi. Kamaytirilgan qiymatni obyektga yozib yuborsak, savat ikki
  * marta ayirilardi va kassir hali bori bor tovarni qo'sha olmay qolardi.
  */
-export default function ProductTile({ product, view = "tiles", onPick, available, changed = false }) {
+export default function ProductTile({ product, view = "tiles", onPick, available,
+                                     changed = false, showCode = false }) {
   const p = product;
   const tracks = p.stockQuantity != null;
   const shown = available != null ? available : p.stockQuantity;
@@ -77,6 +78,19 @@ export default function ProductTile({ product, view = "tiles", onPick, available
       )}
 
       <span className="product-body">
+        {/* ⚠ QISQA RAQAM FAQAT RAQAM BILAN QIDIRILGANDA (V107).
+            Kassir raqamni ekrandan ko'rib O'RGANADI, lekin uni har
+            katakchada doim ko'rsatish bu ekranda qimmat: bu yerda
+            har piksel tovarlar ro'yxatidan olinadi va do'kon egasi
+            buni bir necha marta aytgan.
+
+            Shuning uchun raqam AYNAN KERAK BO'LGANDA chiqadi —
+            kassir raqam yozib qidirganda. Shunda u qaysi raqam
+            qaysi tovarni ochganini ko'radi va keyingi safar
+            to'g'ridan-to'g'ri yozadi. */}
+        {showCode && p.shortCode != null && (
+          <span className="product-code ek-num">№{p.shortCode}</span>
+        )}
         <span className="product-name">{p.name}</span>
 
         {p.attributes && <span className="product-attrs">{attrText(p.attributes)}</span>}

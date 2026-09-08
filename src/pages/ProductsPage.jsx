@@ -465,6 +465,11 @@ export default function ProductsPage({ toast }) {
   const COLS = useMemo(() => [
     { key: "name",  label: t("products.col"),       type: "text",   get: (p) => p.name },
     { key: "code",  label: t("products.barcode"),   type: "text",   get: (p) => p.barcode || p.sku },
+    /* ⚠ QISQA RAQAM FILTRDA HAM (V107): «raqami 50 dan kichik» degan
+       so'rov do'kon egasiga eng eski (ya'ni asosiy) tovarlarni
+       beradi. Jadvalda alohida USTUN emas — u kod katagining ichida
+       turadi va yana bitta ustun jadvalni bekorga kengaytirardi. */
+    { key: "short", label: t("products.shortCode"),  type: "number", get: (p) => p.shortCode },
     { key: "cat",   label: t("products.category"),  type: "text",   get: (p) => p.categoryName },
     { key: "price", label: t("products.salePrice"), type: "number", get: (p) => p.salePrice },
     { key: "qty",   label: t("inv.currentQty"),     type: "number", get: (p) => p.stockQuantity },
@@ -687,6 +692,16 @@ export default function ProductsPage({ toast }) {
                         </div>
                       </td>
                       <td>
+                        {/* ⚠ QISQA RAQAM TEPADA VA QALIN (V107), barkod
+                            esa mayda yozuvda. Sabab oddiy: kassir
+                            yodida AYNAN shu raqam qoladi va u
+                            ko'rinmasa, eslab ham qolmaydi. Barkod
+                            skaner uchun — uni odam o'qimaydi. */}
+                        {p.shortCode != null && (
+                          <div className="ek-num fw-800" title={t("products.shortCodeHint")}>
+                            №{p.shortCode}
+                          </div>
+                        )}
                         <span className="ek-num text-muted" style={{ fontSize: 12 }}>
                           {p.barcode || p.sku || "—"}
                         </span>

@@ -932,6 +932,10 @@ export default {
   "products.notFound": "Mahsulot topilmadi",
   "products.name": "Mahsulot nomi",
   "products.barcode": "Barkod",
+  /* QISQA RAQAM (V107) — kassir yodida turadigan kod. Barkod bilan
+     bitta manba: 142 → 2 000142 7. */
+  "products.shortCode": "Qisqa raqam",
+  "products.shortCodeHint": "Kassada shu raqamni yozsangiz, tovar birinchi chiqadi",
   "products.salePrice": "Sotuv narxi",
   "products.costPrice": "Tan narxi",
   "products.category": "Kategoriya",
