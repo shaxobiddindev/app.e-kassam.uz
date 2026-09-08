@@ -3087,7 +3087,34 @@ export default function KassaPage({ toast, refreshLowStock }) {
                     onClick={() => setPickedId(item.id)}
                   >
                     <div className="cart-item-info">
-                      <div className="cart-item-name">{item.name}</div>
+                      <div className="cart-item-name">
+                        <span className="cart-item-name__txt">{item.name}</span>
+                        {/* ⚠ ZARARIGA SOTILAYOTGAN TOVAR (V99).
+                            Kirim tan narxni sotuv yoki optom narxdan
+                            yuqoriga chiqarganda paydo bo'ladi va bu
+                            TO'SILMAYDI (`Prices` izohi). Kassir esa
+                            hozirgacha hech narsa ko'rmasdi: chegirma
+                            qo'yilmagan sotuv `Discounts.decide` da
+                            birinchi qatordayoq `ALLOW` qaytarardi —
+                            zarar chegirmadan emas, TANNARXdan kelib
+                            chiqqani uchun.
+
+                            ⚠ TO'SMAYDI, faqat KO'RSATADI. Muddati
+                            tugayotgan tovarni yoki aksiyani zarariga
+                            sotish haqiqiy ehtiyoj; to'sish do'konni
+                            to'xtatib qo'yardi. To'sish alohida
+                            sozlama bilan (`Shop.allowLossSale`) va u
+                            chegirma yo'lida allaqachon ishlaydi. */}
+                        {(item.belowCost || item.belowWholesale) && (
+                          <span className="cart-loss"
+                                title={item.belowCost
+                                  ? t("products.belowCostTitle")
+                                  : t("products.belowWholesaleTitle")}>
+                            <i className="fa-solid fa-arrow-trend-down" aria-hidden="true" />
+                            {t("products.belowBadge")}
+                          </span>
+                        )}
+                      </div>
                       {/* Tarozili tovarda "0.35 kg × 95 000" — faqat jami
                           summani ko'rsatish kassirni ham, mijozni ham
                           tekshirish imkonidan mahrum qilardi. */}

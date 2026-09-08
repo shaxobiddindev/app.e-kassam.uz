@@ -1011,7 +1011,25 @@ select.form-input { cursor: pointer; }
 .cart-item       { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--border); transition: .15s; }
 .cart-item:hover { background: var(--bg-hover); }
 .cart-item-info  { flex: 1; min-width: 0; }
-.cart-item-name  { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* ⚠ NOM QATORI FLEKS BO'LDI (V99) — yonida «Zarariga» belgisi turadi.
+
+   ⚠ QISQARTIRISH BOLAGA KO'CHDI va bu MAJBURIY: `text-overflow:
+   ellipsis` FLEKS KONTEYNERDA ishlamaydi. Qoidalar shu qatorda
+   qoldirilganda uzun nom uch nuqtasiz qirqilar, belgi esa qatordan
+   surilib chiqib ketardi — ya'ni ogohlantirish aynan kerak paytda
+   ko'rinmasdi.
+
+   ⚠ `min-width: 0` — fleks bolasining standart eng kichik kengligi
+   `auto` va u qisqarishga YO'L QO'YMAYDI. Usiz uzun nom belgini
+   siqib chiqarardi. */
+.cart-item-name { display: flex; align-items: center; min-width: 0; font-size: 13px; font-weight: 700; }
+.cart-item-name__txt {
+  flex: 0 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 /* ⚠ NARX QATORI — FLEKS, IKKI BOLASI BOR (V99).
    Chegirmali qatorda ikkita son yonma-yon turadi: ustidan chizilgan
    eskisi va joriysi. Tor savatda ular sig'masligi mumkin va SHUNDA
@@ -6202,3 +6220,27 @@ button.stk__c:hover { background: var(--bg-hover); }
 }
 .prod-below-note > div { flex: 1 1 auto; }
 .prod-below-note > button { flex: 0 0 auto; margin-left: auto; }
+
+/* ══ KASSADA ZARARIGA SOTILAYOTGAN QATOR (V99) ═══════════════════════
+
+   ⚠ SAVATDAGI JOY TOR va narx qatori allaqachon bir marta kesilib
+   muammo bo'lgan. Shuning uchun belgi NOM qatorida turadi va
+   `flex-shrink: 0` bilan qisqarmaydi — nomning o'zi qisqaradi.
+
+   ⚠ RANG YOLG'IZ SIGNAL EMAS: ikonka ham bor. Monoblok ekrani ko'pincha
+   arzon va burchakdan qaralganda qizil kulrangdan farq qilmaydi. */
+.cart-loss {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex: 0 0 auto;
+  margin-left: 6px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.5;
+  white-space: nowrap;
+  color: #fff;
+  background: var(--danger, #D64545);
+}

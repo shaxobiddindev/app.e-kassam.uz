@@ -67,8 +67,12 @@ const browser = await puppeteer.launch({
 const ITEMS = [
   { id: 1, name: "Monarx ketchup klassik 900 g", salePrice: 13990, qty: 1,
     discount: 768, unit: "DONA", unitDecimals: 0, costPrice: 9000, discountAllowed: true },
+  /* ⚠ ENG UZUN NOMLI QATOR «zarariga» BELGISINI HAM OLADI (V99):
+     belgi eng tor savatda, eng uzun nom yonida sinalishi kerak —
+     boshqa har qanday holat undan yengilroq. */
   { id: 2, name: "Yog'och ko'mir premium 10 kg qop", salePrice: 249900, qty: 3,
-    discount: 74970, unit: "DONA", unitDecimals: 0, costPrice: 180000, discountAllowed: true },
+    discount: 74970, unit: "DONA", unitDecimals: 0, costPrice: 180000, discountAllowed: true,
+    belowCost: false, belowWholesale: true },
   { id: 3, name: "Tovuq filesi sovutilgan", salePrice: 68500, qty: 1.235,
     discount: 12345, unit: "KG", unitDecimals: 3, costPrice: 50000, discountAllowed: true },
 ];
@@ -207,6 +211,58 @@ for (const o of overlaps) {
   if (o.over > 0) no(`narx miqdor tugmalari ostiga ${o.over}px kirdi: «${o.text}»`);
   else ok("narx tugmalarga tegmaydi");
 }
+
+/* ── ZARARIGA SOTILAYOTGAN QATOR (V99) ──────────────────────────────────
+
+   Kirim tan narxni sotuv yoki optom narxdan yuqoriga chiqarganda
+   tovar zarariga sotilaveradi va kassir hozirgacha hech narsa
+   ko'rmasdi: chegirmasiz sotuvda `Discounts.decide` birinchi
+   qatordayoq `ALLOW` qaytaradi — zarar chegirmadan emas, TANNARXdan
+   kelib chiqqani uchun.
+
+   ⚠ AYNAN SHU EKRAN — eng tor savat va eng uzun nom. Belgi nom
+   qatoriga qo'shilgani uchun u NOMNI siqib chiqarishi yoki O'ZI
+   qatordan surilib chiqib ketishi mumkin edi. */
+console.log("\n══ Zarariga sotilayotgan qator (V99) ══");
+const loss = await page.$$eval(".cart-item", (els) => els.map((row) => {
+  const b = row.querySelector(".cart-loss");
+  const t = row.querySelector(".cart-item-name__txt");
+  const box = row.querySelector(".cart-item-name");
+  if (!t || !box) return null;
+  const tb = t.getBoundingClientRect(), bb = box.getBoundingClientRect();
+  return {
+    name: t.textContent.trim(),
+    badge: b ? b.textContent.trim() : null,
+    /* Belgi nom qutisidan CHIQIB ketmaganmi. */
+    outside: b ? Math.round(b.getBoundingClientRect().right - bb.right) : 0,
+    /* Uzun nom uch nuqta bilan qisqarganmi (fleks bolasida ishlashi shart). */
+    clipped: t.scrollWidth > t.clientWidth + 1,
+    ellipsis: getComputedStyle(t).textOverflow,
+    wide: Math.round(tb.width),
+  };
+}).filter(Boolean));
+
+const marked = loss.filter((r) => r.badge);
+marked.length === 1
+  ? ok(`belgi FAQAT zararli qatorda: «${marked[0].badge}» — ${marked[0].name}`)
+  : no(`bitta qatorda belgi bo'lishi kerak, topildi: ${marked.length}`);
+
+for (const r of loss) {
+  if (r.outside > 0) no(`belgi nom qutisidan ${r.outside}px chiqib ketdi: «${r.name}»`);
+}
+if (marked.length) ok("belgi qatordan chiqib ketmadi");
+
+/* ⚠ ENG MUHIM TASDIQ. Nom qatori V99 da FLEKS bo'ldi va
+   `text-overflow: ellipsis` fleks KONTEYNERDA ishlamaydi — qoidalar
+   o'z joyida qoldirilganda uzun nom uch nuqtasiz qirqilardi.
+   Shuning uchun qisqartirish bolaga ko'chirildi va bu yerda aynan
+   BOLA o'lchanadi. */
+const long = loss.find((r) => r.clipped);
+long
+  ? (long.ellipsis === "ellipsis"
+      ? ok(`uzun nom uch nuqta bilan qisqardi: «${long.name}»`)
+      : no(`qisqarayotgan nomda uch nuqta yo'q (${long.ellipsis}) — fleks konteynerda yo'qoladi`))
+  : ok("bu kenglikda nom qisqarmadi — qoida baribir bolada turibdi");
 
 await browser.close();
 server.close();
