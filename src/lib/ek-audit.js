@@ -60,6 +60,9 @@ export const AUDIT_ACTIONS = [
   /* ── Xodim va qurilma ── */
   "USER_CREATE", "USER_UPDATE", "USER_DELETE", "USER_BLOCK", "USER_UNBLOCK",
   "USER_PASSWORD_CHANGE", "DEVICE_TRUSTED", "DEVICE_CONFIRMED", "STORE_SWITCH",
+  /* Kassir PIN bilan almashdi — do'kon egasiga KERAK: kamomad
+     tekshirilganda kim kimni almashtirgani shu qatorda ko'rinadi. */
+  "STAFF_PIN_SWITCH", "STAFF_PIN_SET", "STAFF_PIN_CLEAR",
 
   /* ── Do'kon sozlamalari ── */
   "SHOP_SETTING_CHANGE", "ANNOUNCEMENT_CHANGE",
