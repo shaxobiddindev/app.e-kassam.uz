@@ -158,6 +158,20 @@ export function buildAlerts({ signals = {}, pulse = null, lowStock = [],
     money: soon.reduce((a, s) => a + n(s.lostPerDay), 0), to: "/inventory",
   });
 
+  /* ── NARXI ESKIRGAN TOVARLAR (V99) ────────────────────────────────
+     Kirim tan narxni sotuv yoki optom narxdan yuqoriga chiqarganda
+     paydo bo'ladi. Kirim paytidagi tavsiya BIR MARTALIK: oyna
+     yopilsa yo'qoladi va ertaga do'kon egasi «qaysi tovarni
+     tuzatishim kerak edi?» degan savolga javob topa olmasdi.
+
+     ⚠ MANZIL FILTR BILAN. Filtrsiz manzil egasini yuzta tovar
+     orasiga tashlab ketardi va u kerakli qatorni qo'lda qidirishga
+     majbur bo'lardi — signalning butun foydasi shunda yo'qolardi. */
+  if (n(sig.pricedBelowCost) > 0) out.push({
+    id: "below-cost", severity: "critical", icon: "fa-arrow-trend-down",
+    key: "dash.sigBelowCost", count: n(sig.pricedBelowCost), to: "/products?below=1",
+  });
+
   /* ── Smena va ko'chirish ──────────────────────────────────────── */
   if (n(sig.staleOpenShifts) > 0) out.push({
     id: "stale", severity: "warning", icon: "fa-clock",

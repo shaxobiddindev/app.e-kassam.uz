@@ -446,6 +446,33 @@ it("kalendar va vazifa bloki OMBORCHIGA ham ochiq", () => {
    degan yozuv chiqdi. Endi kalitlar manbadan, ya'ni funksiyaning
    O'ZIDAN olinadi.
    ══════════════════════════════════════════════════════════════════ */
+/* ══ NARXI TAN NARXDAN PAST TOVARLAR (V99) ═══════════════════════════
+   Do'kon egasi: «yangi partiya kelganda tan narxi sotuv narxidan yoki
+   OPTOM narxdan oshib ketsa?» Kirim paytidagi tavsiya bir martalik —
+   oyna yopilsa yo'qoladi. Bu signal esa narx tuzatilgunicha turadi. */
+console.log("\n── Narxi tan narxdan past (V99) ──");
+
+it("signal chiqadi va SON bilan", () => {
+  const a = buildAlerts({ signals: { pricedBelowCost: 3 } })
+    .find((x) => x.id === "below-cost");
+  assert.ok(a, "signal chiqishi kerak");
+  assert.equal(a.count, 3);
+  assert.equal(a.severity, "critical", "zarariga sotish — kritik");
+});
+
+it("⚠ MANZIL FILTR BILAN — usiz egasi yuzta tovar orasida qoladi", () => {
+  const a = buildAlerts({ signals: { pricedBelowCost: 1 } })
+    .find((x) => x.id === "below-cost");
+  assert.equal(a.to, "/products?below=1");
+});
+
+it("nol bo'lsa signal YO'Q — bo'sh satr blokni ishonchsiz qiladi", () => {
+  assert.equal(buildAlerts({ signals: { pricedBelowCost: 0 } })
+    .find((x) => x.id === "below-cost"), undefined);
+  assert.equal(buildAlerts({ signals: {} })
+    .find((x) => x.id === "below-cost"), undefined);
+});
+
 console.log("\n── Tarjima qamrovi ──");
 
 /** Barcha mumkin bo'lgan ogohlantirish chiqadigan holat. */
@@ -458,6 +485,13 @@ const EVERY = {
     stockShortage: { count: 1, amount: 1 }, supplierDebt: { count: 1, amount: 1 },
     customerDebt: { count: 1, amount: 1 }, overdueDebt: { count: 1, amount: 1 },
     disputedDebts: 1, staleOpenShifts: 1, staleTransfers: 1,
+    /* ⚠ YANGI SIGNAL SHU RO'YXATGA QO'SHILISHI SHART. Aks holda
+       quyidagi tarjima qamrovi uni umuman KO'RMAYDI: kalitlar
+       `buildAlerts(EVERY)` natijasidan olinadi va signalsiz holat
+       kalitni tug'dirmaydi. Aynan shu naqsh bo'yicha ilgari yettita
+       kalit tarjimasiz qolib, ekranda «dash.alertStockoutNow» degan
+       yozuv chiqqan edi. */
+    pricedBelowCost: 3,
   },
   pulse: {
     today: { netSales: 100, margin: 1, returnAmount: 50, returns: 2 },

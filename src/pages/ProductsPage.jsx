@@ -20,6 +20,7 @@ import {
   UNIT, PRODUCT_TYPE, MARKING_GROUP, options, unitLabel, unitDecimals,
 } from "../lib/ek-labels";
 import { NumField, BarcodeField } from "../components/ek/EkFields";
+import { useSearchParams } from "react-router-dom";
 import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
 import { checkPrices, marginPercent, VIOLATION } from "../lib/ek-prices";
 import { rankItems, PRODUCT_SPEC } from "../lib/ek-search";
@@ -477,7 +478,21 @@ export default function ProductsPage({ toast }) {
   ], []);
   const colFlt = useDataFilter(COLS, "products");
 
-  const filtered = rankItems(colFlt.apply(products), search, PRODUCT_SPEC);
+  /* ── NARXI TAN NARXDAN PAST TOVARLAR (V99) ────────────────────────
+     Bosh sahifadagi «zarariga sotilyapti» signali shu yerga
+     `?below=1` bilan olib keladi. Manzilsiz signal egasini filtrsiz
+     ro'yxatga tashlab ketardi va u kerakli qatorni yuzta boshqasi
+     orasidan qidirishga majbur bo'lardi.
+
+     ⚠ MANZILDA, holatda EMAS: sahifa yangilanganda ham, havola
+     ulashilganda ham bir xil ro'yxat ochiladi. */
+  const [params, setParams] = useSearchParams();
+  const belowOnly = params.get("below") === "1";
+
+  const base = belowOnly
+    ? products.filter((p) => p.belowCost || p.belowWholesale)
+    : products;
+  const filtered = rankItems(colFlt.apply(base), search, PRODUCT_SPEC);
 
   const setField = (key) => (e) => setForm((prev) => ({ ...prev, [key]: e.target.value }));
   const setValue = (key) => (v) => setForm((prev) => ({ ...prev, [key]: v }));
@@ -601,6 +616,22 @@ export default function ProductsPage({ toast }) {
           <DataFilter cols={COLS} flt={colFlt} />
         </div>
 
+        {/* ⚠ FILTR YOQILGANI KO'RINIB TURSIN. Usiz ro'yxat sababsiz
+            qisqargandek ko'rinardi va do'kon egasi «tovarlarim
+            qayoqqa ketdi?» deb o'ylardi — signaldan kelgan odam
+            filtr qo'yilganini bilmaydi. Tozalash ham shu yerda:
+            manzilni qo'lda tahrirlash yechim emas. */}
+        {belowOnly && (
+          <div className="ek-note ek-note--warn prod-below-note">
+            <i className="fa-solid fa-arrow-trend-down" aria-hidden="true" />
+            <div>{t("products.belowFilter")}</div>
+            <button type="button" className="btn btn-outline btn-sm"
+                    onClick={() => setParams({}, { replace: true })}>
+              {t("products.belowFilterClear")}
+            </button>
+          </div>
+        )}
+
         <div className="table-wrap">
           {busy ? (
             <SkeletonTable rows={8} cols={["wide", "text", "num", "num", "narrow"]} />
@@ -664,6 +695,24 @@ export default function ProductsPage({ toast }) {
                         {p.salePrice == null
                           ? <span className="badge badge-amber">{t("products.noPrice")}</span>
                           : <span className="ek-num fw-700 text-blue">{money(p.salePrice)}</span>}
+                        {/* ⚠ NARX YONIDA, alohida ustunda emas: xato
+                            aynan NARXDA va belgi undan uzoqda tursa,
+                            ko'z ikkisini bog'lamasdi.
+
+                            ⚠ IKKI XIL IZOH. Tan narx optom narxdan
+                            oshib, chakana narxdan oshmasligi mumkin —
+                            o'shanda chakana savdo hamon foydali.
+                            Bitta umumiy matn do'kon egasiga qaysi
+                            narxni tuzatishni aytmasdi. */}
+                        {(p.belowCost || p.belowWholesale) && (
+                          <span className="badge badge-red prod-below"
+                                title={p.belowCost
+                                  ? t("products.belowCostTitle")
+                                  : t("products.belowWholesaleTitle")}>
+                            <i className="fa-solid fa-arrow-trend-down" aria-hidden="true" />
+                            {t("products.belowBadge")}
+                          </span>
+                        )}
                       </td>
                       <td>
                         {p.stockQuantity == null

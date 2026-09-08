@@ -65,6 +65,14 @@ const PRODUCTS = [
     unitDecimals: 0, active: true, thumbUrl: "/media/thumb.png" },
   { id: 2, name: "печени", salePrice: 9000,  stockQuantity: 3, unit: "DONA",
     unitDecimals: 0, active: true, thumbUrl: null },
+  /* ⚠ UCHINCHISI OXIRIDA va ataylab: yuqoridagi juftlik §1–§4 uchun
+     kerak va ularning tartibi buzilmasligi shart. Bu qator faqat
+     V99 bo'limlari uchun. Optom narx tan narxdan past, chakana esa
+     baland — do'kon egasi so'ragan aynan shu holat. */
+  { id: 3, name: "zarariga", salePrice: 10000, costPrice: 9500,
+    wholesalePrice: 9000, stockQuantity: 7, unit: "DONA",
+    unitDecimals: 0, active: true, thumbUrl: null,
+    belowCost: false, belowWholesale: true },
 ];
 
 const page = await browser.newPage();
@@ -241,6 +249,78 @@ if (!(await openedForm()) || (await boundaryDown())) {
               : no("kоddan keyin xato xabari chiqdi", "«is not defined»");
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   §10–§12 — NARXI TAN NARXDAN PAST TOVARLAR (V99)
+
+   Do'kon egasining savoli: «yangi partiya kelganda tan narxi sotuv
+   narxidan yoki OPTOM narxdan oshib ketsa?»
+
+   Kirim paytidagi tavsiya BIR MARTALIK: oyna yopilsa yo'qoladi va
+   ertaga «qaysi tovarni tuzatishim kerak edi?» degan savolga javob
+   yo'q. Shuning uchun holat ro'yxatda ham turadi.
+
+   ⚠ SHU YERDA O'LCHANADI, SERVERDA EMAS: server to'g'ri bayroq
+   qaytarsa ham, uni chizmagan ekran bir xil zarar keltiradi.
+   ══════════════════════════════════════════════════════════════════════ */
+
+console.log("\n§10 ⚠ ZARARIGA SOTILAYOTGAN TOVAR BELGILANADI");
+const marks = await page.$$eval("tbody tr", (trs) => trs.map((tr) => ({
+  name: tr.querySelector("td:first-child")?.textContent.trim() || "",
+  badge: tr.querySelector(".prod-below")?.textContent.trim() || null,
+  title: tr.querySelector(".prod-below")?.getAttribute("title") || null,
+})));
+const lossRow = marks.find((m) => /zarariga/i.test(m.name));
+lossRow?.badge
+  ? ok(`belgi chizildi: «${lossRow.badge}»`)
+  : no("zarariga sotilayotgan tovarda belgi bo'lishi kerak", JSON.stringify(marks));
+marks.filter((m) => !/zarariga/i.test(m.name)).every((m) => !m.badge)
+  ? ok("sog'lom tovarlarda belgi yo'q")
+  : no("belgi faqat zararli tovarda bo'lishi kerak", JSON.stringify(marks));
+
+console.log("\n§11 ⚠ IZOH QAYSI NARX ekanini aytadi");
+/* Tan narx optom narxdan oshib, chakanadan oshmasligi mumkin —
+   o'shanda chakana savdo hamon foydali. Bitta umumiy matn do'kon
+   egasiga qaysi narxni tuzatishni aytmasdi. */
+/optom/i.test(lossRow?.title || "")
+  ? ok("izohda OPTOM narx aytilgan")
+  : no("izoh optom narx haqida bo'lishi kerak", lossRow?.title);
+
+console.log("\n§12 ⚠ `?below=1` FILTRI VA UNI TOZALASH");
+await page.goto(`http://127.0.0.1:${PORT}/products?below=1`,
+                { waitUntil: "networkidle2", timeout: 30_000 });
+await page.waitForSelector("tbody tr", { timeout: 10_000 });
+const only = await page.$$eval("tbody tr td:first-child",
+  (ts) => ts.map((t) => t.textContent.trim()));
+only.length === 1 && /zarariga/i.test(only[0])
+  ? ok("faqat narxi eskirgan tovar qoldi")
+  : no("filtr faqat bitta qator qoldirishi kerak", only.join(" | "));
+
+/* ⚠ FILTR YOQILGANI KO'RINSIN. Usiz ro'yxat sababsiz qisqargandek
+   ko'rinardi va signaldan kelgan odam «tovarlarim qayoqqa ketdi?»
+   deb o'ylardi. */
+const note = await page.$eval(".prod-below-note", (n) => n.textContent.trim())
+  .catch(() => null);
+note ? ok(`filtr haqida yozuv bor: «${note.slice(0, 48)}…»`)
+     : no("filtr yoqilgani yozilishi kerak", "yozuv yo'q");
+
+/* Tozalash tugmasi — manzilni qo'lda tahrirlash yechim emas.
+
+   ⚠ MANZIL HAM TEKSHIRILADI, faqat qatorlar soni emas. Boshida shu
+   yerda «qatorlar birdan ko'p bo'ldimi» degan yagona tasdiq turardi
+   va u BO'SH JOYDA o'tardi: filtr umuman ishlamay qolganda qatorlar
+   allaqachon uchta bo'lar, tasdiq esa yashil qolardi. Sindirib
+   tekshirishda aynan shu tutildi. */
+await page.evaluate(() => document.querySelector(".prod-below-note button")?.click());
+await page.waitForFunction(
+  () => !location.search.includes("below")
+        && !document.querySelector(".prod-below-note"),
+  { timeout: 5000 },
+).then(async () => {
+  const n = await page.$$eval("tbody tr", (r) => r.length);
+  n === 3 ? ok(`«Hammasini ko'rsatish» filtrni tozaladi — ${n} qator qaytdi`)
+          : no("tozalashdan keyin hamma qator qaytishi kerak", n);
+}).catch(() => no("tugma manzildagi filtrni ham tozalashi kerak", page.url()));
 
 console.log("\n§9 Sahifa xatolari");
 pageErrors.length === 0 ? ok("JS xatosi yo'q") : no("sahifada xato", pageErrors.join(" | "));

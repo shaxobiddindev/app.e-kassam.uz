@@ -6178,3 +6178,27 @@ button.stk__c:hover { background: var(--bg-hover); }
 .qty-modal__scale { width: 100%; margin-top: 10px; min-height: var(--hit-pos);
                     display: flex; align-items: center; justify-content: center; gap: 10px;
                     font-size: 15px; font-weight: 800; }
+
+/* ══ NARXI TAN NARXDAN PAST TOVARLAR (V99) ═══════════════════════════ */
+
+/* Belgi narx yonida turadi — xato aynan narxda va ikkisi ko'zga
+   birga tushishi kerak. */
+.prod-below {
+  margin-left: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+/* ⚠ Tugma o'ng chekkaga suriladi (`margin-left:auto`), matn esa
+   o'sib boradigan qismni oladi. Usiz uzun tarjimada tugma matnga
+   yopishib qolar va tor ekranda ustiga chiqib ketardi. */
+.prod-below-note {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.prod-below-note > div { flex: 1 1 auto; }
+.prod-below-note > button { flex: 0 0 auto; margin-left: auto; }
