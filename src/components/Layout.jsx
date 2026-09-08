@@ -219,7 +219,7 @@ function LowStockBadge({ items, count, onGoInventory }) {
   );
 }
 
-function Sidebar({ user, open, onClose, isCollapsed, onToggleCollapse, lowStockCount, suspiciousCount }) {
+function Sidebar({ user, open, onClose, isCollapsed, onToggleCollapse, lowStockCount, suspiciousCount, onSwitchUser }) {
   const { t } = useT();
   /* Do'konda qaysi bo'limlar borligi (V49). Ro'yxat kelmaguncha
      `has()` hamma narsaga `true` qaytaradi — menyu bo'sh ko'rinmaydi. */
@@ -303,19 +303,38 @@ function Sidebar({ user, open, onClose, isCollapsed, onToggleCollapse, lowStockC
             boriladigan, tasodifan bosilmaydigan joyda. Shu sababli bu
             blok endi o'sha sahifaga olib boradi: kassir «chiqish qayerda?»
             deb qidirib qolmasin. */}
-        <NavLink to="/settings" className="sb-user" title={isCollapsed ? t("nav.settings") : ""}>
-          <div className="av" style={{ width: isCollapsed ? 28 : 34, height: isCollapsed ? 28 : 34 }}>{initials(user?.fullName || user?.username)}</div>
-          <div className="sb-user-info">
-            <div className="sb-user-name">{user?.fullName || user?.username}</div>
-            <div className="sb-user-role">{roleName(user?.role)} <i className="fa-solid fa-gear" /></div>
-          </div>
-        </NavLink>
+        <div className="sb-user-row">
+          <NavLink to="/settings" className="sb-user" title={isCollapsed ? t("nav.settings") : ""}>
+            <div className="av" style={{ width: isCollapsed ? 28 : 34, height: isCollapsed ? 28 : 34 }}>{initials(user?.fullName || user?.username)}</div>
+            <div className="sb-user-info">
+              <div className="sb-user-name">{user?.fullName || user?.username}</div>
+              <div className="sb-user-role">{roleName(user?.role)} <i className="fa-solid fa-gear" /></div>
+            </div>
+          </NavLink>
+
+          {/* ══ KASSIRNI ALMASHTIRISH (V99) ═══════════════════════════
+              ⚠ ALOHIDA, KICHIK tugma — hisob blokining ICHIDA emas.
+              Blokning o'zi «Sozlamalar» ga olib boradi va uni bosishga
+              odatlangan kassir tasodifan almashtirish oynasini ochib
+              yuborardi.
+
+              ⚠ CHIQISHNING O'RNIGA EMAS, YONIDA. Bular boshqa-boshqa
+              ish: chiqish smenani ham, savatni ham tashlab ketadi,
+              almashtirish esa ikkalasini ham JOYIDA qoldiradi —
+              butun ishning ma'nosi shunda. */}
+          {!isCollapsed && (
+            <button type="button" className="sb-switch" onClick={onSwitchUser}
+                    title={t("pin.switchTitle")} aria-label={t("pin.switchTitle")}>
+              <i className="fa-solid fa-user-clock" aria-hidden="true" />
+            </button>
+          )}
+        </div>
       </div>
     </aside>
   );
 }
 
-export default function Layout({ user, isAdmin, lowStockItems, lowStockCount, children }) {
+export default function Layout({ user, isAdmin, lowStockItems, lowStockCount, onSwitchUser, children }) {
   /* ⚠ Sidebar bilan BIR XIL manba: hook natijani keshlaydi, ya'ni
      ikkinchi chaqiruv yangi so'rov yubormaydi. Tab qatori va yon menyu
      bir xil ro'yxatdan chizilishi shart — aks holda menyuda yo'q
@@ -370,6 +389,7 @@ export default function Layout({ user, isAdmin, lowStockItems, lowStockCount, ch
         onToggleCollapse={toggleCollapse} 
         lowStockCount={lowStockCount}
         suspiciousCount={suspiciousCount}
+        onSwitchUser={onSwitchUser}
       />
       <main className="main-content">
         <div className="topbar">

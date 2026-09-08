@@ -272,6 +272,29 @@ export const authApi = {
       body: JSON.stringify(data),
     }),
   logout: () => request("/auth/logout", { method: "POST" }),
+
+  /* ══ KASSIR PIN BILAN ALMASHADI (V99) ═══════════════════════════════
+     ⚠ `X-Device-Id` SHART. Serverdagi qulf aynan qurilma bo'yicha
+     yuritiladi: usiz hamma urinish «noma'lum» qatoriga tushar va
+     bitta kassadagi xato boshqasini ham qulflab qo'yardi.
+
+     ⚠ Bu yo'l `auth.e-kassam.uz` ga BORMAYDI. Butun ishning ma'nosi
+     shunda: `auth` boshqa origin va boshqa server, u orqali o'tish
+     savatni, ochiq smenani, skaner tinglovchisini va tarozi
+     ulanishini uzardi. */
+  pinSwitch: (pin) =>
+    request("/auth/pin/switch", {
+      method: "POST",
+      headers: { "X-Device-Id": getDeviceId() },
+      body: JSON.stringify({ pin }),
+    }),
+
+  /** Xodim O'Z PIN ini qo'yadi. Rahbar boshqaga qo'ya olmaydi — serverda. */
+  pinSet: (pin) =>
+    request("/auth/pin", { method: "POST", body: JSON.stringify({ pin }) }),
+
+  /** Rahbar xodimning UNUTILGAN PIN ini o'chiradi (qo'ymaydi). */
+  pinClear: (userId) => request(`/auth/pin/${userId}`, { method: "DELETE" }),
 };
 
 // ─── Hisobotlar ───────────────────────────────────────────────
@@ -984,6 +1007,12 @@ export const shopApi = {
      internet uzilgan bo'lishi ham mumkin. */
   getProfile: () => request("/shop/profile").then((r) => {
     rememberShopHead(r?.data);
+    /* ⚠ PIN UZUNLIGI HAM SHU YERDA ESLAB QOLINADI. Sabab yuqoridagi
+       bilan bir xil, lekin o'tkirroq: PIN oynasi kassir almashinuvi
+       paytida — mijoz kassada turganda — ochiladi. O'sha ondagi
+       qo'shimcha so'rov aynan tejayotgan vaqtimizni yeb qo'yardi. */
+    const len = Number(r?.data?.pinLength);
+    if (len === 4 || len === 6) localStorage.setItem("ek_pinLength", String(len));
     return r;
   }),
 

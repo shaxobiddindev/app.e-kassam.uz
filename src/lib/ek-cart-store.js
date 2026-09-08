@@ -131,6 +131,32 @@ export function take() {
   }
 }
 
+/**
+ * Saqlangan savatda tovar bormi — YOZUVGA TEGMASDAN.
+ *
+ * ⚠ NEGA `take()` YARAMAYDI: u savatni o'qib, keyin O'CHIRADI (Kassa
+ * sahifasiga bir martalik topshiriq). Uni tekshiruv uchun ishlatgan
+ * kod savatni yo'q qilardi — ya'ni «savat bo'shmi?» degan savol
+ * savatni bo'shatib qo'yardi.
+ *
+ * ⚠ Yozuv HAR o'zgarishda saqlanadi (`KassaPage` dagi `useEffect`),
+ * shuning uchun bu javob boshqa sahifalarda ham to'g'ri: `save()`
+ * bo'sh savatlarni yozmaydi va hammasi bo'shalsa kalitni o'chiradi.
+ */
+export function hasItems() {
+  try {
+    const raw = localStorage.getItem(keyFor());
+    if (!raw) return false;
+    const parsed = JSON.parse(raw);
+    const list = Array.isArray(parsed?.carts)
+      ? parsed.carts
+      : (Array.isArray(parsed?.cart) ? [{ items: parsed.cart }] : []);
+    return list.some((c) => Array.isArray(c?.items) && c.items.length > 0);
+  } catch (_) {
+    return false;   // buzuq yozuv — savat yo'q deb hisoblanadi
+  }
+}
+
 /** Jurnal uchun qisqa matn: «Suv ×2; Non ×1». */
 export function describe(items) {
   return (items || [])

@@ -4,6 +4,9 @@ import { useState, useEffect, Suspense, lazy } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { LOGIN_URL } from "./config";
 import { initLang, withLang, useT } from "./lib/ek-i18n";
+import { t } from "./lib/ek-i18n";
+import * as cartStore from "./lib/ek-cart-store";
+import PinSwitchModal from "./components/PinSwitchModal";
 import { useAuth }  from "./hooks/useAuth";
 import { useLowStock } from "./hooks/useLowStock";
 import { useToast } from "./hooks/useToast";
@@ -200,6 +203,33 @@ export default function App() {
   const { toasts, toast, dismiss }                        = useToast();
   const { lowStockItems, lowStockCount, refreshLowStock } = useLowStock();
 
+  /* ══ KASSIRNI PIN BILAN ALMASHTIRISH (V99) ═════════════════════════
+     Do'kon egasi: «PIN moduli `app` ga o'tkazilsin, `auth` alohida
+     serverda va yuklash vaqti tizimni sekinlashtiradi».
+
+     ⚠ Oyna SHU YERDA, `App` da: almashinuvdan keyin `login()`
+     chaqiriladi va u `useAuth` ning ichidagi holatni yangilaydi —
+     ya'ni sahifa QAYTA YUKLANMAYDI. Savat, ochiq smena, skaner
+     tinglovchisi va tarozi ulanishi joyida qoladi. Butun ishning
+     maqsadi aynan shu edi. */
+  const [pinOpen, setPinOpen] = useState(false);
+
+  /* ⚠ SAVAT BO'SH BO'LMASA ALMASHISH YO'Q. To'lanmagan savat boshqa
+     kassirning ismi bilan yopilsa, chekda ham, hisobotda ham noto'g'ri
+     odam turardi.
+
+     ⚠ Tekshiruv `hasItems()` bilan — `take()` savatni O'CHIRIB
+     yuborardi, ya'ni «savat bo'shmi?» degan savol savatni bo'shatib
+     qo'yardi. */
+  const askSwitchUser = () => {
+    if (cartStore.hasItems()) {
+      toast.error(t("pin.cartNotEmpty"));
+      return;
+    }
+    setPinOpen(true);
+  };
+
+
   /* ══ OVOZ QULFI — BIRINCHI IMO-ISHORADA OCHILADI (V89) ═════════════
      ⚠ USIZ BIRINCHI OVOZ JIMGINA YO'QOLADI. Brauzer `AudioContext` ni
      foydalanuvchi sahifaga TEGMAGUNCHA `suspended` holatda tutadi va
@@ -365,6 +395,7 @@ export default function App() {
           isAdmin={roleSet(user?.role).has("SUPERADMIN")}
           lowStockItems={lowStockItems} 
           lowStockCount={lowStockCount}
+          onSwitchUser={askSwitchUser}
         >
           <RouteErrorBoundary>
           {/* ⚠ Fallback YENGIL bo'lishi shart. Sahifalar endi alohida
@@ -439,6 +470,28 @@ export default function App() {
           </Suspense>
           </RouteErrorBoundary>
         </Layout>
+
+        {/* ⚠ `Layout` DAN TASHQARIDA: oyna butun ekran ustida turadi va
+            yon menyu yopilishi bilan yo'q bo'lib qolmasligi kerak. */}
+        {pinOpen && (
+          <PinSwitchModal
+            toast={toast}
+            onClose={() => setPinOpen(false)}
+            onSwitched={(d) => {
+              /* ⚠ ISM VA ROL SERVERDAN KELADI (`PinSwitchResponse`) va
+                 ular ko'rinish uchun emas: savat kaliti
+                 `shopCode_username` dan tuziladi — ism bo'lmasa yangi
+                 kassir eskisining savat maydoniga tushardi; menyu esa
+                 roldan quriladi — bo'sh rolda kassir hech qanday
+                 bo'limni ko'rmasdi. */
+              login({
+                token: d.accessToken, refresh: d.refreshToken,
+                shopCode: d.shopCode, username: d.username,
+                fullName: d.fullName, role: d.role,
+              });
+            }}
+          />
+        )}
       </BrowserRouter>
       </KeyboardProvider>
       </BadgeProvider>

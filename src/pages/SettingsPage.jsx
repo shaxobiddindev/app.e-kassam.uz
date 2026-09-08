@@ -10,6 +10,7 @@ import FiscalPanel from "../components/FiscalPanel";
 import FiscalSetupPanel from "../components/FiscalSetupPanel";
 import { FISCAL_UI } from "../config";
 import UpdatePanel from "../components/UpdatePanel";
+import PinSetModal from "../components/PinSetModal";
 import TelegramPanel from "../components/TelegramPanel";
 import HardwareSettings from "../components/HardwareSettings";
 import SoundSettings from "../components/SoundSettings";
@@ -128,10 +129,22 @@ export default function SettingsPage({ toast }) {
   const [stockTolerance, setStockTolerance] = useState("");
   const [nearExpiry, setNearExpiry] = useState("");
   const [salesTarget, setSalesTarget] = useState("");
+
+  /* ══ KASSIR PIN I (V99) ═══════════════════════════════════════════ */
+  const [pinOpen, setPinOpen] = useState(false);
+  const [pinLength, setPinLength] = useState(
+    () => (localStorage.getItem("ek_pinLength") === "6" ? "6" : "4"));
   useEffect(() => {
-    if (!isOwner) return;
+    /* ⚠ PROFIL ENDI HAMMAGA OLINADI, faqat egaga emas.
+       Sabab: `pinLength` PIN oynasi uchun kerak va u KASSIRGA ham
+       chiziladi. Ilgari so'rov `isOwner` bilan to'silardi — ya'ni
+       6 xonali PIN qo'ygan do'konning kassiri to'rtta katak ko'rar
+       va PIN i hech qachon to'lmasdi. Javobning o'zi serverda
+       kassir uchun allaqachon maskalangan. */
     shopApi.getProfile()
       .then((r) => {
+        setPinLength(String(r?.data?.pinLength ?? 4));
+        if (!isOwner) return;
         setTolerance(String(r?.data?.cashDiffTolerance ?? 0));
         setDiscountLimit(String(r?.data?.maxDiscountPercent ?? 0));
         setDiscountBasis(r?.data?.discountBasis || "PROFIT");
@@ -316,6 +329,37 @@ export default function SettingsPage({ toast }) {
         <Row label={t("settings.language")} hint={t("settings.languageHint")}>
           <LangSelect />
         </Row>
+      </Section>
+
+      {/* ══ KASSIR PIN I (V99) ════════════════════════════════════════
+          Do'kon egasi: «PIN moduli `app` ga o'tkazilsin, `auth` alohida
+          serverda turadi va yuklash vaqti tizimni sekinlashtiradi».
+
+          ⚠ «MENING PIN IM» HAMMAGA ko'rinadi, uzunlik esa faqat
+          EGASIGA: birinchisi — xodimning o'z hisobi, ikkinchisi —
+          butun do'kon uchun qaror. */}
+      <Section icon="fa-key" title={t("pin.section")} hint={t("pin.sectionHint")}>
+        <Row label={t("pin.myPin")} hint={t("pin.myPinHint")}>
+          <button className="btn btn-outline btn-sm" onClick={() => setPinOpen(true)}>
+            <i className="fa-solid fa-key" aria-hidden="true" /> {t("pin.setTitle")}
+          </button>
+        </Row>
+
+        {isOwner && (
+          <Row label={t("pin.lengthLabel")} hint={t("pin.lengthHint")}>
+            <Select
+              value={pinLength}
+              onChange={(v) => saveToggle(
+                (val) => shopApi.setPinLength(Number(val)), v, setPinLength)}
+              variant="field"
+              ariaLabel={t("pin.lengthLabel")}
+              options={[
+                { value: "4", label: t("pin.length4"), icon: "fa-hashtag" },
+                { value: "6", label: t("pin.length6"), icon: "fa-hashtag" },
+              ]}
+            />
+          </Row>
+        )}
       </Section>
 
       <Section icon="fa-sliders" title={t("settings.interface")}>
@@ -808,6 +852,15 @@ export default function SettingsPage({ toast }) {
           </Row>
         )}
       </Section>
+
+      {/* ⚠ Bo'limlardan TASHQARIDA: oyna butun ekran ustida turadi. */}
+      {pinOpen && (
+        <PinSetModal
+          toast={toast}
+          onClose={() => setPinOpen(false)}
+          onSaved={() => setProfileNonce((n) => n + 1)}
+        />
+      )}
     </div>
   );
 }

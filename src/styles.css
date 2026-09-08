@@ -242,6 +242,55 @@ h1, h2, h3, .page-title, .card-title, .modal-title {
    3:1 dan past va axe uni «color-contrast» deb ushlaydi (§1k). */
 .sb-user-role    { font-size: 11px; color: var(--text2); }
 
+/* ══ KASSIRNI ALMASHTIRISH (V99) ══════════════════════════════════════
+   Hisob bloki va almashtirish tugmasi yonma-yon. ⚠ Tugma blokning
+   ICHIDA emas: blok «Sozlamalar» ga olib boradi va uni bosishga
+   odatlangan kassir tasodifan almashtirish oynasini ochib yuborardi. */
+.sb-user-row { display: flex; align-items: center; gap: 4px; }
+.sb-user-row .sb-user { flex: 1; min-width: 0; }
+
+.sb-switch {
+  flex: 0 0 auto;
+  display: flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px;
+  border: none; border-radius: 10px;
+  background: transparent; color: var(--text2);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.sb-switch:hover { background: var(--sb-hover-bg); color: var(--fg-primary); }
+
+/* ══ PIN OYNASI (V99) ═════════════════════════════════════════════════ */
+.pin-hint  { margin: 0 0 14px; text-align: center; font-size: 12px; }
+.pin-error { margin: 0 0 12px; }
+
+/* Terilgan raqamlar SONI ko'rinadi, qiymati emas. */
+.pin-dots { display: flex; justify-content: center; gap: 12px; margin-bottom: 16px; }
+.pin-dot {
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 2px solid var(--border);
+  transition: background var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+}
+.pin-dot--on { background: var(--blue); border-color: var(--blue); }
+
+/* ⚠ Tugmalar KATTA: monoblok ekrani sensorli va kassir uni barmoq
+   bilan bosadi. Kichik tugma har almashinuvda yanglish terishga olib
+   kelar, yanglish terish esa qulfga yaqinlashtiradi. */
+.pin-pad {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+}
+.pin-key {
+  height: 52px;
+  font-size: 20px; font-weight: 600;
+  border: 1px solid var(--border); border-radius: 10px;
+  background: var(--surface); color: var(--fg-primary);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out);
+}
+.pin-key:hover:not(:disabled) { background: var(--sb-hover-bg); }
+.pin-key:disabled { opacity: .5; cursor: default; }
+.pin-key--back { font-size: 16px; }
+
 /* ── AVATAR ── */
 .avatar, .av {
   width: 34px; height: 34px; border-radius: 10px;

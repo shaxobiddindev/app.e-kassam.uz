@@ -110,9 +110,14 @@ export default function CustomersPage({ toast }) {
   };
 
   const [paying, setPaying]       = useState(false);
-  /* "all" | "debtors". Alohida sahifa emas, chunki ikkala ro'yxatda ham
-     bir xil amal qilinadi (qarz to'lash) va yon menyuda yana bitta qator
-     qarzdorlar yo'q do'konlar uchun bo'sh joy egallardi. */
+  /* "all" | "debtors" | "savings". Alohida sahifa emas, chunki uchala
+     ro'yxatda ham bir xil amal qilinadi (qarz to'lash, jamg'arma) va
+     yon menyuda yana bitta qator bo'sh joy egallardi.
+
+     ⚠ JAMG'ARMA — MIJOZNING PULI, do'konning emas. Do'kon egasi
+     «kimda mening pulim turibdi?» degan savolga javob topa olmasdi:
+     jamg'armasi bor mijozni ro'yxatda ko'zi bilan qidirishga to'g'ri
+     kelardi va u qarz kabi hech qayerda yig'ilmasdi. */
   const [view, setView]           = useState("all");
 
   const loadData = async () => {
@@ -121,10 +126,21 @@ export default function CustomersPage({ toast }) {
       // Qarzdorlar ro'yxati SERVERDA saralanadi va "necha kundan beri"
       // ma'lumotini ham olib keladi — uni mijozlar ro'yxatidan hisoblab
       // bo'lmaydi.
+      /* ⚠ JAMG'ARMA UCHUN YANGI YO'L KERAK EMAS: `savingsBalance`
+         mijozlar ro'yxatida allaqachon bor. Alohida endpoint qo'shish
+         serverga ikkinchi so'rov va ikkinchi saralash mantig'ini
+         qo'shar, foydasi esa nol bo'lardi. Qarzdorlar ALOHIDA, chunki
+         u yerda qarz YOSHI kerak va uni ro'yxatdan hisoblab bo'lmaydi. */
       const res = view === "debtors"
         ? await customerApi.debtors()
         : await customerApi.getAll(branchId);
-      setCustomers(asArray(res.data));
+      const list = asArray(res.data);
+      setCustomers(view === "savings"
+        /* Eng kattasi tepada: do'kon egasi avval eng katta majburiyatni
+           ko'rishi kerak. */
+        ? list.filter((c) => Number(c.savingsBalance) > 0)
+              .sort((a, b) => Number(b.savingsBalance) - Number(a.savingsBalance))
+        : list);
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -386,13 +402,20 @@ export default function CustomersPage({ toast }) {
          ...(hasOverdue
            ? [{ key: "overdue", label: t("credit.overdue"), type: "number", get: (c) => c.overdue }]
            : [])]
-      : [{ key: "spent",   label: t("cust.totalSpent"),  type: "number", get: (c) => c.totalSpent }]),
+      : view === "savings"
+        /* ⚠ «Sarflagani» o'rniga JAMG'ARMA: bu ro'yxatga aynan shu
+           raqam uchun kiriladi va uni ustun sifatida saralash ham,
+           filtrlash ham mumkin bo'lishi kerak. */
+        ? [{ key: "savings", label: t("savings.title"), type: "number",
+             get: (c) => c.savingsBalance }]
+        : [{ key: "spent",   label: t("cust.totalSpent"),  type: "number", get: (c) => c.totalSpent }]),
     { key: "debt",  label: t("credit.balance"),  type: "number", get: (c) => c.balance },
   ], [view, hasOverdue]);
   /* Kalit ko'rinishga bog'liq: ikki ro'yxatning filtri bir-birini
      bosib ketmasin — «qarzdorlar» dagi shart «hammasi» ga qaytganda
      yo'qolishi tabiiy emas edi. */
-  const colFlt = useDataFilter(COLS, view === "debtors" ? "cust-debt" : "cust");
+  const colFlt = useDataFilter(COLS,
+    view === "debtors" ? "cust-debt" : view === "savings" ? "cust-sav" : "cust");
 
   const filtered = rankItems(colFlt.apply(customers), search, {
     texts:  (c) => [c.fullName],
@@ -465,7 +488,13 @@ export default function CustomersPage({ toast }) {
           {/* Qarzdorlar — alohida RO'YXAT, filtr emas: u serverdan qarz
               bo'yicha saralangan holda va qarz yoshi bilan keladi. */}
           <div className="cat-tabs" role="tablist" aria-label={t("credit.debtors")}>
-            {[["all", t("common.all")], ["debtors", t("credit.debtors")]].map(([k, label]) => (
+            {[["all", t("common.all")],
+              ["debtors", t("credit.debtors")],
+              /* ⚠ Jamg'arma qarzning TESKARISI: qarzda do'kon mijozdan
+                 oladi, jamg'armada mijoz do'kondan. Ikkalasi yonma-yon
+                 turishi kerak — do'kon egasining savoli bitta:
+                 «kim bilan hisob-kitobim bor?» */
+              ["savings", t("savings.title")]].map(([k, label]) => (
               <button key={k} type="button" role="tab" aria-selected={view === k}
                       className={`cat-tab ${view === k ? "active" : ""}`}
                       onClick={() => setView(k)}>
@@ -518,7 +547,9 @@ export default function CustomersPage({ toast }) {
                             har qatorda nol turgan ustun jadvalni
                             kengaytiradi-yu, hech narsa aytmaydi. */}
                         {hasOverdue && <SortTh flt={colFlt} col="overdue">{t("credit.overdue")}</SortTh>}</>
-                    : <SortTh flt={colFlt} col="spent">{t("cust.totalSpent")}</SortTh>}
+                    : view === "savings"
+                      ? <SortTh flt={colFlt} col="savings">{t("savings.title")}</SortTh>
+                      : <SortTh flt={colFlt} col="spent">{t("cust.totalSpent")}</SortTh>}
                   <SortTh flt={colFlt} col="debt">{t("credit.balance")}</SortTh>
                   <th></th>
                 </tr>
@@ -557,6 +588,15 @@ export default function CustomersPage({ toast }) {
                             </td>
                           )}
                         </>
+                      ) : view === "savings" ? (
+                        /* ⚠ JAMG'ARMA — MIJOZNING PULI, ya'ni do'konning
+                           MAJBURIYATI. Qarz qizil (do'kon oladi), jamg'arma
+                           yashil (do'kon beradi): ikkalasi bir xil rangda
+                           bo'lsa, do'kon egasi qaysi tomonga qarab
+                           turganini bir qarashda ajrata olmasdi. */
+                        <td>
+                          <span className="mono fw-700 text-success">{money(c.savingsBalance)}</span>
+                        </td>
                       ) : (
                         <td>
                           <span className="mono fw-700 text-blue">{money(c.totalSpent)}</span>
