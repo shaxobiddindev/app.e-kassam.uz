@@ -1365,6 +1365,19 @@ export default function InventoryPage({ toast }) {
             </div>
           )}
 
+          {/* ⚠ OPTOM UCHUN ALOHIDA OGOHLANTIRISH (V99), chakananing
+              ichiga qo'shib yuborilmaydi. Ikkalasi MUSTAQIL: tan narx
+              optom narxdan oshib, chakana narxdan oshmasligi mumkin —
+              o'shanda chakana savdo hamon foydali, optom esa zarar.
+              Bitta umumiy xabar bu farqni yo'qotardi va do'kon egasi
+              qaysi narxni tuzatishni bilmasdi. */}
+          {advice.belowWholesale && (
+            <div className="ek-note ek-note--warn" style={{ marginBottom: 12 }}>
+              <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />
+              <div>{t("inv.adviceBelowWholesale")}</div>
+            </div>
+          )}
+
           <div className="inv-detail__row">
             <span className="inv-detail__label">{t("products.costPrice")}</span>
             <span className="inv-detail__value ek-num">
@@ -1389,6 +1402,35 @@ export default function InventoryPage({ toast }) {
                 {money(advice.recommendedSale)}
               </span>
             </div>
+          )}
+
+          {/* ⚠ OPTOM QATORLARI FAQAT OPTOM NARX BO'LGANDA. Chakana
+              do'konda optom narx umuman qo'yilmaydi va bo'sh qatorlar
+              oynani uzaytirib, asosiy raqamni pastga surib yuborardi. */}
+          {advice.wholesalePrice != null && (
+            <>
+              <div className="inv-detail__row">
+                <span className="inv-detail__label">{t("products.wholesalePrice")}</span>
+                <span className="inv-detail__value ek-num">{money(advice.wholesalePrice)}</span>
+              </div>
+              <div className="inv-detail__row">
+                <span className="inv-detail__label">{t("inv.adviceWholesaleMargin")}</span>
+                <span className="inv-detail__value ek-num"
+                      style={{ color: advice.belowWholesale ? "var(--fg-danger)" : undefined }}>
+                  {advice.wholesaleMarginPercent == null
+                    ? "—"
+                    : `${Number(advice.wholesaleMarginPercent).toFixed(1)}%`}
+                </span>
+              </div>
+              {advice.recommendedWholesale != null && (
+                <div className="inv-detail__row">
+                  <span className="inv-detail__label">{t("inv.adviceRecommendWholesale")}</span>
+                  <span className="inv-detail__value ek-num fw-800 text-blue">
+                    {money(advice.recommendedWholesale)}
+                  </span>
+                </div>
+              )}
+            </>
           )}
         </Modal>
       )}

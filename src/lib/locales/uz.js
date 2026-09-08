@@ -2078,6 +2078,9 @@ export default {
   "inv.adviceMargin": "Joriy marja",
   "inv.adviceRecommend": "Eski marjani saqlash uchun sotuv narxi",
   "inv.adviceBelowCost": "Diqqat: sotuv narxi endi tan narxdan past — har sotuv zarar keltiradi",
+  "inv.adviceBelowWholesale": "Diqqat: optom narx endi tan narxdan past — har optom sotuv zarar keltiradi",
+  "inv.adviceWholesaleMargin": "Optom marja",
+  "inv.adviceRecommendWholesale": "Eski marjani saqlash uchun optom narx",
 
   /* ── To'lov: bitta maydon, qolgani nasiyaga (V58) ── */
   "kassa.amountFor": "{method} uchun summa",

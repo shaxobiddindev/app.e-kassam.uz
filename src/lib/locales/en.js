@@ -1970,6 +1970,9 @@ export default {
   "inv.adviceMargin": "Current margin",
   "inv.adviceRecommend": "Sale price that keeps the old margin",
   "inv.adviceBelowCost": "Careful: the sale price is now below cost — every sale loses money",
+  "inv.adviceBelowWholesale": "Careful: the wholesale price is now below cost — every wholesale sale loses money",
+  "inv.adviceWholesaleMargin": "Wholesale margin",
+  "inv.adviceRecommendWholesale": "Wholesale price that keeps the old margin",
 
   /* ── To'lov: bitta maydon, qolgani nasiyaga (V58) ── */
   "kassa.amountFor": "Amount for {method}",

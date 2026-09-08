@@ -161,7 +161,7 @@ async function openBatches({ live = LIVE, arch = ARCH } = {}) {
   return page;
 }
 
-async function openInv(items) {
+async function openInv(items, advice = null) {
   const page = await browser.newPage();
   await page.setViewport({ width: 1600, height: 950 });
   await page.setRequestInterception(true);
@@ -174,7 +174,12 @@ async function openInv(items) {
        manba nomi ham `api.e-kassam.uz` va oddiy `includes("/api")`
        xostga ham tushib, mos kelmagan javob berardi. */
     const p = new URL(r.url()).pathname;
-    const body = p === "/api/inventory"
+    /* ⚠ KIRIM JAVOBI ALOHIDA (V99): narx tavsiyasi aynan shu yo'ldan
+       qaytadi va umumiy `data: []` javobi bilan u hech qachon
+       ko'rinmasdi — tavsiya oynasi umuman ochilmasdi. */
+    const body = /\/inventory\/product\/\d+\/add$/.test(p) && advice
+      ? { success: true, message: "ok", data: { inventoryId: 1, priceAdvice: advice } }
+      : p === "/api/inventory"
       ? { success: true, data: items }
       : r.url().includes("/shop/profile")
         ? { success: true, data: { creditEnabled: false, nearExpiryDays: 7 } }
@@ -694,6 +699,120 @@ console.log("\n── P3. Bo'sh bo'lim ──");
   is(/javonda partiya yo'q/i.test(txt), "bo'sh bo'lim O'Z yozuvini ko'rsatadi", txt);
   is((await p.$eval(".empty i", (n) => n.className)).includes("fa-box-open"),
      "ikonka to'liq nomi bilan chizildi");
+  await p.close();
+}
+
+/* ══ Q. NARX TAVSIYASI — OPTOM NARX HAM (V99) ══════════════════════════
+
+   Do'kon egasining savoli: «yangi partiya kelganda tan narxi sotuv
+   narxidan yoki OPTOM narxdan oshib ketsa nima qilamiz?»
+
+   ⚠ ILGARI TIZIM OPTOM NARX HAQIDA JIM EDI. Tavsiyada faqat chakana
+   narx bor edi va tan narx optom narxdan oshganda ekranda «hammasi
+   joyida, marja 5%» turardi — do'kon esa har optom sotuvda
+   yo'qotardi. Optom sotuv katta miqdorda bo'lgani uchun yo'qotish
+   ham chakanadagidan katta.
+
+   ⚠ SHU YERDA O'LCHANADI, SERVERDA EMAS. Server to'g'ri bayroq
+   qaytarsa ham, uni chizmagan ekran bir xil zarar keltiradi. */
+console.log("\n── Q. Narx tavsiyasi: optom narx (V99) ──");
+{
+  /* Tan narx 9 500: optom narxdan (9 000) yuqori, chakanadan (10 000)
+     past. Ya'ni chakana savdo hamon foydali, optom esa zarar. */
+  const ADVICE = {
+    oldCost: 8000, newCost: 9500, salePrice: 10000,
+    recommendedSale: 11875, marginPercent: 5.0, belowCost: false,
+    wholesalePrice: 9000, recommendedWholesale: 10688,
+    wholesaleMarginPercent: -5.56, belowWholesale: true,
+  };
+  const p = await openInv(GOOD, ADVICE);
+
+  await p.evaluate(() => {
+    const b = [...document.querySelectorAll("table.table tbody .inv-acts button")]
+      .find((x) => x.querySelector("i.fa-plus"));
+    b?.click();
+  });
+  await p.waitForSelector(".modal-box input", { timeout: 8000 });
+
+  /* Miqdor maydonini to'ldirib saqlaymiz. */
+  await p.evaluate(() => {
+    const inp = document.querySelector(".modal-box input");
+    const set = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
+    set.call(inp, "5");
+    inp.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await p.evaluate(() => {
+    const b = [...document.querySelectorAll(".modal-box button")]
+      .find((x) => x.querySelector("i.fa-check"));
+    b?.click();
+  });
+  await p.waitForFunction(
+    () => [...document.querySelectorAll(".modal-title")].some((n) => /tan narx/i.test(n.textContent)),
+    { timeout: 8000 },
+  ).catch(() => {});
+
+  const seen = await p.evaluate(() => {
+    const rows = [...document.querySelectorAll(".modal-box .inv-detail__row")]
+      .map((r) => r.textContent.replace(/\s+/g, " ").trim());
+    const notes = [...document.querySelectorAll(".modal-box .ek-note")]
+      .map((n) => n.textContent.trim());
+    return { rows, notes };
+  });
+
+  is(seen.notes.some((n) => /optom narx endi tan narxdan past/i.test(n)),
+     "⚠ OPTOM ZARARI haqida ogohlantirish chiqdi", seen.notes.join(" | "));
+  is(!seen.notes.some((n) => /sotuv narxi endi tan narxdan past/i.test(n)),
+     "chakana ogohlantirishi chiqmadi — u zarar emas", seen.notes.join(" | "));
+  is(seen.rows.some((r) => /optom narx/i.test(r) && /9\s*000/.test(r)),
+     "joriy optom narx ko'rsatildi", seen.rows.join(" | "));
+  is(seen.rows.some((r) => /optom marja/i.test(r) && /-5[.,]6|-5[.,]5/.test(r)),
+     "optom marja MANFIY ko'rsatildi — zarar aynan shunday ko'rinadi",
+     seen.rows.join(" | "));
+  is(seen.rows.some((r) => /optom narx/i.test(r) && /10\s*688/.test(r)),
+     "optom narx uchun tavsiya berildi", seen.rows.join(" | "));
+  await shot(p, "advice-wholesale");
+  await p.close();
+}
+
+/* ⚠ OPTOM NARXSIZ DO'KONDA QATORLAR CHIQMASIN — chakana do'konda
+   optom narx umuman qo'yilmaydi va bo'sh qatorlar oynani uzaytirib,
+   asosiy raqamni pastga surib yuborardi. */
+{
+  const p = await openInv(GOOD, {
+    oldCost: 8000, newCost: 8200, salePrice: 10000,
+    recommendedSale: 10250, marginPercent: 18.0, belowCost: false,
+    wholesalePrice: null, recommendedWholesale: null,
+    wholesaleMarginPercent: null, belowWholesale: false,
+  });
+  await p.evaluate(() => {
+    const b = [...document.querySelectorAll("table.table tbody .inv-acts button")]
+      .find((x) => x.querySelector("i.fa-plus"));
+    b?.click();
+  });
+  await p.waitForSelector(".modal-box input", { timeout: 8000 });
+  await p.evaluate(() => {
+    const inp = document.querySelector(".modal-box input");
+    const set = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
+    set.call(inp, "5");
+    inp.dispatchEvent(new Event("input", { bubbles: true }));
+    const b = [...document.querySelectorAll(".modal-box button")]
+      .find((x) => x.querySelector("i.fa-check"));
+    b?.click();
+  });
+  await p.waitForFunction(
+    () => [...document.querySelectorAll(".modal-box .inv-detail__row")].length > 0,
+    { timeout: 8000 },
+  ).catch(() => {});
+  const rows = await p.$$eval(".modal-box .inv-detail__row",
+    (rs) => rs.map((r) => r.textContent.replace(/\s+/g, " ").trim()));
+  is(rows.length > 0, "tavsiya oynasi ochildi", String(rows.length));
+  is(!rows.some((r) => /optom/i.test(r)),
+     "optom narxsiz do'konda optom qatorlari CHIQMAYDI", rows.join(" | "));
+  const notes = await p.$$eval(".modal-box .ek-note", (ns) => ns.map((n) => n.textContent.trim()));
+  is(notes.length === 0,
+     "⚠ hammasi joyida bo'lsa qizil belgi yo'q — bekorga qo'rqitilgan "
+     + "do'kon egasi bir haftadan keyin ogohlantirishga qaramay qo'yadi",
+     notes.join(" | "));
   await p.close();
 }
 
