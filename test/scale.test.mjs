@@ -15,7 +15,9 @@
 
    Ishga tushirish:  node test/scale.test.mjs
    ══════════════════════════════════════════════════════════════════════════ */
-const { splitFrames, parseFrame, stableOf, feed, weightQty } = await import("../src/lib/ek-scale.js");
+const { splitFrames, parseFrame, stableOf, feed, weightQty, isWeighUnit } =
+  await import("../src/lib/ek-scale.js");
+const { readFileSync } = await import("node:fs");
 
 let pass = 0, fail = 0;
 const ok  = (m) => { pass++; console.log("  ✅ " + m); };
@@ -178,6 +180,43 @@ console.log("\n\u2500\u2500 Qaysi port TAROZI (V112) \u2500\u2500");
      "\u26a0 belgi mos kelmadi va port ko'p \u2014 taxmin qilinmaydi");
   eq(pickPort([scale], "9:9"), scale,
      "port bitta \u2014 adapter almashgan bo'lsa ham o'sha qurilma");
+}
+
+console.log("\n\u2500\u2500 Og'irlik birligi \u2500\u2500");
+{
+  /* \u26a0 «Bo'linadigan» bilan «tortiladigan» BIR NARSA EMAS va aynan shu
+     farq ikki tomonga xato berardi: gramm bo'linmaydi (butun son), lekin
+     tortiladi; metr bo'linadi, lekin tarozi uni o'lchay olmaydi. */
+  eq(isWeighUnit("KG"), true, "KG og'irlik");
+  eq(isWeighUnit("GRAM"), true, "\u26a0 GRAM og'irlik \u2014 ziravor tarozida tortiladi");
+  eq(isWeighUnit("gram"), true, "kichik harf ham tanildi");
+  eq(isWeighUnit("METR"), false, "\u26a0 METR og'irlik EMAS \u2014 tarozi matoni o'lchay olmaydi");
+  eq(isWeighUnit("LITR"), false, "LITR og'irlik emas");
+  eq(isWeighUnit("DONA"), false, "DONA og'irlik emas");
+  eq(isWeighUnit(null), false, "birlik bo'lmasa ham yiqilmaydi");
+}
+
+console.log("\n\u2500\u2500 Ulanish: miqdor oynasi va PLU maydoni \u2500\u2500");
+{
+  /* \u26a0 NEGA MATN BO'YICHA. Asl xato HISOBDA emas, ULANISHDA edi:
+     `weightQty` grammni allaqachon to'g'ri o'girardi (`GRAM: 1000`),
+     lekin uni chaqiradigan miqdor oynasi `unitDecimals > 0` sharti
+     bilan yopiq turardi \u2014 ya'ni gramm uchun oyna umuman ochilmasdi va
+     jonli tarozi tugmasi chizilmasdi. Hisobni sinash buni ushlamasdi. */
+  const kassa = readFileSync(new URL("../src/pages/KassaPage.jsx", import.meta.url), "utf8");
+
+  eq(/const needsQty = \(product\) =>[^;]*isWeighUnit/.test(kassa), true,
+     "\u26a0 miqdor oynasining sharti og'irlik birligini bilmaydi");
+  eq(kassa.includes("if (isDivisible(product)) { setQtyModal"), false,
+     "\u26a0 tovar tanlashda hali ham eski shart \u2014 grammda oyna ochilmaydi");
+  eq(kassa.includes("if (isDivisible(item)) { setQtyModal"), false,
+     "\u26a0 savatdagi «+» hali ham eski shartda \u2014 grammda 1 gramm qo'shiladi");
+
+  const form = readFileSync(new URL("../src/pages/ProductsPage.jsx", import.meta.url), "utf8");
+  eq(/const weighable = isWeighUnit\(form\.unit\)/.test(form), true,
+     "tovar formasida og'irlik sharti yo'q");
+  eq(form.includes('disabled={!divisible} aria-label={t("products.plu")}'), false,
+     "\u26a0 PLU maydoni hali ham «bo'linadigan» shartida \u2014 gramm yopiq, metr ochiq");
 }
 
 console.log(`\n  ${pass} o'tdi, ${fail} yiqildi`);

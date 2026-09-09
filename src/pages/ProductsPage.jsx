@@ -18,6 +18,7 @@ import { FISCAL_UI } from "../config";
 import {
   UNIT, PRODUCT_TYPE, MARKING_GROUP, options, unitLabel, unitDecimals,
 } from "../lib/ek-labels";
+import { isWeighUnit } from "../lib/ek-scale";
 import { NumField, BarcodeField } from "../components/ek/EkFields";
 import { useSearchParams } from "react-router-dom";
 import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
@@ -503,6 +504,13 @@ export default function ProductsPage({ toast }) {
   const setValue = (key) => (v) => setForm((prev) => ({ ...prev, [key]: v }));
 
   const divisible = unitDecimals(form.unit) > 0;
+  /* ⚠ PLU «bo'linadigan» emas, TAROZIDA TORTILADIGAN birlikka qo'yiladi.
+     Ikkalasi bir narsa emas: gramm bo'linmaydi (butun son), lekin
+     tortiladi; metr bo'linadi, lekin tarozi uni o'lchay olmaydi. Ilgari
+     maydon `divisible` ga qarardi va shu sababli ziravor uchun yopiq,
+     mato uchun esa ochiq edi — ochig'i yomonrog'i, chunki o'sha yerda
+     0.488 kg lik yorliq «0.488 metr» bo'lib chekka tushardi. */
+  const weighable = isWeighUnit(form.unit);
   const isService = form.type === "SERVICE";
 
   /* ── Narx yorliqlari ────────────────────────────────────────────────
@@ -1013,9 +1021,9 @@ export default function ProductsPage({ toast }) {
                        target: { value: e.target.value.replace(/\D/g, "").slice(0, 8) },
                      })}
                      placeholder="00012" inputMode="numeric"
-                     disabled={!divisible} aria-label={t("products.plu")} />
+                     disabled={!weighable} aria-label={t("products.plu")} />
               <div className="set-row__hint" style={{ marginTop: 4 }}>
-                {divisible ? t("products.pluHint") : t("products.pluUnitHint")}
+                {weighable ? t("products.pluHint") : t("products.pluUnitHint")}
               </div>
             </FormGroup>
 

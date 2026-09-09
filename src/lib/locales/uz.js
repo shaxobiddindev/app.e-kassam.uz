@@ -944,7 +944,7 @@ export default {
   /* ── Tarozi barkodi va PLU (V42) ── */
   "products.plu": "PLU — tarozi kodi",
   "products.pluHint": "Tarozidagi tovar raqami \u2014 barkod ichida shu keladi",
-  "products.pluUnitHint": "PLU faqat bo'linadigan birlikka qo'yiladi: kg, litr, metr. Donada tarozi kodi ishlamaydi.",
+  "products.pluUnitHint": "PLU faqat tarozida tortiladigan tovarga qo'yiladi: kg, gramm. Dona va metrda tarozi kodi ishlamaydi.",
   "products.scaleExport": "Taroziga eksport",
   "products.scaleExportHint": "PLU biriktirilgan tovarlar CSV bo'lib yuklanadi — tarozi dasturiga import qilinadi",
   "scale.title": "Tarozi barkodi",

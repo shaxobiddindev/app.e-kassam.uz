@@ -5,6 +5,7 @@ import { useBadge } from "../context/BadgeProvider";
 import { useConfirm } from "../context/ConfirmProvider";
 import { money, quantity as fmtQty } from "../utils";
 import { unitLabel } from "../lib/ek-labels";
+import { isWeighUnit } from "../lib/ek-scale";
 import ProductTile from "../components/ProductTile";
 import { asArray } from "../lib/ek-array";
 /* Jamg'armaga pul qo'yish (V64) — qarz to'lovi oynasining «savings» rejimi. */
@@ -1143,6 +1144,17 @@ export default function KassaPage({ toast, refreshLowStock }) {
   /** Bo'linadigan birlik (kg, litr, metr) — "+" bilan yig'ib bo'lmaydi. */
   const isDivisible = (product) => (product?.unitDecimals ?? 0) > 0;
 
+  /**
+   * Miqdorni kassir KIRITADIMI — "+" bilan bittalab yig'ish o'rniga.
+   *
+   * ⚠ GRAMM UCHUN QO'SHILDI. Grammda miqdor butun son, ya'ni
+   * `isDivisible` yo'q deydi — lekin tovar TAROZIDA tortiladi.
+   * Ilgari ziravorni bosganda savatga «1 gramm» tushardi va jonli
+   * tarozi tugmasi umuman chizilmasdi (u shu oynaning ichida).
+   * Bir grammlab bosib 488 gramm yig'ish — kassirni masxara qilish.
+   */
+  const needsQty = (product) => isDivisible(product) || isWeighUnit(product?.unit);
+
   /** Savatda shu tovardan ALLAQACHON nechta bor. */
   const inCart = (id) => cart.find((i) => i.id === id)?.qty ?? 0;
 
@@ -1210,7 +1222,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
     // Markirovkali tovarda miqdorni kassir yozmaydi — u har donaning
     // yorlig'ini skanerlaydi va miqdor shundan kelib chiqadi.
     if (product.markingGroup) { setMarkModal({ product }); return; }
-    if (isDivisible(product)) { setQtyModal({ product, initial: null }); return; }
+    if (needsQty(product)) { setQtyModal({ product, initial: null }); return; }
     addToCart(product, 1);
   };
 
@@ -1348,7 +1360,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
 
     // Tarozili tovarda "+" bir kilogramm qo'shishi mantiqsiz — miqdor
     // oynasi ochiladi va kassir aniq qiymat kiritadi.
-    if (isDivisible(item)) { setQtyModal({ product: item, initial: item.qty }); return; }
+    if (needsQty(item)) { setQtyModal({ product: item, initial: item.qty }); return; }
 
     const next = roundQty(item, item.qty + delta);
     if (next <= 0) { removeFromCart(id); return; }
@@ -3198,7 +3210,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
                             Endi dona narxi «58 504 so'm/kg» ko'rinishida
                             — tarozining o'zi ham shunday yozadi. */}
                         <span className="cart-item-price__now">
-                          {isDivisible(item)
+                          {needsQty(item)
                             ? `${money(unitPriceOf(item))}/${unitLabel(item.unit)}`
                             : money(unitPriceOf(item))}
                         </span>

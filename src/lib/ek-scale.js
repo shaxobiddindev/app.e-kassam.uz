@@ -195,6 +195,21 @@ export function feed(state, chunk, { stableCount = 4 } = {}) {
 const WEIGHT_UNITS = { KG: 1, GRAM: 1000 };
 
 /**
+ * Bu birlik TAROZIDA tortiladimi.
+ *
+ * ⚠ «Bo'linadigan» bilan bir narsa emas va aynan shu farq ikki tomonga
+ * xato berardi. Gramm bo'linmaydi (butun son), lekin to'la-to'kis
+ * tortiladi; metr esa bo'linadi, lekin tarozi uni o'lchay olmaydi.
+ * Miqdor oynasi va PLU maydoni shu savolga qarashi kerak, `decimals` ga
+ * emas — aks holda ziravor sotadigan do'kon tarozidan foydalana olmaydi,
+ * mato sotadigan do'konda esa 0.488 kg «0.488 metr» bo'lib chekka
+ * tushadi.
+ */
+export function isWeighUnit(unit) {
+  return Boolean(WEIGHT_UNITS[String(unit ?? "").trim().toUpperCase()]);
+}
+
+/**
  * Tarozining kilogrammini TOVAR birligiga o'giradi.
  *
  * @param unit  tovar birligi (`KG`, `GRAM`, `LITR`…)

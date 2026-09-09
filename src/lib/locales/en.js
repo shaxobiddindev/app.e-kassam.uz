@@ -905,7 +905,7 @@ export default {
   "products.inactive": "Inactive",
   "products.plu": "PLU — scale code",
   "products.pluHint": "The item number on the scale. This code arrives inside the barcode.",
-  "products.pluUnitHint": "PLU is only for divisible units: kg, litre, metre. In pieces the scale code does nothing.",
+  "products.pluUnitHint": "PLU applies only to a weighed product: kg, g. For pieces and metres the scale code does nothing.",
   "products.scaleExport": "Export for scale",
   "products.scaleExportHint": "Products with a PLU are exported as CSV — import it into the scale software",
   "scale.title": "Scale barcode",
