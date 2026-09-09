@@ -682,6 +682,7 @@ export default {
   "enum.audit.SALE_CORRECTION": "Correction receipt",
   "enum.audit.PRODUCT_DELETE": "Product deleted",
   "enum.audit.PRODUCT_CODE_ISSUE": "Store code issued to product",
+  "enum.audit.PRODUCT_BARCODE_RELEASE": "Barcode freed from an archived product",
   "enum.audit.PRICE_CHANGE": "Price changed",
   "enum.audit.PRICE_BULK_CHANGE": "Bulk price change",
   "enum.audit.STOCK_TAKE_CLOSE": "Stock-take finished",

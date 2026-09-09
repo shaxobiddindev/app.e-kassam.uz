@@ -710,6 +710,7 @@ export default {
   "enum.audit.SALE_CORRECTION": "Tuzatuvchi chek",
   "enum.audit.PRODUCT_DELETE": "Tovar o'chirildi",
   "enum.audit.PRODUCT_CODE_ISSUE": "Tovarga do'kon kodi berildi",
+  "enum.audit.PRODUCT_BARCODE_RELEASE": "Arxivlangan tovardan barkod bo'shatildi",
   "enum.audit.PRICE_CHANGE": "Narx o'zgardi",
   "enum.audit.PRICE_BULK_CHANGE": "Ommaviy narx o'zgardi",
   "enum.audit.STOCK_TAKE_CLOSE": "Inventarizatsiya yakunlandi",
