@@ -1,4 +1,5 @@
 import { money, quantity as fmtQty } from "../utils";
+import { productCode } from "../lib/ek-code";
 import { unitLabel } from "../lib/ek-labels";
 import { mediaApi } from "../api";
 import { t } from "../lib/ek-i18n";
@@ -88,8 +89,8 @@ export default function ProductTile({ product, view = "tiles", onPick, available
             kassir raqam yozib qidirganda. Shunda u qaysi raqam
             qaysi tovarni ochganini ko'radi va keyingi safar
             to'g'ridan-to'g'ri yozadi. */}
-        {showCode && p.shortCode != null && (
-          <span className="product-code ek-num">№{p.shortCode}</span>
+        {showCode && productCode(p) != null && (
+          <span className="product-code ek-num">№{productCode(p)}</span>
         )}
         <span className="product-name">{p.name}</span>
 

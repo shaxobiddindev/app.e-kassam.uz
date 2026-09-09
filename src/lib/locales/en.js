@@ -2395,4 +2395,7 @@ export default {
   "products.archive": "Archive",
   "products.archived": "Product archived",
   "products.archiveCounts": "In sales: {sales}. In documents: {docs}.",
+  "kassa.codeMode": "By code",
+  "kassa.codeModeHint": "Exact code lookup \u2014 similar products are not shown",
+  "kassa.codeNotFound": "No product with this code",
 };

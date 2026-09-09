@@ -1,3 +1,4 @@
+import { productCode } from "./ek-code.js";
 /* ══════════════════════════════════════════════════════════════════════════
    JAVON YORLIG'I — A4 VARAQDA (V108)
 
@@ -90,8 +91,8 @@ function labelHtml(item, size, shopName) {
     + (shopName ? `<div class="lb-shop">${esc(shopName)}</div>` : "")
     + `<div class="lb-name">${esc(item.name || "—")}</div>`
     + `<div class="lb-row">`
-    +   (item.shortCode != null
-          ? `<span class="lb-code">№${esc(item.shortCode)}</span>` : `<span></span>`)
+    +   (productCode(item) != null
+          ? `<span class="lb-code">№${esc(productCode(item))}</span>` : `<span></span>`)
     +   `<span class="lb-price">${esc(money(item.salePrice, { withUnit: true }))}</span>`
     + `</div>`
     + `<div class="lb-bar">${svg || ""}</div>`
@@ -101,7 +102,7 @@ function labelHtml(item, size, shopName) {
 /**
  * Yorliq varag'ining HTML tanasi — chop etishdan ALOHIDA (sinov uchun).
  *
- * @param {Array} items   `{name, salePrice, barcode, shortCode}`
+ * @param {Array} items   `{name, salePrice, barcode, searchCode}`
  * @param {object} opts   `size` ("big"|"small"), `copies`, `shopName`
  */
 export function buildLabelSheet(items = [], { size = "big", copies = 1, shopName = "" } = {}) {

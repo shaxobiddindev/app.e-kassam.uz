@@ -19,6 +19,7 @@ import {
   UNIT, PRODUCT_TYPE, MARKING_GROUP, options, unitLabel, unitDecimals,
 } from "../lib/ek-labels";
 import { isWeighUnit } from "../lib/ek-scale";
+import { productCode } from "../lib/ek-code";
 import { NumField, BarcodeField } from "../components/ek/EkFields";
 import { useSearchParams } from "react-router-dom";
 import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
@@ -469,7 +470,9 @@ export default function ProductsPage({ toast }) {
        so'rov do'kon egasiga eng eski (ya'ni asosiy) tovarlarni
        beradi. Jadvalda alohida USTUN emas — u kod katagining ichida
        turadi va yana bitta ustun jadvalni bekorga kengaytirardi. */
-    { key: "short", label: t("products.shortCode"),  type: "number", get: (p) => p.shortCode },
+    /* ⚠ TUR «matn», «son» EMAS: «001» son sifatida 1 ga aylanardi va
+       filtr «01» bilan ham topib qo'yardi (V115). */
+    { key: "short", label: t("products.shortCode"),  type: "text",   get: (p) => productCode(p) },
     { key: "cat",   label: t("products.category"),  type: "text",   get: (p) => p.categoryName },
     { key: "price", label: t("products.salePrice"), type: "number", get: (p) => p.salePrice },
     { key: "qty",   label: t("inv.currentQty"),     type: "number", get: (p) => p.stockQuantity },
@@ -543,7 +546,7 @@ export default function ProductsPage({ toast }) {
       name: p.name, salePrice: p.salePrice, barcode: p.barcode,
       /* ⚠ QISQA RAQAM (V107) — yorliqning eng muhim yangiligi:
          kassir uni javonga qarab eslab qoladi. */
-      shortCode: p.shortCode,
+      shortCode: productCode(p),
     })));
   };
 
@@ -710,9 +713,9 @@ export default function ProductsPage({ toast }) {
                             yodida AYNAN shu raqam qoladi va u
                             ko'rinmasa, eslab ham qolmaydi. Barkod
                             skaner uchun — uni odam o'qimaydi. */}
-                        {p.shortCode != null && (
+                        {productCode(p) != null && (
                           <div className="ek-num fw-800" title={t("products.shortCodeHint")}>
-                            №{p.shortCode}
+                            №{productCode(p)}
                           </div>
                         )}
                         <span className="ek-num text-muted" style={{ fontSize: 12 }}>

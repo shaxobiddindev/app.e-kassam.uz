@@ -2395,4 +2395,7 @@ export default {
   "products.archive": "В архив",
   "products.archived": "Товар отправлен в архив",
   "products.archiveCounts": "В продажах: {sales}. В документах: {docs}.",
+  "kassa.codeMode": "\u041f\u043e \u043a\u043e\u0434\u0443",
+  "kassa.codeModeHint": "\u0422\u043e\u0447\u043d\u044b\u0439 \u043f\u043e\u0438\u0441\u043a \u043f\u043e \u043a\u043e\u0434\u0443 \u2014 \u043f\u043e\u0445\u043e\u0436\u0438\u0435 \u0442\u043e\u0432\u0430\u0440\u044b \u043d\u0435 \u043f\u043e\u043a\u0430\u0437\u044b\u0432\u0430\u044e\u0442\u0441\u044f",
+  "kassa.codeNotFound": "\u0422\u043e\u0432\u0430\u0440 \u0441 \u0442\u0430\u043a\u0438\u043c \u043a\u043e\u0434\u043e\u043c \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d",
 };

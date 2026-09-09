@@ -2510,4 +2510,7 @@ export default {
   "products.archive": "Arxivlash",
   "products.archived": "Tovar arxivlandi",
   "products.archiveCounts": "Sotuvlarda: {sales} ta. Hujjatlarda: {docs} ta.",
+  "kassa.codeMode": "Kod bo'yicha",
+  "kassa.codeModeHint": "Aniq kod bo'yicha qidiruv \u2014 o'xshash tovar ko'rsatilmaydi",
+  "kassa.codeNotFound": "Bu kodli tovar topilmadi",
 };

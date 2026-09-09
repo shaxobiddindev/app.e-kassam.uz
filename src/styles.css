@@ -6324,3 +6324,22 @@ button.stk__c:hover { background: var(--bg-hover); }
   flex-wrap: wrap;
   justify-content: flex-end;
 }
+
+/* ══ KOD REJIMI BELGISI (V115) ══════════════════════════════════════
+   Kassir `*425` deb terganda qidiruv ANIQ moslikka o'tadi va o'xshash
+   tovar ko'rsatilmaydi. ⚠ Rejim ko'rinib turishi shart: usiz kassir
+   yulduzchani sezmay qolib, «nega hech narsa chiqmayapti» deb
+   o'ylardi. Belgi MATN bilan — rang yolg'iz signal bo'lolmaydi. */
+.search-bar__mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--primary-soft, rgba(37, 99, 235, .12));
+  color: var(--primary, #2563eb);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}

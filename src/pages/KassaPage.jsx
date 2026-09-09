@@ -779,7 +779,28 @@ export default function KassaPage({ toast, refreshLowStock }) {
      ⚠ Kutish 350 → 180 ms ga tushirildi: mahalliy javob bor ekan,
      server javobini uzoq kutib turishning ma'nosi qolmadi.
      ══════════════════════════════════════════════════════════════════ */
+  /**
+   * KOD REJIMI — `*425` (V115).
+   *
+   * ⚠ MAHALLIY REYTING BU YERDA ISHLAMAYDI. Oddiy qidiruvda ekrandagi
+   * katalog darhol saralanadi va kassir «bir zumda» javob oladi. Kod
+   * rejimida esa bu ZARARLI bo'lardi: mahalliy saralash O'XSHASH
+   * tovarlarni chiqaradi, kassir navbat oldida ulardan birini tanlab,
+   * BOSHQA tovarni sotib yuborishi mumkin. Kodga javob ikki xil
+   * bo'lishi kerak — aynan o'sha tovar yoki aniq «yo'q».
+   */
   const handleSearchChange = (val) => {
+    if (val.startsWith("*")) {
+      /* Yulduzchadan keyin faqat raqam. Boshqasi jimgina tashlanadi:
+         xato belgi uchun kassirni to'xtatib turishning ma'nosi yo'q. */
+      const code = "*" + val.slice(1).replace(/\D/g, "").slice(0, 12);
+      setSearch(code);
+      setProducts([]);
+      clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => doSearch(code), 180);
+      return;
+    }
+
     setSearch(val);
 
     /* 1-bosqich: server javobini kutmasdan mahalliy saralash. Bo'sh
@@ -2901,9 +2922,19 @@ export default function KassaPage({ toast, refreshLowStock }) {
                   autoComplete="off"
                   placeholder={t("kassa.searchOrScan")}
                   value={search}
+                  inputMode={search.startsWith("*") ? "numeric" : undefined}
                   onChange={(e) => handleSearchChange(e.target.value)}
                   onKeyDown={onSearchEnter}
                 />
+                {/* ⚠ REJIM KO'RINIB TURSIN. Kassir yulduzcha qo'yganini
+                    sezmay qolishi mumkin va o'shanda «nega hech narsa
+                    chiqmayapti» degan savol paydo bo'lardi. Belgi MATN
+                    bilan — rang yolg'iz signal bo'lolmaydi. */}
+                {search.startsWith("*") && (
+                  <span className="search-bar__mode" title={t("kassa.codeModeHint")}>
+                    <i className="fa-solid fa-hashtag" aria-hidden="true" /> {t("kassa.codeMode")}
+                  </span>
+                )}
                 {search && <ClearButton label={t("osk.clear")} onClear={() => handleSearchChange("")} />}
                 {touchOn && (
                   <button
