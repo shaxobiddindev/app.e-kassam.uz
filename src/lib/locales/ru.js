@@ -2026,6 +2026,8 @@ export default {
   "products.minPriceHint": "До неё кассир может опустить цену без бейджа",
   "kassa.priceTooLow": "Ниже опускать нельзя",
   "kassa.lowestPrice": "Минимальная цена",
+  "kassa.sellAtLoss": "Продать в убыток",
+  "kassa.sellAtLossHint": "Потребуется бейдж руководителя",
   "kassa.wholesaleAll": "Оптовые цены",
   "kassa.wholesaleAllOff": "Отменить оптовые цены",
   "kassa.wholesaleApplied": "Оптовая цена применена к {{count}} товарам",

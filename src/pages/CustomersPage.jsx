@@ -166,6 +166,19 @@ export default function CustomersPage({ toast }) {
     } catch (_) { /* jurnal kelmasa ham to'lov qabul qilinaveradi */ }
   };
 
+  /**
+   * Qarz oynasini TO'LOV shaklida ochadi.
+   *
+   * ⚠ `openDebt` jurnalni kutadi: to'lov oynasi «alohida qarzlarni
+   * tanlash» rejimida aynan shu jurnaldan foydalanadi. Shuning uchun
+   * `payOpen` jurnal kelgandan KEYIN yoqiladi — aks holda oyna bo'sh
+   * ro'yxat bilan ochilib, kassir «qarz yo'q» deb o'ylardi.
+   */
+  const openDebtPay = async (c) => {
+    await openDebt(c);
+    setPayOpen(true);
+  };
+
   const submitDebt = async ({ amount, method, payments, mode, chargeIds }) => {
     setPaying(true);
     try {
@@ -648,13 +661,66 @@ export default function CustomersPage({ toast }) {
                               turadi, «To'lash» va «Hisobot» esa o'chiq —
                               yo'q narsani to'lab ham, chop etib ham
                               bo'lmaydi. */}
-                          <button className="btn-icon"
-                                  title={Number(c.balance) > 0 ? t("credit.pay") : t("credit.history")}
-                                  aria-label={Number(c.balance) > 0 ? t("credit.pay") : t("credit.history")}
-                                  onClick={() => openDebt(c)}>
-                            <i className={`fa-solid ${Number(c.balance) > 0
-                                ? "fa-hand-holding-dollar" : "fa-clock-rotate-left"}`} />
-                          </button>
+                          {/* ══ TUGMALAR RO'YXATGA QARAB (do'kon egasi, 2026-09-09) ══
+
+                              Ilgari uchala ro'yxatda ham bir xil to'plam
+                              chizilardi va bu ikki joyda noto'g'ri edi:
+
+                              · JAMG'ARMA ro'yxatida tahrirlash tugmasi
+                                turardi — u yerda hech kim mijozni
+                                tahrirlamaydi, buning uchun «hammasi»
+                                bor. Ortiqcha tugma faqat adashtirardi.
+
+                              · QARZDORLARDA bitta tugma qoldiqqa qarab
+                                goh «to'lash», goh «tarix» bo'lardi.
+                                Ya'ni qarzdorlar ro'yxatida turib
+                                TARIXNI ochish uchun avval qarzni to'lash
+                                kerak edi — ro'yxat nima uchun ochilgan
+                                bo'lsa, o'sha ishning yarmi yo'q edi.
+
+                              ⚠ HAR RO'YXATDA TUGMALAR SONI QAT'IY.
+                              Qatorda tugmalar soni mijozdan mijozga
+                              o'zgarsa, qolganlari SURILADI va kassirning
+                              «tahrirlash» ni mo'ljallagan barmog'i
+                              qo'shni mijozda «jamg'arma» ga tushardi.
+                              Shuning uchun qarzi yo'q mijozda «to'lash»
+                              YASHIRILMAYDI, faqat o'chiriladi — o'rni
+                              qoladi. */}
+                          {view === "debtors" ? (
+                            <>
+                              {/* ⚠ TO'G'RIDAN-TO'G'RI TO'LOV OYNASI.
+                                  Qarzdorlar ro'yxatidagi yagona ish —
+                                  qarzni yopish; oradagi qadam ortiqcha. */}
+                              <button className="btn-icon"
+                                      title={t("credit.pay")} aria-label={t("credit.pay")}
+                                      disabled={!(Number(c.balance) > 0)}
+                                      onClick={() => openDebtPay(c)}>
+                                <i className="fa-solid fa-hand-holding-dollar" />
+                              </button>
+                              <button className="btn-icon"
+                                      title={t("credit.history")} aria-label={t("credit.history")}
+                                      onClick={() => openDebt(c)}>
+                                <i className="fa-solid fa-clock-rotate-left" />
+                              </button>
+                            </>
+                          ) : view === "savings" ? (
+                            /* ⚠ JAMG'ARMA RO'YXATIDA — FAQAT TARIX.
+                               Qarzni to'lash bu yerning ishi emas; u
+                               «hammasi» va «qarzdorlar» da bor. */
+                            <button className="btn-icon"
+                                    title={t("credit.history")} aria-label={t("credit.history")}
+                                    onClick={() => openDebt(c)}>
+                              <i className="fa-solid fa-clock-rotate-left" />
+                            </button>
+                          ) : (
+                            <button className="btn-icon"
+                                    title={Number(c.balance) > 0 ? t("credit.pay") : t("credit.history")}
+                                    aria-label={Number(c.balance) > 0 ? t("credit.pay") : t("credit.history")}
+                                    onClick={() => openDebt(c)}>
+                              <i className={`fa-solid ${Number(c.balance) > 0
+                                  ? "fa-hand-holding-dollar" : "fa-clock-rotate-left"}`} />
+                            </button>
+                          )}
                           {/* ⚠ CHEGARA «hammasi» EMAS, «qarzdor emas» (V105).
 
                               Ilgari bu yerda `view === "all"` turardi va
@@ -677,9 +743,15 @@ export default function CustomersPage({ toast }) {
                               hech qachon kerak emas edi. */}
                           {view !== "debtors" && (
                             <>
-                              <button className="btn-icon" onClick={() => openEdit(c)}>
-                                <i className="fa-solid fa-pen" />
-                              </button>
+                              {/* ⚠ TAHRIRLASH FAQAT «HAMMASI» DA (do'kon
+                                  egasi, 2026-09-09): jamg'arma ro'yxati
+                                  pul qo'shish uchun ochiladi, mijozni
+                                  tahrirlash uchun emas. */}
+                              {view === "all" && (
+                                <button className="btn-icon" onClick={() => openEdit(c)}>
+                                  <i className="fa-solid fa-pen" />
+                                </button>
+                              )}
                               {/* ⚠ JAMG'ARMA TUGMASI DOIM BOR (V63),
                                   qoldiq nol bo'lsa ham: kassir aynan
                                   shu yerdan pul QO'SHADI. Qarz

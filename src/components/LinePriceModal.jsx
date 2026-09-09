@@ -7,7 +7,7 @@ import { NumField } from "./ek/EkFields";
 import Overlay from "./ek/Overlay";
 import {
   lineBase, lineQty, lineFloor, initialPrice, wholesaleOffer,
-  quickPrices, priceVerdict, priceDiscount, lineNetTotal, parsePrice,
+  quickPrices, priceVerdict, priceDiscount, lossDiscount, lineNetTotal, parsePrice,
 } from "../lib/ek-line-price";
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -144,7 +144,41 @@ export default function LinePriceModal({ item, onClose, onApply }) {
             </div>
           )}
 
+          {/* ══ ZARARGA SOTISH — FAQAT BAJIK BILAN (do'kon egasi, 2026-09-09) ══
+
+              ⚠ NEGA KERAK EDI. Chegaradan past narx yozilganda «Saqlash»
+              shunchaki O'CHIQ qolardi: kassir sababni ko'rardi-yu, yo'lni
+              ko'rmasdi. Ya'ni rahbar ruxsat bermoqchi bo'lsa ham, uni
+              kassadan berib bo'lmasdi — narxni katalogda o'zgartirishdan
+              boshqa chora yo'q edi.
+
+              ⚠ RUXSATNI BU YER BERMAYDI. Tugma faqat qatorga narxni
+              qo'yadi; zararni SERVER aniqlaydi va `SALE_BELOW_COST`
+              amali uchun bajik so'raydi (`Discounts.decide`). Ya'ni
+              chegara joyida qoladi — o'zgargani shuki, endi unga
+              BORISH mumkin.
+
+              ⚠ BAJIK CHEK YOPILAYOTGANDA SO'RALADI, shu yerda emas —
+              server qoidasi shunday: bitta chek uchun ikki marta
+              skanerlash marosimga aylanib, himoya ma'nosini yo'qotardi.
+              Shuning uchun tugma ostida NIMA BO'LISHI yozib qo'yiladi:
+              kassir rahbarni oldindan chaqira olsin.
+
+              ⚠ FAQAT «past» HOLATDA. Narxni OSHIRISHGA bu yo'l ochilmaydi:
+              u zarar emas, boshqa tovar yoki boshqa narx demakdir. */}
+          {tooLow && (
+            <button type="button" className="btn btn-outline line-loss"
+                    onClick={() => onApply(lossDiscount(item, num))}>
+              <span>
+                <i className="fa-solid fa-arrow-trend-down" aria-hidden="true" />{" "}
+                {t("kassa.sellAtLoss")}
+              </span>
+              <small>{t("kassa.sellAtLossHint")}</small>
+            </button>
+          )}
+
           <div className="qty-modal__reset">
+
             <button type="button" className="btn btn-outline qty-modal__clear"
                     onClick={() => setPrice(String(Math.round(base)))}>
               <i className="fa-solid fa-rotate-left" aria-hidden="true" /> {t("kassa.resetPrice")}

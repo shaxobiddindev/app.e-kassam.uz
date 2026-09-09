@@ -2141,6 +2141,8 @@ export default {
   "products.minPriceHint": "Kassir bajiksiz shu narxgacha tushira oladi",
   "kassa.priceTooLow": "Bundan past tushib bo'lmaydi",
   "kassa.lowestPrice": "Eng past narx",
+  "kassa.sellAtLoss": "Zararga sotish",
+  "kassa.sellAtLossHint": "Rahbar bajigi so'raladi",
   "kassa.wholesaleAll": "Optom narxlar",
   "kassa.wholesaleAllOff": "Optom narxni bekor qilish",
   "kassa.wholesaleApplied": "{{count}} ta tovarga optom narx qo'yildi",

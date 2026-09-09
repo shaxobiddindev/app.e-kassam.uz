@@ -191,7 +191,30 @@ export function priceVerdict(item, num) {
  */
 export function priceDiscount(item, num) {
   if (priceVerdict(item, num) !== "ok") return 0;
+  return rawDiscount(item, num);
+}
 
+/**
+ * ZARARGA SOTISH uchun chegirma — chegaradan PAST narxda ham hisoblanadi.
+ *
+ * ⚠ NEGA ALOHIDA FUNKSIYA KERAK BO'LDI. `priceDiscount` verdikt «ok»
+ * bo'lmasa NOL qaytaradi va bu to'g'ri: chegara buzilgan narx bilan
+ * savatga tegib bo'lmaydi. Ammo «Zararga sotish» tugmasi aynan o'sha
+ * holatda bosiladi — o'sha yerda `priceDiscount` ishlatilsa, chegirma
+ * NOL bo'lib, tovar TO'LIQ NARXDA savatga tushardi. Kassir zararga
+ * sotdim deb o'ylab, aslida e'lon narxida sotardi va buni faqat
+ * mijoz chekni o'qib aytishi mumkin edi.
+ *
+ * ⚠ «Yuqori» narxga bu yo'l ochilmaydi: narxni OSHIRISH zarar emas va
+ * server ham manfiy chegirmani rad etadi.
+ */
+export function lossDiscount(item, num) {
+  if (priceVerdict(item, num) !== "low") return 0;
+  return rawDiscount(item, num);
+}
+
+/** Chegirmaning sof hisobi — verdiktga qaramaydi. */
+function rawDiscount(item, num) {
   /* TEGILMAGAN NARX — asl chegirma AYNAN saqlanadi (xato #1). */
   if (num === initialPrice(item)) return n(item?.discount);
 

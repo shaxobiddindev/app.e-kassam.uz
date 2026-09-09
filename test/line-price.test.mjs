@@ -15,7 +15,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   lineFloor, initialPrice, wholesaleOffer, quickPrices,
-  priceVerdict, priceDiscount, lineNetTotal, parsePrice,
+  priceVerdict, priceDiscount, lossDiscount, lineNetTotal, parsePrice,
   wholesalePlan, applyWholesale,
 } from "../src/lib/ek-line-price.js";
 
@@ -255,4 +255,74 @@ test("⚠ SAVAT TUGMASI VA QATOR OYNASI BIR XIL NARXNI BERADI", () => {
     const fromModal = priceDiscount(l, w);
     assert.equal(fromCart, fromModal, `${l.id}: savat ${fromCart} ≠ oyna ${fromModal}`);
   }
+});
+
+/* ── 5. ZARARGA SOTISH — chegaradan past narx ───────────────────────────
+
+   ⚠ BU SINOVLAR HAQIQIY XATO USTIGA YOZILGAN (2026-09-09).
+
+   «Zararga sotish» tugmasi qo'shilganda u `priceDiscount` ni
+   ishlatardi. O'sha funksiya esa verdikt «ok» bo'lmasa NOL qaytaradi —
+   ya'ni chegaradan past narx yozilganda chegirma NOL bo'lib, tovar
+   TO'LIQ NARXDA savatga tushardi.
+
+   Kassir «zararga sotdim» deb o'ylardi, mijoz esa e'lon narxini
+   to'lardi. Ekranda bir son, chekda boshqa son — bu fayldagi eng
+   qimmat xatolar turkumi. */
+
+test("zararga sotish: chegaradan past narx HAQIQIY chegirma beradi", () => {
+  const item = { salePrice: 13990, qty: 1, minPrice: 13222 };
+  /* Chegaradan past — oddiy yo'l ATAYLAB nol beradi. */
+  assert.equal(priceDiscount(item, 5000), 0);
+  /* Zarar yo'li esa haqiqiy farqni beradi. */
+  assert.equal(lossDiscount(item, 5000), 13990 - 5000);
+});
+
+test("zararga sotish: miqdor hisobga olinadi", () => {
+  const item = { salePrice: 10000, qty: 3, minPrice: 9000 };
+  assert.equal(lossDiscount(item, 8000), (10000 - 8000) * 3);
+});
+
+test("⚠ zarar yo'li narxni OSHIRISHGA ochilmaydi", () => {
+  const item = { salePrice: 10000, qty: 1, minPrice: 9000 };
+  assert.equal(priceVerdict(item, 12000), "high");
+  assert.equal(lossDiscount(item, 12000), 0);
+});
+
+test("⚠ zarar yo'li chegara ICHIDAGI narxga ham ochilmaydi", () => {
+  /* Bu yerda oddiy `priceDiscount` ishlaydi — ikki yo'l bir-birini
+     takrorlamasligi kerak, aks holda bir xil narx ikki xil chegirma
+     berishi mumkin edi. */
+  const item = { salePrice: 10000, qty: 1, minPrice: 9000 };
+  assert.equal(priceVerdict(item, 9500), "ok");
+  assert.equal(lossDiscount(item, 9500), 0);
+  assert.equal(priceDiscount(item, 9500), 500);
+});
+
+test("zararga sotishda ham chegirma BUTUN so'm", () => {
+  /* Tarozili tovar: 0.125 kg. V80 dan beri pul butun so'mda. */
+  const item = { salePrice: 13990, qty: 0.125, minPrice: 13222 };
+  const d = lossDiscount(item, 5000);
+  assert.equal(d, Math.ceil(d), `chegirma kasr chiqdi: ${d}`);
+});
+
+/* ── 6. ⚠ SIMLASH — oyna TO'G'RI funksiyani chaqiradimi ────────────────
+
+   Yuqoridagi sinovlar hisobni qo'riqlaydi, lekin ASL XATO hisobda emas,
+   ULANISHDA edi: tugma `priceDiscount` ni chaqirardi va u nol berardi.
+   Kutubxona to'g'ri bo'lsa ham, noto'g'ri chaqiruv bilan tovar to'liq
+   narxda sotilardi. Shuning uchun chaqiruvning O'ZI tekshiriladi. */
+test("⚠ zarar tugmasi `lossDiscount` ni chaqiradi", async () => {
+  const fs = await import("node:fs");
+  const src = fs.readFileSync(
+    new URL("../src/components/LinePriceModal.jsx", import.meta.url), "utf8");
+
+  const i = src.indexOf("line-loss");
+  assert.ok(i > 0, "zararga sotish tugmasi topilmadi");
+
+  /* Tugmadan keyingi ilk `onApply(` chaqiruvi — aynan shu tugmaniki. */
+  const call = src.slice(i, src.indexOf("</button>", i));
+  assert.match(call, /onApply\(\s*lossDiscount\(/,
+    "zarar tugmasi `lossDiscount` dan boshqa narsani yuboryapti — "
+    + "chegirma nol bo'lib, tovar to'liq narxda sotilardi");
 });

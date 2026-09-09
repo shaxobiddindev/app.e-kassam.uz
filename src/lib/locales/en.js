@@ -2026,6 +2026,8 @@ export default {
   "products.minPriceHint": "The cashier can go down to this without a badge",
   "kassa.priceTooLow": "Cannot go below this",
   "kassa.lowestPrice": "Lowest price",
+  "kassa.sellAtLoss": "Sell at a loss",
+  "kassa.sellAtLossHint": "Manager badge required",
   "kassa.wholesaleAll": "Wholesale prices",
   "kassa.wholesaleAllOff": "Undo wholesale prices",
   "kassa.wholesaleApplied": "Wholesale price applied to {{count}} items",
