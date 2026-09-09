@@ -24,6 +24,7 @@ import { printHtml } from "../lib/ek-receipt-pdf";
 import { printPriceLabels } from "../lib/ek-hardware";
 import { isDesktop } from "../lib/ek-desktop";
 import { t } from "../lib/ek-i18n";
+import { productApi } from "../api";
 
 export default function LabelPrintModal({ items = [], onClose, toast }) {
   const [mode, setMode]     = useState("sheet");   // "sheet" | "tape"
@@ -55,17 +56,49 @@ export default function LabelPrintModal({ items = [], onClose, toast }) {
     }
   }, [items, size, shopName, s.w]);
 
+  /**
+   * BARKODSIZ TOVARGA SERVERDAN BARKOD (A2).
+   *
+   * ⚠ MAHALLIY QURILMAYDI. Barkodni shu yerda hisoblab chizish oson
+   * edi, lekin o'shanda yorliqdagi barkod HECH QAYERDA saqlanmasdi va
+   * kassada skanerlanganda «topilmadi» chiqardi — ya'ni javondagi
+   * qog'ozning skanerlanadigan qismi ishlamasdi. Server esa kodni
+   * berganda uni `product_barcodes` ga ham yozadi.
+   *
+   * ⚠ XATO YORLIQNI TO'XTATMAYDI: bitta tovarga kod berilmasa ham
+   * qolganlari chop etilaveradi va o'sha tovarda barkod o'rni bo'sh
+   * qoladi (odam o'qiydigan kod baribir turadi).
+   */
+  const withBarcodes = async (list) => {
+    const out = [];
+    for (const it of list) {
+      if (it.barcode || !it.id) { out.push(it); continue; }
+      try {
+        const fresh = await productApi.generateCode(it.id);
+        out.push({ ...it, barcode: fresh?.data?.barcode || null });
+      } catch {
+        out.push(it);
+      }
+    }
+    return out;
+  };
+
   const run = async () => {
     setBusy(true);
     try {
+      const ready = await withBarcodes(items);
       if (mode === "tape") {
-        await printPriceLabels(items, { copies: n, shopName });
+        await printPriceLabels(ready, { copies: n, shopName });
         toast?.success(t("label.sent", { n: total }));
       } else {
-        await printHtml(buildLabelSheet(items, { size, copies: n, shopName }),
+        await printHtml(buildLabelSheet(ready, { size, copies: n, shopName }),
                         t("label.sheetTitle"), labelSheetCss(size),
                         "width=900,height=760");
       }
+      /* Yorliq chiqarilgani yozib qo'yiladi — kodni yangilash qoidasi
+         shunga tayanadi (A2). Xato bo'lsa ham chop etish bekor
+         qilinmaydi: qog'oz allaqachon printerda. */
+      productApi.labelsPrinted(ready.map((x) => x.id).filter(Boolean)).catch(() => {});
       onClose();
     } catch (err) {
       toast?.error(err.message);

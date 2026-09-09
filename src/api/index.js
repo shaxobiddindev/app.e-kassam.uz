@@ -436,6 +436,10 @@ export const productApi = {
    * marta berilmasligi kerak.
    */
   generateCode: (id) => request(`/products/${id}/generate-code`, { method: "POST" }),
+  /** Yorliq chop etilgani belgilanadi — kodni yangilash qoidasi shunga tayanadi (A2). */
+  labelsPrinted: (ids) => request("/products/labels/printed", {
+    method: "POST", body: JSON.stringify({ ids }),
+  }),
   deletePreview: (id)      => request(`/products/${id}/delete-preview`),
   toggleActive: (id)       => request(`/products/${id}/toggle-active`, { method: "PATCH" }),
   fiscalReadiness: ()      => request("/products/fiscal-readiness"),
