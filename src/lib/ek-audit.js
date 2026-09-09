@@ -45,6 +45,7 @@ export const AUDIT_ACTIONS = [
 
   /* ── Tovar va narx ── */
   "PRODUCT_DELETE", "PRODUCT_CODE_ISSUE", "PRODUCT_BARCODE_RELEASE",
+  "PRODUCT_RESTORE",
   "PRICE_CHANGE", "PRICE_BULK_CHANGE",
 
   /* ── Ombor ── */

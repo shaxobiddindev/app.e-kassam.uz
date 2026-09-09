@@ -683,6 +683,7 @@ export default {
   "enum.audit.PRODUCT_DELETE": "Товар удалён",
   "enum.audit.PRODUCT_CODE_ISSUE": "Товару присвоен код магазина",
   "enum.audit.PRODUCT_BARCODE_RELEASE": "Штрихкод освобождён у архивного товара",
+  "enum.audit.PRODUCT_RESTORE": "Товар восстановлен из архива",
   "enum.audit.PRICE_CHANGE": "Цена изменена",
   "enum.audit.PRICE_BULK_CHANGE": "Массовое изменение цен",
   "enum.audit.STOCK_TAKE_CLOSE": "Инвентаризация завершена",
