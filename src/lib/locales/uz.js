@@ -1640,6 +1640,15 @@ export default {
   "label.expiryTitle": "MUDDATI YAQIN",
   "label.expiryToday": "Bugun tugaydi",
   "label.expiryHint": "Muddati yaqin tovarlarga yopishtirish uchun stiker chiqaradi",
+  /* ── Yorlig'i eskirgan tovarlar (B0) ─────────────────────────────── */
+  "codeFix.title": "Yorlig'i eskirgan tovarlar",
+  "codeFix.count": "{n} ta",
+  "codeFix.hint": "Bu tovarlarning javondagi raqami endi boshqa tovarni ochadi. Yorlig'ini qayta chiqaring.",
+  "codeFix.printAll": "Hammasiga yorliq ({n} ta)",
+  "codeFix.oldCode": "Eski raqam",
+  "codeFix.newCode": "Yangi raqam",
+  "codeFix.done": "Bajarildi",
+  "codeFix.more": "Yana {n} tasini ko'rsatish",
 
   "dash.loyalty": "Sodiqlik natijasi",
   "dash.loyaltyThisMonth": "shu oy",

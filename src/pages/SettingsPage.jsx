@@ -16,6 +16,7 @@ import HardwareSettings from "../components/HardwareSettings";
 import SoundSettings from "../components/SoundSettings";
 import ScaleSettings from "../components/ScaleSettings";
 import ScaleLive from "../components/ScaleLive";
+import CodeConflictPanel from "../components/CodeConflictPanel";
 import Select from "../components/ek/Select";
 import { DEFAULT_NEAR_EXPIRY_DAYS } from "../lib/ek-expiry";
 import { Field } from "../components/ui";
@@ -754,6 +755,17 @@ export default function SettingsPage({ toast }) {
           ⚠ MODUL CHEKLOVI QOLADI: tarozisi yo'q do'konda blok
           chizilmaydi. */}
       {hasFeature("SCALE") && <ScaleLive toast={toast} />}
+
+      {/* ══ YORLIG'I ESKIRGAN TOVARLAR (B0) ════════════════════════════
+          Eski qisqa raqamlar tiriltirilganda (V119) bir qismi
+          tiriltirilmadi: o'sha raqam endi BOSHQA tovarniki. Javonda
+          esa eski yorliq turibdi va u yolg'on gapiradi.
+
+          ⚠ FAQAT EGAGA va faqat TO'QNASHUV BO'LSA. Server ham shu
+          yo'lni `OWNER`/`SHOP_ADMIN` ga cheklaydi, komponent esa
+          ro'yxat bo'sh bo'lsa umuman chizilmaydi — to'qnashuvsiz
+          do'konda bu sahifada bir piksel ham o'zgarmaydi. */}
+      {isOwner && <CodeConflictPanel toast={toast} />}
 
       <Section
         icon="fa-user"

@@ -440,6 +440,16 @@ export const productApi = {
   labelsPrinted: (ids) => request("/products/labels/printed", {
     method: "POST", body: JSON.stringify({ ids }),
   }),
+  /**
+   * Eski raqami boshqa tovarga o'tib ketgan tovarlar (B0).
+   *
+   * ⚠ FAQAT EGAGA. Server ham `OWNER`/`SHOP_ADMIN` dan boshqasini
+   * qo'ymaydi — kassirning bu ro'yxatda qiladigan ishi yo'q.
+   */
+  codeConflicts: ()        => request("/products/code-conflicts"),
+  /** Yorliq qayta chiqarilgach — qatorni ro'yxatdan olib tashlash. */
+  dismissCodeConflict: (id) =>
+    request(`/products/code-conflicts/${id}`, { method: "DELETE" }),
   deletePreview: (id)      => request(`/products/${id}/delete-preview`),
   toggleActive: (id)       => request(`/products/${id}/toggle-active`, { method: "PATCH" }),
   fiscalReadiness: ()      => request("/products/fiscal-readiness"),

@@ -1554,6 +1554,15 @@ export default {
   "label.expiryTitle": "EXPIRES SOON",
   "label.expiryToday": "Expires today",
   "label.expiryHint": "Prints stickers to put on products whose expiry is near",
+  /* ── Products with an old label (B0) ─────────────────────────────── */
+  "codeFix.title": "Products with an old label",
+  "codeFix.count": "{n}",
+  "codeFix.hint": "The number on these shelf labels now opens a different product. Print them again.",
+  "codeFix.printAll": "Print all labels ({n})",
+  "codeFix.oldCode": "Old number",
+  "codeFix.newCode": "New number",
+  "codeFix.done": "Done",
+  "codeFix.more": "Show {n} more",
 
   "dash.loyalty": "Loyalty return",
   "dash.loyaltyThisMonth": "this month",

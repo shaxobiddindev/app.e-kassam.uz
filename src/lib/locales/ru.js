@@ -1554,6 +1554,15 @@ export default {
   "label.expiryTitle": "СРОК ИСТЕКАЕТ",
   "label.expiryToday": "Истекает сегодня",
   "label.expiryHint": "Печатает стикеры для наклейки на товары с истекающим сроком",
+  /* ── Товары со старой этикеткой (B0) ─────────────────────────────── */
+  "codeFix.title": "Товары со старой этикеткой",
+  "codeFix.count": "{n} шт.",
+  "codeFix.hint": "Номер на полке у этих товаров теперь открывает другой товар. Напечатайте этикетки заново.",
+  "codeFix.printAll": "Этикетки на все ({n} шт.)",
+  "codeFix.oldCode": "Старый номер",
+  "codeFix.newCode": "Новый номер",
+  "codeFix.done": "Готово",
+  "codeFix.more": "Показать ещё {n}",
 
   "dash.loyalty": "Отдача лояльности",
   "dash.loyaltyThisMonth": "за месяц",
