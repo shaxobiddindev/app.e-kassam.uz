@@ -1238,7 +1238,6 @@ export default {
   "kassa.noReceipt": "Qayta chop etish uchun chek yo'q",
   "kassa.rounding": "Yaxlitlash",
   "kassa.receiptTotal": "JAMI:",
-  "kassa.receiptPayment": "To'lov:",
   "kassa.receiptCustomer": "Mijoz:",
   "kassa.receiptOffline": "Oflayn rejimda qayd etildi.",
   "kassa.receiptOfflineSub": "Ulanish tiklanganda serverga yuboriladi.",

@@ -45,9 +45,8 @@ import Overlay from "../components/ek/Overlay";
    ning butunlashtirishi bu yerda xavfsiz. */
 const money = (v) => groupDigits(v);
 
-const PAY_LABEL = {
-  CASH: "Naqd", CARD: "Karta", CLICK: "Click", PAYME: "Payme", TRANSFER: "O'tkazma",
-};
+/* ⚠ TO'LOV TURI KVITANSIYADA KO'RSATILMAYDI — qog'oz chek bilan bir
+   xil qoida (`ek-hardware.js`). */
 
 /* ⚠ JAMG'ARMA TURLARI — so'zlar mijozning ko'zi bilan. «Qabul qildi» —
    pul do'konga o'tgan turlarda; «Qaytardi» — do'kon pul bergan turda.
@@ -223,15 +222,6 @@ export default function PaymentReceipt({
                 {money(Math.abs(Number(data.amount) || 0))}
               </span>
             </div>
-            {/* ⚠ Usul bo'sh bo'lishi mumkin (V61 dan oldingi to'lovlar) —
-                o'shanda satr UMUMAN chiqmaydi. «—» yozib qo'yish
-                mijozga «bu yerda nimadir yo'qolgan» degan taassurot
-                berardi, aslida yozuv shunchaki eski. */}
-            {data.method && !charge && (
-              <div className="pt-tape__row">
-                <span>To'lov turi</span><span>{PAY_LABEL[data.method] || data.method}</span>
-              </div>
-            )}
             {/* Xaridga bog'liq jamg'arma qatori — QAYSI xarid (V66). */}
             {data.linkedNo && (
               <div className="pt-tape__row"><span>Xarid cheki</span><span>{data.linkedNo}</span></div>

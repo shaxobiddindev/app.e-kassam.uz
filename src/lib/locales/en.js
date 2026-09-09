@@ -1180,7 +1180,6 @@ export default {
   "kassa.noReceipt": "No receipt to reprint",
   "kassa.rounding": "Rounding",
   "kassa.receiptTotal": "TOTAL:",
-  "kassa.receiptPayment": "Payment:",
   "kassa.receiptCustomer": "Customer:",
   "kassa.receiptOffline": "Recorded offline.",
   "kassa.receiptOfflineSub": "It will be sent to the server once the connection is back.",

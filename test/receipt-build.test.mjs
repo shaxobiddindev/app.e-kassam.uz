@@ -49,7 +49,7 @@ await esbuild.build({
   outfile: out, logLevel: "silent",
   define: { "import.meta.env": JSON.stringify({ DEV: false, PROD: true, MODE: "production" }) },
 });
-const { buildReceipt } = await import(out);
+const { buildReceipt, buildDebtReceipt } = await import(out);
 fs.unlinkSync(out);
 
 let pass = 0, fail = 0;
@@ -158,6 +158,54 @@ console.log("\n─ 4. Buzuq kiritish chekni yiqitmaydi ─");
     try { textOf(buildReceipt(arg)); ok(`${label} — chek chiqdi`); }
     catch (e) { bad(`${label} — chek YIQILDI`, e.message); }
   }
+}
+
+/* ══ 5. ⚠ TO'LOV TURI CHEKDA YO'Q ══════════════════════════════════
+
+   Qaror: mijozning qo'lidagi qog'ozda pul QAYSI USULDA kelgani
+   ko'rsatilmaydi. Chek NIMA olingani va QANCHA to'langanini qayd
+   etadi; usul — do'konning ichki hisobi va u smena hisobotida
+   (X/Z) usul-usul bo'yicha turadi.
+
+   ⚠ QO'RIQCHI KERAK, chunki qator BITTA `r.row(...)` — uni qaytarib
+   qo'yish bir daqiqalik ish va hech qanday sinov qarshilik
+   qilmasdi. Bu yerda uchala yo'l ham qulflanadi: oddiy, aralash
+   va qarz cheki. */
+console.log("\n─ 5. ⚠ To'lov turi chekda YO'Q ─");
+{
+  const t = textOf(buildReceipt({ saleId: 50, cart: CART, total: 14000, payType: "CASH" }));
+  hasnt(t, "Naqd", "oddiy chekda «Naqd» yo'q");
+  hasnt(t, "To'lov", "«To'lov:» sarlavhasi yo'q");
+  has(t, "Suv 1,5 l", "tovar qatori esa JOYIDA — faqat usul olib tashlandi");
+}
+{
+  /* ⚠ Aralash to'lovda ilgari usullar bo'yicha taqsimot chiqardi
+     (V53). «Aralash» so'zi ketgach, taqsimotning ham ma'nosi
+     qolmadi: u aynan o'sha so'zni ochib berish uchun qo'shilgan edi. */
+  const t = textOf(buildReceipt({
+    saleId: 51, cart: CART, total: 800, payType: "MIXED",
+    payments: [{ type: "CASH", amount: 500 }, { type: "CARD", amount: 300 }] }));
+  hasnt(t, "Aralash", "aralash to'lovda «Aralash» yo'q");
+  hasnt(t, "Naqd", "taqsimotdagi «Naqd» yo'q");
+  hasnt(t, "Karta", "taqsimotdagi «Karta» yo'q");
+}
+{
+  /* ⚠ NASIYA BLOKI QOLADI. U «to'lov usuli» emas — mijozning QARZI.
+     Qancha qarz qolgani va muddat mijoz ertaga so'raydigan raqam. */
+  const t = textOf(buildReceipt({
+    saleId: 52, cart: CART, total: 14000, payType: "CREDIT",
+    customer: { fullName: "Olim Karimov" },
+    credit: { amount: 700, balance: 900, dueDate: "31-12-2026" } }));
+  hasnt(t, "Nasiya", "«Nasiya» usul yorlig'i chekda yo'q");
+  has(t, "Olim Karimov", "mijoz ismi chekda");
+  has(t, "31-12-2026", "qarz muddati chekda — nasiya bloki buzilmadi");
+}
+{
+  const t = textOf(buildDebtReceipt({
+    customer: { fullName: "Olim Karimov" }, amount: 900,
+    balanceBefore: 1000, balanceAfter: 100, method: "CASH" }));
+  hasnt(t, "Naqd", "qarz to'lovi chekida ham usul yo'q");
+  has(t, "Olim Karimov", "qarz chekida mijoz ismi joyida");
 }
 
 console.log(`\n${fail ? "❌" : "✅"} chek quruvchisi: ${pass} o'tdi, ${fail} yiqildi`);

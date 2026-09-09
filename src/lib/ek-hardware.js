@@ -141,7 +141,7 @@ async function send(bytes) {
  * o'tib, haqiqiysi buzilib chiqishi mumkin edi.
  */
 export function buildReceipt({ saleId, serverSaleId, cart = [], total = 0, subtotal, discount = 0,
-                               payType, payments, customer, offline, shopName, cashier, fiscal, receiptUrl,
+                               customer, offline, shopName, cashier, fiscal, receiptUrl,
                                credit, toSavings, rounding = 0, saleType = "SALE" }) {
   const s = getSettings();
   const r = new Receipt(s.width === 58 ? WIDTH_58 : WIDTH_80);
@@ -218,16 +218,18 @@ export function buildReceipt({ saleId, serverSaleId, cart = [], total = 0, subto
      umuman bo'lmaydi va bo'sh qator faqat qog'ozni yeyardi. */
   if (Number(rounding) > 0) r.row(t("kassa.rounding"), "-" + moneyFine(rounding));
   r.bold().double().row(t("kassa.receiptTotal"), money(total)).double(false).bold(false);
-  r.row(t("kassa.receiptPayment"), paymentLabel(payType));
-  /* ⚠ ARALASH TO'LOVDA TAQSIMOT HAM CHIQADI (V53). «Aralash» degan
-     bitta so'z mijozga hech narsa aytmaydi: u uyiga borib «karta bilan
-     qancha to'lagan edim?» deb o'ylab qoladi va ertaga do'kon bilan
-     tortishadi — nasiya blokidagi bilan aynan bir xil sabab. */
-  if (Array.isArray(payments) && payments.length > 1) {
-    for (const part of payments) {
-      r.row("  " + paymentLabel(part.type), money(part.amount));
-    }
-  }
+  /* ══ ⚠ TO'LOV TURI CHEKDA CHIQMAYDI ═════════════════════════════════
+     Ilgari bu yerda «To'lov: Naqd» qatori va aralash to'lovda usullar
+     bo'yicha taqsimot (V53) turardi. Chekning vazifasi — mijoz NIMA
+     olgani va QANCHA to'laganini qog'ozda qoldirish; pul qaysi usulda
+     kelgani do'konning ICHKI hisobi va u smena hisobotida (X/Z)
+     usul-usul bo'yicha turibdi — o'sha yerdan olib tashlanmaydi,
+     chunki kassir yashikdagi naqdni aynan shu qator bilan sanaydi.
+
+     ⚠ QARZ VA JAMG'ARMA QATORLARI QOLDI: ular «usul» emas, mijozning
+     PULI. Nasiya bloki qancha qarz qolganini, jamg'arma qatori esa
+     qaytim qayerga ketganini aytadi — ikkalasi ham mijoz ertaga
+     so'raydigan raqam. */
   /* Qaytim mijoz jamg'armasiga qo'yildi (V66) — mijoz uzatgan pulning
      TO'LIQ taqdiri qog'ozda turishi kerak. */
   if (Number(toSavings) > 0) r.row(t("savings.toSavings"), "+" + money(toSavings));
@@ -415,8 +417,8 @@ export function buildDebtReceipt({ customer, amount, balanceAfter, balanceBefore
   r.rule();
 
   r.bold().double().row(L.main, money(Math.abs(Number(amount) || 0))).double(false).bold(false);
-  /* Jamg'armaning xaridga ishlatilgan qatorida usul yo'q — satr chiqmaydi. */
-  if (method || !L.sav) r.row(t("kassa.receiptPayment"), paymentLabel(method));
+  /* ⚠ To'lov turi bu yerda ham chiqmaydi — sotuv chekidagi bilan bir
+     xil sabab. Mijozga kerakli raqam pastdagi «qolgan qarz» qatori. */
   if (linkedNo) r.row(t("savings.linkedSale"), linkedNo);
   if (balanceBefore != null) r.row(L.before, money(balanceBefore));
   /* Qolgan qarz — mijoz aynan shuni so'raydi. Nol bo'lsa ham yoziladi:
@@ -955,8 +957,8 @@ export async function testPrint() {
  * chaqiriladi.
  */
 function printInBrowser({ saleId, serverSaleId, cart = [], total = 0, subtotal, discount = 0,
-                          payType, payments, customer, offline, shopName, cashier, receiptUrl,
-                          credit, __debt, amount, balanceAfter, balanceBefore, method, date,
+                          customer, offline, shopName, cashier, receiptUrl,
+                          credit, __debt, amount, balanceAfter, balanceBefore, date,
                           receiptNo, qrUrl, toSavings, bonusEarned, kind, linkedNo , rounding = 0 }) {
   const win = window.open("", "_blank", "width=360,height=640,toolbar=no,menubar=no");
   if (!win) throw new Error(t("hw.errPopup"));
@@ -1001,7 +1003,6 @@ function printInBrowser({ saleId, serverSaleId, cart = [], total = 0, subtotal, 
       ${customer?.fullName ? `<div class="row"><span>${esc(t("kassa.receiptCustomer"))}</span><span>${esc(customer.fullName)}</span></div>` : ""}
       <div class="hr"></div>
       <div class="row"><b>${esc(L.main)}</b><b>${esc(money(Math.abs(Number(amount) || 0)))}</b></div>
-      ${method || !L.sav ? `<div class="row"><span>${esc(t("kassa.receiptPayment"))}</span><span>${esc(paymentLabel(method))}</span></div>` : ""}
       ${linkedNo ? `<div class="row"><span>${esc(t("savings.linkedSale"))}</span><span>${esc(linkedNo)}</span></div>` : ""}
       ${balanceBefore != null ? `<div class="row"><span>${esc(L.before)}</span><span>${esc(money(balanceBefore))}</span></div>` : ""}
       <div class="row"><span>${esc(L.after)}</span><span>${esc(money(balanceAfter ?? 0))}</span></div>
@@ -1060,10 +1061,6 @@ function printInBrowser({ saleId, serverSaleId, cart = [], total = 0, subtotal, 
       <div class="row"><span>${esc(t("kassa.discount"))}</span><span>-${esc(money(discTotal))}</span></div>` : ""}
       ${Number(rounding) > 0 ? `<div class="row"><span>${esc(t("kassa.rounding"))}</span><span>-${esc(moneyFine(rounding))}</span></div>` : ""}
       <div class="row"><b>${esc(t("kassa.receiptTotal"))}</b><b>${esc(money(total))}</b></div>
-      <div class="row"><span>${esc(t("kassa.receiptPayment"))}</span><span>${esc(paymentLabel(payType))}</span></div>
-      ${Array.isArray(payments) && payments.length > 1
-        ? payments.map((p) => `<div class="row"><span>&nbsp;&nbsp;${esc(paymentLabel(p.type))}</span><span>${esc(money(p.amount))}</span></div>`).join("")
-        : ""}
       ${Number(toSavings) > 0 && !__debt ? `<div class="row"><span>${esc(t("savings.toSavings"))}</span><span>+${esc(money(toSavings))}</span></div>` : ""}
       ${customer?.fullName ? `<div class="row"><span>${esc(t("kassa.receiptCustomer"))}</span><span>${esc(customer.fullName)}</span></div>` : ""}
       ${credit && Number(credit.amount) > 0 ? `<div class="hr"></div>

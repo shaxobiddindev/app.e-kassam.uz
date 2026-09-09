@@ -43,15 +43,10 @@ const qty = (v) => {
   return Number.isInteger(n) ? groupDigits(n) : String(n).replace(".", ",");
 };
 
-const PAY_LABEL = {
-  CASH: "Naqd",
-  CARD: "Karta",
-  MIXED: "Aralash",
-  CREDIT: "Nasiya",
-  CLICK: "Click",
-  PAYME: "Payme",
-  TRANSFER: "O'tkazma",
-};
+/* ⚠ TO'LOV TURI CHEKDA KO'RSATILMAYDI — qog'oz chek bilan bir xil
+   qoida (`ek-hardware.js`). Ilgari bu yerda usul yorliqlari lug'ati
+   turardi; ekrandagi nusxa qog'ozdagidan farq qilmasligi kerak,
+   shuning uchun u ham olib tashlandi. */
 
 const UNIT_LABEL = {
   DONA: "dona", KG: "kg", GRAM: "g", LITR: "l", METR: "m", QUTI: "quti", UPAK: "upak",
@@ -193,9 +188,6 @@ export default function Receipt({ token, appToken, customerId, id, signedId, sig
 
             <div className="pt-tape__row pt-total">
               <span>JAMI</span><span>{money(data.total)}</span>
-            </div>
-            <div className="pt-tape__row">
-              <span>To'lov</span><span>{PAY_LABEL[data.paymentType] || data.paymentType || "—"}</span>
             </div>
 
             {Number(data.bonusEarned) > 0 && (

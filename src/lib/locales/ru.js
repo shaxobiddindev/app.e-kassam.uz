@@ -1180,7 +1180,6 @@ export default {
   "kassa.noReceipt": "Нет чека для повторной печати",
   "kassa.rounding": "Округление",
   "kassa.receiptTotal": "ИТОГО:",
-  "kassa.receiptPayment": "Оплата:",
   "kassa.receiptCustomer": "Клиент:",
   "kassa.receiptOffline": "Зафиксировано в офлайн-режиме.",
   "kassa.receiptOfflineSub": "Будет отправлено на сервер при восстановлении связи.",
