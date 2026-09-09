@@ -3,6 +3,8 @@ import { t } from "../lib/ek-i18n";
 import { productApi, customerApi, saleApi, securityApi, shopApi, mediaApi, fiscalApi, loyaltyApi, reportApi } from "../api";
 import { useBadge } from "../context/BadgeProvider";
 import { useConfirm } from "../context/ConfirmProvider";
+import { useAuth } from "../hooks/useAuth";
+import { roleSet } from "../lib/ek-roles";
 import { money, quantity as fmtQty } from "../utils";
 import { unitLabel } from "../lib/ek-labels";
 import { isWeighUnit } from "../lib/ek-scale";
@@ -395,6 +397,14 @@ export default function KassaPage({ toast, refreshLowStock }) {
   const keyboard                    = useKeyboard();
   const touchOn                     = isTouch();
   const confirm                     = useConfirm();
+  /* ⚠ TIKLASH HAMMAGA EMAS. Server ham `OWNER`/`SHOP_ADMIN`/
+     `STOREKEEPER` dan boshqasini qo'ymaydi; kassirga tugma
+     ko'rsatib, keyin 403 berish faqat umid uyg'otardi. Kassir
+     baribir SABABNI ko'radi — «bu tovar arxivda» — va egasiga
+     ayta oladi. */
+  const { user: authUser }          = useAuth();
+  const canRestore                  = [...roleSet(authUser?.role)]
+    .some((r) => r === "OWNER" || r === "SHOP_ADMIN" || r === "STOREKEEPER");
 
   /* ── Katalog ko'rinishi ────────────────────────────────────────
      Kategoriya tabi va ikki ko'rinish (rasmli / zich). Ko'rinish
@@ -1118,6 +1128,41 @@ export default function KassaPage({ toast, refreshLowStock }) {
       if (r.source === "OTHER_BRANCH") {
         sfx("SCAN_MISS");
         toast.info(t("kassa.otherBranchCode", { shop: r.otherShopName }));
+        return;
+      }
+
+      /* ── ARXIVDAGI TOVAR (B) ─────────────────────────────────────
+         ⚠ ILGARI BU «TOPILMADI» EDI. Tovar omborchining qo'lida,
+         barkod qutida turibdi, tizim esa ko'rmaydi — u nima
+         bo'layotganini tushunmasdi va barkodni qayta-qayta
+         skanerlardi. Endi sabab ham, chiqish yo'li ham aytiladi.
+
+         ⚠ XATO EMAS: hech kim noto'g'ri ish qilmadi. Shuning uchun
+         `error` emas — savol yoki xabar. */
+      if (r.source === "ARCHIVED") {
+        sfx("SCAN_MISS");
+        const m = r.archivedMatch || {};
+        const who = m.searchCode ? `«${m.name}» (${m.searchCode})` : `«${m.name}»`;
+
+        if (!canRestore) {
+          toast.info(t("kassa.archivedFound", { product: who }));
+          return;
+        }
+        const ok = await confirm({
+          title: t("kassa.archivedTitle"),
+          message: t("kassa.archivedAsk", { product: who }),
+          confirmText: t("kassa.archivedRestore"),
+        });
+        if (!ok) return;
+        try {
+          const res = await productApi.restore(m.productId);
+          /* ⚠ SERVER XABARI USTUN: barkodsiz tiklangan bo'lsa aynan
+             shuni aytadi va uni o'zimiznikiga almashtirib bo'lmaydi. */
+          toast.success(res?.message || t("kassa.archivedRestored"));
+          if (res?.data) addToCart(res.data, 1);
+        } catch (err) {
+          toast.error(err.message);
+        }
         return;
       }
 

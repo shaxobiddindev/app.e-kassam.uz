@@ -10,7 +10,7 @@ import { Empty, Field, SearchBar, FormGroup } from "../components/ui";
 import { useConfirm } from "../context/ConfirmProvider";
 import { useAuth } from "../hooks/useAuth";
 import { useBadge } from "../context/BadgeProvider";
-import { money, quantity as fmtQty } from "../utils";
+import { money, quantity as fmtQty, fmtDateTime } from "../utils";
 import Select from "../components/ek/Select";
 import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
@@ -68,6 +68,8 @@ export default function ProductsPage({ toast }) {
   const { user } = useAuth();
   const { guard } = useBadge();
   const confirm = useConfirm();
+  /* Arxivdagi tovar bilan to'qnashuv — ikkita yo'l taklif qilinadi (B). */
+  const [archivedConflict, setArchivedConflict] = useState(null);
   const [products, setProducts]     = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading]       = useState(true);
@@ -364,7 +366,24 @@ export default function ProductsPage({ toast }) {
           .map((b) => ({ ...b, packQty: num(b.packQty) || 1 })),
       };
       if (modal === "add") {
-        await productApi.create(body);
+        /* ⚠ ARXIV ZIDDIYATI — XATO EMAS, SAVOL (B, 3-band). Server
+           409 o'rniga 200 va IKKITA yo'l qaytaradi: barkod arxivdagi
+           tovarniki bo'lsa, ega ehtimol o'sha tovarni qaytadan
+           qo'shyapti. Ilgari bu qizil xato edi va chiqish yo'li
+           ko'rsatilmasdi — ega barkodni ko'ra olmasdi ham, chunki
+           arxivlangan tovar ro'yxatda chiqmaydi. */
+        const first = await productApi.create(body);
+        const conflict = first?.conflict;
+
+        if (conflict?.conflict === "ARCHIVED_PRODUCT") {
+          /* ⚠ `confirm` ISHLATILMAYDI — U IKKI HOLATLI. Unda ESC
+             «yo'q» degani bo'lardi va «yo'q» bu yerda «yangisini
+             yarat» ma'nosini olardi: ega oynani yopmoqchi bo'lib
+             ESC bosgani uchun jimgina tovar yaratilardi. Uchinchi
+             holat — «hech narsa qilma» — shart. */
+          setArchivedConflict({ ...conflict.archived, body });
+          return;                      // oyna javobini kutadi
+        }
         toast.success(t("products.added"));
       } else {
         /* ⚠ `guard` — NARX O'ZGARSA server bajik so'raydi (428).
@@ -536,6 +555,36 @@ export default function ProductsPage({ toast }) {
 
      Endi ikkita yo'l bor va tanlov oynada: A4 varaq (har joyda
      ishlaydi) yoki chek printeri (faqat `.exe`). */
+  /* ══ ARXIV ZIDDIYATINING IKKI YO'LI (B, 3-band) ══════════════════
+     ⚠ Oyna O'ZI hech narsa qilmaydi — u faqat so'raydi. Ish shu
+     yerda, chunki ikkala yo'l ham serverga boradi va ikkalasidan
+     keyin ham ro'yxat yangilanishi kerak. */
+  const restoreArchived = async () => {
+    const a = archivedConflict;
+    setArchivedConflict(null);
+    try {
+      const res = await productApi.restore(a.productId);
+      /* ⚠ SERVER XABARI USTUN: barkodsiz tiklangan bo'lsa aynan
+         shuni aytadi. */
+      toast.success(res?.message || t("products.restored"));
+      closeModal();
+      loadData();
+    } catch (err) { toast.error(err.message); }
+  };
+
+  const createAnyway = async () => {
+    const a = archivedConflict;
+    setArchivedConflict(null);
+    try {
+      /* ⚠ AYNAN O'SHA TANA, faqat «baribir yarat» bayrog'i bilan —
+         forma qaytadan to'ldirilmaydi. */
+      await productApi.create({ ...a.body, createNew: true });
+      toast.success(t("products.added"));
+      closeModal();
+      loadData();
+    } catch (err) { toast.error(err.message); }
+  };
+
   const [labelItems, setLabelItems] = useState(null);
   const openLabels = (items) => {
     /* Xizmatda javon yorliq ham bo'lmaydi: «soch olish» ni javonga
@@ -829,6 +878,41 @@ export default function ProductsPage({ toast }) {
           onClose={() => setGcat(false)}
           onDone={() => { setGcat(false); loadData(); }}
         />
+      )}
+
+      {/* ── Arxivdagi tovar bilan to'qnashuv (B) ── */}
+      {archivedConflict && (
+        <Modal
+          title={t("products.archivedTitle")}
+          onClose={() => setArchivedConflict(null)}
+          maxWidth={480}
+          footer={
+            <>
+              {/* ⚠ IKKALASI HAM ISH BAJARADI — biri «bekor» emas.
+                  Shuning uchun ikkalasi ham to'la tugma. Oynani
+                  yopish uchun ✕ yoki ESC bor. */}
+              <button className="btn btn-outline" onClick={createAnyway}>
+                <i className="fa-solid fa-plus" aria-hidden="true" />
+                {" "}{t("products.archivedCreateNew")}
+              </button>
+              <button className="btn btn-primary" onClick={restoreArchived}>
+                <i className="fa-solid fa-rotate-left" aria-hidden="true" />
+                {" "}{t("products.archivedRestore")}
+              </button>
+            </>
+          }
+        >
+          <p>{t("products.archivedAsk", {
+            product: archivedConflict.searchCode
+              ? `«${archivedConflict.name}» (${archivedConflict.searchCode})`
+              : `«${archivedConflict.name}»`,
+          })}</p>
+          {archivedConflict.lastSoldAt && (
+            <p className="set-row__hint">
+              {t("products.archivedLastSold")}: {fmtDateTime(archivedConflict.lastSoldAt)}
+            </p>
+          )}
+        </Modal>
       )}
 
       {/* ── Javon yorlig'i (V108) ── */}

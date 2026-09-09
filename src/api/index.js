@@ -446,6 +446,14 @@ export const productApi = {
    * ⚠ FAQAT EGAGA. Server ham `OWNER`/`SHOP_ADMIN` dan boshqasini
    * qo'ymaydi — kassirning bu ro'yxatda qiladigan ishi yo'q.
    */
+  /**
+   * Arxivdagi tovarni tiklash (B).
+   *
+   * ⚠ Barkodi boshqa faol tovarga o'tib ketgan bo'lsa, tovar
+   * BARKODSIZ tiklanadi va javobdagi `message` shuni aytadi. Bu
+   * XATO emas — tovar tiklandi.
+   */
+  restore: (id)            => request(`/products/${id}/restore`, { method: "POST" }),
   codeConflicts: ()        => request("/products/code-conflicts"),
   /** Yorliq qayta chiqarilgach — qatorni ro'yxatdan olib tashlash. */
   dismissCodeConflict: (id) =>
