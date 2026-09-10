@@ -8,6 +8,7 @@ import Modal from "../Modal";
 import { productCode } from "../../lib/ek-code";
 import { rankItems } from "../../lib/ek-search";
 import { money } from "../../lib/ek-format";
+import { templateName } from "../../lib/ek-label-name";
 import { printHtml } from "../../lib/ek-receipt-pdf";
 import { printPriceLabels } from "../../lib/ek-hardware";
 import { isDesktop } from "../../lib/ek-desktop";
@@ -263,7 +264,7 @@ export default function LabelQueue({
           <Select id="lq-tpl" block variant="field" ariaLabel={t("lbl.template")}
                   value={templateId} onChange={(v) => save({ templateId: v })}
                   options={templates.map((x) => ({
-                    value: x.id, label: x.name,
+                    value: x.id, label: templateName(x),
                     hint: `${Number(x.widthMm)}×${Number(x.heightMm)}`,
                   }))} />
         </div>

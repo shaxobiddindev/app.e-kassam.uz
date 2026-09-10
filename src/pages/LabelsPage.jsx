@@ -16,6 +16,7 @@ import { useConfirm } from "../context/ConfirmProvider";
 import { productCode } from "../lib/ek-code";
 import { rankItems } from "../lib/ek-search";
 import { money } from "../lib/ek-format";
+import { templateName } from "../lib/ek-label-name";
 
 /* ══════════════════════════════════════════════════════════════════════════
    YORLIQLAR — KO'RISH VA NAVBAT (F3 + F5)
@@ -186,7 +187,7 @@ export default function LabelsPage({ toast }) {
 
   const removeTemplate = async (tpl) => {
     const okToDelete = await confirm({
-      title: t("lbl.deleteConfirm"), message: tpl.name, type: "danger",
+      title: t("lbl.deleteConfirm"), message: templateName(tpl), type: "danger",
     });
     if (!okToDelete) return;
     try {
@@ -406,7 +407,7 @@ export default function LabelsPage({ toast }) {
                 value={templateId} onChange={setTemplateId}
                 options={templates.map((x) => ({
                   value: x.id,
-                  label: x.name,
+                  label: templateName(x),
                   hint: `${Number(x.widthMm)}×${Number(x.heightMm)}`,
                 }))}
               />
