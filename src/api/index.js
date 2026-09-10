@@ -388,6 +388,12 @@ export const labelApi = {
   templates:   (kind) => request(`/labels/templates${kind ? `?kind=${kind}` : ""}`),
   defaultFor:  (kind) => request(`/labels/templates/default?kind=${kind}`),
   byId:        (id)   => request(`/labels/templates/${id}`),
+  create:      (body) => request("/labels/templates",
+                  { method: "POST", body: JSON.stringify(body) }),
+  update:      (id, body) => request(`/labels/templates/${id}`,
+                  { method: "PUT", body: JSON.stringify(body) }),
+  copy:        (id)   => request(`/labels/templates/${id}/copy`, { method: "POST" }),
+  remove:      (id)   => request(`/labels/templates/${id}`, { method: "DELETE" }),
 };
 
 // ─── Mahsulotlar ──────────────────────────────────────────────

@@ -6398,3 +6398,32 @@ button.stk__c:hover { background: var(--bg-hover); }
                  color: var(--fg-success); border: 1px solid var(--border); }
 .lbl-warn--bad { background: var(--bg-danger-soft, var(--bg-subtle));
                  color: var(--fg-danger); border: 1px solid var(--fg-danger); }
+
+/* ─── Shablon tahrirlagich (F4) ───────────────────────────────────── */
+.lbl-editor         { display: grid; grid-template-columns: 1fr 320px; gap: 16px; }
+@media (max-width: 900px) { .lbl-editor { grid-template-columns: 1fr; } }
+.lbl-editor__form   { min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.lbl-editor__preview{ min-width: 0; }
+.lbl-editor__head   { margin: 8px 0 0; font-size: 13px; font-weight: 800;
+                      color: var(--fg-secondary); text-transform: uppercase;
+                      letter-spacing: .04em; }
+.lbl-editor__actions{ display: flex; gap: 8px; justify-content: flex-end; margin-top: 6px; }
+
+.lbl-field          { border: 1px solid var(--border); border-radius: 8px;
+                      padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; }
+.lbl-field__grid    { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
+                      gap: 6px; }
+@media (max-width: 620px) { .lbl-field__grid { grid-template-columns: repeat(2, 1fr); } }
+.lbl-field__issues  { display: flex; flex-direction: column; gap: 4px; }
+
+/* ⚠ Xato maydonning YONIDA va DARHOL — `submit` da emas. Saqlashda
+   ro'yxat bilan chiqadigan xato do'konchini formaning boshiga
+   qaytarib, aybdor maydonni izlashga majbur qilardi. */
+.lbl-issue          { display: flex; gap: 6px; align-items: flex-start;
+                      font-size: 12px; color: var(--fg-secondary); }
+.lbl-issue--bad     { color: var(--fg-danger); font-weight: 700; }
+.lbl-warn--soft     { background: var(--bg-subtle); color: var(--fg-secondary);
+                      border: 1px solid var(--border); }
+
+.ek-check           { display: flex; align-items: center; gap: 8px; min-height: 44px; }
+.ek-check input     { width: 18px; height: 18px; }

@@ -7,6 +7,9 @@ import Select from "../components/ek/Select";
 import { SkeletonList } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
 import LabelPreview from "../components/ek/LabelPreview";
+import LabelTemplateEditor from "../components/ek/LabelTemplateEditor";
+import Modal from "../components/Modal";
+import { useConfirm } from "../context/ConfirmProvider";
 import { productCode } from "../lib/ek-code";
 import { rankItems } from "../lib/ek-search";
 
@@ -30,6 +33,9 @@ const KINDS = [
 ];
 
 export default function LabelsPage({ toast }) {
+  const confirm = useConfirm();
+  const [editing, setEditing]     = useState(null); // null | {template|null}
+  const [saving, setSaving]       = useState(false);
   const [kind, setKind]           = useState("SHELF");
   const [templates, setTemplates] = useState([]);
   const [templateId, setTemplateId] = useState(null);
@@ -73,6 +79,45 @@ export default function LabelsPage({ toast }) {
     return best;
   }, [products]);
 
+  const save = async (body) => {
+    setSaving(true);
+    try {
+      if (editing?.template?.id) await labelApi.update(editing.template.id, body);
+      else await labelApi.create(body);
+      toast.success(t("common.saved"));
+      setEditing(null);
+      load();
+    } catch (err) {
+      /* ⚠ Server xatosi TO'LIQ ko'rsatiladi: u aynan qaysi maydon va
+         necha mm ekanini aytadi. Uni «saqlanmadi» ga almashtirish
+         do'konchini taxmin qilishga majbur qilardi. */
+      toast.error(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const copyTemplate = async (id) => {
+    try {
+      const r = await labelApi.copy(id);
+      toast.success(t("common.saved"));
+      await load();
+      setEditing({ template: r.data });
+    } catch (err) { toast.error(err.message); }
+  };
+
+  const removeTemplate = async (tpl) => {
+    const okToDelete = await confirm({
+      title: t("lbl.deleteConfirm"), message: tpl.name, type: "danger",
+    });
+    if (!okToDelete) return;
+    try {
+      await labelApi.remove(tpl.id);
+      toast.success(t("common.deleted"));
+      load();
+    } catch (err) { toast.error(err.message); }
+  };
+
   const options = useMemo(() => {
     const list = search ? rankItems(products, search, {
       codes: (p) => [p.barcode, productCode(p)],
@@ -105,6 +150,10 @@ export default function LabelsPage({ toast }) {
                 {t(k.labelKey)}
               </button>
             ))}
+            <button type="button" className="btn btn-primary btn-sm"
+                    onClick={() => setEditing({ template: null })}>
+              <i className="fa-solid fa-plus" /> {t("lbl.newTemplate")}
+            </button>
           </div>
         </div>
 
@@ -134,6 +183,34 @@ export default function LabelsPage({ toast }) {
                 />
               </div>
 
+              {/* ⚠ TIZIM SHABLONIDA «tahrirlash» KO'RSATILMAYDI — bosib
+                  bo'lmaydigan tugma o'rniga sababi va chiqish yo'li. */}
+              {template && (
+                <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
+                  {template.system ? (
+                    <button type="button" className="btn btn-outline btn-sm"
+                            onClick={() => copyTemplate(template.id)}>
+                      <i className="fa-solid fa-copy" /> {t("lbl.copyEdit")}
+                    </button>
+                  ) : (
+                    <>
+                      <button type="button" className="btn btn-outline btn-sm"
+                              onClick={() => setEditing({ template })}>
+                        <i className="fa-solid fa-pen" /> {t("lbl.edit")}
+                      </button>
+                      <button type="button" className="btn-icon danger"
+                              aria-label={t("common.delete")}
+                              onClick={() => removeTemplate(template)}>
+                        <i className="fa-solid fa-trash" />
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
+              {template?.system && (
+                <div className="form-hint">{t("lbl.systemReadonly")}</div>
+              )}
+
               {/* ⚠ Sig'maslik muammosi aynan eng uzun nomda chiqadi. */}
               {longest && (
                 <button type="button" className="btn btn-outline btn-sm"
@@ -154,6 +231,22 @@ export default function LabelsPage({ toast }) {
           </div>
         )}
       </div>
+
+      {editing && (
+        <Modal
+          title={editing.template ? t("lbl.editTemplate") : t("lbl.newTemplate")}
+          onClose={() => setEditing(null)}
+          maxWidth={1040}
+        >
+          <LabelTemplateEditor
+            template={editing.template}
+            product={product}
+            saving={saving}
+            onSave={save}
+            onCancel={() => setEditing(null)}
+          />
+        </Modal>
+      )}
     </div>
   );
 }
