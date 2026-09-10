@@ -1884,6 +1884,13 @@ export default {
   "lbl.notCalibrated": "Ekran kalibrlanmagan — bu yerdagi o'lcham taxminiy. Brauzer uchun 1 dyuym doim 96 piksel, monitoringizning haqiqiy zichligi esa boshqa.",
   "lbl.fits": "Hammasi sig'adi",
 
+  /* ── Dizayn galereyasi (G5) ──────────────────────────────────────── */
+  "lbl.chosen": "Tanlangan",
+  "lbl.fitMismatch": "Bu dizayn {tw}×{th} uchun, sizning qog'ozingiz {mw}×{mh}",
+  "lbl.gallery": "Dizaynlar",
+  "lbl.pickThis": "Shu dizaynni tanlash",
+  "lbl.offlineList": "Ro'yxat oxirgi saqlangan holatdan olindi — internet yo'q",
+
   /* ── Printerni sozlash sehrgari (G4) ─────────────────────────────── */
   "hw.errNoData": "Yuboriladigan ma'lumot yo'q",
   "lbl.setupTitle": "Printerni sozlash",

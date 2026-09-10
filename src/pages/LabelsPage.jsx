@@ -11,6 +11,7 @@ import LabelTemplateEditor from "../components/ek/LabelTemplateEditor";
 import LabelQueue from "../components/ek/LabelQueue";
 import { calibrationDoc } from "../lib/ek-label-calibrate";
 import LabelSetupWizard from "../components/ek/LabelSetupWizard";
+import LabelGallery from "../components/ek/LabelGallery";
 import { printHtml } from "../lib/ek-receipt-pdf";
 import Modal from "../components/Modal";
 import { useConfirm } from "../context/ConfirmProvider";
@@ -38,6 +39,13 @@ const KINDS = [
   { value: "STICKER", labelKey: "lbl.kindSticker" },
 ];
 
+/** Oflayn kesh — shablon ma'lumot, kamdan-kam o'zgaradi. */
+const cacheKey = (kind) => `ek_lbl_tpl_${kind}`;
+const readCache = (kind) => {
+  try { return JSON.parse(localStorage.getItem(cacheKey(kind)) || "[]") || []; }
+  catch { return []; }
+};
+
 export default function LabelsPage({ toast }) {
   const confirm = useConfirm();
   /* ⚠ MANZILDAN O'QILADI: bosh sahifadagi belgi «/labels?tab=stale»
@@ -54,6 +62,8 @@ export default function LabelsPage({ toast }) {
   const [categories, setCategories] = useState([]);
   const [stale, setStale] = useState(null);   // null = hali so'ralmadi
   const [setup, setSetup] = useState(null);  // null | { kind }
+  const [media, setMedia] = useState(null);  // joriy tur uchun tanlangan qog'oz
+  const [zoomed, setZoomed] = useState(null); // katta ko'rish oynasi
   const [editing, setEditing]     = useState(null); // null | {template|null}
   const [saving, setSaving]       = useState(false);
   const [kind, setKind]           = useState("SHELF");
@@ -74,14 +84,38 @@ export default function LabelsPage({ toast }) {
         productApi.getCategories(),
       ]);
       setCategories(asArray(cRes.data));
+
+      /* ⚠ QOG'OZ TANLOVI GALEREYA UCHUN KERAK: qaysi dizayn mos
+         kelmasligini faqat shundan bilish mumkin. Jimgina yiqiladi —
+         qog'oz tanlanmagan do'konda galereya baribir ishlaydi. */
+      try {
+        const mine = asArray((await labelApi.outputList()).data)
+          .find((x) => x.kind === kind);
+        const list = asArray((await labelApi.mediaList()).data);
+        setMedia(list.find((m) => m.id === mine?.mediaProfileId) || null);
+      } catch { setMedia(null); }
       const list = asArray(tRes.data);
       setTemplates(list);
+      /* ⚠ GALEREYA OFLAYN HAM ISHLASIN: shablon — ma'lumot, va u
+         kamdan-kam o'zgaradi. Internet yo'qolganda do'konchi hech
+         bo'lmasa nima borligini ko'rsin. */
+      try { localStorage.setItem(cacheKey(kind), JSON.stringify(list)); } catch { /* to'la */ }
       setTemplateId((cur) => (list.some((x) => x.id === cur) ? cur : list[0]?.id ?? null));
       const prods = asArray(pRes.data);
       setProducts(prods);
       setProductId((cur) => (prods.some((p) => p.id === cur) ? cur : prods[0]?.id ?? null));
     } catch (err) {
-      toast.error(err.message);
+      /* ⚠ OFLAYNDA KESHDAN: xato ko'rsatish o'rniga oxirgi
+         saqlangan ro'yxat chiqadi va buni AYTIB qo'yiladi —
+         do'konchi eski ro'yxatni yangisi deb o'ylamasin. */
+      const cached = readCache(kind);
+      if (cached.length) {
+        setTemplates(cached);
+        setTemplateId((cur) => (cached.some((x) => x.id === cur) ? cur : cached[0]?.id ?? null));
+        toast.error(t("lbl.offlineList"));
+      } else {
+        toast.error(err.message);
+      }
     } finally {
       setLoading(false);
     }
@@ -410,18 +444,7 @@ export default function LabelsPage({ toast }) {
         ) : (
           <div className="lbl-layout">
             <div className="lbl-side">
-              <label className="form-label" htmlFor="lbl-tpl">{t("lbl.template")}</label>
-              <Select
-                id="lbl-tpl" block variant="field" ariaLabel={t("lbl.template")}
-                value={templateId} onChange={setTemplateId}
-                options={templates.map((x) => ({
-                  value: x.id,
-                  label: templateName(x),
-                  hint: `${Number(x.widthMm)}×${Number(x.heightMm)}`,
-                }))}
-              />
-
-              <label className="form-label" style={{ marginTop: 12 }}>{t("lbl.product")}</label>
+              <label className="form-label">{t("lbl.product")}</label>
               <SearchBar value={search} onChange={setSearch}
                          placeholder={t("products.search")} />
               <div style={{ marginTop: 6 }}>
@@ -478,7 +501,45 @@ export default function LabelsPage({ toast }) {
             </div>
           </div>
         )}
+
+        {/* ══════════════════════════════════════════════════════════
+            DIZAYN GALEREYASI (G5)
+
+            ⚠ «DIZAYNLAR KO'RINMAYAPTI» AYNAN SHU YERDA TUGAYDI.
+            Ilgari dizaynlar faqat ochiladigan ro'yxatda, faqat nom
+            bo'lib turardi: 15 tasini ko'rish uchun 15 marta tanlash
+            kerak edi. Endi hammasi bir ekranda va har kartochkadagi
+            rasm — HAQIQIY renderer chizgani.
+            ══════════════════════════════════════════════════════════ */}
+        {!busy && templates.length > 0 && (
+          <>
+            <div className="card-header" style={{ borderTop: "1px solid var(--border)" }}>
+              <span className="card-title">
+                <i className="fa-solid fa-images text-blue" /> {t("lbl.gallery")}
+              </span>
+            </div>
+            <LabelGallery
+              templates={templates} product={product} media={media}
+              selectedId={templateId}
+              onPick={(tpl) => setTemplateId(tpl.id)}
+              onOpen={(tpl) => { setTemplateId(tpl.id); setZoomed(tpl); }}
+            />
+          </>
+        )}
       </div>
+      )}
+
+      {/* Katta ko'rish oynasi — haqiqiy o'lchamda, ekran kalibrlash bilan. */}
+      {zoomed && product && (
+        <Modal title={templateName(zoomed)} onClose={() => setZoomed(null)} maxWidth={860}>
+          <LabelPreview template={zoomed} product={product} />
+          <div style={{ marginTop: 12 }}>
+            <button type="button" className="btn btn-primary"
+                    onClick={() => { setTemplateId(zoomed.id); setZoomed(null); }}>
+              <i className="fa-solid fa-check" /> {t("lbl.pickThis")}
+            </button>
+          </div>
+        </Modal>
       )}
 
       {setup && (

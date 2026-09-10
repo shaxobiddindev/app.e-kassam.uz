@@ -1790,6 +1790,13 @@ export default {
   "lbl.notCalibrated": "Screen is not calibrated — the size shown here is approximate. For a browser 1 inch is always 96 pixels; your monitor's real density differs.",
   "lbl.fits": "Everything fits",
 
+  /* ── Dizayn galereyasi (G5) ──────────────────────────────────────── */
+  "lbl.chosen": "Selected",
+  "lbl.fitMismatch": "This design is for {tw}×{th}, your media is {mw}×{mh}",
+  "lbl.gallery": "Designs",
+  "lbl.pickThis": "Use this design",
+  "lbl.offlineList": "List taken from the last save — no connection",
+
   /* ── Printerni sozlash sehrgari (G4) ─────────────────────────────── */
   "hw.errNoData": "Nothing to send",
   "lbl.setupTitle": "Printer setup",
