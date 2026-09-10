@@ -20,6 +20,7 @@ import { NumField, DateField } from "../components/ek/EkFields";
 import { DEFAULT_NEAR_EXPIRY_DAYS, daysLeft } from "../lib/ek-expiry";
 import { printExpiryLabels } from "../lib/ek-hardware";
 import { rankItems } from "../lib/ek-search";
+import { useCodeSearch, filterByCode } from "../lib/ek-code-search";
 import { asArray } from "../lib/ek-array";
 
 /* Jurnal turlari — rang bilan: kirim yashil, chiqim qizil, to'g'irlash sariq.
@@ -515,10 +516,18 @@ export default function InventoryPage({ toast }) {
   /* ⚠ TARTIB: tez filtr (chiplar) → USTUN FILTRI → qidiruv. Qidiruv
      oxirida, chunki u natijani MOSLIK bo'yicha saralaydi; ustun
      saralashi esa qidiruvsiz ishlaydi. */
-  const filtered = rankItems(colFlt.apply(byState), search, {
-    codes: ({ g }) => [g.barcode],
-    texts: ({ g }) => [g.productName],
-  });
+  /* ⚠ RAQAM REJIMI (`*425`) — omborchi qo'lida javon yorlig'i turadi
+     va unda tovarning NOMI emas, RAQAMI yozilgan. Raqam serverdan
+     so'raladi (kassa bilan bir xil yo'l), qatorlar esa `productId`
+     bo'yicha filtrlanadi — ya'ni qatori tovar emas, QOLDIQ bo'lgan
+     bu sahifa ham xuddi shu qidiruvni oladi. */
+  const code = useCodeSearch(search, branchId);
+  const filtered = code.active
+    ? filterByCode(colFlt.apply(byState), (row) => row.g?.productId ?? row.productId, code)
+    : rankItems(colFlt.apply(byState), search, {
+        codes: ({ g }) => [g.barcode],
+        texts: ({ g }) => [g.productName],
+      });
 
 
   /**
@@ -864,6 +873,8 @@ export default function InventoryPage({ toast }) {
       <div className="card">
         <div className="card-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           <SearchBar
+            code
+            codeLabel={t("kassa.codeMode")}
             value={search}
             onChange={setSearch}
             placeholder={t("products.search")}

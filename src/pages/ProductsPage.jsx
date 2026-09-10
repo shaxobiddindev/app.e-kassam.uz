@@ -25,6 +25,7 @@ import { useSearchParams } from "react-router-dom";
 import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
 import { checkPrices, marginPercent, VIOLATION } from "../lib/ek-prices";
 import { rankItems, PRODUCT_SPEC } from "../lib/ek-search";
+import { useCodeSearch, filterByCode } from "../lib/ek-code-search";
 import { asArray } from "../lib/ek-array";
 import { barcodeSuspicious } from "../lib/ek-barcode-check";
 import { isStoreCode, prettyStoreCode, storeCodeShort } from "../lib/ek-store-code";
@@ -520,7 +521,15 @@ export default function ProductsPage({ toast }) {
   const base = belowOnly
     ? products.filter((p) => p.belowCost || p.belowWholesale)
     : products;
-  const filtered = rankItems(colFlt.apply(base), search, PRODUCT_SPEC);
+  /* ⚠ RAQAM REJIMI (`*425`) — kassadagi bilan AYNAN BIR XIL javob.
+     Raqam SERVERDAN so'raladi, mahalliy ro'yxatdan emas: eski kod
+     (alias) bog'lanishi faqat bazada va mahalliy qidiruv uni
+     ko'rmasdi — javondagi eski yorliq kassada topilib, shu yerda
+     «yo'q» bo'lardi. */
+  const code = useCodeSearch(search, undefined);
+  const filtered = code.active
+    ? filterByCode(colFlt.apply(base), (p) => p.id, code)
+    : rankItems(colFlt.apply(base), search, PRODUCT_SPEC);
 
   const setField = (key) => (e) => setForm((prev) => ({ ...prev, [key]: e.target.value }));
   const setValue = (key) => (v) => setForm((prev) => ({ ...prev, [key]: v }));
@@ -683,7 +692,8 @@ export default function ProductsPage({ toast }) {
 
       <div className="card">
         <div className="card-header">
-          <SearchBar value={search} onChange={setSearch} placeholder={t("products.search")} style={{ width: 320 }} />
+          <SearchBar code value={search} onChange={setSearch} codeLabel={t("kassa.codeMode")}
+            placeholder={t("products.search")} style={{ width: 320 }} />
           <DataFilter cols={COLS} flt={colFlt} />
         </div>
 

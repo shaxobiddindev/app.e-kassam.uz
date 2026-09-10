@@ -431,7 +431,12 @@ export default function TransfersPage({ toast }) {
           </FormGroup>
 
           <FormGroup label={t("products.search")}>
-            <SearchBar value={search} onChange={runSearch} placeholder={t("products.search")} />
+            {/* ⚠ Bu sahifa qidiruvni ALLAQACHON serverdan so'raydi, ya'ni `*425`
+                shu holicha ham ishlab kelgan. `code` bayrog'i faqat ikki narsani
+                qo'shadi: yulduzchadan keyin raqamdan boshqasi tushib qoladi va
+                rejim ko'rinib turadi — boshqa sahifalar bilan bir xil bo'lsin. */}
+            <SearchBar code codeLabel={t("kassa.codeMode")}
+              value={search} onChange={runSearch} placeholder={t("products.search")} />
             {found.length > 0 && (
               <div className="card" style={{ marginTop: 6, maxHeight: 220, overflowY: "auto" }}>
                 {found.map((p) => (
