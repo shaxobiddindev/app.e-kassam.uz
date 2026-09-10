@@ -143,12 +143,17 @@ export function validateTemplate(tpl) {
         quietLeftModules: cfg.quietLeftModules ?? 9,
         quietRightModules: cfg.quietRightModules ?? 7,
         heightMm: Number(bc.h),
+        labelKind: tpl.kind,
       });
       if (m && m.widthMm > Number(bc.w) + 0.001) {
         out.push(err("barcode", `EAN-13 uchun ${mm1(m.widthMm)} mm kerak, `
           + `joy ${mm1(bc.w)} mm — ${mm1(m.widthMm - bc.w)} mm yetmayapti`));
       }
       if (m && !m.ok) {
+        /* ⚠ CHEGARA YORLIQ TURIGA QARAB (`EAN_MIN_MM`): javon
+           yorlig'ida 12 mm, noma'lum turda 18 mm. Bitta son bo'lganda
+           bu ogohlantirish 15 ta tizim shablonining 14 tasida har
+           doim yonardi. */
         out.push(warn("barcode", `Barkod balandligi ${mm1(bc.h)} mm — `
           + `tavsiya etilgani ${m.minHeightMm} mm; pastroqda skaner ishonchsiz`));
       }

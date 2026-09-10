@@ -138,6 +138,10 @@ function drawBarcode(f, value, template, spec, warnings) {
     quietLeftModules: cfg.quietLeftModules ?? 9,
     quietRightModules: cfg.quietRightModules ?? 7,
     heightMm: f.h, showText: cfg.showText !== false, x: f.x, y: f.y,
+    /* ⚠ TUR UZATILADI: minimal balandlik javon yorlig'i va ombor
+       kartoni uchun bir xil emas — birinchisi qo'ldagi skaner bilan
+       5–10 sm dan o'qiladi. */
+    labelKind: template.kind,
   };
   const m = barcodeMetrics(value, opts);
   if (!m) {

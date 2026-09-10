@@ -9,7 +9,7 @@
    Ishga tushirish:  node test/label-render.test.mjs
    ══════════════════════════════════════════════════════════════════════════ */
 const { renderLabel, renderSheet } = await import("../src/lib/ek-label-render.js");
-const { barcodeMetrics, barcodeKind, dotMm } =
+const { barcodeMetrics, barcodeKind, dotMm, eanMinMm, EAN_MIN_MM_DEFAULT } =
   await import("../src/lib/ek-label-barcode.js");
 
 let pass = 0, fail = 0;
@@ -127,6 +127,44 @@ console.log("\n── Narx: butun yirik, tiyin kichik ──");
   ok(!whole.includes("<tspan"), "butun summada tiyin qismi umuman chizilmaydi");
   /* Minglar ajratgichi — `ek-format` bilan BIR XIL manba. */
   ok(/24 500/.test(whole), "⚠ minglar ajratgichi `ek-format` dagi bilan bir xil");
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   MINIMAL BALANDLIK — YORLIQ TURIGA QARAB (V132)
+   ══════════════════════════════════════════════════════════════════ */
+console.log("\n── EAN minimal balandligi ──");
+{
+  /* ⚠ ILGARI BITTA SON EDI (18 mm) va o'lchov uni noto'g'ri deb
+     ko'rsatdi: 15 ta tizim shablonining 14 tasi undan o'tolmasdi va
+     har bir tovarda ogohlantirish chiqarardi. Har doim yonadigan
+     ogohlantirish — yo'q ogohlantirishdan yomon: keyin HAQIQIY
+     muammo chiqqanda ham ko'rilmaydi.
+
+     Sabab shablonlarda emas edi: 70x37 javon yorlig'iga nom (8 mm) +
+     narx (14 mm) + 18 mm barkod + chekkalar ~44 mm kerak. Javon
+     yorlig'i shunday bo'ladi. Farq QANDAY O'QILISHIDA: javon
+     yorlig'i qo'ldagi skaner bilan 5-10 sm dan o'qiladi. */
+  eq(eanMinMm("SHELF"), 12, "javon yorlig'i — 12 mm");
+  eq(eanMinMm("STICKER"), 12, "stiker — 12 mm");
+  eq(eanMinMm("shelf"), 12, "kichik harf ham qabul qilinadi");
+
+  /* ⚠ NOMA'LUM TUR EHTIYOTKOR TOMONGA TUSHADI: yangi yorliq turi
+     qo'shilsa, kimdir uni ONGLI ravishda jadvalga yozmaguncha
+     to'liq balandlik talab qilinadi. */
+  eq(eanMinMm(null), EAN_MIN_MM_DEFAULT, "tur ko'rsatilmasa — to'liq balandlik");
+  eq(eanMinMm("CARTON"), 18, "⚠ noma'lum tur past chegara olib qolyapti");
+
+  const at = (h, kind) => barcodeMetrics("5901234123457",
+    { dpi: 203, moduleDots: 2, heightMm: h, labelKind: kind });
+
+  ok(at(12, "SHELF").ok, "12 mm javon yorlig'ida yetarli");
+  ok(!at(11.9, "SHELF").ok, "⚠ 12 mm dan past bo'lsa ogohlantirish chiqishi kerak");
+  ok(!at(12).ok, "⚠ tursiz chaqiruvda 12 mm o'tib ketdi");
+  ok(at(18).ok, "tursiz chaqiruvda 18 mm o'tadi");
+
+  /* Code 128 chegarasi tegilmadi. */
+  eq(barcodeMetrics("ABC-123", { heightMm: 8, labelKind: "SHELF" }).minHeightMm, 8,
+     "Code 128 chegarasi o'zgarmadi");
 }
 
 console.log(`\n${fail === 0 ? "✅" : "❌"}  ${pass} o'tdi, ${fail} yiqildi\n`);

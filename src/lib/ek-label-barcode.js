@@ -35,6 +35,52 @@ import { barcodeVerdict } from "./ek-barcode-check.js";
 export const dotMm = (dpi) => 25.4 / Number(dpi || 203);
 
 /**
+ * ══════════════════════════════════════════════════════════════════
+ * EAN NING MINIMAL BALANDLIGI — YORLIQ TURIGA QARAB
+ * ══════════════════════════════════════════════════════════════════
+ *
+ * ⚠ ILGARI BITTA SON EDI (18 mm) VA U NOTO'G'RI EDI. O'lchov
+ * ko'rsatdi: 15 ta tizim shablonining 14 tasi bu chegaradan
+ * o'tolmasdi va har bir tovarda ogohlantirish chiqarardi. Har doim
+ * yonadigan ogohlantirishni odamlar e'tiborsiz qoldirishni
+ * o'rganadi — ya'ni u yo'q ogohlantirishdan ham yomon.
+ *
+ * ⚠ SABAB SHABLONLARDA EMAS EDI. 70×37 javon yorlig'iga nom (8 mm)
+ * + narx (14 mm) + 18 mm barkod + chekkalar ≈ 44 mm kerak. Bu
+ * jismonan sig'maydi va sig'maydigan qilib loyihalangani ham
+ * bejiz emas: javon yorlig'i shunday bo'ladi.
+ *
+ * ⚠ FARQ — QANDAY O'QILISHIDA. Javon yorlig'i va stiker QO'LDAGI
+ * skaner bilan 5–10 sm dan o'qiladi: EAN standarti ruxsat bergan
+ * «kesilgan» (truncated) balandlik bu masofada ishlaydi va
+ * chakana savdoda hamma joyda shunday. Ombor kartoni esa uzoqdan,
+ * burchak ostida o'qiladi — u yerda balandlik zaxirasi kerak.
+ *
+ * ⚠ 12 mm — TANLANGAN QIYMAT, standartdan olingan emas. EAN-13
+ * ning to'liq balandligi 22,85 mm; 12 mm — chakana amaliyotdagi
+ * odatiy kesilgan balandlik. HAR BIR DO'KON O'Z SKANERI bilan
+ * tekshirishi kerak: kalibrlash varag'i (F7) aynan shuning uchun
+ * bor.
+ *
+ * ⚠ NOMA'LUM TUR 18 MM OLADI. Yangi yorliq turi qo'shilsa, u
+ * ataylab EHTIYOTKOR tomonga tushadi: kimdir uni ongli ravishda
+ * shu jadvalga yozmaguncha to'liq balandlik talab qilinadi.
+ */
+export const EAN_MIN_MM = {
+  SHELF: 12,
+  STICKER: 12,
+};
+
+/** ⚠ Noma'lum yoki ko'rsatilmagan tur — to'liq balandlik. */
+export const EAN_MIN_MM_DEFAULT = 18;
+
+/** Code 128 da qat'iy standart yo'q; 8 mm dan pastda skaner ishonchsiz. */
+export const CODE128_MIN_MM = 8;
+
+export const eanMinMm = (labelKind) =>
+  EAN_MIN_MM[String(labelKind || "").toUpperCase()] ?? EAN_MIN_MM_DEFAULT;
+
+/**
  * Qaysi turda chiziladi.
  *
  * ⚠ QOIDA O'ZGARMAYDI (§10s): nazorat raqami to'g'ri bo'lsa EAN,
@@ -70,7 +116,7 @@ function modulesOf(value, kind) {
  */
 export function barcodeMetrics(value, {
   dpi = 203, moduleDots = 2, quietLeftModules = 9, quietRightModules = 7,
-  heightMm = 10,
+  heightMm = 10, labelKind = null,
 } = {}) {
   const kind = barcodeKind(value);
   if (!kind) return null;
@@ -81,10 +127,7 @@ export function barcodeMetrics(value, {
   const total = modules.length + quietLeftModules + quietRightModules;
   const widthMm = total * moduleMm;
 
-  /* ⚠ EAN uchun amaliy minimum — raqamlari bilan ~18 mm balandlik.
-     Code 128 da qat'iy standart yo'q; 8 mm dan pastda skanerlar
-     ishonchsiz bo'ladi. */
-  const minHeightMm = kind === "CODE128" ? 8 : 18;
+  const minHeightMm = kind === "CODE128" ? CODE128_MIN_MM : eanMinMm(labelKind);
 
   return {
     kind, modules, moduleMm, widthMm, minHeightMm,
