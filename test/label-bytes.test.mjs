@@ -76,6 +76,58 @@ console.log("\n── HTML va bayt yo'li bir xil joylashuvdan ──");
   const name = layout.items.find((i) => i.kind === "text" && i.key === "name");
   const tt = tspl.match(/TEXT (\d+),(\d+),/);
   eq(Number(tt[2]), mmToDots(name.y, 203), "⚠ TSPL matn Y si joylashuvdan farq qilyapti");
+
+  /* ══ O'NGGA TEKISLANGAN MAYDON — IKKI TIL, BITTA JOY ══
+
+     ⚠ BU YERDA IKKALA TILNING KOORDINATASI ATAY BOSHQACHA va
+     shuning uchun ularni ko'r-ko'rona solishtirish MUMKIN EMAS:
+
+       · TSPL da maydon qutisi yo'q. Tekislash boshlanish
+         nuqtasini SURIB bajariladi: o'ngga tekislangan matn
+         qutining O'NG chetidan (x + w) boshlanadi, yonida
+         tekislash bayrog'i 3 turadi.
+       · ZPL da `^FB` qutisi bor. Boshlanish nuqtasi qutining
+         CHAP chetida (x) qoladi, eni va `R` bayrog'i esa
+         `^FB` ga beriladi.
+
+     Ya'ni 448 va 16 — ikkalasi ham TO'G'RI va ikkalasi ham
+     qog'ozning AYNAN BIR JOYINI ko'rsatadi. Shuning uchun
+     tekshiruv koordinatani emas, HAR IKKALA TILDA CHIQADIGAN
+     QUTINI solishtiradi.
+
+     ⚠ BU SINOV KEYIN QO'SHILDI: eskisi faqat barkod va `name`
+     ni tekshirardi, ya'ni ZPL dan `^FB` yo'qolsa yoki `R`
+     bayrog'i `L` ga aylansa, narx yorliqning CHAP chetiga
+     ko'chib ketardi va birorta sinov yiqilmasdi. */
+  const price = layout.items.find((i) => i.kind === "text" && i.key === "price");
+  is(price?.align === "right", "sinov namunasida o'ngga tekislangan maydon bor");
+
+  const left  = mmToDots(price.x, 203);
+  const right = mmToDots(price.x + price.w, 203);
+  const top   = mmToDots(price.y, 203);
+
+  /* ⚠ QATOR Y BO'YICHA TOPILADI, X bo'yicha emas: `name` ham
+     shu x da va shu enda turadi. Birinchi mos qatorni olish
+     `name` ni tanlab qo'yardi va bu sinovning O'ZI shunday
+     yiqildi — tekislash bayrog'i `L` chiqdi. */
+  const tp = tspl.split("\r\n").find((l) => l.startsWith(`TEXT ${right},${top},`));
+  is(!!tp, "⚠ TSPL da o'ngga tekislangan matn yo'q");
+  eq(Number(tp.match(/TEXT (\d+),/)[1]), right,
+     "⚠ TSPL o'ngga tekislashda boshlanish nuqtasi qutining o'ng chetida bo'lishi kerak");
+  eq(Number(tp.match(/,(\d),"[^"]*"$/)[1]), 3,
+     "⚠ TSPL tekislash bayrog'i 3 (o'ngga) bo'lishi kerak");
+
+  const zp = zpl.split("\n").find((l) => l.startsWith(`^FO${left},${top}^`) && l.includes("^FB"));
+  is(!!zp, "⚠ ZPL da chap chetdan boshlanadigan `^FB` qutisi yo'q");
+  eq(Number(zp.match(/\^FB(\d+),/)[1]), right - left,
+     "⚠ ZPL `^FB` qutisining eni joylashuvdagi maydon enidan farq qilyapti");
+  is(/\^FB\d+,1,0,R,/.test(zp), "⚠ ZPL da o'ngga tekislash bayrog'i yo'q");
+
+  /* ⚠ VA XULOSA: ikkala til ham matnni AYNAN bir joyga qo'yadi. */
+  const tsplRight = Number(tp.match(/TEXT (\d+),/)[1]);
+  const zplRight = Number(zp.match(/\^FO(\d+),/)[1]) + Number(zp.match(/\^FB(\d+),/)[1]);
+  eq(tsplRight, zplRight,
+     "⚠ TSPL va ZPL matnning O'NG CHETI ayri tushdi — bitta joylashuv, ikki xil natija");
 }
 
 /* ══════════════════════════════════════════════════════════════════
