@@ -1375,6 +1375,17 @@ select.form-input { cursor: pointer; }
                    display: flex; align-items: center; justify-content: center;
                    color: var(--fg-on-brand); font-size: 17px; font-weight: 900; }
 
+/* ⚠ JADVAL VARIANTI. Kartochkadagi 40px belgisi jadval qatorini ikki
+   barobar baland qilardi va ro'yxat ko'zga birdaniga sig'masdi —
+   jadvalga o'tishning butun sababi esa shu edi. */
+.cat-card__mark--sm { width: 26px; height: 26px; border-radius: 7px; font-size: 12px; }
+
+/* Bo'lim raqami — tovar kodidagi bilan bir xil ko'rinish: u kassada
+   `*4` bo'lib teriladigan AYNAN o'sha raqam. */
+.cat-code { display: inline-block; padding: 1px 7px; border-radius: 6px;
+            background: var(--bg-subtle); border: 1px solid var(--border);
+            font-weight: 800; letter-spacing: .02em; }
+
 .grid-2  { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 /* `align-items: start` — kartochka mazmuniga qarab balandlik oladi.
    Ilgari ikki qatorli «To'lov turlari» kartochkasi yonidagi o'n qatorli
