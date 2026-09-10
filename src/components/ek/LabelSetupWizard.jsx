@@ -8,6 +8,7 @@ import { SkeletonList } from "./Loading";
 import { isDesktop } from "../../lib/ek-desktop";
 import { printRawLabel } from "../../lib/ek-hardware";
 import { calibrationCommand, supportsBytes, toBytes } from "../../lib/ek-label-bytes";
+import { blocking, validateOutput } from "../../lib/ek-label-validate";
 import { layoutLabel } from "../../lib/ek-label-render";
 import { templateName } from "../../lib/ek-label-name";
 
@@ -86,6 +87,15 @@ export default function LabelSetupWizard({ kind, template, product, onClose, toa
   /* ⚠ BLOKLANGAN QADAMNING SABABI YOZILADI. Brauzerdan printerga
      buyruq yuborib bo'lmaydi va bu do'konchining aybi emas —
      shuning uchun tugma hira turganda YONIDA sabab bo'lishi kerak. */
+  /* ⚠ FIZIK JIHATDAN CHIQMAYDIGAN JUFTLIK — SAQLASHDAN OLDIN.
+     O'lchandi: tayyor profillar bilan 112 juftlikdan 21 tasi
+     chiqmaydi (yorliq printerning chop kalladan keng). Server ham
+     rad etadi, lekin do'konchi buni sehrgar oxirida emas, TANLAGAN
+     zahoti bilishi kerak. */
+  const fitErrors = useMemo(
+    () => blocking(validateOutput(media, printer, template)),
+    [media, printer, template]);
+
   const blockReason = !desktop ? t("lbl.needDesktop")
     : !bytes ? t("lbl.langNoBytes")
     : null;
@@ -247,7 +257,10 @@ export default function LabelSetupWizard({ kind, template, product, onClose, toa
                  {t("common.back")}
                </button>
                {last ? (
-                 <button className="btn btn-green" disabled={busy} onClick={save}>
+                 /* ⚠ BLOKLANGAN TUGMA SABABSIZ QOLMAYDI: sabab
+                    oynaning ichida, ro'yxat bo'lib turadi. */
+                 <button className="btn btn-green" disabled={busy || fitErrors.length > 0}
+                         onClick={save}>
                    <i className="fa-solid fa-check" /> {t("lbl.setupSave")}
                  </button>
                ) : (
@@ -259,6 +272,20 @@ export default function LabelSetupWizard({ kind, template, product, onClose, toa
              </>
            )}>
       <p className="set-card__hint" style={{ marginTop: 0 }}>{t("lbl.setupWhy")}</p>
+
+      {/* ⚠ CHIQMAYDIGAN JUFTLIK — HAR QADAMDA KO'RINADI, oxirida
+          emas: do'konchi to'rtta qadamni bosib o'tib, keyin
+          «saqlab bo'lmaydi» degan xabarni ko'rmasin. */}
+      {fitErrors.length > 0 && (
+        <ul className="lbl-warn lbl-warn--bad">
+          {fitErrors.map((e, i) => (
+            <li key={i}>
+              <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />
+              <span>{e.text}</span>
+            </li>
+          ))}
+        </ul>
+      )}
 
       {/* ⚠ QADAMLAR KO'RINIB TURSIN: do'konchi qayerdaligini va
           nechta qadam qolganini bilsin. */}

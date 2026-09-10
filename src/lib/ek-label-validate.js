@@ -245,6 +245,158 @@ export function validateJob(items, sheet) {
   return out;
 }
 
+/**
+ * ══════════════════════════════════════════════════════════════════
+ * QOG'OZ ↔ PRINTER ↔ SHABLON (G7)
+ * ══════════════════════════════════════════════════════════════════
+ *
+ * ⚠ O'LCHANDI: tayyor profillar bilan 112 ta qog'oz+printer
+ * juftligi tuzish mumkin va ULARNING 21 TASI FIZIK JIHATDAN
+ * CHIQMAYDI — yorliq printerning chop kalladan keng. Bugun
+ * ulardan birortasi ham to'silmaydi: do'konchi saqlaydi, chop
+ * etadi va yorliqning o'ng chekkasi kesilib chiqadi.
+ *
+ * ⚠ XATO MATNI HARAKATNI AYTADI. «Noto'g'ri qiymat» degan
+ * xabar foydasiz: do'konchi nima qilishni bilmaydi. Shuning
+ * uchun har bir xabarda IKKITA YO'L bor — nimani kichraytirish
+ * yoki nimani almashtirish.
+ *
+ * ⚠ SERVERDA HAM SHU QOIDALAR (`LabelOutputValidator`). Front —
+ * qulaylik, server — kafolat.
+ *
+ * @param media   qog'oz profili (null bo'lsa — tekshiruv yo'q)
+ * @param printer printer profili (null bo'lsa — faqat qog'oz qoidalari)
+ * @param tpl     shablon (null bo'lsa — shablon qoidalari o'tkaziladi)
+ */
+export function validateOutput(media, printer, tpl) {
+  const out = [];
+  if (!media) return out;
+
+  const w  = Number(media.labelWidthMm);
+  const h  = media.labelHeightMm === null || media.labelHeightMm === undefined
+    ? null : Number(media.labelHeightMm);
+  const ac = Math.max(1, Number(media.across) || 1);
+  const gx = Number(media.gapXMm) || 0;
+  const gy = Number(media.gapYMm) || 0;
+  const liner = media.linerWidthMm === null || media.linerWidthMm === undefined
+    ? null : Number(media.linerWidthMm);
+
+  /* Qatorda nechta yorliq + oralaridagi bo'shliq. */
+  const rowMm = w * ac + (ac - 1) * gx;
+
+  /* ── 1. PODLOSHKAGA SIG'ADIMI ── */
+  if (liner !== null && rowMm > liner + 0.001) {
+    const fit = Math.max(1, Math.floor((liner + gx) / (w + gx)));
+    out.push(err("across", `${ac} ta ${mm1(w)} mm yorliq va oraliqlar `
+      + `${mm1(rowMm)} mm joy oladi, podloshka esa ${mm1(liner)} mm — `
+      + `qatorda ${fit} ta yorliqli rulon tanlang yoki yorliqni kichraytiring`));
+  }
+
+  /* ── 2. PRINTERNING CHOP KENGLIGIGA SIG'ADIMI ──
+     ⚠ ENG KO'P UCHRAYDIGAN XATO (PROMPT G, 7-bo'lim). */
+  if (printer) {
+    const pw = Number(printer.printWidthMm);
+    if (Number.isFinite(pw) && rowMm > pw + 0.001) {
+      out.push(err("printer", `${mm1(pw)} mm printerga ${mm1(rowMm)} mm yorliq `
+        + `sig'maydi — yorliqni ${mm1(pw)} mm ga tushiring `
+        + `yoki chop kengligi kattaroq printer tanlang`));
+    }
+  }
+
+  /* ── 3. UZLUKSIZ RULONDA BALANDLIK MAJBURIY ──
+     ⚠ Printer yorliq qayerda tugashini O'ZI BILA OLMAYDI: oraliq
+     ham, qora belgi ham yo'q. Balandlik berilmasa u lentani
+     to'xtovsiz tortadi. */
+  if (String(media.sensor) === "UZLUKSIZ" && h === null) {
+    /* ⚠ ANIQ SON XABARDA BO'LISHI SHART, yo'q qiymat haqidagi
+       xatoda ham: «balandlikni yozing» degan xabar do'konchini
+       «qancha?» degan savol bilan qoldiradi. Tayyor chek lentasi
+       profillarida balandlik 40 mm. */
+    out.push(err("labelHeightMm", "Uzluksiz lentada printer yorliq qayerda "
+      + "tugashini bilmaydi — yorliq balandligini mm da yozing, odatda 30–40 mm"));
+  }
+
+  /* ── 4. ORALIQ / QORA BELGI DA — ORALIQ QIYMATI ──
+     ⚠ Datchik aynan shu bo'shliqni ko'rib yorliqni sanaydi. Nol
+     bo'lsa u hech narsa ko'rmaydi va rulon bir tekis oqib ketadi. */
+  const sensed = ["ORALIQ", "QORA_BELGI"].includes(String(media.sensor));
+  if (sensed && String(media.mediaType) === "RULON" && !(gy > 0)) {
+    out.push(err("gapYMm", `«${sensorName(media.sensor)}» datchigi yorliqlar `
+      + "orasidagi bo'shliqni o'lchaydi — oraliqni yozing, odatda 2–3 mm"));
+  }
+
+  if (!tpl) return out;
+
+  /* ── 5. SHABLON DPI SI ↔ PRINTER DPI SI, FAQAT BAYT YO'LIDA ──
+     ⚠ SABABI ANIQ VA O'LCHANGAN. Bayt yo'lida barkod moduli
+     printerga NUQTADA yuboriladi (`BARCODE …,narrow,…`), joylashuv
+     esa uning mm dagi enini SHABLON dpi si bilan hisoblaydi. Ikkisi
+     ajralsa: 203 dpi da 2 nuqta = 0,250 mm, 300 dpi da esa
+     0,169 mm — barkod joylashuv ajratgan joydan 32% tor chiqadi
+     va X-o'lchami GS1 minimumidan (0,264 mm) pastga tushadi.
+     Yorliq ko'zga normal ko'rinadi, skaner o'qimaydi.
+
+     ⚠ DRAYVER VA CHEK YO'LIDA BU QOIDA YO'Q va bu ataylab: u
+     yerda chizma mm da beriladi, nuqtaga aylantirishni drayver
+     yoki brauzer o'zi qiladi. A4 lazer 300 dpi bo'lgani uchun
+     203 dpi shablonni rad etish 15/15 tizim shablonini A4 da
+     ishlamas qilib qo'yardi — ya'ni ishlayotgan narsani buzardi. */
+  if (printer && BYTE_LANGS.includes(String(printer.lang || "").toUpperCase())
+      && Number(tpl.dpi) !== Number(printer.dpi)) {
+    const tMm = mm3(2 * 25.4 / Number(tpl.dpi));
+    const pMm = mm3(2 * 25.4 / Number(printer.dpi));
+    out.push(err("dpi", `Dizayn ${tpl.dpi} dpi uchun chizilgan, printer esa `
+      + `${printer.dpi} dpi — barkod moduli ${tMm} mm o'rniga ${pMm} mm bo'lib `
+      + `chiqadi; dizayn zichligini ${printer.dpi} ga o'zgartiring `
+      + "yoki mos printer tanlang"));
+  }
+
+  /* ── 6. YORLIQ QOG'OZDAN KATTA BO'LMASIN ── */
+  const tw = Number(tpl.widthMm), th = Number(tpl.heightMm);
+  if (Number.isFinite(tw) && tw > w + 0.001) {
+    out.push(err("widthMm", `Dizayn eni ${mm1(tw)} mm, qog'oz eni ${mm1(w)} mm — `
+      + `dizaynni ${mm1(w)} mm ga tushiring yoki kengroq qog'oz tanlang`));
+  }
+  /* ⚠ Uzluksiz lentada bo'y solishtirilmaydi: u kerakli joyidan kesiladi. */
+  if (h !== null && Number.isFinite(th) && th > h + 0.001) {
+    out.push(err("heightMm", `Dizayn bo'yi ${mm1(th)} mm, qog'oz bo'yi ${mm1(h)} mm — `
+      + `dizaynni ${mm1(h)} mm ga tushiring yoki balandroq qog'oz tanlang`));
+  }
+
+  /* ── 7. STIKERDA BARKOD + TINCH ZONA QOG'OZGA SIG'SIN ──
+     ⚠ TINCH ZONA — BARKODNING BIR QISMI. Uni chekkaga taqab
+     qo'yish barkodni o'qilmas qiladi, garchi chiziqlarning
+     o'zi to'la chizilgan bo'lsa ham. */
+  const spec = typeof tpl.spec === "string" ? safeParse(tpl.spec, out) : (tpl.spec || {});
+  const bc = (spec?.fields || []).find((f) => f.key === "barcode" && f.visible !== false);
+  if (bc) {
+    const cfg = spec.barcode || {};
+    const m = barcodeMetrics("5901234123457", {
+      dpi: Number(printer?.dpi ?? tpl.dpi), moduleDots: Number(cfg.moduleDots ?? 2),
+      quietLeftModules: cfg.quietLeftModules ?? 9,
+      quietRightModules: cfg.quietRightModules ?? 7,
+      heightMm: Number(bc.h), labelKind: tpl.kind,
+    });
+    const pad = Number(spec.padding) || 0;
+    if (m && m.widthMm + 2 * pad > w + 0.001) {
+      out.push(err("barcode", `Barkod tinch zonasi bilan ${mm1(m.widthMm)} mm, `
+        + `chekkalar bilan ${mm1(m.widthMm + 2 * pad)} mm — qog'oz esa ${mm1(w)} mm; `
+        + "modulni 2 nuqtaga tushiring yoki kengroq qog'oz tanlang"));
+    }
+  }
+
+  return out;
+}
+
+/* ⚠ BAYT TILLARI — `ek-label-bytes.js` dagi ro'yxat bilan bir xil.
+   Import qilinmadi: validatsiya kutubxonasi bayt yo'liga bog'lanib
+   qolmasin, ikkalasi ham mustaqil sinaladi. */
+const BYTE_LANGS = ["TSPL", "ZPL"];
+const mm3 = (n) => (Math.round(Number(n) * 1000) / 1000).toString();
+
+const SENSORS = { ORALIQ: "Oraliq", QORA_BELGI: "Qora belgi", UZLUKSIZ: "Uzluksiz" };
+const sensorName = (s) => SENSORS[String(s)] || String(s);
+
 /** Faqat xatolar chop etishni to'sadi. */
 export const blocking = (list) => (list || []).filter((x) => x.level === "error");
 

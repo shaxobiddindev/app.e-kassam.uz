@@ -18,6 +18,7 @@ import { useConfirm } from "../context/ConfirmProvider";
 import { productCode } from "../lib/ek-code";
 import { rankItems } from "../lib/ek-search";
 import { money } from "../lib/ek-format";
+import { blocking, validateOutput } from "../lib/ek-label-validate";
 import { templateName } from "../lib/ek-label-name";
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -64,6 +65,7 @@ export default function LabelsPage({ toast }) {
   const [setup, setSetup] = useState(null);  // null | { kind }
   const [media, setMedia] = useState(null);  // joriy tur uchun tanlangan qog'oz
   const [mediaList, setMediaList] = useState([]); // barcha qog'oz profillari
+  const [printer, setPrinter] = useState(null);  // joriy tur uchun tanlangan printer
   const [zoomed, setZoomed] = useState(null); // katta ko'rish oynasi
   const [editing, setEditing]     = useState(null); // null | {template|null}
   const [saving, setSaving]       = useState(false);
@@ -95,7 +97,9 @@ export default function LabelsPage({ toast }) {
         const list = asArray((await labelApi.mediaList()).data);
         setMediaList(list);
         setMedia(list.find((m) => m.id === mine?.mediaProfileId) || null);
-      } catch { setMedia(null); setMediaList([]); }
+        const ps = asArray((await labelApi.printerList()).data);
+        setPrinter(ps.find((x) => x.id === mine?.printerProfileId) || null);
+      } catch { setMedia(null); setMediaList([]); setPrinter(null); }
       const list = asArray(tRes.data);
       setTemplates(list);
       /* ⚠ GALEREYA OFLAYN HAM ISHLASIN: shablon — ma'lumot, va u
@@ -185,6 +189,14 @@ export default function LabelsPage({ toast }) {
   };
 
   const template = templates.find((x) => x.id === templateId) || null;
+
+  /* ⚠ TANLANGAN DIZAYN DO'KONNING QOG'OZIGA CHIQADIMI (G7).
+     O'lchandi: tayyor profillar bilan 112 qog'oz+printer
+     juftligidan 21 tasi fizik jihatdan chiqmaydi. Bu yerda
+     buni CHOP ETISHDAN OLDIN aytish — yagona arzon payt. */
+  const outIssues = useMemo(
+    () => blocking(validateOutput(media, printer, template)),
+    [media, printer, template]);
   const product  = products.find((p) => p.id === productId) || null;
 
   /* ⚠ ENG UZUN NOM — sig'maslik aynan shunda chiqadi. */
@@ -493,6 +505,20 @@ export default function LabelsPage({ toast }) {
                 </button>
               )}
             </div>
+
+            {/* ⚠ QOG'OZGA CHIQMASA — SABABI SHU YERDA, ko'rish
+                oynasining TEPASIDA: pastda turgan ogohlantirishni
+                do'konchi chop etib bo'lgandan keyin ko'rardi. */}
+            {outIssues.length > 0 && (
+              <ul className="lbl-warn lbl-warn--bad">
+                {outIssues.map((e, i) => (
+                  <li key={i}>
+                    <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />
+                    <span>{e.text}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
 
             <div className="lbl-main">
               {product ? (
