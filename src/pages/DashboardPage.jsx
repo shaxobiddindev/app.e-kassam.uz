@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useT } from "../lib/ek-i18n";
-import { reportApi, inventoryApi, loyaltyApi, plannerApi, shopApi } from "../api";
+import { reportApi, inventoryApi, loyaltyApi, plannerApi, shopApi, labelApi } from "../api";
 import { BranchSelector } from "../components";
 import OnboardingCard from "../components/OnboardingCard";
 import Modal from "../components/Modal";
@@ -1415,6 +1415,9 @@ export default function DashboardPage({ toast }) {
   const [analytics, setAnalytics] = useState(null);
   const [signals, setSignals] = useState(null);
   const [lowStock, setLowStock] = useState([]);
+  /* «Javondagi narx eskirgan» — SON, ro'yxat emas: bosh sahifada
+     belgi ko'rinadi, ro'yxatning o'zi «Yorliqlar» bo'limida. */
+  const [staleLabels, setStaleLabels] = useState(0);
   const [loyalty, setLoyalty] = useState(null);
   const [planned, setPlanned] = useState(null);
   const [loadingSlow, setLoadingSlow] = useState(true);
@@ -1472,6 +1475,10 @@ export default function DashboardPage({ toast }) {
          olinadi (u filialni biladi); shu ro'yxat faqat omborchi uchun
          zaxira. Argument berish uni filtrlaydi deb o'ylatardi. */
       inventoryApi.getLow().then((r) => asArray(r.data)).catch(() => []),
+      /* ⚠ JIMGINA YIQILADI: belgi bo'lmasa ham bosh sahifa to'liq
+         ishlaydi. Xatoni toast qilish har yangilanishda tushunarsiz
+         xabar berardi. */
+      labelApi.stale(1).then((r) => Number(r?.data?.count) || 0).catch(() => 0),
     ];
     if (canMoney) {
       jobs.push(
@@ -1484,9 +1491,10 @@ export default function DashboardPage({ toast }) {
         loyaltyApi.summary().then((r) => r.data).catch(() => null),
       );
     }
-    Promise.all(jobs).then(([low, an, sig, loy]) => {
+    Promise.all(jobs).then(([low, stale, an, sig, loy]) => {
       if (!alive) return;
-      setLowStock(low); setAnalytics(an ?? null);
+      setLowStock(low); setStaleLabels(stale);
+      setAnalytics(an ?? null);
       setSignals(sig ?? null); setLoyalty(loy ?? null);
       setLoadingSlow(false);
     });
@@ -1583,7 +1591,8 @@ export default function DashboardPage({ toast }) {
     /* Omborchida savdo so'rovi yuborilmaydi — «bilmaymiz» deb
        beriladi, «sotuv yo'q» deb emas. */
     hasSales: canMoney ? Number(pulse?.today?.receipts || analytics?.now?.receipts || 0) > 0 : null,
-  }), [signals, pulse, lowStock, analytics, canMoney, plan]);
+    staleLabels,
+  }), [signals, pulse, lowStock, analytics, canMoney, plan, staleLabels]);
 
   /* ── KPI qatori ───────────────────────────────────────────────────
      ⚠ Tartib — HISOBOTNING O'ZI: tushumdan sof foydagacha zinapoya.

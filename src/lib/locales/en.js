@@ -698,6 +698,7 @@ export default {
   "products.archivedLastSold": "Last sold",
   "products.restored": "Product restored from the archive",
   "enum.audit.PRICE_CHANGE": "Price changed",
+  "enum.audit.LABEL_PRINT": "Labels printed",
   "enum.audit.PRICE_BULK_CHANGE": "Bulk price change",
   "enum.audit.STOCK_TAKE_CLOSE": "Stock-take finished",
   "enum.audit.STOCK_TAKE_CANCEL": "Stock-take cancelled",
@@ -1788,6 +1789,17 @@ export default {
   "lbl.calibrateHint": "Hold a bank card against the screen and match the bar to its width. Only then is \\u201creal size\\u201d actually real.",
   "lbl.notCalibrated": "Screen is not calibrated — the size shown here is approximate. For a browser 1 inch is always 96 pixels; your monitor's real density differs.",
   "lbl.fits": "Everything fits",
+
+  /* ── Qayta chop etish kerak (F6) ─────────────────────────────────── */
+  "lbl.tabStale": "Needs reprinting",
+  "lbl.staleHint": "These products were repriced after their label was printed. The shelf says one price, the till another.",
+  "lbl.staleNone": "Shelf prices are up to date",
+  "lbl.staleMore": "and {n} more — all of them go into the queue",
+  "lbl.queueAllStale": "Queue all ({n})",
+  "lbl.onShelf": "On the shelf",
+  "lbl.atTill": "At the till",
+  "lbl.diff": "Difference",
+  "dash.attStaleLabels": "Stale shelf price: {n} products",
 
   /* ── Chop etish navbati (F5) ─────────────────────────────────────── */
   "lbl.tabPreview": "Preview",

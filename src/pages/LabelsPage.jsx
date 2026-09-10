@@ -13,6 +13,7 @@ import Modal from "../components/Modal";
 import { useConfirm } from "../context/ConfirmProvider";
 import { productCode } from "../lib/ek-code";
 import { rankItems } from "../lib/ek-search";
+import { money } from "../lib/ek-format";
 
 /* ══════════════════════════════════════════════════════════════════════════
    YORLIQLAR — KO'RISH VA NAVBAT (F3 + F5)
@@ -35,11 +36,19 @@ const KINDS = [
 
 export default function LabelsPage({ toast }) {
   const confirm = useConfirm();
-  const [tab, setTab]             = useState("preview"); // preview | queue
+  /* ⚠ MANZILDAN O'QILADI: bosh sahifadagi belgi «/labels?tab=stale»
+     ga olib keladi va o'sha bo'lim DARHOL ochilishi kerak. Belgini
+     bosgan odam yana bir marta bo'lim tanlashi — belgining ma'nosini
+     yo'qotardi. */
+  const [tab, setTab] = useState(() => {
+    const want = new URLSearchParams(window.location.search).get("tab");
+    return want === "queue" || want === "stale" ? want : "preview";
+  });
   const [jobs, setJobs]           = useState([]);
   const [jobId, setJobId]         = useState(null);
   const [job, setJob]             = useState(null);
   const [categories, setCategories] = useState([]);
+  const [stale, setStale] = useState(null);   // null = hali so'ralmadi
   const [editing, setEditing]     = useState(null); // null | {template|null}
   const [saving, setSaving]       = useState(false);
   const [kind, setKind]           = useState("SHELF");
@@ -87,6 +96,30 @@ export default function LabelsPage({ toast }) {
   }, [toast]);
 
   useEffect(() => { if (tab === "queue") loadJobs(); }, [tab, loadJobs]);
+
+  const loadStale = useCallback(async () => {
+    try { setStale((await labelApi.stale(200)).data); }
+    catch (err) { toast.error(err.message); }
+  }, [toast]);
+
+  useEffect(() => { if (tab === "stale") loadStale(); }, [tab, loadStale]);
+
+  /**
+   * Hammasini bir bosishda navbatga.
+   *
+   * ⚠ NAVBAT SAHIFASIGA O'TILADI. «Qo'shildi» degan xabar bilan
+   * cheklanish do'konchini «endi qayerga bosay?» degan holatda
+   * qoldirardi — ish esa hali qilinmagan: yorliq chiqarilmagan.
+   */
+  const queueStale = async () => {
+    try {
+      await labelApi.queueStale();
+      toast.success(t("common.saved"));
+      await loadJobs();
+      await loadStale();
+      setTab("queue");
+    } catch (err) { toast.error(err.message); }
+  };
   useEffect(() => { setJob(jobs.find((x) => x.id === jobId) || null); }, [jobs, jobId]);
 
   const newJob = async () => {
@@ -184,8 +217,82 @@ export default function LabelsPage({ toast }) {
                   aria-pressed={tab === "queue"} onClick={() => setTab("queue")}>
             <i className="fa-solid fa-list-check" /> {t("lbl.tabQueue")}
           </button>
+          {/* ⚠ SON TUGMADA: «qayta chop etish kerak» bo'limiga kirmasdan
+              turib ham ish borligi ko'rinsin. */}
+          <button type="button" className={`cat-tab ${tab === "stale" ? "active" : ""}`}
+                  aria-pressed={tab === "stale"} onClick={() => setTab("stale")}>
+            <i className="fa-solid fa-tag" /> {t("lbl.tabStale")}
+            {stale?.count > 0 && (
+              <span className="alr__chip" data-tone="warning"
+                    style={{ marginInlineStart: 6 }}>{stale.count}</span>
+            )}
+          </button>
         </div>
       </div>
+
+      {tab === "stale" && (
+        <div className="card">
+          <div className="card-header">
+            <span className="card-title">
+              <i className="fa-solid fa-tag text-blue" /> {t("lbl.tabStale")}
+            </span>
+            {stale?.count > 0 && (
+              <button type="button" className="btn btn-primary btn-sm" onClick={queueStale}>
+                <i className="fa-solid fa-list-check" />
+                {" "}{t("lbl.queueAllStale", { n: stale.count })}
+              </button>
+            )}
+          </div>
+
+          {/* ⚠ SABABI YOZILADI, ro'yxatning o'zi yetarli emas: nega bu
+              tovarlar bu yerda turibdi va nima qilish kerakligi
+              ko'rinib tursin. */}
+          <p className="set-card__hint">{t("lbl.staleHint")}</p>
+
+          {!stale ? <SkeletonList rows={4} avatar={false} />
+            : stale.count === 0 ? (
+              <Empty icon="fa-circle-check" text={t("lbl.staleNone")} />
+            ) : (
+              <>
+                <div className="table-wrap">
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th>{t("products.name")}</th>
+                        <th className="ek-num">{t("lbl.code")}</th>
+                        <th className="ek-num">{t("lbl.onShelf")}</th>
+                        <th className="ek-num">{t("lbl.atTill")}</th>
+                        <th className="ek-num">{t("lbl.diff")}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {stale.items.map((it) => (
+                        <tr key={it.id}>
+                          <td>{it.name}</td>
+                          <td className="ek-num">{it.code || "—"}</td>
+                          {/* ⚠ JAVONDAGI narx chizib tashlanadi: u endi
+                              to'g'ri emas va buni bir qarashda ko'rish kerak. */}
+                          <td className="ek-num"><s>{money(it.printedPrice, { withUnit: true })}</s></td>
+                          <td className="ek-num"><b>{money(it.salePrice, { withUnit: true })}</b></td>
+                          <td className="ek-num" style={{
+                            color: Number(it.diff) > 0 ? "var(--fg-danger)" : "var(--fg-success)",
+                          }}>
+                            {Number(it.diff) > 0 ? "+" : ""}{money(it.diff, { withUnit: true })}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {stale.count > stale.shown && (
+                  <div className="form-hint">
+                    {t("lbl.staleMore", { n: stale.count - stale.shown })}
+                  </div>
+                )}
+              </>
+            )}
+        </div>
+      )}
 
       {tab === "queue" && (
         <div className="card">

@@ -417,6 +417,13 @@ export const labelApi = {
      boshidan emas, to'xtagan joyidan davom etsin. */
   markPrinted: (id, lineIds) => request(`/labels/jobs/${id}/printed`,
                   { method: "POST", body: JSON.stringify({ lineIds }) }),
+
+  /* ── «Javondagi narx eskirgan» (F6) ─────────────────────────
+     ⚠ Javob ikki qismli: HAQIQIY son (bosh sahifadagi belgi uchun)
+     va KESILGAN ro'yxat (ekranda o'qish uchun). 3 000 qatorli
+     javob bosh sahifani muzlatardi. */
+  stale:       (limit = 100) => request(`/labels/jobs/stale?limit=${limit}`),
+  queueStale:  ()   => request("/labels/jobs/stale", { method: "POST" }),
 };
 
 // ─── Mahsulotlar ──────────────────────────────────────────────

@@ -86,7 +86,7 @@ const rows = (r) => (n(r?.count) > 0 ? r : null);
  * e'tibordan chiqadi.
  */
 export function buildAlerts({ signals = {}, pulse = null, lowStock = [],
-                              hasSales = true, plan = null } = {}) {
+                              hasSales = true, plan = null, staleLabels = 0 } = {}) {
   /* ⚠ `hasSales === null` — «BILMAYMIZ», «yo'q» EMAS. Omborchida
      savdo so'rovi umuman yuborilmaydi va uni `false` deb hisoblash
      unga har kuni «bugun sotuv bo'lmadi» degan yolg'on satr
@@ -135,6 +135,20 @@ export function buildAlerts({ signals = {}, pulse = null, lowStock = [],
   if (low0) out.push({
     id: "lowstock", severity: "warning", icon: "fa-triangle-exclamation",
     key: "dash.attLowStock", count: low0, to: "/inventory",
+  });
+
+  /* ── JAVONDAGI NARX ESKIRGAN (F6) ────────────────────────────────
+     ⚠ Do'konning eng ko'p uchraydigan va eng qimmat xatosi: javonda
+     bir narx, kassada boshqa narx. Mijoz buni kassada ko'radi va
+     do'kon ikkisidan birini yo'qotadi — pulni (eski narxda beradi)
+     yoki ishonchni (yangi narxda oladi).
+
+     ⚠ `critical` EMAS: kassa ishlayveradi, pul yo'qolmaydi, tuzatish
+     ham arzon. Uni qizil qilish qolgan qizil satrlarning ma'nosini
+     susaytirardi. */
+  if (n(staleLabels) > 0) out.push({
+    id: "stalelabels", severity: "warning", icon: "fa-tag",
+    key: "dash.attStaleLabels", count: n(staleLabels), to: "/labels?tab=stale",
   });
 
   /* ── Tugash arafasidagi tovarlar (V74) ────────────────────────────

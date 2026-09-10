@@ -47,6 +47,10 @@ export const AUDIT_ACTIONS = [
   "PRODUCT_DELETE", "PRODUCT_CODE_ISSUE", "PRODUCT_BARCODE_RELEASE",
   "PRODUCT_RESTORE",
   "PRICE_CHANGE", "PRICE_BULK_CHANGE",
+  /* ⚠ Yorliq chiqarish narx bilan bir guruhda va bu ataylab:
+     «javondagi narx eskirgan» savoli aynan shu ikkisining
+     orasida yashaydi. */
+  "LABEL_PRINT",
 
   /* ── Ombor ── */
   "STOCK_TAKE_CLOSE", "STOCK_TAKE_CANCEL", "GOODS_RECEIPT",

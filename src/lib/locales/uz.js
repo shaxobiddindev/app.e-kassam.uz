@@ -726,6 +726,7 @@ export default {
   "products.archivedLastSold": "Oxirgi sotilgan",
   "products.restored": "Tovar arxivdan tiklandi",
   "enum.audit.PRICE_CHANGE": "Narx o'zgardi",
+  "enum.audit.LABEL_PRINT": "Yorliq chiqarildi",
   "enum.audit.PRICE_BULK_CHANGE": "Ommaviy narx o'zgardi",
   "enum.audit.STOCK_TAKE_CLOSE": "Inventarizatsiya yakunlandi",
   "enum.audit.STOCK_TAKE_CANCEL": "Inventarizatsiya bekor qilindi",
@@ -1882,6 +1883,17 @@ export default {
   "lbl.calibrateHint": "Bank kartangizni ekranga qo'ying va chiziqni kartaning kengligiga moslang. Shundan keyin «haqiqiy o'lcham» haqiqatan to'g'ri bo'ladi.",
   "lbl.notCalibrated": "Ekran kalibrlanmagan — bu yerdagi o'lcham taxminiy. Brauzer uchun 1 dyuym doim 96 piksel, monitoringizning haqiqiy zichligi esa boshqa.",
   "lbl.fits": "Hammasi sig'adi",
+
+  /* ── Qayta chop etish kerak (F6) ─────────────────────────────────── */
+  "lbl.tabStale": "Qayta chop etish kerak",
+  "lbl.staleHint": "Bu tovarlar narxi yorliq chiqarilgandan keyin o'zgargan. Javonda bir narx, kassada boshqa narx turibdi.",
+  "lbl.staleNone": "Javondagi narxlar joyida",
+  "lbl.staleMore": "va yana {n} ta — hammasi navbatga tushadi",
+  "lbl.queueAllStale": "Hammasini navbatga ({n})",
+  "lbl.onShelf": "Javonda",
+  "lbl.atTill": "Kassada",
+  "lbl.diff": "Farq",
+  "dash.attStaleLabels": "Javondagi narx eskirgan: {n} ta tovar",
 
   /* ── Chop etish navbati (F5) ─────────────────────────────────────── */
   "lbl.tabPreview": "Ko'rish",
