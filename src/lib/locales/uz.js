@@ -1884,6 +1884,14 @@ export default {
   "lbl.notCalibrated": "Ekran kalibrlanmagan — bu yerdagi o'lcham taxminiy. Brauzer uchun 1 dyuym doim 96 piksel, monitoringizning haqiqiy zichligi esa boshqa.",
   "lbl.fits": "Hammasi sig'adi",
 
+  /* ── Kalibrlash varag'i (F7) ─────────────────────────────────────── */
+  "lbl.calPrint": "Sinov varag'ini chiqarish",
+  "lbl.calTitle": "Kalibrlash varag'i",
+  "lbl.calSubtitle": "Chiziqlarni chizg'ich bilan o'lchang. Uzunlik mos kelmasa masshtab noto'g'ri.",
+  "lbl.calHint": "Brauzerda masshtab 100% bo'lsin, «Sahifaga moslash» o'chiq bo'lsin.",
+  "lbl.calDpi": "Printer zichligi: {dpi} dpi",
+  "lbl.calWhy": "Yorliq o'lchami qog'ozda noto'g'ri chiqsa, sinov varag'ini o'lchang. Brauzerdagi masshtab sozlamasini kod ko'ra olmaydi.",
+
   /* ── Qayta chop etish kerak (F6) ─────────────────────────────────── */
   "lbl.tabStale": "Qayta chop etish kerak",
   "lbl.staleHint": "Bu tovarlar narxi yorliq chiqarilgandan keyin o'zgargan. Javonda bir narx, kassada boshqa narx turibdi.",

@@ -35,6 +35,19 @@ const SOURCES = [
   { value: "NEVER_PRINTED", labelKey: "lbl.srcNeverPrinted" },
 ];
 
+/**
+ * Chop etish hujjatining nomi — PDF ga saqlanganda FAYL NOMI ham shu.
+ *
+ * ⚠ NAVBAT RAQAMI VA SANA bilan: «Yorliqlar.pdf» degan o'nta fayl
+ * bir papkada yotsa, ularni ochmasdan ajratib bo'lmasdi.
+ */
+function docTitle(job) {
+  const d = new Date();
+  const p = (x) => String(x).padStart(2, "0");
+  return `${t("lbl.sheetTitle")} №${job?.id ?? "?"} `
+    + `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()}`;
+}
+
 /** ⚠ KOMPONENTDAN TASHQARIDA: holatga bog'liq emas va har chizishda
     qayta yasalishi shart emas. */
 function shopCtx() {
@@ -183,7 +196,11 @@ export default function LabelQueue({
         })), { copies: 1, shopName: shopCtx().shopName });
       } else {
         const doc = buildPrintDoc(template, ready, { startPosition, ctx: shopCtx() });
-        await printHtml(doc.html, t("lbl.sheetTitle"), doc.css, "width=980,height=800");
+        /* ⚠ HUJJAT NOMI = SAQLANGAN PDF NING NOMI. Brauzerning chop
+           etish oynasida «PDF ga saqlash» tanlansa, fayl aynan shu
+           nom bilan tushadi. «Yorliqlar.pdf» degan o'nta fayl bir
+           papkada yotsa, ularni ajratib bo'lmasdi. */
+        await printHtml(doc.html, docTitle(job), doc.css, "width=980,height=800");
       }
       setFinish({ items: ready });
     } catch (err) {
@@ -390,6 +407,13 @@ export default function LabelQueue({
             ushlab turish kerak bo'lmasin. */}
         {blocked && <span className="form-hint form-hint--warn">{blocked}</span>}
       </div>
+
+      {/* ⚠ KOD BU SOZLAMANI KO'RA OLMAYDI. Brauzer chop etish
+          oynasidagi «Masshtab» ni JavaScript'ga bermaydi — shuning
+          uchun yagona yo'l aytib qo'yish va o'lchab tekshirish.
+          Sinov varag'i tugmasi sahifa sarlavhasida: u navbat
+          bo'lmaganda ham kerak bo'ladi. */}
+      <div className="form-hint">{t("lbl.calWhy")}</div>
 
       {/* ── Chop etilgandan keyingi savol ───────────────────────── */}
       {finish && (

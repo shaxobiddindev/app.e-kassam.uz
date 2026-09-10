@@ -1790,6 +1790,14 @@ export default {
   "lbl.notCalibrated": "Screen is not calibrated — the size shown here is approximate. For a browser 1 inch is always 96 pixels; your monitor's real density differs.",
   "lbl.fits": "Everything fits",
 
+  /* ── Kalibrlash varag'i (F7) ─────────────────────────────────────── */
+  "lbl.calPrint": "Print a test sheet",
+  "lbl.calTitle": "Calibration sheet",
+  "lbl.calSubtitle": "Measure the lines with a ruler. If the length is off, the scale is wrong.",
+  "lbl.calHint": "In the browser set scale to 100% and turn off Fit to page.",
+  "lbl.calDpi": "Printer density: {dpi} dpi",
+  "lbl.calWhy": "If a label comes out the wrong size, measure the test sheet. Code cannot read the browser scale setting.",
+
   /* ── Qayta chop etish kerak (F6) ─────────────────────────────────── */
   "lbl.tabStale": "Needs reprinting",
   "lbl.staleHint": "These products were repriced after their label was printed. The shelf says one price, the till another.",

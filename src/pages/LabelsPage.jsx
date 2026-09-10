@@ -9,6 +9,8 @@ import { useLoading } from "../lib/use-loading";
 import LabelPreview from "../components/ek/LabelPreview";
 import LabelTemplateEditor from "../components/ek/LabelTemplateEditor";
 import LabelQueue from "../components/ek/LabelQueue";
+import { calibrationDoc } from "../lib/ek-label-calibrate";
+import { printHtml } from "../lib/ek-receipt-pdf";
 import Modal from "../components/Modal";
 import { useConfirm } from "../context/ConfirmProvider";
 import { productCode } from "../lib/ek-code";
@@ -194,6 +196,29 @@ export default function LabelsPage({ toast }) {
     } catch (err) { toast.error(err.message); }
   };
 
+  /**
+   * SINOV VARAG'I (F7).
+   *
+   * ⚠ SAHIFA SARLAVHASIDA, navbat ichida emas. U aynan «yorliqlarim
+   * noto'g'ri o'lchamda chiqyapti» deganda kerak bo'ladi, va o'sha
+   * paytda navbat umuman bo'lmasligi mumkin. Tugma navbat ichida
+   * tursa, muammoga duch kelgan odam uni topa olmasdi.
+   */
+  const calibrate = async () => {
+    try {
+      const doc = calibrationDoc({
+        dpi: Number(template?.dpi) || 203,
+        labels: {
+          title: t("lbl.calTitle"),
+          subtitle: t("lbl.calSubtitle"),
+          hint: t("lbl.calHint"),
+          dpi: t("lbl.calDpi"),
+        },
+      });
+      await printHtml(doc.html, t("lbl.calTitle"), doc.css, "width=980,height=800");
+    } catch (err) { toast.error(err.message); }
+  };
+
   const options = useMemo(() => {
     const list = search ? rankItems(products, search, {
       codes: (p) => [p.barcode, productCode(p)],
@@ -228,6 +253,11 @@ export default function LabelsPage({ toast }) {
             )}
           </button>
         </div>
+        {/* ⚠ HAR BO'LIMDA KO'RINADI: chop etish o'lchami muammosi
+            navbat bor-yo'qligiga bog'liq emas. */}
+        <button type="button" className="btn btn-outline btn-sm" onClick={calibrate}>
+          <i className="fa-solid fa-ruler" /> {t("lbl.calPrint")}
+        </button>
       </div>
 
       {tab === "stale" && (
