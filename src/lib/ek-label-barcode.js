@@ -56,11 +56,30 @@ export const dotMm = (dpi) => 25.4 / Number(dpi || 203);
  * chakana savdoda hamma joyda shunday. Ombor kartoni esa uzoqdan,
  * burchak ostida o'qiladi — u yerda balandlik zaxirasi kerak.
  *
- * ⚠ 12 mm — TANLANGAN QIYMAT, standartdan olingan emas. EAN-13
- * ning to'liq balandligi 22,85 mm; 12 mm — chakana amaliyotdagi
- * odatiy kesilgan balandlik. HAR BIR DO'KON O'Z SKANERI bilan
- * tekshirishi kerak: kalibrlash varag'i (F7) aynan shuning uchun
- * bor.
+ * ⚠ 12 mm QAYERDAN OLINGAN — SAVOL OLTI OYDAN KEYIN BERILADI,
+ * javob esa shu yerda turishi kerak:
+ *
+ *   · EAN-13 ning nominal chiziq balandligi (100% kattalashtirish)
+ *     — 22,85 mm.
+ *   · GS1 ruxsat bergan eng past «kesilgan» (truncated) balandlik —
+ *     shuning 80% i, ya'ni 18,3 mm. Bizdagi eski 18 mm chegarasi
+ *     aynan shu son edi.
+ *   · 12 mm — ONGLI CHETLANISH: GS1 minimumidan past. Evaziga joy
+ *     olinadi (70x37 yorliqqa nom, narx va 18 mm barkod sig'maydi),
+ *     berib yuborilgani esa BURCHAK BARDOSHI: past barkodda skaner
+ *     nurini to'g'ri tushirish kerak, qiyshiq holatda o'qimasligi
+ *     mumkin. Javon yorlig'ida bu narx emas, chunki u qo'lda,
+ *     5-10 sm dan o'qiladi.
+ *
+ * ⚠ YA'NI BU CHEGARA STANDART EMAS, TANLOV. Har bir do'kon o'z
+ * skaneri bilan tekshirishi kerak: kalibrlash varag'i (F7) aynan
+ * shuning uchun bor va u bir xil kodni uch xil modul kengligida
+ * chiqaradi.
+ *
+ * ⚠ G1 DAN KEYIN BU CHEGARA FAQAT STIKERGA TEGISHLI: rasta
+ * yozlig'ida barkod umuman chizilmaydi (V134). SHELF qatori shu
+ * yerda ATAYLAB qoldirildi — do'kon barkodni qo'lda yoqishi mumkin
+ * va o'shanda ham chegara ishlashi kerak.
  *
  * ⚠ NOMA'LUM TUR 18 MM OLADI. Yangi yorliq turi qo'shilsa, u
  * ataylab EHTIYOTKOR tomonga tushadi: kimdir uni ongli ravishda
