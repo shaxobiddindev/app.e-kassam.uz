@@ -25,9 +25,8 @@ import { useEffect, useState } from "react";
 import { t } from "../lib/ek-i18n";
 import { productApi } from "../api";
 import { asArray } from "../lib/ek-array";
-import { conflictLabelItems } from "../lib/ek-code";
 import { money } from "../utils";
-import LabelPrintModal from "./LabelPrintModal";
+import LabelPrintModal from "./ek/LabelPrintModal";
 
 /* ⚠ RO'YXAT CHEGARALANADI. Eng katta bazada 2 241 ta to'qnashuv
    o'lchandi va hammasini bir yo'la chizish sahifani muzlatardi. Ega
@@ -91,7 +90,7 @@ export default function CodeConflictPanel({ toast }) {
 
       <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
         <button className="btn btn-primary btn-sm" disabled={busy}
-                onClick={() => setLabels(conflictLabelItems(rows))}>
+                onClick={() => setLabels(rows.map((x) => x.productId))}>
           <i className="fa-solid fa-print" aria-hidden="true" />
           {" "}{t("codeFix.printAll", { n: rows.length })}
         </button>
@@ -121,7 +120,7 @@ export default function CodeConflictPanel({ toast }) {
                 <td className="ek-num"><b>{c.newCode || "—"}</b></td>
                 <td style={{ whiteSpace: "nowrap" }}>
                   <button className="btn btn-outline btn-sm" disabled={busy}
-                          onClick={() => setLabels(conflictLabelItems([c]))}>
+                          onClick={() => setLabels([c.productId])}>
                     {t("label.print")}
                   </button>
                   {" "}
@@ -144,7 +143,7 @@ export default function CodeConflictPanel({ toast }) {
       )}
 
       {labels && (
-        <LabelPrintModal items={labels} toast={toast}
+        <LabelPrintModal productIds={labels} toast={toast}
                          onClose={() => setLabels(null)} />
       )}
     </div>

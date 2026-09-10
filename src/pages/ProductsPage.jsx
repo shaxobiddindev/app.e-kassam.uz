@@ -4,7 +4,7 @@ import { productApi, mediaApi, shopApi, catalogApi, downloadScaleExport } from "
 import { BranchSelector, Modal } from "../components";
 import CatalogWizard from "../components/CatalogWizard";
 import GlobalCatalogImport from "../components/GlobalCatalogImport";
-import LabelPrintModal from "../components/LabelPrintModal";
+import LabelPrintModal from "../components/ek/LabelPrintModal";
 import GlobalCatalogUpdates from "../components/GlobalCatalogUpdates";
 import { Empty, Field, SearchBar, FormGroup } from "../components/ui";
 import { useConfirm } from "../context/ConfirmProvider";
@@ -599,13 +599,13 @@ export default function ProductsPage({ toast }) {
     /* Xizmatda javon yorliq ham bo'lmaydi: «soch olish» ni javonga
        qo'yib bo'lmaydi va barkodi ham yo'q. */
     const printable = items.filter((p) => p.type !== "SERVICE");
-    if (!printable.length) { toast?.error(t("label.nothing")); return; }
-    setLabelItems(printable.map((p) => ({
-      name: p.name, salePrice: p.salePrice, barcode: p.barcode,
-      /* ⚠ QISQA RAQAM (V107) — yorliqning eng muhim yangiligi:
-         kassir uni javonga qarab eslab qoladi. */
-      shortCode: productCode(p),
-    })));
+    if (!printable.length) { toast?.error(t("lbl.nothing")); return; }
+    /* ⚠ FAQAT ID YUBORILADI (F5). Ilgari bu yerda yorliq maydonlari
+       (nom, narx, qisqa raqam) QO'LDA yig'ilardi va shu bilan
+       «yorliqda nima yozilishi» qoidasi ikkinchi nusxaga ega
+       bo'lardi. Endi yorliqni faqat renderer chizadi va u tovarning
+       O'ZIDAN o'qiydi: bitta qoida, bitta joy. */
+    setLabelItems(printable.map((p) => p.id).filter(Boolean));
   };
 
   return (
@@ -927,7 +927,7 @@ export default function ProductsPage({ toast }) {
 
       {/* ── Javon yorlig'i (V108) ── */}
       {labelItems && (
-        <LabelPrintModal items={labelItems} toast={toast}
+        <LabelPrintModal productIds={labelItems} toast={toast}
                          onClose={() => setLabelItems(null)} />
       )}
 

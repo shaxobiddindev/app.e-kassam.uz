@@ -22,23 +22,3 @@ export function productCode(p) {
   return v == null || v === "" ? null : String(v);
 }
 
-/**
- * TO'QNASHUV QATORIDAN YORLIQ ELEMENTI (B0).
- *
- * ⚠ YORLIQQA YANGI RAQAM BOSILADI, ESKISI EMAS. Butun hisobotning
- * ma'nosi shu: javondagi yorliqda ESKI raqam turibdi va u endi
- * boshqa tovarni ochadi. Yorliqni eski raqam bilan qayta chiqarish
- * aynan o'sha yolg'onni qayta chop etish bo'lardi — ega ishni
- * qilgandek bo'lardi, lekin hech narsa tuzalmasdi.
- *
- * ⚠ ALOHIDA FUNKSIYA VA BOG'LIQLIKSIZ: bu qoida sinaladigan narsa,
- * komponent ichida yashiringan bo'lsa uni sinov ushlay olmasdi.
- */
-export function conflictLabelItems(rows) {
-  return (Array.isArray(rows) ? rows : []).map((c) => ({
-    name: c?.name,
-    salePrice: c?.salePrice,
-    barcode: c?.barcode,
-    shortCode: c?.newCode == null || c?.newCode === "" ? null : String(c.newCode),
-  }));
-}

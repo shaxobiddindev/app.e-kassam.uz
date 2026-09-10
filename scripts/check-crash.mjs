@@ -74,6 +74,10 @@ const ROUTES = [
   "/supply", "/transfers", "/pickup", "/prices", "/customers", "/sales",
   "/reports", "/expenses", "/shop-users", "/branches", "/loyalty",
   "/announcements", "/settings", "/security", "/audit",
+  /* ⚠ Yorliqlar sahifasi bu ro'yxatda YO'Q EDI (F5 da qo'shildi):
+     u butunlay yangi kod — renderer, ko'rish oynasi, chop etish
+     navbati — va uning yiqilishini hech nima ushlamasdi. */
+  "/labels",
 ];
 
 let bad = 0;

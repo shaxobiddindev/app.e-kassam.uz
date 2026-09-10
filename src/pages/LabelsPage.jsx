@@ -8,17 +8,18 @@ import { SkeletonList } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
 import LabelPreview from "../components/ek/LabelPreview";
 import LabelTemplateEditor from "../components/ek/LabelTemplateEditor";
+import LabelQueue from "../components/ek/LabelQueue";
 import Modal from "../components/Modal";
 import { useConfirm } from "../context/ConfirmProvider";
 import { productCode } from "../lib/ek-code";
 import { rankItems } from "../lib/ek-search";
 
 /* ══════════════════════════════════════════════════════════════════════════
-   YORLIQLAR — KO'RISH (F3)
+   YORLIQLAR — KO'RISH VA NAVBAT (F3 + F5)
 
-   Bu bosqichda faqat KO'RISH: shablonni tanlash, tovarni tanlash,
-   yorliqni haqiqiy o'lchamda ko'rish va sig'maslikni bilish. Navbat
-   va chop etish F5 da.
+   Ikki bo'lim: KO'RISH (shablon, tovar, haqiqiy o'lcham, sig'maslik)
+   va NAVBAT (kun bo'yi to'ldiriladigan, saqlanadigan, uzilsa
+   davom etadigan chop etish ro'yxati).
 
    ⚠ KO'RISHDA HAQIQIY TOVAR MA'LUMOTI. «Lorem ipsum» bilan hamma
    narsa chiroyli sig'adi; muammo esa aynan haqiqiy nomlarda chiqadi.
@@ -34,6 +35,11 @@ const KINDS = [
 
 export default function LabelsPage({ toast }) {
   const confirm = useConfirm();
+  const [tab, setTab]             = useState("preview"); // preview | queue
+  const [jobs, setJobs]           = useState([]);
+  const [jobId, setJobId]         = useState(null);
+  const [job, setJob]             = useState(null);
+  const [categories, setCategories] = useState([]);
   const [editing, setEditing]     = useState(null); // null | {template|null}
   const [saving, setSaving]       = useState(false);
   const [kind, setKind]           = useState("SHELF");
@@ -48,10 +54,12 @@ export default function LabelsPage({ toast }) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [tRes, pRes] = await Promise.all([
+      const [tRes, pRes, cRes] = await Promise.all([
         labelApi.templates(kind),
         productApi.getAll(),
+        productApi.getCategories(),
       ]);
+      setCategories(asArray(cRes.data));
       const list = asArray(tRes.data);
       setTemplates(list);
       setTemplateId((cur) => (list.some((x) => x.id === cur) ? cur : list[0]?.id ?? null));
@@ -66,6 +74,41 @@ export default function LabelsPage({ toast }) {
   }, [kind, toast]);
 
   useEffect(() => { load(); }, [load]);
+
+  /* ⚠ NAVBAT ALOHIDA YUKLANADI: shablon turi almashtirilganda
+     (javon ↔ stiker) navbat qayta o'qilishi shart emas — u
+     shablonga bog'liq emas. */
+  const loadJobs = useCallback(async () => {
+    try {
+      const list = asArray((await labelApi.jobs()).data);
+      setJobs(list);
+      setJobId((cur) => (list.some((x) => x.id === cur) ? cur : list[0]?.id ?? null));
+    } catch (err) { toast.error(err.message); }
+  }, [toast]);
+
+  useEffect(() => { if (tab === "queue") loadJobs(); }, [tab, loadJobs]);
+  useEffect(() => { setJob(jobs.find((x) => x.id === jobId) || null); }, [jobs, jobId]);
+
+  const newJob = async () => {
+    try {
+      const r = await labelApi.newJob({ templateId, startPosition: 1 });
+      await loadJobs();
+      setJobId(r.data.id);
+    } catch (err) { toast.error(err.message); }
+  };
+
+  const removeJob = async (id) => {
+    const okToDelete = await confirm({
+      title: t("lbl.deleteJobConfirm"), type: "danger",
+    });
+    if (!okToDelete) return;
+    try {
+      await labelApi.dropJob(id);
+      toast.success(t("common.deleted"));
+      setJobId(null);
+      loadJobs();
+    } catch (err) { toast.error(err.message); }
+  };
 
   const template = templates.find((x) => x.id === templateId) || null;
   const product  = products.find((p) => p.id === productId) || null;
@@ -132,8 +175,66 @@ export default function LabelsPage({ toast }) {
     <div>
       <div className="page-header" style={{ marginBottom: 18 }}>
         <h2 className="page-title">{t("lbl.title")}</h2>
+        <div className="cat-tabs" role="group">
+          <button type="button" className={`cat-tab ${tab === "preview" ? "active" : ""}`}
+                  aria-pressed={tab === "preview"} onClick={() => setTab("preview")}>
+            <i className="fa-solid fa-eye" /> {t("lbl.tabPreview")}
+          </button>
+          <button type="button" className={`cat-tab ${tab === "queue" ? "active" : ""}`}
+                  aria-pressed={tab === "queue"} onClick={() => setTab("queue")}>
+            <i className="fa-solid fa-list-check" /> {t("lbl.tabQueue")}
+          </button>
+        </div>
       </div>
 
+      {tab === "queue" && (
+        <div className="card">
+          <div className="card-header">
+            <span className="card-title">
+              <i className="fa-solid fa-list-check text-blue" /> {t("lbl.tabQueue")}
+            </span>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              {jobs.length > 0 && (
+                <Select
+                  variant="field" ariaLabel={t("lbl.job")}
+                  value={jobId} onChange={setJobId}
+                  options={jobs.map((j) => ({
+                    value: j.id,
+                    label: t(`lbl.status.${j.status}`) + " · " + t("lbl.jobN", { id: j.id }),
+                    hint: String(j.remainingLabels),
+                  }))}
+                />
+              )}
+              <button type="button" className="btn btn-primary btn-sm" onClick={newJob}>
+                <i className="fa-solid fa-plus" /> {t("lbl.newJob")}
+              </button>
+              {job && (
+                <button type="button" className="btn-icon danger"
+                        aria-label={t("common.delete")}
+                        onClick={() => removeJob(job.id)}>
+                  <i className="fa-solid fa-trash" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {job ? (
+            <LabelQueue
+              job={job} templates={templates} products={products}
+              categories={categories} toast={toast}
+              onChange={(next) => {
+                if (!next) { loadJobs(); return; }
+                setJob(next);
+                setJobs((list) => list.map((x) => (x.id === next.id ? next : x)));
+              }}
+            />
+          ) : (
+            <Empty icon="fa-list-check" text={t("lbl.noJob")} />
+          )}
+        </div>
+      )}
+
+      {tab === "preview" && (
       <div className="card">
         <div className="card-header">
           <span className="card-title">
@@ -231,6 +332,7 @@ export default function LabelsPage({ toast }) {
           </div>
         )}
       </div>
+      )}
 
       {editing && (
         <Modal

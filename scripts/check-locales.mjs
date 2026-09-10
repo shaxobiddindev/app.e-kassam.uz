@@ -84,6 +84,38 @@ const dupsOf = (lang) => {
 };
 const dups = langs.map((l) => [l, dupsOf(l)]).filter(([, d]) => d.length);
 
+/* ── 4. YO'Q KALITNI CHAQIRISH (F5) ───────────────────────────────────
+   ⚠ NEGA KERAK. Yuqoridagi uchta tekshiruv fayllarning O'ZARO
+   mosligini qaraydi: o'lik guruh, tillar orasidagi farq, takror.
+   Hech biri esa eng oddiy xatoni ushlamaydi — KODDA BOR, LUG'ATDA
+   YO'Q kalit. Bunday kalit xato bermaydi: `t()` kalitning o'zini
+   qaytaradi va ekranda `PRODUCTS.PRICE` deb turadi (sarlavhalar CSS
+   bilan katta harfga o'giriladi). Ya'ni buzuq yozuv MATNGA
+   O'XSHAYDI va faqat o'sha ekranni ochgan odam ko'radi.
+
+   Bu tekshiruv qo'shilganda uchta chaqiruv topildi; ikkitasi haqiqiy
+   nuqson edi (ombor filtridagi «Tugagan» va jamg'arma to'ldirilgach
+   chiqadigan xabar), uchinchisi izohdagi misol — shuning uchun
+   izohlar o'chirib tashlanadi.
+
+   ⚠ FAQAT MATN KALITLARI. `t(kalit)` yoki `t(`a.${b}`)` ko'rinishi
+   bu yerda tekshirilmaydi: ular ish paytida yasaladi va bu
+   tekshiruvning qo'lidan kelmaydi. */
+const stripComments = (src) => src
+  .replace(/\/\*[\s\S]*?\*\//g, " ")
+  .replace(/(^|[^:])\/\/[^\n]*/g, "$1 ");
+
+const missingKeys = new Map();
+for (const f of walk(SRC)) {
+  if (!/\.(js|jsx)$/.test(f) || f.includes(`${path.sep}locales${path.sep}`)) continue;
+  const src = stripComments(fs.readFileSync(f, "utf8"));
+  for (const m of src.matchAll(/\bt\(\s*"([A-Za-z][A-Za-z0-9_.]*)"/g)) {
+    if (base.has(m[1])) continue;
+    if (!missingKeys.has(m[1])) missingKeys.set(m[1], new Set());
+    missingKeys.get(m[1]).add(path.relative(ROOT, f));
+  }
+}
+
 let bad = 0;
 
 if (dead.length) {
@@ -110,5 +142,16 @@ for (const [lang, ks] of dups) {
   for (const k of ks.slice(0, 10)) console.log(`       ${k}`);
 }
 if (!dups.length) console.log("  ✅ Takrorlangan kalit yo'q (uchala tilda)");
+
+if (missingKeys.size) {
+  bad++;
+  console.log(`  ❌ ${missingKeys.size} ta kalit KODDA BOR, lug'atda YO'Q —`
+            + " ekranda kalitning o'zi ko'rinadi:");
+  for (const [k, files] of missingKeys) {
+    console.log(`       ${k}  ←  ${[...files].join(", ")}`);
+  }
+} else {
+  console.log("  ✅ Kodda chaqirilgan har bir kalit lug'atda bor");
+}
 
 process.exit(bad ? 1 : 0);

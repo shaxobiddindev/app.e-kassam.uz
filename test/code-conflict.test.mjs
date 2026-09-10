@@ -14,7 +14,7 @@
    Ishga tushirish:  node test/code-conflict.test.mjs
    ══════════════════════════════════════════════════════════════════════════ */
 const { readFileSync } = await import("node:fs");
-const { conflictLabelItems } = await import("../src/lib/ek-code.js");
+const { pendingItems } = await import("../src/lib/ek-label-print.js");
 
 let pass = 0, fail = 0;
 const eq = (got, want, msg) => {
@@ -24,33 +24,42 @@ const eq = (got, want, msg) => {
 
 console.log("\n── Yorlig'i eskirgan tovarlar ──");
 {
-  const row = { productId: 7, name: "Guruch", oldCode: "425",
-                newCode: "1180", salePrice: 21000, barcode: "20011805" };
+  /* ⚠ QOIDA O'ZGARMADI, UNING QO'RIQCHISI O'ZGARDI (F5).
+     Ilgari to'qnashuv qatoridan yorliq elementi QO'LDA yasalardi va
+     shu yerda «yangi raqam olindimi?» deb tekshirilardi. Endi
+     panel faqat `productId` yuboradi, yorliqni esa renderer
+     TOVARNING O'ZIDAN chizadi — ya'ni eski raqamni yorliqqa
+     tushirish uchun oldin tovarning o'zidagi raqamni buzish kerak.
 
-  /* ⚠ ASOSIY QO'RIQCHI. */
-  eq(conflictLabelItems([row])[0].shortCode, "1180",
-     "⚠ yorliqqa YANGI raqam bosiladi");
-  eq(conflictLabelItems([row])[0].shortCode === row.oldCode, false,
-     "⚠ yorliqqa eski raqam tushyapti — yolg'on qog'oz qayta chop etilardi");
+     Demak endi tekshiriladigan narsa boshqa: navbat qatori yorliq
+     maydonlarini AYNAN o'sha qatordan olsin, hech qayerda ikkinchi
+     nusxa yasamasin. */
+  const job = { lines: [
+    { id: 11, productId: 7, productName: "Guruch", code: "1180",
+      salePrice: 21000, barcode: "20011805", quantity: 2, printedAt: null },
+    { id: 12, productId: 8, productName: "Un", code: "425",
+      salePrice: 9000, barcode: null, quantity: 1,
+      printedAt: "2026-09-10T10:00:00Z" },
+  ] };
 
-  /* Yorliq chizish uchun kerak bo'ladigan qolgan maydonlar. */
-  eq(conflictLabelItems([row])[0].name, "Guruch", "nom yorliqqa o'tadi");
-  eq(conflictLabelItems([row])[0].salePrice, 21000, "narx yorliqqa o'tadi");
-  eq(conflictLabelItems([row])[0].barcode, "20011805", "barkod yorliqqa o'tadi");
+  const items = pendingItems(job, null);
 
-  /* ⚠ MATN QAYTADI, SON EMAS: «0180» ning boshidagi noli yo'qolmasin. */
-  eq(conflictLabelItems([{ newCode: 180 }])[0].shortCode, "180",
-     "raqam matnga aylanadi");
-  eq(conflictLabelItems([{ newCode: "0180" }])[0].shortCode, "0180",
-     "⚠ boshidagi nol saqlanadi");
+  /* ⚠ ASOSIY QO'RIQCHI: yorliqqa qatordagi JORIY raqam boradi. */
+  eq(items[0].product.searchCode, "1180", "⚠ yorliqqa YANGI raqam bosiladi");
+  eq(items[0].product.name, "Guruch", "nom yorliqqa o'tadi");
+  eq(items[0].product.salePrice, 21000, "narx yorliqqa o'tadi");
+  eq(items[0].product.barcode, "20011805", "barkod yorliqqa o'tadi");
 
-  /* Kodsiz tovar yorliqni buzmasin. */
-  eq(conflictLabelItems([{ newCode: null }])[0].shortCode, null, "kodsizda null");
-  eq(conflictLabelItems([{ newCode: "" }])[0].shortCode, null, "bo'sh kodda null");
+  /* ⚠ CHIQARILGANI TASHLAB KETILADI — «qolganidan davom etish». */
+  eq(items.length, 1, "⚠ chiqarilgan qator qayta chop etilyapti");
+  eq(items[0].quantity, 2, "soni qatordan olinadi");
 
-  /* ⚠ SERVER OBYEKT QAYTARSA HAM YIQILMASIN. */
-  eq(conflictLabelItems(null).length, 0, "null berilsa bo'sh ro'yxat");
-  eq(conflictLabelItems({ a: 1 }).length, 0, "obyekt berilsa bo'sh ro'yxat");
+  /* ⚠ TIRIK TOVAR USTUN: katalogda tovar bo'lsa, yorliq o'shandan
+     chiziladi — navbatdagi nusxa eskirgan bo'lishi mumkin. */
+  const live = pendingItems(job, { 7: { id: 7, name: "Guruch", searchCode: "1180",
+                                        salePrice: 22000 } });
+  eq(live[0].product.salePrice, 22000,
+     "⚠ navbatdagi eski narx bosilyapti — javonga yolg'on narx chiqardi");
 }
 
 console.log("\n── Ulanish: Sozlamalar bloki ──");
@@ -75,6 +84,12 @@ console.log("\n── Ulanish: Sozlamalar bloki ──");
   /* ⚠ Yorliq elementi FAQAT bitta joydan yasaladi. */
   eq(/shortCode:/.test(panel), false,
      "⚠ komponent yorliq kodini o'zi yasayapti — qoida ikki joyda bo'lib qoldi");
+
+  /* ⚠ FAQAT ID YUBORILADI (F5): nom, narx va raqam yorliqqa
+     tovarning o'zidan tushadi. */
+  eq(/productIds=\{labels\}/.test(panel), true,
+     "⚠ panel yorliq maydonlarini o'zi uzatyapti — ikkinchi nusxa qaytdi");
+  eq(/salePrice:/.test(panel), false, "⚠ panel narxni yorliq uchun ko'chiryapti");
 
   const settings = readFileSync(new URL("../src/pages/SettingsPage.jsx",
                                         import.meta.url), "utf8");

@@ -6368,6 +6368,19 @@ button.stk__c:hover { background: var(--bg-hover); }
 .lbl-main     { min-width: 0; }
 @media (max-width: 860px) { .lbl-layout { grid-template-columns: 1fr; } }
 
+/* ─── Chop etish navbati (F5) ─────────────────────────────────────────
+   ⚠ QATOR O'RALADI, SIQILMAYDI. Monoblok ekrani tor (ko'pincha
+   1024px) va uchta maydonni bir qatorga tiqishtirish «Nechanchi
+   katakdan» maydonini ikki belgilik qutiga aylantirardi. */
+.lbl-row      { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+.lbl-row > *  { min-width: 0; }
+.lbl-add      { padding: 12px; border: 1px solid var(--border); border-radius: 10px;
+                background: var(--bg-subtle); }
+.lbl-summary  { display: flex; flex-direction: column; gap: 4px; font-weight: 600; }
+/* Chiqarilgan qator ko'rinadi, lekin diqqatni tortmaydi: ish
+   QOLGANLARIDA. */
+.lbl-line--done td { opacity: .55; }
+
 .lbl-preview__bar   { display: flex; align-items: center; gap: 10px;
                       flex-wrap: wrap; margin-bottom: 10px; }
 .lbl-preview__size  { color: var(--fg-secondary); font-weight: 700; }

@@ -383,7 +383,7 @@ export const plannerApi = {
                  { method: "DELETE" }),
 };
 
-// ─── Yorliqlar (F3 — faqat o'qish) ────────────────────────────
+// ─── Yorliqlar ────────────────────────────────────────────────
 export const labelApi = {
   templates:   (kind) => request(`/labels/templates${kind ? `?kind=${kind}` : ""}`),
   defaultFor:  (kind) => request(`/labels/templates/default?kind=${kind}`),
@@ -394,6 +394,29 @@ export const labelApi = {
                   { method: "PUT", body: JSON.stringify(body) }),
   copy:        (id)   => request(`/labels/templates/${id}/copy`, { method: "POST" }),
   remove:      (id)   => request(`/labels/templates/${id}`, { method: "DELETE" }),
+
+  /* ── Chop etish navbati (F5) ────────────────────────────────
+     ⚠ NAVBAT SERVERDA. Ekranda yashaydigan ro'yxat brauzer
+     yopilishi bilan yo'qolardi — omborchining bir kunlik ishi
+     bilan birga. */
+  jobs:        ()     => request("/labels/jobs"),
+  job:         (id)   => request(`/labels/jobs/${id}`),
+  newJob:      (body) => request("/labels/jobs",
+                  { method: "POST", body: JSON.stringify(body || {}) }),
+  saveJob:     (id, body) => request(`/labels/jobs/${id}`,
+                  { method: "PUT", body: JSON.stringify(body) }),
+  addToJob:    (id, body) => request(`/labels/jobs/${id}/add`,
+                  { method: "POST", body: JSON.stringify(body) }),
+  setQty:      (id, lineId, quantity) => request(
+                  `/labels/jobs/${id}/lines/${lineId}?quantity=${quantity}`,
+                  { method: "PUT" }),
+  dropLine:    (id, lineId) => request(`/labels/jobs/${id}/lines/${lineId}`,
+                  { method: "DELETE" }),
+  dropJob:     (id)   => request(`/labels/jobs/${id}`, { method: "DELETE" }),
+  /* ⚠ QATOR BO'YICHA belgilanadi: yarmida uzilgan chop etish
+     boshidan emas, to'xtagan joyidan davom etsin. */
+  markPrinted: (id, lineIds) => request(`/labels/jobs/${id}/printed`,
+                  { method: "POST", body: JSON.stringify({ lineIds }) }),
 };
 
 // ─── Mahsulotlar ──────────────────────────────────────────────
