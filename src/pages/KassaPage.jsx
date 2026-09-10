@@ -3022,9 +3022,17 @@ export default function KassaPage({ toast, refreshLowStock }) {
                 options={[
                   { value: "",    label: t("kassa.allProducts"), icon: "fa-grip" },
                   { value: "fav", label: t("kassa.favorites"),   icon: "fa-star" },
+                  /* ⚠ GURUH RAQAMI `hint` da — O'Z USTUNIDA va QIDIRILADI
+                     (`rankItems` `label` bilan birga `hint` ni ham o'qiydi).
+                     Raqam kassirga `*4` kaliti: u butun bo'limni bir
+                     bosishda ochadi (V128 prefiks qidiruvi). Ilgari bu
+                     raqamni faqat tovar kartochkasidan taxmin qilish
+                     mumkin edi. Bola kategoriyada raqam yo'q va bu
+                     ataylab (V115). */
                   ...categories.map((c) => ({
                     value: String(c.id),
                     label: c.name,
+                    hint: c.code || undefined,
                     icon: c.icon || "fa-tag",
                   })),
                 ]}

@@ -1130,7 +1130,12 @@ export default function ProductsPage({ toast }) {
                 onChange={(v) => setForm((f) => ({ ...f, categoryId: v }))}
                 options={[
                   { value: "", label: t("products.noCategory"), icon: "fa-tag" },
-                  ...categories.map((c) => ({ value: String(c.id), label: c.name, icon: c.icon || "fa-tags" })),
+                  /* Guruh raqami kassadagi bilan bir xil joyda — omborchi
+                     tovar qo'shayotganda kod qaysi guruhdan chiqishini
+                     oldindan ko'radi. */
+                  ...categories.map((c) => ({ value: String(c.id), label: c.name,
+                                              hint: c.code || undefined,
+                                              icon: c.icon || "fa-tags" })),
                 ]}
               />
             </FormGroup>
