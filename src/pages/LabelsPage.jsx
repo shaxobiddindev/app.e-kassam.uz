@@ -10,6 +10,7 @@ import LabelPreview from "../components/ek/LabelPreview";
 import LabelTemplateEditor from "../components/ek/LabelTemplateEditor";
 import LabelQueue from "../components/ek/LabelQueue";
 import { calibrationDoc } from "../lib/ek-label-calibrate";
+import LabelSetupWizard from "../components/ek/LabelSetupWizard";
 import { printHtml } from "../lib/ek-receipt-pdf";
 import Modal from "../components/Modal";
 import { useConfirm } from "../context/ConfirmProvider";
@@ -52,6 +53,7 @@ export default function LabelsPage({ toast }) {
   const [job, setJob]             = useState(null);
   const [categories, setCategories] = useState([]);
   const [stale, setStale] = useState(null);   // null = hali so'ralmadi
+  const [setup, setSetup] = useState(null);  // null | { kind }
   const [editing, setEditing]     = useState(null); // null | {template|null}
   const [saving, setSaving]       = useState(false);
   const [kind, setKind]           = useState("SHELF");
@@ -258,6 +260,13 @@ export default function LabelsPage({ toast }) {
             navbat bor-yo'qligiga bog'liq emas. */}
         <button type="button" className="btn btn-outline btn-sm" onClick={calibrate}>
           <i className="fa-solid fa-ruler" /> {t("lbl.calPrint")}
+        </button>
+        {/* ⚠ SEHRGAR SAHIFA SARLAVHASIDA: «yorliq qiyshiq chiqyapti»
+            deganda birinchi qidiriladigan joy shu, sozlamalarning
+            ichi emas. */}
+        <button type="button" className="btn btn-outline btn-sm"
+                onClick={() => setSetup({ kind })}>
+          <i className="fa-solid fa-sliders" /> {t("lbl.setupOpen")}
         </button>
       </div>
 
@@ -470,6 +479,13 @@ export default function LabelsPage({ toast }) {
           </div>
         )}
       </div>
+      )}
+
+      {setup && (
+        <LabelSetupWizard
+          kind={setup.kind} template={template} product={product}
+          toast={toast} onClose={() => setSetup(null)} onSaved={load}
+        />
       )}
 
       {editing && (

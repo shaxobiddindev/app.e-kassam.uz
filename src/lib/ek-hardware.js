@@ -612,6 +612,25 @@ export async function printPriceLabels(items = [], opts = {}) {
 }
 
 /**
+ * YORLIQ PRINTERIGA XOM BUYRUQ (G3/G4).
+ *
+ * ⚠ YANGI KANAL EMAS — chek printeri uchun ishlab turgan AYNAN
+ * o'sha `send()`. Yorliq printeri ham USB yoki TCP orqali xom
+ * baytlarni qabul qiladi; farq faqat baytlarning TILIDA (TSPL,
+ * ZPL), va uni `ek-label-bytes.js` yasaydi.
+ *
+ * ⚠ MATN BAYTGA O'GIRILADI: TSPL va ZPL — ASCII buyruqlar. Lotin
+ * bo'lmagan belgilar printerning ichki kodlash jadvaliga bog'liq
+ * va uni bu yerdan boshqarib bo'lmaydi — shuning uchun matnli
+ * yorliqlar uchun drayver yo'li ishonchliroq.
+ */
+export async function printRawLabel(text) {
+  if (!isDesktop()) throw new Error(t("hw.errNoDesktop"));
+  if (!text) throw new Error(t("hw.errNoData"));
+  await send(new TextEncoder().encode(String(text)));
+}
+
+/**
  * Yorliq lentasini ESC/POS baytlariga yig'adi.
  *
  * Chop etishdan ALOHIDA — `buildReceipt` bilan bir xil sabab: sinov va

@@ -424,6 +424,18 @@ export const labelApi = {
      javob bosh sahifani muzlatardi. */
   stale:       (limit = 100) => request(`/labels/jobs/stale?limit=${limit}`),
   queueStale:  ()   => request("/labels/jobs/stale", { method: "POST" }),
+
+  /* ── Qog'oz va printer (G2/G4) ──────────────────────────────
+     ⚠ Ikkisi ALOHIDA: bitta printerga bugun 58×40, ertaga 30×20
+     rulon qo'yiladi. */
+  mediaList:   ()   => request("/labels/media"),
+  printerList: ()   => request("/labels/printers"),
+  outputList:  ()   => request("/labels/output"),
+  saveOutput:  (kind, body) => request(`/labels/output/${kind}`,
+                  { method: "PUT", body: JSON.stringify(body) }),
+  copyPrinter: (id) => request(`/labels/printers/${id}/copy`, { method: "POST" }),
+  tunePrinter: (id, body) => request(`/labels/printers/${id}`,
+                  { method: "PUT", body: JSON.stringify(body) }),
 };
 
 // ─── Mahsulotlar ──────────────────────────────────────────────
