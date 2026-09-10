@@ -42,6 +42,7 @@ export const NAV = [
   { id: "catalog", key: "nav.group.catalog", icon: "fa-box", children: [
     { id: "products",   path: "/products",   key: "nav.products",   icon: "fa-box",                roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
     { id: "categories", path: "/categories", key: "nav.categories", icon: "fa-tags",               roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
+    { id: "labels", path: "/labels", key: "nav.labels", icon: "fa-tag",                       roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
     { id: "prices",     path: "/prices",     key: "nav.prices",     icon: "fa-money-check-dollar", roles: ["ADMIN", "SHOP_ADMIN", "OWNER"] },
   ]},
 

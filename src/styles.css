@@ -6354,3 +6354,47 @@ button.stk__c:hover { background: var(--bg-hover); }
   font-weight: 700;
   white-space: nowrap;
 }
+
+/* ─── Yorliq ko'rish oynasi (F3) ──────────────────────────────────────
+   ⚠ BU YERDA ILOVA TEMASI EMAS. Yorliqning O'ZI fizik bosma yuza:
+   u mm bilan o'lchanadi va ko'pincha oq-qora chiqadi. Uning foni
+   ATAYLAB oq (`#fff`), tema tokeni emas — qorong'i rejimda qora
+   yorliq ko'rsatib, keyin oq qog'ozga chiqarish yolg'on bo'lardi.
+   Keyingi safar kimdir «tokenlarga o'tkazaman» deb buzmasin.
+
+   Atrofdagi panel esa oddiy ilova UI si — u tokenlar bilan. */
+.lbl-layout   { display: grid; grid-template-columns: 280px 1fr; gap: 16px; padding: 14px; }
+.lbl-side     { min-width: 0; }
+.lbl-main     { min-width: 0; }
+@media (max-width: 860px) { .lbl-layout { grid-template-columns: 1fr; } }
+
+.lbl-preview__bar   { display: flex; align-items: center; gap: 10px;
+                      flex-wrap: wrap; margin-bottom: 10px; }
+.lbl-preview__size  { color: var(--fg-secondary); font-weight: 700; }
+.lbl-preview__zoom  { display: flex; gap: 4px; margin-inline-start: auto; }
+
+.lbl-preview__stage { display: flex; justify-content: center; padding: 18px;
+                      background: var(--bg-subtle); border: 1px solid var(--border);
+                      border-radius: 10px; overflow: auto; }
+/* ⚠ Yorliqning foni HAR DOIM oq — yuqoridagi izohga qarang. */
+.lbl-preview__paper { background: #fff; box-shadow: 0 1px 6px rgba(0,0,0,.18);
+                      flex: 0 0 auto; }
+.lbl-preview__paper svg { display: block; }
+
+.lbl-calib        { display: flex; flex-direction: column; gap: 8px; padding: 12px;
+                    background: var(--bg-subtle); border: 1px solid var(--border);
+                    border-radius: 10px; margin-bottom: 10px; }
+.lbl-calib__card  { height: 54px; border: 2px solid var(--bg-brand); border-radius: 6px;
+                    display: flex; align-items: center; justify-content: center;
+                    color: var(--fg-secondary); font-weight: 800; }
+.lbl-calib input[type="range"] { width: 100%; height: 44px; }
+
+.lbl-warn      { margin-top: 10px; padding: 10px 12px; border-radius: 8px;
+                 display: flex; flex-direction: column; gap: 6px; list-style: none;
+                 font-size: 13px; }
+.lbl-warn li   { display: flex; gap: 8px; align-items: flex-start; }
+/* ⚠ RANG YOLG'IZ SIGNAL EMAS: har qatorda belgi ham, matn ham bor. */
+.lbl-warn--ok  { background: var(--bg-success-soft, var(--bg-subtle));
+                 color: var(--fg-success); border: 1px solid var(--border); }
+.lbl-warn--bad { background: var(--bg-danger-soft, var(--bg-subtle));
+                 color: var(--fg-danger); border: 1px solid var(--fg-danger); }

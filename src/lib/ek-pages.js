@@ -44,6 +44,7 @@ const LOADERS = {
   Reports:      () => import("../pages/ReportsPage"),
   Sales:        () => import("../pages/SalesPage"),
   Categories:   () => import("../pages/admin/CategoriesPage"),
+  Labels:       () => import("../pages/LabelsPage"),
   CustomReport: () => import("../pages/admin/CustomReportPage"),
   ShopUsers:    () => import("../pages/admin/ShopUsersPage"),
   Shops:        () => import("../pages/admin/ShopsPage"),

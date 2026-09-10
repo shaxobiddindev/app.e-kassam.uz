@@ -383,6 +383,13 @@ export const plannerApi = {
                  { method: "DELETE" }),
 };
 
+// ─── Yorliqlar (F3 — faqat o'qish) ────────────────────────────
+export const labelApi = {
+  templates:   (kind) => request(`/labels/templates${kind ? `?kind=${kind}` : ""}`),
+  defaultFor:  (kind) => request(`/labels/templates/default?kind=${kind}`),
+  byId:        (id)   => request(`/labels/templates/${id}`),
+};
+
 // ─── Mahsulotlar ──────────────────────────────────────────────
 export const productApi = {
   getAll:       (shopId)   => request(`/products${shopId ? `?shopId=${shopId}` : ""}`),
