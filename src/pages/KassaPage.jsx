@@ -229,10 +229,18 @@ export default function KassaPage({ toast, refreshLowStock }) {
       : c)));
   const [search, setSearch]         = useState("");
   const [searching, setSearching]   = useState(true);   // birinchi yuklash
-  /* Qidiruv qatorida FAQAT raqam turibdimi — qisqa raqamni katakchada
-     ko'rsatish uchun (V107). Bo'sh so'rov emas: bo'shda butun katalog
-     chiqadi va har katakchada raqam turishi shovqin bo'lardi. */
-  const numericSearch = /^\d{1,6}$/.test(search.trim());
+  /* Katakchada RAQAM ko'rinadimi (V107, V128 da kengaytirildi).
+     Bo'sh so'rovda emas: bo'shda butun katalog chiqadi va har
+     katakchada raqam turishi shovqin bo'lardi.
+
+     ⚠ KOD REJIMI (`*2`) HAM SHU YERGA KIRADI va bu tuzatish. Ilgari
+     shart faqat YALANG raqamni («142») tanirdi, yulduzcha esa uni
+     buzardi — ya'ni raqam bo'yicha qidirilayotgan aynan o'sha paytda
+     katakchalarda raqam KO'RINMASDI. Prefiks qidiruvi kelgach bu
+     nuqsonga aylandi: `*2` endi bitta emas, o'nlab tovar qaytaradi va
+     kassir ularni faqat RAQAMI bilan ajrata oladi. */
+  const codeMode = search.trim().startsWith("*");
+  const numericSearch = codeMode || /^\d{1,6}$/.test(search.trim());
   const tilesBusy = useLoading(searching);
   /* ══ TO'LOV (V58) ═══════════════════════════════════════════════════
      ⚠ `payType` VA `split` O'RNIGA IKKI HOLAT. Ilgari to'lov turi

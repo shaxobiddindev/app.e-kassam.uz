@@ -59,5 +59,28 @@ console.log("\n\u2500\u2500 Ulanish: kod rejimi \u2500\u2500");
      "\u26a0 kafel hali ham to'g'ridan-to'g'ri eski maydonni o'qiyapti");
 }
 
+/* ══ PREFIKS QIDIRUVI (V128) ═════════════════════════════
+
+   `*2` endi bitta tovar emas, «2» bilan boshlanadigan HAMMA kodni
+   qaytaradi (server: `ProductService.searchByCode`). Shu bilan
+   katakchadagi RAQAM majburiy bo'lib qoldi: ro'yxatda o'nlab tovar
+   turadi va kassir ularni faqat raqami bilan ajrata oladi.
+
+   ⚠ ILGARI AKSINCHA EDI: shart faqat YALANG raqamni («142»)
+   tanirdi, yulduzcha esa uni buzardi — ya'ni raqam bo'yicha
+   qidirilayotgan aynan o'sha paytda raqam KO'RINMASDI. */
+console.log("\n── Kod rejimida raqam ko'rinadi ──");
+{
+  const kassa = readFileSync(new URL("../src/pages/KassaPage.jsx", import.meta.url), "utf8");
+
+  eq(/const codeMode = search\.trim\(\)\.startsWith\("\*"\)/.test(kassa), true,
+     "kod rejimi belgisi (`codeMode`) yo'q");
+  eq(/const numericSearch = codeMode \|\|/.test(kassa), true,
+     "⚠ katakchadagi raqam kod rejimini hisobga olmayapti — `*2` o'nlab "
+     + "tovar qaytaradi va kassir ularni ajrata olmaydi");
+  eq(/showCode=\{numericSearch\}/.test(kassa), true,
+     "kafelga raqam ko'rsatish belgisi uzatilmayapti");
+}
+
 console.log(`\n  ${pass} o'tdi, ${fail} yiqildi`);
 process.exit(fail ? 1 : 0);
