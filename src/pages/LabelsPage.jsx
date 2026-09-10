@@ -63,6 +63,7 @@ export default function LabelsPage({ toast }) {
   const [stale, setStale] = useState(null);   // null = hali so'ralmadi
   const [setup, setSetup] = useState(null);  // null | { kind }
   const [media, setMedia] = useState(null);  // joriy tur uchun tanlangan qog'oz
+  const [mediaList, setMediaList] = useState([]); // barcha qog'oz profillari
   const [zoomed, setZoomed] = useState(null); // katta ko'rish oynasi
   const [editing, setEditing]     = useState(null); // null | {template|null}
   const [saving, setSaving]       = useState(false);
@@ -92,8 +93,9 @@ export default function LabelsPage({ toast }) {
         const mine = asArray((await labelApi.outputList()).data)
           .find((x) => x.kind === kind);
         const list = asArray((await labelApi.mediaList()).data);
+        setMediaList(list);
         setMedia(list.find((m) => m.id === mine?.mediaProfileId) || null);
-      } catch { setMedia(null); }
+      } catch { setMedia(null); setMediaList([]); }
       const list = asArray(tRes.data);
       setTemplates(list);
       /* ⚠ GALEREYA OFLAYN HAM ISHLASIN: shablon — ma'lumot, va u
@@ -557,6 +559,7 @@ export default function LabelsPage({ toast }) {
         >
           <LabelTemplateEditor
             template={editing.template}
+            media={media} mediaList={mediaList}
             product={product}
             saving={saving}
             onSave={save}

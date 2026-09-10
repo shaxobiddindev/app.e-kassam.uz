@@ -46,6 +46,11 @@ export default function LabelSetupWizard({ kind, template, product, onClose, toa
   const [density, setDensity] = useState(8);
   const [offsetX, setOffsetX] = useState(0);
   const [offsetY, setOffsetY] = useState(0);
+  /* ⚠ SAQLANGAN QOG'OZ ALOHIDA ESLAB QOLINADI: server media
+     almashganda kalibrlashni bekor qiladi, va buni EKRANDA aytish
+     kerak. Aytilmasa, do'konchi eski kalibrlash bilan chop etadi
+     va yorliq surilib chiqadi. */
+  const [savedMediaId, setSavedMediaId] = useState(null);
 
   const boot = useCallback(async () => {
     setLoading(true);
@@ -58,6 +63,7 @@ export default function LabelSetupWizard({ kind, template, product, onClose, toa
       const mine = asArray(oRes.data).find((x) => x.kind === kind);
       setPrinterId(mine?.printerProfileId ?? ps[0]?.id ?? null);
       setMediaId(mine?.mediaProfileId ?? ms[0]?.id ?? null);
+      setSavedMediaId(mine?.mediaProfileId ?? null);
     } catch (err) { toast?.error(err.message); }
     finally { setLoading(false); }
   }, [kind, toast]);
@@ -171,6 +177,12 @@ export default function LabelSetupWizard({ kind, template, product, onClose, toa
                 options={medias.map((m) => ({
                   value: m.id, label: m.name, hint: mediaLabel(m),
                 }))} />
+        {savedMediaId !== null && mediaId !== savedMediaId && (
+          <div className="form-hint form-hint--warn">
+            <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />
+            {" "}{t("lbl.mediaChanged")}
+          </div>
+        )}
       </div>
     );
 
