@@ -1906,6 +1906,7 @@ export default {
   "lbl.status.CANCELLED": "Отменена",
   "cat.codeCol": "Номер",
   "cat.productsCol": "Товары",
+  "cat.archivedShort": "в архиве",
   "cat.subCol": "Подразделы",
   "cat.search": "Поиск раздела",
   "cat.addSub": "Добавить подраздел",

@@ -1906,6 +1906,7 @@ export default {
   "lbl.status.CANCELLED": "Cancelled",
   "cat.codeCol": "Number",
   "cat.productsCol": "Products",
+  "cat.archivedShort": "archived",
   "cat.subCol": "Subcategories",
   "cat.search": "Search category",
   "cat.addSub": "Add subcategory",

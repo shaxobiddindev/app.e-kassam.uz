@@ -2000,6 +2000,7 @@ export default {
   "lbl.status.CANCELLED": "Bekor qilingan",
   "cat.codeCol": "Raqami",
   "cat.productsCol": "Tovarlar",
+  "cat.archivedShort": "arxivda",
   "cat.subCol": "Ichki bo'limlar",
   "cat.search": "Bo'lim qidirish",
   "cat.addSub": "Ichki bo'lim qo'shish",

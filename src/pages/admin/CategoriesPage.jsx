@@ -164,7 +164,10 @@ export default function CategoriesPage({ toast }) {
     { key: "code",   label: t("cat.codeCol"),            type: "text",   get: (c) => c.code },
     { key: "parent", label: t("categories.parent"),      type: "text",
       get: (c) => parentName(c.parentId) },
-    { key: "prods",  label: t("cat.productsCol"),        type: "number", get: (c) => c.productCount },
+    /* Filtr FAOL son bo'yicha ishlaydi: «nechta tovar bor» degan
+       savol odatda sotiladigan tovarlar haqida. */
+    { key: "prods",  label: t("cat.productsCol"),        type: "number",
+      get: (c) => c.productCount - (c.archivedProductCount || 0) },
     { key: "subs",   label: t("cat.subCol"),             type: "number", get: (c) => c.childCount },
     { key: "unit",   label: t("products.unit"),          type: "text",
       get: (c) => (c.defaultUnit ? unitLabel(c.defaultUnit) : null) },
@@ -246,7 +249,22 @@ export default function CategoriesPage({ toast }) {
                     <td>{parentName(cat.parentId) || <span className="text-muted">—</span>}</td>
                     {/* ⚠ NOL «—» EMAS, AYNAN 0 (CLAUDE.md): «bo'limda tovar
                         yo'q» va «son noma'lum» — boshqa-boshqa gaplar. */}
-                    <td className="text-end ek-num">{cat.productCount}</td>
+                    {/* ⚠ IKKALA SON HAM. Arxivlangan tovarlar
+                        ro'yxatda ko'rinmaydi, ya'ni bitta son bilan
+                        kategoriya BO'SH ko'rinardi — keyin esa
+                        o'chirishga urinilganda «tovarlar bor» degan
+                        javob kelardi. Ekran yolg'on gapirmasligi kerak.
+
+                        ⚠ Arxiv soni MATN bilan ajratiladi, rang
+                        bilan emas (qoida №6). */}
+                    <td className="text-end ek-num">
+                      {cat.productCount - (cat.archivedProductCount || 0)}
+                      {cat.archivedProductCount > 0 && (
+                        <span className="cat-archived-n">
+                          {" + "}{cat.archivedProductCount} {t("cat.archivedShort")}
+                        </span>
+                      )}
+                    </td>
                     <td className="text-end ek-num">{cat.childCount}</td>
                     <td>{cat.defaultUnit ? unitLabel(cat.defaultUnit)
                                          : <span className="text-muted">—</span>}</td>

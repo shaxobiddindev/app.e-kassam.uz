@@ -1210,6 +1210,11 @@ select.form-input { cursor: pointer; }
    saqlash to'silmaydi: bu «tekshirib ko'ring» degani, «noto'g'ri»
    degani emas. Xato uchun alohida uslub bor (`.form-input.is-bad`). */
 .form-hint--warn { color: var(--fg-warning); font-weight: 600; }
+/* Kategoriya jadvalidagi arxiv soni. Rang emas, MATN ajratadi
+   (qoida 6): son yonida «arxivda» yozuvi turadi. Rangi
+   `--fg-secondary` — `--fg-tertiary` oq fonda 2.65:1 va o`qish
+   uchun yaramaydi (qoida 6b). */
+.cat-archived-n { color: var(--fg-secondary); font-weight: 600; font-size: 11.5px; }
 .ek-note         { display: flex; gap: 9px; align-items: flex-start; padding: 10px 12px; border-radius: 9px;
                    background: var(--bg-brand-subtle); border: 1px solid var(--border-brand);
                    color: var(--fg-brand); font-size: 12px; font-weight: 600; line-height: 1.45; }
