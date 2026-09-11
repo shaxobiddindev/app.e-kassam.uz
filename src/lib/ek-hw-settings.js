@@ -24,6 +24,18 @@ const KEY = "ek_hw";
 export const DEFAULTS = {
   transport:   "windows",  // "windows" | "tcp" | "browser"
   printerName: "",         // windows: drayver nomi
+
+  /* ⚠ YORLIQ PRINTERI — ALOHIDA NAVBAT, chek printeri EMAS.
+     Yorliq printeri TSPL/ZPL buyruqlarini kutadi va kengligi
+     104 mm; chek printeri esa ESC/POS va 58–80 mm. Bittasining
+     baytini ikkinchisiga yuborish rulonni tushunarsiz belgi bilan
+     to'ldiradi.
+
+     Serverdagi printer profilida (LabelPrinterProfile) faqat
+     til/dpi/zichlik bor — Windows navbatining NOMI esa faqat shu
+     kompyuterda ma'lum, shuning uchun u mahalliy sozlamada
+     saqlanadi. */
+  labelPrinterName: "",
   host:        "",         // tcp: IP
   port:        9100,
   width:       80,         // 80 | 58 (mm)

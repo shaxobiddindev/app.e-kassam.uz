@@ -1801,6 +1801,11 @@ export default {
 
   /* ── Printerni sozlash sehrgari (G4) ─────────────────────────────── */
   "hw.errNoData": "Nothing to send",
+  "hw.errNoLabelPrinter": "No label printer selected — pick one in the setup wizard",
+  "hw.displayNoDesktop": "The customer display only opens in the browser version",
+  "lbl.queueLabel": "Label printer (Windows queue)",
+  "lbl.queueWhy": "The name the label printer has in Windows. Not the receipt printer.",
+  "lbl.queueNeeded": "Pick the label printer first. Otherwise the bytes go to the receipt printer.",
   "lbl.setupTitle": "Printer setup",
   "lbl.setupWhy": "Every shop hits the same three problems. Skew, a pale barcode, shifted text.",
   "lbl.stepPrinter": "Printer",

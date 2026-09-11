@@ -6,7 +6,8 @@ import Modal from "../Modal";
 import Select from "./Select";
 import { SkeletonList } from "./Loading";
 import { isDesktop } from "../../lib/ek-desktop";
-import { printRawLabel } from "../../lib/ek-hardware";
+import { listPrinters, printRawLabel } from "../../lib/ek-hardware";
+import { getSettings, saveSettings } from "../../lib/ek-hw-settings";
 import { calibrationCommand, supportsBytes, toBytes } from "../../lib/ek-label-bytes";
 import { blocking, validateOutput } from "../../lib/ek-label-validate";
 import { layoutLabel } from "../../lib/ek-label-render";
@@ -53,6 +54,14 @@ export default function LabelSetupWizard({ kind, template, product, onClose, toa
      va yorliq surilib chiqadi. */
   const [savedMediaId, setSavedMediaId] = useState(null);
 
+  /* ⚠ YORLIQ PRINTERI WINDOWS NAVBATI — SERVERDA EMAS, SHU YERDA.
+     Server profilida faqat til/dpi/zichlik bor. Navbatning NOMI esa
+     har kompyuterda boshqacha, shuning uchun u mahalliy sozlamada
+     saqlanadi. Bu tanlanmaguncha bayt yo'li ishlamaydi — ilgari u
+     jimgina CHEK printeriga borardi. */
+  const [queues, setQueues] = useState([]);
+  const [queue, setQueue] = useState(() => getSettings().labelPrinterName || "");
+
   const boot = useCallback(async () => {
     setLoading(true);
     try {
@@ -70,6 +79,13 @@ export default function LabelSetupWizard({ kind, template, product, onClose, toa
   }, [kind, toast]);
 
   useEffect(() => { boot(); }, [boot]);
+
+  /* ⚠ JIMGINA YIQILADI: navbat ro'yxatini olish desktopga xos va u
+     bo'lmasa sehrgarning qolgan qadamlari baribir ishlashi kerak. */
+  useEffect(() => {
+    if (!isDesktop()) return;
+    listPrinters().then((list) => setQueues(list || [])).catch(() => setQueues([]));
+  }, []);
 
   const printer = printers.find((p) => p.id === printerId) || null;
   const media = medias.find((m) => m.id === mediaId) || null;
@@ -98,6 +114,9 @@ export default function LabelSetupWizard({ kind, template, product, onClose, toa
 
   const blockReason = !desktop ? t("lbl.needDesktop")
     : !bytes ? t("lbl.langNoBytes")
+    /* ⚠ NAVBAT TANLANMAGAN — bosilsa baytlar standart printerga
+       ketardi. Sabab tugmaning yonida turadi. */
+    : !queue ? t("lbl.queueNeeded")
     : null;
 
   const calibrate = async () => {
@@ -176,6 +195,25 @@ export default function LabelSetupWizard({ kind, template, product, onClose, toa
                   value: p.id, label: p.name, hint: `${p.lang} · ${Number(p.printWidthMm)}`,
                 }))} />
         {printer && !bytes && <div className="form-hint">{t("lbl.langNoBytes")}</div>}
+
+        {/* ⚠ IKKI XIL PRINTER, IKKI XIL RO'YXAT. Yuqoridagi — MODEL
+            (u qaysi tilda gaplashadi), pastdagi — WINDOWS NAVBATI
+            (baytlar qaysi qurilmaga ketadi). Ilgari ikkinchisi yo'q
+            edi va yorliq baytlari CHEK printeriga borardi: rulon
+            to'la `SIZE 58 mm,40 mm` kabi qatorlar bilan chiqardi. */}
+        {isDesktop() && bytes && (
+          <div style={{ marginTop: 12 }}>
+            <label className="form-label" htmlFor="lw-queue">{t("lbl.queueLabel")}</label>
+            <Select id="lw-queue" block variant="field" ariaLabel={t("lbl.queueLabel")}
+                    value={queue}
+                    onChange={(v) => { setQueue(v); saveSettings({ labelPrinterName: v }); }}
+                    options={queues.map((n) => ({ value: n, label: n }))} />
+            <div className="form-hint">{t("lbl.queueWhy")}</div>
+            {!queue && (
+              <div className="form-hint form-hint--warn">{t("lbl.queueNeeded")}</div>
+            )}
+          </div>
+        )}
       </div>
     );
 

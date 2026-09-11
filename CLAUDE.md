@@ -37,6 +37,14 @@ kutadi.
 - **Frontend** — Netlify, `main` ga push bilan (`dist/` repoda).
 - **Backend** — GitHub Actions → VPS (docker compose).
 - **Android** — `git tag android-vX.Y.Z` → Actions `.apk` va `.aab` chiqaradi.
+- **Desktop** — ⚠ AVVAL `src-tauri/tauri.conf.json` dagi `version` ni
+  ko'taring, `package.json` va `src-tauri/Cargo.toml` ni ham moslang
+  (`node scripts/check-version.mjs` tekshiradi), SO'NG
+  `git tag desktop-vX.Y.Z` → Actions `.exe` va `latest.json` chiqaradi.
+
+  Versiya TEGDAN OLINMAYDI — `latest.json` ham, ilovaning o'z versiyasi
+  ham `tauri.conf.json` dan keladi. Ko'tarilmasa reliz chiqadi, xato
+  chiqmaydi va birorta kassa yangilanmaydi. 1.10.0 da aynan shu bo'ldi.
 
 ## Google Play
 

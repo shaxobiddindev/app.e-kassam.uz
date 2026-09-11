@@ -627,7 +627,31 @@ export async function printPriceLabels(items = [], opts = {}) {
 export async function printRawLabel(text) {
   if (!isDesktop()) throw new Error(t("hw.errNoDesktop"));
   if (!text) throw new Error(t("hw.errNoData"));
-  await send(new TextEncoder().encode(String(text)));
+
+  /* ══════════════════════════════════════════════════════════════════
+     ⚠ `send()` ISHLATILMAYDI — VA BU ENG MUHIM QATOR.
+
+     `send()` CHEK printeriga qadalgan: u `getSettings().printerName`
+     ni oladi va natijani `markPrinter()` bilan CHEK printerining
+     sog'ligiga yozadi. Ya'ni yorliqning TSPL/ZPL matni chek
+     printeriga borardi — u esa bu buyruqlarni MATN deb bosib
+     chiqaradi: rulon to'la `SIZE 58 mm,40 mm` kabi qatorlar.
+
+     Ikkinchi zarari yashirin: muvaffaqiyatsizlik chek printerining
+     sog'ligini «nosoz» deb belgilab, kassa ekranida soxta
+     ogohlantirish yoqardi.
+     ══════════════════════════════════════════════════════════════════ */
+  const name = (getSettings().labelPrinterName || "").trim();
+
+  /* ⚠ STANDART PRINTERGA TUSHIB KETMASIN: nom bo'sh bo'lsa Rust tomoni
+     tizimning standart printerini oladi va TSPL matni A4 ofis
+     printeriga varaqlab chiqardi. */
+  if (!name) throw new Error(t("hw.errNoLabelPrinter"));
+
+  await invoke("print_raw", {
+    printer: name,
+    data: new TextEncoder().encode(String(text)),
+  });
 }
 
 /**

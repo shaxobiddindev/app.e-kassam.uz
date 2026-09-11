@@ -1,3 +1,4 @@
+import { isDesktop } from "./ek-desktop";
 /* ══════════════════════════════════════════════════════════════════════════
    MIJOZ EKRANI — IKKINCHI MONITOR (V77)
 
@@ -173,6 +174,13 @@ export function subscribe(fn) {
  * bir-birining ustida o'nlab oyna yig'ilardi.
  */
 export function openDisplay() {
+  /* ⚠ DESKTOPDA YO'Q: WebView2 `window.open` ni bermaydi va qaytgan
+     qiymat `null` ham bo'lmasligi mumkin — ya'ni «ishladi» deb o'ylab
+     qolish oson. Shuning uchun bu yerda OCHIQ `null` qaytariladi va
+     chaqiruvchi sababni ko'rsatishi shart (HardwareSettings tugmani
+     butunlay to'sadi). */
+  if (isDesktop()) return null;
+
   const w = window.open("/display", "ek-display",
     "width=1024,height=768,menubar=no,toolbar=no,location=no,status=no");
   try { w?.focus(); } catch { /* boshqa monitorda — fokus shart emas */ }

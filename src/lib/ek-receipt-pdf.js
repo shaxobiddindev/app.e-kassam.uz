@@ -1,4 +1,4 @@
-import { isMobileApp } from "./ek-desktop";
+import { isDesktop, isMobileApp } from "./ek-desktop";
 
 /* ══════════════════════════════════════════════════════════════════════════
    CHEKNI PDF QILIB SAQLASH
@@ -149,6 +149,33 @@ export async function printHtml(bodyHtml, title, css, win = "width=420,height=72
      esa kengrog'ida. Umumiy yo'lga ko'chirishda buni unutib, chekni
      ham 820px ga o'tkazib yuborgan edim — ishlab turgan yo'lning
      ko'rinishini beixtiyor o'zgartirish aynan shunday boshlanadi. */
+  /* ══════════════════════════════════════════════════════════════════
+     ⚠ DESKTOPDA `window.open` ISHLAMAYDI — VA NULL HAM QAYTARMAYDI.
+
+     Tauri/WebView2 da wry yangi oyna so'rovini `SetHandled(true)` bilan
+     yopadi, lekin WebView2 baribir «dummy» WindowProxy qaytaradi. Ya'ni:
+       · oyna ochilmaydi;
+       · `w` NULL EMAS, shuning uchun pastdagi popup tekshiruvi ham
+         ishlamaydi;
+       · `w.document.write` jimgina yo'qoladi va funksiya
+         MUVAFFAQIYAT qaytaradi.
+
+     Natijasi eng yomon turdagi nosozlik: kassir «Chop etish» ni bosadi,
+     hech narsa chiqmaydi, xato ham chiqmaydi va navbat qatori
+     «chiqarilgan» deb belgilanadi.
+
+     Aynan shu qoida `ek-hardware.js` da allaqachon bor edi — bu yerga
+     ko'chirilmagani uchun v1.10.0 dan keyin qo'shilgan YORLIQ moduli
+     (`LabelsPage`, `LabelQueue`) desktopda umuman chop eta olmasdi.
+
+     `window.print()` esa WebView2 da ISHLAYDI. Shuning uchun hujjat
+     ilova oynasining ICHIDA, yashirin iframe da chop etiladi.
+     ══════════════════════════════════════════════════════════════════ */
+  if (isDesktop()) {
+    await printInFrame(html);
+    return;
+  }
+
   const w = window.open("", "_blank", win);
   /* Popup to'silgan — bu YAGONA kutiladigan xato, matni ham aniq bo'lsin */
   if (!w) throw new Error("Brauzer yangi oynani to'sdi — ruxsat bering va qayta urinib ko'ring");
@@ -173,4 +200,53 @@ export async function saveReceiptPdf(tapeEl, title) {
   /* ⚠ Uslub BERILMAYDI — chek 58 mm tasmada qoladi (`PRINT_CSS`).
      Platformaga xos yo'l esa `printHtml` da, bitta joyda. */
   return printHtml(tapeEl.outerHTML, title || "Chek");
+}
+
+/**
+ * Hujjatni ILOVA OYNASI ICHIDA chop etadi (desktop yo'li).
+ *
+ * ⚠ IFRAME OLIB TASHLANADI, lekin DARHOL EMAS: `print()` sinxron
+ * ko'rinadi-yu, WebView2 da chop etish dialogi yopilgunga qadar
+ * iframe tirik turishi kerak. Shuning uchun `onafterprint` kutiladi,
+ * va u kelmasa ham (dialog bekor qilinsa ba'zi versiyalarda kelmaydi)
+ * vaqt bo'yicha tozalanadi — aks holda har chop etishdan keyin
+ * DOM da bitta o'lik iframe qolib ketardi.
+ */
+function printInFrame(html) {
+  return new Promise((resolve, reject) => {
+    const fr = document.createElement("iframe");
+    fr.setAttribute("aria-hidden", "true");
+    fr.setAttribute("title", "");
+    fr.style.cssText = "position:fixed;left:-10000px;top:0;width:1px;height:1px;border:0";
+    document.body.appendChild(fr);
+
+    let done = false;
+    const cleanup = () => {
+      if (done) return;
+      done = true;
+      try { fr.remove(); } catch { /* allaqachon olingan */ }
+      resolve();
+    };
+
+    fr.onload = () => {
+      try {
+        const win = fr.contentWindow;
+        if (!win) throw new Error("Chop etish oynasi ochilmadi");
+        win.onafterprint = cleanup;
+        win.focus();
+        win.print();
+        /* ⚠ ZAXIRA TOZALASH: `onafterprint` kafolatlanmagan. */
+        setTimeout(cleanup, 60000);
+      } catch (e) {
+        try { fr.remove(); } catch { /* bo'lmasa bo'ldi */ }
+        done = true;
+        reject(e);
+      }
+    };
+
+    /* ⚠ `srcdoc` ishlatiladi, `document.write` emas: CSP `default-src
+       'self'` da iframe ga `about:blank` orqali yozish bloklanishi
+       mumkin, `srcdoc` esa hujjatni bevosita beradi. */
+    fr.srcdoc = html;
+  });
 }

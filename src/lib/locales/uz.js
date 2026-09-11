@@ -1895,6 +1895,11 @@ export default {
 
   /* ── Printerni sozlash sehrgari (G4) ─────────────────────────────── */
   "hw.errNoData": "Yuboriladigan ma'lumot yo'q",
+  "hw.errNoLabelPrinter": "Yorliq printeri tanlanmagan — Sozlash sehrgarida ko'rsating",
+  "hw.displayNoDesktop": "Mijoz ekrani faqat brauzer versiyasida ochiladi",
+  "lbl.queueLabel": "Yorliq printeri (Windows navbati)",
+  "lbl.queueWhy": "Yorliq printeri Windows'da qaysi nom bilan turgani. Chek printeri emas.",
+  "lbl.queueNeeded": "Avval yorliq printerini tanlang. Aks holda baytlar chek printeriga ketadi.",
   "lbl.setupTitle": "Printerni sozlash",
   "lbl.setupWhy": "Har bir do'kon shu uchtasiga duch keladi. Qiyshiq chiqish, och barkod, surilgan yozuv.",
   "lbl.stepPrinter": "Printer",

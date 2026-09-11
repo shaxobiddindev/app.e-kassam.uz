@@ -159,13 +159,20 @@ export default function HardwareSettings({ toast }) {
             ham, do'kon ilovasiga ham bog'liq emas — u shu brauzerning
             ikkinchi oynasi. Printer sozlanmagan do'konda ham
             ishlaydi. */}
+        {/* ⚠ DESKTOPDA MIJOZ EKRANI YO'Q va buni AYTIB qo'yiladi.
+            U `window.open` ga tayanadi; Tauri/WebView2 esa yangi oyna
+            so'rovini yopadi — bundan ham yomoni, `null` qaytarmaydi,
+            ya'ni tugma jimgina hech narsa qilmaydi. Tugmani ochiq
+            qoldirish kassirni «bosdim, ishlamadi» holatiga qo'yardi. */}
         <Row label={t("hw.display")} hint={t("hw.displayHint")}>
           <Switch checked={s[DISPLAY_KEY] === true}
                   onChange={(v) => set({ [DISPLAY_KEY]: v })}
+                  disabled={desktop}
                   yes={t("common.yes")} no={t("common.no")} />
         </Row>
+        {desktop && <div className="form-hint">{t("hw.displayNoDesktop")}</div>}
 
-        {s[DISPLAY_KEY] === true && (
+        {s[DISPLAY_KEY] === true && !desktop && (
           <Row label={t("hw.displayOpen")}>
             {/* ⚠ TUGMA SHART: `window.open` ni FOYDALANUVCHI bosganda
                 chaqirish kerak, aks holda brauzer uni qalqib chiquvchi
