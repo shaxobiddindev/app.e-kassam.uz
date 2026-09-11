@@ -237,7 +237,16 @@ export default function ProductsPage({ toast }) {
   }, [modal, form.name, form.barcode]);
 
   // ── Modal ochish ───────────────────────────────────────────
-  const openAdd = () => { setForm(EMPTY_FORM); setModal("add"); };
+  /* Kategoriya qulfi — SERVERDAN.
+     `null` «hali bilmayman» degani. Ro'yxat javobida bu bayroq
+     hisoblanmaydi (kassa qidiruvining issiq yo'li), shuning uchun
+     tahrirlash oynasi ochilganda bitta tovar alohida so'raladi. */
+  const [catLocked, setCatLocked] = useState(null);
+  /* Tez ketma-ket ikkita tovar ochilsa, birinchisining kechikkan
+     javobi ikkinchisiniki ustiga yozilmasin. */
+  const catSeq = useRef(0);
+
+  const openAdd = () => { setForm(EMPTY_FORM); setCatLocked(false); setModal("add"); };
 
   const openEdit = (p) => {
     setForm({
@@ -274,6 +283,23 @@ export default function ProductsPage({ toast }) {
       barcodes: p.barcodes || [],
     });
     setModal({ type: "edit", product: p });
+
+    /* ⚠ XAVFSIZ STANDART — QULFLANGAN. Javob kelguncha maydon ochiq
+       tursa, odam kategoriyani almashtirib saqlashga urinardi va
+       server uni rad etardi: bosilgan tugma bekorga ketardi. */
+    setCatLocked(p.categoryId ? true : false);
+    if (p.categoryId) {
+      const mine = ++catSeq.current;
+      productApi.getById(p.id)
+        .then((r) => {
+          if (mine !== catSeq.current) return;
+          /* `!== false` — `null` (hisoblanmagan) ham QULF deb
+             o'qiladi. Noaniqlikda ochib yuborishdan ko'ra yopiq
+             qoldirish xavfsizroq. */
+          setCatLocked(r?.data?.categoryLocked !== false);
+        })
+        .catch(() => { if (mine === catSeq.current) setCatLocked(true); });
+    }
   };
 
   const closeModal = () => setModal(null);
@@ -322,7 +348,12 @@ export default function ProductsPage({ toast }) {
      qolardi — ya'ni «har bir tovar kategoriyada bo'lsin» talabining
      o'zi bajarilmay qolardi. Qulf «tanlanganini o'zgartirib
      bo'lmaydi» degani, «tanlab bo'lmaydi» degani emas. */
-  const categoryLocked = Boolean(modal?.product?.categoryId);
+  /* ⚠ SHART «TARIXI BOR», «KATEGORIYASI BOR» EMAS — server ham shu
+     qoidada (`ProductDeletionPolicy.hasHistory`). Ilgari bu yerda
+     ikkinchisi turardi va oqibati kutilmagan edi: kategoriyani
+     almashtirish yagona yo'l bo'lgani uchun, bir marta tovar tushgan
+     kategoriyani keyin bo'shatib ham, o'chirib ham bo'lmasdi. */
+  const categoryLocked = Boolean(modal?.product?.categoryId) && catLocked !== false;
 
   // ── Saqlash ────────────────────────────────────────────────
   const handleSave = async () => {

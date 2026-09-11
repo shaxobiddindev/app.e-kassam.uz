@@ -44,8 +44,17 @@ console.log("\n── Qulf: qo'yilgan kategoriya almashtirilmaydi ──");
 {
   const p = src("pages/ProductsPage.jsx");
 
-  ok(p.includes("const categoryLocked = Boolean(modal?.product?.categoryId);"),
+  ok(p.includes("const categoryLocked = Boolean(modal?.product?.categoryId) && catLocked !== false;"),
      "⚠ qulf ASL yozuvdan hisoblanadi, forma holatidan emas");
+
+  ok(p.includes("productApi.getById(p.id)") && p.includes("categoryLocked !== false"),
+     "⚠ qulf SERVERDAN so'raladi — ro'yxat javobida bu bayroq yo'q");
+
+  ok(p.includes("setCatLocked(p.categoryId ? true : false);"),
+     "⚠ javob kelguncha QULFLANGAN — noaniqlikda ochib yuborilmaydi");
+
+  ok(p.includes("mine !== catSeq.current"),
+     "⚠ kechikkan javob boshqa tovarning qulfini buzmaydi");
 
   ok(p.includes("disabled={categoryLocked}"),
      "qulflanganda maydon o'chiriladi");
@@ -62,6 +71,12 @@ console.log("\n── Qulf: qo'yilgan kategoriya almashtirilmaydi ──");
   ok(p.includes("Boolean(modal?.product?.categoryId)")
      && !p.includes('const categoryLocked = modal?.type === "edit"'),
      "⚠ kategoriyasiz ESKI tovar tahrirlanadi — qulf faqat to'ldirilganida");
+
+  /* ⚠ SOTILMAGAN TOVAR OCHIQ QOLISHI SHART. Qulf «kategoriyasi bor»
+     ga bog'lansa, kategoriyani bo'shatib bo'lmaydi va u abadiy
+     o'chirilmas bo'lib qoladi — bu bir marta sodir bo'lgan. */
+  ok(p.includes("catLocked !== false"),
+     "⚠ tarixi yo'q tovarda kategoriya OCHIQ — aks holda kategoriya o'chirilmas bo'lib qoladi");
 }
 
 console.log("\n── Lug'at: uchala til ──");
