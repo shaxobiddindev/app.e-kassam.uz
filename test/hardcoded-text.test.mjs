@@ -44,11 +44,13 @@ const EXEMPT = [
 const ALWAYS_OK = new Set(["Esc", "Enter", "Ctrl", "Alt", "Shift", "Tab", "F9",
                            "e-Kassam", "e-kassam.uz", "MXIK", "QQS", "PLU", "QR"]);
 
-const ROOTS = ["src/pages", "src/components"];
-/* Mijoz tomoni hali ko'chirilmagan — u ALOHIDA ish va doiraga
-   kiritilmagan. Kiritilsa, qo'riqchi birinchi kunidanoq 90 dan ortiq
-   band bilan qizil bo'lardi va hech kim uni yoqmasdi. */
-const SKIP_DIRS = new Set(["customer", "portal"]);
+const ROOTS = ["src/pages", "src/components", "src/customer", "src/portal"];
+/* ⚠ MIJOZ TOMONI HAM KIRADI (2026-09-12 dan). Ilgari u doiradan
+   tashqarida edi: u yerda 90 dan ortiq satr qotirilgan bo'lib,
+   qo'riqchi birinchi kunidanoq qizil bo'lardi — bunday qo'riqchini
+   bir haftada o'chirishadi. Endi o'sha satrlar lug'atga ko'chirildi
+   va doira kengaytirildi: `customer/` va `portal/` ham qo'riqlanadi. */
+const SKIP_DIRS = new Set();
 
 const files = [];
 for (const root of ROOTS) {

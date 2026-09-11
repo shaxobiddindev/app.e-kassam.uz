@@ -6,6 +6,7 @@ import { qrSvg } from "../lib/ek-qr";
 import { saveReceiptPdf } from "../lib/ek-receipt-pdf";
 import CodeZoom from "../components/CodeZoom";
 import Overlay from "../components/ek/Overlay";
+import { t } from "../lib/ek-i18n";
 
 /* ══════════════════════════════════════════════════════════════════════════
    ELEKTRON CHEK — QOG'OZ CHEKNING AYNAN O'ZI
@@ -122,7 +123,7 @@ export default function Receipt({ token, appToken, customerId, id, signedId, sig
         </button>
 
         {error && <div className="pt-tape pt-center">{error}</div>}
-        {!data && !error && <div className="pt-tape pt-center">Yuklanmoqda…</div>}
+        {!data && !error && <div className="pt-tape pt-center">{t("common.loading")}</div>}
 
         {data && (
           <div className="pt-tape ek-tear" ref={tapeRef}>
@@ -134,13 +135,13 @@ export default function Receipt({ token, appToken, customerId, id, signedId, sig
 
             <div className="pt-hr" />
 
-            <div className="pt-tape__row"><span>Chek</span><span>{data.receiptNo}</span></div>
+            <div className="pt-tape__row"><span>{t("kassa.receiptNo")}</span><span>{data.receiptNo}</span></div>
             <div className="pt-tape__row">
-              <span>Sana</span>
+              <span>{t("common.date")}</span>
               <span>{new Date(data.date).toLocaleString("uz-UZ", { dateStyle: "short", timeStyle: "short" })}</span>
             </div>
             {data.cashierName && (
-              <div className="pt-tape__row"><span>Kassir</span><span>{data.cashierName}</span></div>
+              <div className="pt-tape__row"><span>{t("rcp.cashier")}</span><span>{data.cashierName}</span></div>
             )}
 
             <div className="pt-hr" />
@@ -164,7 +165,7 @@ export default function Receipt({ token, appToken, customerId, id, signedId, sig
                     esa boshqa raqam turadi. */}
                 {Number(l.discount) > 0 && (
                   <div className="pt-tape__row pt-line__cut">
-                    <span>Chegirma</span>
+                    <span>{t("rpt2.discount")}</span>
                     <span>−{money(l.discount)}</span>
                   </div>
                 )}
@@ -174,7 +175,7 @@ export default function Receipt({ token, appToken, customerId, id, signedId, sig
             <div className="pt-hr" />
 
             {Number(data.discount) > 0 && (
-              <div className="pt-tape__row"><span>Chegirma</span><span>−{money(data.discount)}</span></div>
+              <div className="pt-tape__row"><span>{t("rpt2.discount")}</span><span>−{money(data.discount)}</span></div>
             )}
             {Number(data.loyaltyDiscount) > 0 && (
               <div className="pt-tape__row">
@@ -183,24 +184,24 @@ export default function Receipt({ token, appToken, customerId, id, signedId, sig
               </div>
             )}
             {Number(data.bonusUsed) > 0 && (
-              <div className="pt-tape__row"><span>Ball ishlatildi</span><span>−{money(data.bonusUsed)}</span></div>
+              <div className="pt-tape__row"><span>{t("rcp.pointsUsed")}</span><span>−{money(data.bonusUsed)}</span></div>
             )}
 
             <div className="pt-tape__row pt-total">
-              <span>JAMI</span><span>{money(data.total)}</span>
+              <span>{t("display.total")}</span><span>{money(data.total)}</span>
             </div>
 
             {Number(data.bonusEarned) > 0 && (
               <>
                 <div className="pt-hr" />
                 <div className="pt-tape__row pt-earn">
-                  <span>Ball yig'ildi</span><span>+{money(data.bonusEarned)}</span>
+                  <span>{t("kassa.receiptBonusEarned")}</span><span>+{money(data.bonusEarned)}</span>
                 </div>
               </>
             )}
 
             {data.returned && (
-              <div className="pt-returned">QAYTARILGAN</div>
+              <div className="pt-returned">{t("rcp.returned")}</div>
             )}
 
             {/* Fiskal blok — faqat HAQIQATAN fiskallashgan bo'lsa
@@ -208,7 +209,7 @@ export default function Receipt({ token, appToken, customerId, id, signedId, sig
             {data.fiscalSign && (
               <>
                 <div className="pt-hr" />
-                <div className="pt-tape__row"><span>Fiskal belgi</span><span>{data.fiscalSign}</span></div>
+                <div className="pt-tape__row"><span>{t("rcp.fiscalMark")}</span><span>{data.fiscalSign}</span></div>
                 {data.fiscalQrUrl && (
                   /* Chekdagi kodlar ham bosiladi: fiskal QR ni soliq
                      ilovasi o'qiydi, chek shtrixini esa kassa skaneri —
@@ -225,7 +226,7 @@ export default function Receipt({ token, appToken, customerId, id, signedId, sig
                     onClick={() => setZoom("bar")} aria-label="Shtrix kodni kattalashtirish"
                     dangerouslySetInnerHTML={{ __html: code128Svg(`S-${String(data.id).padStart(6, "0")}`) }} />
             <div className="pt-center pt-tape__no">S-{String(data.id).padStart(6, "0")}</div>
-            <div className="pt-center pt-thanks">Xarid uchun rahmat!</div>
+            <div className="pt-center pt-thanks">{t("rcp.thanksPurchase")}</div>
             {/* ⚠ «e-kassam.uz» OLIB TASHLANDI (V85). Elektron chek ham
                 CHEK: mijoz uni QR orqali ochadi va unda begona brend
                 turishi qog'oz chekdagi bilan bir xil xato edi.

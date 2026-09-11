@@ -9,6 +9,7 @@ import { MaskedField } from "../components/ek/EkFields";
 import { phoneInput } from "../lib/ek-input";
 import Receipt from "./Receipt";
 import PaymentReceipt from "./PaymentReceipt";
+import { t } from "../lib/ek-i18n";
 
 /* ══════════════════════════════════════════════════════════════════════════
    MIJOZ KABINETI — do'kon xaridorining sahifasi (V34)
@@ -95,7 +96,7 @@ function JoinScreen({ ref_, code, onDone }) {
       <div className="pt-wrap">
         <div className="pt-card pt-center">
           <i className="fa-solid fa-circle-exclamation pt-icon-bad" aria-hidden="true" />
-          <h2>Havola ishlamadi</h2>
+          <h2>{t("cu.linkDead")}</h2>
           <p className="pt-muted">{error}</p>
         </div>
       </div>
@@ -106,7 +107,7 @@ function JoinScreen({ ref_, code, onDone }) {
     <div className="pt-wrap">
       <div className="pt-card">
         <div className="pt-shop">{shop?.name || "…"}</div>
-        <h1 className="pt-title">Mijozlar kartasi</h1>
+        <h1 className="pt-title">{t("cu.cardTitle")}</h1>
         <p className="pt-muted">
           Ro'yxatdan o'ting — har xaridingizdan ball yig'iladi va cheklaringiz
           shu yerda saqlanadi.
@@ -115,12 +116,12 @@ function JoinScreen({ ref_, code, onDone }) {
         {error && <div className="pt-error" role="alert">{error}</div>}
 
         <form onSubmit={submit} className="pt-form">
-          <label className="pt-label" htmlFor="pt-name">Ismingiz</label>
+          <label className="pt-label" htmlFor="pt-name">{t("cu.yourName")}</label>
           <input id="pt-name" className="pt-input" autoComplete="name"
                  value={form.fullName}
                  onChange={(e) => setForm((p) => ({ ...p, fullName: e.target.value }))} />
 
-          <label className="pt-label" htmlFor="pt-phone">Telefon</label>
+          <label className="pt-label" htmlFor="pt-phone">{t("common.phone")}</label>
           {/* ⚠ `+998` maydon ICHIDA emas, yonida: kod ichida bo'lsa odam
               to'liq raqam yozadi va u abonent raqami bo'lib tushadi
               (landing va kassa formalarida ushlangan xato). */}
@@ -198,20 +199,20 @@ function DebtScreen({ id, sig }) {
       <div className="pt-wrap">
         <div className="pt-card pt-center">
           <i className="fa-solid fa-circle-exclamation pt-icon-bad" aria-hidden="true" />
-          <h2>Ochilmadi</h2>
+          <h2>{t("cu.openFailed")}</h2>
           <p className="pt-muted">{error}</p>
         </div>
       </div>
     );
   }
-  if (!debt) return <div className="pt-wrap"><div className="pt-card pt-center">Yuklanmoqda…</div></div>;
+  if (!debt) return <div className="pt-wrap"><div className="pt-card pt-center">{t("common.loading")}</div></div>;
 
   const answered = debt.state === "CONFIRMED" || debt.state === "REJECTED";
   return (
     <div className="pt-wrap">
       <div className="pt-card pt-center">
         <div className="pt-shop">{debt.shopName}</div>
-        <p className="pt-muted">Sizga nasiya yozildi</p>
+        <p className="pt-muted">{t("cu.debtAdded")}</p>
         <div className="pt-debt-sum">{money(debt.amount)} so'm</div>
         <p className="pt-muted">{dateTime(debt.createdAt)}</p>
 
@@ -226,8 +227,8 @@ function DebtScreen({ id, sig }) {
             {/* ⚠ Tugmalar bir xil o'lchamda: birini kattaroq qilib
                 qo'yish mijozni bir tomonga undardi. */}
             <div className="pt-debt-btns">
-              <button className="pt-btn" disabled={busy} onClick={() => answer(true)}>Ha, oldim</button>
-              <button className="pt-btn pt-btn--ghost" disabled={busy} onClick={() => answer(false)}>Men olmadim</button>
+              <button className="pt-btn" disabled={busy} onClick={() => answer(true)}>{t("cu.debtYes")}</button>
+              <button className="pt-btn pt-btn--ghost" disabled={busy} onClick={() => answer(false)}>{t("cu.debtNo")}</button>
             </div>
             <p className="pt-muted" style={{ fontSize: 13 }}>
               «Men olmadim» qarzni o'chirmaydi — javobingiz do'konga boradi.
@@ -369,9 +370,9 @@ function CabinetScreen({ token, onLogout }) {
       <div className="pt-wrap">
         <div className="pt-card pt-center">
           <i className="fa-solid fa-circle-exclamation pt-icon-bad" aria-hidden="true" />
-          <h2>Karta ochilmadi</h2>
+          <h2>{t("cu.cardFailed")}</h2>
           <p className="pt-muted">{error}</p>
-          <button className="pt-btn" onClick={() => window.location.reload()}>Qayta urinish</button>
+          <button className="pt-btn" onClick={() => window.location.reload()}>{t("common.retry")}</button>
           <button className="pt-btn pt-btn--ghost" onClick={askLogout}>
             Kartani bu qurilmadan o'chirish
           </button>
@@ -380,7 +381,7 @@ function CabinetScreen({ token, onLogout }) {
     );
   }
 
-  if (!me) return <div className="pt-wrap"><div className="pt-card pt-center">Yuklanmoqda…</div></div>;
+  if (!me) return <div className="pt-wrap"><div className="pt-card pt-center">{t("common.loading")}</div></div>;
 
   return (
     <div className="pt-wrap">
@@ -411,9 +412,9 @@ function CabinetScreen({ token, onLogout }) {
               skanerlanmagan kodni ushlab turib «buzuq» deb o'ylardi;
               hisoblagich esa «hozir yangilanadi, kutib turing» deydi. */}
           {otp ? (
-            <p className="pt-muted"><b>{left} s</b> dan keyin yangilanadi · kattalashtirish uchun bosing</p>
+            <p className="pt-muted"><b>{left} s</b> {t("cu.codeRefresh")}</p>
           ) : (
-            <p className="pt-muted">Kattalashtirish uchun kod ustiga bosing</p>
+            <p className="pt-muted">{t("cu.tapToZoom")}</p>
           )}
         </div>
 
@@ -423,7 +424,7 @@ function CabinetScreen({ token, onLogout }) {
         )}
 
         <div className="pt-balance">
-          <span>Ballaringiz</span>
+          <span>{t("cu.yourPoints")}</span>
           <b>{money(me.bonusBalance)}</b>
         </div>
       </div>
@@ -436,7 +437,7 @@ function CabinetScreen({ token, onLogout }) {
           <div className="pt-tg">
             <i className="fa-brands fa-telegram pt-tg__icon" aria-hidden="true" />
             <div>
-              <b>Telegramda xabar oling</b>
+              <b>{t("cu.tgNotify")}</b>
               <p className="pt-muted">
                 Har xariddan keyin yig'ilgan ball va chek havolasi keladi.
               </p>
@@ -451,7 +452,7 @@ function CabinetScreen({ token, onLogout }) {
 
       {/* ── Cheklar lentasi ──────────────────────────────────────────── */}
       <div className="pt-section">
-        <h2 className="pt-h2">Cheklarim</h2>
+        <h2 className="pt-h2">{t("cu.myReceipts")}</h2>
         {receipts.length === 0 && (
           <p className="pt-muted pt-center">
             Hali chek yo'q. Kassada kartangizni ko'rsating — chek shu yerda paydo bo'ladi.
@@ -560,7 +561,7 @@ export default function CustomerPortal() {
     <div className="pt-wrap">
       <div className="pt-card pt-center">
         <i className="fa-solid fa-qrcode pt-icon" aria-hidden="true" />
-        <h2>Karta topilmadi</h2>
+        <h2>{t("cu.cardNotFound")}</h2>
         <p className="pt-muted">
           Do'konda kassadagi QR kodni telefoningiz kamerasi bilan o'qing —
           karta shu yerda paydo bo'ladi.
