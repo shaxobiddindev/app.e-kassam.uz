@@ -12,6 +12,7 @@
 export default {
   "common.save": "Сохранить",
   "common.saving": "Сохранение…",
+  "codeZoom.close": "Нажмите на пустое место, чтобы закрыть",
   "common.saved": "Сохранено",
   "common.cancel": "Отмена",
   "common.delete": "Удалить",

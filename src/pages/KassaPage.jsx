@@ -4317,8 +4317,8 @@ export default function KassaPage({ toast, refreshLowStock }) {
                 data-loading={processing || undefined}
               >
                 {processing
-                  ? <><Spinner /> Bajarilmoqda…</>
-                  : <><i className="fa-solid fa-receipt" aria-hidden="true" /> Sotish va Chek <span className="kbd">F9</span></>}
+                  ? <><Spinner /> {t("kassa.processing")}</>
+                  : <><i className="fa-solid fa-receipt" aria-hidden="true" /> {t("kassa.sellAndPrint")} <span className="kbd">F9</span></>}
               </button>
             </div>
           </div>

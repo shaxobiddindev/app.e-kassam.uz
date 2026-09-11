@@ -15,6 +15,7 @@ export default {
   /* ── Umumiy ─────────────────────────────────────────────────────────── */
   "common.save": "Saqlash",
   "common.saving": "Saqlanmoqda…",
+  "codeZoom.close": "Yopish uchun bo'sh joyga bosing",
   "common.saved": "Saqlandi",
   "common.cancel": "Bekor",
   "common.delete": "O'chirish",

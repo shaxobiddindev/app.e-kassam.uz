@@ -12,6 +12,7 @@
 export default {
   "common.save": "Save",
   "common.saving": "Saving…",
+  "codeZoom.close": "Tap anywhere to close",
   "common.saved": "Saved",
   "common.cancel": "Cancel",
   "common.delete": "Delete",
