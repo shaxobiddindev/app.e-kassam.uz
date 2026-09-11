@@ -21,6 +21,9 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
+    # Brauzerli qorovullar sekin: har biri Chrome ko'taradi. Chegara
+    # ishning haqiqiy uzunligidan zaxira bilan katta.
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -34,13 +37,20 @@ jobs:
       - name: Sinovlar
         run: npm test
 
-      - name: Qurish
-        run: npm run build
-
-      - name: Bandl byudjeti
-        run: node scripts/check-budget.mjs
-
-      - name: A11y (axe)
+      # BARCHA qorovullar shu yerda — qurish ham ular zanjirining
+      # birinchi bandi (`package.json` dagi `check`).
+      #
+      # Ilgari bu yerda UCHTASI turardi: qurish, byudjet, a11y. Qolgan
+      # 24 tasi CI da HECH QACHON ishlamagan — ular vaqt o'tib
+      # `package.json` dagi zanjirga qo'shilgan, CI esa o'sha kungi
+      # holatida qolib ketgan. Ro'yxatni ikki joyda yuritish har doim
+      # shunday tugaydi, shuning uchun endi bitta manba bor.
+      #
+      # Buning narxi allaqachon to'langan: to'lov oynasi oltita ekran
+      # o'lchamida scrol beradigan holatda 1.11.0 relizi ichida chiqib
+      # ketdi. `check-pay` uni ushlagan bo'lardi — u CI da yo'q edi,
+      # xolos. CI yashil turardi.
+      - name: Qurish va qorovullar
         env:
           CHROME_PATH: /usr/bin/google-chrome
-        run: node scripts/check-a11y.mjs
+        run: npm run check

@@ -1676,7 +1676,13 @@ select.form-input { cursor: pointer; }
   font-weight: 900;
   color: var(--fg-on-brand);
   font-family: var(--mono);
-  line-height: 1.2;
+  /* 1.2 EMAS. JetBrains Mono ning harf qutisi 1.2 qatoridan baland va
+     matn o'z qutisidan 2px toshib chiqadi — brauzer buni
+     scrol deb hisoblaydi. Ikki piksel ko'zga ko'rinmaydi, lekin
+     BUTUN to'lov oynasida scrol paydo bo'ladi va do'kon egasining
+     talabi aniq edi: bu oynada scrol bo'lmaydi.
+     Qorovul: scripts/check-pay.mjs, 9-bo'lim. */
+  line-height: 1.3;
 }
 
 .pay-modal-total-qty {
