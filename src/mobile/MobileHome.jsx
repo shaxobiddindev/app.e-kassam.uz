@@ -3,6 +3,7 @@ import { t } from "../lib/ek-i18n";
 import { reportApi, inventoryApi } from "../api";
 import { BranchSelector } from "../components";
 import { money } from "../utils";
+import { asArray } from "../lib/ek-array";
 
 /* Bosh ekran: BITTA savol — «bugun ishlar qanday?».
    Katta raqam (tushum) + uch kichik karta + «e'tibor talab qiladi». */
@@ -17,7 +18,7 @@ export default function MobileHome({ toast, branchId, setBranchId }) {
     Promise.all([
       reportApi.daily(branchId).then((r) => r.data).catch(() => null),
       reportApi.signals(branchId).then((r) => r.data).catch(() => null),
-      inventoryApi.getLow().then((r) => r.data || []).catch(() => []),
+      inventoryApi.getLow().then((r) => asArray(r.data)).catch(() => []),
     ]).then(([d, s, l]) => { setData(d); setSignals(s); setLow(l); })
       .finally(() => setBusy(false));
   }, [branchId]);

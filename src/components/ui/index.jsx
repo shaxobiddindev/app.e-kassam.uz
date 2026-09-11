@@ -13,11 +13,20 @@ import {
 //   kartochka → <SkeletonCards> tugma → <Spinner>
 
 // ─── Empty state ─────────────────────────────────────────────
-export function Empty({ icon = "fa-inbox", text = "Ma'lumot yo'q" }) {
+/**
+ * Bo'sh ro'yxat.
+ *
+ * ⚠ `action` — IXTIYORIY tugma. U «filtr hech narsa topmadi» holati
+ * uchun kerak: bunday paytda ekranda chiqish yo'li ko'rinishi kerak,
+ * aks holda foydalanuvchi ro'yxat bo'sh deb o'ylab, filtrni
+ * tozalash kerakligini bilmasdi.
+ */
+export function Empty({ icon = "fa-inbox", text = "Ma'lumot yo'q", action = null }) {
   return (
     <div className="empty">
       <i className={`fa-solid ${icon}`} />
       <p>{text}</p>
+      {action}
     </div>
   );
 }
@@ -62,7 +71,16 @@ export function FormGroup({ label, children }) {
  * u bilan bo'yash barcha mavjud kartochkalarning ko'rinishini o'zgartirib
  * yuborardi.
  */
-export function StatCard({ label, value, icon, bg, color, change, hint, valueColor }) {
+/**
+ * `sub` — qiymat ostidagi qo'shimcha qator (V53).
+ *
+ * ⚠ `change` dan farqi: `change` o'sish/tushishni ko'rsatadi va yuqoriga
+ * qaragan strelka bilan keladi. `sub` esa shunchaki IKKINCHI o'lchov:
+ * «500 000 so'm zarar» yonida «12 ta chek» — bular butunlay boshqa
+ * hodisani anglatadi (bitta katta chekmi yoki o'nlab maydami) va
+ * ularsiz raqamdan xulosa chiqarib bo'lmaydi.
+ */
+export function StatCard({ label, value, icon, bg, color, change, hint, valueColor, sub }) {
   return (
     <div className="stat-card">
       <div className="stat-icon" style={{ background: bg, color }}>
@@ -78,6 +96,7 @@ export function StatCard({ label, value, icon, bg, color, change, hint, valueCol
             </span>
           )}
         </div>
+        {sub && <div className="stat-sub">{sub}</div>}
         {change && (
           <div className="stat-change">
             <i className="fa-solid fa-caret-up" /> {change}
@@ -89,16 +108,47 @@ export function StatCard({ label, value, icon, bg, color, change, hint, valueCol
 }
 
 // ─── Search Bar ──────────────────────────────────────────────
-export function SearchBar({ value, onChange, placeholder = "Qidirish...", style, ...rest }) {
+/**
+ * @param code  `true` bo'lsa maydon RAQAM REJIMINI ham biladi (`*425`).
+ *
+ * ⚠ REJIM SHU YERDA, sahifada emas. Kassada bu mantiq qo'lda yozilgan
+ * edi; xuddi shuni har bir sahifaga ko'chirish — ko'chirmaning
+ * ajralib ketishini KUTIB O'TIRISH degani (bunday ajralish
+ * `ek-input.js` va `ek-format.js` da allaqachon bo'lgan). Shuning
+ * uchun qoida bitta joyda: yulduzchadan keyin faqat raqam qoladi va
+ * rejim ko'rinib turadi.
+ */
+export function SearchBar({ value, onChange, placeholder = "Qidirish...", style,
+                            code = false, codeLabel = "Raqam", ...rest }) {
+  const codeMode = code && String(value ?? "").startsWith("*");
+
+  const handle = (v) => {
+    /* Yulduzchadan keyin faqat raqam. Boshqasi jimgina tashlanadi:
+       xato belgi uchun foydalanuvchini to'xtatib turishning ma'nosi yo'q. */
+    onChange(code && v.startsWith("*")
+      ? "*" + v.slice(1).replace(/\D/g, "").slice(0, 12)
+      : v);
+  };
+
   return (
     <div className="search-bar" style={style}>
       <i className="fa-solid fa-magnifying-glass" />
       <input
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => handle(e.target.value)}
         placeholder={placeholder}
+        inputMode={codeMode ? "numeric" : undefined}
         {...rest}
       />
+      {/* ⚠ REJIM KO'RINIB TURSIN — kassadagi bilan bir xil sabab:
+          yulduzcha qo'yganini sezmagan odam «nega nom bo'yicha
+          topilmayapti» deb o'ylardi. Belgi MATN bilan, rang yolg'iz
+          signal bo'lolmaydi. */}
+      {codeMode && (
+        <span className="search-bar__mode">
+          <i className="fa-solid fa-hashtag" aria-hidden="true" /> {codeLabel}
+        </span>
+      )}
       {/* Tozalash — monoblokda `Ctrl+A`+`Delete` qilib bo'lmaydi.
           Bo'sh maydonda ko'rsatilmaydi: bosiladigan, lekin hech nima
           qilmaydigan tugma ishonchni yo'qotadi. */}

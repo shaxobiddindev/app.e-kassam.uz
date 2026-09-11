@@ -1,0 +1,598 @@
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { t } from "../lib/ek-i18n";
+import { labelApi, productApi } from "../api";
+import { asArray } from "../lib/ek-array";
+import { Empty, SearchBar } from "../components/ui";
+import Select from "../components/ek/Select";
+import { SkeletonList } from "../components/ek/Loading";
+import { useLoading } from "../lib/use-loading";
+import LabelPreview from "../components/ek/LabelPreview";
+import LabelTemplateEditor from "../components/ek/LabelTemplateEditor";
+import LabelQueue from "../components/ek/LabelQueue";
+import { calibrationDoc } from "../lib/ek-label-calibrate";
+import LabelSetupWizard from "../components/ek/LabelSetupWizard";
+import LabelGallery from "../components/ek/LabelGallery";
+import { printHtml } from "../lib/ek-receipt-pdf";
+import Modal from "../components/Modal";
+import { useConfirm } from "../context/ConfirmProvider";
+import { productCode } from "../lib/ek-code";
+import { rankItems } from "../lib/ek-search";
+import { money } from "../lib/ek-format";
+import { blocking, validateOutput } from "../lib/ek-label-validate";
+import { templateName } from "../lib/ek-label-name";
+
+/* ══════════════════════════════════════════════════════════════════════════
+   YORLIQLAR — KO'RISH VA NAVBAT (F3 + F5)
+
+   Ikki bo'lim: KO'RISH (shablon, tovar, haqiqiy o'lcham, sig'maslik)
+   va NAVBAT (kun bo'yi to'ldiriladigan, saqlanadigan, uzilsa
+   davom etadigan chop etish ro'yxati).
+
+   ⚠ KO'RISHDA HAQIQIY TOVAR MA'LUMOTI. «Lorem ipsum» bilan hamma
+   narsa chiroyli sig'adi; muammo esa aynan haqiqiy nomlarda chiqadi.
+   Shuning uchun standart — birinchi tovar, va alohida tugma
+   «eng uzun nomli tovarni ko'rsat»: sig'maslik muammosi aynan
+   shunda ko'rinadi.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+const KINDS = [
+  { value: "SHELF",   labelKey: "lbl.kindShelf" },
+  { value: "STICKER", labelKey: "lbl.kindSticker" },
+];
+
+/** Oflayn kesh — shablon ma'lumot, kamdan-kam o'zgaradi. */
+const cacheKey = (kind) => `ek_lbl_tpl_${kind}`;
+const readCache = (kind) => {
+  try { return JSON.parse(localStorage.getItem(cacheKey(kind)) || "[]") || []; }
+  catch { return []; }
+};
+
+export default function LabelsPage({ toast }) {
+  const confirm = useConfirm();
+  /* ⚠ MANZILDAN O'QILADI: bosh sahifadagi belgi «/labels?tab=stale»
+     ga olib keladi va o'sha bo'lim DARHOL ochilishi kerak. Belgini
+     bosgan odam yana bir marta bo'lim tanlashi — belgining ma'nosini
+     yo'qotardi. */
+  const [tab, setTab] = useState(() => {
+    const want = new URLSearchParams(window.location.search).get("tab");
+    return want === "queue" || want === "stale" ? want : "preview";
+  });
+  const [jobs, setJobs]           = useState([]);
+  const [jobId, setJobId]         = useState(null);
+  const [job, setJob]             = useState(null);
+  const [categories, setCategories] = useState([]);
+  const [stale, setStale] = useState(null);   // null = hali so'ralmadi
+  const [setup, setSetup] = useState(null);  // null | { kind }
+  const [media, setMedia] = useState(null);  // joriy tur uchun tanlangan qog'oz
+  const [mediaList, setMediaList] = useState([]); // barcha qog'oz profillari
+  const [printer, setPrinter] = useState(null);  // joriy tur uchun tanlangan printer
+  const [zoomed, setZoomed] = useState(null); // katta ko'rish oynasi
+  const [editing, setEditing]     = useState(null); // null | {template|null}
+  const [saving, setSaving]       = useState(false);
+  const [kind, setKind]           = useState("SHELF");
+  const [templates, setTemplates] = useState([]);
+  const [templateId, setTemplateId] = useState(null);
+  const [products, setProducts]   = useState([]);
+  const [productId, setProductId] = useState(null);
+  const [search, setSearch]       = useState("");
+  const [loading, setLoading]     = useState(true);
+  const busy = useLoading(loading);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [tRes, pRes, cRes] = await Promise.all([
+        labelApi.templates(kind),
+        productApi.getAll(),
+        productApi.getCategories(),
+      ]);
+      setCategories(asArray(cRes.data));
+
+      /* ⚠ QOG'OZ TANLOVI GALEREYA UCHUN KERAK: qaysi dizayn mos
+         kelmasligini faqat shundan bilish mumkin. Jimgina yiqiladi —
+         qog'oz tanlanmagan do'konda galereya baribir ishlaydi. */
+      try {
+        const mine = asArray((await labelApi.outputList()).data)
+          .find((x) => x.kind === kind);
+        const list = asArray((await labelApi.mediaList()).data);
+        setMediaList(list);
+        setMedia(list.find((m) => m.id === mine?.mediaProfileId) || null);
+        const ps = asArray((await labelApi.printerList()).data);
+        setPrinter(ps.find((x) => x.id === mine?.printerProfileId) || null);
+      } catch { setMedia(null); setMediaList([]); setPrinter(null); }
+      const list = asArray(tRes.data);
+      setTemplates(list);
+      /* ⚠ GALEREYA OFLAYN HAM ISHLASIN: shablon — ma'lumot, va u
+         kamdan-kam o'zgaradi. Internet yo'qolganda do'konchi hech
+         bo'lmasa nima borligini ko'rsin. */
+      try { localStorage.setItem(cacheKey(kind), JSON.stringify(list)); } catch { /* to'la */ }
+      setTemplateId((cur) => (list.some((x) => x.id === cur) ? cur : list[0]?.id ?? null));
+      const prods = asArray(pRes.data);
+      setProducts(prods);
+      setProductId((cur) => (prods.some((p) => p.id === cur) ? cur : prods[0]?.id ?? null));
+    } catch (err) {
+      /* ⚠ OFLAYNDA KESHDAN: xato ko'rsatish o'rniga oxirgi
+         saqlangan ro'yxat chiqadi va buni AYTIB qo'yiladi —
+         do'konchi eski ro'yxatni yangisi deb o'ylamasin. */
+      const cached = readCache(kind);
+      if (cached.length) {
+        setTemplates(cached);
+        setTemplateId((cur) => (cached.some((x) => x.id === cur) ? cur : cached[0]?.id ?? null));
+        toast.error(t("lbl.offlineList"));
+      } else {
+        toast.error(err.message);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [kind, toast]);
+
+  useEffect(() => { load(); }, [load]);
+
+  /* ⚠ NAVBAT ALOHIDA YUKLANADI: shablon turi almashtirilganda
+     (javon ↔ stiker) navbat qayta o'qilishi shart emas — u
+     shablonga bog'liq emas. */
+  const loadJobs = useCallback(async () => {
+    try {
+      const list = asArray((await labelApi.jobs()).data);
+      setJobs(list);
+      setJobId((cur) => (list.some((x) => x.id === cur) ? cur : list[0]?.id ?? null));
+    } catch (err) { toast.error(err.message); }
+  }, [toast]);
+
+  useEffect(() => { if (tab === "queue") loadJobs(); }, [tab, loadJobs]);
+
+  const loadStale = useCallback(async () => {
+    try { setStale((await labelApi.stale(200)).data); }
+    catch (err) { toast.error(err.message); }
+  }, [toast]);
+
+  useEffect(() => { if (tab === "stale") loadStale(); }, [tab, loadStale]);
+
+  /**
+   * Hammasini bir bosishda navbatga.
+   *
+   * ⚠ NAVBAT SAHIFASIGA O'TILADI. «Qo'shildi» degan xabar bilan
+   * cheklanish do'konchini «endi qayerga bosay?» degan holatda
+   * qoldirardi — ish esa hali qilinmagan: yorliq chiqarilmagan.
+   */
+  const queueStale = async () => {
+    try {
+      await labelApi.queueStale();
+      toast.success(t("common.saved"));
+      await loadJobs();
+      await loadStale();
+      setTab("queue");
+    } catch (err) { toast.error(err.message); }
+  };
+  useEffect(() => { setJob(jobs.find((x) => x.id === jobId) || null); }, [jobs, jobId]);
+
+  const newJob = async () => {
+    try {
+      const r = await labelApi.newJob({ templateId, startPosition: 1 });
+      await loadJobs();
+      setJobId(r.data.id);
+    } catch (err) { toast.error(err.message); }
+  };
+
+  const removeJob = async (id) => {
+    const okToDelete = await confirm({
+      title: t("lbl.deleteJobConfirm"), type: "danger",
+    });
+    if (!okToDelete) return;
+    try {
+      await labelApi.dropJob(id);
+      toast.success(t("common.deleted"));
+      setJobId(null);
+      loadJobs();
+    } catch (err) { toast.error(err.message); }
+  };
+
+  const template = templates.find((x) => x.id === templateId) || null;
+
+  /* ⚠ TANLANGAN DIZAYN DO'KONNING QOG'OZIGA CHIQADIMI (G7).
+     O'lchandi: tayyor profillar bilan 112 qog'oz+printer
+     juftligidan 21 tasi fizik jihatdan chiqmaydi. Bu yerda
+     buni CHOP ETISHDAN OLDIN aytish — yagona arzon payt. */
+  const outIssues = useMemo(
+    () => blocking(validateOutput(media, printer, template)),
+    [media, printer, template]);
+  const product  = products.find((p) => p.id === productId) || null;
+
+  /* ⚠ ENG UZUN NOM — sig'maslik aynan shunda chiqadi. */
+  const longest = useMemo(() => {
+    let best = null;
+    for (const p of products) {
+      if (!best || String(p.name || "").length > String(best.name || "").length) best = p;
+    }
+    return best;
+  }, [products]);
+
+  const save = async (body) => {
+    setSaving(true);
+    try {
+      if (editing?.template?.id) await labelApi.update(editing.template.id, body);
+      else await labelApi.create(body);
+      toast.success(t("common.saved"));
+      setEditing(null);
+      load();
+    } catch (err) {
+      /* ⚠ Server xatosi TO'LIQ ko'rsatiladi: u aynan qaysi maydon va
+         necha mm ekanini aytadi. Uni «saqlanmadi» ga almashtirish
+         do'konchini taxmin qilishga majbur qilardi. */
+      toast.error(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const copyTemplate = async (id) => {
+    try {
+      const r = await labelApi.copy(id);
+      toast.success(t("common.saved"));
+      await load();
+      setEditing({ template: r.data });
+    } catch (err) { toast.error(err.message); }
+  };
+
+  const removeTemplate = async (tpl) => {
+    const okToDelete = await confirm({
+      title: t("lbl.deleteConfirm"), message: templateName(tpl), type: "danger",
+    });
+    if (!okToDelete) return;
+    try {
+      await labelApi.remove(tpl.id);
+      toast.success(t("common.deleted"));
+      load();
+    } catch (err) { toast.error(err.message); }
+  };
+
+  /**
+   * SINOV VARAG'I (F7).
+   *
+   * ⚠ SAHIFA SARLAVHASIDA, navbat ichida emas. U aynan «yorliqlarim
+   * noto'g'ri o'lchamda chiqyapti» deganda kerak bo'ladi, va o'sha
+   * paytda navbat umuman bo'lmasligi mumkin. Tugma navbat ichida
+   * tursa, muammoga duch kelgan odam uni topa olmasdi.
+   */
+  const calibrate = async () => {
+    try {
+      const doc = calibrationDoc({
+        dpi: Number(template?.dpi) || 203,
+        labels: {
+          title: t("lbl.calTitle"),
+          subtitle: t("lbl.calSubtitle"),
+          hint: t("lbl.calHint"),
+          dpi: t("lbl.calDpi"),
+        },
+      });
+      await printHtml(doc.html, t("lbl.calTitle"), doc.css, "width=980,height=800");
+    } catch (err) { toast.error(err.message); }
+  };
+
+  const options = useMemo(() => {
+    const list = search ? rankItems(products, search, {
+      codes: (p) => [p.barcode, productCode(p)],
+      texts: (p) => [p.name],
+    }) : products;
+    return list.slice(0, 200).map((p) => ({
+      value: p.id, label: p.name, hint: productCode(p) || undefined,
+    }));
+  }, [products, search]);
+
+  return (
+    <div>
+      <div className="page-header" style={{ marginBottom: 18 }}>
+        <h2 className="page-title">{t("lbl.title")}</h2>
+        <div className="cat-tabs" role="group">
+          <button type="button" className={`cat-tab ${tab === "preview" ? "active" : ""}`}
+                  aria-pressed={tab === "preview"} onClick={() => setTab("preview")}>
+            <i className="fa-solid fa-eye" /> {t("lbl.tabPreview")}
+          </button>
+          <button type="button" className={`cat-tab ${tab === "queue" ? "active" : ""}`}
+                  aria-pressed={tab === "queue"} onClick={() => setTab("queue")}>
+            <i className="fa-solid fa-list-check" /> {t("lbl.tabQueue")}
+          </button>
+          {/* ⚠ SON TUGMADA: «qayta chop etish kerak» bo'limiga kirmasdan
+              turib ham ish borligi ko'rinsin. */}
+          <button type="button" className={`cat-tab ${tab === "stale" ? "active" : ""}`}
+                  aria-pressed={tab === "stale"} onClick={() => setTab("stale")}>
+            <i className="fa-solid fa-tag" /> {t("lbl.tabStale")}
+            {stale?.count > 0 && (
+              <span className="alr__chip" data-tone="warning"
+                    style={{ marginInlineStart: 6 }}>{stale.count}</span>
+            )}
+          </button>
+        </div>
+        {/* ⚠ HAR BO'LIMDA KO'RINADI: chop etish o'lchami muammosi
+            navbat bor-yo'qligiga bog'liq emas. */}
+        <button type="button" className="btn btn-outline btn-sm" onClick={calibrate}>
+          <i className="fa-solid fa-ruler" /> {t("lbl.calPrint")}
+        </button>
+        {/* ⚠ SEHRGAR SAHIFA SARLAVHASIDA: «yorliq qiyshiq chiqyapti»
+            deganda birinchi qidiriladigan joy shu, sozlamalarning
+            ichi emas. */}
+        <button type="button" className="btn btn-outline btn-sm"
+                onClick={() => setSetup({ kind })}>
+          <i className="fa-solid fa-sliders" /> {t("lbl.setupOpen")}
+        </button>
+      </div>
+
+      {tab === "stale" && (
+        <div className="card">
+          <div className="card-header">
+            <span className="card-title">
+              <i className="fa-solid fa-tag text-blue" /> {t("lbl.tabStale")}
+            </span>
+            {stale?.count > 0 && (
+              <button type="button" className="btn btn-primary btn-sm" onClick={queueStale}>
+                <i className="fa-solid fa-list-check" />
+                {" "}{t("lbl.queueAllStale", { n: stale.count })}
+              </button>
+            )}
+          </div>
+
+          {/* ⚠ SABABI YOZILADI, ro'yxatning o'zi yetarli emas: nega bu
+              tovarlar bu yerda turibdi va nima qilish kerakligi
+              ko'rinib tursin. */}
+          <p className="set-card__hint">{t("lbl.staleHint")}</p>
+
+          {!stale ? <SkeletonList rows={4} avatar={false} />
+            : stale.count === 0 ? (
+              <Empty icon="fa-circle-check" text={t("lbl.staleNone")} />
+            ) : (
+              <>
+                <div className="table-wrap">
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th>{t("products.name")}</th>
+                        <th className="ek-num">{t("lbl.code")}</th>
+                        <th className="ek-num">{t("lbl.onShelf")}</th>
+                        <th className="ek-num">{t("lbl.atTill")}</th>
+                        <th className="ek-num">{t("lbl.diff")}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {stale.items.map((it) => (
+                        <tr key={it.id}>
+                          <td>{it.name}</td>
+                          <td className="ek-num">{it.code || "—"}</td>
+                          {/* ⚠ JAVONDAGI narx chizib tashlanadi: u endi
+                              to'g'ri emas va buni bir qarashda ko'rish kerak. */}
+                          <td className="ek-num"><s>{money(it.printedPrice, { withUnit: true })}</s></td>
+                          <td className="ek-num"><b>{money(it.salePrice, { withUnit: true })}</b></td>
+                          <td className="ek-num" style={{
+                            color: Number(it.diff) > 0 ? "var(--fg-danger)" : "var(--fg-success)",
+                          }}>
+                            {Number(it.diff) > 0 ? "+" : ""}{money(it.diff, { withUnit: true })}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {stale.count > stale.shown && (
+                  <div className="form-hint">
+                    {t("lbl.staleMore", { n: stale.count - stale.shown })}
+                  </div>
+                )}
+              </>
+            )}
+        </div>
+      )}
+
+      {tab === "queue" && (
+        <div className="card">
+          <div className="card-header">
+            <span className="card-title">
+              <i className="fa-solid fa-list-check text-blue" /> {t("lbl.tabQueue")}
+            </span>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              {jobs.length > 0 && (
+                <Select
+                  variant="field" ariaLabel={t("lbl.job")}
+                  value={jobId} onChange={setJobId}
+                  options={jobs.map((j) => ({
+                    value: j.id,
+                    label: t(`lbl.status.${j.status}`) + " · " + t("lbl.jobN", { id: j.id }),
+                    hint: String(j.remainingLabels),
+                  }))}
+                />
+              )}
+              <button type="button" className="btn btn-primary btn-sm" onClick={newJob}>
+                <i className="fa-solid fa-plus" /> {t("lbl.newJob")}
+              </button>
+              {job && (
+                <button type="button" className="btn-icon danger"
+                        aria-label={t("common.delete")}
+                        onClick={() => removeJob(job.id)}>
+                  <i className="fa-solid fa-trash" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {job ? (
+            <LabelQueue
+              job={job} templates={templates} products={products}
+              categories={categories} toast={toast}
+              onChange={(next) => {
+                if (!next) { loadJobs(); return; }
+                setJob(next);
+                setJobs((list) => list.map((x) => (x.id === next.id ? next : x)));
+              }}
+            />
+          ) : (
+            <Empty icon="fa-list-check" text={t("lbl.noJob")} />
+          )}
+        </div>
+      )}
+
+      {tab === "preview" && (
+      <div className="card">
+        <div className="card-header">
+          <span className="card-title">
+            <i className="fa-solid fa-tag text-blue" /> {t("lbl.preview")}
+          </span>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {KINDS.map((k) => (
+              <button
+                key={k.value}
+                type="button"
+                className={`btn btn-sm ${kind === k.value ? "btn-primary" : "btn-outline"}`}
+                onClick={() => setKind(k.value)}
+              >
+                {t(k.labelKey)}
+              </button>
+            ))}
+            <button type="button" className="btn btn-primary btn-sm"
+                    onClick={() => setEditing({ template: null })}>
+              <i className="fa-solid fa-plus" /> {t("lbl.newTemplate")}
+            </button>
+          </div>
+        </div>
+
+        {busy ? <SkeletonList rows={4} avatar={false} /> : templates.length === 0 ? (
+          <Empty icon="fa-tag" text={t("lbl.noTemplates")} />
+        ) : (
+          <div className="lbl-layout">
+            <div className="lbl-side">
+              <label className="form-label">{t("lbl.product")}</label>
+              <SearchBar value={search} onChange={setSearch}
+                         placeholder={t("products.search")} />
+              <div style={{ marginTop: 6 }}>
+                <Select
+                  block variant="field" ariaLabel={t("lbl.product")}
+                  value={productId} onChange={setProductId} options={options}
+                />
+              </div>
+
+              {/* ⚠ TIZIM SHABLONIDA «tahrirlash» KO'RSATILMAYDI — bosib
+                  bo'lmaydigan tugma o'rniga sababi va chiqish yo'li. */}
+              {template && (
+                <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
+                  {template.system ? (
+                    <button type="button" className="btn btn-outline btn-sm"
+                            onClick={() => copyTemplate(template.id)}>
+                      <i className="fa-solid fa-copy" /> {t("lbl.copyEdit")}
+                    </button>
+                  ) : (
+                    <>
+                      <button type="button" className="btn btn-outline btn-sm"
+                              onClick={() => setEditing({ template })}>
+                        <i className="fa-solid fa-pen" /> {t("lbl.edit")}
+                      </button>
+                      <button type="button" className="btn-icon danger"
+                              aria-label={t("common.delete")}
+                              onClick={() => removeTemplate(template)}>
+                        <i className="fa-solid fa-trash" />
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
+              {template?.system && (
+                <div className="form-hint">{t("lbl.systemReadonly")}</div>
+              )}
+
+              {/* ⚠ Sig'maslik muammosi aynan eng uzun nomda chiqadi. */}
+              {longest && (
+                <button type="button" className="btn btn-outline btn-sm"
+                        style={{ marginTop: 10, width: "100%" }}
+                        onClick={() => setProductId(longest.id)}>
+                  <i className="fa-solid fa-text-width" /> {t("lbl.showLongest")}
+                </button>
+              )}
+            </div>
+
+            {/* ⚠ QOG'OZGA CHIQMASA — SABABI SHU YERDA, ko'rish
+                oynasining TEPASIDA: pastda turgan ogohlantirishni
+                do'konchi chop etib bo'lgandan keyin ko'rardi. */}
+            {outIssues.length > 0 && (
+              <ul className="lbl-warn lbl-warn--bad">
+                {outIssues.map((e, i) => (
+                  <li key={i}>
+                    <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />
+                    <span>{e.text}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <div className="lbl-main">
+              {product ? (
+                <LabelPreview template={template} product={product} />
+              ) : (
+                <Empty icon="fa-box-open" text={t("lbl.noProducts")} />
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ══════════════════════════════════════════════════════════
+            DIZAYN GALEREYASI (G5)
+
+            ⚠ «DIZAYNLAR KO'RINMAYAPTI» AYNAN SHU YERDA TUGAYDI.
+            Ilgari dizaynlar faqat ochiladigan ro'yxatda, faqat nom
+            bo'lib turardi: 15 tasini ko'rish uchun 15 marta tanlash
+            kerak edi. Endi hammasi bir ekranda va har kartochkadagi
+            rasm — HAQIQIY renderer chizgani.
+            ══════════════════════════════════════════════════════════ */}
+        {!busy && templates.length > 0 && (
+          <>
+            <div className="card-header" style={{ borderTop: "1px solid var(--border)" }}>
+              <span className="card-title">
+                <i className="fa-solid fa-images text-blue" /> {t("lbl.gallery")}
+              </span>
+            </div>
+            <LabelGallery
+              templates={templates} product={product} media={media}
+              selectedId={templateId}
+              onPick={(tpl) => setTemplateId(tpl.id)}
+              onOpen={(tpl) => { setTemplateId(tpl.id); setZoomed(tpl); }}
+            />
+          </>
+        )}
+      </div>
+      )}
+
+      {/* Katta ko'rish oynasi — haqiqiy o'lchamda, ekran kalibrlash bilan. */}
+      {zoomed && product && (
+        <Modal title={templateName(zoomed)} onClose={() => setZoomed(null)} maxWidth={860}>
+          <LabelPreview template={zoomed} product={product} />
+          <div style={{ marginTop: 12 }}>
+            <button type="button" className="btn btn-primary"
+                    onClick={() => { setTemplateId(zoomed.id); setZoomed(null); }}>
+              <i className="fa-solid fa-check" /> {t("lbl.pickThis")}
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {setup && (
+        <LabelSetupWizard
+          kind={setup.kind} template={template} product={product}
+          toast={toast} onClose={() => setSetup(null)} onSaved={load}
+        />
+      )}
+
+      {editing && (
+        <Modal
+          title={editing.template ? t("lbl.editTemplate") : t("lbl.newTemplate")}
+          onClose={() => setEditing(null)}
+          maxWidth={1040}
+        >
+          <LabelTemplateEditor
+            template={editing.template}
+            media={media} mediaList={mediaList}
+            product={product}
+            saving={saving}
+            onSave={save}
+            onCancel={() => setEditing(null)}
+          />
+        </Modal>
+      )}
+    </div>
+  );
+}

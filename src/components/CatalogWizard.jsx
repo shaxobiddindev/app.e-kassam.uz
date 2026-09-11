@@ -5,6 +5,7 @@ import { BUSINESS_TYPE, businessType as btEntry } from "../lib/ek-labels";
 import Modal from "./Modal";
 import { Spinner } from "./ek/Loading";
 import { NumField } from "./ek/EkFields";
+import { asArray } from "../lib/ek-array";
 
 /* ══════════════════════════════════════════════════════════════════════════
    Tayyor katalog ustasi.
@@ -34,7 +35,7 @@ export default function CatalogWizard({ onClose, onDone, toast }) {
 
   useEffect(() => {
     catalogApi.templates()
-      .then((r) => setTemplates(r.data || []))
+      .then((r) => setTemplates(asArray(r.data)))
       .catch((e) => toast.error(e.message));
   }, []);
 

@@ -8,7 +8,7 @@
    bu yerdagi tekshiruv faqat ortiqcha tugmalarni yashiradi.
    ══════════════════════════════════════════════════════════════════════════ */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { t } from "../lib/ek-i18n";
 import { securityApi } from "../api";
@@ -20,9 +20,13 @@ import { useBadge } from "../context/BadgeProvider";
 import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
 import { roleSet } from "../lib/ek-roles";
+import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
 import { printBadge } from "../lib/ek-hardware";
+import { printHtml } from "../lib/ek-receipt-pdf";
+import BadgeCard from "../components/BadgeCard";
 import { isDesktop } from "../lib/ek-desktop";
 import { useSuspiciousCount } from "../hooks/useSuspiciousCount";
+import { asArray } from "../lib/ek-array";
 
 const TABS = ["badges", "log", "policies", "shifts", "billing"];
 
@@ -81,13 +85,13 @@ export default function SecurityPage({ toast }) {
         // Ro'yxat TO'LIQ /security/badges dan: shopApi.getUsers joriy
         // foydalanuvchini chiqarib tashlaydi, ega esa O'ZIGA ham bajik
         // chiqarishi kerak (MANAGER tasdiqlarda ega bajigi skanerlanadi).
-        setBadges((await securityApi.badges()).data || []);
+        setBadges(asArray((await securityApi.badges()).data));
       } else if (tab === "log") {
-        setLog((await securityApi.log(onlySuspicious)).data || []);
+        setLog(asArray((await securityApi.log(onlySuspicious)).data));
       } else if (tab === "policies" && isOwner) {
-        setPolicies((await securityApi.policies()).data || []);
+        setPolicies(asArray((await securityApi.policies()).data));
       } else if (tab === "shifts") {
-        setShifts((await securityApi.openShifts()).data || []);
+        setShifts(asArray((await securityApi.openShifts()).data));
       } else if (tab === "billing" && isOwner) {
         setBilling((await securityApi.billing()).data || null);
       }
@@ -99,6 +103,9 @@ export default function SecurityPage({ toast }) {
   }, [tab, onlySuspicious, isOwner]);
 
   useEffect(() => { load(); }, [load]);
+
+  /* Faylga saqlashda ekrandagi kartochkaning O'ZI nusxalanadi. */
+  const badgeRef = useRef(null);
 
   /* ── Bajik chiqarish ── */
   const handleIssue = async (u) => {
@@ -128,6 +135,39 @@ export default function SecurityPage({ toast }) {
       await printBadge({ ...issued, shopName: user?.shopName });
       toast.success(t("badge.printed"));
       setIssued(null);      // sir holatdan darhol o'chadi
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
+
+  /**
+   * BAJIKNI FAYLGA SAQLASH (V110).
+   *
+   * Do'kon egasi: «har doim ham printer bo'lmasligi mumkin».
+   *
+   * ⚠ EKRANDAGI KARTOCHKANING O'ZI ketadi (`outerHTML`), qayta
+   * yig'ilmaydi: shunda qog'ozdagi narsa ekranda ko'ringan narsaning
+   * AYNAN o'zi bo'ladi. Chek PDF si ham xuddi shu yo'ldan boradi.
+   *
+   * ⚠ Uslub BERILMAYDI (`""`): kartochka o'z uslublarini ichida olib
+   * yuradi (`BadgeCard` izohi). Ikkinchi jadval qo'shish V109 dagi
+   * xatoni takrorlash bo'lardi.
+   *
+   * ⚠ Oyna KENGROQ: chek 420px tasmada chiqadi, bajik esa kartochka —
+   * tor oynada u qirqilib qolardi.
+   *
+   * ⚠ Sir saqlangandan KEYIN ham holatda qoladi: brauzer «saqlash»
+   * oynasini bekor qilishi mumkin va o'shanda kartochka yo'q bo'lib
+   * ketsa, bajik butunlay yo'qolardi — uni qaytadan chiqarish esa
+   * eskisini bekor qiladi. Yopishni foydalanuvchi O'ZI tanlaydi.
+   */
+  const handleSaveFile = async () => {
+    try {
+      await printHtml(
+        badgeRef.current?.outerHTML || "",
+        `${t("badge.printTitle")} — ${issued.fullName || issued.username}`,
+        "", "width=520,height=760");
+      toast.success(t("badge.saved"));
     } catch (err) {
       toast.error(err.message);
     }
@@ -176,6 +216,25 @@ export default function SecurityPage({ toast }) {
   };
 
   const visibleTabs = visibleTabsFor(isOwner);
+
+  /* ══ USTUNLAR BO'YICHA FILTR (V68) — bajik jurnali ════════════════
+     ⚠ «Shubhali» tepadagi belgi bilan SERVERDAN kesiladi. Bu yerdagi
+     filtr esa kelgan sahifa ustida ishlaydi va boshqa savollarga
+     javob beradi: «falon kassirning bajigi bilan kim ish qilgan?»
+     — aynan shu ikki ustunni (bajik egasi ↔ seansdagi odam)
+     taqqoslash kerak bo'ladi. */
+  const LOG_COLS = useMemo(() => [
+    { key: "when",  label: t("inv.histWhen"),     type: "date", get: (c) => c.createdAt },
+    { key: "act",   label: t("sec.action"),       type: "enum",
+      options: Object.keys(ACTION_BADGE).map((k) => ({ value: k, label: t(`act.${k}`) })),
+      get: (c) => c.action },
+    { key: "badge", label: t("sec.badgeUser"),    type: "text", get: (c) => c.badgeUserName },
+    { key: "sess",  label: t("sec.sessionUser"),  type: "text", get: (c) => c.sessionUserName },
+    { key: "note",  label: t("sec.detail"),       type: "text",
+      get: (c) => `${c.suspicionReason || ""} ${c.note || ""}` },
+  ], []);
+  const logFlt = useDataFilter(LOG_COLS, "sec-log");
+  const shownLog = logFlt.apply(log);
 
   return (
     <div>
@@ -261,21 +320,24 @@ export default function SecurityPage({ toast }) {
                              onChange={(e) => setOnlySuspicious(e.target.checked)} />
                       <span style={{ fontSize: 13, fontWeight: 600 }}>{t("sec.onlySuspicious")}</span>
                     </label>
+                    <span style={{ marginLeft: 12 }}>
+                      <DataFilter cols={LOG_COLS} flt={logFlt} />
+                    </span>
                   </div>
                   {log.length === 0 ? <Empty text={t("sec.logEmpty")} /> : (
                     <table className="table">
                       <thead>
                         <tr>
-                          <th>{t("inv.histWhen")}</th>
-                          <th>{t("sec.action")}</th>
-                          <th>{t("sec.badgeUser")}</th>
-                          <th>{t("sec.sessionUser")}</th>
-                          <th>{t("sec.detail")}</th>
+                          <SortTh flt={logFlt} col="when">{t("inv.histWhen")}</SortTh>
+                          <SortTh flt={logFlt} col="act">{t("sec.action")}</SortTh>
+                          <SortTh flt={logFlt} col="badge">{t("sec.badgeUser")}</SortTh>
+                          <SortTh flt={logFlt} col="sess">{t("sec.sessionUser")}</SortTh>
+                          <SortTh flt={logFlt} col="note">{t("sec.detail")}</SortTh>
                           <th className="text-end">{t("common.actions")}</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {log.map((c) => (
+                        {shownLog.map((c) => (
                           <tr key={c.id} style={c.suspicious && !c.acknowledgedAt
                             ? { background: "rgba(239,68,68,0.07)" } : undefined}>
                             <td className="mono" style={{ whiteSpace: "nowrap" }}>{fmt(c.createdAt)}</td>
@@ -419,6 +481,15 @@ export default function SecurityPage({ toast }) {
               <button className="btn btn-outline btn-sm" onClick={() => setIssued(null)}>
                 {t("common.close")}
               </button>
+              {/* ⚠ FAYLGA SAQLASH HAR JOYDA ISHLAYDI (V110) va shuning
+                  uchun BIRINCHI turadi: chek printeri bo'lmagan
+                  do'konda bajik chiqarishning yagona yo'li shu.
+                  Ilgari bu yerda faqat «Chop etish» bor edi va u ish
+                  stoli ilovasisiz o'chiq turardi — ya'ni tugma bor,
+                  yo'l yo'q. */}
+              <button className="btn btn-primary btn-sm" onClick={handleSaveFile}>
+                <i className="fa-solid fa-file-arrow-down" /> {t("badge.saveFile")}
+              </button>
               <button className="btn btn-green btn-sm" onClick={handlePrint} disabled={!isDesktop()}>
                 <i className="fa-solid fa-print" /> {t("badge.print")}
               </button>
@@ -432,16 +503,21 @@ export default function SecurityPage({ toast }) {
             ⚠️ {t("badge.onceWarn")}
           </div>
 
-          <div style={{ textAlign: "center", padding: "6px 0 10px" }}>
-            <div className="fw-800" style={{ fontSize: 17 }}>{issued.fullName || issued.username}</div>
-            <div className="text-muted" style={{ fontSize: 13 }}>
-              @{issued.username} · {t("badge.version")} {issued.version}
-            </div>
-          </div>
+          {/* ⚠ KARTOCHKANING O'ZI EKRANDA (V110). Ilgari bu yerda faqat
+              ism va «@login» turardi — QR umuman chizilmasdi va
+              brauzerdagi do'kon uchun bajik shunchaki mavjud emas edi.
+
+              Endi u ko'rinadi, faylga saqlanadi va zarur bo'lsa
+              ekrandan turib skanerlanadi ham. */}
+          <BadgeCard ref={badgeRef} badge={issued} shopName={user?.shopName} />
 
           {!isDesktop() && (
-            <p className="text-muted" style={{ fontSize: 12.5, lineHeight: 1.6 }}>
-              {t("badge.desktopOnly")}
+            /* ⚠ Endi bu OGOHLANTIRISH emas, IZOH: chop etish yo'q,
+               lekin fayl bor. Eski matn «bajik faqat ish stolida
+               chiqariladi» deb, endi to'g'ri bo'lmagan gapni
+               aytardi. */
+            <p className="text-muted" style={{ fontSize: 12.5, lineHeight: 1.6, marginTop: 12 }}>
+              {t("badge.fileHint")}
             </p>
           )}
         </Modal>

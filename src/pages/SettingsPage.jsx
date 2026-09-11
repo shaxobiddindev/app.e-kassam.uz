@@ -7,16 +7,23 @@ import LangSelect from "../components/ek/LangSelect";
 import { useConfirm } from "../context/ConfirmProvider";
 import { useAuth } from "../hooks/useAuth";
 import FiscalPanel from "../components/FiscalPanel";
+import FiscalSetupPanel from "../components/FiscalSetupPanel";
+import { FISCAL_UI } from "../config";
 import UpdatePanel from "../components/UpdatePanel";
+import PinSetModal from "../components/PinSetModal";
 import TelegramPanel from "../components/TelegramPanel";
 import HardwareSettings from "../components/HardwareSettings";
-import ShopQrPanel from "../components/ShopQrPanel";
+import SoundSettings from "../components/SoundSettings";
+import ScaleSettings from "../components/ScaleSettings";
+import ScaleLive from "../components/ScaleLive";
+import CodeConflictPanel from "../components/CodeConflictPanel";
 import Select from "../components/ek/Select";
 import { DEFAULT_NEAR_EXPIRY_DAYS } from "../lib/ek-expiry";
 import { Field } from "../components/ui";
 import { shopApi } from "../api";
 import { getTouchMode, setTouchMode } from "../lib/ek-touch";
 import { appVersion } from "../lib/ek-update";
+import { useShopFeatures } from "../hooks/useShopFeatures";
 
 /* ══════════════════════════════════════════════════════════════════════════
    Sozlamalar — BARCHA sozlamalar uchun YAGONA joy.
@@ -68,6 +75,12 @@ function Section({ icon, title, hint, children }) {
 }
 
 export default function SettingsPage({ toast }) {
+  /* ══ MODULI YO'Q SOZLAMA KO'RSATILMAYDI (V49) ══════════════════════
+     ⚠ Bu bezak emas. Yopilgan modulning sozlamasini server ham
+     to'sadi (403), ya'ni tugmani bosgan ega tushunarsiz xato olardi:
+     «nega nasiyani yoqolmayapman?». Sozlama modul bilan birga
+     yo'qolishi kerak — shunda savolning o'zi tug'ilmaydi. */
+  const { has: hasFeature } = useShopFeatures();
   const { t } = useT();
   const confirm = useConfirm();
   const { user, logout } = useAuth();
@@ -79,34 +92,168 @@ export default function SettingsPage({ toast }) {
   const isOwner = roleSet(user?.role).has("OWNER");
   // Teginish rejimi QURILMAGA tegishli (localStorage), hisobga emas.
   const [touchMode, setTouch] = useState(() => getTouchMode());
+  /* Fiskal rekvizitlar (V85) — do'kon profilining fiskal qismi. */
+  const [fiscalProfile, setFiscalProfile] = useState(null);
+  const [profileNonce, setProfileNonce] = useState(0);
   // Kamomad chegarasi — do'kon profilidan keladi (server saqlaydi).
   const [tolerance, setTolerance] = useState("");
   const [discountLimit, setDiscountLimit] = useState("");
+  /* ── Chegirma siyosati (V53) ────────────────────────────────────────
+     Foiz NIMADAN hisoblanishi va pul birligidagi shift. Ikkalasi
+     bitta so'rov bilan saqlanadi (`/shop/discount-limit`), chunki ular
+     BITTA qoidaning qismlari va alohida saqlanganda oraliq holat
+     yuzaga kelardi: foiz yangi, baza esa hali eski. */
+  const [discountBasis, setDiscountBasis]   = useState("PROFIT");
+  const [discountAmount, setDiscountAmount] = useState("");
+  const [lossSale, setLossSale]             = useState(false);
   const [returnDays, setReturnDays] = useState("");
-  const [creditLimit, setCreditLimit] = useState("");
+  /* Nasiya yoqilganmi (V46) — chegaraning o'rniga. */
+  const [creditOn, setCreditOn] = useState(false);
+  /* Muddat qaysi kundan sanaladi (V46): "EACH" · "FIRST". */
+  const [creditDueMode, setCreditDueMode] = useState("EACH");
+  /* Qarzni mijoz ham tasdiqlaydimi (V46). */
+  const [creditConfirm, setCreditConfirm] = useState(false);
+  const [pickupEnabled, setPickupEnabled] = useState(false);
+  /* ⚠ Standart `true`: chekda telefon KO'RINADI. Profil hali
+     yuklanmagan bir lahzada kalit «o'chiq» bo'lib turib, keyin
+     sakrab yonishi noto'g'ri taassurot berardi. */
+  const [receiptShowPhone, setReceiptShowPhone] = useState(true);
+  /* Chek ostidagi ixtiyoriy matn (V85). Bo'sh — hech narsa chiqmaydi. */
+  const [receiptFooter, setReceiptFooter] = useState("");
+  /* Nasiya muddati (V43), kunlarda. "0" — muddatsiz. */
+  const [creditDueDays, setCreditDueDays] = useState("0");
+  /* Mijozga qarz eslatmasi (V44). */
+  const [creditRemind, setCreditRemind] = useState(false);
+  /* Bazaviy keshbek foizi (V45). "0" — keshbek yopiq. */
+  const [baseCashback, setBaseCashback] = useState("0");
   const [nonCashTolerance, setNonCashTolerance] = useState("");
   const [stockTolerance, setStockTolerance] = useState("");
   const [nearExpiry, setNearExpiry] = useState("");
+  const [salesTarget, setSalesTarget] = useState("");
+
+  /* ══ KASSIR PIN I (V99) ═══════════════════════════════════════════ */
+  const [pinOpen, setPinOpen] = useState(false);
+  const [pinLength, setPinLength] = useState(
+    () => (localStorage.getItem("ek_pinLength") === "6" ? "6" : "4"));
   useEffect(() => {
-    if (!isOwner) return;
+    /* ⚠ PROFIL ENDI HAMMAGA OLINADI, faqat egaga emas.
+       Sabab: `pinLength` PIN oynasi uchun kerak va u KASSIRGA ham
+       chiziladi. Ilgari so'rov `isOwner` bilan to'silardi — ya'ni
+       6 xonali PIN qo'ygan do'konning kassiri to'rtta katak ko'rar
+       va PIN i hech qachon to'lmasdi. Javobning o'zi serverda
+       kassir uchun allaqachon maskalangan. */
     shopApi.getProfile()
       .then((r) => {
+        setPinLength(String(r?.data?.pinLength ?? 4));
+        if (!isOwner) return;
         setTolerance(String(r?.data?.cashDiffTolerance ?? 0));
         setDiscountLimit(String(r?.data?.maxDiscountPercent ?? 0));
+        setDiscountBasis(r?.data?.discountBasis || "PROFIT");
+        setDiscountAmount(r?.data?.maxDiscountAmount == null ? "" : String(r.data.maxDiscountAmount));
+        setLossSale(Boolean(r?.data?.allowLossSale));
         setReturnDays(String(r?.data?.returnDays ?? 0));
-        setCreditLimit(String(r?.data?.defaultCreditLimit ?? 0));
+        setCreditOn(Boolean(r?.data?.creditEnabled));
+        setCreditDueMode(r?.data?.creditDueMode || "EACH");
+        setCreditConfirm(Boolean(r?.data?.creditConfirmEnabled));
+        setPickupEnabled(Boolean(r?.data?.pickupEnabled));
+        setReceiptShowPhone(r?.data?.receiptShowPhone !== false);
+        setReceiptFooter(r?.data?.receiptFooter || "");
+        setCreditDueDays(String(r?.data?.creditDueDays ?? 0));
+        setCreditRemind(Boolean(r?.data?.creditRemindEnabled));
+        setBaseCashback(String(r?.data?.baseCashbackPercent ?? 0));
         setNonCashTolerance(String(r?.data?.nonCashDiffTolerance ?? 0));
         setStockTolerance(String(r?.data?.stockDiffTolerance ?? 0));
         /* ⚠ Bo'sh ustun — STANDART (7 kun), nol emas. Nol ko'rsatilsa egasi
            «ogohlantirish o'chiq» deb o'ylardi va u hech qachon o'chirilmagan. */
         setNearExpiry(String(r?.data?.nearExpiryDays ?? DEFAULT_NEAR_EXPIRY_DAYS));
+        /* ⚠ Reja `null` bo'lsa maydon BO'SH qoladi, nol emas: nol
+           «rejamiz nol» degani va hisobotda bajarilish har doim
+           100% bo'lib chiqardi. */
+        setSalesTarget(r?.data?.monthlySalesTarget == null ? "" : String(r.data.monthlySalesTarget));
+        /* ⚠ Fiskal maydonlar BUTUN javob bilan saqlanadi, bittalab
+           emas: ular bitta panelga uzatiladi va u yerda birga
+           tahrirlanadi. Bittalab holat qilinsa, panel ochilganda
+           to'rttasi alohida sinxronlanishi kerak bo'lardi. */
+        setFiscalProfile(r?.data || null);
       })
       .catch(() => {});
-  }, [isOwner]);
+  }, [isOwner, profileNonce]);
 
   /* Har uchala sozlama bir xil yo'l bilan saqlanadi: maydondan chiqilganda.
      Alohida «Saqlash» tugmasi qo'yilmadi — bitta raqam uchun tugma bosish
      ortiqcha qadam, va u bosilmay qolsa sozlama jimgina yo'qolardi. */
+  /**
+   * Eslatmani yoqish/o'chirish (V44).
+   *
+   * ⚠ YOQISHDA TASDIQ SO'RALADI. Bu do'kon nomidan MIJOZLARGA boradigan
+   * xabar: xato yoqilsa ertaga ertalab yuzlab odam «qarzingiz bor»
+   * degan xabarni oladi va uni uzr bilan qaytarib bo'lmaydi.
+   */
+  const toggleCreditRemind = async () => {
+    const next = !creditRemind;
+    if (next) {
+      const ok = await confirm({
+        title: t("settings.creditRemind"),
+        message: t("settings.creditRemindConfirm"),
+        type: "warning",
+      });
+      if (!ok) return;
+    }
+    try {
+      await shopApi.setCreditRemind(next);
+      setCreditRemind(next);
+      toast?.success(t("common.saved"));
+    } catch (err) {
+      toast?.error(err.message);
+    }
+  };
+
+  /**
+   * Tugma/tanlov sozlamasi — saqlanmasa AVVALGI holatga qaytadi.
+   *
+   * ⚠ Ekranni oldin o'zgartirib, keyin saqlash noto'g'ri bo'lardi:
+   * server rad etsa (masalan huquq yo'q) ekranda yoqilgan, serverda esa
+   * o'chiq holat qolardi va egasi buni sezmasdi.
+   */
+  const saveToggle = async (fn, value, set) => {
+    try {
+      await fn(value);
+      set(value);
+      toast?.success(t("common.saved"));
+    } catch (err) {
+      toast?.error(err.message);
+    }
+  };
+
+  /**
+   * Mijoz tasdig'ini yoqish — TASDIQ SO'RALADI.
+   *
+   * ⚠ Yoqilgan ondan boshlab do'kon nomidan MIJOZLARGA xabar keta
+   * boshlaydi. Buni bilmay yoqib qo'yish do'konning obro'siga tegadi.
+   */
+  const toggleCreditConfirm = async () => {
+    const next = !creditConfirm;
+    if (next) {
+      const ok = await confirm({
+        title: t("settings.creditConfirm"),
+        message: t("settings.creditConfirmAsk"),
+        type: "warning",
+      });
+      if (!ok) return;
+    }
+    saveToggle(shopApi.setCreditConfirm, next, setCreditConfirm);
+  };
+
+  /* Ombordan berib yuborish (V48) — tasdiq so'ralmaydi: bu ichki
+     tashkiliy sozlama, mijozga hech qanday xabar yubormaydi. */
+  const togglePickup = () =>
+    saveToggle(shopApi.setPickupEnabled, !pickupEnabled, setPickupEnabled);
+
+  /* Chekdagi telefon — tasdiqsiz: qaytarib yoqish bir bosish va hech
+     narsa yo'qolmaydi (raqam profilda joyida qoladi). */
+  const toggleReceiptPhone = () =>
+    saveToggle(shopApi.setReceiptShowPhone, !receiptShowPhone, setReceiptShowPhone);
+
   const saveField = (fn, value, fallback = 0) => async () => {
     try {
       await fn(Number(value) || fallback);
@@ -116,6 +263,32 @@ export default function SettingsPage({ toast }) {
     }
   };
   const saveTolerance = saveField(shopApi.setCashTolerance, tolerance);
+
+  /**
+   * Chegirma siyosati — UCHALA qiymat BIRGA saqlanadi.
+   *
+   * ⚠ Alohida saqlanganda oraliq holat yuzaga kelardi: foiz yangi
+   * qiymatda, baza esa hali eski — ya'ni bir necha soniya davomida
+   * chegara mutlaqo boshqa narsani anglatardi va o'sha paytda o'tgan
+   * chek noto'g'ri tekshirilardi.
+   *
+   * `basisNow` — Select `onChange` da holat hali yangilanmagan bo'ladi.
+   */
+  const saveDiscount = async (basisNow) => {
+    try {
+      await shopApi.setDiscountLimit(
+        Number(discountLimit) || 0,
+        basisNow || discountBasis,
+        /* Bo'sh maydon — «shiftni olib tashla». Server buni manfiy
+           qiymatdan biladi: `null` yuborilsa «tegilmasin» degani
+           bo'lardi va shiftni o'chirishning yo'li qolmasdi. */
+        discountAmount === "" ? -1 : Number(discountAmount) || 0,
+      );
+      toast?.success(t("common.saved"));
+    } catch (err) {
+      toast?.error(err.message);
+    }
+  };
   // Ilova versiyasi — faqat `.exe` da bor (brauzerda `null` qaytadi).
   const [version, setVersion] = useState(null);
   useEffect(() => { appVersion().then(setVersion).catch(() => {}); }, []);
@@ -159,12 +332,35 @@ export default function SettingsPage({ toast }) {
         </Row>
       </Section>
 
-      {/* ── Mijoz uchun QR ────────────────────────────────────────────
-          ⚠ Bo'lim KASSIRGA HAM ko'rinadi: QR ni mijoz kassada so'raydi va
-          uni ko'rsatadigan odam — kassir. Yoqish/o'chirish esa faqat
-          rahbarga (`canManage`) — serverdagi qoida bilan bir xil. */}
-      <Section icon="fa-qrcode" title={t("qr.title")} hint={t("qr.settingsHint")}>
-        <ShopQrPanel toast={toast} canManage={isManager} />
+      {/* ══ KASSIR PIN I (V99) ════════════════════════════════════════
+          Do'kon egasi: «PIN moduli `app` ga o'tkazilsin, `auth` alohida
+          serverda turadi va yuklash vaqti tizimni sekinlashtiradi».
+
+          ⚠ «MENING PIN IM» HAMMAGA ko'rinadi, uzunlik esa faqat
+          EGASIGA: birinchisi — xodimning o'z hisobi, ikkinchisi —
+          butun do'kon uchun qaror. */}
+      <Section icon="fa-key" title={t("pin.section")} hint={t("pin.sectionHint")}>
+        <Row label={t("pin.myPin")} hint={t("pin.myPinHint")}>
+          <button className="btn btn-outline btn-sm" onClick={() => setPinOpen(true)}>
+            <i className="fa-solid fa-key" aria-hidden="true" /> {t("pin.setTitle")}
+          </button>
+        </Row>
+
+        {isOwner && (
+          <Row label={t("pin.lengthLabel")} hint={t("pin.lengthHint")}>
+            <Select
+              value={pinLength}
+              onChange={(v) => saveToggle(
+                (val) => shopApi.setPinLength(Number(val)), v, setPinLength)}
+              variant="field"
+              ariaLabel={t("pin.lengthLabel")}
+              options={[
+                { value: "4", label: t("pin.length4"), icon: "fa-hashtag" },
+                { value: "6", label: t("pin.length6"), icon: "fa-hashtag" },
+              ]}
+            />
+          </Row>
+        )}
       </Section>
 
       <Section icon="fa-sliders" title={t("settings.interface")}>
@@ -195,29 +391,103 @@ export default function SettingsPage({ toast }) {
             {/* Inventarizatsiya kamomadi — SO'MDA (tannarx bo'yicha), donada
                 emas: 3 dona konfet va 3 dona muzlatgich bir xil ko'rinsa,
                 chegara ma'nosini yo'qotardi. */}
-            <Row label={t("settings.stockTolerance")} hint={t("settings.stockToleranceHint")}>
+                        {/* Sanoq chegarasi — inventarizatsiya moduli bilan birga */}
+            {hasFeature("STOCK_TAKE") && (
+<Row label={t("settings.stockTolerance")} hint={t("settings.stockToleranceHint")}>
               <Field kind="money" className="form-input ek-num"
                      wrapStyle={{ width: 160 }}
                      value={stockTolerance}
                      onChange={(e) => setStockTolerance(e.target.value)}
                      onBlur={saveField(shopApi.setStockTolerance, stockTolerance)} />
             </Row>
+            )}
             {/* «Muddati yaqin» oynasi (V41) — chegaralar yonida, chunki u
                 ham do'kon bo'ylab ishlaydigan va faqat egasi qo'yadigan
                 raqam. Sut do'koniga 7 kun uzoq, dorixonaga qisqa. */}
-            <Row label={t("settings.nearExpiry")} hint={t("settings.nearExpiryHint")}>
+                        {/* «Muddati yaqin» oynasi — muddat nazorati moduli bilan birga */}
+            {hasFeature("EXPIRY") && (
+<Row label={t("settings.nearExpiry")} hint={t("settings.nearExpiryHint")}>
               <Field kind="int" className="form-input ek-num"
                      wrapStyle={{ width: 160 }}
                      value={nearExpiry}
                      onChange={(e) => setNearExpiry(e.target.value)}
                      onBlur={saveField(shopApi.setNearExpiryDays, nearExpiry, DEFAULT_NEAR_EXPIRY_DAYS)} />
             </Row>
+            )}
+            {/* ══ OYLIK SAVDO REJASI (V70) ═══════════════════════════
+                Rahbar «shu oy 2 milliard savdo qilishimiz kerak»
+                deydi — hisobot esa reja va haqiqatni yonma-yon
+                ko'rsatadi.
+
+                ⚠ BO'SH QOLDIRSA REJA O'CHADI, nolga tenglashmaydi:
+                nol «rejamiz nol» degani va bajarilish har doim 100%
+                bo'lib chiqardi. Shuning uchun bu yerda `saveField`
+                ISHLATILMAYDI — u bo'sh qiymatni fallback songa
+                aylantiradi. */}
+            <Row label={t("set.salesTarget")} hint={t("set.salesTargetHint")}>
+              <Field kind="money" className="form-input ek-num"
+                     wrapStyle={{ width: 220 }}
+                     value={salesTarget}
+                     onChange={(e) => setSalesTarget(e.target.value)}
+                     onBlur={async () => {
+                       try {
+                         const raw = String(salesTarget).replace(/\s/g, "");
+                         await shopApi.setSalesTarget(raw === "" ? "" : Number(raw) || 0);
+                         toast?.success(t("common.saved"));
+                       } catch (err) { toast?.error(err.message); }
+                     }} />
+            </Row>
             <Row label={t("settings.discountLimit")} hint={t("settings.discountLimitHint")}>
               <Field kind="percent" className="form-input ek-num"
                      wrapStyle={{ width: 160 }}
                      value={discountLimit}
                      onChange={(e) => setDiscountLimit(e.target.value)}
-                     onBlur={saveField(shopApi.setDiscountLimit, discountLimit)} />
+                     onBlur={() => saveDiscount()} />
+            </Row>
+
+            {/* ⚠ FOIZ NIMADAN (V53). Ilgari chegara faqat NARXDAN
+                hisoblanardi va bu noto'g'ri o'lchov edi: 10% chegirma
+                marjasi 50% bo'lgan tovarda arzimas, marjasi 8%
+                bo'lganida esa do'konni ZARARGA olib kirardi — bitta
+                foiz ikki tovarda ikki xil ma'no anglatardi. */}
+            <Row label={t("settings.discountBasis")} hint={t("settings.basisHint")}>
+              <Select
+                value={discountBasis}
+                onChange={(v) => { setDiscountBasis(v); saveDiscount(v); }}
+                variant="field"
+                ariaLabel={t("settings.discountBasis")}
+                options={[
+                  { value: "PROFIT", icon: "fa-arrow-trend-up", label: t("settings.basisProfit") },
+                  { value: "PRICE",  icon: "fa-tag",            label: t("settings.basisPrice") },
+                ]}
+              />
+            </Row>
+
+            <Row label={t("settings.discountAmount")} hint={t("settings.discountAmountHint")}>
+              <Field kind="money" className="form-input ek-num"
+                     wrapStyle={{ width: 180 }}
+                     value={discountAmount}
+                     onChange={(e) => setDiscountAmount(e.target.value)}
+                     onBlur={() => saveDiscount()} />
+            </Row>
+
+            {/* ⚠ ZARARIGA SOTISH (V53). Yoqilganda ham har bunday chek
+                rahbar bajigi bilan o'tadi va hisobotda alohida «zarar»
+                qatorida ko'rinadi — bu sozlama uni YASHIRMAYDI, faqat
+                MUMKIN qiladi. */}
+            <Row label={t("settings.lossSale")} hint={t("settings.lossSaleHint")}>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={lossSale}
+                className={`ek-switch ${lossSale ? "on" : ""}`}
+                onClick={() => saveToggle(shopApi.setLossSale, !lossSale, setLossSale)}
+              >
+                <span className="ek-switch__knob" />
+                <span className="ek-switch__text">
+                  {lossSale ? t("common.yes") : t("common.no")}
+                </span>
+              </button>
             </Row>
             <Row label={t("settings.returnDays")} hint={t("settings.returnDaysHint")}>
               <Field kind="int" className="form-input ek-num"
@@ -226,16 +496,194 @@ export default function SettingsPage({ toast }) {
                      onChange={(e) => setReturnDays(e.target.value)}
                      onBlur={saveField(shopApi.setReturnDays, returnDays)} />
             </Row>
-            {/* Nasiya chegarasi — do'kon STANDARTI. Har bir mijozga alohida
-                qiymat Mijozlar sahifasida qo'yiladi va u shu raqamdan
-                ustun turadi. */}
-            <Row label={t("settings.creditLimit")} hint={t("settings.creditLimitHint")}>
-              <Field kind="money" className="form-input ek-num"
-                     wrapStyle={{ width: 160 }}
-                     value={creditLimit}
-                     onChange={(e) => setCreditLimit(e.target.value)}
-                     onBlur={saveField(shopApi.setCreditLimit, creditLimit)} />
+            {/* ⚠ CHEGARA O'RNIGA YOQISH TUGMASI (V46). Ilgari nasiyani
+                ikkita raqam cheklardi (do'kon standarti va mijozniki),
+                lekin do'koncha qarzni raqamga qarab emas, ODAMGA qarab
+                beradi: qo'shnisiga million, notanishga umuman yo'q.
+                Chegara esa har safar yo'lni to'sib, uni oshirib
+                qo'yishga majburlardi — himoya emas, ortiqcha qadam edi.
+
+                O'chirish ESKI QARZNI TEGMAYDI: to'lovlar qabul
+                qilinaveradi, faqat yangi nasiya to'siladi. */}
+                        {/* Nasiya sozlamalari — nasiya moduli bilan birga */}
+            {hasFeature("CREDIT") && (
+<Row label={t("settings.creditEnabled")} hint={t("settings.creditEnabledHint")}>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={creditOn}
+                className={`ek-switch ${creditOn ? "on" : ""}`}
+                onClick={() => saveToggle(shopApi.setCreditEnabled, !creditOn, setCreditOn)}
+              >
+                <span className="ek-switch__knob" />
+                <span className="ek-switch__text">
+                  {creditOn ? t("common.yes") : t("common.no")}
+                </span>
+              </button>
             </Row>
+            )}
+            {/* ⚠ Muddat SAVDONI TO'SMAYDI — to'sish chegaraning ishi.
+                Muddat faqat «muddati o'tgan qarz» ko'rsatkichini yoqadi:
+                qarzdorlar ro'yxatida va bosh sahifada. Ikkalasini
+                aralashtirsak, kechikkan bitta chek butun mijozga savdoni
+                yopib qo'yardi va do'kon buni kutmasdi. */}
+                        {/*  */}
+            {hasFeature("CREDIT") && (
+<Row label={t("settings.creditDueDays")} hint={t("settings.creditDueDaysHint")}>
+              <Field kind="int" className="form-input ek-num"
+                     wrapStyle={{ width: 100 }}
+                     value={creditDueDays}
+                     onChange={(e) => setCreditDueDays(e.target.value)}
+                     onBlur={saveField(shopApi.setCreditDueDays, creditDueDays)} />
+            </Row>
+            )}
+            {/* ⚠ MUDDAT QAYSI KUNDAN SANALADI (V46). Do'konlar qarzni ikki
+                xil boshqaradi va ikkalasi ham to'g'ri: mahalla do'koni
+                «oyning oxirida hisoblashamiz» deydi (qarz bitta hisob),
+                ulgurji sotuvchi esa har yuk uchun alohida muddat beradi.
+                Bittasini majburlash ikkinchisiga yolg'on ko'rsatkich
+                berardi. */}
+                        {/*  */}
+            {hasFeature("CREDIT") && (
+<Row label={t("settings.creditDueMode")} hint={t(`settings.creditDueMode.${creditDueMode}`)}>
+              <Select
+                value={creditDueMode}
+                onChange={(v) => saveToggle(shopApi.setCreditDueMode, v, setCreditDueMode)}
+                options={[
+                  { value: "EACH",  label: t("settings.creditDueMode.eachLabel"),  icon: "fa-layer-group" },
+                  { value: "FIRST", label: t("settings.creditDueMode.firstLabel"), icon: "fa-hourglass-start" },
+                ]}
+              />
+            </Row>
+            )}
+            {/* ⚠⚠ MIJOZ TASDIG'I (V46) — KASSANI TO'SMAYDI. Chek darhol
+                yakunlanadi, so'rov esa mijozga keyin boradi (ilova ·
+                Telegram · SMS). Aks holda navbat mijozning telefoniga
+                bog'liq bo'lib qolardi. Tasdiq — DALIL, ruxsat emas. */}
+                        {/*  */}
+            {hasFeature("CREDIT") && (
+<Row label={t("settings.creditConfirm")} hint={t("settings.creditConfirmHint")}>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={creditConfirm}
+                className={`ek-switch ${creditConfirm ? "on" : ""}`}
+                onClick={toggleCreditConfirm}
+              >
+                <span className="ek-switch__knob" />
+                <span className="ek-switch__text">
+                  {creditConfirm ? t("common.yes") : t("common.no")}
+                </span>
+              </button>
+            </Row>
+            )}
+            {/* ⚠⚠ OMBORDAN BERIB YUBORISH (V48). Mijoz kassaga to'laydi,
+                tovar esa kassadan uzoqda — omborda yoki hovlida.
+                Yoqilganda «ombordan beriladi» deb belgilangan tovarli
+                chek omborchining ekraniga tushadi.
+
+                ⚠ Qaysi tovar — TOVARNING o'zida belgilanadi: bitta
+                do'konda ham javondagi saqich, ham hovlidagi sement
+                bo'ladi va ikkinchisi uchun yoqilgan tizim birinchisini
+                ham navbatga tashlab, kassani sekinlashtirardi. */}
+                        {/* Ombordan berish — o'z moduli bilan birga */}
+            {hasFeature("PICKUP") && (
+<Row label={t("settings.pickup")} hint={t("settings.pickupHint")}>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={pickupEnabled}
+                className={`ek-switch ${pickupEnabled ? "on" : ""}`}
+                onClick={togglePickup}
+              >
+                <span className="ek-switch__knob" />
+                <span className="ek-switch__text">
+                  {pickupEnabled ? t("common.yes") : t("common.no")}
+                </span>
+              </button>
+            </Row>
+            )}
+
+            {/* ⚠ CHEKDAGI TELEFON (V62) — modulsiz, HAR do'konda bor.
+                Ilgari raqamni chekdan olib tashlashning yagona yo'li uni
+                profildan o'chirish edi, o'shanda esa u hisobotlardan,
+                mijoz kabinetidan va do'kon kartochkasidan ham
+                yo'qolardi. Sabablar haqiqiy: bozordagi nuqta egasining
+                raqami shaxsiy, filial cheki markaz raqamini ko'rsatishi
+                kerak, yuzlab chek qo'lma-qo'l yurgani sari raqam
+                reklama qo'ng'iroqlariga ochilib ketadi. */}
+            <Row label={t("settings.receiptPhone")} hint={t("settings.receiptPhoneHint")}>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={receiptShowPhone}
+                className={`ek-switch ${receiptShowPhone ? "on" : ""}`}
+                onClick={toggleReceiptPhone}
+              >
+                <span className="ek-switch__knob" />
+                <span className="ek-switch__text">
+                  {receiptShowPhone ? t("common.yes") : t("common.no")}
+                </span>
+              </button>
+            </Row>
+            {/* ⚠ CHEK OSTIDAGI MATN (V85). Ilgari bu yerda «e-kassam.uz»
+                turardi — mijozning qo'lidagi qog'ozdagi BEGONA brend:
+                do'kon uni tanlamagan va soliq hujjatida uning o'rni
+                yo'q. Olib tashlandi; o'rniga do'kon O'ZI yozadigan
+                matn. Bo'sh — hech narsa chiqmaydi va bu STANDART. */}
+            <Row label={t("settings.receiptFooter")}
+                 hint={t("settings.receiptFooterHint")}>
+              <input
+                className="input"
+                maxLength={120}
+                value={receiptFooter}
+                aria-label={t("settings.receiptFooter")}
+                onChange={(e) => setReceiptFooter(e.target.value)}
+                /* ⚠ Fokus ketganda saqlanadi, har harfda emas: matn
+                   yozilayotganda har bosishga so'rov yuborish
+                   serverni ham, keshni ham bekorga charchatardi. */
+                onBlur={() => saveToggle(
+                  shopApi.setReceiptFooter, receiptFooter, setReceiptFooter)}
+              />
+            </Row>
+            {/* ⚠ ALOHIDA SOZLAMA, muddatning davomi emas. Muddat do'konning
+                ichki qoidasi, bu esa do'kon nomidan MIJOZGA boradigan
+                xabar — uni ongli ravishda yoqish kerak. Izohda mijoz
+                aynan nima olishi yozilgan: egasi nomidan ketadigan
+                matnni ko'rmasdan yoqishi to'g'ri bo'lmasdi. */}
+            {/* ⚠ BAZAVIY keshbek (V45) — sodiqlik darajasidan MUSTAQIL.
+                Ilgari keshbek faqat daraja jadvali orqali berilardi va
+                «hamma xaridga 1%» degan eng oddiy istak uchun ham do'kon
+                `minSpent = 0` li qator qo'shishi kerak edi — aksariyati
+                buni qilmasdi. Daraja bo'lsa ikkisining KATTAROG'I
+                olinadi: daraja faqat oshiradi. */}
+                        {/* Bazaviy keshbek — sodiqlik moduli bilan birga */}
+            {hasFeature("LOYALTY") && (
+<Row label={t("settings.baseCashback")} hint={t("settings.baseCashbackHint")}>
+              <Field kind="percent" className="form-input ek-num"
+                     wrapStyle={{ width: 100 }}
+                     value={baseCashback}
+                     onChange={(e) => setBaseCashback(e.target.value)}
+                     onBlur={saveField(shopApi.setBaseCashback, baseCashback)} />
+            </Row>
+            )}
+                        {/*  */}
+            {hasFeature("CREDIT") && (
+<Row label={t("settings.creditRemind")} hint={t("settings.creditRemindHint")}>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={creditRemind}
+                className={`ek-switch ${creditRemind ? "on" : ""}`}
+                onClick={toggleCreditRemind}
+              >
+                <span className="ek-switch__knob" />
+                <span className="ek-switch__text">
+                  {creditRemind ? t("common.yes") : t("common.no")}
+                </span>
+              </button>
+            </Row>
+            )}
           </>
         )}
         <Row label={t("touch.label")} hint={t("touch.hint")}>
@@ -267,9 +715,57 @@ export default function SettingsPage({ toast }) {
         </Row>
       </Section>
 
+      {/* ⚠ OVOZ — APPARATLARDAN OLDIN va ULARDAN TASHQARIDA (V89).
+          Apparatlar bo'limi `.exe` bilan cheklangan, ovoz esa
+          brauzerda ham ishlaydi: uni o'sha bo'limga qo'yish
+          brauzerdagi kassirdan yashirardi. */}
+      <SoundSettings />
+
       {/* Apparatlar — hisobdan OLDIN: kassir bu ekranga aynan printer
           ishlamay qolganda keladi, "hisob" bo'limiga esa deyarli hech qachon. */}
       <HardwareSettings toast={toast} />
+
+      {/* Tarozi formati — faqat EGAGA: server ham shu yo'lni egaga
+          cheklaydi (`/shop/scale`), bo'limni kassirga ko'rsatib qo'yish
+          esa faqat umid uyg'otib, keyin 403 bilan tugardi. */}
+      {/* ⚠ Tarozi sozlamasi ham MODULGA bog'liq (V49): kiyim
+          do'konida bu blokning mavjudligi noto'g'ri taassurot
+          beradi — «demak bu yerda tarozi ishlaydi». */}
+      {isOwner && hasFeature("SCALE") && <ScaleSettings toast={toast} />}
+      {/* ⚠ JONLI TAROZI — BARKOD SOZLAMASIDAN ALOHIDA (V111). Ular
+          bir-birini almashtirmaydi: yorliq chiqaradigan tarozi
+          barkod bilan, sticker chiqarmaydigani esa to'g'ridan-to'g'ri
+          port orqali ishlaydi. Do'konda ikkalasi ham bo'lishi
+          mumkin.
+
+          ⚠ VA U EGAGA CHEKLANMAYDI (V114). Yuqoridagi blokning
+          `isOwner` i serverdan kelib chiqadi — `/shop/scale` egadan
+          boshqasiga 403 beradi va bo'limni ko'rsatib qo'yish faqat
+          umid uyg'otardi. Jonli tarozining esa SERVERDA HECH NIMASI
+          YO'Q: u sof qurilma ishi va sozlamasi monoblokning o'ziga
+          bog'lanadi (brauzer ruxsati + shu qurilmaning
+          `localStorage` i).
+
+          Cheklab qo'yish amalda shuni anglatardi: ega har bir
+          monoblokka borib, o'z hisobi bilan kirmaguncha tarozi
+          ulanmaydi. Windows qayta o'rnatilsa yoki brauzer profili
+          tozalansa — yana o'sha. Kassir esa aynan shu tarozi
+          yonida turadi.
+
+          ⚠ MODUL CHEKLOVI QOLADI: tarozisi yo'q do'konda blok
+          chizilmaydi. */}
+      {hasFeature("SCALE") && <ScaleLive toast={toast} />}
+
+      {/* ══ YORLIG'I ESKIRGAN TOVARLAR (B0) ════════════════════════════
+          Eski qisqa raqamlar tiriltirilganda (V119) bir qismi
+          tiriltirilmadi: o'sha raqam endi BOSHQA tovarniki. Javonda
+          esa eski yorliq turibdi va u yolg'on gapiradi.
+
+          ⚠ FAQAT EGAGA va faqat TO'QNASHUV BO'LSA. Server ham shu
+          yo'lni `OWNER`/`SHOP_ADMIN` ga cheklaydi, komponent esa
+          ro'yxat bo'sh bo'lsa umuman chizilmaydi — to'qnashuvsiz
+          do'konda bu sahifada bir piksel ham o'zgarmaydi. */}
+      {isOwner && <CodeConflictPanel toast={toast} />}
 
       <Section
         icon="fa-user"
@@ -302,7 +798,44 @@ export default function SettingsPage({ toast }) {
 
       {/* Fiskal holat — FAQAT rahbarga: kassirning bu yerda qiladigan
           ishi yo'q va backend ham uni bu yo'lga qo'ymaydi. */}
-      {isManager && <FiscalPanel toast={toast} />}
+      {/* ⚠ Fiskal panel MVP da yashirin (`FISCAL_UI`) — izohi
+          `config.js` da. Kod o'chirilmadi: modul ulanganda kerak. */}
+      {/* ══ FISKAL REKVIZITLAR VA KASSALAR (V85) ═══════════════════════
+          ⚠ SHART UCHTA VA UCHALASI HAM «YO'Q» BO'LSA — BLOK UMUMAN
+          CHIZILMAYDI. Fiskalizatsiyani xohlamagan do'kon uchun bu
+          sahifada bir piksel ham o'zgarmaydi va aynan shu maqsad.
+
+          Ko'rinish sharti — «fiskal yo'lga kirilganmi»:
+            · `fiscalEnabled` — rejim yoqilgan (superadmin yoqadi);
+            · `tin` bor — superadmin rekvizitni kiritib qo'ygan, ya'ni
+              ulanish boshlangan va ega endi kassalarini qo'shishi
+              kerak;
+            · `FISCAL_UI` — ishlab chiquvchi bayrog'i.
+
+          ⚠ Ikkinchi shart SHART: usiz ega panelni faqat rejim
+          yoqilgandan KEYIN ko'rardi, kassa esa yoqishdan OLDIN
+          qo'shilishi kerak — ya'ni sozlashning iloji bo'lmasdi. */}
+      {isOwner
+        && (FISCAL_UI || fiscalProfile?.fiscalEnabled || fiscalProfile?.tin) && (
+        <FiscalSetupPanel
+          profile={fiscalProfile}
+          toast={toast}
+          onSaved={() => setProfileNonce((n) => n + 1)}
+        />
+      )}
+
+      {/* ⚠ HOLAT PANELI ENDI DO'KON BAYROG'IGA BOG'LIQ (V85), faqat
+          `FISCAL_UI` ga emas. Sabab: fiskal rejim endi HAR DO'KON
+          uchun alohida yoqiladi, ya'ni «kimga ko'rsatamiz» degan
+          savolga javob build vaqtidagi bayroqda emas, do'konning
+          o'zida turadi.
+
+          ⚠ Fiskal rejimni yoqmagan do'kon uchun hech narsa
+          o'zgarmaydi: panel ham chizilmaydi, `/fiscal/status`
+          so'rovi ham YUBORILMAYDI. */}
+      {isManager && (FISCAL_UI || fiscalProfile?.fiscalEnabled) && (
+        <FiscalPanel toast={toast} />
+      )}
 
       {/* Telegram hisobot boti (V32) — kunlik PUL hisoboti, faqat rahbarga */}
       {isManager && <TelegramPanel toast={toast} />}
@@ -331,6 +864,15 @@ export default function SettingsPage({ toast }) {
           </Row>
         )}
       </Section>
+
+      {/* ⚠ Bo'limlardan TASHQARIDA: oyna butun ekran ustida turadi. */}
+      {pinOpen && (
+        <PinSetModal
+          toast={toast}
+          onClose={() => setPinOpen(false)}
+          onSaved={() => setProfileNonce((n) => n + 1)}
+        />
+      )}
     </div>
   );
 }

@@ -123,6 +123,20 @@ jobs:
                       ConvertFrom-Json).version
           $tag = $env:GITHUB_REF_NAME
           if (-not $tag) { $tag = "desktop-v$version" }
+
+          # ⚠ TEG VA KONFIGURATSIYA AJRALIB KETMASIN — bu allaqachon
+          # sodir bo'lgan. 1.10.0 relizidan keyin 153 commit yozildi,
+          # lekin `tauri.conf.json` 1.10.0 da qoldi. Shunday holatda
+          # `desktop-v1.11.0` tegi qo'yilsa reliz CHIQADI, xato
+          # CHIQMAYDI va birorta kassa yangilanmaydi: latest.json
+          # eski versiyani aytadi, updater esa «yangilanish yo'q»
+          # deb jim turadi. Shuning uchun bu yerda BALAND OVOZ bilan
+          # to'xtaymiz — jimgina foydasiz reliz chiqarishdan ko'ra
+          # yiqilgan build yaxshi.
+          if ($tag -ne "desktop-v$version") {
+            throw "Teg ($tag) tauri.conf.json versiyasiga (desktop-v$version) mos emas. " +
+                  "Versiyani ko'tarib, tegni qaytadan qo'ying — aks holda auto-update jimgina ishlamaydi."
+          }
           $manifest = [ordered]@{
             version   = $version
             notes     = "e-Kassam $version"

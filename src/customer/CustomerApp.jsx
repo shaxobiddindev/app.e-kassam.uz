@@ -1,11 +1,12 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { appApi, clearAppToken, getAppToken } from "./customerApi";
 import Receipt from "../portal/Receipt";
-import { qrSvg } from "../lib/ek-qr";
+import PaymentReceipt from "../portal/PaymentReceipt";
+import { qrSvg, totpNow, secondsLeft } from "../lib/ek-qr";
 import { code128Svg } from "../lib/ek-barcode";
 import { useConfirm } from "../context/ConfirmProvider";
 import CodeZoom from "../components/CodeZoom";
-import { dateTime } from "../lib/ek-format";
+import { dateTime, groupDigits } from "../lib/ek-format";
 import { registerPushIfPossible, getPushToken } from "../lib/ek-push";
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -19,8 +20,12 @@ import { registerPushIfPossible, getPushToken } from "../lib/ek-push";
    bo'lmaydi va interfeys buni yashirmasligi kerak.
    ══════════════════════════════════════════════════════════════════════════ */
 
-const money = (v) =>
-  new Intl.NumberFormat("uz-UZ", { maximumFractionDigits: 0 }).format(Number(v || 0));
+/* ⚠ AJRATGICH BUTUN MAHSULOTDA BIR XIL bo'lishi shart
+   (02-DESIGN-SYSTEM.md). Bu yerda `Intl.NumberFormat("uz-UZ")` ishlatilardi
+   va u brauzerga qarab vergul qaytarardi: mijoz SMS da «500 000 so'm»,
+   sahifada esa «500,000 so'm» ko'rib, ikkalasi bir xil summami deb
+   o'ylardi. `groupDigits` — tizimning yagona guruhlagichi. */
+const money = (v) => groupDigits(v || 0);
 
 const TABS = [
   { key: "card",     icon: "fa-id-card",  label: "Kartam" },
@@ -127,10 +132,92 @@ function Retry({ text, onRetry }) {
 
 /* ── 1. Karta: jami ball va kassada ko'rsatiladigan kod ──────────────── */
 
+/* ══════════════════════════════════════════════════════════════════════════
+   QARZLARIM — TASDIQ KUTAYOTGANLARI (V46)
+
+   ⚠ NEGA ALOHIDA VARAQ EMAS, BANNER. Bu ro'yxat odatda BO'SH bo'ladi, va
+   bo'sh varaq uchun doimiy tugma menyuni bekorga to'ldirardi. Qarz esa
+   paydo bo'lganda SHOSHILINCH: mijoz uni ko'rishi va javob berishi kerak
+   — shuning uchun u ochilgan zahoti, birinchi ekranning tepasida turadi.
+
+   ⚠ RAD ETISH QARZNI O'CHIRMAYDI. Bu do'konga «men olmadim» degan xabar,
+   hukm emas — do'kon buni ko'radi va o'zi hal qiladi. Mijozga ham shu
+   aytiladi, aks holda u tugmani «qarzni bekor qilish» deb tushunardi.
+   ══════════════════════════════════════════════════════════════════════════ */
+function DebtsBanner({ debts, onAnswer, busy }) {
+  if (!debts.length) return null;
+  return (
+    <div className="cu-card cu-debt">
+      <div className="cu-debt__head">
+        <i className="fa-solid fa-hand-holding-dollar" aria-hidden="true" />
+        <b>Nasiya tasdig'i</b>
+      </div>
+      {debts.map((d) => (
+        <div key={d.id} className="cu-debt__row">
+          <div>
+            <div className="cu-debt__shop">{d.shopName}</div>
+            <div className="cu-debt__sum">{money(d.amount)} so'm</div>
+            <div className="cu-muted cu-debt__date">{dateTime(d.createdAt)}</div>
+          </div>
+          <div className="cu-debt__btns">
+            <button type="button" className="cu-btn cu-btn--sm"
+                    disabled={busy === d.id}
+                    onClick={() => onAnswer(d, true)}>Ha, oldim</button>
+            <button type="button" className="cu-btn cu-btn--sm cu-btn--ghost"
+                    disabled={busy === d.id}
+                    onClick={() => onAnswer(d, false)}>Men olmadim</button>
+          </div>
+        </div>
+      ))}
+      <p className="cu-muted cu-debt__note">
+        «Men olmadim» qarzni o'chirmaydi — javobingiz do'konga boradi va
+        ular siz bilan bog'lanadi.
+      </p>
+    </div>
+  );
+}
+
 const PICKED_KEY = "ek_app_card_shop";
 
 function CardScreen({ me, shops }) {
   const items = shops?.items || [];
+
+  /* Tasdiq kutayotgan qarzlar (V46). Xato JIMGINA yutiladi: karta
+     ekranining o'zi bundan buzilmasligi kerak. */
+  const [debts, setDebts] = useState([]);
+  const [debtBusy, setDebtBusy] = useState(null);
+  const confirm = useConfirm();
+
+  useEffect(() => {
+    let alive = true;
+    appApi.debts().then((d) => { if (alive) setDebts(d || []); }).catch(() => {});
+    return () => { alive = false; };
+  }, []);
+
+  const answerDebt = async (d, confirmed) => {
+    /* ⚠ RAD ETISHDA TASDIQ SO'RALADI: bu do'kon bilan munosabatga
+       ta'sir qiladigan javob va uni tasodifan bosib yuborish mumkin
+       emas. Tasdiqlashda esa so'ralmaydi — u kutilgan harakat. */
+    if (!confirmed) {
+      const ok = await confirm({
+        title: "Men olmadim",
+        message: `${d.shopName}: ${money(d.amount)} so'm. Do'konga «bu qarzni men olmaganman» deb xabar boradi. Davom etamizmi?`,
+        type: "warning",
+        confirmText: "Ha, men olmadim",
+        cancelText: "Bekor qilish",
+      });
+      if (!ok) return;
+    }
+    setDebtBusy(d.id);
+    try {
+      await appApi.answerDebt(d.id, confirmed);
+      setDebts((prev) => prev.filter((x) => x.id !== d.id));
+    } catch (_) {
+      /* Javob ketmadi — qator joyida qoladi va mijoz qayta urinadi. */
+    } finally {
+      setDebtBusy(null);
+    }
+  };
 
   /* ⚠ Karta kodi DO'KONGA tegishli: bitta odamda har do'konda o'z kodi
      bor. Ilgari bu yerda DOIM BIRINCHI do'kon kartasi chizilardi va ikki
@@ -152,8 +239,98 @@ function CardScreen({ me, shops }) {
   /* Qaysi kod kattalashtirilgan: `null` · `"qr"` · `"bar"` */
   const [zoom, setZoom] = useState(null);
 
+  /* ══ AYLANMA KARTA (V45) ═══════════════════════════════════════════════
+
+     ⚠ MUAMMO. Karta QAT'IY kod edi: bu ekranni bir marta suratga olgan
+     odam uni cheksiz ishlatishi mumkin edi. Kassada karta skanerlanganda
+     mijoz TANLANADI, ya'ni nusxasi bo'lgan odam BEGONANING ballarini
+     ishlatib yuborishi mumkin — ball esa pulga teng.
+
+     Endi kod ikki qismdan: `EKC-K7M2P9QX-482915`. Birinchisi kimligini
+     aytadi, ikkinchisi har 30 soniyada yangilanadi (TOTP). Surat 30
+     soniyadan keyin ishlamaydi.
+
+     ⚠ KOD SERVERDAN SO'RALMAYDI, ILOVADA yasaladi. Sir bir marta olinadi
+     va kod undan oflayn hisoblanadi: kassa navbatida internet yo'qolishi
+     oddiy hol va o'sha payt karta ishlamay qolsa, mexanizm mijoz uchun
+     ishonchsiz bo'lib qolardi.
+
+     ⚠ Sir do'kon bo'yicha ALOHIDA (har do'konda o'z kartasi), shuning
+     uchun kesh `id` bo'yicha saqlanadi.
+
+     ⚠ Sir olinmasa karta ESKICHA — qat'iy kod bilan — ishlayveradi.
+     Bu ataylab: eski server yoki tarmoqsiz birinchi ochilish mijozni
+     kartasiz qoldirmasligi kerak. */
+  const [secrets, setSecrets] = useState({});
+  const [otp, setOtp] = useState("");
+  const [left, setLeft] = useState(30);
+  /* ⚠ SO'RALGANLAR RO'YXATI ALOHIDA (`ref`), holatda emas: holat
+     yangilangunicha effekt qayta ishga tushib, o'sha do'kon uchun sirni
+     IKKINCHI marta so'rardi. */
+  const asked = useRef({});
+
+  /* ⚠ «ALIVE» BAYROG'I ATAYLAB YO'Q — u bu yerda TUZOQ edi. React ishlab
+     chiqish rejimida effektni ikki marta ishga tushiradi: 1-yurish sirni
+     so'raydi va `asked` ni belgilaydi, tozalash `alive = false` qiladi,
+     2-yurish esa `asked` tufayli qaytib ketadi. Natijada javob kelganda
+     uni QABUL QILADIGAN hech kim qolmasdi va karta hech qachon
+     aylanmasdi. Tugaganidan keyin holat o'zgartirish React 18 da
+     zararsiz (hech narsa qilmaydi), qo'riqchi esa `asked` ning o'zi. */
+  useEffect(() => {
+    const id = picked?.id;
+    if (!id || asked.current[id]) return;
+    asked.current[id] = true;
+    appApi.cardSecret(id)
+      /* ⚠ `call()` JAVOB TANASINI EMAS, `data` ni qaytaradi. */
+      .then((r) => setSecrets((p) => ({ ...p, [id]: r || null })))
+      /* Xato JIMGINA yutiladi: karta qat'iy kod bilan baribir ishlaydi. */
+      .catch(() => setSecrets((p) => ({ ...p, [id]: null })));
+  }, [picked?.id]);
+
+  const cfg = picked?.id ? secrets[picked.id] : null;
+
+  useEffect(() => {
+    if (!cfg?.secret) { setOtp(""); return undefined; }
+    let stopped = false;
+    const period = cfg.periodSeconds || 30;
+
+    const tick = async () => {
+      try {
+        const code = await totpNow(cfg.secret, period);
+        if (!stopped) setOtp(code);
+      } catch (_) {
+        /* `crypto.subtle` yo'q (HTTPS bo'lmagan kontekst) — qat'iy kodga
+           tushamiz, karta baribir ishlaydi. */
+        if (!stopped) setOtp("");
+      }
+    };
+
+    tick();
+    const timer = setInterval(() => {
+      const s = secondsLeft(period);
+      setLeft(s);
+      if (s === period) tick();
+    }, 1000);
+    return () => { stopped = true; clearInterval(timer); };
+  }, [cfg]);
+
+  /* Skanerlanadigan qiymat: sir bo'lsa aylanma, bo'lmasa eskicha. */
+  const cardValue = picked
+    ? "EKC-" + picked.cardCode + (otp ? "-" + otp : "")
+    : "";
+
+  /* ⚠ RASMLAR KESHLANADI. Orqa hisob har soniyada yangilanadi, ya'ni
+     ekran ham har soniyada qayta chiziladi — QR va shtrixni har safar
+     qaytadan yasash telefonni bekorga qizdirardi. Ular faqat KOD
+     o'zgarganda (30 soniyada bir marta) yangilanadi. */
+  const qrHtml  = useMemo(() => (cardValue ? qrSvg(cardValue, { size: 180, margin: 1 }) : ""), [cardValue]);
+  const barHtml = useMemo(() => (cardValue ? code128Svg(cardValue) : ""), [cardValue]);
+
   return (
     <div className="cu-screen">
+      {/* ⚠ ENG TEPADA: qarz tasdig'i shoshilinch va uni pastga surib
+          qo'yish «ko'rmadim» degan javobga olib kelardi. */}
+      <DebtsBanner debts={debts} onAnswer={answerDebt} busy={debtBusy} />
       <div className="cu-hero">
         <span className="cu-hero__label">Jami ballaringiz</span>
         <b className="cu-hero__value">{money(me.totalBonus)}</b>
@@ -186,12 +363,21 @@ function CardScreen({ me, shops }) {
               Kartadagi kichik kodni xira telefondan skaner ololmasdi. */}
           <button type="button" className="ek-code-btn cu-code__qr"
                   onClick={() => setZoom("qr")} aria-label="QR kodni kattalashtirish"
-                  dangerouslySetInnerHTML={{ __html: qrSvg("EKC-" + picked.cardCode, { size: 180, margin: 1 }) }} />
+                  dangerouslySetInnerHTML={{ __html: qrHtml }} />
           <button type="button" className="ek-code-btn cu-code__bars"
                   onClick={() => setZoom("bar")} aria-label="Shtrix kodni kattalashtirish"
-                  dangerouslySetInnerHTML={{ __html: code128Svg("EKC-" + picked.cardCode) }} />
+                  dangerouslySetInnerHTML={{ __html: barHtml }} />
           <div className="cu-code__num">{picked.cardCode}</div>
-          <p className="cu-muted cu-center">Kassada shu kodni ko'rsating — kattalashtirish uchun bosing</p>
+          {/* ⚠ Orqa hisob KO'RINADI. Kod jimgina yangilansa, mijoz
+              skanerlanmagan kodni ushlab turib «buzuq» deb o'ylardi;
+              hisoblagich esa «hozir yangilanadi, kutib turing» deydi. */}
+          {otp ? (
+            <p className="cu-muted cu-center">
+              Kassada shu kodni ko'rsating · <b>{left} s</b> dan keyin yangilanadi
+            </p>
+          ) : (
+            <p className="cu-muted cu-center">Kassada shu kodni ko'rsating — kattalashtirish uchun bosing</p>
+          )}
           <div className="cu-code__bonus">
             <span>Shu do'kondagi ball</span><b>{money(picked.bonusBalance)}</b>
           </div>
@@ -216,7 +402,7 @@ function CardScreen({ me, shops }) {
       )}
 
       {zoom && picked && (
-        <CodeZoom kind={zoom} value={"EKC-" + picked.cardCode}
+        <CodeZoom kind={zoom} value={cardValue}
                   caption={picked.cardCode} onClose={() => setZoom(null)} />
       )}
     </div>
@@ -276,33 +462,100 @@ function NewsScreen() {
 
 /* ── 3. Cheklarim ───────────────────────────────────────────────────────
    ⚠ Lenta HAMMA do'kon bo'yicha bitta ro'yxat: mijoz xaridni sana bo'yicha
-   eslaydi, «qaysi do'konda edi» deb emas. Do'kon nomi har satrda turadi. */
+   eslaydi, «qaysi do'konda edi» deb emas. Do'kon nomi har satrda turadi.
+
+   ═══ IKKI LENTA, BITTA VARAQ (V61) ═══════════════════════════════════
+
+   ⚠ NEGA OLTINCHI VARAQ EMAS. Pastdagi menyuda beshta tugma bor va
+   oltinchisi telefon ekranida barmoq sig'maydigan darajada tor bo'lardi.
+   To'lovlar esa cheklarga eng yaqin narsa: ikkalasi ham «men nima
+   qildim» degan savolga javob beradi.
+
+   ⚠ NEGA BITTA ARALASH LENTA EMAS. Xarid — pul CHIQQANI, to'lov — qarz
+   KAMAYGANI. Ular aralashsa, mijoz «shu oyda qancha sarfladim» deb
+   qo'shib chiqqanda qarz to'lovini ham xaridga qo'shib yuborardi —
+   holbuki u allaqachon o'sha xaridda sanalgan. Ya'ni pul ikki marta
+   sanalgan bo'lib chiqardi. */
+
+const RCP_TABS = [
+  { key: "buy",  label: "Xaridlar" },
+  /* ⚠ «To'lovlarim» emas, «Qarzlarim» (V62): lentada endi olingan qarz
+     ham turadi. Eski nom yarim mazmunni yashirardi — mijoz qarzini shu
+     yerdan qidirmasdi. */
+  { key: "paid", label: "Qarzlarim" },
+  /* JAMG'ARMA (V66): har kirim-chiqimning kvitansiyasi. Do'kon egasi:
+     «mijoz tarixni batafsil ko'ra olishi kerak». */
+  { key: "sav",  label: "Jamg'arma" },
+];
 
 function ReceiptsScreen() {
+  const [kind, setKind]   = useState("buy");
   const [items, setItems] = useState(null);
   const [error, setError] = useState("");
   const [open, setOpen]   = useState(null);   // { id, customerId }
+  const [openPaid, setOpenPaid] = useState(null);
+  const [openSav, setOpenSav] = useState(null);
 
-  const load = () => {
+  const load = useCallback(() => {
     setError("");
     setItems(null);
-    appApi.receipts(50).then(setItems).catch((e) => setError(e.message));
-  };
-  useEffect(load, []);
+    /* ⚠ Jamg'arma lentasi DO'KONLAR bo'yicha keladi (pul ko'chmaydi)
+       — bu yerda faqat ko'rish uchun bitta lentaga yig'iladi, har
+       qatorda do'kon nomi turadi. */
+    const req = kind === "sav"
+      ? appApi.savings().then((accs) => (accs || [])
+          .flatMap((a) => (a.history || []).map((e) => ({
+            id: e.id, customerId: a.customerId, shopName: a.shopName,
+            receiptNo: `J-${e.id}`, date: e.createdAt, type: e.type,
+            amount: e.amount, balanceAfter: e.balanceAfter,
+          })))
+          .sort((a, b) => new Date(b.date) - new Date(a.date)))
+      : kind === "paid" ? appApi.payments(50) : appApi.receipts(50);
+    req.then(setItems).catch((e) => setError(e.message));
+  }, [kind]);
+  useEffect(load, [load]);
 
-  if (error) return <div className="cu-screen"><Retry text={error} onRetry={load} /></div>;
-  if (!items) return <div className="cu-screen"><div className="cu-card cu-center">Yuklanmoqda…</div></div>;
+  const tabs = (
+    <div className="cu-seg" role="tablist" aria-label="Chek turi">
+      {RCP_TABS.map((x) => (
+        <button key={x.key} type="button" role="tab"
+                aria-selected={kind === x.key}
+                className={`cu-seg__btn ${kind === x.key ? "active" : ""}`}
+                onClick={() => setKind(x.key)}>
+          {x.label}
+        </button>
+      ))}
+    </div>
+  );
+
+  if (error) {
+    return <div className="cu-screen"><h1 className="cu-title">Cheklarim</h1>{tabs}
+             <Retry text={error} onRetry={load} /></div>;
+  }
+  if (!items) {
+    return <div className="cu-screen"><h1 className="cu-title">Cheklarim</h1>{tabs}
+             <div className="cu-card cu-center">Yuklanmoqda…</div></div>;
+  }
+
+  const paid = kind === "paid";
+  const sav = kind === "sav";
 
   return (
     <div className="cu-screen">
       <h1 className="cu-title">Cheklarim</h1>
+      {tabs}
 
       {items.length === 0 && (
         <div className="cu-card cu-center">
-          <i className="fa-solid fa-receipt cu-big-icon" aria-hidden="true" />
-          <p><b>Hali chek yo'q</b></p>
+          <i className={`fa-solid ${sav ? "fa-sack-dollar" : paid ? "fa-hand-holding-dollar" : "fa-receipt"} cu-big-icon`}
+             aria-hidden="true" />
+          <p><b>{sav ? "Hali jamg'arma yo'q" : paid ? "Hali qarz yo'q" : "Hali chek yo'q"}</b></p>
           <p className="cu-muted">
-            Kassada kartangizni ko'rsating — xarid cheki shu yerda saqlanadi.
+            {sav
+              ? "Kassada jamg'armangizga pul qo'ysangiz, kvitansiyasi shu yerda saqlanadi."
+              : paid
+              ? "Nasiyaga olgan tovaringiz va to'lovingiz cheki shu yerda saqlanadi."
+              : "Kassada kartangizni ko'rsating — xarid cheki shu yerda saqlanadi."}
           </p>
         </div>
       )}
@@ -310,16 +563,50 @@ function ReceiptsScreen() {
       <ul className="cu-list">
         {items.map((r) => (
           <li key={`${r.customerId}-${r.id}`}>
-            <button className="cu-rcp" onClick={() => setOpen({ id: r.id, customerId: r.customerId })}>
+            <button className="cu-rcp"
+                    onClick={() => (sav ? setOpenSav : paid ? setOpenPaid : setOpen)({ id: r.id, customerId: r.customerId })}>
               <span className="cu-rcp__left">
                 <b>{r.receiptNo}</b>
                 <small className="cu-muted">{r.shopName}</small>
                 <small className="cu-muted">{dateLabel(r.date)}</small>
               </span>
               <span className="cu-rcp__right">
-                <b>{money(r.total)}</b>
-                {Number(r.bonusEarned) > 0 && <small className="cu-pos">+{money(r.bonusEarned)} ball</small>}
-                {Number(r.bonusUsed) > 0 && <small className="cu-muted">−{money(r.bonusUsed)} ball</small>}
+                {/* ⚠ ISHORA MIJOZNING KO'ZI BILAN: olingan qarz «+»
+                    (qarzim oshdi), to'lov «−» (qarzim kamaydi). Rang
+                    ham shunga qarab: qarz qizil, to'lov yashil.
+                    Ishorasiz ikkala qator bir xil ko'rinardi va mijoz
+                    lentaga qarab qaysi biri nima ekanini ajrata
+                    olmasdi. */}
+                {/* JAMG'ARMA (V66): kirim yashil «+», chiqim qizil «−». */}
+                <b className={sav ? (savingsSign(r) >= 0 ? "cu-pos" : "cu-neg")
+                              : paid ? (r.kind === "CHARGE" ? "cu-neg" : "cu-pos") : ""}>
+                  {sav ? (savingsSign(r) >= 0 ? "+" : "−")
+                       : paid ? (r.kind === "CHARGE" ? "+" : "−") : ""}
+                  {money(sav ? Math.abs(savingsSign(r)) : paid ? r.amount : r.total)}
+                </b>
+                {sav
+                  ? <>
+                      <small className="cu-muted">{SAVINGS_LABEL[r.type] || r.type}</small>
+                      {r.balanceAfter != null && (
+                        <small className="cu-muted">Jamg'armada: {money(r.balanceAfter)}</small>
+                      )}
+                    </>
+                  : paid
+                  /* ⚠ «Qarz yopildi» — lentaning eng qimmatli xabari:
+                     mijoz chekni ochmasdan, qaysi to'lovda qutulganini
+                     ko'radi. Qoldiq bo'sh bo'lishi mumkin (V61 dan
+                     oldingi yozuv) — o'shanda satr chiqmaydi. */
+                  ? (r.balanceAfter != null && (
+                      Number(r.balanceAfter) === 0
+                        ? <small className="cu-pos">Qarz yopildi</small>
+                        : <small className="cu-muted">
+                            {r.kind === "CHARGE" ? "Jami qarz: " : "Qoldi: "}{money(r.balanceAfter)}
+                          </small>
+                    ))
+                  : <>
+                      {Number(r.bonusEarned) > 0 && <small className="cu-pos">+{money(r.bonusEarned)} ball</small>}
+                      {Number(r.bonusUsed) > 0 && <small className="cu-muted">−{money(r.bonusUsed)} ball</small>}
+                    </>}
               </span>
             </button>
           </li>
@@ -332,6 +619,14 @@ function ReceiptsScreen() {
         <Receipt appToken={getAppToken()} id={open.id} customerId={open.customerId}
                  onClose={() => setOpen(null)} />
       )}
+      {openPaid && (
+        <PaymentReceipt appToken={getAppToken()} id={openPaid.id} customerId={openPaid.customerId}
+                        onClose={() => setOpenPaid(null)} />
+      )}
+      {openSav && (
+        <PaymentReceipt savings appToken={getAppToken()} id={openSav.id} customerId={openSav.customerId}
+                        onClose={() => setOpenSav(null)} />
+      )}
     </div>
   );
 }
@@ -341,6 +636,20 @@ function ReceiptsScreen() {
 function ShopsScreen({ shops }) {
   const items = shops?.items || [];
   const [history, setHistory] = useState(null);   // { id, shopName }
+  /* ⚠ JAMG'ARMA HAR DO'KONDA ALOHIDA va ular QO'SHILMAYDI: pul
+     do'konlar o'rtasida ko'chmaydi. Qo'shib ko'rsatish mijozga
+     ishlatib bo'lmaydigan raqamni va'da qilardi — ball tarixida
+     o'rganilgan dars bilan aynan bir xil.
+
+     ⚠ Xato YUTILADI: jamg'arma yo'q bo'lsa ham do'konlar ro'yxati
+     ochilishi kerak. */
+  const [savings, setSavings] = useState({});
+  useEffect(() => {
+    appApi.savings()
+      .then((list) => setSavings(Object.fromEntries(
+        (list || []).map((a) => [a.customerId, a]))))
+      .catch(() => {});
+  }, []);
 
   return (
     <div className="cu-screen">
@@ -375,6 +684,16 @@ function ShopsScreen({ shops }) {
               <span className="cu-shop__right">
                 <b className="cu-pos">{money(s.bonusBalance)}</b>
                 <small className="cu-muted">ball</small>
+                {/* ⚠ JAMG'ARMA BALLDAN PASTDA va BOSHQA yozuv bilan.
+                    Ikkalasi bitta ustunda turadi va chalkashish xavfi
+                    real: ball — do'konning sovg'asi (kuyadi), jamg'arma
+                    — MIJOZNING PULI (kuymaydi, qaytariladi). */}
+                {Number(savings[s.id]?.balance) > 0 && (
+                  <small className="cu-pos">
+                    <i className="fa-solid fa-sack-dollar" aria-hidden="true" />{" "}
+                    {money(savings[s.id].balance)} jamg'arma
+                  </small>
+                )}
               </span>
             </button>
           </li>
@@ -389,6 +708,7 @@ function ShopsScreen({ shops }) {
 
       {history && (
         <BonusSheet customerId={history.id} shopName={history.shopName}
+                    savings={savings[history.id]}
                     onClose={() => setHistory(null)} />
       )}
     </div>
@@ -400,17 +720,39 @@ function ShopsScreen({ shops }) {
    qilinadi. Summani mijoz IMZO bilan ko'radi (+840 / −5 000) — «SPEND»
    degan so'zni o'qib yo'nalishni o'zi topishi kerak emas. */
 
+/* ⚠ Turlar SERVERDAN nom bilan keladi va shu yerda tarjima qilinadi —
+   ball yorliqlaridagi bilan bir xil qoida. */
+const SAVINGS_LABEL = {
+  TOP_UP:  "To'ldirildi",
+  CHANGE:  "Qaytim qoldirildi",
+  OVERPAY: "Qarzdan ortiq to'lov",
+  SPEND:   "Xaridga ishlatildi",
+  REFUND:  "Naqd qaytarildi",
+  RETURN:  "Qaytarishdan qaytdi",
+  ADJUST:  "Do'kon to'g'irladi",
+};
+
+/** Mijoz ko'zi bilan: pul kirsa «+», chiqsa «−». */
+const savingsSign = (e) => {
+  const v = Number(e.amount) || 0;
+  if (e.type === "ADJUST") return v;
+  return e.type === "SPEND" || e.type === "REFUND" ? -v : v;
+};
+
 const BONUS_LABEL = {
   EARN:   { text: "Xariddan yig'ildi",        icon: "fa-plus" },
   SPEND:  { text: "Xaridda ishlatildi",       icon: "fa-minus" },
   REVOKE: { text: "Qaytarish tufayli olindi", icon: "fa-rotate-left" },
+  RESTORE:{ text: "Qaytarishda qaytarildi",   icon: "fa-rotate-left" },
   ADJUST: { text: "Do'kon to'g'irladi",       icon: "fa-pen" },
   EXPIRE: { text: "Muddati o'tdi",            icon: "fa-clock" },
 };
 
-function BonusSheet({ customerId, shopName, onClose }) {
+function BonusSheet({ customerId, shopName, savings, onClose }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
+  /* Jamg'arma qatoriga bosilsa — kvitansiyasi (V66). */
+  const [openSav, setOpenSav] = useState(null);
 
   useEffect(() => {
     appApi.bonus(customerId).then(setData).catch((e) => setError(e.message));
@@ -438,6 +780,60 @@ function BonusSheet({ customerId, shopName, onClose }) {
         {error && <Retry text={error} onRetry={() =>
           { setError(""); appApi.bonus(customerId).then(setData).catch((e) => setError(e.message)); }} />}
         {!data && !error && <div className="cu-card cu-center">Yuklanmoqda…</div>}
+
+        {/* ── JAMG'ARMA (V63) — BALLDAN OLDIN va ALOHIDA kartochkada.
+             ⚠ Farq matn bilan AYTILADI, chunki ular bitta ekranda
+             yonma-yon turadi: ball do'konning sovg'asi va MUDDATI
+             BOR; jamg'arma esa mijozning o'z puli va KUYMAYDI.
+             Bu farqni bilmagan mijoz jamg'armasini «tezroq
+             ishlatib qolay» deb shoshardi yoki ballini «baribir
+             turaveradi» deb kuydirib yuborardi. */}
+        {Number(savings?.balance) > 0 && (
+          <div className="cu-card cu-center">
+            <span className="cu-muted">
+              <i className="fa-solid fa-sack-dollar" aria-hidden="true" /> Jamg'armangiz
+            </span>
+            <div className="cu-sheet__sum cu-pos">{money(savings.balance)}</div>
+            <p className="cu-muted">
+              Bu sizning pulingiz — kuymaydi va xaridda to'liq ishlatiladi.
+            </p>
+            {/* ⚠ BALL TARIXI BILAN AYNAN BIR XIL MARKUP (`cu-bonus`):
+                ikkalasi bitta ekranda, ketma-ket turadi va boshqacha
+                chizilsa mijoz ularni bir-biriga bog'lay olmasdi. */}
+            <ul className="cu-list">
+              {(savings.history || []).slice(0, 10).map((e) => {
+                const v = savingsSign(e);
+                const plus = v >= 0;
+                return (
+                  /* ⚠ BOSILADI (V66): har qatorning kvitansiyasi bor —
+                     mijoz «bu pul qayerdan?» degan savolga batafsil
+                     javob oladi (kim, qachon, qaysi xarid). */
+                  <li key={e.id} className="cu-bonus" role="button" tabIndex={0}
+                      style={{ cursor: "pointer" }}
+                      onClick={() => setOpenSav(e.id)}
+                      onKeyDown={(ev) => { if (ev.key === "Enter" || ev.key === " ") setOpenSav(e.id); }}>
+                    <span className={`cu-bonus__icon ${plus ? "pos" : "neg"}`}>
+                      <i className={`fa-solid ${plus ? "fa-plus" : "fa-minus"}`} aria-hidden="true" />
+                    </span>
+                    <span className="cu-bonus__mid">
+                      <b>{SAVINGS_LABEL[e.type] || e.type}</b>
+                      <small className="cu-muted">{dateTime(e.createdAt)}</small>
+                      {e.reason && <small className="cu-muted">{e.reason}</small>}
+                    </span>
+                    <b className={plus ? "cu-pos" : "cu-neg"}>
+                      {plus ? "+" : "−"}{money(Math.abs(v))}
+                    </b>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
+
+        {openSav && (
+          <PaymentReceipt savings appToken={getAppToken()} id={openSav} customerId={customerId}
+                          onClose={() => setOpenSav(null)} />
+        )}
 
         {data && (
           <>
@@ -494,12 +890,50 @@ function ProfileScreen({ me, onSaved, onLogout }) {
   const [name, setName] = useState(me.fullName || "");
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const confirm = useConfirm();
 
   /* ⚠ Chiqish TASDIQSIZ edi: tasodifan bosilgan tugma mijozni kirish
      ekraniga otib yuborardi va u qayta kirish uchun Telegramga borishi
      kerak bo'lardi. Tasdiq brauzerning `confirm` oynasi emas, ILOVANING
      modali — qolgan hamma joyda ham shunday. */
+  /* ⚠ NIMA O'CHIB, NIMA QOLISHI OCHIQ AYTILADI. «Hammasi o'chirildi»
+     deb aytib, keyin do'kon qarzni ko'rsatishi aldov bo'lardi — qarz
+     do'konning buxgalteriya yozuvi va u qonun bo'yicha saqlanadi.
+     Shuning uchun matn uzun: bu yerda qisqalik yolg'onga aylanadi. */
+  const askDelete = async () => {
+    const ok = await confirm({
+      title: "Hisobni o'chirish",
+      /* ⚠ MATN V62 DA YANGILANDI. Ilgari «do'kon yozuvi o'chmaydi»
+         deb yozilgan edi va u o'sha paytda ROST edi: yozuvni faqat
+         do'konning o'zi arxivlay olardi. Endi aksincha — do'konda
+         bunday tugma umuman yo'q va arxivlashni shu tugma qiladi.
+         Eski matn qolganda, u YOLG'ON bo'lib qolardi. */
+      message: "Ilova hisobingiz butunlay o'chiriladi: telefon, ismingiz, "
+             + "Telegram va pochta bog'lanishi, barcha seanslar va "
+             + "bildirishnomalar.\n\n"
+             + "Do'konlardagi yozuvingiz ARXIVGA o'tadi: do'kon sizni "
+             + "ro'yxatida, qidiruvida va kassada ko'rmaydi.\n\n"
+             + "⚠ Xarid tarixingiz eski cheklarda qoladi — u do'konning "
+             + "buxgalteriya yozuvi va qonun bo'yicha saqlanadi.\n\n"
+             + "⚠ QARZINGIZ BO'LSA, o'sha do'kondagi yozuv ARXIVLANMAYDI "
+             + "va qarz o'z kuchida qoladi. Avval qarzni yoping.\n\n"
+             + "Bu amalni qaytarib bo'lmaydi.",
+      type: "danger",
+      confirmText: "Ha, o'chirilsin",
+      cancelText: "Bekor qilish",
+    });
+    if (!ok) return;
+    setDeleting(true);
+    try {
+      await appApi.deleteMe();
+      onLogout();
+    } catch (err) {
+      setDeleting(false);
+      alert(err.message);
+    }
+  };
+
   const askLogout = async () => {
     const ok = await confirm({
       title: "Chiqish",
@@ -563,6 +997,18 @@ function ProfileScreen({ me, onSaved, onLogout }) {
       </div>
 
       <button className="cu-btn cu-btn--ghost" onClick={askLogout}>Chiqish</button>
+
+      {/* ══ HISOBNI O'CHIRISH (V49) ══════════════════════════════════════
+          ⚠ GOOGLE PLAY TALABI: hisob ochishga ruxsat beradigan ilova uni
+          o'chirish yo'lini ham berishi shart. Usiz ilova do'konga
+          umuman qo'yilmaydi.
+
+          ⚠ Eng pastda va bo'sh tugma sifatida — bu qaytarib bo'lmaydigan
+          amal va u «Chiqish» bilan yonma-yon bir xil ko'rinishda tursa,
+          xato bosilishi mumkin edi. */}
+      <button className="cu-btn cu-btn--danger cu-delete" onClick={askDelete} disabled={deleting}>
+        {deleting ? "O'chirilmoqda…" : "Hisobni o'chirish"}
+      </button>
     </div>
   );
 }

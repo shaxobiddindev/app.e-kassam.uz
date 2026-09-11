@@ -1,28 +1,61 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspense } from "react";
 import { t } from "../lib/ek-i18n";
-import { productApi, customerApi, saleApi, securityApi, shopApi, mediaApi, fiscalApi, loyaltyApi } from "../api";
+import { productApi, customerApi, saleApi, securityApi, shopApi, mediaApi, fiscalApi, loyaltyApi, reportApi } from "../api";
 import { useBadge } from "../context/BadgeProvider";
 import { useConfirm } from "../context/ConfirmProvider";
+import { useAuth } from "../hooks/useAuth";
+import { roleSet } from "../lib/ek-roles";
 import { money, quantity as fmtQty } from "../utils";
 import { unitLabel } from "../lib/ek-labels";
+import { isWeighUnit } from "../lib/ek-scale";
 import ProductTile from "../components/ProductTile";
+import { asArray } from "../lib/ek-array";
+/* Jamg'armaga pul qo'yish (V64) — qarz to'lovi oynasining «savings» rejimi. */
+import DebtPayModal from "../components/DebtPayModal";
 import QuantityModal from "../components/QuantityModal";
+import LinePriceModal from "../components/LinePriceModal";
 import MarkingScanModal from "../components/MarkingScanModal";
 import { Empty, ClearButton } from "../components/ui";
 import { useKeyboard } from "../context/KeyboardProvider";
 import { clear as clearField } from "../lib/ek-keys";
 import { isTouch } from "../lib/ek-touch";
 import { FinishOverlay, SkeletonTiles, Spinner } from "../components/ek/Loading";
+import Overlay from "../components/ek/Overlay";
+import { layerCount } from "../lib/modal-stack";
+import { FISCAL_UI, moneyBare } from "../config";
 import OfflineBar from "../components/OfflineBar";
 import ShiftBar from "../components/ShiftBar";
 import * as queue from "../lib/ek-offline";
+import * as cartStore from "../lib/ek-cart-store";
 import { PAYMENT_TYPE, paymentLabel } from "../lib/ek-labels";
+import { shortDate, time } from "../lib/ek-format";
+import * as due from "../lib/ek-due";
+import { sfx } from "../lib/ek-sound";
 import { useLoading } from "../lib/use-loading";
+import Modal from "../components/Modal";
+import { PhoneField } from "../components/ek/EkFields";
 import Select from "../components/ek/Select";
-import { printReceipt, openDrawer } from "../lib/ek-hardware";
+import { printReceipt, openDrawer, printDebtReceipt, printerHealth } from "../lib/ek-hardware";
+import { getSettings } from "../lib/ek-hw-settings";
+
+/* Jamg'arma kvitansiyasi (V66) — kassada kamdan-kam ochiladi, alohida bo'lakda. */
+const PaymentReceipt = lazy(() => import("../portal/PaymentReceipt"));
+import FacetFilter from "../components/ek/FacetFilter";
+import { KASSA_KEYS, keyLabel, resolve as resolveKey } from "../lib/ek-kassa-keys";
+import { settle, payType as payTypeOf, restFor, savingsMax } from "../lib/ek-payment";
+import { cashSuggestions } from "../lib/ek-cash";
+import * as display from "../lib/ek-display";
+import { spreadDiscount, roundingOffers, optimizeDiscount, cartRoom,
+         cartLossRoom, discountVerdict, currentRefundScore } from "../lib/ek-discount";
+import { wholesalePlan, applyWholesale } from "../lib/ek-line-price";
+import { TIER_BEST } from "../lib/ek-refund";
 import { useScanner } from "../hooks/useScanner";
+import { rankLocal, looksLikeCode } from "../lib/ek-search";
+import { useTileMetrics } from "../hooks/useTileMetrics";
 import { isDesktop } from "../lib/ek-desktop";
 import { NumField } from "../components/ek/EkFields";
+import { useFitHeight, fitStyle } from "../hooks/useFitHeight";
+import { typeQtyKey, isBurst, QTY_TYPE_MS, APPLY_DELAY_MS } from "../lib/ek-qty-type";
 
 /* ══════════════════════════════════════════════════════════════════════════
    Kassir paneli — 06-APP-KASSIR.md
@@ -30,33 +63,60 @@ import { NumField } from "../components/ek/EkFields";
    Asosiy stsenariy 3 ta harakat:  skaner → to'lov turi → yakunlash (F9).
    Sichqoncha ixtiyoriy; hamma narsa klaviatura bilan ishlaydi.
 
-   Klaviatura yorliqlari (hujjatdagi jadval; F2 ikki joyda ko'rsatilgan edi —
-   bu yerda F1/F2/F3 to'lov turlari uchun, yangi sotuv esa Esc bilan savatni
-   tozalash orqali boshlanadi):
-     F1 / F2 / F3   Naqd / Karta / Aralash
-     F9             To'lovni qabul qilish
-     Esc            Savatni tozalash (tasdiq so'raydi) / modalni yopish
-     /              Tovar qidiruvi
-     Ctrl+B         Barkod maydoniga qaytish
-     Ctrl+P         Oxirgi chekni qayta chop etish
+   ⚠ KLAVIATURA YORLIQLARI BU YERDA SANALMAYDI — ular
+   `lib/ek-kassa-keys.js` dagi YAGONA jadvalda (V57). Ilgari ro'yxat shu
+   izohda, ishlovchida va tugmalar yonidagi belgilarda alohida yashardi
+   va allaqachon bir-biriga to'g'ri kelmay qolgan edi (shu izohning
+   o'zida F2 ikki xil vazifa bilan yozilgan edi). Endi uchalasi ham
+   o'sha bitta jadvaldan o'qiydi va kassir `?` bosib to'liq ro'yxatni
+   ko'radi.
    ══════════════════════════════════════════════════════════════════════════ */
 
 /* To'lov usullari — nom, ikonka va rang YAGONA lug'atdan (ek-labels.js).
    Ilgari ular shu faylda qo'lda yozilgan edi va sotuvlar tarixida Click/Payme
    tarjimasiz chiqardi. Klaviatura yorliqlari faqat shu ekranga tegishli,
    shuning uchun ular bu yerda qo'shiladi. */
-const PAY_KBD = { CASH: "F1", CARD: "F2", MIXED: "F3" };
+/* ⚠ Jadvaldan olinadi, qo'lda yozilmaydi — yorliq o'zgarsa tugmadagi
+   belgi ham o'zi o'zgaradi. */
+/* ⚠ ENDI YORLIQLAR JOYIGA MOS: F1 Naqd · F2 Karta · F3 Click · F4
+   Payme. Ilgari F3 «Aralash», F4 «Nasiya» edi va ikkalasi ham
+   ro'yxatdan chiqdi — bo'shagan joyni Click va Payme egalladi.
+   Kassirning barmog'i uchun F1 va F2 o'z joyida qoldi. */
+const PAY_KBD = {
+  CASH: keyLabel("payCash"), CARD: keyLabel("payCard"),
+  CLICK: keyLabel("payClick"), PAYME: keyLabel("payPayme"),
+  SAVINGS: keyLabel("paySavings"),
+};
 const payItem = (key) => {
   const p = PAYMENT_TYPE[key];
   return { key, label: p.label, icon: p.icon, color: p.color, kbd: PAY_KBD[key] };
 };
-/* ⚠ Nasiya ro'yxatning OXIRIDA: u eng kam ishlatiladigan va eng
-   e'tibor talab qiladigan tur. Boshida tursa kassir tasodifan bosib,
-   pulni olmasdan tovar berib yuborardi. */
-const PAY_METHODS  = ["CASH", "CARD", "CLICK", "PAYME", "MIXED", "CREDIT"].map(payItem);
-const MIXED_SECOND = ["CARD", "CLICK", "PAYME"].map(payItem);
+/* ══ TO'LOV USULLARI (V58) ═══════════════════════════════════════════
+   ⚠ «ARALASH» VA «NASIYA» BU RO'YXATDA YO'Q va ikkalasi ham ataylab.
 
-const REFOCUS_MS = 3000;   // fokus yo'qolsa shuncha vaqtdan keyin qaytadi
+   «Aralash» alohida TUR bo'lishi kassirdan OLDINDAN qaror talab
+   qilardi: «bu chek aralashmi?». Amalda u buni bilmaydi — mijoz avval
+   «20 mingi naqd» deydi, qolgani haqida keyin gaplashadi. Endi har
+   chek shunday ishlaydi: usul tanlanadi, summa yoziladi, qolgani
+   o'z-o'zidan nasiyaga tushadi.
+
+   «Nasiya» ham tugma emas: u YOZILMAGAN qismning o'zi. Tugma
+   qoldirilsa, bitta ish uchun ikki yo'l bo'lardi — o'sha eski
+   chalkashlik.
+
+   Hisobotdagi «Aralash» esa QOLADI (`ek-payment.js` → `payType`):
+   ekrandagi tur bilan hisobotdagi tur boshqa-boshqa narsa. */
+const PAY_METHODS = ["CASH", "CARD", "CLICK", "PAYME"].map(payItem);
+
+/* ⚠ JAMG'ARMA RO'YXATDA DOIM TURMAYDI (V63) — u faqat MIJOZ
+   TANLANGANDA va qoldig'i bor bo'lganda qo'shiladi.
+
+   Sabab: bosilib bo'lmaydigan tugma eng yomon tugma. Kassir uni
+   bosadi, hech narsa bo'lmaydi va u «buzuq» deb o'ylaydi. Mijozsiz
+   chekda esa jamg'armaning egasi ham yo'q — ko'rsatishning ma'nosi
+   qolmaydi. */
+const SAVINGS_METHOD = payItem("SAVINGS");
+
 const UNDO_MS    = 5000;   // o'chirishni bekor qilish oynasi
 
 /* ⚠ CHEK CHIQARISH BU YERDAN OLIB TASHLANDI → `lib/ek-hardware.js`.
@@ -72,6 +132,28 @@ const UNDO_MS    = 5000;   // o'chirishni bekor qilish oynasi
       kesib, naqd to'lovda pul yashigini ochib. Ikkala yo'l bitta joyda
       turishi kerak, aks holda ular ajralib ketardi. */
 
+/* Jonli qoldiq qadami — ombor sahifasi bilan bir xil. Kassir bir ilovada
+   ikki xil tezlikka ko'nikmasligi kerak. */
+const LIVE_REFRESH_MS = 15_000;
+
+/** Qoldig'i o'zgargan katakcha shuncha vaqt belgilanib turadi. */
+const FLASH_MS = 1600;
+
+/* Savat ustunining eng kichik va eng katta kengligi.
+   ⚠ Pastki chegara ATAYLAB 300: undan tor bo'lsa savat qatoridagi
+   «− 2 +» tugmalari nom ustiga chiqib ketardi. Yuqori chegara esa
+   katakchalar uchun joy qoldirish uchun — ustunni butun ekranga
+   cho'zib qo'yish mahsulot tanlashni imkonsiz qilardi. */
+/* ⚠ CHEGARALAR KENGAYTIRILDI (foydalanuvchi so'rovi: «savat oynasi
+   maksimal kengaysin»). Savatdan mijoz bloki ham, tablar ham chiqib
+   ketdi — ya'ni endi u FAQAT tovarlar ro'yxati va unga qancha keng joy
+   berilsa, qator shuncha to'liq o'qiladi (uzun nom qisqarmaydi, narx
+   va miqdor bir qatorga sig'adi). */
+const MIN_RIGHT_W = 340;
+const MAX_RIGHT_W = 760;
+const clampRight = (w, layoutW) =>
+  Math.round(Math.max(MIN_RIGHT_W, Math.min(w, MAX_RIGHT_W, layoutW * 0.62)));
+
 /** Oflayn chek raqami — server raqami bilan chalkashmasligi uchun OFF- prefiksli. */
 function nextOfflineNo() {
   const n = (Number(localStorage.getItem("ek_offline_seq")) || 0) + 1;
@@ -84,41 +166,253 @@ export default function KassaPage({ toast, refreshLowStock }) {
   const { guard } = useBadge();
   const [products, setProducts]     = useState([]);
   const [customers, setCustomers]   = useState([]);
-  const [cart, setCart]             = useState([]);
+  /* Qaytim jamg'armaga yo'naltirilsinmi (V63). ⚠ Har chekda QAYTADAN
+     so'raladi: bir marta yoqilgan bayroq keyingi mijozning qaytimini
+     jimgina yutib yuborardi. */
+  const [changeToSavings, setChangeToSavings] = useState(false);
+  /* «Jamg'armaga qo'yish» oynasi (V64) — savdoga aloqasi yo'q. */
+  const [topUpOpen, setTopUpOpen] = useState(false);
+  const [toppingUp, setToppingUp] = useState(false);
+  /* Jamg'arma oynasidagi mijoz (V66) — savatdagidan MUSTAQIL: kassir
+     uni oynaning o'zida tanlaydi. */
+  const [topUpCust, setTopUpCust] = useState(null);
+  /* To'ldirishdan keyingi KVITANSIYA (V66) — ekranda ham qoladi. */
+  const [savingsReceipt, setSavingsReceipt] = useState(null);
+  /* Raqam bilan miqdor yozish (V66) — ko'rsatkich uchun holat, mantiq
+     esa ref larda (`lib/ek-qty-type.js`). */
+  const [qtyTyping, setQtyTyping] = useState(null);   // { id, text, seq }
+  const qtyTypeRef   = useRef(null);   // { id, text, at }
+  const qtyTimerRef  = useRef(null);   // oynaning tugash taymeri
+  const qtyPendRef   = useRef(null);   // kutayotgan raqam (skanerni ajratish)
+  const lastKeyAtRef = useRef(0);
+
+  /* ══ BIR NECHTA SAVAT ═══════════════════════════════════════════════
+     ⚠ MUAMMO. Kassada bitta savat bor edi. Mijoz «yodimdan chiqibdi»
+     deb tuz olib kelgani ketsa, orqasidagi navbat kutib turardi:
+     kassirning terilgan savatni qo'yib turadigan joyi yo'q edi. Yagona
+     chora savatni tozalab, keyin qaytadan terish bo'lardi — bu esa
+     mijozning ham, navbatning ham vaqti.
+
+     ⚠ NEGA MASSIV, nega ikkinchi `useState` emas. Savat soni oldindan
+     ma'lum emas va har biri BIR XIL huquqqa ega: qaysi biri «asosiy»
+     ekanini kod bilishi shart emas, faqat qaysi biri OCHIQ ekanini
+     bilishi kerak.
+
+     ⚠ HAR SAVAT O'Z MIJOZI BILAN. Aks holda ikkinchi mijozga o'tganda
+     birinchisining sodiqlik kartasi chekka tushib qolardi — ball
+     boshqa odamning balansidan yechilardi.
+
+     ⚠ `cart` va `setCart` NOMLARI SAQLANDI. Sahifada yigirmadan ortiq
+     joyda ishlatiladi; ularni ochiq savatga yo'naltirish o'sha joylarni
+     o'zgartirmasdan bir xil ishlashini ta'minlaydi. `setCart` chizish
+     paytidagi savat raqamini YOPIB OLADI: bajik so'ralayotganda kassir
+     boshqa tabga o'tsa ham, o'chirish o'sha savatdan bo'ladi. */
+  const [carts, setCarts]           = useState(() => [cartStore.blank(1)]);
+  const [activeId, setActiveId]     = useState(1);
+  const cartSeq                     = useRef(1);
+
+  const active = carts.find((c) => c.id === activeId) || carts[0];
+  const cart   = active.items;
+
+  /* Uzoq davom etadigan amallar (bajik so'rovi) uchun HOZIRGI holat.
+     `await` dan keyin chizish paytidagi nusxa eskirgan bo'lishi mumkin. */
+  const cartsRef = useRef(carts);
+  const activeIdRef = useRef(activeId);
+  useEffect(() => { cartsRef.current = carts; activeIdRef.current = activeId; }, [carts, activeId]);
+
+  const patchCart = (id, patch) =>
+    setCarts((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)));
+
+  const setCart = (updater) =>
+    setCarts((prev) => prev.map((c) => (c.id === active.id
+      ? { ...c, items: typeof updater === "function" ? updater(c.items) : updater }
+      : c)));
   const [search, setSearch]         = useState("");
   const [searching, setSearching]   = useState(true);   // birinchi yuklash
+  /* Katakchada RAQAM ko'rinadimi (V107, V128 da kengaytirildi).
+     Bo'sh so'rovda emas: bo'shda butun katalog chiqadi va har
+     katakchada raqam turishi shovqin bo'lardi.
+
+     ⚠ KOD REJIMI (`*2`) HAM SHU YERGA KIRADI va bu tuzatish. Ilgari
+     shart faqat YALANG raqamni («142») tanirdi, yulduzcha esa uni
+     buzardi — ya'ni raqam bo'yicha qidirilayotgan aynan o'sha paytda
+     katakchalarda raqam KO'RINMASDI. Prefiks qidiruvi kelgach bu
+     nuqsonga aylandi: `*2` endi bitta emas, o'nlab tovar qaytaradi va
+     kassir ularni faqat RAQAMI bilan ajrata oladi. */
+  const codeMode = search.trim().startsWith("*");
+  const numericSearch = codeMode || /^\d{1,6}$/.test(search.trim());
   const tilesBusy = useLoading(searching);
-  const [payType, setPayType]       = useState("CASH");
-  const [cashGiven, setCashGiven]   = useState("");     // naqdda berilgan summa
-  const [cashAmount, setCashAmount] = useState("");     // aralash: naqd qismi
-  const [cardAmount, setCardAmount] = useState("");     // aralash: ikkinchi qism
-  const [customer, setCustomer]     = useState(null);
+  /* ══ TO'LOV (V58) ═══════════════════════════════════════════════════
+     ⚠ `payType` VA `split` O'RNIGA IKKI HOLAT. Ilgari to'lov turi
+     («CASH» yoki «MIXED») va aralash qatorlar ro'yxati alohida
+     yashardi; ikkalasini sinxron ushlab turish har o'zgarishda qo'lda
+     ish edi va aynan shu yerdan xatolar chiqardi.
+
+     Endi bitta lug'at yetadi: qaysi usulga qancha yozilgan. Chekning
+     TURI undan hisoblanadi (`ek-payment.js` → `payType`), ya'ni u
+     saqlanadigan holat emas — hosila. */
+  const [paid, setPaid] = useState({});
+  /** Bitta maydon hozir qaysi usulni tahrirlayapti. */
+  const [payFocus, setPayFocus] = useState("CASH");
+  const customer = active.customer;
+  const setCustomer = (c) => patchCart(active.id, { customer: c });
   /* Mijozning sodiqlik darajasi — faqat KO'RSATISH uchun. Chegirmani
      server chek yozilganda o'zi hisoblaydi; bu yerdagi raqam hisobga
      ta'sir qilmaydi va shunday bo'lishi ham kerak: front hisoblagan
      chegirma kassir tomonidan o'zgartirilishi mumkin bo'lardi. */
   const [tier, setTier]             = useState(null);
-  /* Ball: kassir kiritgan summa + do'kon chegarasi (foizda). */
-  const [bonusUse, setBonusUse]     = useState("");
+
+  /* ⚠ MIJOZ EKRANI SOZLAMADAN yoqiladi (V77): ikkinchi monitori yo'q
+     do'konda u `localStorage` ga bekorga yozib turardi. Sozlama
+     o'zgarganda `ek:hw` hodisasi keladi — Sozlamalar va Kassa bir
+     vaqtda ochiq bo'lishi mumkin. */
+  const [displayOn, setDisplayOn] = useState(() => getSettings()[display.HW_KEY] === true);
+
+  /* ⚠ PRINTER HOLATI (V79): kassir nosozlikni sotuvdan KEYIN emas,
+     OLDIN bilishi kerak — mijoz pulini bergandan keyin «chek chiqmadi»
+     deyish eng yomon vaqt. Holat oxirgi chop etish urinishidan
+     olinadi (`ek-hardware`), chunki printerni «so'rab» bo'lmaydi. */
+  const [printer, setPrinter] = useState(printerHealth);
+
+  /* ══════════════════════════════════════════════════════════════════
+     OXIRGI CHEKLAR (V79)
+
+     ⚠ NEGA XOTIRADA, serverdan EMAS. Kassirning savoli tor va zudlik
+     bilan tug'iladi: «hozirgina sotganimning cheki qani?» — mijoz
+     hali ketmagan bo'ladi. Server so'rovi buni sekinlashtirardi va
+     internet uzilganda umuman ishlamasdi (kassa esa offline
+     sotaveradi). To'liq tarix «Savdo» bo'limida qoladi.
+
+     ⚠ Ro'yxat SESSIYA bilan yashaydi va saqlanmaydi: chekning to'liq
+     nusxasi `localStorage` da o'nlab kilobayt joy egallardi va
+     brauzer xotirasi to'lganda savatning O'ZI saqlanmay qolardi —
+     ya'ni muhimrog'i qurbon bo'lardi. */
+  const [lastSales, setLastSales] = useState([]);
+  const [salesOpen, setSalesOpen] = useState(false);
+
+  /* ══════════════════════════════════════════════════════════════════
+     BIRGA SOTILADIGAN TOVARLAR (V79)
+
+     ⚠ OCHILISHDA BIR MARTA olinadi va keyin xotiradan qidiriladi:
+     kassirning oldida navbat turadi va har skanerdan keyin serverga
+     borish taklifni foydali emas, xalaqit qiladigan qilardi.
+
+     ⚠ Xatosi JIM yutiladi: taklif — qo'shimcha, uning yo'qligi
+     sotuvga xalaqit bermasligi kerak. */
+  const [pairs, setPairs] = useState([]);
+  /* Ball: kassir kiritgan summa + do'kon chegarasi (foizda).
+
+     ⚠ SAVATNING O'ZIDA (V57) — `customer` bilan bir qatorda. Sahifa
+     holatida turganida tab almashtirilganda ikkinchi mijozga
+     birinchisining ballari ko'chib o'tardi. */
+  const bonusUse = active.bonusUse ?? "";
+  const setBonusUse = (v) => patchCart(active.id, { bonusUse: v });
+  /* Kassadan yangi mijoz qo'shish (V47) — `null` bo'lsa oyna yopiq. */
+  const [newCust, setNewCust] = useState(null);
+  const [savingCust, setSavingCust] = useState(false);
   const [bonusMaxPercent, setBonusMaxPercent] = useState(0);
+  /* ⚠ NASIYA YOQILGANMI. Do'kon uni butunlay o'chirib qo'ygan bo'lishi
+     mumkin; tugmani baribir ko'rsatish kassirni serverdan rad javob
+     oladigan yo'lga boshlardi — u esa sababini ekranda ko'rmasdi. */
+  const [creditEnabled, setCreditEnabled] = useState(true);
+  /* Nasiya muddati, kunlarda (V43) — chekdagi «to'lash muddati» uchun.
+     ⚠ SAHIFA holatida: bu DO'KON sozlamasi (`creditDueDays`), savatning
+     xususiyati emas — kassir uni tahrirlamaydi. */
+  const [dueDays, setDueDays] = useState(0);
+  /* ══ QARZ MUDDATI — CHEKNIKI, SOZLAMANIKI EMAS (V87) ══════════════
+     Do'kon egasi: «qarz berilayotganda qarz muddatini to'lov paytida
+     so'raydigan qilish kerak, qo'shimchasiga sozlamadagi muddat deb
+     belgilay olsin, lekin to'lov paytida muddat so'rash birinchi».
+
+     ⚠ SOZLAMA — TAKLIF, QAROR EMAS. `dueDays` maydonni to'ldirib
+     beradi (shuning uchun «belgilab qo'yish» ham ishlaydi), lekin
+     oxirgi so'z kassirniki: muddat mijoz bilan aynan shu lahzada
+     kelishiladi va u har mijozda har xil.
+
+     Bo'sh satr — «muddat kelishilmagan»; server bunday qarzni
+     ilgarigidek sozlamadagi kun soniga qarab o'lchaydi. */
+  const [dueDate, setDueDate] = useState("");
   const [processing, setProcessing] = useState(false);
   const [branchId]                  = useState(null);
   const [showPayModal, setShowPayModal] = useState(false);
-  const [mixedSecondType, setMixedSecondType] = useState("CARD");
   const [finish, setFinish]         = useState(null);   // { phase, total, receiptNo }
   const [undo, setUndo]             = useState(null);   // { item, index }
-  const [bcWarn, setBcWarn]         = useState(false);  // fokus yo'qolgani
   /* Barkod maydoni boshqarilmaydi (skaner unga to'g'ridan-to'g'ri yozadi va
      Enter'da o'zi tozalanadi). «×» tugmasi esa qiymat BORLIGINI bilishi
      kerak — shuning uchun faqat shu bayroq holatda saqlanadi. */
-  const [bcValue, setBcValue]       = useState("");
   /* Chek chegirmasi — SUMMA. Kassir foizni emas, summani kiritadi:
      "5 000 so'm chegirma" mijoz bilan gaplashishda tabiiyroq va chekda
      ham summa turadi. Server chegarani foizga aylantirib tekshiradi. */
-  const [discount, setDiscount]     = useState("");
+  /* ⚠ SAVATNING O'ZIDA (V57). Ilgari sahifa holatida edi va ikkita
+     xato berardi: tab almashtirilganda chegirma ikkinchi mijozga
+     ko'chardi, F5 da esa savat tiklanib chegirma yo'qolardi. */
+  const discount = active.discount ?? "";
+  const setDiscount = (v) => patchCart(active.id, { discount: v });
+  /* ⚠ «Bermoqchi bo'lgan ENG KO'P chegirma» — chegirmaning O'ZI EMAS.
+     Kassir shu maydonga yozadi, tizim esa shundan oshmaydigan yaxlit
+     variantlarni taklif qiladi. Tanlanmaguncha chekka hech narsa
+     tushmaydi: bu maydon niyat, chegirma esa qaror. */
+  /* ⚠ TANLANGAN SAVAT QATORI — klaviatura bilan ishlash uchun (V57).
+     Sensorsiz monoblokda «−», «+», narx va «✕» tugmalariga yetish
+     uchun har safar sichqonchani olish kerak edi. Endi qator ↑/↓ bilan
+     tanlanadi va o'sha tugmalar klaviaturadan bosiladi.
+
+     ⚠ INDEKS EMAS, `id` SAQLANADI: savatda tovar qo'shilganda tartib
+     o'zgaradi va indeks boshqa qatorga «sirg'alib» ketardi — kassir
+     ko'zi bilan bir qatorni ko'rib, boshqasini o'chirgan bo'lardi. */
+  const [pickedId, setPickedId] = useState(null);
+  /* Yorliqlar ro'yxati (`?`) — `null` bo'lsa yopiq. */
+  const [keysOpen, setKeysOpen] = useState(false);
+
+  /* ══ KO'P TANLOVLI FILTR (V57) ═══════════════════════════════════════
+     ⚠ QURILMADA SAQLANADI — kategoriya tabi bilan bir xil sabab: kassir
+     kun bo'yi bitta bo'limda ishlaydi («ayollar, qishki») va har
+     qaytganda uni qaytadan belgilash kuniga o'nlab ortiqcha bosish edi.
+
+     ⚠ Buzuq yozuvda BO'SH filtr: eski yoki qo'lda o'zgartirilgan
+     yozuv butun katalogni ko'rinmas qilib qo'yardi va kassir sababini
+     topa olmasdi. */
+  const [filter, setFilter] = useState(() => {
+    try {
+      const raw = localStorage.getItem("ek_kassaFilter");
+      const v = raw ? JSON.parse(raw) : null;
+      return v && typeof v === "object" && !Array.isArray(v) ? v : {};
+    } catch (_) { return {}; }
+  });
+  const [facets, setFacets] = useState(null);
+  const [filterOpen, setFilterOpen] = useState(false);
+
+  /** Nechta katakcha belgilangan — tugmadagi belgi uchun. */
+  const filterCount = useMemo(
+    () => Object.values(filter).reduce((s, a) => s + (Array.isArray(a) ? a.length : 0), 0),
+    [filter],
+  );
+
+  useEffect(() => {
+    try {
+      if (filterCount > 0) localStorage.setItem("ek_kassaFilter", JSON.stringify(filter));
+      else localStorage.removeItem("ek_kassaFilter");
+    } catch (_) { /* shaxsiy rejim — saqlanmasa ham kassa ishlaydi */ }
+  }, [filter, filterCount]);
+
+  /* Filtr katakchalari — do'konda haqiqatan mavjud qiymatlar.
+     Xatosi JIM yutiladi: filtr — qulaylik, sotuvning sharti emas. */
+  useEffect(() => {
+    productApi.getFacets(branchId)
+      .then((r) => setFacets(r.data || null))
+      .catch(() => setFacets(null));
+  }, [branchId]);
   const keyboard                    = useKeyboard();
   const touchOn                     = isTouch();
   const confirm                     = useConfirm();
+  /* ⚠ TIKLASH HAMMAGA EMAS. Server ham `OWNER`/`SHOP_ADMIN`/
+     `STOREKEEPER` dan boshqasini qo'ymaydi; kassirga tugma
+     ko'rsatib, keyin 403 berish faqat umid uyg'otardi. Kassir
+     baribir SABABNI ko'radi — «bu tovar arxivda» — va egasiga
+     ayta oladi. */
+  const { user: authUser }          = useAuth();
+  const canRestore                  = [...roleSet(authUser?.role)]
+    .some((r) => r === "OWNER" || r === "SHOP_ADMIN" || r === "STOREKEEPER");
 
   /* ── Katalog ko'rinishi ────────────────────────────────────────
      Kategoriya tabi va ikki ko'rinish (rasmli / zich). Ko'rinish
@@ -126,16 +420,111 @@ export default function KassaPage({ toast, refreshLowStock }) {
      ekranlari har xil bo'lishi mumkin, va tanlov har kirishda
      qaytadan qilinmasin. */
   const [categories, setCategories] = useState([]);
-  const [categoryId, setCategoryId] = useState(null);   // null = hammasi
-  const [favOnly, setFavOnly]       = useState(false);
+  /* ⚠ KATEGORIYA TABI VA «SEVIMLI» FILTRI QURILMADA SAQLANADI (V57).
+     Do'kon egasining so'rovi: «kassa oynasini qanday holatda tark
+     etsa, qaytganda ham shunday tursin — hatto qayta yuklashda ham».
+
+     Kassir kun bo'yi bitta bo'limda ishlaydi (masalan «Ichimliklar»)
+     va har qaytganda uni qaytadan tanlash — kuniga o'nlab ortiqcha
+     bosish edi. Ko'rinish (`ek_kassaView`) va ustun kengligi
+     (`ek_kassaRightW`) allaqachon shunday saqlanardi; bu ikkisi
+     o'sha qatorga qo'shildi.
+
+     ⚠ HISOBDA EMAS, QURILMADA: bitta hisob bilan kirilgan kassa
+     monitori va omborchining noutbugi bir xil bo'lishi shart emas. */
+  const [categoryId, setCategoryId] = useState(() => {
+    const raw = localStorage.getItem("ek_kassaCategory");
+    const n = Number(raw);
+    return raw && Number.isFinite(n) && n > 0 ? n : null;   // null = hammasi
+  });
+  const [favOnly, setFavOnly]       = useState(
+    () => localStorage.getItem("ek_kassaFav") === "1",
+  );
+
+  /* ⚠ Saqlash EFFEKTDA, `setCategoryId` o'ramida emas: tabni bosish
+     bir necha joydan chaqiriladi (tugma, «hammasi», sevimlilar) va
+     ularning birortasi unutilsa, saqlash jimgina ishlamay qolardi. */
+  useEffect(() => {
+    try {
+      if (categoryId) localStorage.setItem("ek_kassaCategory", String(categoryId));
+      else localStorage.removeItem("ek_kassaCategory");
+    } catch (_) { /* shaxsiy rejim — saqlanmasa ham kassa ishlaydi */ }
+  }, [categoryId]);
+
+  useEffect(() => {
+    try {
+      if (favOnly) localStorage.setItem("ek_kassaFav", "1");
+      else localStorage.removeItem("ek_kassaFav");
+    } catch (_) { /* yuqoridagi bilan bir xil sabab */ }
+  }, [favOnly]);
   const [view, setView]             = useState(() => localStorage.getItem("ek_kassaView") || "");
+  /* ══ USTUNLAR KENGLIGI ═══════════════════════════════════════════════
+     ⚠ Kassa 360px lik qat'iy savat ustuni bilan kelardi. Bitta do'konda
+     tovar nomlari uzun (kiyim, kosmetika) va savat kengroq bo'lishi
+     kerak; boshqasida kassir katakchalarni ko'proq ko'rishni xohlaydi.
+     Ikkalasiga bir vaqtda to'g'ri keladigan raqam yo'q, shuning uchun
+     chegarani KASSIR suradi.
+
+     ⚠ QURILMADA saqlanadi, hisobda emas: bu ekranning o'lchamiga
+     bog'liq tanlov. Bitta hisob bilan kirilgan kassa monitori va
+     noutbukda bir xil bo'lishi shart emas. */
+  const [rightW, setRightW] = useState(() => {
+    const saved = Number(localStorage.getItem("ek_kassaRightW"));
+    return Number.isFinite(saved) && saved >= MIN_RIGHT_W ? saved : 360;
+  });
+  /* Smena ochiqmi — `ShiftBar` xabar beradi. To'lov tugmasi yonidagi
+     ogohlantirish shunga qarab chiziladi (`ShiftBar` izohiga qarang). */
+  const [shiftOpen, setShiftOpen] = useState(true);
+  const onShiftState = useCallback(({ open }) => setShiftOpen(open), []);
+
+  const layoutRef = useRef(null);
+  /* Tovar to'ri — rasm nisbatini saqlash uchun o'lchanadi. */
+  const gridRef   = useRef(null);
+
+  /** Chegarani surish. Piksel emas, CHETDAN masofa hisoblanadi. */
+  const dragSplit = (e) => {
+    const box = layoutRef.current?.getBoundingClientRect();
+    if (!box) return;
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    const move = (ev) => {
+      /* Sichqoncha oynadan chiqib ketsa ham hisob buzilmasin —
+         `clientX` chegaralanadi. */
+      const w = clampRight(box.right - ev.clientX, box.width);
+      setRightW(w);
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      /* Saqlash FAQAT qo'yib yuborilganda: har piksel harakatda
+         `localStorage` ga yozish diskni bekorga charxlaydi. */
+      setRightW((w) => { localStorage.setItem("ek_kassaRightW", String(w)); return w; });
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  };
+
+  /** Klaviatura bilan ham: sichqonchasiz kassa terminallari bor. */
+  const nudgeSplit = (e) => {
+    const step = e.shiftKey ? 60 : 20;
+    let d = 0;
+    if (e.key === "ArrowLeft")  d = +step;   // savat kengayadi
+    if (e.key === "ArrowRight") d = -step;
+    if (!d) return;
+    e.preventDefault();
+    const box = layoutRef.current?.getBoundingClientRect();
+    setRightW((w) => {
+      const next = clampRight(w + d, box?.width || 1200);
+      localStorage.setItem("ek_kassaRightW", String(next));
+      return next;
+    });
+  };
   const [qtyModal, setQtyModal]     = useState(null);   // { product, initial }
+  /* Qator narxini tushirish (V48) — `null` bo'lsa oyna yopiq. */
+  const [priceModal, setPriceModal] = useState(null);
   const [markModal, setMarkModal]   = useState(null);   // { product } — DataMatrix
 
-  const barcodeRef  = useRef(null);
   const searchRef   = useRef(null);
   const debounceRef = useRef(null);
-  const refocusRef  = useRef(null);
   const undoRef     = useRef(null);
   const lastSale    = useRef(null);   // Ctrl+P uchun
   /* Savatni tozalash so'ralganmi. Escape modal ochiq turganda yana bosilsa
@@ -145,26 +534,71 @@ export default function KassaPage({ toast, refreshLowStock }) {
   // Chek sarlavhasi va imzosi. Sessiyadan olinadi — chek uchun alohida
   // so'rov yubormaymiz: kassa ekrani oflaynda ham ishlashi kerak.
   const shopName = localStorage.getItem("ek_shopName") || localStorage.getItem("ek_shopCode") || "";
+
+  /* ⚠ BO'SH EKRAN QORAYIB TURMAYDI: kun bo'yi qorayib turgan monitor
+     buzuq ko'rinadi. Taklif — narxi TUSHIRILGAN tovarlar; ular yo'q
+     bo'lsa ekran shunchaki do'kon nomi bilan qoladi (yolg'on aksiya
+     ko'rsatilmaydi). */
+  const promo = useMemo(() => products
+    .filter((p) => p.oldPrice > 0 && p.salePrice > 0 && p.oldPrice > p.salePrice)
+    .slice(0, 6)
+    .map((p) => ({ name: p.name, price: p.salePrice, was: p.oldPrice })),
+    [products]);
+
+  useEffect(() => {
+    const on = (e) => setDisplayOn(e.detail?.[display.HW_KEY] === true);
+    window.addEventListener("ek:hw", on);
+    return () => window.removeEventListener("ek:hw", on);
+  }, []);
+
+  useEffect(() => {
+    const on = (e) => setPrinter(e.detail || null);
+    window.addEventListener("ek:printer", on);
+    return () => window.removeEventListener("ek:printer", on);
+  }, []);
   const cashier  = localStorage.getItem("ek_fullName") || localStorage.getItem("ek_username") || "";
 
   /* ── Mijozlar ─────────────────────────────────────────────── */
   useEffect(() => {
-    customerApi.getAll(branchId).then((r) => setCustomers(r.data || [])).catch(() => {});
+    customerApi.getAll(branchId).then((r) => setCustomers(asArray(r.data))).catch(() => {});
+  }, [branchId]);
+
+  useEffect(() => {
+    reportApi.basket(branchId).then((r) => setPairs(asArray(r.data))).catch(() => setPairs([]));
   }, [branchId]);
 
   /* Tanlangan mijozning darajasi. Xatosi JIM yutiladi: daraja — qo'shimcha
      ma'lumot, uning yo'qligi sotuvga xalaqit bermasligi kerak. */
+  /**
+   * ⚠ BALL FAQAT SHU SAVAT ICHIDA mijoz almashganda tozalanadi (V57).
+   *
+   * Ilgari bu yerda shartsiz `setBonusUse("")` turardi. Ball savatning
+   * o'ziga ko'chgach (tab almashtirilganda meros bo'lmasin deb) o'sha
+   * shartsiz tozalash ikkita YANGI xatoni bergan bo'lardi:
+   *
+   *   · boshqa tabga o'tish «mijoz almashdi» deb qaralib, o'sha
+   *     savatning o'z balli o'chib ketardi;
+   *   · F5 dan keyin savat tiklanardi-yu, kassir yozgan ball
+   *     yo'qolardi — ya'ni uni qaytadan yozish kerak edi.
+   *
+   * Shuning uchun oldingi holat (qaysi savat, qaysi mijoz) eslab
+   * qolinadi va tozalash faqat HAQIQIY almashishda bo'ladi.
+   */
+  const custKeyRef = useRef(null);
   useEffect(() => {
-    if (!customer?.id) { setTier(null); setBonusUse(""); return; }
+    const cartId = active.id;
+    const custId = customer?.id ?? null;
+    const prev = custKeyRef.current;
+    custKeyRef.current = { cartId, custId };
+    if (prev && prev.cartId === cartId && prev.custId !== custId) setBonusUse("");
+
+    if (!custId) { setTier(null); return; }
     let alive = true;
-    loyaltyApi.customerTier(customer.id)
+    loyaltyApi.customerTier(custId)
       .then((r) => { if (alive) setTier(r.data || null); })
       .catch(() => { if (alive) setTier(null); });
-    // Mijoz almashsa kiritilgan ball tozalanadi: oldingi mijozning
-    // balansiga qarab yozilgan raqam yangisiga to'g'ri kelmaydi.
-    setBonusUse("");
     return () => { alive = false; };
-  }, [customer?.id]);
+  }, [active.id, customer?.id]);
 
 
   /* ── Kategoriyalar va standart ko'rinish ───────────────────────
@@ -174,7 +608,14 @@ export default function KassaPage({ toast, refreshLowStock }) {
      tanlanadi). Bu — standart, majburiyat emas. */
   useEffect(() => {
     productApi.getCategories(branchId)
-      .then((r) => setCategories((r.data || []).filter((c) => c.productCount > 0)))
+      .then((r) => {
+        const list = (asArray(r.data)).filter((c) => c.productCount > 0);
+        setCategories(list);
+        /* ⚠ SAQLANGAN TAB HALI BORMI. Kategoriya o'chirilgan yoki
+           tovarsiz qolgan bo'lsa, saqlangan raqam katalogni BO'SH
+           ko'rsatib turardi va kassir sababini topa olmasdi. */
+        setCategoryId((cur) => (cur && !list.some((c) => c.id === cur) ? null : cur));
+      })
       .catch(() => {});
   }, [branchId]);
 
@@ -189,13 +630,25 @@ export default function KassaPage({ toast, refreshLowStock }) {
     shopApi.getProfile()
       .then((r) => {
         setBonusMaxPercent(Number(r?.data?.bonusMaxPercent) || 0);
-        const bt = r?.data?.businessType;
-        const auto = ["CLOTHING", "COSMETICS", "SERVICE", "ELECTRONICS"].includes(bt) ? "tiles" : "list";
-        setView((cur) => cur || auto);
+        setDueDays(Number(r?.data?.creditDueDays) || 0);
+        setCreditEnabled(r?.data?.creditEnabled !== false);
+        /* ⚠ STANDART KO'RINISH — RASMLI (foydalanuvchi qarori: «asosiy
+           ko'rinish rasmli bo'lsin, zich emas»). Ilgari faqat kiyim va
+           kosmetika do'konlariga rasmli berilardi, qolganiga zich
+           ro'yxat — lekin zich ro'yxatda tovarni KO'RIB tanlab
+           bo'lmaydi va ekran raqamlar devoriga aylanardi.
+
+           Tanlov saqlanadi (`ek_kassaView`): zich ro'yxat kerak
+           bo'lgan do'kon bir marta bosadi va shundayligicha qoladi. */
+        setView((cur) => cur || "tiles");
       })
       .catch(() => {
         setBonusMaxPercent(0);
-        setView((cur) => cur || "list");
+        setDueDays(0);
+        /* ⚠ Xatoda nasiya YOPIQ deb hisoblanadi: bilmagan holatda
+           qarz yozdirishga yo'l ochish, ochmaslikdan qimmatroq. */
+        setCreditEnabled(false);
+        setView((cur) => cur || "tiles");
       });
   }, []);
 
@@ -205,23 +658,321 @@ export default function KassaPage({ toast, refreshLowStock }) {
   };
 
   /* ── Server qidiruvi (debounce 350ms) ─────────────────────── */
-  const doSearch = useCallback(async (q) => {
-    setSearching(true);
+  /* Filtrsiz ro'yxat — KESHDA.
+
+     ⚠ NEGA. Savatga qo'shilgandan keyin qidiruv maydoni tozalanadi va
+     katakchalar to'liq ro'yxatga qaytishi kerak. Ilgari buning uchun har
+     safar SERVERGA so'rov ketardi — ya'ni har skanerlangan tovar uchun
+     bittadan. Yigirma dona tovarli chekda bu yigirmata keraksiz so'rov:
+     sekin tarmoqda katakchalar miltillab turardi, oflaynda esa har biri
+     kutib qolardi. Ro'yxat esa o'sha-o'sha edi. */
+  const baseProducts = useRef(null);
+
+  /* ══ «BOSHQA KASSADA SOTILDI» BELGISI ═══════════════════════════════
+     ⚠ Jonli yangilanish JIM edi: son o'zgarardi-yu, kassir buni ko'rmasdi.
+     Ekranda 40 ta katakcha turibdi va ulardan bittasining raqami 5 dan
+     4 ga tushganini payqash — imkonsiz ish. Natijada jonli yangilanish
+     bor edi, foydasi esa yo'q.
+
+     Endi o'zgargan katakcha bir silkinib qo'yadi. Silkinish qisqa
+     (1.6 s) va faqat SONI O'ZGARGANLARIDA — hammasi qimirlasa u ogohlik
+     emas, bezovtalikka aylanardi.
+
+     ⚠ Harakatni kamaytirish rejimida (`prefers-reduced-motion`) animatsiya
+     o'zi o'chadi — `ek-motion.css` dagi umumiy qoida. */
+  const [flash, setFlash] = useState(() => new Set());
+  const flashTimer = useRef(null);
+  const productsRef = useRef([]);
+  useEffect(() => { productsRef.current = products; }, [products]);
+  useEffect(() => () => clearTimeout(flashTimer.current), []);
+
+  const flagChanges = useCallback((list) => {
+    const before = new Map(productsRef.current.map((p) => [p.id, p.stockQuantity]));
+    const moved = list
+      .filter((p) => before.has(p.id) && Number(before.get(p.id)) !== Number(p.stockQuantity))
+      .map((p) => p.id);
+    if (moved.length === 0) return;
+    setFlash(new Set(moved));
+    clearTimeout(flashTimer.current);
+    flashTimer.current = setTimeout(() => setFlash(new Set()), FLASH_MS);
+  }, []);
+
+  /**
+   * `silent` — FON yangilanishi.
+   *
+   * ⚠ Fonda «Qidirilmoqda…» spinneri chizilmaydi: bu yangilanishni kassir
+   * so'ramagan va har 15 soniyada miltillab turgan yozuv ish maydonini
+   * bezovta qilardi. Xato ham ko'rsatilmaydi — katalog eskicha qoladi
+   * (oflayn uchun allaqachon shunday edi).
+   */
+  const doSearch = useCallback(async (q, { silent = false } = {}) => {
+    if (!silent) setSearching(true);
     try {
       const res = await productApi.search(q, 0, 60, branchId,
-        { categoryId, favorites: favOnly });
-      setProducts(res.data || []);
+        { categoryId, favorites: favOnly, ...filter });
+      const list = asArray(res.data);
+      if (!q) baseProducts.current = list;
+      /* ⚠ FAQAT FON yangilanishida belgilanadi. Kassirning o'z sotuvidan
+         keyin ham qoldiq o'zgaradi, lekin uni kassir allaqachon biladi —
+         har chekdan keyin yarim ekran silkinishi shovqindan boshqa narsa
+         emas. Belgi BOSHQA odam qilgan o'zgarish uchun. */
+      if (silent) flagChanges(list);
+      setProducts(list);
     } catch (_) { /* oflaynda katalog eskicha qoladi */ }
-    finally { setSearching(false); }
-  }, [branchId, categoryId, favOnly]);
+    finally { if (!silent) setSearching(false); }
+  }, [branchId, categoryId, favOnly, filter, flagChanges]);
+
+  /* Kategoriya, filtr yoki filial almashsa kesh yaroqsiz — ro'yxat boshqa. */
+  useEffect(() => { baseProducts.current = null; }, [branchId, categoryId, favOnly, filter]);
+
+  /* ══ JONLI QOLDIQ ══════════════════════════════════════════
+     Katakchadagi son boshqa kassadagi sotuvdan ham o'zgaradi, lekin
+     ro'yxat faqat qidiruvda va sotuvdan keyin yangilanardi. Ikkinchi
+     kassir oxirgi donani sotib yuborsa, bu kassada u hamon «bor» bo'lib
+     turardi va kassir buni faqat to'lovda bilardi.
+
+     ⚠ FAQAT KASSIR BO'SH TURGANDA. Kassa — eng band ekran: to'lov oynasi,
+     miqdor oynasi, yorliq skaneri ochiq bo'lsa yoki qidiruvga biror narsa
+     yozilgan bo'lsa, jadval QIMIRLAMAYDI. Kassirning qo'li ostida
+     katakchalar o'rin almashishi xato bosishga olib kelardi — mijoz
+     oldida bu eng yomon vaqt.
+
+     ⚠ Sahifa ko'rinmasa ham so'rov yuborilmaydi; tabga qaytilganda
+     darhol yangilanadi. Ombor sahifasi bilan bir xil qoida. */
+  const kassaBusy = useRef(false);
+  useEffect(() => {
+    kassaBusy.current = Boolean(
+      showPayModal || finish || qtyModal || markModal || processing || search
+    );
+  }, [showPayModal, finish, qtyModal, markModal, processing, search]);
+
+  useEffect(() => {
+    const tick = () => {
+      if (document.visibilityState !== "visible" || kassaBusy.current) return;
+      doSearch("", { silent: true });
+    };
+    const timer = setInterval(tick, LIVE_REFRESH_MS);
+    document.addEventListener("visibilitychange", tick);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", tick);
+    };
+  }, [doSearch]);
+
+  /**
+   * Qidiruvni tozalash — savatga qo'shilgandan keyin.
+   *
+   * Kesh bo'lsa serverga BORMAYDI. Katakchadagi son baribir to'g'ri
+   * qoladi: u savatni hisobga olib chiziladi (`available`), sotuvdan
+   * keyin esa ro'yxat serverdan qayta o'qiladi.
+   */
+  const resetSearch = useCallback(() => {
+    setSearch("");
+    clearTimeout(debounceRef.current);
+    if (baseProducts.current) setProducts(baseProducts.current);
+    else doSearch("");
+  }, [doSearch]);
 
   useEffect(() => { doSearch(search); }, [doSearch]);   // kategoriya almashsa ham
 
+  /* ══════════════════════════════════════════════════════════════════
+     UCH BOSQICHLI QIDIRUV
+
+     ⚠ NEGA BOSQICHLAR. Ilgari har harfda 350 ms kutilar, keyin serverga
+     so'rov ketardi — ya'ni kassir yozib bo'lgach ham ro'yxat yarim
+     soniya eski holatda turardi. Sekin tarmoqda bu bir necha soniyaga
+     cho'zilardi va kassir mijoz oldida kutib qolardi.
+
+       0-bosqich (0 ms) — ANIQ KOD. Yozilgani yuklangan tovarlardan
+         birining barkodi yoki artikuliga aynan teng bo'lsa, u DARHOL
+         savatga tushadi. Skaner aynan shu yo'ldan o'tadi.
+
+       1-bosqich (0 ms) — MAHALLIY REYTING. Ekranda allaqachon turgan
+         katalog `ek-search.js` qoidasi bilan saralanadi va shu zahoti
+         ko'rsatiladi. Kassir uchun qidiruv «bir zumda» ishlaydi.
+
+       2-bosqich (180 ms) — SERVER. To'liq katalog bo'yicha reytingli
+         qidiruv (`pg_trgm`), natija mahalliysini almashtiradi.
+
+     ⚠ Kutish 350 → 180 ms ga tushirildi: mahalliy javob bor ekan,
+     server javobini uzoq kutib turishning ma'nosi qolmadi.
+     ══════════════════════════════════════════════════════════════════ */
+  /**
+   * KOD REJIMI — `*425` (V115).
+   *
+   * ⚠ MAHALLIY REYTING BU YERDA ISHLAMAYDI. Oddiy qidiruvda ekrandagi
+   * katalog darhol saralanadi va kassir «bir zumda» javob oladi. Kod
+   * rejimida esa bu ZARARLI bo'lardi: mahalliy saralash O'XSHASH
+   * tovarlarni chiqaradi, kassir navbat oldida ulardan birini tanlab,
+   * BOSHQA tovarni sotib yuborishi mumkin. Kodga javob ikki xil
+   * bo'lishi kerak — aynan o'sha tovar yoki aniq «yo'q».
+   */
   const handleSearchChange = (val) => {
+    if (val.startsWith("*")) {
+      /* Yulduzchadan keyin faqat raqam. Boshqasi jimgina tashlanadi:
+         xato belgi uchun kassirni to'xtatib turishning ma'nosi yo'q. */
+      const code = "*" + val.slice(1).replace(/\D/g, "").slice(0, 12);
+      setSearch(code);
+      setProducts([]);
+      clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => doSearch(code), 180);
+      return;
+    }
+
     setSearch(val);
+
+    /* 1-bosqich: server javobini kutmasdan mahalliy saralash. Bo'sh
+       so'rovda keshdagi to'liq ro'yxat qaytariladi. */
+    const base = baseProducts.current;
+    if (base) setProducts(val ? rankLocal(base, val) : base);
+
     clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => doSearch(val), 350);
+    debounceRef.current = setTimeout(() => doSearch(val), 180);
   };
+
+  /**
+   * Qidiruv maydonida Enter — BARKOD yoki TOVAR.
+   *
+   * ⚠ Bitta maydon ikkala vazifani bajaradi (alohida barkod maydoni
+   * olib tashlangan). Ajratish mezoni — matnning O'ZI:
+   *
+   *   · faqat raqam va 6 tadan uzun → KOD (`addByBarcode`): u tarozi
+   *     va qadoq barkodlarini ham biladi, oddiy qidiruv esa bilmaydi;
+   *   · aks holda ro'yxatdagi ENG MOS tovar savatga tushadi.
+   *
+   * ⚠ Kod yo'lida maydon TOZALANADI: skanerdan keyin oldingi kod
+   * qolib, keyingisi uning ustiga yozilib ketmasin.
+   */
+  const onSearchEnter = (e) => {
+    if (e.key !== "Enter") return;
+    const value = e.currentTarget.value.trim();
+    if (!value) return;
+    e.preventDefault();
+
+    if (looksLikeCode(value)) {
+      handleSearchChange("");
+      addByBarcode(value);
+      return;
+    }
+    /* ⚠ BIRINCHISI, «faqat bitta bo'lsa» EMAS. Ilgari Enter faqat
+       ro'yxatda AYNAN BITTA tovar qolgandagina ishlardi — ya'ni
+       kassir kerakli tovar birinchi turgan bo'lsa ham yozishda davom
+       etishga majbur edi. Endi reyting bor va birinchi qator aynan
+       eng mos tovar. */
+    if (products.length > 0) pickProduct(products[0]);
+  };
+
+  /* ══ SAVATNI SAQLASH ═══════════════════════════════════════
+     ⚠ NEGA. Savatdan o'chirish bajik bilan qo'riqlanadi va jurnalga
+     yoziladi, lekin savatning o'zi `useState` da edi — bitta F5 uni izsiz
+     yo'q qilardi. Ya'ni qo'riqlashni aylanib o'tish uchun tugmani ham
+     bosish shart emasdi. Endi savat saqlanadi va F5 uni yo'qotmaydi.
+
+     ⚠ BU DEVOR EMAS: brauzer kassirning qo'lida. Bu qatlam tasodifiy va
+     beparvo chetlab o'tishni yopadi, ataylab qilinganini esa KO'RINADIGAN
+     qiladi. Haqiqiy devor bitta — savat serverda yashashi. */
+  /* ⚠ ANIQ BIR MARTA. Bog'liqlik ro'yxati bo'sh bo'lsa ham React
+     StrictMode ni ishlab chiqishda effektni IKKI MARTA chaqiradi, shuning
+     uchun qo'riqlagich `ref` da. Busiz xabar ikki marta chiqardi. */
+  const restored = useRef(false);
+  useEffect(() => {
+    if (restored.current) return;
+    restored.current = true;
+
+    const found = cartStore.take();
+    if (!found) return;
+
+    if (!found.stale) {
+      setCarts(found.carts);
+      setActiveId(found.activeId);
+      cartSeq.current = Math.max(...found.carts.map((c) => c.id));
+      const items = cartStore.flatten(found.carts);
+      toast.info(found.carts.length > 1
+        ? t("kassa.cartsRestored", { c: found.carts.length, n: items.length })
+        : t("kassa.cartRestored", { n: items.length }));
+      return;
+    }
+
+    /* Eskirgan savat TIKLANMAYDI — mijoz ketib bo'lgan, narx o'zgargan
+       bo'lishi mumkin. Lekin izsiz ham qolmaydi: kim, qachon va nimani
+       to'lamasdan qoldirgani jurnalga tushadi. */
+    const abandoned = cartStore.flatten(found.carts);
+    securityApi.cartAbandoned({
+      itemCount: abandoned.length,
+      total: cartStore.totalOf(abandoned),
+      note: cartStore.describe(abandoned),
+    }).catch(() => { /* jurnal yozilmasa ham kassa ishlaydi */ });
+    /* eslint-disable-next-line react-hooks/exhaustive-deps --
+       ATAYLAB bo'sh: bu ochilishdagi BIR MARTALIK amal, `toast` esa
+       bog'liqlikka qo'yilganda halqa hosil qilardi. */
+  }, []);
+
+  /* Har o'zgarishda saqlanadi. Hamma savat bo'sh bo'lsa yozuv o'chadi. */
+  useEffect(() => { cartStore.save(carts, activeId); }, [carts, activeId]);
+
+  /* ══ SAVATLARNI BOSHQARISH ══════════════════════════════════════════ */
+
+  /** Yangi bo'sh savat ochadi va unga o'tadi. */
+  const addCart = () => {
+    if (carts.length >= cartStore.MAX_CARTS) {
+      toast.error(t("kassa.cartsMax", { n: cartStore.MAX_CARTS }));
+      return;
+    }
+    const id = ++cartSeq.current;
+    setCarts((prev) => [...prev, cartStore.blank(id)]);
+    setActiveId(id);
+    focusSearch();
+  };
+
+  /**
+   * Savatni yopadi.
+   *
+   * ⚠ TOVARI BOR SAVAT — bajik bilan. Yopish `handleClearCart` bilan bir
+   * xil amal: chekka tushmagan tovarlar yo'q bo'ladi. Tab bo'ylab uni
+   * qo'riqlanmagan qoldirish butun nazoratni ochiq eshikka aylantirardi.
+   *
+   * ⚠ OXIRGI SAVAT YO'QOLMAYDI, faqat bo'shaydi: kassada doim bitta
+   * ochiq savat turishi kerak, aks holda ekranda nima ko'rsatiladi?
+   */
+  const dropCart = async (id) => {
+    const victim = carts.find((c) => c.id === id);
+    if (!victim) return;
+
+    if (victim.items.length) {
+      try {
+        await guard(() => securityApi.confirm({
+          action: "CART_ITEM_REMOVE",
+          targetType: "CART",
+          targetId: null,
+          note: `${t("kassa.clearNote")}: ${victim.items.length} x = ${money(cartStore.totalOf(victim.items))}`,
+        }));
+      } catch (err) {
+        if (!err?.cancelled) toast.error(err.message);
+        return;
+      }
+    }
+
+    /* ⚠ Ro'yxat `cartsRef` dan o'qiladi, chizish paytidagi `carts` dan
+       emas: bajik oynasi ochiq turganda skaner boshqa savatga tovar
+       qo'shib qo'yishi mumkin va eski nusxani qaytarib yozish o'sha
+       tovarni yo'q qilardi. */
+    const list = cartsRef.current;
+    if (list.length === 1) { setCarts([cartStore.blank(id)]); return; }
+    const idx = list.findIndex((c) => c.id === id);
+    const rest = list.filter((c) => c.id !== id);
+    setCarts(rest);
+    if (id === activeIdRef.current) setActiveId(rest[Math.min(idx, rest.length - 1)].id);
+  };
+
+  /** Keyingi savatga o'tish (F3) — oxirgisidan keyin boshiga qaytadi. */
+  const nextCart = () => {
+    if (carts.length < 2) return;
+    const i = carts.findIndex((c) => c.id === activeId);
+    setActiveId(carts[(i + 1) % carts.length].id);
+    focusSearch();
+  };
+
+  const switchCart = (id) => { setActiveId(id); focusSearch(); };
 
   /* ── Oflayn navbat: yuborish funksiyasini ulaymiz ─────────── */
   useEffect(() => {
@@ -234,29 +985,25 @@ export default function KassaPage({ toast, refreshLowStock }) {
      Boshqa joyni bosganda 3 soniyadan keyin fokus qaytadi —
      lekin modal ochiq bo'lsa yoki foydalanuvchi boshqa maydonga
      yozayotgan bo'lsa TEGILMAYDI (aks holda yozib bo'lmaydi). */
-  const focusBarcode = useCallback(() => {
-    barcodeRef.current?.focus();
-    setBcWarn(false);
+  /* ⚠ Nomi `focusSearch`: barkod maydoni yo'q, qidiruv ikkalasini ham
+     bajaradi. Fokus FAQAT odam so'raganda beriladi (Ctrl+B yoki «/»)
+     yoki modal yopilganda — avto-fokus olib tashlangan. */
+  const focusSearch = useCallback(() => {
+    searchRef.current?.focus();
   }, []);
 
-  useEffect(() => {
-    if (showPayModal || finish || qtyModal || markModal) return;
-    focusBarcode();
-  }, [showPayModal, finish, qtyModal, markModal, focusBarcode]);
+  /* ⚠ AVTO-FOKUS OLIB TASHLANDI (foydalanuvchi qarori: «unga skaner
+     ishlatiladi, avtofokusga ehtiyoj sezmayapman»).
 
-  useEffect(() => {
-    const onFocusOut = () => {
-      clearTimeout(refocusRef.current);
-      refocusRef.current = setTimeout(() => {
-        const el = document.activeElement;
-        const typing = el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT");
-        if (showPayModal || finish || qtyModal || markModal || typing) { setBcWarn(!typing); return; }
-        focusBarcode();
-      }, REFOCUS_MS);
-    };
-    document.addEventListener("focusout", onFocusOut);
-    return () => { document.removeEventListener("focusout", onFocusOut); clearTimeout(refocusRef.current); };
-  }, [showPayModal, finish, qtyModal, markModal, focusBarcode]);
+     Ilgari barkod maydoni sahifa ochilganda va har modal yopilganda
+     o'ziga fokusni tortardi, fokus boshqa joyga o'tsa esa uch soniyadan
+     keyin QAYTARIB olardi. Bu skanerga hech narsa qo'shmasdi — u
+     hujjat darajasida tutiladi (`useScanner`) va fokus qayerda
+     bo'lishidan qat'i nazar ishlaydi — lekin odamga xalal berardi:
+     boshqa maydonga yozayotgan kassirning fokusi o'z-o'zidan ketardi.
+
+     Fokus endi FAQAT odam so'raganda beriladi: maydonni bosganda yoki
+     Ctrl+B bilan. */
 
   /* ── Skanerlangan kod ──────────────────────────────────────────
      Butun mantiq SERVERDA (`/products/scan`): oddiy barkod, qadoq
@@ -285,9 +1032,46 @@ export default function KassaPage({ toast, refreshLowStock }) {
       if (!c?.id) throw new Error("not found");
       setCustomer(c);
       toast.success(t("kassa.cardAttached", { name: c.fullName || c.phone || "" }));
-    } catch (_) {
-      // Karta bor, lekin bu do'konga tegishli emas yoki o'chirilgan.
-      toast.info(t("kassa.cardNotFound"));
+    } catch (err) {
+      /* ⚠ IKKI XIL XATO, ikki xil ish. 400 — kod ESKIRGAN (aylanma
+         karta, V45): mijozdan ilovadagi ekranni qayta ko'rsatishni
+         so'rash kerak, mijozni qidirish emas. Serverning matni aynan
+         shuni aytadi, shuning uchun u o'zgartirilmasdan ko'rsatiladi.
+         Qolgani — karta bu do'konga tegishli emas yoki o'chirilgan. */
+      if (err?.status === 400 && err.message) toast.error(err.message);
+      else toast.info(t("kassa.cardNotFound"));
+    }
+  };
+
+  /**
+   * KASSADAN YANGI MIJOZ (V47).
+   *
+   * ⚠ Qo'shilgan zahoti SAVATGA biriktiriladi: kassir uni qo'shib,
+   * keyin ro'yxatdan qayta tanlashi ortiqcha qadam bo'lardi — mijoz esa
+   * kassa oldida turibdi.
+   */
+  const saveNewCustomer = async () => {
+    const name = (newCust?.fullName || "").trim();
+    if (!name || !newCust?.phone) return;
+    setSavingCust(true);
+    try {
+      const r = await customerApi.create({ fullName: name, phone: newCust.phone });
+      const c = r?.data;
+      if (c?.id) {
+        setCustomers((prev) => [c, ...prev]);
+        setCustomer(c);
+        /* Jamg'arma oynasidan qo'shilgan bo'lsa — o'sha oynada ham
+           tanlangan bo'lib turadi (V66). */
+        if (topUpOpen) setTopUpCust(c);
+      }
+      setNewCust(null);
+      /* ⚠ Serverning xabari ustun: arxivlangan mijoz qaytarilgan bo'lsa
+         kassir buni bilishi kerak (izohi `CustomersPage` da). */
+      toast.success(r?.message || t("cust.added"));
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setSavingCust(false);
     }
   };
 
@@ -337,6 +1121,59 @@ export default function KassaPage({ toast, refreshLowStock }) {
         return;
       }
 
+      /* ⚠ BEGONA FILIALNING ICHKI KODI (V108). Do'kon ichki kodi
+         (`2 NNNNNN C`) faqat do'kon ichida yagona — kod qisqa qolsin
+         deb ataylab shunday. Ya'ni 1-filialda chop etilgan yorliq bu
+         yerda hech nima ochmaydi.
+
+         Ilgari kassir jimgina «topilmadi» ni ko'rardi: yorliqni
+         qayta-qayta skanerlar, keyin qo'lda qidirar va oxirida
+         «skaner buzilibdi» deb o'ylardi. Endi sabab aytiladi va u
+         bir soniyada tushunadi.
+
+         ⚠ Bu XATO emas — kassir noto'g'ri ish qilmadi, shuning uchun
+         `info`, `error` emas. */
+      if (r.source === "OTHER_BRANCH") {
+        sfx("SCAN_MISS");
+        toast.info(t("kassa.otherBranchCode", { shop: r.otherShopName }));
+        return;
+      }
+
+      /* ── ARXIVDAGI TOVAR (B) ─────────────────────────────────────
+         ⚠ ILGARI BU «TOPILMADI» EDI. Tovar omborchining qo'lida,
+         barkod qutida turibdi, tizim esa ko'rmaydi — u nima
+         bo'layotganini tushunmasdi va barkodni qayta-qayta
+         skanerlardi. Endi sabab ham, chiqish yo'li ham aytiladi.
+
+         ⚠ XATO EMAS: hech kim noto'g'ri ish qilmadi. Shuning uchun
+         `error` emas — savol yoki xabar. */
+      if (r.source === "ARCHIVED") {
+        sfx("SCAN_MISS");
+        const m = r.archivedMatch || {};
+        const who = m.searchCode ? `«${m.name}» (${m.searchCode})` : `«${m.name}»`;
+
+        if (!canRestore) {
+          toast.info(t("kassa.archivedFound", { product: who }));
+          return;
+        }
+        const ok = await confirm({
+          title: t("kassa.archivedTitle"),
+          message: t("kassa.archivedAsk", { product: who }),
+          confirmText: t("kassa.archivedRestore"),
+        });
+        if (!ok) return;
+        try {
+          const res = await productApi.restore(m.productId);
+          /* ⚠ SERVER XABARI USTUN: barkodsiz tiklangan bo'lsa aynan
+             shuni aytadi va uni o'zimiznikiga almashtirib bo'lmaydi. */
+          toast.success(res?.message || t("kassa.archivedRestored"));
+          if (res?.data) addToCart(res.data, 1);
+        } catch (err) {
+          toast.error(err.message);
+        }
+        return;
+      }
+
       if (r.source === "GLOBAL") {
         // Do'konda yo'q, lekin umumiy bazada bor: kassir uni yaratmaydi
         // (narx qo'yish — egasining ishi), lekin nomi aytiladi, aks holda
@@ -350,7 +1187,16 @@ export default function KassaPage({ toast, refreshLowStock }) {
       if (local) { addToCart(local, 1); return; }
     }
 
-    // Xato ovozi emas, taklif (06-APP-KASSIR.md).
+    /* ⚠ AYNAN SHU VOQEA UCHUN OVOZ BOR (V89). Kassir skanerlaganda
+       ekranga QARAMAYDI — u tovarga va mijozga qaraydi. Topilmagan
+       barkod ekranda jimgina o'tib ketar, kassir esa keyingisini
+       skanerlashda davom etardi va buni faqat mijoz ketganda
+       payqardi.
+
+       ⚠ Bu XATO ovozi emas, OGOHLANTIRISH: tovar shunchaki
+       bazada yo'q, kassir noto'g'ri ish qilmadi. */
+    sfx("SCAN_MISS");
+    // Ekranda esa — xato emas, taklif (06-APP-KASSIR.md).
     toast.info(t("kassa.barcodeNotFound", { code, section: t("products.title") }));
   };
 
@@ -362,12 +1208,84 @@ export default function KassaPage({ toast, refreshLowStock }) {
 
      To'lov oynasi ochiq bo'lganda O'CHADI: u yerda summa kiritiladi va
      tasodifiy skanerlash summani buzib yuborardi. */
+  /* Rasm nisbatini saqlash — o'lchov `useTileMetrics` izohida. */
+  useTileMetrics(gridRef, view === "tiles", [products.length, view]);
+
   useScanner(addByBarcode, { enabled: !showPayModal && !finish && !qtyModal && !markModal });
 
   /* ── Savat ────────────────────────────────────────────────── */
 
   /** Bo'linadigan birlik (kg, litr, metr) — "+" bilan yig'ib bo'lmaydi. */
   const isDivisible = (product) => (product?.unitDecimals ?? 0) > 0;
+
+  /**
+   * Miqdorni kassir KIRITADIMI — "+" bilan bittalab yig'ish o'rniga.
+   *
+   * ⚠ GRAMM UCHUN QO'SHILDI. Grammda miqdor butun son, ya'ni
+   * `isDivisible` yo'q deydi — lekin tovar TAROZIDA tortiladi.
+   * Ilgari ziravorni bosganda savatga «1 gramm» tushardi va jonli
+   * tarozi tugmasi umuman chizilmasdi (u shu oynaning ichida).
+   * Bir grammlab bosib 488 gramm yig'ish — kassirni masxara qilish.
+   */
+  const needsQty = (product) => isDivisible(product) || isWeighUnit(product?.unit);
+
+  /** Savatda shu tovardan ALLAQACHON nechta bor. */
+  const inCart = (id) => cart.find((i) => i.id === id)?.qty ?? 0;
+
+  /**
+   * BOSHQA ochiq savatlarda turgan miqdor.
+   *
+   * ⚠ NEGA HISOBGA OLINADI. Omborda 3 dona bor, birinchi savatga 2 tasi
+   * terilgan. Ikkinchi mijozga ham 2 tasini terib bo'lardi — chek
+   * yozilganda esa server ikkinchisini rad etardi va kassir mijoz
+   * oldida sababini tushuntira olmasdi. Bu — bitta terminal ichidagi
+   * o'ziga o'zi qo'ygan tuzoq, uni yopish arzon.
+   *
+   * ⚠ Bu SERVERDA joy band qilish EMAS. Boshqa kassadagi kassir baribir
+   * shu tovarni sotib yuborishi mumkin va oxirgi so'z serverniki
+   * qoladi — bu yerdagi hisob faqat SHU EKRANdagi savatlarni biladi.
+   */
+  const parked = (id) => carts.reduce(
+    (sum, c) => (c.id === active.id ? sum : sum + (c.items.find((i) => i.id === id)?.qty ?? 0)), 0);
+
+  /** Boshqa savatlar hisobga olingan, sotish mumkin bo'lgan qoldiq. */
+  const freeStock = (product) => (product?.stockQuantity == null
+    ? null
+    : round3(Number(product.stockQuantity) - parked(product.id)));
+
+  /**
+   * Qoldiq yetadimi — SAVATDAGI JAMI miqdorga qarab.
+   *
+   * ⚠ Ilgari faqat `stockQuantity <= 0` tekshirilardi, ya'ni "umuman
+   * qolmaganmi". Omborda 4 dona bo'lsa, kassir 6 marta bosardi va har
+   * safar tekshiruv o'tardi (4 > 0) — savatga 6 dona tushardi. Xato
+   * faqat TO'LOV bosqichida, serverdan chiqardi va u qaysi tovar
+   * yetishmayotganini aytmasdi: kassir mijoz oldida savatni birma-bir
+   * qarab chiqishga majbur bo'lardi.
+   *
+   * Yetsa `null`, aks holda kassirga ko'rsatiladigan matn qaytadi.
+   */
+  const stockError = (product, wanted) => {
+    // Xizmatda (`stockQuantity` yo'q) qoldiq tushunchasi yo'q — doim sotiladi.
+    if (product?.stockQuantity == null) return null;
+    const held = parked(product.id);
+    const left = round3(Number(product.stockQuantity) - held);
+    if (wanted <= left) return null;
+    const unit = unitLabel(product.unit);
+    /* Sabab AYTILADI: «omborda 1 ta» degan xabar kassirni omborga
+       yugurtirardi, holbuki tovar shu yerda — qo'shni savatda turibdi. */
+    if (held > 0) {
+      return t("kassa.stockShortParked", {
+        name: product.name,
+        qty: `${fmtQty(Math.max(0, left), product.unitDecimals)} ${unit}`,
+        held: `${fmtQty(held, product.unitDecimals)} ${unit}`,
+      });
+    }
+    return t("kassa.stockShort", {
+      name: product.name,
+      qty: `${fmtQty(left, product.unitDecimals)} ${unit}`,
+    });
+  };
 
   /**
    * Katakcha bosildi. Bo'linadigan tovarda avval miqdor so'raladi:
@@ -378,7 +1296,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
     // Markirovkali tovarda miqdorni kassir yozmaydi — u har donaning
     // yorlig'ini skanerlaydi va miqdor shundan kelib chiqadi.
     if (product.markingGroup) { setMarkModal({ product }); return; }
-    if (isDivisible(product)) { setQtyModal({ product, initial: null }); return; }
+    if (needsQty(product)) { setQtyModal({ product, initial: null }); return; }
     addToCart(product, 1);
   };
 
@@ -399,9 +1317,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
       }
       return [...prev, { ...product, qty: codes.length, markingCodes: codes, _added: Date.now() }];
     });
-    setSearch("");
-    clearTimeout(debounceRef.current);
-    doSearch("");
+    resetSearch();
   };
 
   const addToCart = (product, amount = 1) => {
@@ -412,23 +1328,69 @@ export default function KassaPage({ toast, refreshLowStock }) {
     if (product.stockQuantity != null && Number(product.stockQuantity) <= 0) {
       toast.error(`${product.name} — omborda qolmagan!`); return;
     }
+    /* Boshqa savatlar hammasini olib bo'lgan bo'lsa ham shu yerda
+       to'xtaydi — quyidagi `stockError` sababini aytadi. */
+    /* Savatdagi miqdor bilan QO'SHIB tekshiriladi — bittalab bosib
+       qoldiqdan oshirib yuborishning yo'li yopiladi. */
+    const shortage = stockError(product, roundQty(product, inCart(product.id) + amount));
+    if (shortage) { toast.error(shortage); return; }
     setCart((prev) => {
       const exists = prev.find((i) => i.id === product.id);
       // Bir xil tovar ikkinchi marta → miqdor oshadi, yangi satr yaratilmaydi
       if (exists) {
+        const next = roundQty(product, exists.qty + amount);
+        // Narxi tushirilgan qatorga yana bir dona qo'shilsa, chegirma
+        // ham o'sha DONA narxida qoladi — quyidagi izohga qarang.
         return prev.map((i) => (i.id === product.id
-          ? { ...i, qty: round3(i.qty + amount), _pulse: Date.now() }
+          ? { ...i, qty: next, ...rescaleDiscount(i, next), _pulse: Date.now() }
           : i));
       }
-      return [...prev, { ...product, qty: round3(amount), _added: Date.now() }];
+      return [...prev, { ...product, qty: roundQty(product, amount), _added: Date.now() }];
     });
-    setSearch("");
-    clearTimeout(debounceRef.current);
-    doSearch("");
+    resetSearch();
+  };
+
+  /* ══ SAVATGA OPTOM NARX (V97) ═══════════════════════════════════════
+     ⚠ NEGA BUTUN SAVATGA. Optom mijoz 20 ta tovar oladi va kassir har
+     qatorning narx oynasini ochib o'tira olmaydi — mijoz oldida bu
+     bir necha daqiqa. Bitta bosish har mos qatorga o'z optom narxini
+     qo'yadi.
+
+     ⚠ HISOB QATOR OYNASI BILAN BITTA MANBADAN (`ek-line-price.js`):
+     ikkisi ajralib ketsa, bitta bosish bilan qo'yilgan narx qatorni
+     ochib qaraganda boshqacha ko'rinardi. */
+  const wsPlan = useMemo(() => wholesalePlan(cart), [cart]);
+
+  const toggleWholesale = () => {
+    const off = wsPlan.isOn;
+    /* ⚠ Reja `prev` dan QAYTA hisoblanadi: yuqoridagi `wsPlan` faqat
+       tugmani chizish uchun, savat oradagi skanerda o'zgargan
+       bo'lishi mumkin. */
+    setCart((prev) => applyWholesale(prev));
+    if (off) toast.info(t("kassa.wholesaleCleared"));
+    else toast.success(t("kassa.wholesaleApplied", { count: wsPlan.rows.length }));
   };
 
   /** Kasrli qo'shishda 0.1 + 0.2 = 0.30000000000000004 bo'lmasin. */
   const round3 = (n) => Math.round((Number(n) + Number.EPSILON) * 1000) / 1000;
+
+  /**
+   * Miqdorni TOVARNING BIRLIGIGA moslab yaxlitlaydi.
+   *
+   * ⚠ NEGA `round3` YETMAYDI. U hamma narsani uch kasr xonaga
+   * yaxlitlaydi, ya'ni DONA tovarda `0.6` savatda `0.6` bo'lib
+   * qolardi. Server esa uni jimgina `1` ga aylantirib, mijozdan butun
+   * dona uchun pul olardi (foydalanuvchi shikoyati). Ya'ni ekranda bir
+   * son, chekda boshqa son turardi.
+   *
+   * Endi savatga tushadigan qiymat serverning qoidasi bilan BIR XIL
+   * bo'ladi va nima ko'rinsa, o'sha sotiladi.
+   */
+  const roundQty = (product, n) => {
+    const d = product?.unitDecimals ?? 3;
+    const p = 10 ** d;
+    return Math.round((Number(n) + Number.EPSILON) * p) / p;
+  };
 
   /* ⚠ «−» OXIRGI donani olib tashlasa, bu X tugmasi bilan AYNI amal —
      demak u ham bajik so'rashi shart. Ilgari bu yerda `.filter(qty > 0)`
@@ -439,6 +1401,21 @@ export default function KassaPage({ toast, refreshLowStock }) {
      Endi miqdor 0 ga TUSHMAYDI — 1 dan pastga urinish qo'riqlanadigan
      `removeFromCart` ga yo'naltiriladi. Shu bilan savatdan chiqishning
      YAGONA yo'li qoladi va uni yopib qo'yish yetarli. */
+  /* ⚠ QATOR CHEGIRMASI MIQDOR BILAN BIRGA QAYTA HISOBLANADI (V48).
+     Chegirma qator bo'yicha JAMI summa, miqdor esa keyin o'zgarishi
+     mumkin. Kassir 2 dona uchun narxni tushirib, keyin miqdorni 3 ga
+     oshirsa, eski jami chegirma uch donaga tarqalib, dona narxi o'zidan
+     o'zi yana arzonlashib ketardi. Shuning uchun kassir qo'ygan DONA
+     narxi saqlanadi, jami esa yangi miqdorga qarab qayta olinadi. */
+  const rescaleDiscount = (i, nextQty) => {
+    const d = Number(i.discount) || 0;
+    const q = Number(i.qty) || 0;
+    if (d <= 0 || q <= 0) return {};
+    // Chegirma qator jamisidan oshmasligi kerak — chek manfiyga tushmasin.
+    const scaled = Math.round((d / q) * nextQty * 100) / 100;
+    return { discount: Math.min(scaled, i.salePrice * nextQty) };
+  };
+
   const updateQty = (id, delta) => {
     const item = cart.find((i) => i.id === id);
     if (!item) return;
@@ -451,27 +1428,47 @@ export default function KassaPage({ toast, refreshLowStock }) {
       const rest = (item.markingCodes || []).slice(0, -1);
       if (rest.length === 0) { removeFromCart(id); return; }
       setCart((prev) => prev.map((i) => (i.id === id
-        ? { ...i, markingCodes: rest, qty: rest.length } : i)));
+        ? { ...i, markingCodes: rest, qty: rest.length, ...rescaleDiscount(i, rest.length) } : i)));
       return;
     }
 
     // Tarozili tovarda "+" bir kilogramm qo'shishi mantiqsiz — miqdor
     // oynasi ochiladi va kassir aniq qiymat kiritadi.
-    if (isDivisible(item)) { setQtyModal({ product: item, initial: item.qty }); return; }
+    if (needsQty(item)) { setQtyModal({ product: item, initial: item.qty }); return; }
 
-    const next = round3(item.qty + delta);
+    const next = roundQty(item, item.qty + delta);
     if (next <= 0) { removeFromCart(id); return; }
-    setCart((prev) => prev.map((i) => (i.id === id ? { ...i, qty: next } : i)));
+    const shortage = stockError(item, next);
+    if (shortage) { toast.error(shortage); return; }
+    setCart((prev) => prev.map((i) => (i.id === id ? { ...i, qty: next, ...rescaleDiscount(i, next) } : i)));
+  };
+
+  /**
+   * Savat qatoridagi SONGA bosildi — miqdorni yozib kiritish.
+   *
+   * ⚠ Markirovkali tovar bundan MUSTASNO: uning miqdori skanerlangan
+   * yorliqlar sonidan kelib chiqadi va uni qo'lda yozish yorliq bilan
+   * dona o'rtasidagi bog'lanishni buzardi.
+   */
+  const editQty = (item) => {
+    if (item.markingGroup) return;
+    setQtyModal({ product: item, initial: item.qty });
   };
 
   /** Miqdor oynasi tasdiqlandi: savatdagi satr YANGILANADI, qo'shilmaydi. */
   const applyQuantity = (value) => {
     const { product } = qtyModal;
     setQtyModal(null);
+    /* Bu yerda miqdor ALMASHTIRILADI (qo'shilmaydi), shuning uchun
+       kiritilgan qiymatning o'zi qoldiq bilan solishtiriladi. Ilgari bu
+       yo'lda umuman tekshiruv yo'q edi: kassir 2 kg qolgan tovarga
+       500 yozib yuborsa ham savat qabul qilardi. */
+    const shortage = stockError(product, roundQty(product, value));
+    if (shortage) { toast.error(shortage); return; }
     const exists = cart.find((i) => i.id === product.id);
     if (exists) {
       setCart((prev) => prev.map((i) => (i.id === product.id
-        ? { ...i, qty: round3(value), _pulse: Date.now() } : i)));
+        ? { ...i, qty: roundQty(product, value), ...rescaleDiscount(i, roundQty(product, value)), _pulse: Date.now() } : i)));
       return;
     }
     addToCart(product, value);
@@ -526,12 +1523,72 @@ export default function KassaPage({ toast, refreshLowStock }) {
      o'rniga sotuvni umuman o'tkazmaslik o'sha suiiste'molning o'zi. */
   const clearCart = () => setCart([]);
 
-  const subtotal = cart.reduce((sum, i) => sum + i.salePrice * i.qty, 0);
+  /**
+   * Sotuvdan keyin savatni yopadi.
+   *
+   * Bittagina savat qolgan bo'lsa u BO'SHAYDI — kassada doim ochiq savat
+   * turishi kerak. Bir nechtasi bo'lsa sotilgani ro'yxatdan CHIQADI va
+   * kassir keyingi mijozning savatiga tushadi: bo'sh tab qoldirilsa
+   * kassir «qaysi biri sotildi?» deb tekshirishga majbur bo'lardi.
+   *
+   * Mijoz ham shu yerda tozalanadi (`blank` uni `null` qiladi) — usiz
+   * keyingi chekka oldingi mijozning kartasi tushib qolardi.
+   */
+  const closeSoldCart = () => {
+    const id = active.id;
+    const idx = carts.findIndex((c) => c.id === id);
+    if (carts.length === 1) { setCarts([cartStore.blank(id)]); return; }
+    const rest = carts.filter((c) => c.id !== id);
+    setCarts(rest);
+    setActiveId(rest[Math.min(idx, rest.length - 1)].id);
+  };
+
+  /* Qatorning chegirmadan KEYINGI dona narxi — savatda shu ko'rinadi. */
+  const unitPriceOf = (i) => {
+    const q = Number(i.qty) || 0;
+    const d = Number(i.discount) || 0;
+    return q > 0 ? Math.max(0, i.salePrice - d / q) : i.salePrice;
+  };
+  /* ⚠ «Oraliq jami» — chegirmalardan OLDINGI summa (server ham shunday
+     hisoblaydi): chek chegirmasi foizini aynan shundan olish kerak. */
+  const subtotal = cart.reduce((sum, i) => sum + Math.floor(i.salePrice * i.qty), 0);
+  /* ══ ⚠ YAXLITLASHDA MIJOZGA BERIB YUBORILGAN SUMMA (V80) ═══════════
+     Tortiladigan tovarda pul o'zi kasr bo'ladi: 6.667 kg × 7 500 =
+     50 002.5 so'm. Tiyin muomalada yo'q va do'kon shu chekni UMUMAN
+     sota olmagan edi — kassa 50 003 yuborar, server 50 002.50 talab
+     qilardi.
+
+     Endi qator jamisi butun so'mga PASTGA yaxlitlanadi (serverda ham
+     — `Money.charge`), yarim so'm esa mijozda qoladi. Farq chekda
+     alohida qator bo'lib chiqadi va hisobotda jamlanadi: yashirilgan
+     yaxlitlash — o'g'irlikning eng sekin turi. */
+  const rounding = cart.reduce(
+    (sum, i) => sum + (i.salePrice * i.qty - Math.floor(i.salePrice * i.qty)), 0);
+  /* Qator chegirmalari jami — to'lov oynasida alohida ko'rsatiladi. */
+  const lineDiscounts = cart.reduce((sum, i) => sum + (Number(i.discount) || 0), 0);
+  /* ⚠ QATOR CHEGIRMALARIDAN KEYINGI summa (V48) — chek chegirmasi
+     AYNAN shundan olinadi. Serverda ham tartib shunday: avval qator
+     chegirmalari, keyin chek chegirmasi. Aks holda ikkalasi bir xil
+     bazadan hisoblanib, jami manfiyga tushib ketishi mumkin edi. */
+  const afterLines = Math.max(0, subtotal - lineDiscounts);
   /* Chegirma savat jamidan oshib keta olmaydi — aks holda chek manfiy
      summaga aylanardi. Server ham buni rad etadi; bu yerdagi cheklov
      kassirga darhol ko'rinadigan javob berish uchun. */
-  const discountNum = Math.max(0, Math.min(Number(discount) || 0, subtotal));
-  const afterDiscount = subtotal - discountNum;
+  const discountNum = Math.max(0, Math.min(Number(discount) || 0, afterLines));
+  const afterDiscount = afterLines - discountNum;
+  /* ⚠ CHEGIRMA QAYSI TOVARGA QANCHADAN TUSHDI (V48).
+     «Umumiy summadan 50 ming tushiray» deyilganda savol darhol
+     tug'iladi: ertaga shu chekdan bitta tovar qaytarilsa, qancha pul
+     qaytariladi? Server chek chegirmasini qatorlarga taqsimlaydi
+     (`SaleService.distributeSaleDiscount`) va qaytarish AYNAN shu
+     taqsimotdan hisoblanadi. Shuning uchun bu yerdagi hisob — o'sha
+     qoidaning nusxasi (`ek-discount.js`): kassir uni to'lovdan OLDIN
+     ko'radi va chekdagi raqamlar bilan bir xil chiqadi. */
+  const discountSplit = useMemo(
+    () => spreadDiscount(cart, discountNum),
+    [cart, discountNum],
+  );
+
 
   /* ── Ball ─────────────────────────────────────────────────────────────
      ⚠ Chegara SERVERDA hisoblanadi va shu yerdagi raqam faqat kassirga
@@ -544,8 +1601,119 @@ export default function KassaPage({ toast, refreshLowStock }) {
      «eng ko'pi» biroz yuqoriroq bo'lishi mumkin — server aniqrog'ini
      aytadi. */
   const bonusCap = Math.floor(afterDiscount * (Number(bonusMaxPercent) || 0) / 100);
-  const bonusAvail = Math.min(Number(tier?.bonusBalance) || 0, bonusCap);
+  /* ⚠ BUTUN SO'M (`floor`). Server ilgari ballni 2 kasr bilan
+     yig'ardi va balans 7 249,99 bo'lib qolardi: yorliqda «7 250»
+     ko'rinar, «Hammasini» esa maydonga «7 249.» deb yozardi. Server
+     endi butun so'mga yaxlitlaydi (V64), eski balanslar uchun esa bu
+     yerda kesiladi. */
+  const bonusAvail = Math.floor(Math.min(Number(tier?.bonusBalance) || 0, bonusCap));
   const bonusNum = Math.max(0, Math.min(Number(bonusUse) || 0, bonusAvail));
+  /* ── Yaxlitlash takliflari (V56) ──────────────────────────────────────
+     ⚠ ALLAQACHON BERILGAN chegirmadan KEYINGI summadan hisoblanadi:
+     kassir chegirma yozib, keyin yaxlitlashni bossa, ikkalasi
+     qo'shilishi kerak. Bo'sh joy ham shu chegirmani hisobga oladi —
+     aks holda taklif chegaradan oshib, bajik so'ratardi. */
+  /* Chek chegirmasi TAQSIMLANGANDAN keyingi qatorlar — bo'sh joy shundan
+     hisoblanadi, aks holda taklif allaqachon berilganini yana bir bor
+     hisoblab, chegaradan oshib ketardi. */
+  const linesAfterDisc = useMemo(
+    () => cart.map((i, idx) => ({
+      ...i,
+      discount: (Number(i.discount) || 0) + (discountSplit[idx] || 0),
+    })),
+    [cart, discountSplit],
+  );
+  const liveTotal = Math.max(0, afterLines - discountNum - bonusNum);
+
+  const roundOffers = useMemo(
+    () => roundingOffers(linesAfterDisc, liveTotal),
+    [linesAfterDisc, liveTotal],
+  );
+
+  /* ── Byudjetli takliflar (V57) ────────────────────────────────────────
+     Kassir «shuncha bermoqchiman» deb yozadi, tizim esa shu summadan
+     OSHMAYDIGAN, lekin jamini yaxlit qiladigan variantlarni beradi.
+     Boshlang'ich nuqta — kassirning summasi, chekning qoldig'i emas. */
+  /* ⚠ BITTA MAYDON (V82). Ilgari ikkita edi: «Chegirma» (jamini
+     darhol kamaytiradi) va «Chegirma byudjeti» (faqat taklif so'raydi).
+     Kassir uchun ular bir xil ko'rinardi — ikkalasiga ham summa
+     yoziladi — va farqni faqat izohni o'qigan odam bilardi.
+
+     Endi yozilgan summa IKKALA vazifani ham bajaradi: jami darhol
+     shuncha kamayadi VA o'sha summa optimizatorga CHEGARA bo'lib
+     beriladi. Kassir raqamni bir marta yozadi, tizim esa uni qanday
+     bo'lishning eng qulay yo'lini taklif qiladi. */
+  /* ⚠ TAKLIFLAR ENDI QAYTARISHNI HAM O'YLAYDI (V80).
+
+     Ilgari bu yerda `budgetOffers` turardi va u bitta savolga javob
+     berardi: «jami qanday qilib yaxlit bo'ladi?». 44 200 → 44 000
+     chiroyli chiqardi, lekin uchta bir xil tovarning bir donasi
+     14 666.67 ga tushardi — mijoz ertaga bittasini qaytarganda
+     kassirda bunday pul bo'lmasdi.
+
+     `optimizeDiscount` ikkala shartni birga qaraydi va qaytarishni
+     YOMONLASHTIRADIGAN variantni ro'yxatga umuman kiritmaydi:
+     ro'yxatdagi tugmani kassir har doim bosadi, uni tekshirish
+     tizimning ishi. To'liq tartib — `lib/ek-discount.js`. */
+  const budgetPicks = useMemo(
+    /* ⚠ XOM SAVATDAN, `linesAfterDisc` DAN EMAS. Yozilgan summa endi
+       CHEGARA: uni «allaqachon berilgan» deb hisoblasak, reja uning
+       USTIGA yana shuncha qo'shardi va chegirma ikki barobar
+       bo'lib ketardi. */
+    () => optimizeDiscount(cart, discountNum),
+    [cart, discountNum],
+  );
+  /* Hozirgi savatning qaytarish qulayligi — «taklif nega yo'q?» degan
+     savolga javob berish uchun.
+
+     ⚠ XOM SAVATDAN, `linesAfterDisc` DAN EMAS. Maydondagi summa hali
+     BERILGAN chegirma emas, u faqat chegara. Uni qo'shib hisoblasak,
+     3 × 15 000 lik savat (bir donasi tekis 15 000) 1 000 yozilgan
+     zahoti 14 666.67 ga aylanib, baho 100 dan 10 ga tushardi — va
+     tizim «narxlar allaqachon qulay» o'rniga «bu summaga qulayroq
+     bo'linish chiqmadi» deb yolg'on sabab ko'rsatardi. Kassir esa
+     summani oshirib, baribir hech narsa ko'rmasdi. */
+  const refundNow = useMemo(() => currentRefundScore(cart), [cart]);
+
+  /**
+   * Taklifni QO'LLASH — har qatorga O'Z summasi yoziladi.
+   *
+   * ⚠ CHEK CHEGIRMASI SIFATIDA YUBORIB BO'LMAYDI. Server chek
+   * chegirmasini qator QIYMATIGA mutanosib tarqatadi
+   * (`distributeSaleDiscount`) va bu taqsimot optimizator topgan
+   * narsadan boshqa bo'lardi — ya'ni ekranda ko'rsatilgan «bir donasi
+   * 14 500» chekka tushmasdi. Shuning uchun reja qatorma-qator
+   * yoziladi va chek chegirmasi maydoni bo'shatiladi.
+   *
+   * ⚠ MAYDONDAGI SUMMA QO'SHILMAYDI, O'RNINI BOSADI. U reja uchun
+   * CHEGARA edi, berilgan chegirma emas: qo'shilsa, chegirma ikki
+   * barobar bo'lib ketardi. Shuning uchun maydon bo'shatiladi va
+   * qatorlarda faqat rejaning o'z summasi qoladi.
+   */
+  const applyPlan = (plan) => {
+    setCart((prev) => prev.map((i, idx) => ({
+      ...i,
+      /* ⚠ BUTUN SO'M (V82). Ilgari ikki xonaga yaxlitlanardi va
+         optimizator bergan `333.33` savatga shundayligicha tushardi;
+         server esa uni 334 ga ko'tarib, chekni «kam to'landi» bilan
+         rad etardi. Chegirma ham pul — u ham butun so'mda. */
+      discount: Math.round((Number(i.discount) || 0) + (plan.add[idx] || 0)),
+      _pulse: Date.now(),
+    })));
+    setDiscount("");
+  };
+
+  /* ── Chegirma chegaralari ─────────────────────────────────────────────
+     Ikkalasi BUTUN savatdan (qator chegirmalarini hisobga olib), chek
+     chegirmasi esa hali qo'shilmagan holatda: kassir yozayotgan raqam
+     aynan shu bo'shliqqa sig'ishi kerak. */
+  const ruleRoom = useMemo(() => cartRoom(cart), [cart]);
+  const lossLimit = useMemo(() => cartLossRoom(cart), [cart]);
+  /** `"ok"` · `"over"` (rahbar tasdig'i) · `"loss"` (zararga sotish). */
+  const discVerdict = useMemo(
+    () => discountVerdict(cart, discountNum),
+    [cart, discountNum],
+  );
 
   const total    = afterDiscount - bonusNum;
   const totalQty = cart.reduce((sum, i) => sum + i.qty, 0);
@@ -566,42 +1734,517 @@ export default function KassaPage({ toast, refreshLowStock }) {
     clearCart();
   };
 
-  /* ── To'lov ───────────────────────────────────────────────── */
-  const handlePayTypeChange = (type) => {
-    setPayType(type);
-    if (type === "MIXED") {
-      const half = Math.round(total / 2);
-      setCashAmount(String(half));
-      setCardAmount(String(total - half));
-      setMixedSecondType("CARD");
-    } else {
-      setCashAmount(""); setCardAmount("");
+  /* ══ TO'LOV (V58) ═══════════════════════════════════════════════════
+
+     Do'kon egasining so'zi bilan: «naqd tanlandi, 20 000 kiritildi,
+     qolgani nasiyaga hisoblanib tursin; keyin Click tanlanadi, 15 000
+     kiritiladi va yana qolgani nasiyaga». Ya'ni maydon BITTA va u
+     tanlangan usulning summasini tahrirlaydi; yozilmagan qism esa
+     o'z-o'zidan nasiya bo'ladi.
+
+     Hisob-kitobning O'ZI bu yerda emas — `lib/ek-payment.js` da va u
+     sinov bilan qulflangan (`test/payment.test.mjs`). Sabab: bu
+     raqamlar CHEKKA va KASSAGA tushadi, bir tiyin xato smena oxirida
+     hisobni buzadi. */
+  /* ══ SUMMA KIRITILMASA — TO'LOV YO'Q (V86) ═══════════════════════
+
+     ⚠ ILGARI BO'SH MAYDON «HAMMASI NAQD» DEGANI EDI va bu qulaylik
+     deb qo'yilgan edi: odatiy chekda kassir hech narsa yozmasdan
+     «Sotish» ni bosardi.
+
+     Amalda esa u PUL HISOBINI BUZARDI. Hisobda «Naqd 20 000» degan
+     qator O'ZI paydo bo'lardi — kassir uni yozmagan, ✕ bilan
+     o'chirib ham bo'lmasdi (u `paid` da yo'q edi, ya'ni o'chiradigan
+     narsa yo'q). Click tanlangan bo'lsa ham naqd derdi. Natijada
+     yashikda bo'lmagan pul ko'rinardi va farq faqat smena
+     yopilganda chiqardi.
+
+     Endi qoida bitta va istisnosiz: PUL KIRITILMAGUNCHA TO'LOV
+     YO'Q. Hisob bo'sh turadi, «Sotish» yopiq.
+
+     ⚠ TO'LIQ NASIYA baribir mumkin va yo'li o'zgarmadi: naqdga `0`
+     yoziladi. Shunda `paid` bo'sh emas — kassir NIYATINI bildirgan. */
+  const pay = useMemo(() => settle(paid, total), [paid, total]);
+
+  /**
+   * Hech qayerga hech narsa yozilmaganmi.
+   *
+   * ⚠ Maydon BO'SH ochiladi (do'kon egasining talabi) — kassir
+   * «108 000» ni o'chirib o'tirmaydi. Placeholder chek summasini
+   * ko'rsatadi, lekin bu TAKLIF, yozilgan qiymat EMAS: kassir uni
+   * tasdiqlamaguncha hisobda hech narsa turmaydi va «Sotish» yopiq
+   * qoladi (V86).
+   *
+   * ⚠ «Tegilmagan» — «to'lanmagan» emas: naqdga `0` yozilgan chek
+   * ham `paid` ni to'ldiradi. Farq ataylab: `0` — kassirning ongli
+   * qarori (to'liq nasiya), bo'sh maydon esa hali qaror emas.
+   */
+  const payUntouched = Object.keys(paid).length === 0;
+
+  /** Tanlangan usulning maydondagi qiymati. */
+  const payValue = paid[payFocus] ?? "";
+
+  /* ── JAMG'ARMA (V63) ─────────────────────────────────────────────
+     ⚠ Qoldiq MIJOZ YOZUVIDAN olinadi (`savingsBalance`) — u ro'yxat
+     bilan birga keladi va qo'shimcha so'rov kerak emas. */
+  /* ⚠ `tier` DAN, savatdagi mijoz yozuvidan EMAS. Savat localStorage da
+     turadi va undagi mijoz eskirgan bo'lishi mumkin: boshqa terminalda
+     to'ldirilgan jamg'arma bu yerda ko'rinmasdi («mijoz jamg'armasi
+     kassada ko'rinmayapti»). `tier` esa har tanlashda serverdan
+     keladi. Savatdagisi faqat zaxira — `tier` hali yuklanmagan lahza
+     uchun. */
+  const savingsLeft = Math.max(0, Math.round(
+    Number(tier?.savingsBalance ?? customer?.savingsBalance) || 0));
+  const payMethods = savingsLeft > 0 ? [...PAY_METHODS, SAVINGS_METHOD] : PAY_METHODS;
+
+  /* ⚠ MAYDON QOLDIQ BILAN CHEGARALANADI. Serverda ham tekshiriladi,
+     lekin xatoni SOTUVDAN KEYIN ko'rsatish eng yomon vaqt: chek
+     yozilmay qoladi va kassir mijoz oldida boshqatdan boshlaydi. */
+  /* ⚠⚠ IKKI CHEGARA: mijozning qoldig'i VA chekning to'lanmagan qismi
+     (V78). Ilgari faqat qoldiq tekshirilardi va 30 000 lik chekka
+     20 000 naqd + 20 000 jamg'arma yozish mumkin edi — ortiqcha
+     10 000 qaytim bo'lib chiqar, ya'ni mijoz o'z jamg'armasidan NAQD
+     yechib olardi. Hisob qatlamida ham kesiladi (`settle`), lekin
+     maydonni cheklash kassirga xatoni QILDIRMAYDI — tuzatishni
+     so'ramaydi. */
+  const payMax = payFocus === "SAVINGS"
+    ? savingsMax(paid, total, savingsLeft)
+    : null;
+
+  /**
+   * ⚠ USULNI TANLASH — QIYMATNI O'CHIRMAYDI. Kassir naqdga 20 000
+   * yozib, Click ga o'tib, keyin naqdga QAYTSA, maydonda o'sha 20 000
+   * turishi kerak (do'kon egasining talabi). Shuning uchun qiymat
+   * emas, faqat TAHRIRLANADIGAN usul almashadi.
+   *
+   * ⚠⚠ KURSOR HAM SUMMA MAYDONIGA O'TADI (V94). Ilgari bu yerda
+   * faqat `setPayFocus` turardi, F1..F4 yonidagi izohda esa
+   * «kursorni summa maydoniga qaytaradi» deb YOZILGAN edi — ya'ni
+   * izoh va’dani bergan, kod esa bajarmagan. Do'kon egasi buni
+   * ko'rsatdi: usul tugmasi bosiladi, keyin summa yozila boshlanadi
+   * va HECH QAYERGA tushmaydi — kassir sichqoncha bilan maydonga
+   * qayta bosishga majbur.
+   *
+   * ⚠ KARETKA `requestAnimationFrame` DA. Fokusning o'zi darhol
+   * beriladi (maydon allaqachon ekranda), lekin karetka YANGI qiymat
+   * chizilgandan keyin qo'yilishi kerak: `setPayFocus` maydondagi
+   * sonni almashtiradi va undan oldin qo'yilgan karetka eski
+   * uzunlikka tayanardi.
+   *
+   * ⚠ MATN BELGILANMAYDI (`select()` YO'Q). Belgilansa, keyingi
+   * raqam eski qiymatni o'chirib yuborardi — bu esa yuqoridagi
+   * «qiymat saqlanadi» qoidasini amalda bekor qilardi.
+   */
+  const focusMethod = (type) => {
+    setPayFocus(type);
+    const el = document.getElementById("pay-amount");
+    if (!el) return;
+    el.focus();
+    requestAnimationFrame(() => {
+      const n = el.value.length;
+      try { el.setSelectionRange(n, n); } catch (_) { /* karetkasiz maydon */ }
+    });
+  };
+
+  /**
+   * JAMG'ARMAGA PUL QO'YISH (V64) — savdosiz.
+   *
+   * ⚠ MIJOZ MAJBURIY va tugma usiz o'chiq turadi: egasiz jamg'arma
+   * bo'lmaydi. Keshbek YO'Q (server `topUp` da bermaydi) — bu xarid
+   * emas, pul saqlashga berildi; keshbekni u xaridga ishlatilganda
+   * oladi.
+   *
+   * ⚠ `tier` QAYTA YUKLANADI: kartadagi qoldiq va to'lov oynasidagi
+   * «Jamg'arma» tugmasi shundan o'qiydi. Usiz kassir hozirgina
+   * qo'ygan pulni to'lov oynasida ko'rmasdi.
+   */
+  /* ⚠ MIJOZSIZ HAM OCHILADI (V66): mijoz oynaning O'ZIDA tanlanadi.
+     Savatda mijoz bo'lsa u oldindan tanlangan turadi. */
+  const openTopUp = () => {
+    /* ⚠ HAR OCHILISHDA BO'SH (V67): savatdagi mijoz bu yerga
+       KO'CHIRILMAYDI. Pulni kim qo'yayotgani har safar ongli
+       tanlanishi kerak — aks holda oldingi chekdan qolgan mijozning
+       hisobiga begona pul tushib ketardi. */
+    setTopUpCust(null);
+    setTopUpOpen(true);
+  };
+  /* Oynada mijoz tanlandi: qoldiq SERVERDAN yangilanadi — ro'yxatdagi
+     `savingsBalance` sahifa ochilganda olingan va eskirgan bo'lishi
+     mumkin (boshqa terminalda to'ldirilgan). */
+  const pickTopUpCustomer = async (c) => {
+    setTopUpCust(c);
+    if (!c?.id) return;
+    const fresh = await loyaltyApi.customerTier(c.id).catch(() => null);
+    if (fresh?.data) {
+      setTopUpCust((cur) => (cur?.id === c.id
+        ? { ...cur, savingsBalance: fresh.data.savingsBalance } : cur));
+    }
+  };
+  const submitTopUp = async ({ amount, method, payments, customer: c }) => {
+    if (!c?.id) return;
+    setToppingUp(true);
+    try {
+      /* Aralash to'lov qismlari (V96); `method` eski server uchun. */
+      const r = await customerApi.topUpSavings(c.id, { amount, method, payments });
+      toast.success(`${t("savings.topped")}: ${money(r?.data?.balance)}`);
+      setTopUpOpen(false);
+
+      /* ══ KVITANSIYA (V66) — do'kon egasi: «jamg'arma to'ldirilganda
+         ham chek berilishi kerak». Qarz to'lovidagi bilan bir xil:
+         avval QOG'OZGA (xato to'ldirishni bekor qilmaydi — pul
+         allaqachon kassada, qog'ozni qayta chiqarish mumkin), keyin
+         EKRANDA — printersiz do'konda mijoz uni QR orqali telefoniga
+         ko'chirib oladi. */
+      const rc = r?.data?.receipt || null;
+      if (rc) {
+        try {
+          await printDebtReceipt({
+            kind: rc.kind, customer: c, amount, method,
+            balanceAfter: rc.balanceAfter, balanceBefore: rc.balanceBefore,
+            receiptNo: rc.receiptNo, qrUrl: rc.qrUrl, shopName: rc.shopName,
+            cashier: rc.cashierName || localStorage.getItem("ek_fullName") || "",
+            date: rc.date ? new Date(rc.date) : new Date(),
+          });
+        } catch (e) {
+          toast.info(e.message || t("hw.errPopup"));
+        }
+        setSavingsReceipt(rc);
+      }
+      /* ⚠ SAVATGA BIRIKTIRILMAYDI (V67). Ilgari pul qo'ygan mijoz
+         savatga o'tkazilardi «keyingi chek ko'pincha uniki» degan
+         taxmin bilan — amalda esa u keyingi chekda qolib ketar va
+         begona mijozga keshbek yozilardi (do'kon egasi shikoyati).
+         Savatdagi mijoz shu paytda tanlangan bo'lsa, uning qoldig'i
+         yangilanadi, xolos. */
+      if (customer?.id === c.id) {
+        const fresh = await loyaltyApi.customerTier(c.id).catch(() => null);
+        if (fresh?.data) setTier(fresh.data);
+      }
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setToppingUp(false);
     }
   };
 
+  /* ══ RAQAM BILAN MIQDOR (V66) ═════════════════════════════════════════
+     Do'kon egasi: «savatda tanlangan mahsulotga raqam bosib miqdorni
+     o'zgartira olsin; 1,2,3 → 123; ma'lum vaqtdan keyin 3,2 → eskisi
+     o'rniga 32; vaqt tugamasdan yozsa davom (3245); bu kassirga fokus
+     bilan bildirib turilsin». Vaqt mantig'i `lib/ek-qty-type.js` da,
+     bu yerda faqat savatga qo'llash va ko'rsatkich. */
+  const setLineQty = (item, n) => {
+    const next = roundQty(item, n);
+    if (next <= 0) return;
+    const shortage = stockError(item, next);
+    if (shortage) { toast.error(shortage); return; }
+    setCart((prev) => prev.map((i) => (i.id === item.id
+      ? { ...i, qty: next, ...rescaleDiscount(i, next) } : i)));
+  };
+  const endQtyTyping = () => {
+    clearTimeout(qtyTimerRef.current);
+    qtyTypeRef.current = null;
+    qtyPendRef.current = null;
+    setQtyTyping((cur) => (cur ? null : cur));
+  };
+  const applyQtyKey = (line, key, now) => {
+    const r = typeQtyKey(qtyTypeRef.current, line.id, key, now);
+    qtyTypeRef.current = r.session;
+    clearTimeout(qtyTimerRef.current);
+    if (r.session) {
+      setQtyTyping({ id: line.id, text: r.session.text, seq: now });
+      /* Oyna tugadi — ko'rsatkich o'chadi; keyingi raqam yangidan. */
+      qtyTimerRef.current = setTimeout(() => {
+        qtyTypeRef.current = null;
+        setQtyTyping(null);
+      }, QTY_TYPE_MS);
+    } else {
+      setQtyTyping(null);
+    }
+    if (r.apply != null) setLineQty(line, r.apply);
+  };
+  /* ⚠ RAQAM DARHOL QO'LLANMAYDI: skanerning birinchi belgisi ham
+     «raqam». `APPLY_DELAY_MS` kutiladi; shu orada yana belgi kelsa
+     (skaner tezligida) — bekor. Odam bu qadar tez bosa olmaydi. */
+  const typeQty = (line, key, now) => {
+    if (key === "Backspace") { qtyPendRef.current = null; applyQtyKey(line, key, now); return; }
+    qtyPendRef.current = { line, key, now };
+    setTimeout(() => {
+      const pnd = qtyPendRef.current;
+      if (!pnd || pnd.now !== now) return;      // bekor qilingan yoki yangisi keldi
+      qtyPendRef.current = null;
+      applyQtyKey(pnd.line, pnd.key, pnd.now);
+    }, APPLY_DELAY_MS);
+  };
+
+  /** Maydonga yozilgan summa — tanlangan usulga. */
+  const setPayValue = (v) =>
+    setPaid((prev) => {
+      const next = { ...prev };
+      /* Bo'sh maydon — «bu usul ishlatilmadi». Nol yozib qoldirish
+         chekda 0 so'mlik qatorni paydo qilardi. */
+      if (v === "" || v == null) delete next[payFocus];
+      /* ⚠ JAMG'ARMA QOLDIQDAN OSHMAYDI — yozilayotgan paytda
+         KESILADI, keyin xato ko'rsatilmaydi. Kassir mijoz oldida
+         raqamni aytib bo'lgan bo'ladi va uni «bo'lmaydi» deb
+         qaytarish eng noqulay payt. */
+      else if (payMax != null) next[payFocus] = String(Math.min(Number(v) || 0, payMax));
+      else next[payFocus] = v;
+      return next;
+    });
+
+  /** «Qolganini» — shu usulga qolgan summani yozadi (ustiga qo'shmaydi). */
+  /* ══════════════════════════════════════════════════════════════════
+     TAKLIF: shu tovar bilan nima olinadi (V79)
+
+     ⚠ FAQAT SAVATDAGI OXIRGI tovar bo'yicha. Butun savat bo'yicha
+     hisoblanganda ro'yxat uzayib ketar va kassir uni o'qimasdi;
+     oxirgi tovar esa aynan hozir muhokama qilinayotgani.
+
+     ⚠ SAVATDA BORI TAKLIF QILINMAYDI: «yana bir marta qo'shing» degan
+     taklif kassirni chalg'itardi.
+
+     ⚠ IKKITA, ko'p emas. Kassa ekranida taklif — YORDAM, ro'yxat
+     emas; uchtadan oshsa u savatning o'zini pastga surib qo'yardi. */
+  const suggest = useMemo(() => {
+    const last = cart[cart.length - 1];
+    if (!last || !pairs.length) return [];
+    const inCart = new Set(cart.map((i) => i.id));
+    return pairs
+      .filter((p) => p.productA === last.id && !inCart.has(p.productB))
+      .sort((a, b) => (b.together || 0) - (a.together || 0))
+      .slice(0, 2)
+      .map((p) => products.find((x) => x.id === p.productB))
+      .filter(Boolean);
+  }, [cart, pairs, products]);
+
+  const fillRest = () => setPayValue(String(restFor(paid, total, payFocus)));
+
+  /* ══════════════════════════════════════════════════════════════════
+     MIJOZ EKRANI (V77)
+
+     ⚠ BITTA JOYDAN uzatiladi va bu ataylab: savat, chegirma, mijoz va
+     to'lov holati o'nlab joyda o'zgaradi va har biriga chaqiruv
+     qo'yilganda ulardan bittasi albatta unutilardi — o'shanda mijoz
+     ekrani jimgina eskirib qolardi va buni faqat mijoz payqardi.
+
+     ⚠ SOTUVDAN KEYINGI «rahmat» BU YERDA EMAS: u savatga bog'liq
+     emas va o'z holatidan (`finish`) chiqadi.
+
+     ⚠ Ekran O'CHIQ bo'lsa hech narsa yozilmaydi: `localStorage` ga
+     har tugma bosilishida yozish sekin monoblokda sezilardi. */
+  useEffect(() => {
+    if (!displayOn) return;
+    if (finish?.phase === "done") return;   // «rahmat» ekrani o'z navbatida
+    display.publish(display.buildState({
+      mode: showPayModal ? "pay" : cart.length ? "cart" : "idle",
+      shop: shopName,
+      items: cart.map((i) => ({
+        name: i.name, qty: i.qty, unit: i.unit,
+        price: i.salePrice, sum: i.salePrice * i.qty - (Number(i.discount) || 0),
+      })),
+      total, discount: discountNum + lineDiscounts,
+      customer: customer ? { name: customer.fullName || customer.name, bonus: tier?.bonusBalance } : null,
+      /* To'lov oynasi ochiq bo'lsa — berilgan pul va qaytim. */
+      given: showPayModal ? pay.cashIn : null,
+      change: showPayModal ? pay.change : null,
+      promo,
+    }));
+  }, [displayOn, cart, total, discountNum, lineDiscounts, customer, tier,
+      showPayModal, pay.cashIn, pay.change, shopName, promo, finish?.phase]);
+
+  /** Usulni butunlay olib tashlash. */
+  const dropMethod = (type) =>
+    setPaid((prev) => {
+      const next = { ...prev };
+      delete next[type];
+      return next;
+    });
+
+  /** Mijoz tanlagichini ochadi (yorliq ham, ogohlantirish ham shuni chaqiradi). */
+  const pickCustomer = () => document.querySelector(".cart-cust .ek-select__btn")?.click();
+
   const openPayModal = () => {
     if (!cart.length) return;
-    setPayType("CASH");
-    setCashGiven(""); setCashAmount(""); setCardAmount(""); setDiscount("");
-    setMixedSecondType("CARD");
+    /* ⚠ MAYDON BO'SH OCHILADI (do'kon egasining talabi). Ilgari unga
+       butun summa yozilgan turardi va mijoz boshqa summa uzatganda
+       kassir avval o'sha raqamni O'CHIRISHI kerak edi — navbat
+       oldida ortiqcha ish.
+
+       ⚠ BO'SH MAYDON — «TO'LANMADI» (V86). Ilgari u «hammasi naqd»
+       degani edi va hisobda kassir yozmagan «Naqd 20 000» qatori
+       o'zi paydo bo'lardi. Endi hisob bo'sh turadi va «Sotish»
+       yopiq: placeholder chek summasini ko'rsatadi, lekin bu
+       TAKLIF — kassir uni tasdiqlashi kerak. */
+    setPaid({});
+    setPayFocus("CASH");
+    /* ⚠ MUDDAT SOZLAMADAN TO'LDIRILADI (V87). Do'kon egasi
+       «sozlamadagi muddat deb belgilay olsin» dedi: kun soni
+       qo'yilgan bo'lsa maydon o'sha sana bilan ochiladi va odatiy
+       chekda kassir hech narsa qilmaydi. Qo'yilmagan bo'lsa maydon
+       bo'sh qoladi — «kelishilmagan».
+
+       ⚠ HAR CHEKDA QAYTA HISOBLANADI: oldingi mijoz bilan
+       kelishilgan sana keyingisiga o'tib ketmasin — mijoz, to'lovlar
+       va ball ham shu sabab bilan shu yerda tozalanadi. */
+    setDueDate(due.plus(dueDays));
+    /* ⚠ Bayroq HAR CHEKDA tushadi: qolgani keyingi mijozning
+       qaytimini jimgina yutib yuborardi. */
+    setChangeToSavings(false);
+    setDiscount("");
+    /* ⚠⚠ MIJOZ HAR OCHILISHDA TOZALANADI (V67, do'kon egasi:
+       «har safar to'lov yoki jamg'arma tugmasi bosilganda eski
+       tanlangan mijoz qolib ketyapti, bu xato»).
+
+       Xato jimgina va QIMMAT: oldingi chekdan qolgan mijozga keshbek
+       yozilar, qarzi oshar, jamg'armasidan pul yechilardi — buni na
+       kassir, na o'sha mijoz sezardi. Endi mijoz HAR CHEKDA ongli
+       tanlanadi (oyna ichidagi tanlagichdan yoki kartani skanerlab). */
+    setCustomer(null);
     setShowPayModal(true);
   };
   const closePayModal = () => setShowPayModal(false);
 
-  const change      = Math.max(0, (Number(cashGiven) || 0) - total);
-  const mixedSum    = (Number(cashAmount) || 0) + (Number(cardAmount) || 0);
-  const mixedOk     = payType !== "MIXED" || mixedSum === total;
-  /* Nasiya — MIJOZGA beriladigan qarz. Kimga berilganini bilmasdan yozib
-     bo'lmaydi: server ham rad etadi, lekin kassir buni to'lov tugmasini
-     bosishdan OLDIN ko'rishi kerak. */
-  const creditOk    = payType !== "CREDIT" || !!customer;
-  const cashOk      = payType !== "CASH"  || !cashGiven || Number(cashGiven) >= total;
-  const canSubmit   = cart.length > 0 && !processing && mixedOk && cashOk && creditOk;
+  /* Nasiya — MIJOZGA beriladigan qarz. Kimga berilganini bilmasdan
+     yozib bo'lmaydi: server ham rad etadi, lekin kassir buni to'lov
+     tugmasini bosishdan OLDIN ko'rishi kerak. */
+  const creditPart = pay.credit;
+  const creditOk   = creditPart <= 0 || !!customer;
+
+  /* ⚠ KIRITILMAGAN PUL — NASIYA EMAS (V86).
+
+     `settle` bo'sh maydonlarda butun summani nasiyaga yozadi — bu
+     hisobning to'g'ri javobi («qoldiq shuncha»), lekin ekran uchun
+     u YOLG'ON: kassir hali hech narsa kiritmadi, hech kimga qarz
+     bermadi. V86 gacha shu farq yo'q edi va oyna ochilishi bilanoq
+     «mijozni tanlang», nasiyasiz do'konda esa qizil «nasiya
+     o'chirilgan» chiqib turardi — kassir hech narsa qilmasidan
+     oldin xato qilgan bo'lib chiqardi.
+
+     Shuning uchun nasiyaga oid HAMMA ko'rsatma shu bitta shartdan
+     boshlanadi: pul kiritilgan bo'lsa va qoldiq qolsa — o'shanda
+     nasiya. */
+  const creditReal = creditPart > 0 && !payUntouched;
+
+  /**
+   * HISOBDA KO'RSATILADIGAN qatorlar (V91).
+   *
+   * ⚠ `pay.parts` DAN FARQ QILADI va bu ataylab: `parts` serverga
+   * ketadi va u yerda naqd KESILGAN bo'lishi shart (yashikka faqat
+   * chekka tushgani kiradi). Ekran esa kassir NIMA KIRITGANINI
+   * ko'rsatishi kerak — aks holda kiritilgan pul ko'rinmay,
+   * «Qaytim» yolg'iz qolardi.
+   */
+  const payRows = useMemo(() => {
+    const rows = pay.parts.filter((x) => x.type !== "CREDIT");
+    /* Naqd kiritilgan-u, chekka tushmagan bo'lsa (karta hammasini
+       yopgan) — qatori umuman yo'q edi. Qo'shamiz. */
+    if (pay.cashIn > 0 && !rows.some((x) => x.type === "CASH")) {
+      rows.unshift({ type: "CASH", amount: pay.cashIn });
+    }
+    return rows.map((x) => (x.type === "CASH" ? { ...x, amount: pay.cashIn } : x));
+  }, [pay]);
+
+  /**
+   * MIJOZDAN JAMI OLINADIGAN PUL (V94) — do'kon egasining talabi.
+   *
+   * ⚠ AYNAN YUQORIDAGI QATORLARNING YIG'INDISI, boshqa hisobdan
+   * EMAS. Sabab oddiy: kassir ro'yxatni ko'rib turibdi va jami
+   * o'sha ro'yxatga to'g'ri kelmasa, ikkalasining qaysi biri
+   * to'g'riligini bilib bo'lmaydi. Shuning uchun u `pay` dan qayta
+   * hisoblanmaydi — `payRows` dan qo'shiladi.
+   *
+   * ⚠ NASIYA KIRMAYDI: u `payRows` da yo'q va bo'lmasligi ham kerak —
+   * nasiya bugun olinadigan pul emas, qarz.
+   *
+   * ⚠ JAMG'ARMA KIRADI: u mijozning puli va aynan shu chekka
+   * ishlatilyapti. «Mijozdan jami» — mijoz qayerdan bo'lsa ham
+   * beradigan summa.
+   */
+  const payTaken = useMemo(
+    () => payRows.reduce((sum, x) => sum + (Number(x.amount) || 0), 0),
+    [payRows]);
+
+  /* Muddatgacha necha kun (V87). `null` — sana yo'q yoki yaroqsiz. */
+  const dueLeft = dueDate ? due.daysLeft(dueDate) : null;
+
+  /* ⚠ NASIYA O'CHIRILGAN DO'KONDA qoldiq QOLMASLIGI shart: u yerda
+     yozilmagan qismni yozadigan joy yo'q. Ilgari bu holat umuman
+     bo'lmasdi — «Aralash» da qoldiq nolga tenglashtirilardi. */
+  const creditBlocked = creditReal && !creditEnabled;
+
+  /* ⚠ MIJOZ TANLAGICHNING O'ZI ISHORA QILADI (do'kon egasining
+     talabi). Ilgari ogohlantirish to'lov ustunida — mijoz tanlagichdan
+     ikki ustun narida — chiqardi va kassir «nima qilishim kerak?» deb
+     ekranni qidirardi. Endi belgi aynan bosilishi kerak bo'lgan
+     joyda turadi. */
+  const needCustomer = creditReal && !creditBlocked && !customer;
+
+  /* ══ TO'LOV OYNASI O'ZINI O'ZI SIG'DIRADI (V66) ══════════════════════
+     Do'kon egasi: «scrol hech qachon bo'lmasin, nima bo'lganda ham».
+     Tana o'lchanadi, sig'masa daraja oshadi (`useFitHeight` izohi).
+     `key` — mazmunning balandligini o'zgartiradigan hamma narsa: u
+     o'zgarsa daraja nolga qaytib, qaytadan o'lchanadi (aks holda bir
+     marta kichraygan oyna mijoz olib tashlanganda ham kichik qolardi). */
+  const payBodyRef = useRef(null);
+  /* Ekran klaviaturasi ochiqmi — oynaga qolgan joy shunga bog'liq
+     (`keyboard` yuqorida allaqachon olingan). */
+  /* ══ ORTIQCHA PUL JAMG'ARMAGA KETYAPTIMI (V84) ══════════════════════
+     
+     ⚠ YAGONA SHART, uchta joyda ishlatiladi: to'siq, ogohlantirish va
+     serverga yuboriladigan tana. Ilgari ular UCHTA boshqa-boshqa
+     shartga tayanardi va ekran o'zi bilan ziddiyatga tushdi: yashil
+     qatorda «Jamg'armaga +80 000» yozilib turgan holda, pastda qizil
+     «Ortiqcha 80 000. Qaytim faqat naqddan» chiqib, «Sotish» tugmasi
+     o'chib qolardi. Kassirda hech qanday yo'l yo'q edi.
+
+     ⚠ `customer` ham SHART. Jamg'arma — mijozning hisobi; mijozsiz
+     yo'naltiradigan joy yo'q. Ilgari serverga yuboriladigan tanada bu
+     tekshiruv yo'q edi (faqat ko'rsatishda bor edi): mijoz tanlangach
+     tugma yoqilib, keyin mijoz olib tashlansa, chek serverga borib
+     «savings.change.no.customer» xatosi bilan qaytardi. */
+  const overToSavings = changeToSavings && !!customer && pay.excess > 0;
+
+  const oskOpen = keyboard.isOpen;
+  const fitKey = [
+    customer?.id, !!tier, savingsLeft > 0, Number(tier?.debtBalance) > 0, bonusAvail > 0,
+    Number(tier?.bonusExpiringSoon) > 0, pay.parts.length, pay.change > 0, creditPart > 0,
+    creditBlocked, needCustomer, discountNum > 0, lineDiscounts > 0,
+    roundOffers.length, budgetPicks.length, discVerdict, cart.length, payUntouched,
+    pay.over > 0, overToSavings, payFocus === "SAVINGS",
+    /* ⚠ Klaviatura ochilganda oynaga qolgan joy KESKIN kamayadi
+       (V67) — daraja nolga qaytib, qaytadan o'lchanishi shart. */
+    oskOpen,
+  ].join("|");
+  const fit = useFitHeight(payBodyRef, { enabled: showPayModal, key: fitKey });
+
+  /* ⚠ NAQDSIZ USULDA ORTIQCHA — XATO, qaytim emas: terminal aynan
+     so'ralgan summani oladi. Yagona istisno — u jamg'armaga
+     yo'naltirilgan bo'lsa: o'shanda pulning manzili bor. */
+  const overOk = pay.over === 0 || overToSavings;
+
+  /* ⚠ SUMMA KIRITILMAGUNCHA SOTIB BO'LMAYDI (V86). Bo'sh maydon
+     «hammasi naqd» degani emas: kassir hech narsa aytmagan va tizim
+     uning o'rniga qaror qabul qila olmaydi.
+
+     ⚠ `payUntouched` — «bironta maydonga tegilmadi», «to'landi» emas.
+     Naqdga `0` yozilgan to'liq nasiya chekida u `false` bo'ladi va
+     sotuv ochiq qoladi: kassir niyatini bildirgan. */
+  /* ⚠ O'TMISHDAGI QARZ MUDDATI SOTUVNI TO'SADI (V99).
+     Maydondagi `min` faqat kalendarni cheklaydi — qo'lda terilgan
+     sana baribir o'tib ketardi va qarz TUG'ILGAN ZAHOTI muddati
+     o'tgan bo'lib yozilardi. */
+  const duePast = creditPart > 0 && due.isPast(dueDate);
+
+  const canSubmit = cart.length > 0 && !processing
+                    && creditOk && !creditBlocked && overOk && !payUntouched
+                    && !duePast;
 
   /* ── Sotuvni yakunlash ────────────────────────────────────── */
-  const handleSubmit = async () => {
-    if (!canSubmit) return;
-    setProcessing(true);
+  /** Sotuvning O'ZI — tugmaning holati pastdagi `handleSubmit` da. */
+  const runSale = async () => {
+    /* Chekning turi — hisobot uchun bitta so'z. */
+    const saleType = payTypeOf(pay.parts);
 
     const payload = {
       idempotencyKey: queue.newIdempotencyKey(),
@@ -609,23 +2252,95 @@ export default function KassaPage({ toast, refreshLowStock }) {
       items: cart.map((i) => ({
         productId: i.id,
         quantity: i.qty,
+        /* Qator chegirmasi — kassir narxni tushirgan bo'lsa (`LinePriceModal`).
+           Serverda ham aynan SUMMA saqlanadi: foiz saqlansa, keyin narx
+           o'zgarganda eski chek boshqacha o'qilardi. */
+        ...(i.discount > 0 ? { discountAmount: i.discount } : {}),
         // Markirovkasiz tovarda maydon umuman yuborilmaydi.
         ...(i.markingCodes?.length ? { markingCodes: i.markingCodes } : {}),
       })),
-      paymentType: payType,
+      /* ⚠ TUR HISOBLANADI, saqlanmaydi (`ek-payment.js`): bitta usul
+         bo'lsa — o'sha usul, bir nechtasi bo'lsa «MIXED». Hisobotda
+         «aralash» degan qator kerak, aks holda bitta chek ikki
+         bo'limda sanalardi. */
+      paymentType: saleType,
       discountAmount: discountNum,
       // ⚠ Ball — chegirma, to'lov turi emas: `cashAmount` allaqachon
       // balldan KEYINGI summani ko'rsatadi va kassaga aynan shu tushadi.
       bonusAmount: bonusNum,
-      mixedSecondType: payType === "MIXED" ? mixedSecondType : undefined,
-      cashAmount: payType === "CASH" ? total : payType === "MIXED" ? Number(cashAmount) || 0 : 0,
-      cardAmount: ["CARD", "CLICK", "PAYME"].includes(payType) ? total
-                : payType === "MIXED" ? Number(cardAmount) || 0 : 0,
+      /* ⚠ TO'LOV QISMLARI (V53) — server aynan shu ro'yxatni oladi.
+         Bitta usulda ham ro'yxat yuboriladi: shunda serverda bitta yo'l
+         qoladi va «bitta usul» bilan «aralash» boshqa-boshqa kod
+         bo'lib ajralib ketmaydi. */
+      payments: pay.parts,
+      /* ⚠ QAYTIM CHEK SUMMASIGA KIRMAYDI — bu chek yopilgandan
+         keyingi alohida harakat. `cashGiven` esa serverga qaytim
+         chegarasini hisoblash uchun kerak: u chekning naqd
+         QISMINI biladi, mijoz UZATGAN summani esa faqat kassir
+         aytadi. */
+      /* ⚠ ORTIQCHANING HAMMASI (V78): naqd qaytimi ham, naqdsiz
+         usuldan oshgani ham. Server ikkalasini ham tekshiradi —
+         `cashGiven` naqd qismini, `nonCashOver` esa qolganini. */
+      changeToSavings: overToSavings ? pay.excess : null,
+      cashGiven: overToSavings ? pay.cashIn : null,
+      nonCashOver: overToSavings && pay.over > 0 ? pay.over : null,
+      /* ⚠ MUDDAT FAQAT NASIYA BO'LGANDA (V87). Kassir maydonni
+         to'ldirib qo'yib keyin summani to'liq kiritsa, chekda
+         «to'lash sanasi» degan ma'nosiz qator qolardi.
+
+         ⚠ SERVER ham xuddi shu qoidani takrorlaydi
+         (`creditPart > 0 ? dto.creditDueDate() : null`) va bu
+         takror ATAYLAB: server klientga ishonmaydi, klient esa
+         serverning javobini kutmasdan chekni bosib chiqaradi.
+         Qoida bir joyda qolsa, ikkinchi tomonda yolg'on chiqardi. */
+      creditDueDate: creditPart > 0 && dueDate ? dueDate : null,
+      /* ⚠ ESKI MAYDONLAR HAM YUBORILADI. Sabab bosqichma-bosqich
+         yangilanish: server hali eski bo'lsa (yoki oflayn navbatdagi
+         chek eski serverga tushsa) chek baribir yozilishi kerak.
+         Yangi server ro'yxatni afzal ko'radi va bularni e'tiborsiz
+         qoldiradi. Eski shakl faqat IKKI qismni ko'tara oladi —
+         shuning uchun undan ortig'i bo'lsa birinchi ikkitasi
+         yuboriladi va bu ATAYLAB: eski server uchdan birini baribir
+         qabul qila olmasdi. */
+      mixedSecondType: saleType === "MIXED"
+        ? (pay.parts.find((p) => p.type !== "CASH")?.type || "CARD") : undefined,
+      cashAmount: pay.cashPaid,
+      cardAmount: pay.parts.filter((p) => ["CARD", "CLICK", "PAYME"].includes(p.type))
+                           .reduce((a, p) => a + p.amount, 0),
     };
     /* Chekka chegirma ham tushadi: mijoz "qancha chegirma oldim" degan
        savolga qog'ozdan javob topishi kerak, aks holda faqat yakuniy
        summa ko'rinib, chegirma ko'rinmay qolardi. */
-    const snapshot = { cart: [...cart], total, subtotal, discount: discountNum, payType, customer };
+    /* ⚠ NASIYA MA'LUMOTI CHEKKA (V47). «Nasiya» degan bitta so'z
+       yetmaydi: mijoz uyiga borib «qancha qarzim bor edi?» deb o'ylab
+       qoladi va ertaga do'kon bilan tortishadi. Shu chek qarzi, JAMI
+       qarz va muddat chekda turadi.
+
+       ⚠ Jami qarz — SOTUVDAN KEYINGI holat: `tier.debtBalance` sotuvdan
+       oldingi qoldiq, shuning uchun shu chek qarzi qo'shiladi. */
+    const creditInfo = creditPart > 0 ? {
+      amount: creditPart,
+      balance: (Number(tier?.debtBalance) || 0) + creditPart,
+      /* ⚠ KELISHILGAN SANADAN (V87), sozlamadagi kun sonidan EMAS.
+         Ilgari chek `dueDays` dan hisoblardi va shu sababdan doim
+         «bugun + 30» derdi — mijoz bilan aslida boshqa kun
+         kelishilgan bo'lsa ham. Endi chekda aynan aytilgan sana
+         turadi va mijoz uyiga borib undan o'qiydi.
+
+         ⚠ Vaqt mintaqasi: `dueDate` allaqachon MAHALLIY `YYYY-MM-DD`
+         (`ek-due.js`), shuning uchun `T00:00` qo'shib beriladi —
+         `shortDate` ni sof sana satri bilan chaqirish uni UTC deb
+         o'qishga majbur qilardi va sana bir kun surilardi. */
+      dueDate: dueDate ? shortDate(`${dueDate}T00:00:00`) : null,
+    } : null;
+    /* ⚠ Chekka TAQSIMOT ham tushadi (V53): «Aralash» degan bitta so'z
+       mijozga hech narsa aytmaydi va u ertaga «karta bilan qancha
+       to'lagan edim?» deb do'kon bilan tortishadi. */
+    const snapshot = { cart: [...cart], total, subtotal, discount: discountNum, rounding,
+                       payType: saleType, customer,
+                       payments: payload.payments, credit: creditInfo,
+                       /* Qaytim jamg'armaga (V66) — chekda va yakun oynasida. */
+                       toSavings: Number(payload.changeToSavings) || 0 };
 
     setShowPayModal(false);
     setFinish({ phase: "printing", total: money(total) });
@@ -637,7 +2352,13 @@ export default function KassaPage({ toast, refreshLowStock }) {
 
     try {
       if (!navigator.onLine) throw new Error("OFFLINE");
-      const res = await saleApi.create(payload);
+      /* ⚠ `guard` — CHEGARADAN OSHGAN CHEGIRMADA server bajik so'raydi
+         (428). Usiz chek «Bajikni skanerlang» xatosi bilan rad etilardi,
+         lekin skanerlash oynasi OCHILMASDI: kassir xabarni o'qir-u,
+         nima qilishni bilmasdi va chegirmani qo'lda kamaytirishga
+         majbur bo'lardi. Chegara ichidagi chegirmada server bajik
+         so'ramaydi — oddiy chek sekinlashmaydi. */
+      const res = await guard(() => saleApi.create(payload));
       res_saleId = res?.data?.id ?? null;
       receiptNo = res_saleId != null ? `A-${res_saleId}` : null;
       /* Elektron chek havolasi (V34) — chekka QR bo'lib bosiladi.
@@ -653,7 +2374,10 @@ export default function KassaPage({ toast, refreshLowStock }) {
         setFinish(null);
         setProcessing(false);
         setShowPayModal(true);
-        toast.error(err.message);
+        /* Bajik oynasi bekor qilingan bo'lsa — bu xato emas, kassirning
+           o'z tanlovi: to'lov oynasi qaytadi va u chegirmani
+           o'zgartirishi mumkin. */
+        if (!err?.cancelled) toast.error(err.message);
         return;
       }
       await queue.enqueue(payload, { itemCount: cart.length, total });
@@ -668,7 +2392,10 @@ export default function KassaPage({ toast, refreshLowStock }) {
        bilan qayta chop etiladi. Kassa hech qachon fiskal modulni
        kutib turmaydi. */
     let fiscal = null;
-    if (!offline && res_saleId) {
+    /* ⚠ MVP da fiskal belgi SO'RALMAYDI (`FISCAL_UI`): modul ulanmagan
+       bo'lsa bu so'rov har chekda bekorga ketar va javobi baribir
+       bo'sh bo'lardi. Chek belgisiz chiqadi — izohi `config.js` da. */
+    if (FISCAL_UI && !offline && res_saleId) {
       try {
         const fr = await fiscalApi.bySale(res_saleId);
         if (fr?.data?.fiscalSign) fiscal = fr.data;
@@ -676,6 +2403,11 @@ export default function KassaPage({ toast, refreshLowStock }) {
     }
 
     lastSale.current = { ...snapshot, saleId: receiptNo, serverSaleId: res_saleId, offline, fiscal, receiptUrl };
+
+    /* ⚠ ENG YANGISI BOSHIDA va ro'yxat BESHTA bilan cheklangan:
+       kassirning savoli «hozirgina nima sotdim?», o'n beshinchi chek
+       esa «Savdo» bo'limining ishi. */
+    setLastSales((prev) => [{ ...lastSale.current, at: Date.now() }, ...prev].slice(0, 5));
     // Chek va pul yashigi — BITTA amalda, kassirdan qo'shimcha bosish
     // talab qilmasdan. Xatosi yutilmaydi, lekin SOTUVNI to'xtatmaydi:
     // sotuv allaqachon qayd etilgan va printer nosozligi uni bekor
@@ -686,20 +2418,89 @@ export default function KassaPage({ toast, refreshLowStock }) {
     printReceipt({ saleId: receiptNo, serverSaleId: res_saleId, ...snapshot, offline, shopName, cashier, fiscal, receiptUrl })
       .catch((err) => toast.error(`${t("hw.printFailed")}: ${err.message}`));
 
-    setFinish({ phase: "done", total: money(snapshot.total), receiptNo });
-    if (refreshLowStock) refreshLowStock();
+    /* ⚠ «RAHMAT» EKRANI shu yerdan, savat kuzatuvchisidan EMAS: sotuv
+       tugagach savat bo'shaydi va kuzatuvchi darhol «bo'sh ekran»
+       yuborardi — mijoz qaytimni ko'rishga ulgurmasdi. */
+    if (displayOn) {
+      display.publish(display.buildState({
+        mode: "done", shop: shopName, items: [], total: snapshot.total,
+        change: pay.change, receiptNo, promo,
+      }));
+    }
 
-    clearCart();
-    setCustomer(null);
-    setCashGiven(""); setCashAmount(""); setCardAmount(""); setDiscount("");
+    /* ⚠ ANIQ VOQEA, toast emas (V89). Chek yopilishi — kassirning
+       kunidagi yagona «tugadi» lahzasi va u boshqa hamma narsadan
+       farqli eshitilishi kerak: kassir mijozga qaragan holda ham
+       chek o'tganini biladi. */
+    sfx("SALE_DONE");
+    setFinish({ phase: "done", total: money(snapshot.total), receiptNo,
+                note: snapshot.toSavings > 0 ? t("savings.finishNote", { n: money(snapshot.toSavings) }) : null });
+    if (refreshLowStock) refreshLowStock();
+    /* ⚠ Katakchalar ham QAYTA O'QILADI. Ilgari faqat yon paneldagi «kam
+       qolgan» belgisi yangilanardi, mahsulot katakchalari esa oxirgi
+       qidiruvdan qolgan eski qoldiqni ko'rsatib turaverardi — kassir
+       sahifani qo'lda yangilamaguncha son o'zgarmasdi. */
+    doSearch(search);
+
+    closeSoldCart();
+    /* ⚠ BU YERDA V58 GACHA `setCashGiven`, `setCashAmount`,
+       `setCardAmount` va `setPayType` chaqirilardi. To'lov qayta
+       yozilganda o'sha holat o'chdi, chaqiruvlar esa QOLIB KETDI va
+       har sotuvdan keyin `ReferenceError` berardi. Xato aynan shu
+       qatorda tushgani uchun undan keyingi `setProcessing(false)`
+       hech qachon bajarilmasdi: sotuv o'tar, lekin tugma abadiy
+       «Bajarilmoqda…» bo'lib qolardi va kassir boshqa sota olmasdi
+       (do'kon egasi shuni ko'rsatdi).
+
+       Endi tozalash faqat MAVJUD holatga tegadi, ustiga pastdagi
+       `finally` har qanday holatda tugmani ochib qo'yadi. */
+    setPaid({});
+    setPayFocus("CASH");
+    /* ⚠ MUDDAT SOZLAMADAN TO'LDIRILADI (V87). Do'kon egasi
+       «sozlamadagi muddat deb belgilay olsin» dedi: kun soni
+       qo'yilgan bo'lsa maydon o'sha sana bilan ochiladi va odatiy
+       chekda kassir hech narsa qilmaydi. Qo'yilmagan bo'lsa maydon
+       bo'sh qoladi — «kelishilmagan».
+
+       ⚠ HAR CHEKDA QAYTA HISOBLANADI: oldingi mijoz bilan
+       kelishilgan sana keyingisiga o'tib ketmasin — mijoz, to'lovlar
+       va ball ham shu sabab bilan shu yerda tozalanadi. */
+    setDueDate(due.plus(dueDays));
+    /* ⚠ Bayroq HAR CHEKDA tushadi: qolgani keyingi mijozning
+       qaytimini jimgina yutib yuborardi. */
+    setChangeToSavings(false);
+    setDiscount("");
     /* ⚠ Ball ham tozalanadi. Usiz keyingi mijozning chekiga oldingi
        mijozning ball summasi tushib qolardi — va u boshqa odamning
        balansidan yechilardi. */
     setBonusUse("");
-    setPayType("CASH");
-    setProcessing(false);
+  };
 
-    setTimeout(() => { setFinish(null); focusBarcode(); }, 2200);
+  /**
+   * «Sotish va Chek» tugmasi.
+   *
+   * ⚠ `finally` SHART. Sotuvdan keyingi ishlar uzun: chek chiqarish,
+   * qidiruvni yangilash, savatni yopish, maydonlarni tozalash.
+   * Ularning BIRIDA xato chiqsa ham tugma ochilishi kerak — aks holda
+   * sotuv o'tgan bo'ladi-yu, tugma «Bajarilmoqda…» da qotib qoladi va
+   * kassa butunlay to'xtaydi. Aynan shu bo'lgan edi: tozalash qatorida
+   * to'lov qayta yozilganda o'chgan funksiyalar chaqirilib qolgan,
+   * `ReferenceError` esa `setProcessing(false)` ga yetkazmasdi.
+   */
+  const handleSubmit = async () => {
+    if (!canSubmit) return;
+    setProcessing(true);
+    try {
+      await runSale();
+    } catch (err) {
+      /* ⚠ Bu yerga tushgan xato SOTUVNI bekor qilmaydi — u serverda
+         allaqachon qayd etilgan bo'lishi mumkin. Shuning uchun faqat
+         aytamiz; kassir chekni Ctrl+P bilan qayta chiqara oladi. */
+      console.error("sotuvdan keyingi xato:", err);
+      toast.error(err?.message || String(err));
+    } finally {
+      setProcessing(false);
+    }
   };
 
   const reprint = () => {
@@ -729,16 +2530,26 @@ export default function KassaPage({ toast, refreshLowStock }) {
       const el = e.target;
       const typing = el?.tagName === "INPUT" || el?.tagName === "TEXTAREA" || el?.tagName === "SELECT";
 
-      if (e.ctrlKey && (e.key === "b" || e.key === "B")) { e.preventDefault(); focusBarcode(); return; }
-      if (e.ctrlKey && (e.key === "p" || e.key === "P")) { e.preventDefault(); reprint(); return; }
-
-      if (e.key === "/" && !typing) { e.preventDefault(); searchRef.current?.focus(); return; }
+      /* Ctrl+B — tarixiy yorliq: ilgari «barkod maydoniga qaytish»
+         degani edi, endi qidiruvni fokuslaydi. Saqlab qolindi:
+         kassirlar barmog'i uni yod biladi. */
+      if (e.ctrlKey && (e.key === "b" || e.key === "B")) { e.preventDefault(); focusSearch(); return; }
+      /* ⚠ Ctrl+P va «/» BU YERDA EMAS — ular ham quyidagi jadvalda.
+         Ilgari ular shu yerda alohida yozilgani uchun yordam oynasida
+         ko'rsatilgan ro'yxat bilan haqiqiy xatti-harakat ikki xil
+         bo'lib qolish xavfi bor edi. */
 
       if (e.key === "Escape") {
-        if (finish)       { setFinish(null); focusBarcode(); return; }
-        if (qtyModal)     { setQtyModal(null); focusBarcode(); return; }
-        if (markModal)    { setMarkModal(null); focusBarcode(); return; }
-        if (showPayModal) { closePayModal(); return; }
+        if (finish)       { setFinish(null); focusSearch(); return; }
+        /* ⚠ OCHIQ OYNA BO'LSA — Esc O'SHA OYNANIKI, bu yerdagi ro'yxatniki
+           emas. Har oyna o'zini `Overlay` orqali yopadi va faqat ENG
+           USTIDAGISI javob beradi (`modal-stack.js`).
+
+           Ilgari bu ro'yxat birinchi bo'lib ishlardi va u faqat kassa
+           bilgan oynalarni bilardi: to'lov oynasi ustidan ochilgan «yangi
+           mijoz» oynasida Esc yangi mijozni emas, TO'LOVNI yopib
+           yuborardi — kassir yozganini yo'qotardi. */
+        if (layerCount() > 0) return;
         /* ⚠ `window.confirm` EMAS: brauzerning o'z oynasi ilova temasidan
            tashqarida chiqadi va `.exe` da butun oynani bloklaydi. */
         if (cart.length && !clearAsk.current) {
@@ -751,168 +2562,505 @@ export default function KassaPage({ toast, refreshLowStock }) {
           }).then((ok) => {
             clearAsk.current = false;
             if (ok) handleClearCart();
-            focusBarcode();
+            focusSearch();
           });
         }
         return;
       }
 
-      if (e.key === "F9") {
-        e.preventDefault();
-        if (showPayModal) handleSubmit(); else openPayModal();
-        return;
-      }
+      /* ══ YORLIQLAR JADVALI (V57) ═══════════════════════════════════
+         Endi hamma qolgan yorliq `lib/ek-kassa-keys.js` dan o'qiladi:
+         qaysi ekran ochiq ekaniga qarab («cart» yoki «pay») mos qator
+         topiladi va faqat o'shanisi bajariladi. Shu sababdan F2 kassa
+         ekranida «yangi savat», to'lov oynasida esa «karta» bo'lib
+         qolaveradi — tarixiy yorliqlar buzilmaydi.
 
-      if (showPayModal) {
-        if (e.key === "F1") { e.preventDefault(); handlePayTypeChange("CASH");  return; }
-        if (e.key === "F2") { e.preventDefault(); handlePayTypeChange("CARD");  return; }
-        if (e.key === "F3") { e.preventDefault(); handlePayTypeChange("MIXED"); return; }
+         ⚠ Ctrl+1..9 JADVALDA YO'Q: brauzerda u varaqlarni almashtiradi
+         va kassirning kassasi ko'zdan g'oyib bo'lardi. */
+      const scope = showPayModal ? "pay" : "cart";
+      /* ⚠ Kassa ekranidagi yorliqlar boshqa oyna ochiq turganda
+         ISHLAMAYDI: miqdor yoki belgi oynasida «+» bosgan kassir
+         savatdagi boshqa qatorni o'zgartirib qo'yardi. */
+      if (scope === "cart" && (finish || qtyModal || markModal || layerCount() > 0)) return;
+
+      /* ⚠ MAYDONGA YOZAYOTGANDA — faqat funksional tugmalar. Aks holda
+         chegirma maydoniga «-» yozmoqchi bo'lgan kassir savatdagi
+         qator miqdorini kamaytirib yuborardi. */
+      const printable = e.key.length === 1 && !e.ctrlKey && !e.altKey;
+      if (typing && printable) return;
+
+      /* ══ RAQAM BILAN MIQDOR (V66) ══════════════════════════════════
+         Tanlangan qatorga raqam bosilsa miqdor yoziladi. Jadvaldan
+         OLDIN: bu yorliq emas, matn. Faqat ANIQ tanlangan qator
+         (↑/↓ yoki bosish) — «oxirgi qator» taxmini bu yerda yo'q:
+         tasodifiy raqam savatni o'zgartirmasin.
+
+         ⚠ `defaultPrevented` — skaner ikkinchi belgidan keyin
+         tugmalarni o'zi to'sadi (`useScanner`); birinchi-ikkinchisini
+         esa TEZLIK ajratadi (`isBurst`). */
+      if (scope === "cart" && !typing && !e.ctrlKey && !e.altKey && !e.metaKey
+          && !e.defaultPrevented && (/^[0-9]$/.test(e.key) || e.key === "Backspace")) {
+        const line = cart.find((i) => i.id === pickedId);
+        if (line && !line.markingGroup) {
+          const now = Date.now();
+          const burst = isBurst(lastKeyAtRef.current, now);
+          lastKeyAtRef.current = now;
+          if (burst) { qtyPendRef.current = null; return; }   // skaner — tegilmaydi
+          e.preventDefault();
+          typeQty(line, e.key, now);
+          return;
+        }
       }
+      if (e.key.length === 1) lastKeyAtRef.current = Date.now();
+
+      const id = resolveKey(e, scope);
+      if (!id) return;
+
+      /* Tanlangan qator; tanlanmagan bo'lsa — OXIRGISI (endigina
+         qo'shilgan tovar, kassir aynan uni tuzatadi). */
+      const picked = cart.find((i) => i.id === pickedId) || cart[cart.length - 1] || null;
+      const moveLine = (d) => {
+        if (!cart.length) return;
+        const at = cart.findIndex((i) => i.id === picked?.id);
+        const nextAt = at < 0 ? (d > 0 ? 0 : cart.length - 1)
+                              : Math.min(cart.length - 1, Math.max(0, at + d));
+        setPickedId(cart[nextAt].id);
+        /* ⚠ FOKUS QIDIRUVDAN SAVATGA O'TADI (V66). ↑/↓ «endi savat
+           qatorlari bilan ishlayman» degani; qidiruv maydoni fokusda
+           qolsa, keyin bosilgan raqam miqdor emas, QIDIRUV bo'lib
+           yozilardi. Qidiruvga qaytish — «/». Skaner fokussiz ham
+           ishlaydi (`useScanner`). */
+        if (typing) el?.blur?.();
+        endQtyTyping();
+      };
+
+      const run = {
+        search:    () => searchRef.current?.focus(),
+        newCart:   addCart,
+        nextCart,
+        closeCart: () => dropCart(activeId),
+        category:  () => document.querySelector(".kassa-cat .ek-select__btn")?.click(),
+        favorites: () => { setFavOnly((v) => !v); setCategoryId(null); },
+        view:      () => setViewMode(view === "tiles" ? "list" : "tiles"),
+        filter:    () => facets && setFilterOpen((v) => !v),
+        linePrev:  () => moveLine(-1),
+        lineNext:  () => moveLine(+1),
+        /* «+»/«−» yozilayotgan raqamni YAKUNLAYDI: keyingi raqam
+           yangidan boshlanadi. */
+        linePlus:  () => { if (picked) { endQtyTyping(); updateQty(picked.id, +1); } },
+        lineMinus: () => { if (picked) { endQtyTyping(); updateQty(picked.id, -1); } },
+        linePrice: () => picked && picked.discountAllowed !== false && setPriceModal(picked),
+        lineDrop:  () => picked && removeFromCart(picked.id),
+        /* ⚠ `restoreUndo` O'ZI hech narsa qilmaydi, agar tiklanadigan
+           narsa bo'lmasa — shuning uchun qo'shimcha shart yo'q. */
+        undo:      restoreUndo,
+        drawer:    kickDrawer,
+        reprint,
+        pay:       () => { if (showPayModal) handleSubmit(); else openPayModal(); },
+        topUp:     openTopUp,
+        /* ⚠ F1..F4 — usulni tanlaydi va kursorni summa maydoniga
+           qaytaradi. Kassir qo'lini klaviaturadan olmaydi: usulni
+           bosdi — darrov summani yozaveradi. */
+        payCash:   () => focusMethod("CASH"),
+        payCard:   () => focusMethod("CARD"),
+        payClick:  () => focusMethod("CLICK"),
+        payPayme:  () => focusMethod("PAYME"),
+        /* ⚠ Faqat qoldiq bor bo'lsa: yo'q hisobga fokus qo'yish
+           maydonni «0 dan ortiq bo'lmasin» holatida qoldirardi. */
+        paySavings: () => { if (savingsLeft > 0) focusMethod("SAVINGS"); },
+        customer:  pickCustomer,
+        newCust:   () => setNewCust({ fullName: "", phone: "" }),
+        discount:  () => document.getElementById("disc-budget")?.focus(),
+        help:      () => setKeysOpen((v) => !v),
+      }[id];
+
+      if (run) { e.preventDefault(); run(); }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   });   // har renderda yangilanadi — yopilmalar (cart, total) yangi bo'lishi shart
 
+  /* ══ CHEGIRMA BLOKI — KO'CHADIGAN (V66) ══════════════════════════════
+     Oddiy holatda o'rta ustunda, mijoz kartasi ostida. Oyna sig'masa
+     (2-daraja) CHAP ustunga, tovarlar ro'yxati ostiga ko'chadi: u yerda
+     ro'yxat qisqarib joy beradi, o'rta ustun esa faqat mijoz bilan
+     qoladi. Bitta JSX, ikki joy — mazmun ikki nusxada yashamaydi. */
+  const discountBlock = (
+    <>
+      {/* ══ CHEGIRMA — BITTA MAYDON (V82) ══════════════════════
+
+          To'lov turidan OLDIN: chegirma jamini o'zgartiradi, ya'ni
+          kassir avval yakuniy summani ko'rib, keyin to'lovni
+          qabul qilishi kerak. Chegara oshsa server bajik so'raydi.
+
+          ⚠ ILGARI IKKITA MAYDON EDI: «Chegirma» (jamini darhol
+          kamaytiradi) va «Chegirma byudjeti» (faqat taklif so'raydi).
+          Kassir uchun ular BIR XIL ko'rinardi — ikkalasiga ham summa
+          yoziladi — va farqni faqat izohni o'qigan odam bilardi.
+          Mijoz oldida turgan kassir esa izoh o'qimaydi: u birinchisiga
+          yozardi va tizimning butun aqli ishlamay qolardi.
+
+          Endi maydon bitta va yozilgan summa IKKALA vazifani ham
+          bajaradi: jami darhol shuncha kamayadi VA o'sha summa
+          optimizatorga CHEGARA bo'lib beriladi. Ostidagi ro'yxat esa
+          «shu summani qanday bo'lish eng qulay?» degan savolga javob
+          beradi — jumladan AYNAN o'sha summani. */}
+      <div className="pay-modal-section-label">
+        <i className="fa-solid fa-tag" aria-hidden="true" /> {t("kassa.discount")}
+      </div>
+      {/* ⚠ CHEGARA `afterLines` (V48): kassir savatda ayrim
+          qatorlar narxini allaqachon tushirgan bo'lishi mumkin.
+          Chek chegirmasi shundan KEYINGI summadan olinadi —
+          serverdagi tartib ham shunday. */}
+      <NumField id="disc-budget" kind="money" max={afterLines}
+        className="form-input pay-mixed-input ek-num"
+        value={discount}
+        onChange={(e) => setDiscount(e.target.value)}
+        placeholder="0"
+      />
+      {/* Qatorda tushirilgan narx ham chegirma — kassir uni
+          ko'rmasa, chek chegirmasini yana ustiga qo'shib
+          yuborardi. */}
+      {lineDiscounts > 0 && (
+        <div className="pay-modal-hint">
+          <i className="fa-solid fa-tags" style={{ marginRight: 4 }} aria-hidden="true" />
+          {t("kassa.lineDiscounts")}: −{money(lineDiscounts)}
+        </div>
+      )}
+      {discountNum > 0 && (
+        <div className="pay-modal-hint">
+          {money(afterLines)} − {money(discountNum)}
+        </div>
+      )}
+
+
+      {/* ⚠ OGOHLANTIRISH IKKI DARAJALI. Bitta xabar ikkala
+          holatga ham yozilsa, kassir ularning og'irligini
+          farqlay olmasdi: biri rahbar tasdig'i bilan mumkin,
+          ikkinchisi esa do'konni ZARARGA sotdiradi. */}
+      {discVerdict !== "ok" && (
+        <div className={`disc-warn disc-warn--${discVerdict}`} role="status">
+          <i className={`fa-solid ${discVerdict === "loss"
+              ? "fa-triangle-exclamation" : "fa-user-shield"}`} aria-hidden="true" />
+          <span>
+            {discVerdict === "loss" ? t("kassa.discLoss") : t("kassa.discOverLimit")}
+            <b className="ek-num">
+              {" "}{money(discVerdict === "loss" ? lossLimit : ruleRoom)}
+            </b>
+          </span>
+        </div>
+      )}
+
+      {discountNum > 0 && (
+        budgetPicks.length > 0 ? (
+          <div className="round-offers">
+            <div className="round-offers__label">
+              <i className="fa-solid fa-wand-magic-sparkles" aria-hidden="true" />{" "}
+              {t("kassa.budgetOffer")}
+              <span className="round-offers__hint">{t("kassa.budgetHint")}</span>
+            </div>
+            {/* ⚠ `is-exact` — KASSIR YOZGAN SUMMANING O'ZI. U raqamni
+                ko'pincha mijozga ALLAQACHON aytgan bo'ladi («20 ming
+                tushirdim») va uni kamaytirish mumkin emas. Shunday
+                variant ro'yxatda bo'lsa, u ajratib ko'rsatiladi:
+                kassir mijoz bilan bahslashmasdan bosadi. */}
+            <div className="round-offers__row">
+              {budgetPicks.map((o) => (
+                <button key={o.total} type="button"
+                        className={`round-offers__btn ${o.exact ? "is-exact" : ""}`}
+                        onClick={() => applyPlan(o)}
+                        title={(o.exact ? t("kassa.discExact") + " · " : "")
+                               + t("kassa.refundScore") + ": " + Math.round(o.score.refund)}>
+                  <span className="round-offers__target ek-num">{money(o.total)}</span>
+                  <span className="round-offers__cut ek-num">−{money(o.discount)}</span>
+                  {/* ⚠ QAYTARISH BAHOSI — tugmaning butun MA'NOSI shu.
+                      Usiz kassir eng katta chegirmani tanlardi va tizim
+                      nega boshqasini birinchi qo'yganini bilmasdi.
+
+                      ⚠ BAHONING O'ZI ko'rsatiladi, «o'sish» emas:
+                      «+26» nimadan +26 ekani noma'lum, 100 esa
+                      «bundan yaxshisi yo'q» degani va u har tugmada
+                      bir xil o'lchovda turadi. Eng yuqorisi alohida
+                      ajratiladi — kassirning ko'zi shuni izlaydi. */}
+                  <span className={`round-offers__ret ${o.score.refund >= TIER_BEST ? "is-best" : ""}`}>
+                    <i className="fa-solid fa-rotate-left" aria-hidden="true" />{" "}
+                    {Math.round(o.score.refund)}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
+          /* ⚠ JIM QOLMAYDI. Taklif chiqmasligining UCH sababi bor va
+             uchalasi ham kassirga aytiladi, aks holda u maydonga
+             yozib turib «nega hech narsa bo'lmadi?» deb qolardi.
+
+             ⚠ UCHINCHISI V80 dan: variant bor edi, lekin hammasi
+             qaytarishni yomonlashtirardi (savat allaqachon qulay).
+             Buni «byudjet sig'madi» deb aytish yolg'on bo'lardi —
+             kassir byudjetni oshirib, baribir hech narsa
+             ko'rmasdi. */
+          <div className="pay-modal-hint">
+            <i className="fa-solid fa-circle-info" style={{ marginRight: 4 }} aria-hidden="true" />
+            {ruleRoom <= 0 ? t("kassa.budgetNoRoom")
+              : refundNow >= TIER_BEST ? t("kassa.budgetAlreadyGood")
+              : t("kassa.budgetNoFit")}
+          </div>
+        )
+      )}
+
+      {/* ══ YAXLITLASH TAKLIFLARI (V56) ═══════════════════════
+          ⚠ Do'kon egasining so'rovi: chek 141 200 chiqdi, mijoz
+          142 000 beradi, kassir 800 qaytaradi — maydasi yo'q,
+          navbat kutadi va oxir-oqibat o'sha 800 hisobsiz ketadi.
+
+          Tizim shu qoldiqni O'ZI ko'rib chegirma qilib taklif
+          qiladi. Har taklif SIG'ADIGANI tekshirilgan: bo'sh joy
+          har qatorning tovar foizi, tannarxi va kassir
+          chegarasidan kelib chiqadi (`lib/ek-discount.js`).
+
+          ⚠ Jami allaqachon yaxlit bo'lsa taklif CHIQMAYDI:
+          maqsad — noqulay qoldiqni yo'qotish, «yaxlit chegirma
+          berish» emas. */}
+      {discountNum <= 0 && roundOffers.length > 0 && (
+        <div className="round-offers">
+          <div className="round-offers__label">
+            <i className="fa-solid fa-wand-magic-sparkles" aria-hidden="true" />{" "}
+            {t("kassa.roundOffer")}
+            <span className="round-offers__hint">{t("kassa.roundHint")}</span>
+          </div>
+          <div className="round-offers__row">
+            {roundOffers.map((o) => (
+              <button key={o.target} type="button" className="round-offers__btn"
+                      onClick={() => setDiscount(String(discountNum + o.discount))}>
+                <span className="round-offers__target ek-num">{money(o.target)}</span>
+                <span className="round-offers__cut ek-num">−{money(o.discount)}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {/* Bitta tovarli chekda taqsimotni ko'rsatishning ma'nosi
+          yo'q — hammasi o'sha bitta qatorga tushadi. */}
+      {discountNum > 0 && cart.length > 1 && (
+        <details className="disc-split">
+          <summary>{t("kassa.discountSplit")}</summary>
+          <ul className="disc-split__list">
+            {cart.map((i, idx) => (
+              <li key={i.id}>
+                <span className="disc-split__name">{i.name}</span>
+                <span className="disc-split__val">−{money(discountSplit[idx])}</span>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+      {/* ⚠ Ball to'lov oynasida ham ko'rinadi: kassir yakuniy
+          summani aytishdan oldin nima hisobidan kamayganini
+          bilishi kerak — mijoz albatta so'raydi. */}
+      {bonusNum > 0 && (
+        <div className="pay-modal-hint">
+          <i className="fa-solid fa-coins" style={{ color: "var(--fg-warning)", marginRight: 4 }} />
+          {t("bonus.used")}: −{money(bonusNum)}
+        </div>
+      )}
+    </>
+  );
+
   /* ═══════════════════════════════════════════════════════════ */
   return (
     <div style={{ height: "calc(100vh - var(--sh) - 40px)", display: "flex", flexDirection: "column" }}>
-      <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexShrink: 0, gap: 12 }}>
-        <h2 className="page-title" style={{ fontSize: 18 }}>{t("kassa.title")}</h2>
+      {/* ⚠ SAHIFA SARLAVHASI VA SMENA BELGISI OLIB TASHLANDI (2026-08-27).
 
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: "auto" }}>
-          {/* Apparat tugmalari FAQAT desktop'da. Brauzerda ular bosilganda
-              hech nima qilmasdi va kassirni chalg'itardi. */}
-          {isDesktop() && (
-            <>
-              <button type="button" className="btn btn-outline btn-sm" onClick={kickDrawer}
-                      title={t("hw.openDrawerHint")}>
-                <i className="fa-solid fa-cash-register" aria-hidden="true" /> {t("hw.openDrawer")}
-              </button>
-              <button type="button" className="btn btn-outline btn-sm" onClick={reprint}
-                      title={t("kassa.reprintHint")}>
-                <i className="fa-solid fa-print" aria-hidden="true" /> {t("kassa.reprint")}
-                <span className="kbd" style={{ marginLeft: 6 }}>Ctrl+P</span>
-              </button>
-            </>
-          )}
+          Ular butun kenglikni egallab, PASTDAGI IKKALA USTUNni ham
+          pastga surardi — jumladan savatni, ya'ni kassaning eng ko'p
+          ishlatiladigan qismini. Evaziga bergan foydasi esa yo'q edi:
 
-          <div className="ek-shift" data-open="true">
-            <span className="ek-shift__dot" aria-hidden="true" />
-            {t("kassa.shiftOpen")}
-          </div>
-        </div>
-      </div>
+            · «Savdo (Kassa)» sarlavhasi — yon menyuda o'sha bo'lim
+              allaqachon yoritilgan holda turibdi;
+            · «Smena ochiq» belgisi — smena panelining O'ZIDA aniqroq
+              yozilgan («09:12 dan ochiq»), ya'ni bir xil ma'lumot ikki
+              joyda takrorlanardi;
+            · apparat tugmalari — pastda, qidiruv qatorining yoniga
+              ko'chdi va endi hech qanday qo'shimcha balandlik olmaydi.
 
-      <OfflineBar />
-      <ShiftBar toast={toast} />
-
-      {/* ⚠ Inline `height: "auto"` OLIB TASHLANDI. U CSS dagi
-          `height: calc(100vh - …)` ni bekor qilardi va natijada Kassa
-          balandligi cheklanmasdi: mahsulotlar ko'payganda `.product-grid`
-          ning `overflow-y: auto` si ishga tushmay, BUTUN sahifa cho'zilib
-          ketardi. Kassada esa faqat mahsulotlar ro'yxati surilishi kerak —
-          savat, jami va to'lov tugmalari doim ko'rinib tursin. */}
-      <div className="kassa-layout">
+          ⚠ SMENA VA OFLAYN PANELLARI CHAP USTUNGA ko'chdi. Ular ogohlik,
+          shuning uchun ko'rinib turishi kerak — lekin savat ustunidan
+          balandlik o'g'irlashi shart emas. Endi savat ekranning to'liq
+          balandligini egallaydi. */}
+      <div className="kassa-layout" ref={layoutRef}
+           style={{ "--kassa-right-w": `${rightW}px` }}>
         {/* ════ CHAP: Barkod + Mahsulotlar ════ */}
         <div className="kassa-left">
-          {/* Barkod maydoni — doim fokusda, monoshriftda (bu raqam) */}
-          <div className="bc-field" data-unfocused={bcWarn}>
-            <i className="fa-solid fa-barcode" aria-hidden="true" />
-            <label htmlFor="bc" className="ek-sr-only">{t("kassa.scanTitle")}</label>
-            <input
-              id="bc"
-              ref={barcodeRef}
-              data-scanner="true"
-              /* ⚠ Ekran klaviaturasi bu maydonda O'ZI OCHILMAYDI. Maydon
-                 doim fokusda turadi (skaner shu yerga yozadi), demak
-                 avtomatik ochilsa klaviatura Kassa ekranidan hech qachon
-                 ketmasdi. Kerak bo'lganda yonidagi tugma bilan ochiladi. */
-              data-osk="off"
-              inputMode="numeric"
-              autoComplete="off"
-              placeholder={t("kassa.scanHint")}
-              onChange={(e) => setBcValue(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key !== "Enter") return;
-                e.preventDefault();
-                const code = e.currentTarget.value.trim();
-                e.currentTarget.value = "";       // skanerdan keyin maydon tozalanadi
-                setBcValue("");
-                if (code.length > 2) addByBarcode(code);
-              }}
-            />
-            {bcValue && (
-              <ClearButton
-                label={t("osk.clear")}
-                onClear={() => {
-                  if (barcodeRef.current) clearField(barcodeRef.current);
-                  setBcValue("");
-                }}
-              />
-            )}
-            {touchOn && (
-              <button
-                type="button"
-                className="bc-field__pad"
-                title={t("osk.title")}
-                aria-label={t("osk.title")}
-                onPointerDown={(e) => e.preventDefault()}
-                onClick={() => keyboard.open(barcodeRef.current)}
-              >
-                <i className="fa-solid fa-calculator" aria-hidden="true" />
-              </button>
-            )}
-            <span className="kbd" title={t("kassa.backToBarcode")}>Ctrl+B</span>
+          <OfflineBar />
+          {/* ⚠ SAVAT TABLARI CHAP USTUNGA ko'chdi (foydalanuvchi
+              so'rovi). Ilgari ular savat ustunining tepasida turardi va
+              o'sha tor ustundan balandlik yeyardi — savat esa endi
+              iloji boricha keng va baland bo'lishi kerak. Bu yerda
+              gorizontal joy bor: tablar cho'zilib, mijoz nomi va summa
+              qisqarmasdan ko'rinadi. */}
+          <div className="cart-head">
+            <div className="cart-tabs" role="group" aria-label={t("kassa.carts")}>
+              {carts.map((c, i) => {
+                const on = c.id === active.id;
+                return (
+                  <div key={c.id} className={`cart-tab ${on ? "is-on" : ""}`}>
+                    <button type="button" aria-current={on ? "true" : undefined}
+                            className="cart-tab__pick"
+                            onClick={() => switchCart(c.id)}>
+                      <span className="cart-tab__name">
+                        {c.customer?.name || t("kassa.cartN", { n: i + 1 })}
+                      </span>
+                      <span className="cart-tab__sum ek-num">
+                        {c.items.length
+                          ? `${c.items.length} × ${money(cartStore.totalOf(c.items))}`
+                          : t("kassa.cartEmpty")}
+                      </span>
+                    </button>
+                    {on && (carts.length > 1 || c.items.length > 0) && (
+                      <button type="button" className="cart-tab__x"
+                              onClick={() => dropCart(c.id)}
+                              aria-label={t("kassa.closeCart")} title={t("kassa.closeCart")}>
+                        <i className="fa-solid fa-xmark" aria-hidden="true" />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* «Yangi savat» — tablarning O'ZI YONIDA. Bu yerda ular bir
+                butun: ro'yxat va unga qo'shish. */}
+            <button type="button" className="btn btn-outline btn-sm cart-head__add" onClick={addCart}
+                    disabled={carts.length >= cartStore.MAX_CARTS}
+                    title={t("kassa.newCart")}>
+              <i className="fa-solid fa-cart-plus" aria-hidden="true" />
+              <span className="kbd">F2</span>
+            </button>
           </div>
+          {/* ⚠ ALOHIDA BARKOD MAYDONI OLIB TASHLANDI (foydalanuvchi
+              so'rovi: «barkod skaner inputini to'liq olib tashlab uni
+              qidirish ichiga qo'shib yuborsa bo'ladimi»).
+
+              Bo'ladi va shunday to'g'riroq: skaner maydonga muhtoj
+              emas — u hujjat darajasida tutiladi (`useScanner`) va
+              fokus qayerda bo'lishidan qat'i nazar ishlaydi. Maydon
+              faqat QO'LDA kiritish uchun kerak edi, qo'lda kiritish
+              esa qidiruvdan farq qilmaydi: ikkalasida ham odam matn
+              yozib Enter bosadi.
+
+              Endi bitta maydon ikkalasini ham qiladi: raqamli kod
+              yozilsa barkod sifatida, aks holda nom sifatida
+              qidiriladi. Ekrandan bir qator bo'shadi va kassir
+              «qaysi maydonga yozay?» degan savoldan qutuladi. */}
 
           <div className="card" style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflow: "hidden" }}>
-            <div style={{ padding: "11px 14px", borderBottom: "1px solid var(--border-subtle)", flexShrink: 0 }}>
+            {/* ⚠ ASBOBLAR QATORI — SINF ORQALI (V84). Ilgari joylashuv
+                shu yerda, inline uslubda edi va panel torayganda uni
+                boshqarib bo'lmasdi: qidiruv lupa ikonkasigacha
+                yig'ilib qolardi (do'kon so'rovi). Endi qoida
+                `styles.css` da — u yerda konteyner kengligiga qarab
+                nima birinchi ketishini aytish mumkin. */}
+            <div className="kassa-tools">
               <div className="search-bar">
                 <i className="fa-solid fa-magnifying-glass" aria-hidden="true" />
                 <input
                   ref={searchRef}
-                  placeholder={t("kassa.searchByName")}
+                  data-scanner="true"
+                  /* ⚠ Ekran klaviaturasi O'ZI OCHILMAYDI: bu maydon
+                     kassa ekranining asosiy maydoni va klaviatura
+                     ochilib qolsa, u yerdan hech qachon ketmasdi.
+                     Kerak bo'lganda yonidagi tugma bilan ochiladi. */
+                  data-osk="off"
+                  autoComplete="off"
+                  placeholder={t("kassa.searchOrScan")}
                   value={search}
+                  inputMode={search.startsWith("*") ? "numeric" : undefined}
                   onChange={(e) => handleSearchChange(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter" && products.length === 1) addToCart(products[0]); }}
+                  onKeyDown={onSearchEnter}
                 />
+                {/* ⚠ REJIM KO'RINIB TURSIN. Kassir yulduzcha qo'yganini
+                    sezmay qolishi mumkin va o'shanda «nega hech narsa
+                    chiqmayapti» degan savol paydo bo'lardi. Belgi MATN
+                    bilan — rang yolg'iz signal bo'lolmaydi. */}
+                {search.startsWith("*") && (
+                  <span className="search-bar__mode" title={t("kassa.codeModeHint")}>
+                    <i className="fa-solid fa-hashtag" aria-hidden="true" /> {t("kassa.codeMode")}
+                  </span>
+                )}
                 {search && <ClearButton label={t("osk.clear")} onClear={() => handleSearchChange("")} />}
+                {touchOn && (
+                  <button
+                    type="button"
+                    className="search-bar__pad"
+                    title={t("osk.title")}
+                    aria-label={t("osk.title")}
+                    onPointerDown={(e) => e.preventDefault()}
+                    onClick={() => keyboard.open(searchRef.current)}
+                  >
+                    <i className="fa-solid fa-calculator" aria-hidden="true" />
+                  </button>
+                )}
                 <span className="kbd">/</span>
               </div>
-            </div>
 
-            {/* Birinchi yuklanishda katakcha shaklidagi skeleton — kelayotgan
-                to'r aynan shu shaklda, shuning uchun sakrash bo'lmaydi.
-                Keyingi qidiruvlarda esa mavjud natijalar joyida qoladi va
-                yuqorida faqat kichik holat ko'rsatiladi. */}
-            {/* ── Kategoriya tabi + ko'rinish tanlovi ──────────────────
-                Bo'sh kategoriya ko'rsatilmaydi (`productCount > 0`):
-                bosilganda bo'sh ro'yxat chiqadigan tab kassirga faqat
-                xalaqit beradi. */}
-            <div className="cat-bar">
-              <div className="cat-tabs" role="tablist" aria-label={t("products.category")}>
-                <button type="button" role="tab" aria-selected={!categoryId && !favOnly}
-                        className={`cat-tab ${!categoryId && !favOnly ? "active" : ""}`}
-                        onClick={() => { setCategoryId(null); setFavOnly(false); }}>
-                  <i className="fa-solid fa-grip" aria-hidden="true" /> {t("kassa.allProducts")}
+              {/* ⚠ KATEGORIYA — TANLAGICH, tablar emas (foydalanuvchi
+                  so'rovi). Ilgari har kategoriya alohida tab edi va
+                  ular bir qatorga sig'masdi: qator YON TOMONGA
+                  surilardi, ya'ni kassir kerakli bo'limni topish uchun
+                  avval uni qidirib surishi kerak edi. Tanlagichda
+                  hammasi bir bosishda ko'rinadi va joy olmaydi. */}
+              <Select
+                className="kassa-cat"
+                ariaLabel={t("products.category")}
+                searchable searchPlaceholder={t("common.searchShort")}
+                value={favOnly ? "fav" : (categoryId ? String(categoryId) : "")}
+                onChange={(v) => {
+                  setFavOnly(v === "fav");
+                  setCategoryId(v && v !== "fav" ? Number(v) : null);
+                }}
+                options={[
+                  { value: "",    label: t("kassa.allProducts"), icon: "fa-grip" },
+                  { value: "fav", label: t("kassa.favorites"),   icon: "fa-star" },
+                  /* ⚠ GURUH RAQAMI `hint` da — O'Z USTUNIDA va QIDIRILADI
+                     (`rankItems` `label` bilan birga `hint` ni ham o'qiydi).
+                     Raqam kassirga `*4` kaliti: u butun bo'limni bir
+                     bosishda ochadi (V128 prefiks qidiruvi). Ilgari bu
+                     raqamni faqat tovar kartochkasidan taxmin qilish
+                     mumkin edi. Bola kategoriyada raqam yo'q va bu
+                     ataylab (V115). */
+                  ...categories.map((c) => ({
+                    value: String(c.id),
+                    label: c.name,
+                    hint: c.code || undefined,
+                    icon: c.icon || "fa-tag",
+                  })),
+                ]}
+              />
+
+              {/* ⚠ FILTR TUGMASI — TANLAGICH YONIDA (V57). Tanlagich bitta
+                  kategoriya beradi, filtr esa bir nechtasini va kiyim
+                  atributlarini. Ikkalasi yonma-yon turadi va ular
+                  BIRGA ishlaydi: tab toraytiradi, filtr yana
+                  toraytiradi.
+
+                  ⚠ Belgilangan katakchalar soni TUGMADA ko'rinadi —
+                  aks holda kassir bo'sh natijani «tovar yo'q» deb
+                  tushunardi, holbuki sabab kechagi filtr edi. */}
+              {facets && (
+                <button type="button"
+                        className={`btn-icon filter-btn ${filterCount > 0 ? "is-on" : ""}`}
+                        title={`${t("common.filter")} (${keyLabel("filter")})`}
+                        aria-label={t("common.filter")}
+                        onClick={() => setFilterOpen(true)}>
+                  <i className="fa-solid fa-filter" aria-hidden="true" />
+                  {filterCount > 0 && <span className="facet__badge ek-num">{filterCount}</span>}
                 </button>
+              )}
 
-                <button type="button" role="tab" aria-selected={favOnly}
-                        className={`cat-tab ${favOnly ? "active" : ""}`}
-                        onClick={() => { setFavOnly(true); setCategoryId(null); }}>
-                  <i className="fa-solid fa-star" aria-hidden="true" /> {t("kassa.favorites")}
-                </button>
-
-                {categories.map((c) => (
-                  <button key={c.id} type="button" role="tab" aria-selected={categoryId === c.id}
-                          className={`cat-tab ${categoryId === c.id ? "active" : ""}`}
-                          data-color={c.color || "brand"}
-                          onClick={() => { setCategoryId(c.id); setFavOnly(false); }}>
-                    {c.icon && <i className={`fa-solid ${c.icon}`} aria-hidden="true" />} {c.name}
-                  </button>
-                ))}
-              </div>
-
+              {/* ⚠ KO'RINISH TUGMALARI SHU YERDA (foydalanuvchi so'rovi):
+                  ilgari ular kategoriya qatorining o'ng chetida turardi
+                  va o'sha butun qator endi yo'q. */}
               <div className="view-switch" role="group" aria-label={t("kassa.viewTiles")}>
                 <button type="button" className={view === "tiles" ? "active" : ""}
                         aria-pressed={view === "tiles"} title={t("kassa.viewTiles")}
@@ -925,12 +3073,81 @@ export default function KassaPage({ toast, refreshLowStock }) {
                   <i className="fa-solid fa-list" aria-hidden="true" />
                 </button>
               </div>
+
+              {/* ⚠ SMENA SHU YERDA — bitta tugma, na ochiq, na yopiq
+                  holatda alohida qator egallamaydi (foydalanuvchi
+                  so'rovi: «yuqoridan joyni egallab turibdi»).
+                  Ogohlantirishning O'ZI esa to'lov tugmasi yoniga
+                  ko'chdi — u aslida to'sadigan joyga. */}
+              <ShiftBar toast={toast} compact onState={onShiftState} />
+
+              {/* ⚠ PRINTER BELGISI FAQAT NOSOZLIKDA (V79). «Hammasi
+                  joyida» degan doimiy yashil nuqta kassa ekranida joy
+                  egallaydi-yu, hech qanday qaror talab qilmaydi —
+                  kassir uni bir kunda ko'rmay qo'yadi. Belgi esa aynan
+                  e'tibor kerak bo'lganda paydo bo'lishi kerak.
+
+                  Bosilganda oxirgi chekni qayta chiqaradi: nosozlikni
+                  ko'rgan kassirning birinchi ishi shu. */}
+              {/* ⚠ TUGMA FAQAT CHEK BO'LSA. Bo'sh ro'yxatni ochadigan
+                  tugma kassa ekranida joy egallaydi-yu, hech narsa
+                  bermaydi — kun boshida u aynan shunday bo'lardi. */}
+              {lastSales.length > 0 && (
+                <button type="button" className="btn-icon" onClick={() => setSalesOpen(true)}
+                        title={t("kassa.lastSales")} aria-label={t("kassa.lastSales")}>
+                  <i className="fa-solid fa-receipt" aria-hidden="true" />
+                </button>
+              )}
+
+              {printer && printer.ok === false && (
+                <button type="button" className="prn-chip" onClick={reprint}
+                        title={printer.error || t("hw.printerFailHint")}>
+                  <i className="fa-solid fa-print" aria-hidden="true" />
+                  <span>{t("hw.printerFail")}</span>
+                </button>
+              )}
+
+              {/* Apparat tugmalari FAQAT desktop'da. Brauzerda ular bosilganda
+                  hech nima qilmasdi va kassirni chalg'itardi.
+                  ⚠ Faqat BELGI qoldi, matn yo'q: qidiruv qatori ustunning
+                  eng muhim elementi va uni ikkita yozuv bilan qisqartirish
+                  bir muammoni ikkinchisi bilan almashtirish bo'lardi. */}
+              {isDesktop() && (
+                <>
+                  <button type="button" className="btn-icon" onClick={kickDrawer}
+                          title={`${t("hw.openDrawerHint")} (${keyLabel("drawer")})`}
+                          aria-label={t("hw.openDrawer")}>
+                    <i className="fa-solid fa-cash-register" aria-hidden="true" />
+                  </button>
+                  <button type="button" className="btn-icon" onClick={reprint}
+                          title={`${t("kassa.reprint")} (${keyLabel("reprint")})`}
+                          aria-label={t("kassa.reprint")}>
+                    <i className="fa-solid fa-print" aria-hidden="true" />
+                  </button>
+                </>
+              )}
+              {/* ⚠ YORDAM TUGMASI HAR DOIM — `isDesktop()` ichida EMAS.
+                  Aynan klaviatura bilan ishlaydigan kassirga kerak va u
+                  brauzerdagi kassada ham o'sha odam. */}
+              <button type="button" className="btn-icon" onClick={() => setKeysOpen(true)}
+                      title={`${t("kbd.title")} (${keyLabel("help")})`} aria-label={t("kbd.title")}>
+                <i className="fa-solid fa-keyboard" aria-hidden="true" />
+              </button>
             </div>
 
+            {/* Birinchi yuklanishda katakcha shaklidagi skeleton — kelayotgan
+                to'r aynan shu shaklda, shuning uchun sakrash bo'lmaydi.
+                Keyingi qidiruvlarda esa mavjud natijalar joyida qoladi va
+                yuqorida faqat kichik holat ko'rsatiladi.
+
+                ⚠ KATEGORIYA QATORI OLIB TASHLANDI — u endi qidiruv
+                yonidagi tanlagich. Butun bir qator (~46px) tovarlar
+                ro'yxatiga qaytdi. */}
             {tilesBusy && products.length === 0 ? (
               <SkeletonTiles count={12} />
             ) : (
-            <div className={`product-grid ${view === "list" ? "product-grid--list" : ""}`}
+            <div ref={gridRef}
+                 className={`product-grid ${view === "list" ? "product-grid--list" : ""}`}
                  style={{ position: "relative" }}>
               {searching && products.length > 0 && (
                 <div style={{ position: "absolute", top: 8, right: 8, zIndex: 10, fontSize: 11, color: "var(--fg-brand)", fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
@@ -938,7 +3155,27 @@ export default function KassaPage({ toast, refreshLowStock }) {
                 </div>
               )}
               {products.map((p) => (
-                <ProductTile key={p.id} product={p} view={view} onPick={pickProduct} />
+                /* Katakchadagi son SAVATNI hisobga oladi: 38 dona bordi,
+                   3 tasi savatda — katakchada 35 turadi. Ilgari u ombor
+                   qoldig'ini ko'rsatib turaverardi va kassir savatga
+                   qancha olganini faqat savatdan sanab bilardi. */
+                <ProductTile
+                  key={p.id}
+                  product={p}
+                  available={p.stockQuantity != null
+                    ? round3(freeStock(p) - inCart(p.id))
+                    : null}
+                  view={view}
+                  onPick={pickProduct}
+                  changed={flash.has(p.id)}
+                  /* ⚠ RAQAM FAQAT RAQAM BILAN QIDIRILGANDA (V107).
+                     Kassir «142» deb yozganda katakchalarda o'z
+                     raqamlari chiqadi va u qaysi raqam qaysi tovarni
+                     ochganini KO'RADI — keyingi safar to'g'ridan-to'g'ri
+                     yozadi. Qolgan paytda raqam ko'rinmaydi: bu ekranda
+                     har piksel tovarlar ro'yxatidan olinadi. */
+                  showCode={numericSearch}
+                />
               ))}
               {products.length === 0 && !searching && (
                 <div style={{ gridColumn: "1/-1" }}>
@@ -950,44 +3187,153 @@ export default function KassaPage({ toast, refreshLowStock }) {
           </div>
         </div>
 
+        {/* Ustunlar chegarasi — suriladi. `separator` roli va o'q
+            tugmalari bilan: sichqonchasiz terminalda ham ishlasin. */}
+        <div className="kassa-split" role="separator" aria-orientation="vertical"
+             tabIndex={0} aria-label={t("kassa.resizeHint")}
+             aria-valuenow={rightW} aria-valuemin={MIN_RIGHT_W} aria-valuemax={MAX_RIGHT_W}
+             title={t("kassa.resizeHint")}
+             onPointerDown={dragSplit} onKeyDown={nudgeSplit}>
+          <span className="kassa-split__grip" aria-hidden="true" />
+        </div>
+
         {/* ════ O'NG: Savat + To'lov ════ */}
         <div className="kassa-right">
           <div className="card" style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-            <div className="card-header">
-              <span className="card-title">
-                <i className="fa-solid fa-cart-shopping text-blue" aria-hidden="true" />
-                {t("kassa.cart")} (<span className="ek-num">{cart.length}</span>)
-              </span>
-              {cart.length > 0 && (
-                <button className="btn btn-sm" style={{ background: "var(--bg-danger-subtle)", color: "var(--fg-danger)" }} onClick={handleClearCart}>
-                  <i className="fa-solid fa-trash" aria-hidden="true" /> {t("common.reset")} <span className="kbd">Esc</span>
-                </button>
-              )}
-            </div>
-
+            {/* ⚠ SAVAT TABLARI CHAP USTUNGA KO'CHDI (foydalanuvchi
+                so'rovi). Bu ustun endi FAQAT savat: sarlavha ham,
+                mijoz bloki ham olib tashlangan va butun balandlik
+                tovarlar ro'yxatiga tegishli. */}
             <div className="cart-items">
               {cart.length === 0 ? (
                 <Empty icon="fa-barcode" text={t("kassa.scanPrompt")} />
               ) : (
                 cart.map((item) => (
                   <div
-                    className={`cart-item ${item._added ? "ek-row-in" : ""} ${item._pulse ? "ek-pop" : ""}`}
+                    /* ⚠ `is-picked` — klaviatura bilan tanlangan qator.
+                       Belgisiz bo'lsa ↑/↓ bosgan kassir qaysi qatorga
+                       ta'sir qilayotganini KO'RMASDI va «−» ni boshqa
+                       tovarga bosib yuborardi. */
+                    className={`cart-item ${item._added ? "ek-row-in" : ""} ${item._pulse ? "ek-pop" : ""}${
+                      item.id === pickedId ? " is-picked" : ""}`}
                     key={`${item.id}-${item._pulse || item._added || 0}`}
+                    onClick={() => setPickedId(item.id)}
                   >
                     <div className="cart-item-info">
-                      <div className="cart-item-name">{item.name}</div>
+                      <div className="cart-item-name">
+                        <span className="cart-item-name__txt">{item.name}</span>
+                        {/* ⚠ ZARARIGA SOTILAYOTGAN TOVAR (V99).
+                            Kirim tan narxni sotuv yoki optom narxdan
+                            yuqoriga chiqarganda paydo bo'ladi va bu
+                            TO'SILMAYDI (`Prices` izohi). Kassir esa
+                            hozirgacha hech narsa ko'rmasdi: chegirma
+                            qo'yilmagan sotuv `Discounts.decide` da
+                            birinchi qatordayoq `ALLOW` qaytarardi —
+                            zarar chegirmadan emas, TANNARXdan kelib
+                            chiqqani uchun.
+
+                            ⚠ TO'SMAYDI, faqat KO'RSATADI. Muddati
+                            tugayotgan tovarni yoki aksiyani zarariga
+                            sotish haqiqiy ehtiyoj; to'sish do'konni
+                            to'xtatib qo'yardi. To'sish alohida
+                            sozlama bilan (`Shop.allowLossSale`) va u
+                            chegirma yo'lida allaqachon ishlaydi. */}
+                        {(item.belowCost || item.belowWholesale) && (
+                          <span className="cart-loss"
+                                title={item.belowCost
+                                  ? t("products.belowCostTitle")
+                                  : t("products.belowWholesaleTitle")}>
+                            <i className="fa-solid fa-arrow-trend-down" aria-hidden="true" />
+                            {t("products.belowBadge")}
+                          </span>
+                        )}
+                      </div>
                       {/* Tarozili tovarda "0.35 kg × 95 000" — faqat jami
                           summani ko'rsatish kassirni ham, mijozni ham
                           tekshirish imkonidan mahrum qilardi. */}
-                      <div className="cart-item-price ek-num">
-                        {isDivisible(item)
-                          ? `${fmtQty(item.qty, item.unitDecimals)} ${unitLabel(item.unit)} × ${money(item.salePrice)}`
-                          : money(item.salePrice)}
-                      </div>
+                      {/* ⚠ NARX BOSILADI (V48): «belgilangan narxdan
+                          arzonroq berish» aynan shu yerda bo'ladi.
+                          Chegirma qo'yilgan bo'lsa, ESKI narx ustidan
+                          chizilgan holda qoladi — kassir ham, mijoz ham
+                          nima o'zgarganini ko'rishi kerak. */}
+                      {/* ⚠ CHEGIRMA BERILMAYDIGAN TOVAR (V53) — narx
+                          maydoni umuman ochilmaydi. Server ham rad etadi,
+                          lekin kassir buni narxni yozib, tugmani bosib,
+                          xato olgandan KEYIN emas, OLDIN bilishi kerak:
+                          mijoz oldida bunday urinish noqulay. */}
+                      <button type="button"
+                              className={`cart-item-price ek-num${item.discountAllowed === false ? "" : " cart-item-price--edit"}`}
+                              disabled={item.discountAllowed === false}
+                              /* ⚠ BITTA `title` (V97). Ilgari shu tugmada
+                                 IKKITA `title` turardi va JSX da keyingisi
+                                 oldingisini JIMGINA yeb ketardi: chegirma
+                                 berilmaydigan tovarda «nega ochilmayapti»
+                                 degan izoh HECH QACHON ko'rinmasdi —
+                                 yuqoridagi izohda yozilgan maqsadning
+                                 aynan teskarisi. Yig'ish faqat
+                                 OGOHLANTIRISH berardi, shuning uchun uzoq
+                                 sezilmadi. `scripts/check-dupattr.mjs`
+                                 endi buni to'sadi. */
+                              title={item.discountAllowed === false
+                                ? t("products.discountHint") : t("kassa.linePrice")}
+                              onClick={() => setPriceModal(item)}
+                              aria-label={`${item.name} — ${t("kassa.linePrice")}`}>
+                        {/* ⚠ ESKI NARX BIRLIKSIZ (V99): ikkala songa ham
+                            «so'm» qo'yilsa qator sig'masdi va narx
+                            O'RTASIDAN QIRQILARDI. Birlik bir marta,
+                            yangi narxda turadi va shu yetarli. */}
+                        {item.discount > 0 && (
+                          <s className="cart-item-price__was">{moneyBare(item.salePrice)}</s>
+                        )}
+                        {/* ⚠ JORIY NARX ALOHIDA ELEMENTDA (V99) va u
+                            HECH QACHON qisqarmaydi. Tor savatda
+                            siqiladigan narsa — ustidan chizilgan ESKI
+                            narx: u ma'lumot, joriy narx esa kassir
+                            mijozga AYTADIGAN raqam. Ilgari ikkalasi
+                            bitta matn edi va qisqarish oxiridan
+                            boshlanardi, ya'ni aynan kerakli sondan.
+
+                            ⚠ TAROZILI TOVARDA MIQDOR OLIB TASHLANDI.
+                            Ilgari «1.235 kg × 58 504 so'm» yozilardi va
+                            u eng tor savatga (340px) 62px SIG'MASDI —
+                            eski narx butunlay yo'qolsa ham. Miqdor esa
+                            o'ng tomondagi tugmada ALLAQACHON turibdi:
+                            «1.235 kg ×» uni ikkinchi marta takrorlardi.
+                            Endi dona narxi «58 504 so'm/kg» ko'rinishida
+                            — tarozining o'zi ham shunday yozadi. */}
+                        <span className="cart-item-price__now">
+                          {needsQty(item)
+                            ? `${money(unitPriceOf(item))}/${unitLabel(item.unit)}`
+                            : money(unitPriceOf(item))}
+                        </span>
+                      </button>
                     </div>
                     <div className="qty-ctrl">
                       <button className="qty-btn" aria-label={t("kassa.decrease")} onClick={() => updateQty(item.id, -1)}>−</button>
-                      <span className="qty-num">{fmtQty(item.qty, item.unitDecimals)}</span>
+                      {/* ⚠ SON BOSILADI. Ilgari bu oddiy `<span>` edi va
+                          donalab tovarda miqdorni oshirishning yagona yo'li
+                          «+» bo'lgan: 200 dona qog'oz sochiq sotish uchun
+                          kassir «+» ni 200 marta bosishi kerak edi. Endi
+                          sonning ustiga bosilsa miqdor oynasi ochiladi va
+                          qiymat yoziladi — kasrli birlikda ham, donada ham. */}
+                      {/* ⚠ RAQAM BILAN YOZILAYOTGANDA (V66) katakcha
+                          ajralib turadi va ostidagi chiziq oynaning
+                          tugashini ko'rsatadi: chiziq tugaganda keyingi
+                          raqam ESKISI O'RNIGA yoziladi. Kassir buni
+                          ko'rmasa, «32» deb yozmoqchi bo'lib «12332»
+                          olardi. */}
+                      <button
+                        className={`qty-num qty-num--edit${qtyTyping?.id === item.id ? " is-typing" : ""}`}
+                        onClick={() => editQty(item)}
+                        disabled={!!item.markingGroup}
+                        title={item.markingGroup ? t("kassa.qtyFromLabels") : t("kassa.enterQuantity")}
+                        aria-label={`${item.name} — ${t("kassa.enterQuantity")}`}
+                      >
+                        {qtyTyping?.id === item.id
+                          ? <>{qtyTyping.text || "\u00a0"}<span className="qty-num__caret" aria-hidden="true" />
+                              <span className="qty-num__win" key={qtyTyping.seq} aria-hidden="true" /></>
+                          : fmtQty(item.qty, item.unitDecimals)}
+                      </button>
                       <button className="qty-btn" aria-label={t("kassa.increase")} onClick={() => updateQty(item.id, +1)}>+</button>
                     </div>
                     <button className="btn-icon danger" aria-label={`${item.name} — o'chirish`} onClick={() => removeFromCart(item.id)}>
@@ -997,89 +3343,54 @@ export default function KassaPage({ toast, refreshLowStock }) {
                 ))
               )}
             </div>
-          </div>
-
-          <div className="card" style={{ padding: "10px 14px" }}>
-            <Select
-              block
-              ariaLabel={t("kassa.customer")}
-              placeholder={t("kassa.pickCustomer")}
-              value={customer?.id ? String(customer.id) : ""}
-              onChange={(v) => setCustomer(customers.find((c) => String(c.id) === v) || null)}
-              options={[
-                { value: "", label: t("kassa.noCustomer"), icon: "fa-user-slash" },
-                ...customers.map((c) => ({
-                  value: String(c.id),
-                  label: `${c.fullName} · ${c.phone}`,
-                  icon: "fa-user",
-                })),
-              ]}
-            />
-
-            {/* ── Sodiqlik darajasi ────────────────────────────────────
-                Kassir mijozga aytishi uchun: chegirmasi qancha va keyingi
-                darajagacha qancha qolgan. Chegirmani KASSIR QO'LLAMAYDI —
-                uni server chek yozilganda o'zi hisoblaydi; bu yer faqat
-                ko'rsatadi. */}
-            {customer && tier && (
-              <div style={{
-                marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--border-subtle)",
-                display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8,
-                fontSize: 13,
-              }}>
-                <span>
-                  <i className="fa-solid fa-award" style={{ color: "var(--fg-warning)", marginRight: 6 }} />
-                  {tier.tierName
-                    ? <>{tier.tierName} · <b>{tier.discountPercent}%</b></>
-                    : <span className="text-muted">{t("loyalty.noTier")}</span>}
-                </span>
-                {tier.toNextTier != null && (
-                  <span className="text-muted mono" style={{ fontSize: 12 }}>
-                    {t("loyalty.toNext")}: {money(tier.toNextTier)}
-                  </span>
-                )}
-              </div>
-            )}
-
-            {/* ── Ball ishlatish ──────────────────────────────────────
-                Faqat balans ham, chegara ham noldan katta bo'lganda
-                ko'rinadi: bo'sh maydon kassirni «nega ishlamayapti»
-                degan savolga qo'yardi. */}
-            {customer && bonusAvail > 0 && (
-              <div style={{
-                marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--border-subtle)",
-              }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, fontSize: 13 }}>
-                  <span>
-                    <i className="fa-solid fa-coins" style={{ color: "var(--fg-warning)", marginRight: 6 }} />
-                    {t("bonus.balance")}: <b className="mono">{money(tier.bonusBalance)}</b>
-                  </span>
-                  <button type="button" className="btn btn-outline btn-sm"
-                          onClick={() => setBonusUse(String(bonusAvail))}>
-                    {t("bonus.useMax")}
+            {/* Savat amallari — ro'yxat OSTIDA, jami yonida.
+                ⚠ QATOR, ustun emas: kassa ustunida har piksel
+                tovarlar ro'yxatiniki va scrol bo'lmasligi kerak. */}
+            {cart.length > 0 && (
+              <div className="cart-acts">
+                {/* ⚠ FAQAT MOS TOVAR BO'LGANDA KO'RINADI: optom narxi
+                    yo'q savatda bu tugma hech narsa qilmasdi va
+                    kassirni chalg'itardi. */}
+                {wsPlan.rows.length > 0 && (
+                  <button className={`btn btn-sm cart-wholesale${wsPlan.isOn ? " is-on" : ""}`}
+                          onClick={toggleWholesale}
+                          title={`${wsPlan.rows.length} ta tovar`}>
+                    <i className="fa-solid fa-boxes-stacked" aria-hidden="true" />{" "}
+                    {wsPlan.isOn ? t("kassa.wholesaleAllOff") : t("kassa.wholesaleAll")}
                   </button>
-                </div>
-                {/* Muddat (V30): kassir mijozga aytadi — «shuncha balingiz
-                    oy ichida kuyadi, ishlatib qoling». Sotuvni ham oshiradi,
-                    kuyish ham kutilmagan bo'lmaydi. */}
-                {Number(tier?.bonusExpiringSoon) > 0 && (
-                  <div style={{ fontSize: 12, marginTop: 4, color: "var(--fg-warning)" }}>
-                    <i className="fa-solid fa-hourglass-half" style={{ marginRight: 5 }} aria-hidden="true" />
-                    {t("bonus.expiringSoon", { amount: money(tier.bonusExpiringSoon) })}
-                  </div>
                 )}
-                <NumField kind="int"
-                  className="form-input ek-num" max={bonusAvail}
-                  style={{ marginTop: 8 }}
-                  value={bonusUse}
-                  onChange={(e) => setBonusUse(e.target.value)}
-                  placeholder={t("bonus.usePh", { max: money(bonusAvail) })}
-                />
+                <button className="btn btn-sm cart-clear" onClick={handleClearCart}>
+                  <i className="fa-solid fa-trash" aria-hidden="true" /> {t("common.reset")}
+                  <span className="kbd">Esc</span>
+                </button>
               </div>
             )}
           </div>
 
           <div className="total-card">
+            {/* ══ BIRGA OLINADI (V79) ══════════════════════════════
+                ⚠ SAVAT BILAN JAMI ORASIDA, alohida panel emas: kassir
+                ko'zi baribir shu yerdan o'tadi (oxirgi qator → jami →
+                to'lov) va taklif o'sha yo'lda turishi kerak. Alohida
+                blok bo'lganda u yo ko'rilmasdi, yo tovarlar
+                ro'yxatidan joy o'g'irlardi.
+
+                ⚠ IKKITA tugma, ro'yxat emas — bosilsa darhol savatga
+                tushadi. Kassirning ishi bir bosishdan oshmasligi
+                kerak, aks holda u bu yo'ldan umuman foydalanmaydi. */}
+            {suggest.length > 0 && (
+              <div className="sugg">
+                <span className="sugg__lab">{t("kassa.alsoBought")}</span>
+                {suggest.map((p) => (
+                  <button key={p.id} type="button" className="sugg__b"
+                          onClick={() => addToCart(p)}>
+                    <span className="sugg__n">{p.name}</span>
+                    <span className="sugg__p ek-num">{money(p.salePrice)}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
             {/* ⚠ Miqdorlar YIG'ILMAYDI: 2 dona + 0.35 kg = "2.35" degan
                 raqam ma'nosiz va chalg'ituvchi bo'lardi. Savatdagi SATRLAR
                 soni ko'rsatiladi. */}
@@ -1092,13 +3403,61 @@ export default function KassaPage({ toast, refreshLowStock }) {
               <span className="ek-num">{money(total)}</span>
             </div>
 
-            <button className="btn btn-green btn-full btn-pos" style={{ marginTop: 14 }} onClick={openPayModal} disabled={!cart.length}>
-              <i className="fa-solid fa-wallet" aria-hidden="true" />
-              {t("kassa.checkout")} <span className="kbd">F9</span>
-            </button>
+            {/* ⚠ OGOHLANTIRISH BU YERDAN OLIB TASHLANDI (V83).
+
+                U ikki qatorli sariq quti edi va JAMI bilan to'lov
+                tugmasi orasida turardi — do'kon: «bu joyni isrof
+                qilyapti». Kassa ekranida har piksel tovarlar
+                ro'yxatidan olinadi.
+
+                ⚠ MA'LUMOT YO'QOLMADI: smena tugmasining O'ZI sariq
+                bo'lib «Smena yopiq» deb turadi (ikonkasi ham boshqa),
+                to'liq izoh esa unga hover qilganda chiqadi. Ya'ni
+                signal joyida, matn esa faqat so'ralganda. */}
+
+            {/* ── IKKI TUGMA YONMA-YON (V66): chapda JAMG'ARMA, o'ngda
+                TO'LOV. Ilgari jamg'arma tugmasi to'lov ostida, mijozsiz
+                O'CHIQ va ko'k karta ustida shaffof bo'lgani uchun HIRA
+                ko'rinardi («buzuq» deb o'ylanardi). Endi u oq, doim
+                bosiladi (mijoz oynaning o'zida tanlanadi) va yashildan
+                aniq farq qiladi: to'lov — yashil, jamg'arma — oq.
+
+                ⚠ SAVAT BO'SH BO'LSA HAM ISHLAYDI — bu savdo emas, mijoz
+                shunchaki pul qoldiradi. To'lov tugmasi bo'sh savatda
+                o'chiq, bu esa aynan bo'sh savatda kerak: mijoz tovar
+                olmasdan «keyingi safarga» pul tashlab ketadi. */}
+            <div className="checkout-row">
+              <button className="btn btn-savings btn-pos" onClick={openTopUp}
+                      title={t("savings.topUpTitle")}>
+                <i className="fa-solid fa-sack-dollar" aria-hidden="true" />
+                {t("savings.short")} <span className="kbd">{keyLabel("topUp")}</span>
+              </button>
+              <button className="btn btn-green btn-pos" onClick={openPayModal} disabled={!cart.length}>
+                <i className="fa-solid fa-wallet" aria-hidden="true" />
+                {t("kassa.checkout")} <span className="kbd">F9</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* ════ Jamg'armaga qo'yish (V64) ════ */}
+      {savingsReceipt && (
+        <Suspense fallback={null}>
+          <PaymentReceipt data={savingsReceipt} onClose={() => setSavingsReceipt(null)} />
+        </Suspense>
+      )}
+
+      {topUpOpen && (
+        <DebtPayModal mode="savings"
+                      customer={topUpCust}
+                      customers={customers}
+                      onCustomerChange={pickTopUpCustomer}
+                      onNewCustomer={() => setNewCust({ fullName: "", phone: "" })}
+                      onClose={() => setTopUpOpen(false)}
+                      onSubmit={submitTopUp}
+                      paying={toppingUp} />
+      )}
 
       {/* ════ Markirovka yorliqlari (tamaki, alkogol, suv…) ════ */}
       {markModal && (
@@ -1106,7 +3465,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
           product={markModal.product}
           mode="sale"
           onDone={applyMarkingCodes}
-          onClose={() => { setMarkModal(null); focusBarcode(); }}
+          onClose={() => { setMarkModal(null); focusSearch(); }}
         />
       )}
 
@@ -1114,9 +3473,13 @@ export default function KassaPage({ toast, refreshLowStock }) {
       {qtyModal && (
         <QuantityModal
           product={qtyModal.product}
+          /* Boshqa savatlarda band bo'lgan miqdor AYIRILGAN qoldiq:
+             oynada «omborda 3 ta» deb turib, tasdiqlashda «yetmaydi»
+             deyish kassirni ishonchdan mahrum qilardi. */
+          stock={freeStock(qtyModal.product)}
           initial={qtyModal.initial}
           onConfirm={applyQuantity}
-          onClose={() => { setQtyModal(null); focusBarcode(); }}
+          onClose={() => { setQtyModal(null); focusSearch(); }}
         />
       )}
 
@@ -1128,10 +3491,101 @@ export default function KassaPage({ toast, refreshLowStock }) {
         </div>
       )}
 
+      {/* ════ QATOR NARXI (V48) ════ */}
+      {/* ══ KLAVIATURA YORLIQLARI RO'YXATI (V57) ═══════════════════════
+          ⚠ Yorliq bor-u, uni HECH KIM BILMASA — yo'q bilan barobar.
+          Kassir ishga kirgan kuni hech kim unga jadval bermaydi;
+          shuning uchun ro'yxat ilovaning o'zida, bitta `?` bosishida.
+
+          ⚠ Ro'yxat QO'LDA YOZILMAYDI — ishlovchi bilan bitta manbadan
+          (`ek-kassa-keys.js`). Aks holda u birinchi o'zgarishdayoq
+          yolg'on gapira boshlardi. */}
+      {filterOpen && (
+        <FacetFilter
+          facets={facets}
+          value={filter}
+          onChange={setFilter}
+          onClose={() => setFilterOpen(false)}
+        />
+      )}
+
+      {keysOpen && (
+        <Overlay className="pay-modal-overlay ek-overlay" role="dialog" aria-modal="true"
+                 aria-label={t("kbd.title")} onEscape={() => setKeysOpen(false)}>
+          <div className="ek-dialog kbd-help">
+            <div className="pay-modal-header">
+              <div className="pay-modal-title">
+                <i className="fa-solid fa-keyboard" aria-hidden="true" /> {t("kbd.title")}
+              </div>
+              <button className="pay-modal-close" onClick={() => setKeysOpen(false)}
+                      aria-label={t("common.close")}>
+                <i className="fa-solid fa-xmark" aria-hidden="true" />
+              </button>
+            </div>
+            <div className="kbd-help__body">
+              {[["cart", t("kbd.scopeCart")], ["pay", t("kbd.scopePay")]].map(([sc, title]) => (
+                <div className="kbd-help__col" key={sc}>
+                  <div className="pay-modal-section-label">{title}</div>
+                  <ul className="kbd-help__list">
+                    {KASSA_KEYS.filter((k) => k.scope === sc || (sc === "cart" && k.scope === "any"))
+                      .map((k) => (
+                        <li key={k.id}>
+                          <span className="kbd">{keyLabel(k.id)}</span>
+                          <span>{t(k.label)}</span>
+                        </li>
+                      ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Overlay>
+      )}
+
+      {priceModal && (
+        <LinePriceModal
+          item={priceModal}
+          onClose={() => setPriceModal(null)}
+          onApply={(discount) => {
+            setCart((prev) => prev.map((i) => (i.id === priceModal.id
+              ? { ...i, discount, _pulse: Date.now() } : i)));
+            setPriceModal(null);
+          }}
+        />
+      )}
+
+      {/* ════ YANGI MIJOZ (V47) ════ */}
+      {newCust && (
+        <Modal
+          title={t("kassa.newCustomer")}
+          onClose={() => setNewCust(null)}
+          footer={
+            <>
+              <button className="btn btn-outline btn-sm" onClick={() => setNewCust(null)}>
+                {t("common.cancel")}
+              </button>
+              <button className="btn btn-primary btn-sm" onClick={saveNewCustomer}
+                      disabled={savingCust || !newCust.fullName.trim() || !newCust.phone}>
+                <i className="fa-solid fa-check" aria-hidden="true" /> {t("common.save")}
+              </button>
+            </>
+          }
+        >
+          <label className="form-label">{t("common.fullName")} *</label>
+          <input className="form-input" autoFocus value={newCust.fullName}
+                 onChange={(e) => setNewCust({ ...newCust, fullName: e.target.value })}
+                 placeholder="Abdullayev Ali" />
+          <label className="form-label" style={{ marginTop: 10 }}>{t("common.phone")} *</label>
+          <PhoneField className="form-input mono ek-num" value={newCust.phone}
+                      onChange={(e) => setNewCust({ ...newCust, phone: e.target.value })} />
+        </Modal>
+      )}
+
       {/* ════ TO'LOV MODALI ════ */}
       {showPayModal && (
-        <div className="pay-modal-overlay ek-overlay" role="dialog" aria-modal="true" aria-label={t("kassa.pay")}>
-          <div className="pay-modal-box ek-dialog">
+        <Overlay className="pay-modal-overlay ek-overlay" role="dialog" aria-modal="true"
+                 aria-label={t("kassa.pay")} onEscape={closePayModal}>
+          <div className="pay-modal-box ek-dialog" data-fit={fit.level}>
             <div className="pay-modal-header">
               <div className="pay-modal-title">
                 <i className="fa-solid fa-cash-register" aria-hidden="true" />
@@ -1142,7 +3596,33 @@ export default function KassaPage({ toast, refreshLowStock }) {
               </button>
             </div>
 
-            <div className="pay-modal-body">
+            {/* ══ IKKI USTUN — SCROL BO'LMASIN (V56) ═══════════════════
+                ⚠ Ilgari hammasi BITTA ustunda edi va oyna 810px ga
+                sig'masdi: kassir to'lov turini ko'rish uchun
+                surishga majbur bo'lardi. Mijoz oldida har surish
+                sekundlarni yeydi va kassir tugmani qidirib qoladi.
+
+                Kenglik bo'sh turgan edi (oyna 720px, ekran 1400px) —
+                shuning uchun mazmun ikki ustunga bo'lindi: chapda
+                CHEK (jami, mijoz, chegirma), o'ngda TO'LOV. Tor
+                ekranda ustunlar o'z-o'zidan bittaga qaytadi (CSS). */}
+            <div className="pay-modal-body" ref={payBodyRef}>
+              {/* ⚠ `pay-grid` — uch ustunli to'r ENDI SHU YERDA, tanada
+                  emas (V66): tana faqat o'lchanadigan idish, to'r esa
+                  sig'magan holatda `zoom` bilan kichrayadi. */}
+              <div className="pay-grid" style={fitStyle(fit.zoom)}>
+              {/* ══ 1-USTUN: CHEK ═══════════════════════════════════════
+                  ⚠ TOVARLAR RO'YXATI SHU YERDA (do'kon egasining
+                  so'rovi). Kassir chegirma bermoqchi bo'lganda «nima
+                  sotilyapti va qaysi qatorga qancha tushdi?» degan
+                  savolga javob kerak — ilgari buning uchun oynani yopib,
+                  savatga qaytish kerak edi.
+
+                  ⚠ RO'YXATNING O'ZI suriladi, OYNA emas. Uzun chekni
+                  butunlay sig'dirishning imkoni yo'q; muhimi — oynaning
+                  qolgan qismi (jami, chegirma, to'lov tugmalari)
+                  JOYIDA qolishi. */}
+              <div className="pay-col pay-col--list">
               <div className="pay-modal-total">
                 <div className="pay-modal-total-label">{t("kassa.grandTotal")}</div>
                 <div className="pay-modal-total-value ek-num">{money(total)}</div>
@@ -1151,166 +3631,678 @@ export default function KassaPage({ toast, refreshLowStock }) {
                 </div>
               </div>
 
-              {/* ── Chegirma ────────────────────────────────────────────
-                  To'lov turidan OLDIN: chegirma jamini o'zgartiradi, ya'ni
-                  kassir avval yakuniy summani ko'rib, keyin to'lovni
-                  qabul qilishi kerak. Chegara oshsa server bajik so'raydi. */}
               <div className="pay-modal-section-label">
-                <i className="fa-solid fa-tag" aria-hidden="true" /> {t("kassa.discount")}
+                <i className="fa-solid fa-basket-shopping" aria-hidden="true" /> {t("kassa.items")}
               </div>
-              <NumField kind="money" max={subtotal}
-                className="form-input pay-mixed-input ek-num"
-                value={discount}
-                onChange={(e) => setDiscount(e.target.value)}
-                placeholder="0"
-              />
-              {discountNum > 0 && (
-                <div className="pay-modal-hint">
-                  {money(subtotal)} − {money(discountNum)}
-                </div>
-              )}
-              {/* ⚠ Ball to'lov oynasida ham ko'rinadi: kassir yakuniy
-                  summani aytishdan oldin nima hisobidan kamayganini
-                  bilishi kerak — mijoz albatta so'raydi. */}
-              {bonusNum > 0 && (
-                <div className="pay-modal-hint">
-                  <i className="fa-solid fa-coins" style={{ color: "var(--fg-warning)", marginRight: 4 }} />
-                  {t("bonus.used")}: −{money(bonusNum)}
+              <ul className="pay-items">
+                {cart.map((i, idx) => {
+                  /* Qatorning O'Z chegirmasi + chek chegirmasidan tushgan ulush. */
+                  const own = Number(i.discount) || 0;
+                  const cut = own + (discountSplit[idx] || 0);
+                  const gross = (Number(i.salePrice) || 0) * (Number(i.qty) || 0);
+                  return (
+                    <li className="pay-items__row" key={i.id}>
+                      <span className="pay-items__name" title={i.name}>{i.name}</span>
+                      <span className="pay-items__qty ek-num">
+                        {/* ⚠ E'LON NARXI, chegirmadan KEYINGISI emas:
+                            chegirma o'z ustunida alohida ko'rinadi va
+                            ikkalasi bir raqamga qo'shib yuborilsa,
+                            mijozning «nega bu narx?» savoliga javob
+                            yo'qolardi. */}
+                        {fmtQty(i.qty, i.unitDecimals)} {unitLabel(i.unit)} × {money(i.salePrice)}
+                      </span>
+                      <span className="pay-items__sum ek-num">
+                        {money(gross - cut)}
+                        {cut > 0 && (
+                          <em className="pay-items__cut">−{money(cut)}</em>
+                        )}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+              {fit.level >= 2 && discountBlock}
+              </div>
+
+              <div className="pay-col pay-col--left">
+
+              {/* ⚠ MIJOZ TO'LOV OYNASIGA KO'CHDI (foydalanuvchi so'rovi).
+
+                  Ilgari u savat ustunida doim turardi va o'sha ustundan
+                  balandlik yeyardi — holbuki mijoz KO'PCHILIK chekda
+                  umuman tanlanmaydi. Endi u faqat to'lov paytida, ya'ni
+                  aynan kerak bo'lgan daqiqada so'raladi: sodiqlik
+                  darajasi, qarzi va ballari ham shu yerda — chunki
+                  ularning hammasi to'lovga ta'sir qiladi. */}
+              <div className="pay-modal-section-label">
+                <i className="fa-solid fa-user" aria-hidden="true" /> {t("kassa.customer")}
+              </div>
+              <div className={`cart-cust ${needCustomer ? "is-needed" : ""}`}>
+              {/* ⚠ MIJOZ QATORI — TANLASH + QO'SHISH + RO'YXAT (V47).
+                  Ilgari bu yerda faqat tanlagich turardi: kassa oldida
+                  turgan YANGI mijozni qo'shish uchun kassir savatni
+                  tashlab «Mijozlar» sahifasiga o'tishi kerak edi. Endi
+                  ikkalasi ham shu yerda va ko'zga tashlanadi. */}
+              <div className="cart-cust__row">
+                <Select
+                  block
+                  ariaLabel={t("kassa.customer")}
+                  placeholder={t("kassa.pickCustomer")}
+                  /* ⚠ QIDIRUV MAJBURIY YOQILGAN, avtomatik emas: mijozlar
+                     soni bugun oltita bo'lsa ham ertaga yuzta bo'ladi va
+                     kassir o'sha kuni ro'yxatni aylantirib qidirishga
+                     majbur qolardi. Qidiruv kassa qidiruvi bilan bir xil
+                     algoritmda ishlaydi (`lib/ek-search.js`). */
+                  searchable
+                  searchPlaceholder={t("kassa.searchCustomer")}
+                  /* ✕ — tanlangan mijozni olib tashlash. Ilgari buning
+                     uchun ro'yxatni ochib «Mijozsiz» ni topish kerak edi. */
+                  clearable
+                  clearLabel={t("kassa.noCustomer")}
+                  value={customer?.id ? String(customer.id) : ""}
+                  onChange={(v) => setCustomer(customers.find((c) => String(c.id) === v) || null)}
+                  options={[
+                    { value: "", label: t("kassa.noCustomer"), icon: "fa-user-slash" },
+                    ...customers.map((c) => ({
+                      value: String(c.id),
+                      label: c.fullName,
+                      /* ⚠ Telefon YORLIQQA QO'SHILMAYDI, o'z ustunida
+                         turadi: ismlar uzunligi turlicha bo'lgani uchun
+                         raqamlar har qatorda boshqa joydan boshlanar va
+                         ro'yxatni ko'z bilan kuzatib o'qib bo'lmasdi. */
+                      hint: c.phone,
+                      icon: "fa-user",
+                    })),
+                  ]}
+                />
+                <button type="button" className="btn-icon cart-cust__btn"
+                        title={t("kassa.newCustomer")} aria-label={t("kassa.newCustomer")}
+                        onClick={() => setNewCust({ fullName: "", phone: "" })}>
+                  <i className="fa-solid fa-user-plus" aria-hidden="true" />
+                </button>
+                {/* ⚠ «HAMMA MIJOZLAR» TUGMASI OLIB TASHLANDI.
+                    U `/customers` ga o'tkazardi va shu bilan YARIM
+                    TERILGAN SAVATNI tashlab ketardi: kassa oldida
+                    navbat turganda bu qo'pol xato. Kassa sahifasidan
+                    chiqishning yagona yo'li — yon menyu; u yerda
+                    chiqayotgani ko'rinib turadi.
+
+                    Ehtiyoj ham qolmadi: yuqoridagi tanlagichda
+                    qidiruv bor va u butun ro'yxatni ko'rsatadi. */}
+              </div>
+
+              {/* ⚠ ISHORA AYNAN SHU YERDA. Nasiya qoldig'i chiqqanda
+                  bajarilishi kerak bo'lgan ish bitta: mijozni tanlash.
+                  Shuning uchun yozuv o'sha tanlagichning tagida —
+                  to'lov ustunidagi ogohlantirish esa uni takrorlaydi
+                  va bosilganda shu yerga olib keladi. */}
+              {needCustomer && (
+                <div className="cart-cust__need" role="status">
+                  <i className="fa-solid fa-arrow-turn-up fa-flip-horizontal" aria-hidden="true" />
+                  {t("credit.customerRequired")}
                 </div>
               )}
 
+              {/* ══ MIJOZ KARTASI — TO'R (V66) ═════════════════════════
+                  ⚠ Ilgari daraja, jamg'arma, qarz va ball TO'RT QATOR
+                  bo'lib ustma-ust turardi (har biri ~50px) va aynan shu
+                  ustun oynani ekrandan chiqarib, SCROL paydo qilardi
+                  (do'kon egasi rasm bilan ko'rsatdi). Endi ular 2×2
+                  to'rda: balandlik ikki barobar kam, ma'lumot o'sha.
+
+                  ⚠ JAMG'ARMA KATAGI — TUGMA. Ilgari «Jamg'arma» to'lov
+                  turlari to'rida BESHINCHI tugma edi va 2×2 to'rga
+                  uchinchi qator qo'shardi — scrolning ikkinchi sababi.
+                  Endi to'r 2×2 ligicha, jamg'armadan to'lash esa shu
+                  katakni bosish (yoki Alt+J): summa maydoni jamg'armaga
+                  o'tadi, katak yashil bo'lib «faol» turadi.
+
+                  Daraja — kassir mijozga aytishi uchun: chegirmasi qancha
+                  va keyingi darajagacha qancha qolgan. Chegirmani KASSIR
+                  QO'LLAMAYDI — server chek yozilganda o'zi hisoblaydi.
+                  Qarz — faqat QARZI BOR mijozda: kassir nasiyaga sotishga
+                  urinib chegaradan oshganini mijoz oldida bilmasin.
+                  Ball — do'konning sovg'asi, jamg'arma — mijozning puli:
+                  ikkisi alohida katakda, alohida rangda. */}
+              {/* ⚠ TO'RTALA KATAK HAM DOIM (do'kon egasining talabi,
+                  V78). Ilgari har biri o'z sharti bilan chizilardi
+                  (`tier &&`, `savingsLeft > 0 &&`, `debtBalance > 0
+                  &&`, `bonusAvail > 0 &&`) va bir mijozda to'rttasi,
+                  boshqasida ikkitasi chiqardi. Natijada kassir
+                  «bu mijozda jamg'arma yo'q» bilan «jamg'arma nol»
+                  ni ajrata olmasdi va kataklarning joyi ham har safar
+                  siljib turardi. Endi yo'qligi NOL bo'lib ko'rinadi. */}
+              {customer && (
+                <div className="cust-facts">
+                  <div className="cust-fact">
+                      <span className="cust-fact__lab">
+                        <i className="fa-solid fa-award" style={{ color: "var(--fg-warning)" }} aria-hidden="true" />
+                        {t("loyalty.tier")}
+                      </span>
+                      <span className={`cust-fact__val${tier?.tierName ? "" : " text-muted"}`}>
+                        {tier?.tierName ? <>{tier.tierName} · {tier.discountPercent}%</> : t("loyalty.noTier")}
+                      </span>
+                      {/* ⚠ Daraja OYNADAN hisoblansa buni aytish shart (V43):
+                          aks holda mijoz «men bu do'kondan million so'mlik
+                          olganman, nega darajam yo'q?» deb so'raganda kassir
+                          javob topa olmasdi. */}
+                      {(tier?.toNextTier != null || Number(tier?.loyaltyWindowDays) > 0) && (
+                        <span className="cust-fact__sub" title={[
+                          tier.toNextTier != null && `${t("loyalty.toNext")}: ${money(tier.toNextTier)}`,
+                          Number(tier.loyaltyWindowDays) > 0 && t("loyalty.windowNote", { days: tier.loyaltyWindowDays }),
+                        ].filter(Boolean).join(" · ")}>
+                          {tier.toNextTier != null && <>{t("loyalty.toNext")}: {money(tier.toNextTier)}</>}
+                          {tier.toNextTier != null && Number(tier.loyaltyWindowDays) > 0 && " · "}
+                          {Number(tier.loyaltyWindowDays) > 0 && t("loyalty.windowNote", { days: tier.loyaltyWindowDays })}
+                        </span>
+                      )}
+                    </div>
+                  {/* ⚠ Qoldiq nol bo'lsa ham KATAK QOLADI, faqat tugma
+                      o'chadi: «jamg'armasi yo'q» va «jamg'armasi nol»
+                      kassir uchun bir xil ma'no, lekin katakning
+                      YO'QOLISHI qolgan kataklarni suriб yuborardi va
+                      kassir har mijozda joyni qaytadan qidirardi. */}
+                  <button type="button"
+                          className={`cust-fact cust-fact--btn${payFocus === "SAVINGS" ? " active" : ""}`}
+                          aria-pressed={payFocus === "SAVINGS"}
+                          disabled={savingsLeft <= 0}
+                          onClick={() => focusMethod("SAVINGS")}
+                          title={savingsLeft > 0 ? t("kbd.paySavings") : t("savings.empty")}>
+                      <span className="cust-fact__lab">
+                        <i className="fa-solid fa-sack-dollar" aria-hidden="true" />
+                        {t("savings.short")}
+                      </span>
+                      <span className={`cust-fact__val${savingsLeft > 0 ? "" : " text-muted"}`}>
+                        {money(savingsLeft)}
+                      </span>
+                      <span className="cust-fact__sub">
+                        {savingsLeft > 0 ? (
+                          <>
+                            <span className="kbd">{keyLabel("paySavings")}</span>{" "}
+                            {paid.SAVINGS
+                              ? t("savings.inPay", { n: money(paid.SAVINGS) })
+                              : t("kbd.paySavings")}
+                          </>
+                        ) : t("savings.empty")}
+                      </span>
+                  </button>
+                  <div className={`cust-fact${Number(tier?.debtBalance) > 0 ? " cust-fact--debt" : ""}`}>
+                      <span className="cust-fact__lab">
+                        <i className="fa-solid fa-hand-holding-dollar" aria-hidden="true" />
+                        {t("credit.balance")}
+                      </span>
+                      <span className={`cust-fact__val${Number(tier?.debtBalance) > 0 ? "" : " text-muted"}`}>
+                        {money(tier?.debtBalance || 0)}
+                      </span>
+                      {/* ⚠ MUDDATI O'TGAN qism alohida (V43): umumiy qarz
+                          «bor» degani, muddati o'tgani esa «so'rash kerak»
+                          degani. Qachondan beri — qarzning YOSHI (V46). */}
+                      {(Number(tier?.overdueDebt) > 0 || tier?.debtSince) && (
+                        <span className="cust-fact__sub" title={[
+                          Number(tier.overdueDebt) > 0 && `${t("credit.overdue")}: ${money(tier.overdueDebt)}`,
+                          tier.debtSince && `${t("credit.debtSince")} ${shortDate(tier.debtSince)}`,
+                        ].filter(Boolean).join(" · ")}>
+                          {Number(tier.overdueDebt) > 0 && (
+                            <><i className="fa-solid fa-clock" aria-hidden="true" />{" "}
+                              {t("credit.overdue")}: {money(tier.overdueDebt)}{tier.debtSince ? " · " : ""}</>
+                          )}
+                          {tier.debtSince && <>{t("credit.debtSince")} {shortDate(tier.debtSince)}</>}
+                        </span>
+                      )}
+                    </div>
+                  <div className={`cust-fact${bonusAvail > 0 ? " cust-fact--bonus" : ""}`}>
+                      <span className="cust-fact__lab">
+                        <i className="fa-solid fa-coins" style={{ color: "var(--fg-warning)" }} aria-hidden="true" />
+                        {t("bonus.balance")}
+                        {/* «Hammasini» — faqat ishlatiladigan ball bo'lsa. */}
+                        {bonusAvail > 0 && (
+                          <button type="button" className="cust-fact__act"
+                                  onClick={() => setBonusUse(String(bonusAvail))}>
+                            {t("bonus.useMax")}
+                          </button>
+                        )}
+                      </span>
+                      <span className={`cust-fact__val${Number(tier?.bonusBalance) > 0 ? "" : " text-muted"}`}>
+                        {money(tier?.bonusBalance || 0)}
+                      </span>
+                      {/* Muddat (V30): kassir mijozga aytadi — «shuncha
+                          balingiz oy ichida kuyadi, ishlatib qoling». */}
+                      {Number(tier?.bonusExpiringSoon) > 0 && (
+                        <span className="cust-fact__sub" style={{ color: "var(--fg-warning)" }}
+                              title={t("bonus.expiringSoon", { amount: money(tier.bonusExpiringSoon) })}>
+                          <i className="fa-solid fa-hourglass-half" aria-hidden="true" />{" "}
+                          {t("bonus.expiringSoon", { amount: money(tier.bonusExpiringSoon) })}
+                        </span>
+                      )}
+                  </div>
+                  {/* Ball ishlatish — faqat balans ham, chegara ham noldan
+                      katta bo'lganda: bo'sh maydon kassirni «nega
+                      ishlamayapti» degan savolga qo'yardi. */}
+                  {bonusAvail > 0 && (
+                    /* «×» — summa maydonidagi bilan bir xil sabab (V94). */
+                    <div className="field">
+                      <NumField kind="int"
+                        className={`form-input ek-num cust-facts__input${
+                          bonusUse !== "" && bonusUse != null ? " has-clear" : ""}`}
+                        max={bonusAvail}
+                        value={bonusUse}
+                        onChange={(e) => setBonusUse(e.target.value)}
+                        placeholder={t("bonus.usePh", { max: money(bonusAvail) })}
+                      />
+                      {bonusUse !== "" && bonusUse != null && (
+                        <ClearButton label={t("kassa.clearInput")}
+                                     onClear={() => setBonusUse("")} />
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+              {fit.level < 2 && discountBlock}
+              </div>
+
+              <div className="pay-col pay-col--right">
               <div className="pay-modal-section-label">
                 <i className="fa-solid fa-credit-card" aria-hidden="true" /> To'lov turini tanlang
               </div>
+              {/* ⚠ TUGMA TO'LOV TURINI EMAS, TAHRIRLANADIGAN USULNI
+                  tanlaydi. Bosilganda hech narsa o'chmaydi — faqat
+                  quyidagi maydon o'sha usulning summasiga o'tadi va
+                  eski qiymati qaytadi (do'kon egasining talabi). */}
               <div className="pay-modal-types">
                 {PAY_METHODS.map(({ key, label, icon, color, kbd }) => (
                   <button
                     key={key}
-                    className={`pay-type-btn ${payType === key ? "active" : ""}`}
-                    onClick={() => handlePayTypeChange(key)}
-                    aria-pressed={payType === key}
+                    className={`pay-type-btn ${payFocus === key ? "active" : ""}${
+                      paid[key] ? " has-amount" : ""}`}
                     style={{ "--pay-color": color }}
+                    aria-pressed={payFocus === key}
+                    onClick={() => focusMethod(key)}
                   >
-                    <div className="pay-type-icon"><i className={`fa-solid ${icon}`} aria-hidden="true" /></div>
-                    <div className="pay-type-label">{label}</div>
+                    <span className="pay-type-icon"><i className={`fa-solid ${icon}`} aria-hidden="true" /></span>
+                    {/* ⚠ Nom SPAN ichida — yalang'och matn emas. Tugma
+                        endi grid va yalang'och matn anonim katakka
+                        tushib, joyini boshqarib bo'lmasdi. */}
+                    <span className="pay-type-label">{label}</span>
                     {kbd && <span className="kbd">{kbd}</span>}
+                    {/* ⚠ SUMMA TUGMADA YO'Q (V66, do'kon egasi: «tugmalar
+                        ichida summa ko'rinishi shart emas»). Qaysi usulga
+                        pul yozilgani chegara rangi (`has-amount`) bilan
+                        ko'rinadi, summalar esa pastdagi hisobda. */}
                   </button>
                 ))}
               </div>
 
-              {/* ── NAQD: olingan summa → qaytim avtomatik ── */}
-              {payType === "CASH" && (
-                <div style={{ marginTop: 18 }}>
-                  <label className="form-label" htmlFor="given">{t("kassa.received")}</label>
-                  <NumField kind="money"
-                    id="given"
-                    className="form-input pay-mixed-input"
-                    value={cashGiven}
-                    autoFocus
-                    onChange={(e) => setCashGiven(e.target.value)}
-                    placeholder={String(total)}
-                  />
-                  <div className="ek-quick-cash">
-                    {[50000, 100000, 200000].map((v) => (
-                      <button key={v} type="button" onClick={() => setCashGiven(String(v))}>
-                        {v.toLocaleString("uz-UZ")}
+              {/* ══ BITTA MAYDON ═══════════════════════════════════════
+                  ⚠ Har usul uchun alohida maydon ochilmaydi (do'kon
+                  egasining talabi). Ilgari aralash to'lovda har usul
+                  o'z qatorini ochar, oyna o'sar va kassir qaysi
+                  maydonga yozayotganini adashtirardi. */}
+              <label className="form-label" htmlFor="pay-amount" style={{ marginTop: 14 }}>
+                {t("kassa.amountFor", { method: payMethods.find((m) => m.key === payFocus)?.label })}
+              </label>
+              {/* ⚠ «×» MAYDON ICHIDA (V94, do'kon egasi so'radi).
+                  Monoblokda `Ctrl+A`+`Delete` qilib bo'lmaydi va
+                  kassir noto'g'ri yozilgan summani o'chirish uchun
+                  raqamni birma-bir tozalardi.
+
+                  ⚠ Tugma QIYMAT BO'LGANDAGINA chiziladi: bosiladigan,
+                  lekin hech nima qilmaydigan tugma ishonchni
+                  yo'qotadi (`ui/index.jsx` dagi bir xil qoida).
+
+                  ⚠ `has-clear` — o'ng bo'shliq. Usiz uzun summa
+                  («1 971 010») «×» tagiga kirib ketardi. */}
+              <div className="field">
+                <NumField kind="money"
+                  id="pay-amount"
+                  className={`form-input pay-mixed-input${payValue !== "" && payValue != null ? " has-clear" : ""}`}
+                  value={payValue}
+                  autoFocus
+                  onChange={(e) => setPayValue(e.target.value)}
+                  /* ⚠ PLACEHOLDER — BO'SH MAYDONNING MA'NOSI. Hech narsa
+                     yozilmagan bo'lsa, chek to'liq naqd bo'ladi va bu
+                     yerda aynan o'sha summa turadi. Kassir yozgan
+                     zahoti ma'no o'zgaradi: bo'sh maydon endi nol. */
+                  placeholder={payUntouched ? total.toLocaleString("uz-UZ") : "0"}
+                />
+                {payValue !== "" && payValue != null && (
+                  /* ⚠ TOZALASH ODDIY `onChange` ORQALI: `setPayValue("")`
+                     o'sha usulning yozuvini butunlay o'chiradi
+                     (`delete next[payFocus]`). DOM ga to'g'ridan-to'g'ri
+                     yozish formatlangan qiymat tufayli ishlamasdi. */
+                  <ClearButton label={t("kassa.clearInput")}
+                               onClear={() => setPayValue("")} />
+                )}
+              </div>
+              {/* ⚠ QOLDIQ MAYDON OSTIDA: kassir mijozga «hisobingizda
+                  shuncha bor» deb ayta olishi kerak. Uni faqat
+                  tugmadagi kichkina raqamda ko'rsatish yetmasdi. */}
+              {payFocus === "SAVINGS" && (
+                <div className="text-muted" style={{ fontSize: 12, marginTop: 4 }}>
+                  <i className="fa-solid fa-sack-dollar" aria-hidden="true" />{" "}
+                  {/* ⚠ HAQIQIY chegara, qoldiqning o'zi emas: chek
+                      qisman to'langan bo'lsa jamg'armadan faqat
+                      qolgani yechiladi va kassir buni OLDINDAN
+                      bilishi kerak. */}
+                  {t("savings.max", { n: money(payMax ?? savingsLeft) })}
+                </div>
+              )}
+              {/* ⚠ TUGMALAR CHEKKA QARAB QURILADI (V76), qotib qolgan
+                  50 000 / 100 000 / 200 000 EMAS. Eski ro'yxat aynan
+                  kerak bo'lgan paytda kerak bo'lmagan sonni
+                  ko'rsatardi: 8 000 lik chekda uchalasi ham juda
+                  katta, 420 000 likda uchalasi ham kichik edi va
+                  kassir baribir qo'lda yozardi. Mantiq `ek-cash.js`
+                  da — u SINALADIGAN qaror. */}
+              <div className="ek-quick-cash">
+                {cashSuggestions(restFor(paid, total, payFocus)).map((v) => (
+                  <button key={v} type="button" onClick={() => setPayValue(String(v))}>
+                    {v.toLocaleString("uz-UZ")}
+                  </button>
+                ))}
+                {/* Eng ko'p uchraydigan amal: «qolganini shu usuldan». */}
+                <button type="button" onClick={fillRest}>{t("kassa.fillRest")}</button>
+              </div>
+
+              {/* ══ HISOB ══════════════════════════════════════════════
+                  Kiritilganlar va qolgani — bir joyda, bir qarashda. */}
+              <div className="pay-sum">
+                {/* ⚠⚠ KASSIR KIRITGAN NAQD DOIM KO'RINADI (V91).
+
+                    Do'kon egasi ko'rsatdi: karta 30 000 chekni to'liq
+                    yopgan, kassir naqdga 50 000 kiritgan — va hisobda
+                    naqd qatori UMUMAN yo'q edi, faqat «Qaytim 50 000»
+                    turardi.
+
+                    Sabab: `settle` chekka tushadigan naqdni KESADI
+                    (`cashPaid`), bu yerda esa 0 dan katta qatorlargina
+                    chiziladi. Hisob to'g'ri, ekran esa YOLG'ON: go'yo
+                    do'kon 50 000 chiqarayotgandek ko'rinardi, holbuki
+                    o'sha 50 000 mijozdan endi olingan edi. Kassir shu
+                    ekranga qarab yashikdan pul berib yuborishi mumkin.
+
+                    Endi naqd qatori KIRITILGAN summani ko'rsatadi
+                    (`cashIn`), qaytim esa uning qanchasi qaytishini.
+                    Bu chekning o'zi ham shunday yoziladi: «olindi —
+                    qaytim». Serverga ketadigan `parts` esa
+                    o'zgarmaydi: u yerda kesilgani turishi SHART. */}
+                {payRows.map((x) => {
+                  const m = payMethods.find((k) => k.key === x.type);
+                  return (
+                    <div className="pay-sum__row" key={x.type} style={{ "--pay-color": m?.color }}>
+                      <span className="pay-sum__name">
+                        <i className={`fa-solid ${m?.icon}`} aria-hidden="true" /> {m?.label || x.type}
+                      </span>
+                      <b className="ek-num">{money(x.amount)}</b>
+                      <button type="button" className="pay-sum__x"
+                              title={t("common.delete")} aria-label={t("common.delete")}
+                              onClick={() => dropMethod(x.type)}>
+                        <i className="fa-solid fa-xmark" aria-hidden="true" />
                       </button>
-                    ))}
-                    <button type="button" onClick={() => setCashGiven(String(total))}>{t("kassa.exactAmount")}</button>
-                  </div>
-                  {Number(cashGiven) > 0 && (
-                    <div className="ek-change">
-                      <span className="ek-change__label">{t("kassa.change")}</span>
-                      <span className="ek-change__value">{money(change)}</span>
                     </div>
-                  )}
-                  {!cashOk && (
-                    <div className="pay-mixed-warn ek-shake">
-                      <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" /> Olingan summa jamidan kam
-                    </div>
-                  )}
-                </div>
-              )}
+                  );
+                })}
 
-              {/* ── KARTA: terminal tasdig'ini kutish ── */}
-              {payType === "CARD" && (
-                <div style={{ marginTop: 18, display: "flex", alignItems: "center", gap: 12, padding: "14px 18px", background: "var(--bg-brand-subtle)", border: "1px solid var(--border-brand)", borderRadius: "var(--r-lg)", color: "var(--fg-brand)", fontWeight: 600, fontSize: 13 }}>
-                  <Spinner />
-                  Terminal tasdig'ini kuting, so'ng t("kassa.sellAndPrint") ni bosing
-                </div>
-              )}
+                {/* ⚠⚠ MIJOZDAN JAMI (V94) — do'kon egasi so'radi:
+                    «bu joyda mijozdan jami qancha pul olinayotgani
+                    ko'rsatilsin». Uchta usul yozilganda kassir
+                    ularni boshida qo'shishga majbur edi, mijoz esa
+                    yonida turadi.
 
-              {/* ── ARALASH ── */}
-              {payType === "MIXED" && (
-                <div className="pay-mixed-section">
-                  <div className="pay-mixed-label" style={{ color: "var(--fg-secondary)", marginBottom: 10 }}>
-                    <i className="fa-solid fa-shuffle" aria-hidden="true" /> Naqd + qolgan qismi:
+                    ⚠ FAQAT BIRDAN ORTIQ QATORDA. Bitta usulda jami
+                    o'sha qatorning O'ZI bo'ladi va uni ikkinchi marta
+                    yozish — aynan do'kon egasi taqiqlagan ortiqcha
+                    element. */}
+                {payRows.length > 1 && (
+                  <div className="pay-sum__row pay-sum__row--taken">
+                    <span className="pay-sum__name">
+                      <i className="fa-solid fa-hand-holding-dollar" aria-hidden="true" />{" "}
+                      {t("kassa.takenTotal")}
+                    </span>
+                    <b className="ek-num">{money(payTaken)}</b>
                   </div>
-                  <div className="pay-mixed-second-types">
-                    {MIXED_SECOND.map(({ key, label, icon, color }) => (
-                      <button
-                        key={key}
-                        className={`pay-mixed-second-btn ${mixedSecondType === key ? "active" : ""}`}
-                        onClick={() => setMixedSecondType(key)}
-                        aria-pressed={mixedSecondType === key}
-                        style={{ "--pay-color": color }}
-                      >
-                        <i className={`fa-solid ${icon}`} aria-hidden="true" />{label}
+                )}
+
+                {/* ⚠ «NAQDSIZ USULDAN ORTIQ» QATORI OLIB TASHLANDI (V95).
+                    Do'kon egasi so'radi: «bu narsa nega kerak, muhim
+                    bo'lmasa olib tashla».
+
+                    U V78 da qo'shilgan edi va o'shanda yagona xabar
+                    edi. Keyin uning yoniga yana ikkitasi qo'shilib
+                    ketdi — HAMMASI BIR XIL SHART bilan
+                    (`pay.over > 0 && !overToSavings`) va bir xil
+                    raqamni ko'rsatib:
+
+                      · qizil ogohlantirish «Ortiqcha 89 010 so'm.
+                        Qaytim faqat naqddan bo'ladi.» — u SABABNI ham
+                        aytadi va silkiydi;
+                      · «Qaytim jamg'armaga» tugmasi — u YO'L
+                        ko'rsatadi.
+
+                    Ya'ni qator uchinchi nusxa edi: yangi hech narsa
+                    aytmasdi, faqat joy egallardi. Qolgan ikkitasi
+                    o'rnida — sotuv baribir to'silgan (`overOk`) va
+                    kassir nima qilishni ko'rib turadi. */}
+                {/* ⚠ QAYTIM — faqat NAQDDAN chiqadi: kassir qo'lga
+                    beradigan pul aynan shu. */}
+                {(pay.change > 0 || overToSavings) && (
+                  /* Jamg'armaga belgilangan bo'lsa qator YASHIL va «Jamg'armaga
+                     +X»: kassir qaytimni qo'lga bermasligini ko'rib turadi. */
+                  <div className={`pay-sum__row ${overToSavings
+                                   ? "pay-sum__row--save" : "pay-sum__row--change"}`}>
+                    <span className="pay-sum__name">
+                      <i className={`fa-solid ${overToSavings
+                                     ? "fa-sack-dollar" : "fa-arrow-rotate-left"}`} aria-hidden="true" />{" "}
+                      {overToSavings ? t("savings.toSavings") : t("kassa.change")}
+                    </span>
+                    <b className="ek-num">
+                      {overToSavings ? "+" : ""}
+                      {money(overToSavings ? pay.excess : pay.change)}
+                    </b>
+                  </div>
+                )}
+
+                {/* ── QAYTIM JAMG'ARMAGA (V63) ───────────────────────
+                    ⚠ NEGA KERAK. Chek 93 400, mijoz 100 000 beradi va
+                    kassirda 6 600 lik chaqa doim ham bo'lmaydi. Bu
+                    kunda o'nlab marta takrorlanadi va shu paytgacha
+                    «qolsin, keyingi safar» degan OG'ZAKI kelishuv
+                    edi — hech qayerda yozilmasdi. Endi u mijozning
+                    hisobiga tushadi.
+
+                    ⚠ Faqat MIJOZ TANLANGANDA: egasiz jamg'arma
+                    bo'lmaydi (server ham shunday deydi). */}
+                {/* ⚠ KO'RINARLI TUGMA-SWITCH (V66), kichkina checkbox emas:
+                    do'kon egasi «ortiqcha to'lovni jamg'armaga qo'shish
+                    imkoni bo'lsin — bu muhim» dedi. Summa tugmaning
+                    o'zida: kassir «81 010 jamg'armaga» deb mijozga
+                    ko'rsatib bosadi. */}
+                {/* ⚠ ORTIQCHANING HAMMASI — `pay.excess`, `pay.change`
+                    EMAS (V78). Ilgari faqat NAQD qaytimi taklif
+                    qilinardi: kartadan ortiq to'langan pul ekranda
+                    «xato» bo'lib qolar, uni mijozga qaytarishning yo'li
+                    esa yo'q edi. Endi qaysi usuldan kelganidan qat'i
+                    nazar butun ortiqcha bitta tugma bilan hisobga
+                    tushadi. */}
+                {pay.excess > 0 && customer && (
+                  <button type="button"
+                          className={`pay-change-sav${changeToSavings ? " active" : ""}`}
+                          aria-pressed={changeToSavings}
+                          onClick={() => setChangeToSavings((v) => !v)}>
+                    <span className="pay-change-sav__icon">
+                      <i className="fa-solid fa-sack-dollar" aria-hidden="true" />
+                    </span>
+                    <span className="pay-change-sav__text">
+                      <b>{t("savings.changeHere")}</b>
+                      <small>
+                        {changeToSavings
+                          ? t("savings.changeOn", { n: money(pay.excess) })
+                          : t("savings.changeAsk", { n: money(pay.excess) })}
+                      </small>
+                    </span>
+                    <span className="pay-change-sav__switch" aria-hidden="true" />
+                  </button>
+                )}
+                {/* Mijozsiz — imkoniyat BORLIGINI aytamiz, aks holda kassir
+                    uni hech qachon bilmasdi. */}
+                {pay.excess > 0 && !customer && (
+                  <div className="pay-modal-hint">
+                    <i className="fa-solid fa-sack-dollar" style={{ marginRight: 4 }} aria-hidden="true" />
+                    {t("savings.changeNeedCustomer")}
+                  </div>
+                )}
+
+                {/* ⚠ QOLGANI — AVTOMATIK NASIYA. Kassir uni yozmaydi,
+                    tizim o'zi hisoblaydi va shu yerda ko'rsatadi. */}
+                {/* ⚠ FAQAT PUL KIRITILGACH (V86). Hech narsa
+                    yozilmagan holatda `settle` butun chekni nasiyaga
+                    yozadi — bu hisobning to'g'ri javobi, lekin ekranda
+                    «Nasiya 20 000» degan qator kassirni chalg'itardi:
+                    u hali hech narsa aytmagan. O'rniga «Summani
+                    kiriting» deb aytiladi. */}
+                {creditReal && (
+                  <div className={`pay-sum__row pay-sum__row--credit ${creditBlocked ? "is-blocked" : ""}`}>
+                    <span className="pay-sum__name">
+                      <i className="fa-solid fa-hand-holding-dollar" aria-hidden="true" />{" "}
+                      {creditEnabled ? t("kassa.toCredit") : t("kassa.unpaid")}
+                    </span>
+                    <b className="ek-num">{money(creditPart)}</b>
+                  </div>
+                )}
+
+                {/* ⚠ NEGA «SOTISH» YOPIQ — AYNAN SHU YERDA AYTILADI
+                    (V86). Ikki sabab bilan hisobning ichida:
+
+                    1. Ilgari xuddi shu joyda kassir yozmagan «Naqd
+                       20 000» qatori turardi. Endi o'sha o'rinda
+                       nima qilish kerakligi yozilib turadi — kassir
+                       ko'zini boshqa joyga ko'chirmaydi.
+                    2. Maydon ostidagi `pay-modal-hint` kichik
+                       ekranda (`data-fit="2"`) YASHIRILADI — ya'ni
+                       aynan joy tor bo'lganda tushuntirish yo'qolardi.
+                       `pay-sum__empty` hech qachon yashirilmaydi. */}
+                {payUntouched && (
+                  <div className="pay-sum__empty">{t("kassa.needAmount")}</div>
+                )}
+                {/* ══ QARZ MUDDATI — SHU YERDA SO'RALADI (V87) ═════════
+                    Do'kon egasi: «qarz berilayotganda qarz muddatini
+                    to'lov paytida so'raydigan qilish kerak … lekin
+                    to'lov paytida muddat so'rash BIRINCHI».
+
+                    ⚠ AYNAN NASIYA QATORINING TAGIDA. Muddat qarzning
+                    xususiyati, ya'ni u qarz summasi bilan bir joyda
+                    turishi kerak: kassir «80 000 nasiya, 20-oktabrga»
+                    deb bitta qarashda o'qiydi va mijozga aynan
+                    shunday aytadi.
+
+                    ⚠ NASIYA YO'Q BO'LSA CHIQMAYDI: to'liq to'langan
+                    chekda «muddat» degan maydon ma'nosiz va u
+                    oynadagi joyni bekorga egallardi.
+
+                    ⚠ NASIYA O'CHIRILGAN do'konda ham chiqmaydi: u
+                    yerda qarz umuman yozilmaydi (`creditBlocked`) va
+                    muddat so'rash kassirni yo'q yo'lga boshlardi. */}
+                {creditReal && !creditBlocked && (
+                  <div className="pay-due">
+                    <label className="pay-due__label" htmlFor="pay-due">
+                      <i className="fa-regular fa-calendar-check" aria-hidden="true" />{" "}
+                      {t("credit.dueWhen")}
+                    </label>
+                    {/* ⚠ `min` — BUGUN: muddati allaqachon o'tgan qarz
+                        berishning ma'nosi yo'q va bunday sana deyarli
+                        doim kalendarda yilni adashtirishdan chiqadi.
+
+                        ⚠ TO'SIQ FAQAT SHU YERDA. Server o'tmishdagi
+                        sanani rad ETMAYDI va bu ataylab: oflayn
+                        navbatda yotgan chek bir necha kundan keyin
+                        yuborilishi mumkin va o'shanda kelishilgan
+                        sana allaqachon o'tgan bo'ladi — server uni
+                        rad etsa, sotilgan tovarning cheki butunlay
+                        yo'qolardi. Ya'ni xatoni tug'ilish joyida
+                        to'sish kerak, keyin emas. */}
+                    <input
+                      id="pay-due"
+                      type="date"
+                      className="pay-due__input"
+                      value={dueDate}
+                      min={due.today()}
+                      onChange={(e) => setDueDate(e.target.value)}
+                    />
+                    {/* Necha kun qolgani — kassir sanani ko'rib
+                        «bu qancha bo'ladi?» deb sanamasin. */}
+                    {/* ⚠ O'TMISHDAGI SANA — XATO, «necha kun qoldi» EMAS.
+                        Ilgari bu yerda «−12 kun» degan yozuv chiqar va u
+                        xato ekanini aytmasdi. */}
+                    {duePast ? (
+                      <span className="pay-due__left is-bad">
+                        <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />{" "}
+                        {t("credit.duePast")}
+                      </span>
+                    ) : dueLeft != null && (
+                      <span className="pay-due__left">
+                        {dueLeft === 0 ? t("credit.dueToday") : t("credit.dueInDays", { n: dueLeft })}
+                      </span>
+                    )}
+                    {/* Muddatsiz qarz ham bo'ladi («qachon bo'lsa ham»);
+                        u holda maydon bo'shatiladi. */}
+                    {dueDate && (
+                      <button type="button" className="pay-due__x"
+                              title={t("credit.dueNone")} aria-label={t("credit.dueNone")}
+                              onClick={() => setDueDate("")}>
+                        <i className="fa-solid fa-xmark" aria-hidden="true" />
                       </button>
-                    ))}
+                    )}
                   </div>
+                )}
 
-                  <div className="pay-mixed-row" style={{ marginTop: 14 }}>
-                    <div className="pay-mixed-field">
-                      <label className="pay-mixed-label" htmlFor="mx-cash" style={{ color: "var(--fg-success)" }}>
-                        <i className="fa-solid fa-money-bill-1" aria-hidden="true" /> Naqd (so'm)
-                      </label>
-                      <NumField kind="money"
-                        id="mx-cash"
-                        className="form-input pay-mixed-input"
-                        style={{ borderColor: "var(--border-success)", color: "var(--fg-success)" }}
-                        value={cashAmount}
-                        onChange={(e) => {
-                          setCashAmount(e.target.value);
-                          setCardAmount(String(Math.max(0, total - (Number(e.target.value) || 0))));
-                        }}
-                      />
-                    </div>
-                    <div className="pay-mixed-field">
-                      <label className="pay-mixed-label" htmlFor="mx-card" style={{ color: "var(--fg-brand)" }}>
-                        <i className="fa-solid fa-credit-card" aria-hidden="true" />
-                        {paymentLabel(mixedSecondType)} (so'm)
-                      </label>
-                      <NumField kind="money"
-                        id="mx-card"
-                        className="form-input pay-mixed-input"
-                        style={{ borderColor: "var(--border-brand)", color: "var(--fg-brand)" }}
-                        value={cardAmount}
-                        onChange={(e) => {
-                          setCardAmount(e.target.value);
-                          setCashAmount(String(Math.max(0, total - (Number(e.target.value) || 0))));
-                        }}
-                      />
-                    </div>
-                  </div>
-                  {!mixedOk && total > 0 && (
-                    <div className="pay-mixed-warn">
-                      <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />{" "}
-                      Yig'indi <span className="ek-num">{mixedSum.toLocaleString("uz-UZ")}</span> —
-                      jami <span className="ek-num">{total.toLocaleString("uz-UZ")}</span> bilan teng bo'lishi kerak
-                    </div>
-                  )}
-                </div>
-              )}
-              {/* Nasiyada mijoz tanlanmagan bo'lsa — nima qilish kerakligini
-                  AYTAMIZ. Tugmani jimgina o'chirib qo'yish kassirni
-                  "nega ishlamayapti" deb qidirishga majbur qilardi. */}
-              {payType === "CREDIT" && !customer && (
-                <div className="pay-mixed-warn">
+                {/* Chek summasi nol bo'lgan (hammasi chegirmaga ketgan)
+                    kamdan-kam holat: yozadigan narsa yo'q. */}
+                {!payUntouched && pay.parts.length === 0 && creditPart === 0 && (
+                  <div className="pay-sum__empty">{t("kassa.payEmpty")}</div>
+                )}
+              </div>
+
+              {/* ⚠ NASIYA O'CHIRILGAN DO'KONDA qoldiq qololmaydi: uni
+                  yozadigan joy yo'q va chek yopilmaydi. */}
+              {creditBlocked && (
+                <div className="pay-mixed-warn ek-shake">
                   <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />{" "}
-                  {t("credit.customerRequired")}
+                  {t("kassa.creditOff")}
                 </div>
               )}
+
+              {/* ⚠ Naqdsiz usulda ortiqcha — xato, qaytim emas. Lekin
+                  jamg'armaga yo'naltirilgan bo'lsa XATO EMAS: yuqorida
+                  yashil qatorda «Jamg'armaga +X» yozib turib, bu yerda
+                  qizil «xato» chiqarish ekranni o'zi bilan ziddiyatga
+                  tushirardi. */}
+              {pay.over > 0 && !overToSavings && (
+                <div className="pay-mixed-warn ek-shake">
+                  <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />{" "}
+                  {t("kassa.payOver", { amount: money(pay.over) })}
+                </div>
+              )}
+
+              {/* Nasiyada mijoz tanlanmagan bo'lsa — nima qilish
+                  kerakligini AYTAMIZ. Tugmani jimgina o'chirib qo'yish
+                  kassirni «nega ishlamayapti» deb qidirishga majbur
+                  qilardi. */}
+              {needCustomer && (
+                /* ⚠ TUGMA, oddiy yozuv emas: bosilganda mijoz
+                   tanlagichi ochiladi. Kassir «mijozni tanlang» ni
+                   o'qib, uni QAYERDAN tanlashni qidirib qolmasin. */
+                <button type="button" className="pay-mixed-warn pay-warn-btn"
+                        onClick={pickCustomer}>
+                  <i className="fa-solid fa-user-plus" aria-hidden="true" />{" "}
+                  {t("credit.customerRequired")}
+                </button>
+              )}
+              {/* Qarz chegarasi — tugmani jimgina o'chirib qo'yish o'rniga
+                  QANCHA joy qolganini aytamiz: kassir summani o'zi
+                  to'g'irlay oladi va mijozni kutdirmaydi. */}
+              </div>
+              </div>
             </div>
 
             <div className="pay-modal-footer">
@@ -1330,7 +4322,46 @@ export default function KassaPage({ toast, refreshLowStock }) {
               </button>
             </div>
           </div>
-        </div>
+        </Overlay>
+      )}
+
+      {/* ════ OXIRGI CHEKLAR (V79) ════════════════════════════════
+          ⚠ OYNA, doimiy panel EMAS: kassa ekranining har piksели
+          tovarlar ro'yxatiga kerak va bu ro'yxat kamdan-kam
+          ochiladi — «hozirgina sotganimning cheki qani?» degan
+          savol kuniga bir necha marta tug'iladi, doim emas. */}
+      {salesOpen && (
+        <Modal title={t("kassa.lastSales")} onClose={() => setSalesOpen(false)} maxWidth={560}>
+          <div className="lsale">
+            {lastSales.map((x, i) => (
+              <button key={`${x.saleId}-${i}`} type="button" className="lsale__row"
+                      onClick={() => {
+                        /* ⚠ Oyna YOPILADI: chek printerdan chiqadi va
+                           kassir darhol mijozga uzatadi — ro'yxatni
+                           ochiq qoldirish uni yana bir marta
+                           yopishga majbur qilardi. */
+                        setSalesOpen(false);
+                        printReceipt({ ...x, shopName, cashier })
+                          .then(() => toast.success(t("kassa.reprinted")))
+                          .catch((e) => toast.error(e.message));
+                      }}>
+                <span className="lsale__no ek-num">#{x.saleId}</span>
+                <span className="lsale__mid">
+                  <b className="ek-num">{money(x.total)}</b>
+                  <small>
+                    {paymentLabel(x.payType)}
+                    {x.customer?.fullName ? ` · ${x.customer.fullName}` : ""}
+                  </small>
+                </span>
+                <span className="lsale__at ek-num">{time(new Date(x.at).toISOString())}</span>
+                <i className="fa-solid fa-print lsale__ico" aria-hidden="true" />
+              </button>
+            ))}
+          </div>
+          <p className="lsale__note">
+            <i className="fa-solid fa-circle-info" aria-hidden="true" /> {t("kassa.lastSalesNote")}
+          </p>
+        </Modal>
       )}
 
       {/* ════ YAKUNLASH: chek chiqmoqda → ✓ ════ */}
@@ -1339,7 +4370,13 @@ export default function KassaPage({ toast, refreshLowStock }) {
           phase={finish.phase}
           total={finish.total}
           receiptNo={finish.receiptNo}
-          onClose={finish.phase === "done" ? () => { setFinish(null); focusBarcode(); } : undefined}
+          note={finish.note}
+          /* ⚠ `setTimeout` bu yerdan OLIB TASHLANDI (V58). U
+             `handleSubmit` ichida turardi va o'sha funksiya xatoga
+             uchraganda umuman qo'yilmasdi — oyna abadiy osilib
+             qolardi. Endi sanoq oynaning O'ZIDA va u har doim
+             ishlaydi (`FinishOverlay`). */
+          onClose={finish.phase === "done" ? () => { setFinish(null); focusSearch(); } : undefined}
         />
       )}
     </div>

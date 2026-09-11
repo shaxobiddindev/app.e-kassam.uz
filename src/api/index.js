@@ -1,6 +1,7 @@
 import { API_BASE, LOGIN_URL, getDeviceId } from "../config";
 import { getLang, withLang, t } from "../lib/ek-i18n";
 import { isNativeShell } from "../lib/ek-desktop";
+import { rememberShopHead } from "../lib/ek-shop-print";
 
 /**
  * Sessiya tiklab bo'lmadi — foydalanuvchini kirish ekraniga qaytaramiz.
@@ -10,14 +11,79 @@ import { isNativeShell } from "../lib/ek-desktop";
  * O'rniga sessiya tozalanadi va oyna qayta yuklanadi — `App.jsx` kirish
  * ekranini shu oynada chizadi.
  */
-function forceLogout() {
+function forceLogout(reason) {
   const lang = localStorage.getItem("ek_lang");
   localStorage.clear();
   if (lang) localStorage.setItem("ek_lang", lang);
 
+  const flag = reason === "taken-over" ? "session_taken_over=1" : "logged_out=1";
+
   // Nativ qobiqda (desktop/mobil) yo'naltirish yo'q — qayta yuklash kirish ekranini chizadi
   if (isNativeShell()) window.location.reload();
-  else window.location.replace(withLang(`${LOGIN_URL}?logged_out=1`));
+  else window.location.replace(withLang(`${LOGIN_URL}?${flag}`));
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SESSIYA BOSHQA QURILMAGA O'TDI (V97)
+
+   ⚠ JIMGINA CHIQARIB YUBORISH YETMAYDI. Kassir ekranda savat bilan
+   turadi va birdan kirish sahifasiga tushadi — u buni «ilova buzildi»
+   deb tushunadi va do'kon egasiga shunday aytadi. Sabab aytilishi
+   SHART: «hisobingizga boshqa qurilmadan kirildi».
+
+   ⚠ NEGA REACT EMAS, ODDIY DOM. Bu holatga tushganda ilovaning butun
+   ma'lumot qatlami o'lik: har so'rov 401 qaytaradi va React daraxti
+   xato holatida bo'lishi mumkin. Ogohlantirish esa ALBATTA
+   ko'rinishi kerak — u hech qanday holatga, hech qanday provayderga
+   bog'liq bo'lmasligi lozim.
+
+   ⚠ BIR MARTA. Bir vaqtda ketgan o'nta so'rov o'nta 401 qaytaradi va
+   o'nta oyna chizilardi.
+   ══════════════════════════════════════════════════════════════════════════ */
+let takenOverShown = false;
+
+function showTakenOver() {
+  if (takenOverShown) return;
+  takenOverShown = true;
+
+  const box = document.createElement("div");
+  box.setAttribute("role", "alertdialog");
+  box.setAttribute("aria-modal", "true");
+  box.style.cssText =
+    "position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;" +
+    "justify-content:center;padding:24px;background:rgba(10,12,18,.72);" +
+    "font-family:system-ui,-apple-system,'Segoe UI',sans-serif";
+
+  const card = document.createElement("div");
+  card.style.cssText =
+    "max-width:420px;width:100%;background:#fff;color:#101828;border-radius:16px;" +
+    "padding:28px 26px;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,.35)";
+
+  const title = document.createElement("div");
+  title.textContent = t("auth.takenOverTitle");
+  title.style.cssText = "font-size:19px;font-weight:800;margin-bottom:10px";
+
+  const body = document.createElement("div");
+  body.textContent = t("auth.takenOverBody");
+  body.style.cssText = "font-size:14px;line-height:1.55;color:#475467;margin-bottom:22px";
+
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.textContent = t("auth.takenOverAction");
+  btn.style.cssText =
+    "width:100%;min-height:48px;border:0;border-radius:12px;cursor:pointer;" +
+    "background:#1570ef;color:#fff;font-size:15px;font-weight:700";
+  btn.onclick = () => forceLogout("taken-over");
+
+  card.append(title, body, btn);
+  box.append(card);
+  document.body.append(box);
+  btn.focus();
+
+  /* ⚠ O'ZI HAM KETADI. Kassir ekran oldida bo'lmasligi mumkin
+     (monoblok kun bo'yi ochiq turadi) va ochiq sessiya ekranda
+     qolib ketmasligi kerak. */
+  setTimeout(() => forceLogout("taken-over"), 15000);
 }
 
 let refreshPromise = null;
@@ -142,6 +208,17 @@ async function request(path, options = {}, _retry = false) {
     throw err;
   }
 
+  /* ⚠ SESSIYA BOSHQA QURILMAGA O'TDI — REFRESH QILINMAYDI (V97).
+     Refresh urinishi baribir muvaffaqiyatsiz tugaydi (eski refresh
+     token bekor qilingan), lekin u sababni YASHIRARDI: kassir
+     «AUTH_FAILED» degan umumiy yo'l bilan jimgina chiqib ketardi.
+     Sarlavha bo'yicha ajratiladi, chunki bu holatda javob tanasi
+     o'qilishi shart emas. */
+  if (res.status === 401 && res.headers.get("X-Session-Taken-Over") === "true") {
+    showTakenOver();
+    throw new Error("SESSION_TAKEN_OVER");
+  }
+
   // Token muddati o'tgan — refresh qilib qayta urinib ko'r
   if (res.status === 401 && !_retry) {
     if (path.includes("/auth/login")) {
@@ -174,7 +251,15 @@ async function request(path, options = {}, _retry = false) {
     throw new BadgeRequiredError(json.message || "Bajikni skanerlang", json.action, json.policy);
   }
 
-  if (!res.ok) throw new Error(json.message || `Xatolik: ${res.status}`);
+  if (!res.ok) {
+    /* ⚠ HOLAT KODI ham uzatiladi. Ba'zi joyda xatoning SABABI muhim:
+       masalan kassada karta topilmagani (404) va kod eskirgani (400)
+       kassir uchun butunlay boshqa ish — birinchisida mijozni qidirish,
+       ikkinchisida esa mijozdan ekranni qayta ko'rsatishni so'rash. */
+    const err = new Error(json.message || `Xatolik: ${res.status}`);
+    err.status = res.status;
+    throw err;
+  }
   return json;
 }
 
@@ -187,6 +272,29 @@ export const authApi = {
       body: JSON.stringify(data),
     }),
   logout: () => request("/auth/logout", { method: "POST" }),
+
+  /* ══ KASSIR PIN BILAN ALMASHADI (V99) ═══════════════════════════════
+     ⚠ `X-Device-Id` SHART. Serverdagi qulf aynan qurilma bo'yicha
+     yuritiladi: usiz hamma urinish «noma'lum» qatoriga tushar va
+     bitta kassadagi xato boshqasini ham qulflab qo'yardi.
+
+     ⚠ Bu yo'l `auth.e-kassam.uz` ga BORMAYDI. Butun ishning ma'nosi
+     shunda: `auth` boshqa origin va boshqa server, u orqali o'tish
+     savatni, ochiq smenani, skaner tinglovchisini va tarozi
+     ulanishini uzardi. */
+  pinSwitch: (pin) =>
+    request("/auth/pin/switch", {
+      method: "POST",
+      headers: { "X-Device-Id": getDeviceId() },
+      body: JSON.stringify({ pin }),
+    }),
+
+  /** Xodim O'Z PIN ini qo'yadi. Rahbar boshqaga qo'ya olmaydi — serverda. */
+  pinSet: (pin) =>
+    request("/auth/pin", { method: "POST", body: JSON.stringify({ pin }) }),
+
+  /** Rahbar xodimning UNUTILGAN PIN ini o'chiradi (qo'ymaydi). */
+  pinClear: (userId) => request(`/auth/pin/${userId}`, { method: "DELETE" }),
 };
 
 // ─── Hisobotlar ───────────────────────────────────────────────
@@ -202,6 +310,132 @@ export const reportApi = {
    * kamomadi, yetkazib beruvchi qarzi, nasiya. Bitta so'rovda.
    */
   signals: (shopId) => request(`/reports/signals${shopId ? `?shopId=${shopId}` : ""}`),
+  /**
+   * TO'LIQ biznes tahlili — hisobot bo'limining butun ekrani (V69).
+   *
+   * ⚠ BITTA so'rov, o'n beshta emas: ekranning hamma bo'limi BIR XIL
+   * daqiqaning suratini ko'rsatishi kerak. Alohida so'rovlarda har biri
+   * davrdagi cheklarni qaytadan o'qirdi (eng og'ir qism aynan shu) va
+   * raqamlar bir-biriga mos kelmasligi mumkin edi.
+   */
+  /**
+   * Bosh sahifaning «HOZIR» qatlami (V74) — bugungi kun, jonli lenta,
+   * ochiq kassalar, tugash arafasidagi tovarlar.
+   *
+   * ⚠ `analytics` dan ALOHIDA so'rov. U davrni tahlil qiladi va og'ir;
+   * bu yengil va avto-yangilanishda HAR DAQIQADA takrorlanadi. Ikkisi
+   * bitta so'rovga birlashtirilganda har yangilanish butun davr
+   * tahlilini qaytadan hisoblatardi.
+   */
+  pulse: (shopId) => request(`/reports/pulse${shopId ? `?shopId=${shopId}` : ""}`),
+  analytics: (from, to, bucket, shopId) => {
+    const q = new URLSearchParams({ from, to });
+    if (bucket) q.set("bucket", bucket);
+    if (shopId) q.set("shopId", shopId);
+    return request(`/reports/analytics?${q}`);
+  },
+
+  /* ⚠ KASSA UCHUN: birga sotiladigan juftliklar (V79). Ochilishda BIR
+     MARTA olinadi va keyin xotiradan qidiriladi — kassirning oldida
+     navbat turadi va har skanerdan keyin serverga borish mumkin
+     emas. To'liq tahlil (`/analytics`) esa o'nlab bo'limni
+     hisoblaydi va kassa uchun juda og'ir. */
+  basket: (shopId) => request(`/reports/basket${shopId ? `?shopId=${shopId}` : ""}`),
+};
+
+// ─── Kalendar va vazifalar (V72) ──────────────────────────────
+/**
+ * ⚠ Vazifa holatini almashtirish ALOHIDA yo'lda. Serverda ham shunday:
+ * kassirga aynan shu amal ochiq (o'ziga berilgan ishni yopish), qolgani
+ * — qo'shish, tahrirlash, o'chirish — rahbarga.
+ */
+export const plannerApi = {
+  events:      (from, to, shopId) => {
+                 const q = new URLSearchParams();
+                 if (from) q.set("from", from);
+                 if (to) q.set("to", to);
+                 if (shopId) q.set("shopId", shopId);
+                 const s = q.toString();
+                 return request(`/planner/events${s ? `?${s}` : ""}`);
+               },
+  addEvent:    (data, shopId) => request(`/planner/events${shopId ? `?shopId=${shopId}` : ""}`,
+                 { method: "POST", body: JSON.stringify(data) }),
+  editEvent:   (id, data, shopId) => request(`/planner/events/${id}${shopId ? `?shopId=${shopId}` : ""}`,
+                 { method: "PUT", body: JSON.stringify(data) }),
+  delEvent:    (id, shopId) => request(`/planner/events/${id}${shopId ? `?shopId=${shopId}` : ""}`,
+                 { method: "DELETE" }),
+
+  tasks:       (status, shopId) => {
+                 const q = new URLSearchParams();
+                 if (status) q.set("status", status);
+                 if (shopId) q.set("shopId", shopId);
+                 const s = q.toString();
+                 return request(`/planner/tasks${s ? `?${s}` : ""}`);
+               },
+  addTask:     (data, shopId) => request(`/planner/tasks${shopId ? `?shopId=${shopId}` : ""}`,
+                 { method: "POST", body: JSON.stringify(data) }),
+  editTask:    (id, data, shopId) => request(`/planner/tasks/${id}${shopId ? `?shopId=${shopId}` : ""}`,
+                 { method: "PUT", body: JSON.stringify(data) }),
+  setStatus:   (id, status, shopId) => request(
+                 `/planner/tasks/${id}/status?status=${status}${shopId ? `&shopId=${shopId}` : ""}`,
+                 { method: "PATCH" }),
+  delTask:     (id, shopId) => request(`/planner/tasks/${id}${shopId ? `?shopId=${shopId}` : ""}`,
+                 { method: "DELETE" }),
+};
+
+// ─── Yorliqlar ────────────────────────────────────────────────
+export const labelApi = {
+  templates:   (kind) => request(`/labels/templates${kind ? `?kind=${kind}` : ""}`),
+  defaultFor:  (kind) => request(`/labels/templates/default?kind=${kind}`),
+  byId:        (id)   => request(`/labels/templates/${id}`),
+  create:      (body) => request("/labels/templates",
+                  { method: "POST", body: JSON.stringify(body) }),
+  update:      (id, body) => request(`/labels/templates/${id}`,
+                  { method: "PUT", body: JSON.stringify(body) }),
+  copy:        (id)   => request(`/labels/templates/${id}/copy`, { method: "POST" }),
+  remove:      (id)   => request(`/labels/templates/${id}`, { method: "DELETE" }),
+
+  /* ── Chop etish navbati (F5) ────────────────────────────────
+     ⚠ NAVBAT SERVERDA. Ekranda yashaydigan ro'yxat brauzer
+     yopilishi bilan yo'qolardi — omborchining bir kunlik ishi
+     bilan birga. */
+  jobs:        ()     => request("/labels/jobs"),
+  job:         (id)   => request(`/labels/jobs/${id}`),
+  newJob:      (body) => request("/labels/jobs",
+                  { method: "POST", body: JSON.stringify(body || {}) }),
+  saveJob:     (id, body) => request(`/labels/jobs/${id}`,
+                  { method: "PUT", body: JSON.stringify(body) }),
+  addToJob:    (id, body) => request(`/labels/jobs/${id}/add`,
+                  { method: "POST", body: JSON.stringify(body) }),
+  setQty:      (id, lineId, quantity) => request(
+                  `/labels/jobs/${id}/lines/${lineId}?quantity=${quantity}`,
+                  { method: "PUT" }),
+  dropLine:    (id, lineId) => request(`/labels/jobs/${id}/lines/${lineId}`,
+                  { method: "DELETE" }),
+  dropJob:     (id)   => request(`/labels/jobs/${id}`, { method: "DELETE" }),
+  /* ⚠ QATOR BO'YICHA belgilanadi: yarmida uzilgan chop etish
+     boshidan emas, to'xtagan joyidan davom etsin. */
+  markPrinted: (id, lineIds) => request(`/labels/jobs/${id}/printed`,
+                  { method: "POST", body: JSON.stringify({ lineIds }) }),
+
+  /* ── «Javondagi narx eskirgan» (F6) ─────────────────────────
+     ⚠ Javob ikki qismli: HAQIQIY son (bosh sahifadagi belgi uchun)
+     va KESILGAN ro'yxat (ekranda o'qish uchun). 3 000 qatorli
+     javob bosh sahifani muzlatardi. */
+  stale:       (limit = 100) => request(`/labels/jobs/stale?limit=${limit}`),
+  queueStale:  ()   => request("/labels/jobs/stale", { method: "POST" }),
+
+  /* ── Qog'oz va printer (G2/G4) ──────────────────────────────
+     ⚠ Ikkisi ALOHIDA: bitta printerga bugun 58×40, ertaga 30×20
+     rulon qo'yiladi. */
+  mediaList:   ()   => request("/labels/media"),
+  printerList: ()   => request("/labels/printers"),
+  outputList:  ()   => request("/labels/output"),
+  saveOutput:  (kind, body) => request(`/labels/output/${kind}`,
+                  { method: "PUT", body: JSON.stringify(body) }),
+  copyPrinter: (id) => request(`/labels/printers/${id}/copy`, { method: "POST" }),
+  tunePrinter: (id, body) => request(`/labels/printers/${id}`,
+                  { method: "PUT", body: JSON.stringify(body) }),
 };
 
 // ─── Mahsulotlar ──────────────────────────────────────────────
@@ -213,6 +447,17 @@ export const productApi = {
                   if (shopId) p.set("shopId", shopId);
                   if (opts.categoryId) p.set("categoryId", opts.categoryId);
                   if (opts.favorites) p.set("favorites", "true");
+                  /* ⚠ KO'P TANLOVLI FILTR (V57) — har qiymat ALOHIDA
+                     parametr bo'lib ketadi (`?brand=Zara&brand=Mango`).
+                     Vergul bilan birlashtirish qilinmadi: brend nomida
+                     ham, rang nomida ham vergul uchraydi va «Dolce,
+                     Gabbana» serverda ikkiga bo'linib ketardi. */
+                  for (const [key, param] of Object.entries({
+                    categories: "category", brands: "brand", sizes: "sizeLabel",
+                    colors: "color", targets: "target", seasons: "season",
+                  })) {
+                    for (const v of opts[key] || []) if (v) p.append(param, v);
+                  }
                   return request(`/products/search?${p}`);
                 },
   /**
@@ -233,6 +478,42 @@ export const productApi = {
   create:       (data)     => request("/products",     { method: "POST",   body: JSON.stringify(data) }),
   update:       (id, data) => request(`/products/${id}`, { method: "PUT",  body: JSON.stringify(data) }),
   delete:       (id)       => request(`/products/${id}`, { method: "DELETE" }),
+  /* ⚠ O'CHIRISHDAN OLDIN SO'RALADI. Server tovarni ko'radi va nima
+     bo'lishini aytadi: haqiqatan o'chiriladimi, arxivga tushadimi
+     yoki umuman mumkin emasmi. Ilgari front «o'chirasizmi?» deb
+     so'rab, keyin serverning rad javobini xato sifatida ko'rsatardi
+     — foydalanuvchi nima bo'lganini tushunmasdi. */
+  /**
+   * Barkodsiz tovarga do'konning o'z kodini beradi (V98).
+   *
+   * ⚠ KOD SERVERDA YARALADI, frontda emas: u do'kon hisoblagichiga
+   * tayanadi va ikki kassir bir vaqtda bosganda bitta raqam ikki
+   * marta berilmasligi kerak.
+   */
+  generateCode: (id) => request(`/products/${id}/generate-code`, { method: "POST" }),
+  /** Yorliq chop etilgani belgilanadi — kodni yangilash qoidasi shunga tayanadi (A2). */
+  labelsPrinted: (ids) => request("/products/labels/printed", {
+    method: "POST", body: JSON.stringify({ ids }),
+  }),
+  /**
+   * Eski raqami boshqa tovarga o'tib ketgan tovarlar (B0).
+   *
+   * ⚠ FAQAT EGAGA. Server ham `OWNER`/`SHOP_ADMIN` dan boshqasini
+   * qo'ymaydi — kassirning bu ro'yxatda qiladigan ishi yo'q.
+   */
+  /**
+   * Arxivdagi tovarni tiklash (B).
+   *
+   * ⚠ Barkodi boshqa faol tovarga o'tib ketgan bo'lsa, tovar
+   * BARKODSIZ tiklanadi va javobdagi `message` shuni aytadi. Bu
+   * XATO emas — tovar tiklandi.
+   */
+  restore: (id)            => request(`/products/${id}/restore`, { method: "POST" }),
+  codeConflicts: ()        => request("/products/code-conflicts"),
+  /** Yorliq qayta chiqarilgach — qatorni ro'yxatdan olib tashlash. */
+  dismissCodeConflict: (id) =>
+    request(`/products/code-conflicts/${id}`, { method: "DELETE" }),
+  deletePreview: (id)      => request(`/products/${id}/delete-preview`),
   toggleActive: (id)       => request(`/products/${id}/toggle-active`, { method: "PATCH" }),
   fiscalReadiness: ()      => request("/products/fiscal-readiness"),
 
@@ -246,6 +527,17 @@ export const productApi = {
   deleteCategory: (id, shopId)       => request(`/products/categories/${id}${shopId ? `?shopId=${shopId}` : ""}`, { method: "DELETE" }),
 
   getVariantGroups: (shopId) => request(`/products/variant-groups${shopId ? `?shopId=${shopId}` : ""}`),
+  /* ── Kiyim: filtr va variantlar (V57) ──────────────────────────────
+     `facets` — do'konda HAQIQATAN mavjud filtr qiymatlari va sanoq.
+     Alohida lug'at jadvali yo'q: u tovarlar bilan sinxron qolishi uchun
+     har o'zgarishda yangilanishi kerak edi va birinchi o'chirilgan
+     tovardayoq «Zara (0 ta)» degan o'lik katakcha qolib ketardi. */
+  getFacets: (shopId) => request(`/products/facets${shopId ? `?shopId=${shopId}` : ""}`),
+  getVariantMatrix: (id, shopId) =>
+    request(`/products/variant-groups/${id}/matrix${shopId ? `?shopId=${shopId}` : ""}`),
+  generateVariants: (data, shopId) =>
+    request(`/products/variant-groups/generate${shopId ? `?shopId=${shopId}` : ""}`,
+            { method: "POST", body: JSON.stringify(data) }),
   createVariantGroup: (data) => request("/products/variant-groups", { method: "POST", body: JSON.stringify(data) }),
 };
 
@@ -257,6 +549,69 @@ export const catalogApi = {
   global:     (barcode) => request(`/catalog/global/${encodeURIComponent(barcode)}`),
   globalSearch: (q, page = 0, size = 30) =>
                   request(`/catalog/global?q=${encodeURIComponent(q)}&page=${page}&size=${size}`),
+
+  /* ══ UMUMIY KATALOGDAN TANLAB OLISH (V90) ═══════════════════════════
+     ⚠ `globalSearch` DAN BOSHQA NARSA. U kassadagi barkod qidiruvi
+     uchun: bitta tovar topiladi va shu zahoti formaga qo'yiladi.
+     Bu yerdagi `browse` esa RO'YXAT: do'kon uni ko'zdan kechiradi,
+     keraksizini belgidan chiqaradi va bir bosishda o'ziga oladi.
+
+     ⚠ `imported` bayrog'i server tomondan keladi va u shu ekranning
+     butun ma'nosi: usiz do'kon qaysi tovarni allaqachon olganini
+     bilmasdi va qayta olib, katalogida ikki nusxaga ega bo'lardi. */
+  globalCategories: () => request("/catalog/global/categories"),
+
+  globalBrowse: ({ search, categoryId, businessType, onlyNew, page = 0, size = 50 } = {}) => {
+    const q = new URLSearchParams();
+    if (search)       q.set("search", search);
+    if (categoryId)   q.set("categoryId", categoryId);
+    if (businessType) q.set("businessType", businessType);
+    if (onlyNew)      q.set("onlyNew", "true");
+    q.set("page", page);
+    q.set("size", size);
+    return request(`/catalog/global/browse?${q}`);
+  },
+
+  /**
+   * «Bunga o'xshash tovar bazada bormi?»
+   *
+   * ⚠ MAQSAD — DUBLIKATNI KIRISHDAN OLDIN TO'XTATISH. Umumiy bazada
+   * yagonalik faqat aniq shtrix-kod bo'yicha, ya'ni «Coca-Cola 0.5»
+   * va «Кока-Кола 0,5 л» bir raqami xato terilgan barkod bilan
+   * bemalol yonma-yon yashaydi. Do'kon tovarni qo'lda terishdan
+   * oldin bazadagini ko'rsa, ikkinchi nusxa umuman yaralmaydi.
+   */
+  globalSimilar: (name, barcode) => {
+    const q = new URLSearchParams();
+    if (name)    q.set("name", name);
+    if (barcode) q.set("barcode", barcode);
+    return request(`/catalog/global/similar?${q}`);
+  },
+
+  /* ══ UMUMIY BAZADAGI YANGILANISH (V93) ═══════════════════════════
+     ⚠ AVTOMATIK QO'LLANMAYDI. Do'kon nomni ATAYLAB o'zgartirgan
+     bo'lishi mumkin («Kola katta») va uni bir kechada qaytarib
+     qo'yish do'kon egasi uchun tushunarsiz yo'qotish bo'lardi.
+     Shuning uchun ro'yxat ko'rsatiladi va har biriga do'kon o'zi
+     qaror qiladi. */
+  globalUpdates: () => request("/catalog/global/updates"),
+
+  /* ⚠ `accept` da bo'lmagan maydon o'zgarmaydi, lekin qaror ESDA
+     QOLADI: «meniki qolsin» ham qaror va u ertaga yana
+     so'ralmasligi kerak. */
+  applyGlobalUpdate: (productId, accept) =>
+    request("/catalog/global/updates/apply", {
+      method: "POST",
+      body: JSON.stringify({ productId, accept: accept || [] }),
+    }),
+
+  /* ⚠ Serverga AYNAN belgilanganlar ketadi. «Hammasini ol, keyin
+     keraksizini o'chir» degan yo'l yo'q: o'chirish tarixga tegadi. */
+  globalImport: (ids, targetCategoryId) =>
+    request("/catalog/global/import", {
+      method: "POST",
+      body: JSON.stringify({ ids, targetCategoryId: targetCategoryId || null }),
+    }),
 };
 
 // ─── Markirovka ("Asl Belgisi") ───────────────────────────────
@@ -279,6 +634,23 @@ export const markingApi = {
 };
 
 // ─── Fiskal cheklar ───────────────────────────────────────────
+/**
+ * KASSALAR (V81) — fiskal zanjirning oxirgi bo'g'ini.
+ *
+ * ⚠ O'CHIRISH YO'Q va bo'lmaydi ham: kassa fiskal identifikator va unga
+ * ishora qiladigan cheklar bor. Kerak bo'lmaganda `INACTIVE` qilinadi
+ * va tarixda qoladi (server ham `DELETE` ni qo'llamaydi).
+ */
+export const cashRegisterApi = {
+  list:   ()          => request("/shop/cash-registers"),
+  create: (body)      => request("/shop/cash-registers",
+                                 { method: "POST", body: JSON.stringify(body) }),
+  update: (id, body)  => request(`/shop/cash-registers/${id}`,
+                                 { method: "PUT", body: JSON.stringify(body) }),
+  setStatus: (id, status) =>
+    request(`/shop/cash-registers/${id}/status?status=${status}`, { method: "PATCH" }),
+};
+
 export const fiscalApi = {
   status:   ()        => request("/fiscal/status"),
   receipts: (status, page = 0, size = 50) => {
@@ -289,6 +661,11 @@ export const fiscalApi = {
   // Kassa chek chop etishdan oldin bir marta so'raydi (kutib qolmaydi).
   bySale:   (saleId)  => request(`/fiscal/by-sale/${saleId}`),
   retry:    (id)      => request(`/fiscal/receipts/${id}/retry`, { method: "POST" }),
+  /* Zanjirni QO'LDA tekshirish (V85).
+     ⚠ `POST`, `GET` emas: tekshiruv natijani YOZADI va minglab
+     qatorni o'qiydi — `GET` bo'lsa brauzer uni keshlashi yoki
+     oldindan yuklashi mumkin edi. */
+  checkChain: ()      => request("/fiscal/chain/check", { method: "POST" }),
 };
 
 // ─── Rasmlar ──────────────────────────────────────────────────
@@ -314,13 +691,17 @@ export const inventoryApi = {
   // expiryDate ixtiyoriy — bo'sh bo'lsa muddatsiz partiya (idish, kanstovar)
   // `markingCodes` — faqat markirovkali tovarda. Server kirim miqdorini
   // qabul qilingan yorliqlar soniga tenglashtiradi.
-  addStock: (productId, qty, expiryDate, reason, markingCodes = null) =>
+  // `costPrice` — SHU PARTIYANING tan narxi (V53). Bo'sh bo'lsa tovarning
+  // joriy tan narxi olinadi. Server javobida `priceAdvice` qaytishi
+  // mumkin: tan narx o'zgargan bo'lsa narx tavsiyasi.
+  addStock: (productId, qty, expiryDate, reason, markingCodes = null, costPrice = null) =>
     request(`/inventory/product/${productId}/add`, {
       method: "PATCH",
       body: JSON.stringify({
         quantity: Number(qty),
         expiryDate: expiryDate || null,
         reason: reason || null,
+        costPrice: costPrice === "" || costPrice == null ? null : Number(costPrice),
         ...(markingCodes ? { markingCodes } : {}),
       }),
     }),
@@ -336,6 +717,20 @@ export const inventoryApi = {
         writeOffReason: writeOffReason || null,
       }),
     }),
+  /* ── PARTIYALAR VA ARXIV (V60) ───────────────────────────────────────
+     ⚠ Arxiv ALOHIDA so'raladi. Uni asosiy ro'yxatga qo'shish javonda
+     nima borligini ko'rsatmay qo'yardi: bir yildan keyin ko'p
+     sotiladigan tovarda o'nlab bo'sh partiya yig'iladi. */
+  batches: (productId, archived = false) =>
+    request(`/inventory/product/${productId}${archived ? "?archived=true" : ""}`),
+
+  /* ⚠ `PATCH`, `DELETE` emas: partiya bazadan o'chirilmaydi. Unga
+     harakatlar jurnali va sotuvlar bog'langan va o'chirish tarixni
+     buzardi — arxiv ko'rinishni o'zgartiradi, yozuvni emas. */
+  archiveBatch:   (inventoryId) => request(`/inventory/batch/${inventoryId}/archive`,   { method: "PATCH" }),
+  unarchiveBatch: (inventoryId) => request(`/inventory/batch/${inventoryId}/unarchive`, { method: "PATCH" }),
+  archiveEmpty:   (productId)   => request(`/inventory/product/${productId}/archive-empty`, { method: "PATCH" }),
+
   // Kirim-chiqim jurnali
   getMovements: (productId, page = 0, size = 50) =>
     request(`/inventory/movements?page=${page}&size=${size}${productId ? `&productId=${productId}` : ""}`),
@@ -454,6 +849,13 @@ export const securityApi = {
   // pul yashigini ochish) — bajik `setPendingBadgeToken` orqali ketadi.
   confirm: (data) => request("/security/confirm", { method: "POST", body: JSON.stringify(data) }),
 
+  /* To'lanmagan savat tashlab ketilgani — BAJIK SO'RAMAYDI.
+     `confirm` bu yerga to'g'ri kelmaydi: u bajik talab qiladi, siyosat
+     o'chirilgan bo'lsa esa umuman hech narsa yozmaydi. Bu yerda esa hech
+     kim tugma bosmayapti — kassa ochilganda eski savat topildi. */
+  cartAbandoned: (data) =>
+    request("/security/cart-abandoned", { method: "POST", body: JSON.stringify(data) }),
+
   billing: () => request("/security/billing"),
 };
 
@@ -513,6 +915,14 @@ export const loyaltyApi = {
 };
 
 export const customerApi = {
+  /* RO'YXATDAN OLIB TASHLASH (V47) — faqat rahbar.
+     ⚠ ARXIVLASH: yozuv bazada qoladi va eski cheklarida ko'rinadi,
+     lekin ro'yxatda, qidiruvda va kassada chiqmaydi. Haqiqiy o'chirish
+     sotuv tarixini buzardi. */
+  /* ⚠ `remove` OLIB TASHLANDI (V62). Do'kon mijoz yozuvini o'chira
+     olmaydi va serverda `DELETE /customers/{id}` yo'li ham YO'Q —
+     yozuv mijozniki, uni faqat mijozning o'zi ilovadan arxivga
+     jo'natadi. */
   /** Karta kodi bo'yicha (V34) — kassada skanerlanganda. */
   byCard: (code) => request(`/customers/by-card/${encodeURIComponent(code)}`),
   /** Telefon bo'yicha — mijoz kartasini unutgan bo'lsa. */
@@ -523,11 +933,43 @@ export const customerApi = {
   payDebt:   (id, data) => request(`/customers/${id}/payment`, { method: "POST", body: JSON.stringify(data) }),
   adjustDebt:(id, data) => request(`/customers/${id}/adjust`,  { method: "POST", body: JSON.stringify(data) }),
   ledger:    (id) => request(`/customers/${id}/ledger`),
+  /* ⚠ TO'LOVNI BEKOR QILISH (V102) — faqat rahbar (server ham
+     tekshiradi). Yo'lda MIJOZ ham bor: bekor qilish pulga tegadi va
+     «boshqa mijozning qatori» degan xatoni jimgina bajarib qo'yish
+     mumkin emas — chek yo'lidan farqi shunda. */
+  reverseDebtPayment: (id, ledgerId, data) =>
+    request(`/customers/${id}/ledger/${ledgerId}/reverse`,
+            { method: "POST", body: JSON.stringify(data) }),
+  /* TO'LOV CHEKI (V61) — jurnal qatorining `id` si bo'yicha.
+     ⚠ Mijoz `id` si SO'RALMAYDI: qator o'zi mijozni ham, do'konni ham
+     biladi va uni ikkinchi marta yuborish faqat ikkalasi bir-biriga
+     to'g'ri kelmasligi xavfini tug'dirardi. */
+  paymentReceipt: (ledgerId) => request(`/customers/ledger/${ledgerId}/receipt`),
+  /* Jamg'arma lentasidagi qatorning kvitansiyasi (V66). */
+  savingsReceipt: (entryId) => request(`/customers/savings/${entryId}/receipt`),
+
+  /* ── MIJOZ JAMG'ARMASI (V63) ──────────────────────────────────
+     ⚠ Bu KESHBEK EMAS: ball do'konning sovg'asi (kuyadi, naqdga
+     chiqarilmaydi), jamg'arma esa mijozning do'konga bergan puli va
+     do'kon uchun majburiyat. Shuning uchun yo'llar ham alohida. */
+  savings:       (id)       => request(`/customers/${id}/savings`),
+  topUpSavings:  (id, data) => request(`/customers/${id}/savings/top-up`,
+                                       { method: "POST", body: JSON.stringify(data) }),
+  /* ⚠ Faqat rahbar: bu kassadan pul chiqishi (server ham shunday). */
+  refundSavings: (id, data) => request(`/customers/${id}/savings/refund`,
+                                       { method: "POST", body: JSON.stringify(data) }),
+  adjustSavings: (id, data) => request(`/customers/${id}/savings/adjust`,
+                                       { method: "POST", body: JSON.stringify(data) }),
   debtors:   () => request("/customers/debtors"),
+  /* QO'LDA QARZDOR KIRITISH (V48) — daftardan ko'chirish uchun.
+     Mijoz ham shu chaqiruvda yaratiladi: 40 ta ismni ikki bosqichda
+     kiritish do'konchini yarim yo'lda tashlab ketardi. */
+  addManualDebt: (data) => request("/customers/debtors/manual",
+                                   { method: "POST", body: JSON.stringify(data) }),
   /** `value` bo'sh bo'lsa do'kon standartiga qaytadi. */
-  setCreditLimit: (id, value) =>
-    request(`/customers/${id}/credit-limit${value == null || value === "" ? "" : `?value=${value}`}`,
-            { method: "PATCH" }),
+  /* Qarz eslatmalarini DARHOL yuborish (V44) — haftalik oyna baribir
+     amal qiladi, ya'ni qayta bosish mijozga xabar yog'dirmaydi. */
+  remindDebtors: () => request(`/customers/debt-remind`, { method: "POST" }),
 
   getAll:  (shopId)    => request(`/customers${shopId ? `?shopId=${shopId}` : ""}`),
   getById: (id)        => request(`/customers/${id}`),
@@ -538,13 +980,38 @@ export const customerApi = {
 
 // ─── Sotuvlar ─────────────────────────────────────────────────
 export const saleApi = {
-  getAll:  (shopId) => request(`/sales${shopId ? `?shopId=${shopId}` : ""}`),
+  /* ⚠ DAVR MAJBURIY EMAS, LEKIN KERAK (V100). Usiz server oxirgi 30
+     kunni beradi — ilgari esa do'konning BUTUN tarixi qaytardi va
+     javob hech qachon kichraymasdi. Davr juda keng bo'lsa server
+     xato qaytaradi va JIMGINA QIRQMAYDI: yarim tarixni to'liq deb
+     ko'rsatish eng yomon yechim bo'lardi. */
+  getAll:  (shopId, from, to) => {
+    const q = new URLSearchParams();
+    if (shopId) q.set("shopId", shopId);
+    if (from) q.set("from", from);
+    if (to) q.set("to", to);
+    const s = q.toString();
+    return request(`/sales${s ? `?${s}` : ""}`);
+  },
   getById: (id)          => request(`/sales/${id}`),
   create:  (data)        => request("/sales",       { method: "POST",  body: JSON.stringify(data) }),
   cancel:  (id)          => request(`/sales/${id}/cancel`, { method: "PATCH" }),
   /** Qaytarish — tanlangan qatorlar bo'yicha. Bekor qilishdan BOSHQA amal:
       bu yerda tovar javonga qaytadi va qoldiq tiklanadi. */
   returnSale: (id, data) => request(`/sales/${id}/return`, { method: "POST", body: JSON.stringify(data) }),
+
+  /**
+   * TUZATUVCHI CHEK (V86) — soliqqa yuborilgan SUMMANI to'g'rilaydi.
+   *
+   * ⚠ URL da chek `id` si YO'Q va bu ataylab: tuzatiladigan chek
+   * IXTIYORIY. Umuman qayd etilmagan tushum topilganda ota-chek
+   * bo'lmaydi va uni majburiy qilish do'konni soxta chek tanlashga
+   * majbur qilardi.
+   *
+   * ⚠ Faqat fiskal rejim yoqilgan do'konda ishlaydi — server rad
+   * etadi, ekranda esa tugma umuman chizilmaydi.
+   */
+  correct: (data) => request("/sales/correction", { method: "POST", body: JSON.stringify(data) }),
 };
 
 
@@ -562,20 +1029,152 @@ export const telegramApi = {
   status:     ()   => request("/telegram/status"),
   bindCode:   ()   => request("/telegram/bind-code", { method: "POST" }),
   disconnect: (id) => request(`/telegram/chats/${id}`, { method: "DELETE" }),
+  /**
+   * Avtomatik hisobot jadvali (V71): kunlik, haftalik, oylik.
+   *
+   * ⚠ FAQAT o'zgargan bayroq yuboriladi. Uchalasini har safar
+   * yuborsak, bitta tugmacha bosilganda qolgan ikkitasining eski
+   * holati ustiga yozilardi — ikki qurilmadan bir vaqtda
+   * o'zgartirilsa biri ikkinchisini bekor qilardi.
+   */
+  setDigest: (id, patch) => {
+    const q = new URLSearchParams();
+    for (const [k, v] of Object.entries(patch || {})) q.set(k, String(v));
+    return request(`/telegram/chats/${id}/digest?${q}`, { method: "PATCH" });
+  },
 };
 
+/**
+ * Taroziga eksport — CSV FAYLNI yuklab oladi (V42).
+ *
+ * ⚠ `request()` YARAMAYDI: u javobni JSON deb tahlil qiladi, bu yerda esa
+ * `text/csv` keladi. Shuning uchun to'g'ridan-to'g'ri `fetch` va `blob`.
+ * Sarlavhalar qo'lda qo'yiladi — `request()` ichidagi mantiq bu yo'lda
+ * ishtirok etmaydi.
+ */
+export async function downloadScaleExport() {
+  const token = localStorage.getItem("ek_token");
+  const res = await fetch(`${API_BASE}/products/scale-export`, {
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      "X-Device-Id": getDeviceId(),
+    },
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "tarozi-plu.csv";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  /* Havolani darhol bo'shatib bo'lmaydi — ba'zi brauzerlar yuklashni
+     boshlashga ulgurmaydi va fayl bo'sh chiqadi. */
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}
+
 export const shopApi = {
-  getProfile: () => request("/shop/profile"),
+  /* ⚠ CHEK SARLAVHASI SHU YERDA KESHLANADI. Profil to'qqizta sahifada
+     so'raladi va har biriga «keshni ham yangilashni unutmang» deb
+     ishonib bo'lmasdi — shuning uchun yangilanish chaqiruvchida emas,
+     chaqiruvning O'ZIDA. Chek chop etish paytida esa server so'roviga
+     vaqt yo'q: kassir tugmani bosgan zahoti qog'oz chiqishi kerak va
+     internet uzilgan bo'lishi ham mumkin. */
+  getProfile: () => request("/shop/profile").then((r) => {
+    rememberShopHead(r?.data);
+    /* ⚠ PIN UZUNLIGI HAM SHU YERDA ESLAB QOLINADI. Sabab yuqoridagi
+       bilan bir xil, lekin o'tkirroq: PIN oynasi kassir almashinuvi
+       paytida — mijoz kassada turganda — ochiladi. O'sha ondagi
+       qo'shimcha so'rov aynan tejayotgan vaqtimizni yeb qo'yardi. */
+    const len = Number(r?.data?.pinLength);
+    if (len === 4 || len === 6) localStorage.setItem("ek_pinLength", String(len));
+    return r;
+  }),
+
+  /* DO'KONDA QAYSI BO'LIMLAR BOR (V49) — menyu shu javobdan quriladi.
+     Har qanday xodimga ochiq: menyuni chizish uchun kassirga ham,
+     omborchiga ham shu ro'yxat kerak.
+
+     ⚠ ROLNI ALMASHTIRMAYDI. Modul ochiq bo'lsa ham, unga kirish
+     huquqi rol bilan hal qilinadi. Klient ikkalasini ham hisobga
+     olishi kerak: modul ro'yxatidan menyu, roldan esa o'sha
+     menyuning qaysi qismi ochiqligi. */
+  getFeatures: () => request("/shop/features"),
+
+  /* Tarozi barkodi formati (V42) — BUTUN TANA bilan.
+     Boshqa sozlamalar bittalab saqlanadi, bu esa bir butun: prefiks, PLU
+     va qiymat xonalari birgalikda 13 ga yig'ilishi kerak. Bo'sh tana —
+     standart formatga qaytarish. */
+  setScale: (data) =>
+    request("/shop/scale", { method: "PATCH", body: JSON.stringify(data || {}) }),
   /** Faoliyat turi — tayyor katalog va kassa ekrani standartini belgilaydi. */
   setBusinessType: (type) => request(`/shop/business-type?type=${type}`, { method: "PATCH" }),
+  /* ══ FISKAL REKVIZITLAR (V81) ═══════════════════════════════════════
+     Hamma maydon ixtiyoriy: rekvizit bosqichma-bosqich to'ldiriladi va
+     yarim to'ldirilgan holat ham saqlanadi.
+
+     ⚠ Bo'sh maydon ham YUBORILADI (`?tin=&fiscalAddress=`): server
+     bo'sh satrni «tozalash» deb o'qiydi. Yubormaslik «tegilmasin»
+     degani bo'lardi va o'shanda noto'g'ri kiritilgan STIRni o'chirish
+     yo'li qolmasdi. */
+  setFiscalRequisites: ({ tin, tinType, fiscalAddress, commissionAgentTin }) => {
+    const q = new URLSearchParams({
+      tin: tin ?? "",
+      tinType: tinType ?? "",
+      fiscalAddress: fiscalAddress ?? "",
+      commissionAgentTin: commissionAgentTin ?? "",
+    });
+    return request(`/shop/fiscal-requisites?${q}`, { method: "PATCH" });
+  },
+
+  /* Chek ostidagi ixtiyoriy matn (V85).
+     ⚠ Bo'sh qiymat ham yuboriladi — server uni «o'chirish» deb
+     o'qiydi va aks holda bir marta yozilgan matnni olib tashlashning
+     yo'li qolmasdi. */
+  /* Zanjir buzilganda sotuv to'xtasinmi (V85). Standart — yo'q. */
+  setChainBlock: (value) =>
+    request(`/shop/chain-block?value=${value}`, { method: "PATCH" }),
+
+  setReceiptFooter: (value) =>
+    request(`/shop/receipt-footer?value=${encodeURIComponent(value ?? "")}`,
+            { method: "PATCH" }),
+
   /** Kamomad chegarasi — faqat egasi. */
   setCashTolerance: (value) => request(`/shop/cash-tolerance?value=${value}`, { method: "PATCH" }),
   /** Do'kon bo'yicha eng katta chegirma foizi. */
-  setDiscountLimit: (percent) => request(`/shop/discount-limit?percent=${percent}`, { method: "PATCH" }),
+  /**
+   * Chegirma siyosati (V53): foiz + baza + pul shifti — BITTA so'rovda.
+   *
+   * ⚠ `amount` da manfiy qiymat «shiftni OLIB TASHLA» degani, `null`
+   * esa «tegilmasin». Ikkalasi farqlanmasa shiftni o'chirishning yo'li
+   * qolmasdi.
+   */
+  setDiscountLimit: (percent, basis, amount) => {
+    const q = new URLSearchParams({ percent: String(percent) });
+    if (basis) q.set("basis", basis);
+    if (amount != null) q.set("amount", String(amount));
+    return request(`/shop/discount-limit?${q}`, { method: "PATCH" });
+  },
+  /** Zarariga sotishga ruxsat (V53) — faqat egasi. */
+  setLossSale: (enabled) => request(`/shop/loss-sale?value=${enabled}`, { method: "PATCH" }),
   /** Qaytarish muddati (kun). 0 — har safar rahbar tasdig'i. */
   setReturnDays: (days) => request(`/shop/return-days?days=${days}`, { method: "PATCH" }),
   /** Nasiya chegarasi — do'kon standarti. */
-  setCreditLimit: (value) => request(`/shop/credit-limit?value=${value}`, { method: "PATCH" }),
+  /* NASIYA YOQILGANMI (V46) — chegaraning o'rniga.
+     ⚠ Summa chegarasi olib tashlandi: do'koncha qarzni raqamga qarab
+     emas, ODAMGA qarab beradi. */
+  setCreditEnabled: (value) => request(`/shop/credit-enabled?value=${value}`, { method: "PATCH" }),
+  /* Muddat qaysi kundan sanaladi (V46): `EACH` · `FIRST`. */
+  setCreditDueMode: (value) => request(`/shop/credit-due-mode?value=${value}`, { method: "PATCH" }),
+  /* Qarzni mijoz ham tasdiqlaydimi (V46). */
+  setCreditConfirm: (value) => request(`/shop/credit-confirm?value=${value}`, { method: "PATCH" }),
+  /* Ombordan berib yuborish tizimi (V48). */
+  setPickupEnabled: (value) => request(`/shop/pickup-enabled?value=${value}`, { method: "PATCH" }),
+  /* Do'kon telefoni chekda ko'rinsinmi (V62). ⚠ Raqamning O'ZI
+     o'chmaydi — u profilda, hisobotlarda va mijoz kabinetida qoladi. */
+  setReceiptShowPhone: (value) => request(`/shop/receipt-show-phone?value=${value}`, { method: "PATCH" }),
   /** Naqdsiz yarashtiruvda tasdiqsiz o'tadigan farq. Standart 0. */
   setNonCashTolerance: (value) => request(`/shop/noncash-tolerance?value=${value}`, { method: "PATCH" }),
   /** Inventarizatsiya kamomadi chegarasi — SO'MDA (tannarx bo'yicha). */
@@ -584,8 +1183,27 @@ export const shopApi = {
   setBonusMaxPercent: (value) => request(`/shop/bonus-max-percent?value=${value}`, { method: "PATCH" }),
   /** Ball amal qilish muddati, kunlarda (V30). `0` = muddatsiz. */
   setBonusExpiryDays: (value) => request(`/shop/bonus-expiry-days?value=${value}`, { method: "PATCH" }),
+  /* Bazaviy keshbek foizi (V45) — darajasiz ham ishlaydi. `0` = yopiq.
+     Daraja bo'lsa ikkisining KATTAROG'I olinadi. */
+  setBaseCashback: (value) => request(`/shop/base-cashback?value=${value}`, { method: "PATCH" }),
   /** Omborda «muddati yaqin» oynasi, kunlarda (V41). 1..365. */
   setNearExpiryDays: (value) => request(`/shop/near-expiry-days?value=${value}`, { method: "PATCH" }),
+  /**
+   * Oylik savdo rejasi (V70).
+   *
+   * ⚠ Bo'sh qiymat rejani O'CHIRADI (server `null` qiladi), nolga
+   * tenglashtirmaydi: nol «rejamiz nol» degani va bajarilish har doim
+   * 100% bo'lib chiqardi.
+   */
+  setSalesTarget: (value) =>
+    request(`/shop/sales-target${value === "" || value == null ? "" : `?value=${value}`}`,
+            { method: "PATCH" }),
+  /* Daraja qaysi oynadagi xariddan hisoblanadi (V43). `0` — umrbod. */
+  setLoyaltyWindowDays: (value) => request(`/shop/loyalty-window-days?value=${value}`, { method: "PATCH" }),
+  /* Nasiyani qaytarish muddati (V43). `0` — muddatsiz. */
+  setCreditDueDays: (value) => request(`/shop/credit-due-days?value=${value}`, { method: "PATCH" }),
+  /* Mijozga qarz eslatmasi yuborilsinmi (V44). */
+  setCreditRemind: (value) => request(`/shop/credit-remind?value=${value}`, { method: "PATCH" }),
   /** Do'kon jurnali. ⚠ `shopId` yuborilmaydi — server uni chaqiruvchining
       do'konidan oladi va so'rovdagisini e'tiborga olmaydi. */
   audit: ({ action, actor, page = 0, size = 50 } = {}) => {
@@ -604,10 +1222,12 @@ export const shopApi = {
    * olib tashlanadi va do'kon chegarasi ishlaydi — shuning uchun `0` bilan
    * adashtirmaslik kerak: `0` = "bu xodim umuman chegirma bera olmaydi".
    */
-  setUserDiscountLimit: (userId, percent, shopId) => {
+  setUserDiscountLimit: (userId, percent, shopId, amount = null) => {
     const p = new URLSearchParams();
     if (shopId) p.set("shopId", shopId);
     if (percent !== null && percent !== "") p.set("percent", percent);
+    // ⚠ Manfiy `amount` — «shiftni OLIB TASHLA»; yuborilmasa «tegilmasin».
+    if (amount !== null && amount !== "") p.set("amount", amount);
     const q = p.toString();
     return request(`/shop/users/${userId}/discount-limit${q ? `?${q}` : ""}`, { method: "PATCH" });
   },
@@ -615,4 +1235,24 @@ export const shopApi = {
   getBranches: () => request("/shop/branches"),
   createBranch: (data) => request("/shop/branches", { method: "POST", body: JSON.stringify(data) }),
   updateBranch: (id, data) => request(`/shop/branches/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+};
+
+/* ══════════════════════════════════════════════════════════════════════════
+   OMBOR NAVBATI (V48)
+
+   Mijoz kassaga to'laydi, tovarni esa omborchi beradi. Omborchi mijozning
+   chekidagi barkodni skanerlaydi va shu chaqiruvlar bilan ishlaydi.
+   Sabab — serverdagi `PickupService` izohida.
+   ══════════════════════════════════════════════════════════════════════════ */
+export const pickupApi = {
+  queue:    () => request("/pickup"),
+  history:  () => request("/pickup/history"),
+  /** Chek barkodidan olingan raqam bo'yicha (`S-000173` → 173). */
+  bySale:   (saleId) => request(`/pickup/by-sale/${saleId}`),
+  issue:    (id, note) => request(`/pickup/${id}/issue`,
+                                  { method: "POST", body: JSON.stringify({ note: note || null }) }),
+  /* Ombor printeriga chiqarilgani SERVERDA belgilanadi: ekran
+     yangilanganda yoki boshqa qurilmada ochilganda bir chek qayta-qayta
+     bosilib, omborchini chalg'itardi. */
+  markPrinted: (id) => request(`/pickup/${id}/printed`, { method: "POST" }),
 };

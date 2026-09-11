@@ -11,30 +11,31 @@
    uni hech kim sota olmaydi. Bu chalkashlik emas, haqiqat.
    ══════════════════════════════════════════════════════════════════════════ */
 
-import { Fragment, useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "../lib/ek-i18n";
 import { transferApi, productApi } from "../api";
 import { Modal } from "../components";
 import MarkingScanModal from "../components/MarkingScanModal";
 import { Empty, Field, FormGroup, SearchBar } from "../components/ui";
 import Select from "../components/ek/Select";
-import { money } from "../lib/ek-format";
-import { transferStatus, unitLabel } from "../lib/ek-labels";
+import { money, shortDate, dateTime } from "../lib/ek-format";
+import { TRANSFER_STATUS, transferStatus, unitLabel,
+         writeOffOptions, TRANSFER_SHORTAGE_EXCLUDE } from "../lib/ek-labels";
+import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
 import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
+import { asArray } from "../lib/ek-array";
 
 const TONE_COLOR = { success: "green", danger: "red", warning: "yellow", info: "blue", neutral: "gray" };
 
-/* Chiqit turkumlari — yetishmovchilikda so'raladi. Ro'yxat `InventoryPage`
-   dagi bilan bir xil tartibda: xodim ikkala joyda bir xil narsani ko'rsin.
-   ⚠ RECOUNT bu yerda YO'Q: yo'lda yo'qolgan tovar hisob xatosi emas. */
-const SHORTAGE_REASONS = [
-  { value: "BREAKAGE",        icon: "fa-hammer" },
-  { value: "SPOILAGE",        icon: "fa-triangle-exclamation" },
-  { value: "THEFT",           icon: "fa-user-secret" },
-  { value: "EXPIRY",          icon: "fa-hourglass-end" },
-  { value: "OTHER",           icon: "fa-ellipsis" },
-];
+/* ⚠ Chiqit turkumlari `ek-labels.js` da — bitta joyda (V116).
+
+   Bu yerda ular qayta terilgan edi va yonidagi izoh «ro'yxat
+   InventoryPage dagi bilan bir xil tartibda» derdi. Aslida shu
+   paytda ham EMAS edi: bu yerda THEFT muddatdan oldin turardi,
+   `SPOILAGE` esa boshqa ikonka bilan chizilardi. Ko'chirma nusxa
+   shunday yashaydi — izoh o'z holicha qoladi, ro'yxat esa
+   uzoqlashaveradi. */
 
 const num = (v) => (v == null || v === "" ? 0 : Number(v));
 
@@ -64,9 +65,9 @@ export default function TransfersPage({ toast }) {
       const [tg, out, inc] = await Promise.all([
         transferApi.targets(), transferApi.outgoing(), transferApi.incoming(),
       ]);
-      setTargets(tg.data || []);
-      setOutgoing(out.data || []);
-      setIncoming(inc.data || []);
+      setTargets(asArray(tg.data));
+      setOutgoing(asArray(out.data));
+      setIncoming(asArray(inc.data));
     } catch (err) {
       toast?.error(err.message);
     } finally {
@@ -91,7 +92,7 @@ export default function TransfersPage({ toast }) {
     if (q.trim().length < 2) { setFound([]); return; }
     try {
       const r = await productApi.search(q.trim(), 0, 12);
-      setFound(r.data || []);
+      setFound(asArray(r.data));
     } catch (_) { setFound([]); }
   };
 
@@ -265,18 +266,36 @@ export default function TransfersPage({ toast }) {
     );
   };
 
-  const rows = tab === "incoming" ? incoming : outgoing;
+  const all = tab === "incoming" ? incoming : outgoing;
+
+  /* ══ USTUNLAR BO'YICHA FILTR (V68) ═══════════════════════════════════
+     ⚠ «Kimdan/kimga» ustuni YO'NALISHGA qarab boshqa maydondan
+     o'qiladi, lekin filtr uchun bu BITTA ustun: ekranda ham bitta
+     ustun turibdi va foydalanuvchi uni «qarshi tomon» deb ko'radi. */
+  const COLS = useMemo(() => [
+    { key: "id",    label: "#",                 type: "number", get: (r) => r.id },
+    { key: "date",  label: t("common.date"),    type: "date",   get: (r) => r.sentAt },
+    { key: "side",  label: tab === "incoming" ? t("transfer.from") : t("transfer.to"),
+      type: "text",   get: (r) => (tab === "incoming" ? r.fromShopName : r.toShopName) },
+    { key: "lines", label: t("transfer.lines"), type: "number", get: (r) => r.lines?.length || 0 },
+    { key: "val",   label: t("transfer.value"), type: "number", get: (r) => r.totalCost },
+    { key: "st",    label: t("common.status"),  type: "enum",
+      options: Object.keys(TRANSFER_STATUS).map((k) => ({ value: k, label: transferStatus(k).label })),
+      get: (r) => r.status },
+  ], [tab]);
+  const colFlt = useDataFilter(COLS, `transfer-${tab}`);
+  const rows = colFlt.apply(all);
 
   const table = (
     <table>
       <thead>
         <tr>
-          <th>#</th>
-          <th>{t("common.date")}</th>
-          <th>{tab === "incoming" ? t("transfer.from") : t("transfer.to")}</th>
-          <th>{t("transfer.lines")}</th>
-          <th>{t("transfer.value")}</th>
-          <th>{t("common.status")}</th>
+          <SortTh flt={colFlt} col="id">#</SortTh>
+          <SortTh flt={colFlt} col="date">{t("common.date")}</SortTh>
+          <SortTh flt={colFlt} col="side">{tab === "incoming" ? t("transfer.from") : t("transfer.to")}</SortTh>
+          <SortTh flt={colFlt} col="lines">{t("transfer.lines")}</SortTh>
+          <SortTh flt={colFlt} col="val">{t("transfer.value")}</SortTh>
+          <SortTh flt={colFlt} col="st">{t("common.status")}</SortTh>
           <th></th>
         </tr>
       </thead>
@@ -284,7 +303,12 @@ export default function TransfersPage({ toast }) {
         {rows.length ? rows.map((r) => (
           <tr key={r.id}>
             <td className="mono">{r.id}</td>
-            <td className="mono" style={{ fontSize: 13 }}>{(r.sentAt || "").slice(0, 10)}</td>
+            {/* ⚠ SANA + VAQT (V70). Ilgari `slice(0, 10)` bilan faqat
+                sana olinardi, holbuki `sentAt` — LAHZA. Ko'chirish kun
+                davomida bo'ladi va bir kunda bir necha marta yuboriladi:
+                «qaysi biri oldin ketdi?» degan savolga sanadan javob
+                topib bo'lmasdi. */}
+            <td className="mono" style={{ fontSize: 13, whiteSpace: "nowrap" }}>{dateTime(r.sentAt)}</td>
             <td className="fw-700">{tab === "incoming" ? r.fromShopName : r.toShopName}</td>
             <td className="mono">{r.lines?.length || 0}</td>
             <td className="mono fw-700">
@@ -362,7 +386,18 @@ export default function TransfersPage({ toast }) {
 
           {busy
             ? <SkeletonTable rows={6} cols={["narrow", "text", "wide", "num", "num", "text"]} />
-            : <div className="card"><div className="table-wrap">{table}</div></div>}
+            : (
+              <div className="card">
+                <div className="card-header">
+                  <span className="card-title">
+                    {tab === "incoming" ? t("transfer.incoming") : t("transfer.outgoing")}
+                    <span className="text-muted" style={{ marginLeft: 8, fontWeight: 600 }}>{rows.length}</span>
+                  </span>
+                  <DataFilter cols={COLS} flt={colFlt} />
+                </div>
+                <div className="table-wrap">{table}</div>
+              </div>
+            )}
         </>
       )}
 
@@ -389,13 +424,19 @@ export default function TransfersPage({ toast }) {
         >
           <FormGroup label={t("transfer.to")}>
             <Select block variant="field" ariaLabel={t("transfer.to")}
+                    searchable searchPlaceholder={t("common.searchShort")}
                     value={form.toShopId}
                     onChange={(v) => setForm({ ...form, toShopId: v })}
                     options={targets.map((s) => ({ value: String(s.id), label: s.name, icon: "fa-store" }))} />
           </FormGroup>
 
           <FormGroup label={t("products.search")}>
-            <SearchBar value={search} onChange={runSearch} placeholder={t("products.search")} />
+            {/* ⚠ Bu sahifa qidiruvni ALLAQACHON serverdan so'raydi, ya'ni `*425`
+                shu holicha ham ishlab kelgan. `code` bayrog'i faqat ikki narsani
+                qo'shadi: yulduzchadan keyin raqamdan boshqasi tushib qoladi va
+                rejim ko'rinib turadi — boshqa sahifalar bilan bir xil bo'lsin. */}
+            <SearchBar code codeLabel={t("kassa.codeMode")}
+              value={search} onChange={runSearch} placeholder={t("products.search")} />
             {found.length > 0 && (
               <div className="card" style={{ marginTop: 6, maxHeight: 220, overflowY: "auto" }}>
                 {found.map((p) => (
@@ -445,7 +486,7 @@ export default function TransfersPage({ toast }) {
                           <i className="fa-solid fa-barcode" /> {l.codes?.length || 0} {t("marking.pcs")}
                         </button>
                       ) : (
-                        <Field className="form-input mono" kind="qty"
+                        <Field className="form-input mono" kind="qty" unit={l.unit}
                                value={l.quantity} onChange={(e) => setLine(i, e.target.value)} />
                       )}
                     </td>
@@ -505,7 +546,7 @@ export default function TransfersPage({ toast }) {
                           {l.productName}
                           <div className="text-muted" style={{ fontSize: 12 }}>{unitLabel(l.unit)}</div>
                         </td>
-                        <td className="mono" style={{ fontSize: 13 }}>{l.expiryDate || "—"}</td>
+                        <td className="mono" style={{ fontSize: 13 }}>{shortDate(l.expiryDate)}</td>
                         <td className="mono">{l.quantity}</td>
                         <td>
                           {/* Markirovkada miqdor qo'lda yozilmaydi: qabul
@@ -523,7 +564,7 @@ export default function TransfersPage({ toast }) {
                                 : `${row.received} ${t("marking.pcs")}`}
                             </button>
                           ) : (
-                            <Field className="form-input mono" kind="qty"
+                            <Field className="form-input mono" kind="qty" unit={l.unit}
                                    max={String(l.quantity)}
                                    value={row.received}
                                    onChange={(e) => setAcceptLine(l.id, "received", e.target.value)} />
@@ -543,9 +584,7 @@ export default function TransfersPage({ toast }) {
                               <Select variant="field" ariaLabel={t("transfer.shortage")}
                                       value={row.reason}
                                       onChange={(v) => setAcceptLine(l.id, "reason", v)}
-                                      options={SHORTAGE_REASONS.map((r) => ({
-                                        value: r.value, icon: r.icon, label: t(`enum.writeOff.${r.value}`),
-                                      }))} />
+                                      options={writeOffOptions({ exclude: TRANSFER_SHORTAGE_EXCLUDE })} />
                               <Field style={{ flex: 1, minWidth: 180 }}
                                      placeholder={t("inv.reason")}
                                      value={row.note}
@@ -616,7 +655,7 @@ export default function TransfersPage({ toast }) {
                 {view.lines.map((l) => (
                   <tr key={l.id}>
                     <td className="fw-700">{l.productName}</td>
-                    <td className="mono" style={{ fontSize: 13 }}>{l.expiryDate || "—"}</td>
+                    <td className="mono" style={{ fontSize: 13 }}>{shortDate(l.expiryDate)}</td>
                     <td className="mono">{l.quantity}</td>
                     <td className="mono">{l.receivedQuantity ?? "—"}</td>
                     <td className="text-muted">

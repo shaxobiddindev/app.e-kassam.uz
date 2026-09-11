@@ -19,6 +19,7 @@ import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
 import { money } from "../utils";
 import { NumField } from "../components/ek/EkFields";
+import { asArray } from "../lib/ek-array";
 
 const EMPTY_FORM = { name: "", minSpent: "", discountPercent: "", cashbackPercent: "" };
 
@@ -38,6 +39,9 @@ export default function LoyaltyPage({ toast }) {
   /* Ball muddati (V30), kunlarda. "0" — muddatsiz. */
   const [expiryDays, setExpiryDays] = useState("0");
   const [savedExpiry, setSavedExpiry] = useState("0");
+  /* Daraja oynasi (V43), kunlarda. "0" — umrbod (eskicha). */
+  const [windowDays, setWindowDays] = useState("0");
+  const [savedWindow, setSavedWindow] = useState("0");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -46,7 +50,7 @@ export default function LoyaltyPage({ toast }) {
         loyaltyApi.tiers(),
         shopApi.getProfile().catch(() => null),
       ]);
-      setTiers(tierRes.data || []);
+      setTiers(asArray(tierRes.data));
       if (profile?.data?.bonusMaxPercent != null) {
         const v = String(Number(profile.data.bonusMaxPercent));
         setMaxPercent(v);
@@ -55,6 +59,9 @@ export default function LoyaltyPage({ toast }) {
       const ed = String(profile?.data?.bonusExpiryDays ?? 0);
       setExpiryDays(ed);
       setSavedExpiry(ed);
+      const wd = String(profile?.data?.loyaltyWindowDays ?? 0);
+      setWindowDays(wd);
+      setSavedWindow(wd);
     } catch (err) {
       toast?.error(err.message);
     } finally {
@@ -75,6 +82,37 @@ export default function LoyaltyPage({ toast }) {
     } catch (err) {
       toast?.error(err.message);
       setMaxPercent(savedMax);
+    }
+  };
+
+  /* ── Daraja muddati (V43) ────────────────────────────────────────────
+     ⚠ JIMGINA PASAYTIRISH YO'Q. Oynani qisqartirish mijozlarni
+     darajasidan tushirishi mumkin va ular buni ertaga kassada bilardi —
+     sodiqlik dasturi uchun eng yomon yo'l. Shuning uchun saqlashdan
+     oldin tasdiq so'raladi va oqibati aytiladi. */
+  const saveWindowDays = async () => {
+    if (windowDays === savedWindow) return;
+    const v = Number(windowDays);
+    if (!Number.isInteger(v) || v < 0 || (v > 0 && v < 30) || v > 3650) {
+      toast?.error(t("loyalty.windowInvalid"));
+      setWindowDays(savedWindow);
+      return;
+    }
+    try {
+      const ok = await confirm({
+        title: t("loyalty.windowTitle"),
+        message: v > 0
+          ? t("loyalty.windowConfirm", { days: v })
+          : t("loyalty.windowConfirmOff"),
+        type: v > 0 ? "warning" : "info",
+      });
+      if (!ok) { setWindowDays(savedWindow); return; }
+      await shopApi.setLoyaltyWindowDays(v);
+      setSavedWindow(String(v));
+      toast?.success(t("loyalty.saved"));
+    } catch (err) {
+      toast?.error(err.message);
+      setWindowDays(savedWindow);
     }
   };
 
@@ -216,6 +254,26 @@ export default function LoyaltyPage({ toast }) {
           />
           <span className="text-muted" style={{ fontSize: 12, flex: 1, minWidth: 220 }}>
             {t("loyalty.expiryHint")}
+          </span>
+        </div>
+      </div>
+
+      {/* ── Daraja muddati (V43) ────────────────────────────────────────
+          Standart 0 (umrbod) — hech narsa o'zgarmaydi. Oyna qo'yilsa
+          daraja so'nggi N kundagi xariddan hisoblanadi va mijoz kelmay
+          qo'ysa O'ZI pasayadi. */}
+      <div className="card" style={{ marginBottom: 14 }}>
+        <div className="card-body" style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 13, fontWeight: 600 }}>{t("loyalty.windowDays")}</span>
+          <NumField kind="int"
+            className="form-input ek-num"
+            style={{ width: 100 }}
+            value={windowDays}
+            onChange={(e) => setWindowDays(e.target.value)}
+            onBlur={saveWindowDays}
+          />
+          <span className="text-muted" style={{ fontSize: 12, flex: 1, minWidth: 220 }}>
+            {t("loyalty.windowHint")}
           </span>
         </div>
       </div>

@@ -10,19 +10,25 @@
    "+5%" deb yozib butun katalogni o'zgartirib qo'yish juda oson.
    ══════════════════════════════════════════════════════════════════════════ */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "../lib/ek-i18n";
 import { productApi } from "../api";
 import { Empty, Field, FormGroup } from "../components/ui";
 import Select from "../components/ek/Select";
-import { money } from "../lib/ek-format";
+import { money, dateTime } from "../lib/ek-format";
 import { useConfirm } from "../context/ConfirmProvider";
 import { useOnline } from "../hooks/useOnline";
 import { useBadge } from "../context/BadgeProvider";
 import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
+import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
+import { asArray } from "../lib/ek-array";
 
-const fmtT = (iso) => (iso ? new Date(iso).toLocaleString("uz-UZ", { dateStyle: "short", timeStyle: "short" }) : "—");
+/* ⚠ SANA+VAQT — `lib/ek-format.js` dan (V70). Uchta sahifada
+   uchta bir xil mahalliy nusxa bor edi va ular `uz-UZ` ni
+   qattiq yozardi: ruscha yoki inglizcha tanlagan foydalanuvchi
+   ham o'zbekcha sanani ko'rardi. */
+const fmtT = dateTime;
 
 export default function PricesPage({ toast }) {
   const confirm = useConfirm();
@@ -43,8 +49,8 @@ export default function PricesPage({ toast }) {
         productApi.getCategories().catch(() => ({ data: [] })),
         productApi.shopPriceHistory(),
       ]);
-      setCats(c.data || []);
-      setHistory(h.data || []);
+      setCats(asArray(c.data));
+      setHistory(asArray(h.data));
     } catch (err) {
       toast?.error(err.message);
     } finally {
@@ -104,6 +110,22 @@ export default function PricesPage({ toast }) {
 
   const valid = form.value !== "" && Number(form.value) !== 0;
 
+  /* ══ USTUNLAR BO'YICHA FILTR (V68) — narx tarixi ══════════════════
+     ⚠ Narx ustunlari YANGI qiymat bo'yicha filtrlanadi: «kim narxni
+     100 mingdan oshirdi?» degan savol yangi narx haqida. Eskisi
+     ekranda yonida turadi va uni alohida ustun qilish jadvalni
+     ikki barobar kengaytirardi. */
+  const HCOLS = useMemo(() => [
+    { key: "date",  label: t("common.date"),        type: "date",   get: (h) => h.createdAt },
+    { key: "prod",  label: t("products.col"),       type: "text",   get: (h) => h.productName },
+    { key: "price", label: t("price.salePrice"),    type: "number", get: (h) => h.newSalePrice },
+    { key: "cost",  label: t("dash.costPrice"),     type: "number", get: (h) => h.newCostPrice },
+    { key: "why",   label: t("inv.reason"),         type: "text",   get: (h) => h.reason },
+    { key: "who",   label: t("sales.colCashier"),   type: "text",   get: (h) => h.changedBy },
+  ], []);
+  const hFlt = useDataFilter(HCOLS, "prices");
+  const shownHistory = hFlt.apply(history);
+
   return (
     <div>
       <h2 className="page-title" style={{ marginBottom: 18 }}>{t("price.title")}</h2>
@@ -118,6 +140,7 @@ export default function PricesPage({ toast }) {
           <div className="grid-2">
             <FormGroup label={t("price.scope")}>
               <Select block variant="field" ariaLabel={t("price.scope")}
+                      searchable searchPlaceholder={t("common.searchShort")}
                       value={form.categoryId}
                       onChange={(v) => { setForm({ ...form, categoryId: v }); setPreview(null); }}
                       options={[{ value: "", label: t("price.allProducts"), icon: "fa-boxes-stacked" },
@@ -153,7 +176,7 @@ export default function PricesPage({ toast }) {
               {saving ? <Spinner /> : <i className="fa-solid fa-eye" />} {t("price.preview")}
             </button>
             <button className="btn btn-primary btn-sm" onClick={apply}
-                    disabled={saving || !preview || !preview.count}>
+                    disabled={saving || !preview || preview.count <= (preview.blockedCount || 0)}>
               <i className="fa-solid fa-check" /> {t("price.apply")}
             </button>
           </div>
@@ -168,6 +191,17 @@ export default function PricesPage({ toast }) {
               <i className="fa-solid fa-eye text-blue" /> {t("price.preview")} ({preview.count})
             </span>
           </div>
+          {/* ⚠ O'TKAZIB YUBORILGAN TOVARLAR (V53). Yangi narx tan yoki
+              optom narxdan past bo'lib qolsa, o'sha tovar O'ZGARMAYDI.
+              Buni JIMGINA qilish mumkin emas edi: do'kon egasi
+              «hammasiga −20%» deb qo'yib, bir necha tovar o'zgarmaganini
+              faqat oy oxirida bilib qolardi. */}
+          {preview.blockedCount > 0 && (
+            <div className="ek-note ek-note--warn" style={{ margin: "0 16px 12px" }}>
+              <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />
+              <div>{t("price.blockedCount").replace("{n}", preview.blockedCount)}</div>
+            </div>
+          )}
           <div className="table-wrap" style={{ maxHeight: 320, overflowY: "auto" }}>
             <table>
               <thead>
@@ -179,13 +213,20 @@ export default function PricesPage({ toast }) {
               </thead>
               <tbody>
                 {preview.lines.map((l) => (
-                  <tr key={l.productId}>
+                  <tr key={l.productId} style={l.blocked ? { opacity: .65 } : undefined}>
                     <td className="fw-700">{l.productName}</td>
                     <td className="mono text-muted">{money(l.oldPrice)}</td>
-                    <td className="mono fw-800"
-                        style={{ color: Number(l.newPrice) >= Number(l.oldPrice) ? "var(--fg-success)" : "var(--fg-danger)" }}>
-                      {money(l.newPrice)}
-                    </td>
+                    {l.blocked ? (
+                      <td className="text-muted" style={{ fontSize: 12 }}>
+                        <i className="fa-solid fa-ban" aria-hidden="true" />{" "}
+                        {l.blockReason || t("price.blocked")}
+                      </td>
+                    ) : (
+                      <td className="mono fw-800"
+                          style={{ color: Number(l.newPrice) >= Number(l.oldPrice) ? "var(--fg-success)" : "var(--fg-danger)" }}>
+                        {money(l.newPrice)}
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -200,22 +241,23 @@ export default function PricesPage({ toast }) {
           <span className="card-title">
             <i className="fa-solid fa-clock-rotate-left text-blue" /> {t("price.history")}
           </span>
+          <DataFilter cols={HCOLS} flt={hFlt} />
         </div>
         <div className="table-wrap">
           {busy ? <SkeletonTable rows={6} cols={["wide", "num", "num", "text"]} /> : (
             <table>
               <thead>
                 <tr>
-                  <th>{t("common.date")}</th>
-                  <th>{t("products.col")}</th>
-                  <th>{t("price.salePrice")}</th>
-                  <th>{t("dash.costPrice")}</th>
-                  <th>{t("inv.reason")}</th>
-                  <th>{t("sales.colCashier")}</th>
+                  <SortTh flt={hFlt} col="date">{t("common.date")}</SortTh>
+                  <SortTh flt={hFlt} col="prod">{t("products.col")}</SortTh>
+                  <SortTh flt={hFlt} col="price">{t("price.salePrice")}</SortTh>
+                  <SortTh flt={hFlt} col="cost">{t("dash.costPrice")}</SortTh>
+                  <SortTh flt={hFlt} col="why">{t("inv.reason")}</SortTh>
+                  <SortTh flt={hFlt} col="who">{t("sales.colCashier")}</SortTh>
                 </tr>
               </thead>
               <tbody>
-                {history.length ? history.map((h) => (
+                {shownHistory.length ? shownHistory.map((h) => (
                   <tr key={h.id}>
                     <td style={{ fontSize: 13 }}>{fmtT(h.createdAt)}</td>
                     <td className="fw-700">{h.productName}</td>

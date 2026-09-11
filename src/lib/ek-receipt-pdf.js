@@ -1,4 +1,4 @@
-import { isMobileApp } from "./ek-desktop";
+import { isDesktop, isMobileApp } from "./ek-desktop";
 
 /* ══════════════════════════════════════════════════════════════════════════
    CHEKNI PDF QILIB SAQLASH
@@ -63,12 +63,34 @@ body {
 .pt-tape__row > span:last-child { white-space: nowrap; }
 .pt-line { padding: 3px 0; }
 .pt-line__name { font-weight: 700; }
+/* Qator chegirmasi — qog'oz chekdagi bilan bir xil, ichkariroq va
+   so'nikroq: u qatorning IZOHI, alohida qator emas. */
+.pt-line__cut { padding-left: 10px; opacity: .75; }
+/* ⚠ CHEK TURI (V61) — «QARZ TO'LOVI». Bu qator EKRANDA bor edi, PDF
+   da esa yo'q: saqlangan nusxada u oddiy mayda matnga aylanib,
+   xarid chekidan ajralib turmay qolardi — holbuki uni ajratib
+   turadigan YAGONA narsa shu (V109 da topildi). */
+.pt-tape__kind {
+  margin-top: 6px; padding-top: 5px; border-top: 1px solid #111111;
+  font-size: 11px; font-weight: 800; letter-spacing: .18em;
+}
 .pt-total { font-size: 14px; font-weight: 800; padding: 6px 0; border-top: 1px solid #111111; margin-top: 4px; }
 .pt-earn { font-weight: 700; }
 .pt-returned {
   margin: 10px 0; padding: 6px; text-align: center; font-weight: 800; letter-spacing: .2em;
   border: 2px solid #111111; border-radius: 4px;
 }
+/* ⚠ BEKOR QILINGAN TO'LOV (V109) — «pt-returned» bilan bir oilada:
+   ikkalasi ham «bu hujjat endi boshqa narsani anglatadi» deydi va
+   mijoz ularni bir xil tanishi kerak. Farqi — bu yerda uch qator
+   (nima · qachon · nega), chunki «nega?» savoli darhol tug'iladi. */
+.pt-void {
+  margin: 10px 0; padding: 6px; text-align: center;
+  border: 2px solid #111111; border-radius: 4px;
+}
+.pt-void__title { font-weight: 800; letter-spacing: .2em; }
+.pt-void__when  { font-size: 11px; margin-top: 2px; }
+.pt-void__why   { font-size: 11px; margin-top: 2px; }
 .pt-center { text-align: center; }
 .pt-tape__no { font-size: 12px; font-weight: 800; margin-top: 2px; }
 .pt-thanks { margin-top: 10px; font-weight: 700; }
@@ -82,14 +104,87 @@ body {
 `;
 
 /** Bosma hujjat — bitta oq sahifa, ichida chek tasmasining nusxasi. */
-function buildHtml(tapeHtml, title) {
+function buildHtml(tapeHtml, title, css = PRINT_CSS) {
   const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   /* ⚠ `data-theme="light"`: ilova qorong'i temada bo'lsa ham chek oq
      qog'ozda qoladi (ekranda ham shunday — `[data-theme=dark] .pt-tape`). */
   return `<!DOCTYPE html><html lang="uz" data-theme="light"><head>`
     + `<meta charset="utf-8"><title>${esc(title)}</title>`
-    + `<style>${PRINT_CSS}</style></head><body>${tapeHtml}</body></html>`;
+    + `<style>${css}</style></head><body>${tapeHtml}</body></html>`;
+}
+
+/**
+ * ══════════════════════════════════════════════════════════════════════
+ * HUJJATNI CHOP ETISH / PDF QILIB SAQLASH — UMUMIY YO'L (V98)
+ *
+ * ⚠ NEGA AJRATILDI. Platformaga xos ikkita nozik joy bor va ular
+ * TAKRORLANMASLIGI kerak:
+ *
+ *   · Android ilovada `window.print()` JIM ishlaydi — hech narsa
+ *     qilmaydi va foydalanuvchi tugma buzilgan deb o'ylaydi;
+ *   · brauzerda ochilgan oyna chop etilgach O'ZI yopilishi kerak,
+ *     aks holda har hujjatdan keyin bitta ochiq oyna qolib ketadi.
+ *
+ * Mijoz hisoboti ham shu yo'ldan o'tadi — faqat uslubi boshqa (A4,
+ * chek esa 58 mm). Ikkinchi nusxa yozilsa, bu ikki nozik joydan biri
+ * unda bir kuni tushib qolardi.
+ * ══════════════════════════════════════════════════════════════════════
+ */
+export async function printHtml(bodyHtml, title, css, win = "width=420,height=720") {
+  const name = title || "Hujjat";
+  const html = buildHtml(bodyHtml, name, css);
+
+  if (isMobileApp()) {
+    const plugin = window.Capacitor?.Plugins?.ReceiptPrint;
+    /* Plagin yo'q (eski APK yoki brauzerdagi `ek_forceMobile` sinovi) —
+       oddiy brauzer yo'liga tushamiz, u yerda ishlasa ishlaydi. */
+    if (plugin) {
+      await plugin.print({ html, name });
+      return;
+    }
+  }
+
+  /* ⚠ O'LCHAM PARAMETR: chek 420px oynada ochiladi (u 58 mm), hisobot
+     esa kengrog'ida. Umumiy yo'lga ko'chirishda buni unutib, chekni
+     ham 820px ga o'tkazib yuborgan edim — ishlab turgan yo'lning
+     ko'rinishini beixtiyor o'zgartirish aynan shunday boshlanadi. */
+  /* ══════════════════════════════════════════════════════════════════
+     ⚠ DESKTOPDA `window.open` ISHLAMAYDI — VA NULL HAM QAYTARMAYDI.
+
+     Tauri/WebView2 da wry yangi oyna so'rovini `SetHandled(true)` bilan
+     yopadi, lekin WebView2 baribir «dummy» WindowProxy qaytaradi. Ya'ni:
+       · oyna ochilmaydi;
+       · `w` NULL EMAS, shuning uchun pastdagi popup tekshiruvi ham
+         ishlamaydi;
+       · `w.document.write` jimgina yo'qoladi va funksiya
+         MUVAFFAQIYAT qaytaradi.
+
+     Natijasi eng yomon turdagi nosozlik: kassir «Chop etish» ni bosadi,
+     hech narsa chiqmaydi, xato ham chiqmaydi va navbat qatori
+     «chiqarilgan» deb belgilanadi.
+
+     Aynan shu qoida `ek-hardware.js` da allaqachon bor edi — bu yerga
+     ko'chirilmagani uchun v1.10.0 dan keyin qo'shilgan YORLIQ moduli
+     (`LabelsPage`, `LabelQueue`) desktopda umuman chop eta olmasdi.
+
+     `window.print()` esa WebView2 da ISHLAYDI. Shuning uchun hujjat
+     ilova oynasining ICHIDA, yashirin iframe da chop etiladi.
+     ══════════════════════════════════════════════════════════════════ */
+  if (isDesktop()) {
+    await printInFrame(html);
+    return;
+  }
+
+  const w = window.open("", "_blank", win);
+  /* Popup to'silgan — bu YAGONA kutiladigan xato, matni ham aniq bo'lsin */
+  if (!w) throw new Error("Brauzer yangi oynani to'sdi — ruxsat bering va qayta urinib ko'ring");
+  w.document.write(html);
+  w.document.close();
+  /* Chop etilgach oyna O'ZI yopiladi — aks holda har hujjatdan keyin
+     bitta ochiq oyna qolib ketardi (`ek-hardware.js` bilan bir xil). */
+  w.onafterprint = () => w.close();
+  setTimeout(() => w.print(), 80);
 }
 
 /**
@@ -102,26 +197,56 @@ function buildHtml(tapeHtml, title) {
  */
 export async function saveReceiptPdf(tapeEl, title) {
   if (!tapeEl) throw new Error("Chek hali yuklanmadi");
-  const name = title || "Chek";
-  const html = buildHtml(tapeEl.outerHTML, name);
+  /* ⚠ Uslub BERILMAYDI — chek 58 mm tasmada qoladi (`PRINT_CSS`).
+     Platformaga xos yo'l esa `printHtml` da, bitta joyda. */
+  return printHtml(tapeEl.outerHTML, title || "Chek");
+}
 
-  if (isMobileApp()) {
-    const plugin = window.Capacitor?.Plugins?.ReceiptPrint;
-    /* Plagin yo'q (eski APK yoki brauzerdagi `ek_forceMobile` sinovi) —
-       oddiy brauzer yo'liga tushamiz, u yerda ishlasa ishlaydi. */
-    if (plugin) {
-      await plugin.print({ html, name });
-      return;
-    }
-  }
+/**
+ * Hujjatni ILOVA OYNASI ICHIDA chop etadi (desktop yo'li).
+ *
+ * ⚠ IFRAME OLIB TASHLANADI, lekin DARHOL EMAS: `print()` sinxron
+ * ko'rinadi-yu, WebView2 da chop etish dialogi yopilgunga qadar
+ * iframe tirik turishi kerak. Shuning uchun `onafterprint` kutiladi,
+ * va u kelmasa ham (dialog bekor qilinsa ba'zi versiyalarda kelmaydi)
+ * vaqt bo'yicha tozalanadi — aks holda har chop etishdan keyin
+ * DOM da bitta o'lik iframe qolib ketardi.
+ */
+function printInFrame(html) {
+  return new Promise((resolve, reject) => {
+    const fr = document.createElement("iframe");
+    fr.setAttribute("aria-hidden", "true");
+    fr.setAttribute("title", "");
+    fr.style.cssText = "position:fixed;left:-10000px;top:0;width:1px;height:1px;border:0";
+    document.body.appendChild(fr);
 
-  const win = window.open("", "_blank", "width=420,height=720");
-  /* Popup to'silgan — bu YAGONA kutiladigan xato, matni ham aniq bo'lsin */
-  if (!win) throw new Error("Brauzer yangi oynani to'sdi — ruxsat bering va qayta urinib ko'ring");
-  win.document.write(html);
-  win.document.close();
-  /* Chop etilgach oyna O'ZI yopiladi — aks holda har chekdan keyin bitta
-     ochiq oyna qolib ketardi (ek-hardware.js dagi bilan bir xil qoida). */
-  win.onafterprint = () => win.close();
-  setTimeout(() => win.print(), 80);
+    let done = false;
+    const cleanup = () => {
+      if (done) return;
+      done = true;
+      try { fr.remove(); } catch { /* allaqachon olingan */ }
+      resolve();
+    };
+
+    fr.onload = () => {
+      try {
+        const win = fr.contentWindow;
+        if (!win) throw new Error("Chop etish oynasi ochilmadi");
+        win.onafterprint = cleanup;
+        win.focus();
+        win.print();
+        /* ⚠ ZAXIRA TOZALASH: `onafterprint` kafolatlanmagan. */
+        setTimeout(cleanup, 60000);
+      } catch (e) {
+        try { fr.remove(); } catch { /* bo'lmasa bo'ldi */ }
+        done = true;
+        reject(e);
+      }
+    };
+
+    /* ⚠ `srcdoc` ishlatiladi, `document.write` emas: CSP `default-src
+       'self'` da iframe ga `about:blank` orqali yozish bloklanishi
+       mumkin, `srcdoc` esa hujjatni bevosita beradi. */
+    fr.srcdoc = html;
+  });
 }

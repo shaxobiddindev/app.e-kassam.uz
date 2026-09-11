@@ -1,0 +1,319 @@
+import { useEffect, useState } from "react";
+import { API_BASE } from "../config";
+import { qrSvg } from "../lib/ek-qr";
+import { saveReceiptPdf } from "../lib/ek-receipt-pdf";
+import { groupDigits } from "../lib/ek-format";
+import { useRef } from "react";
+import Overlay from "../components/ek/Overlay";
+
+/* ══════════════════════════════════════════════════════════════════════════
+   QARZ JURNALINING CHEKI (V61) — «QARZ OLINDI» va «QARZ TO'LANDI»
+   JAMG'ARMA KVITANSIYASI (V66) — har bir jamg'arma harakati
+
+   ═══ NEGA XARID CHEKIDAN ALOHIDA FAYL ══════════════════════════════════
+
+   `Receipt.jsx` ni shartlar bilan ikkiga bo'lish yo'li ham bor edi. Lekin
+   ikkala chekning YARMI bir-biriga kerak emas: to'lovda tovar qatorlari,
+   ball, fiskal belgi va shtrix YO'Q; xaridda esa «qolgan qarz» satri yo'q.
+   Bitta faylga siqilsa, har satr `data.lines ? … : …` bo'lib, ikkalasini
+   ham o'qib bo'lmas edi — va ikkalasidan biriga tegilganda ikkinchisi
+   sinardi.
+
+   ⚠ JAMG'ARMA ESA SHU YERDA (V66), alohida faylda emas: uning shakli
+   qarz cheki bilan AYNAN bir xil — sana, kim, qancha, usul, qoldiq
+   oldin-keyin. Farq faqat so'zlarda va ular `kind` dan olinadi.
+   Uchinchi fayl uchinchi tasma bo'lardi.
+
+   ⚠ TASMANING KO'RINISHI esa BIR XIL sinflardan (`pt-tape`, `pt-hr`,
+   `pt-tape__row`) yig'iladi: mijoz ikkala chekni bitta do'kondan olgan
+   deb bilishi kerak.
+
+   Chek UCH yo'l bilan ochiladi va ko'rinishi uchalasida bir xil:
+     · KASSADA        — `data` to'g'ridan-to'g'ri uzatiladi (to'lov javobi);
+     · QOG'OZDAGI QR  — `signedId` + `signature`, kalitsiz;
+     · ILOVA/KABINET  — `id` + (`appToken` + `customerId`) yoki `token`.
+   `savings` — jamg'arma kvitansiyasi (manzillar boshqa).
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ⚠ `groupDigits` — TIZIMNING YAGONA GURUHLAGICHI (02-DESIGN-SYSTEM.md).
+   `Intl.NumberFormat("uz-UZ")` brauzerga qarab VERGUL qaytaradi va
+   mijoz SMS da «500 000», chekda esa «500,000» ko'rib, ikkalasi bir xil
+   summami deb o'ylardi. Xuddi shu xato mijoz ilovasida bir marta
+   tuzatilgan edi — bu yerda uni takrorlamaymiz.
+
+   ⚠ To'lov chekida MIQDOR YO'Q (faqat pul), shuning uchun `groupDigits`
+   ning butunlashtirishi bu yerda xavfsiz. */
+const money = (v) => groupDigits(v);
+
+/* ⚠ TO'LOV TURI KVITANSIYADA KO'RSATILMAYDI — qog'oz chek bilan bir
+   xil qoida (`ek-hardware.js`). */
+
+/* ⚠ JAMG'ARMA TURLARI — so'zlar mijozning ko'zi bilan. «Qabul qildi» —
+   pul do'konga o'tgan turlarda; «Qaytardi» — do'kon pul bergan turda.
+   Bitta so'z qoldirilsa, qaytarish kvitansiyasida «qabul qildi» deb
+   yozilib, mijoz pul TOPSHIRGANDEK o'qilardi. */
+const SAV = {
+  TOP_UP:  { head: "JAMG'ARMAGA QO'YILDI",        who: "Qabul qildi", sign: "+" },
+  CHANGE:  { head: "QAYTIM JAMG'ARMAGA",           who: "Kassir",      sign: "+" },
+  OVERPAY: { head: "ORTIQCHA TO'LOV JAMG'ARMAGA",  who: "Qabul qildi", sign: "+" },
+  SPEND:   { head: "JAMG'ARMADAN XARIDGA",         who: "Kassir",      sign: "−" },
+  REFUND:  { head: "JAMG'ARMADAN QAYTARILDI",      who: "Qaytardi",    sign: "−" },
+  RETURN:  { head: "QAYTARISH — JAMG'ARMAGA",       who: "Kassir",      sign: "+" },
+  ADJUST:  { head: "JAMG'ARMA TO'G'IRLANDI",       who: "Xodim",       sign: "" },
+};
+
+const when = (v) =>
+  new Date(v).toLocaleString("uz-UZ", { dateStyle: "short", timeStyle: "short" });
+
+export default function PaymentReceipt({
+  data: given, token, appToken, customerId, id, signedId, signature, onClose, savings = false,
+}) {
+  const [data, setData] = useState(given || null);
+  const [error, setError] = useState("");
+  const [pdfError, setPdfError] = useState("");
+  const tapeRef = useRef(null);
+
+  useEffect(() => {
+    /* Kassa chekni to'lov javobidan tayyor oladi — qayta so'rashning
+       ma'nosi yo'q va u qo'shimcha kutish bo'lardi. */
+    if (given) { setData(given); return; }
+
+    let url;
+    let headers = {};
+    /* ⚠ Jamg'arma manzillari BOSHQA (V66): qator boshqa jadvalda va
+       imzo prefiksi ham boshqa — to'lov manziliga `J-` id yuborilsa,
+       o'sha raqamdagi TO'LOV cheki ochilardi. */
+    if (signedId) {
+      url = savings
+        ? `${API_BASE}/public/portal/savings-receipt/${signedId}?k=${encodeURIComponent(signature)}`
+        : `${API_BASE}/public/portal/payment/${signedId}?k=${encodeURIComponent(signature)}`;
+    } else if (appToken) {
+      url = `${API_BASE}/app/${savings ? "savings" : "payments"}/${id}?c=${encodeURIComponent(customerId)}`;
+      headers = { "X-App-Token": appToken };
+    } else {
+      url = `${API_BASE}/public/portal/${savings ? "savings" : "payments"}/${id}`;
+      headers = { "X-Portal-Token": token };
+    }
+
+    fetch(url, { headers })
+      .then((r) => r.json())
+      .then((j) => {
+        if (j.success === false) throw new Error(j.message);
+        setData(j.data);
+      })
+      .catch((e) => setError(e.message || "Chekni ochib bo'lmadi"));
+  }, [given, id, token, appToken, customerId, signedId, signature, savings]);
+
+  const savePdf = async () => {
+    setPdfError("");
+    try {
+      await saveReceiptPdf(tapeRef.current, data ? `Chek ${data.receiptNo}` : "Chek");
+    } catch (e) {
+      setPdfError(e.message || "Saqlab bo'lmadi");
+    }
+  };
+
+  /* ⚠ IKKI HUJJAT, BITTA SHAKL. `kind` ni O'QIMASDAN chizib bo'lmaydi:
+     shakli bir xil, ma'nosi TESKARI — birida pul do'konga kelgan,
+     ikkinchisida tovar mijozga ketgan. Farq ko'rinmasa, qarz cheki
+     to'lov cheki bo'lib o'qilardi va mijoz «to'lagandim» deb aynan shu
+     qog'ozni ko'rsatardi.
+
+     ⚠ Eski javoblarda `kind` bo'lmasligi mumkin — o'shanda TO'LOV deb
+     hisoblanadi, chunki V62 gacha faqat to'lovning cheki bor edi. */
+  const kind = data?.kind || "";
+  const charge = kind === "CHARGE";
+  /* Jamg'arma kvitansiyasi (V66): `SAVINGS_TOP_UP` … `SAVINGS_ADJUST`. */
+  const sav = kind.startsWith("SAVINGS_") ? (SAV[kind.slice(8)] || SAV.ADJUST) : null;
+  /* «Qarz yopildi» faqat TO'LOVDA ma'noga ega: qarz olib, qoldig'i nol
+     bo'lishi mumkin emas. */
+  const cleared = data && !charge && !sav && Number(data.balanceAfter) === 0;
+  /* Jamg'armada pul KO'PAYGAN bo'lsa yashil — bu mijoz uchun yaxshi xabar. */
+  const grew = sav && data && data.balanceBefore != null
+    && Number(data.balanceAfter) > Number(data.balanceBefore);
+
+  return (
+    /* ⚠ `Overlay` SHART, qo'lda yozilgan `<div className="pt-modal">` EMAS.
+       Oddiy `div` sahifa daraxtida qoladi, `Modal` esa portal orqali
+       `body` OXIRIGA tushadi — natijada qarz oynasidan ochilgan chek
+       uning ORQASIDA qolardi (do'kon egasi aynan shuni ko'rsatdi).
+       `Overlay.jsx` izohi bu xatodan ogohlantirgan edi: «boshqa oynadan
+       ochilgan oyna DOM da undan OLDIN turib qolishi mumkin».
+
+       Esc ham shu yerdan: `Overlay` uni FAQAT eng ustidagi oynaga
+       beradi, ya'ni Esc chekni yopadi-yu, ostidagi qarz oynasini
+       ochiq qoldiradi. Qo'lda yozilgan ishlovchi ikkalasini birdan
+       yopardi. */
+    /* ⚠ ORQA FONGA BOSISH YOPMAYDI (V72) — butun tizimda bir xil
+       qoida: sensor ekranda chetga tasodifan tegish oddiy hol.
+       Chiqish yo'llari: ✕ va ESC. */
+    <Overlay className="pt-modal" onEscape={onClose}
+             role="dialog" aria-modal="true">
+      <div className="pt-modal__inner">
+        <button className="pt-close" onClick={onClose} aria-label="Yopish">
+          <i className="fa-solid fa-xmark" aria-hidden="true" />
+        </button>
+
+        {error && <div className="pt-tape pt-center">{error}</div>}
+        {!data && !error && <div className="pt-tape pt-center">Yuklanmoqda…</div>}
+
+        {data && (
+          <div className="pt-tape ek-tear" ref={tapeRef}>
+            <div className="pt-tape__head">
+              <div className="pt-tape__shop">{data.shopName}</div>
+              {data.shopAddress && <div>{data.shopAddress}</div>}
+              {data.shopPhone && <div>{data.shopPhone}</div>}
+              {/* ⚠ Sarlavha SHART: xarid cheki bilan bir xil tasmada
+                  chiqadi va ularni ajratib turadigan yagona narsa shu
+                  qator. Usiz mijoz to'lovni xarid deb o'ylardi. */}
+              <div className="pt-tape__kind">
+                {sav ? "JAMG'ARMA KVITANSIYASI" : charge ? "QARZ OLINDI" : "QARZ TO'LOVI"}
+              </div>
+            </div>
+
+            {/* ══ ⚠ BEKOR QILINGAN TO'LOV (V109) ═══════════════════════
+                Sarlavhaning O'ZIDAN KEYIN, summadan OLDIN: chekni
+                qo'lida ushlab turgan odam raqamga yetib bormasdan
+                oldin uning haqiqiy holatini bilishi kerak.
+
+                Ilgari bunday chek O'ZGARMAGAN holicha chiqardi —
+                «500 000 to'landi, qoldiq 0» — holbuki pul qaytarilgan
+                va qarz joyida. Ya'ni do'kon o'z blankasida YOLG'ON
+                hujjat tarqatardi, tortishuvda esa aynan qog'oz
+                ko'rsatiladi.
+
+                ⚠ Summa O'CHIRILMAYDI va o'zgarmaydi: to'lov bo'lgan,
+                keyin bekor qilingan — ikkalasi ham haqiqat va chek
+                ikkalasini ham ko'rsatishi kerak. */}
+            {data.reversedAt && (
+              <div className="pt-void">
+                <div className="pt-void__title">BEKOR QILINGAN</div>
+                <div className="pt-void__when">{when(data.reversedAt)}</div>
+                {data.reversedReason && (
+                  <div className="pt-void__why">{data.reversedReason}</div>
+                )}
+              </div>
+            )}
+
+            <div className="pt-hr" />
+
+            <div className="pt-tape__row"><span>Chek</span><span>{data.receiptNo}</span></div>
+            <div className="pt-tape__row"><span>Sana</span><span>{when(data.date)}</span></div>
+            {data.customerName && (
+              <div className="pt-tape__row"><span>Mijoz</span><span>{data.customerName}</span></div>
+            )}
+            {data.cashierName && (
+              /* ⚠ Yorliq ham teskari: to'lovda pulni QABUL QILGAN,
+                 qarzda esa qarzni BERGAN xodim. Bitta so'z qoldirilsa,
+                 qarz chekida «qabul qildi» deb yozilib, mijoz pul
+                 topshirgandek o'qilardi. */
+              <div className="pt-tape__row">
+                <span>{sav ? sav.who : charge ? "Berdi" : "Qabul qildi"}</span>
+                <span>{data.cashierName}</span>
+              </div>
+            )}
+
+            <div className="pt-hr" />
+
+            <div className="pt-tape__row pt-total">
+              <span>{sav ? sav.head : charge ? "QARZGA OLINDI" : "TO'LANDI"}</span>
+              <span>
+                {sav ? (sav.sign || (Number(data.amount) < 0 ? "−" : "+")) : ""}
+                {money(Math.abs(Number(data.amount) || 0))}
+              </span>
+            </div>
+            {/* Xaridga bog'liq jamg'arma qatori — QAYSI xarid (V66). */}
+            {data.linkedNo && (
+              <div className="pt-tape__row"><span>Xarid cheki</span><span>{data.linkedNo}</span></div>
+            )}
+
+            <div className="pt-hr" />
+
+            {data.balanceBefore != null && (
+              <div className="pt-tape__row">
+                <span>{sav ? "Jamg'armada edi" : "Qarz edi"}</span>
+                <span>{money(data.balanceBefore)}</span>
+              </div>
+            )}
+            {data.balanceAfter != null && (
+              /* ⚠ Chekning ENG MUHIM satri — mijoz aynan shuni qidiradi.
+                 Nol ham yoziladi va yashil chiqadi: «qarzingiz qolmadi»
+                 degan xabar qog'ozning butun ma'nosi. */
+              <div className={`pt-tape__row pt-total ${cleared || grew ? "pt-earn" : ""}`}>
+                <span>{sav ? "JAMG'ARMADA" : cleared ? "QARZ YOPILDI" : charge ? "JAMI QARZ" : "QOLDI"}</span>
+                <span>{money(data.balanceAfter)}</span>
+              </div>
+            )}
+            {/* QAYSI QARZLAR YOPILDI (V65) — «Q-41 → 50 000». Tortishuvda
+                bu satr hal qiluvchi: «men o'sha chekni to'lagandim». */}
+            {Array.isArray(data.allocations) && data.allocations.length > 0 && (
+              <>
+                <div className="pt-hr" />
+                {data.allocations.map((a) => (
+                  <div className="pt-tape__row" key={a.chargeId}>
+                    <span>{a.chargeNo}</span><span>{money(a.amount)}</span>
+                  </div>
+                ))}
+              </>
+            )}
+            {/* ⚠ Ortig'i JAMG'ARMAGA (V64) — faqat to'lov paytidagi
+                chekda keladi. Mijoz 200 000 uzatib «150 000» ni ko'rsa,
+                «qolgan 50 mingim qani?» deydi — javob shu satrda. */}
+            {Number(data.toSavings) > 0 && (
+              <div className="pt-tape__row pt-earn">
+                <span>Jamg'armaga</span><span>+{money(data.toSavings)}</span>
+              </div>
+            )}
+            {Number(data.bonusEarned) > 0 && (
+              <div className="pt-tape__row pt-earn">
+                <span>Ball yig'ildi</span><span>+{money(data.bonusEarned)}</span>
+              </div>
+            )}
+            {data.reason && (
+              <div className="pt-tape__row"><span>Izoh</span><span>{data.reason}</span></div>
+            )}
+            {/* Jamg'arma — keshbek EMAS; mijoz buni qog'ozda ham o'qisin. */}
+            {sav && (
+              <div className="pt-center pt-tape__no">Bu sizning pulingiz — kuymaydi, xaridda to'liq ishlatiladi</div>
+            )}
+
+            {/* ⚠ QR faqat KASSA javobida bo'ladi (`qrUrl`): mijoz o'z
+                ekranida allaqachon chekning ichida va kod unga o'zini
+                ko'rsatishdan boshqa hech narsa bermaydi. */}
+            {data.qrUrl && (
+              <>
+                <div className="pt-hr" />
+                <div className="pt-center"
+                     dangerouslySetInnerHTML={{ __html: qrSvg(data.qrUrl, { size: 110, margin: 1 }) }} />
+                <div className="pt-center pt-tape__no">Chekni telefonda ochish</div>
+              </>
+            )}
+
+            <div className="pt-hr" />
+            <div className="pt-center pt-tape__no">{data.receiptNo}</div>
+            <div className="pt-center pt-thanks">Rahmat!</div>
+            {/* ⚠ «e-kassam.uz» OLIB TASHLANDI (V85). Elektron chek ham
+                CHEK: mijoz uni QR orqali ochadi va unda begona brend
+                turishi qog'oz chekdagi bilan bir xil xato edi.
+                O'rniga do'kon o'zi yozgan matn — bo'sh bo'lsa hech
+                narsa chizilmaydi. */}
+            {data.shopFooter && (
+              <div className="pt-center pt-tape__site">{data.shopFooter}</div>
+            )}
+          </div>
+        )}
+
+        {/* ⚠ Tasmadan TASHQARIDA: PDF'ga `.pt-tape` nusxasi tushadi va
+            ichidagi tugma qog'ozga chiqib qolardi. */}
+        {data && (
+          <div className="pt-actions">
+            <button type="button" className="btn btn-primary" onClick={savePdf}>
+              <i className="fa-solid fa-file-pdf" aria-hidden="true" /> PDF qilib saqlash
+            </button>
+            {pdfError && <div className="pt-actions__err">{pdfError}</div>}
+          </div>
+        )}
+      </div>
+    </Overlay>
+  );
+}

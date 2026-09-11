@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { LOGO_URL, LOGO_DARK_URL, MARK_URL, initials } from "../utils";
-import { useConfirm } from "../context/ConfirmProvider";
 import { roleLabel } from "../lib/ek-labels";
 import { hasRole, topRole, roleSet } from "../lib/ek-roles";
 import { isMobileApp } from "../lib/ek-desktop";
 import { useT } from "../lib/ek-i18n";
 import { weekdayDate } from "../lib/ek-format";
 import { useSuspiciousCount } from "../hooks/useSuspiciousCount";
+import { useShopFeatures } from "../hooks/useShopFeatures";
 
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -33,7 +33,7 @@ import { useSuspiciousCount } from "../hooks/useSuspiciousCount";
    ⚠ Bandning YORLIG'I emas, KALITI saqlanadi — yorliq har render'da `t()`
    dan olinadi, aks holda til almashtirilganda menyu eski tilda qolardi.
    ══════════════════════════════════════════════════════════════════════════ */
-const NAV = [
+export const NAV = [
   { id: "dashboard", path: "/",     key: "nav.dashboard", icon: "fa-chart-pie",     roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
   { id: "sale",      path: "/sale", key: "nav.kassa",     icon: "fa-cash-register", roles: ["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"] },
 
@@ -42,6 +42,7 @@ const NAV = [
   { id: "catalog", key: "nav.group.catalog", icon: "fa-box", children: [
     { id: "products",   path: "/products",   key: "nav.products",   icon: "fa-box",                roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
     { id: "categories", path: "/categories", key: "nav.categories", icon: "fa-tags",               roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
+    { id: "labels", path: "/labels", key: "nav.labels", icon: "fa-tag",                       roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
     { id: "prices",     path: "/prices",     key: "nav.prices",     icon: "fa-money-check-dollar", roles: ["ADMIN", "SHOP_ADMIN", "OWNER"] },
   ]},
 
@@ -49,23 +50,26 @@ const NAV = [
      yerda: u tovarni jismonan yuradigan kundalik ish, filial sozlamasi
      emas (filiali yo'q do'konda sahifa o'zi shuni aytadi). */
   { id: "warehouse", key: "nav.group.warehouse", icon: "fa-warehouse", children: [
-    { id: "inventory",  path: "/inventory",  key: "nav.stock",     icon: "fa-warehouse",      roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
-    { id: "stock-take", path: "/stock-take", key: "nav.stockTake", icon: "fa-clipboard-list", roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
-    { id: "supply",     path: "/supply",     key: "nav.supply",    icon: "fa-truck-ramp-box", roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
-    { id: "transfers",  path: "/transfers",  key: "nav.transfers", icon: "fa-truck-fast",     roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
+    { id: "inventory",  path: "/inventory",  key: "nav.stock",     icon: "fa-warehouse",      roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"], feature: "INVENTORY" },
+    { id: "stock-take", path: "/stock-take", key: "nav.stockTake", icon: "fa-clipboard-list", roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"], feature: "STOCK_TAKE" },
+    { id: "supply",     path: "/supply",     key: "nav.supply",    icon: "fa-truck-ramp-box", roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"], feature: "SUPPLY" },
+    { id: "transfers",  path: "/transfers",  key: "nav.transfers", icon: "fa-truck-fast",     roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"], feature: "TRANSFER" },
+    /* Berib yuborish — omborchining KUNDALIK ekrani, shuning uchun
+       ombor guruhida turadi. */
+    { id: "pickup",     path: "/pickup",     key: "nav.pickup",    icon: "fa-dolly",          roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"], feature: "PICKUP" },
   ]},
 
   /* SAVDO — bo'lib o'tgan xarid va uni kim qilgani. Kassirga ochiq yagona
      guruh: u chekni qaytadan chiqaradi va mijozni qidiradi. */
   { id: "trade", key: "nav.group.trade", icon: "fa-receipt", children: [
     { id: "sales",     path: "/sales",     key: "nav.sales",     icon: "fa-receipt", roles: ["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"] },
-    { id: "customers", path: "/customers", key: "nav.customers", icon: "fa-users",   roles: ["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"] },
+    { id: "customers", path: "/customers", key: "nav.customers", icon: "fa-users",   roles: ["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"], feature: "CUSTOMERS" },
   ]},
 
   { id: "reports", key: "nav.reports", icon: "fa-chart-bar", children: [
-    { id: "reports-main",  path: "/reports",       key: "nav.overview",     icon: "fa-chart-bar",       roles: ["ADMIN", "SHOP_ADMIN", "OWNER"] },
-    { id: "expenses",      path: "/expenses",      key: "nav.expenses",     icon: "fa-money-bill-wave", roles: ["ADMIN", "SHOP_ADMIN", "OWNER"] },
-    { id: "custom-report", path: "/custom-report", key: "nav.customReport", icon: "fa-calendar-days",   roles: ["ADMIN", "SHOP_ADMIN", "OWNER"] },
+    { id: "reports-main",  path: "/reports",       key: "nav.overview",     icon: "fa-chart-bar",       roles: ["ADMIN", "SHOP_ADMIN", "OWNER"], feature: "REPORTS" },
+    { id: "expenses",      path: "/expenses",      key: "nav.expenses",     icon: "fa-money-bill-wave", roles: ["ADMIN", "SHOP_ADMIN", "OWNER"], feature: "EXPENSES" },
+    { id: "custom-report", path: "/custom-report", key: "nav.customReport", icon: "fa-calendar-days",   roles: ["ADMIN", "SHOP_ADMIN", "OWNER"], feature: "REPORTS" },
   ]},
 
   /* BOSHQARUV — DO'KONNI boshqarish, egasi va do'kon admini uchun.
@@ -81,8 +85,8 @@ const NAV = [
   { id: "manage", key: "nav.group.manage", icon: "fa-users-gear", children: [
     { id: "shop-users",    path: "/shop-users",    key: "nav.staff",         icon: "fa-users-gear",        roles: ["ADMIN", "SHOP_ADMIN", "OWNER"] },
     { id: "branches",      path: "/branches",      key: "nav.branches",      icon: "fa-store",             roles: ["OWNER"] },
-    { id: "loyalty",       path: "/loyalty",       key: "nav.loyalty",       icon: "fa-award",             roles: ["ADMIN", "SHOP_ADMIN", "OWNER"] },
-    { id: "announcements", path: "/announcements", key: "nav.announcements", icon: "fa-bullhorn",          roles: ["ADMIN", "SHOP_ADMIN", "OWNER"] },
+    { id: "loyalty",       path: "/loyalty",       key: "nav.loyalty",       icon: "fa-award",             roles: ["ADMIN", "SHOP_ADMIN", "OWNER"], feature: "LOYALTY" },
+    { id: "announcements", path: "/announcements", key: "nav.announcements", icon: "fa-bullhorn",          roles: ["ADMIN", "SHOP_ADMIN", "OWNER"], feature: "ANNOUNCEMENTS" },
     { id: "security",      path: "/security",      key: "nav.security",      icon: "fa-shield-halved",     roles: ["SHOP_ADMIN", "OWNER"] },
     { id: "audit",         path: "/audit",         key: "nav.audit",         icon: "fa-clock-rotate-left", roles: ["SHOP_ADMIN", "OWNER"] },
   ]},
@@ -95,8 +99,25 @@ const NAV = [
 /** Guruhning bolalari; oddiy band — o'zi bitta bola. */
 const childrenOf = (item) => item.children || [item];
 
-/** Rol bo'yicha ko'rinadigan bolalar. */
-const visibleChildren = (item, role) => childrenOf(item).filter((c) => hasRole(role, c.roles));
+/* ══════════════════════════════════════════════════════════════════════════
+   IKKI FILTR: ROL va MODUL (V49)
+
+   Ular BOSHQA-BOSHQA savolga javob beradi va ikkalasi ham kerak:
+
+     `roles`   — SHU ODAM qila oladimi. Kassir «Xarajatlar» ni ko'rmaydi,
+                 chunki bu rahbarning ma'lumoti.
+     `feature` — BU DO'KONDA bunday ish umuman bormi. Sartaroshxonada
+                 «Inventarizatsiya» yo'q — u yerda hech kimga ko'rinmaydi,
+                 egasiga ham.
+
+   ⚠ `feature` siz bandlar HAR DOIM ko'rinadi: kassa, mahsulotlar,
+   sotuvlar tarixi, xodimlar, sozlamalar. Ularsiz ilova ilova bo'lmaydi.
+
+   ⚠ Modul ro'yxati kelmagan bo'lsa hammasi ko'rinadi — sabab
+   `useShopFeatures` da: bu ro'yxat himoya emas, haqiqiy to'siq serverda.
+   ══════════════════════════════════════════════════════════════════════════ */
+const visibleChildren = (item, role, hasFeature = () => true) =>
+  childrenOf(item).filter((c) => hasRole(role, c.roles) && hasFeature(c.feature));
 
 /**
  * Manzil qaysi guruhning qaysi sahifasi.
@@ -111,6 +132,23 @@ function findPlace(pathname) {
     const child = childrenOf(item).find((c) => c.path === pathname);
     if (child) return { group: item, child };
   }
+
+  /* ⚠ ICHKI SAHIFALAR (V60). `/inventory/5` kabi yo'llar `NAV` da yo'q va
+     ilgari ular BOSH SAHIFA deb hisoblanardi: partiyalar sahifasi
+     ochilganda sarlavhada «Dashboard» yozilib, menyuda ham boshqa band
+     yonardi. Endi eng UZUN mos keluvchi ota-yo'l olinadi. */
+  let best = null;
+  for (const item of NAV) {
+    for (const c of childrenOf(item)) {
+      if (!c.path || c.path === "/") continue;
+      if (pathname.startsWith(c.path + "/")
+          && (!best || c.path.length > best.child.path.length)) {
+        best = { group: item, child: c };
+      }
+    }
+  }
+  if (best) return best;
+
   /* Noma'lum yo'l — bosh sahifa (eski xatti-harakat) */
   return { group: NAV[0], child: NAV[0] };
 }
@@ -182,9 +220,11 @@ function LowStockBadge({ items, count, onGoInventory }) {
   );
 }
 
-function Sidebar({ user, onLogout, open, onClose, isCollapsed, onToggleCollapse, lowStockCount, suspiciousCount }) {
+function Sidebar({ user, open, onClose, isCollapsed, onToggleCollapse, lowStockCount, suspiciousCount, onSwitchUser }) {
   const { t } = useT();
-  const confirm = useConfirm();
+  /* Do'konda qaysi bo'limlar borligi (V49). Ro'yxat kelmaguncha
+     `has()` hamma narsaga `true` qaytaradi — menyu bo'sh ko'rinmaydi. */
+  const { has: hasFeature } = useShopFeatures();
   /* Guruh bandi o'z bolalaridan birortasida turgan bo'lsa yonadi — shuning
      uchun bu yerda joriy manzil kerak (NavLink ning isActive i yetmaydi). */
   const { pathname } = useLocation();
@@ -195,16 +235,6 @@ function Sidebar({ user, onLogout, open, onClose, isCollapsed, onToggleCollapse,
     const top = topRole(r);
     const key = EXTRA_ROLE_KEYS[top];
     return key ? t(key) : roleLabel(top);
-  };
-  const handleLogoutClick = async () => {
-    const ok = await confirm({
-      title: t("layout.logout"),
-      message: t("layout.logoutConfirm"),
-      type: "warning",
-      confirmText: t("layout.logout"),
-      cancelText: t("common.cancel"),
-    });
-    if (ok) onLogout();
   };
   return (
     <aside className={`sidebar ${open ? "open" : ""} ${isCollapsed ? "collapsed" : ""}`}>
@@ -235,7 +265,7 @@ function Sidebar({ user, onLogout, open, onClose, isCollapsed, onToggleCollapse,
           // BUTUN satr. Xodimda ikkita rol bo'lsa u `"SHOP_ADMIN,CASHIER"`
           // bo'lardi, hech bir ro'yxatga mos kelmasdi va yon menyuda faqat
           // «Sozlamalar» qolardi. OWNER uchun istisno `hasRole` ichida.
-          const kids = visibleChildren(item, user?.role);
+          const kids = visibleChildren(item, user?.role, hasFeature);
           if (kids.length === 0) return null;
 
           /* Guruh havolasi — ko'rinadigan BIRINCHI bola. Guruhning o'z
@@ -262,21 +292,55 @@ function Sidebar({ user, onLogout, open, onClose, isCollapsed, onToggleCollapse,
       {/* Tema tanlagichi bu yerdan OLIB TASHLANDI: barcha sozlamalar endi
           «Sozlamalar» sahifasida — bitta joy, bitta qidiruv. */}
       <div className="sb-footer">
-        <div className="sb-user" onClick={handleLogoutClick} title={isCollapsed ? t("layout.logout") : ""}
-             role="button" tabIndex={0}
-             onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleLogoutClick(); } }}>
-          <div className="av" style={{ width: isCollapsed ? 28 : 34, height: isCollapsed ? 28 : 34 }}>{initials(user?.fullName || user?.username)}</div>
-          <div className="sb-user-info">
-            <div className="sb-user-name">{user?.fullName || user?.username}</div>
-            <div className="sb-user-role">{roleName(user?.role)} <i className="fa-solid fa-right-from-bracket" /></div>
-          </div>
+        {/* ⚠ CHIQISH TUGMASI BU YERDAN OLIB TASHLANDI (2026-08-27).
+
+            U kassirning ismi ustida turardi va butun blok bosiladigan edi:
+            yon menyu yopilayotganda yoki sichqoncha sirg'anganda tizimdan
+            chiqib ketish uchun bitta noto'g'ri bosish yetardi. Kassada bu
+            terilgan savatni, ochiq smenani va mijozning vaqtini
+            yo'qotishga teng.
+
+            Chiqish endi FAQAT «Sozlamalar» sahifasida — ataylab
+            boriladigan, tasodifan bosilmaydigan joyda. Shu sababli bu
+            blok endi o'sha sahifaga olib boradi: kassir «chiqish qayerda?»
+            deb qidirib qolmasin. */}
+        <div className="sb-user-row">
+          <NavLink to="/settings" className="sb-user" title={isCollapsed ? t("nav.settings") : ""}>
+            <div className="av" style={{ width: isCollapsed ? 28 : 34, height: isCollapsed ? 28 : 34 }}>{initials(user?.fullName || user?.username)}</div>
+            <div className="sb-user-info">
+              <div className="sb-user-name">{user?.fullName || user?.username}</div>
+              <div className="sb-user-role">{roleName(user?.role)} <i className="fa-solid fa-gear" /></div>
+            </div>
+          </NavLink>
+
+          {/* ══ KASSIRNI ALMASHTIRISH (V99) ═══════════════════════════
+              ⚠ ALOHIDA, KICHIK tugma — hisob blokining ICHIDA emas.
+              Blokning o'zi «Sozlamalar» ga olib boradi va uni bosishga
+              odatlangan kassir tasodifan almashtirish oynasini ochib
+              yuborardi.
+
+              ⚠ CHIQISHNING O'RNIGA EMAS, YONIDA. Bular boshqa-boshqa
+              ish: chiqish smenani ham, savatni ham tashlab ketadi,
+              almashtirish esa ikkalasini ham JOYIDA qoldiradi —
+              butun ishning ma'nosi shunda. */}
+          {!isCollapsed && (
+            <button type="button" className="sb-switch" onClick={onSwitchUser}
+                    title={t("pin.switchTitle")} aria-label={t("pin.switchTitle")}>
+              <i className="fa-solid fa-user-clock" aria-hidden="true" />
+            </button>
+          )}
         </div>
       </div>
     </aside>
   );
 }
 
-export default function Layout({ user, onLogout, isAdmin, lowStockItems, lowStockCount, children }) {
+export default function Layout({ user, isAdmin, lowStockItems, lowStockCount, onSwitchUser, children }) {
+  /* ⚠ Sidebar bilan BIR XIL manba: hook natijani keshlaydi, ya'ni
+     ikkinchi chaqiruv yangi so'rov yubormaydi. Tab qatori va yon menyu
+     bir xil ro'yxatdan chizilishi shart — aks holda menyuda yo'q
+     sahifa tab'da paydo bo'lardi. */
+  const { has: hasFeature } = useShopFeatures();
   const { t } = useT();
   const [open, setOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(() => localStorage.getItem("sb_collapsed") === "1");
@@ -306,7 +370,7 @@ export default function Layout({ user, onLogout, isAdmin, lowStockItems, lowStoc
      ilgari buning uchun alohida `PAGE_TITLES` jadvali bor edi va u
      ro'yxat bilan qo'lda sinxron turishi kerak edi. */
   const { group, child } = findPlace(location.pathname);
-  const tabs = visibleChildren(group, user?.role);
+  const tabs = visibleChildren(group, user?.role, hasFeature);
 
   // Children ga kassaFullscreen props ni uzatish
   const enhancedChildren = isKassaPage
@@ -320,13 +384,13 @@ export default function Layout({ user, onLogout, isAdmin, lowStockItems, lowStoc
       {open && <div onClick={() => setOpen(false)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.45)", zIndex:199 }} />}
       <Sidebar 
         user={user} 
-        onLogout={onLogout} 
         open={open} 
         onClose={() => setOpen(false)} 
         isCollapsed={isCollapsed} 
         onToggleCollapse={toggleCollapse} 
         lowStockCount={lowStockCount}
         suspiciousCount={suspiciousCount}
+        onSwitchUser={onSwitchUser}
       />
       <main className="main-content">
         <div className="topbar">

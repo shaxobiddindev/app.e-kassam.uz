@@ -1,9 +1,12 @@
 import "./styles.css";
 /* BUILD_ID: EMERGENCY_FIX_V3_0116 */
-import { useState } from "react";
+import { useState, useEffect, Suspense, lazy } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { LOGIN_URL } from "./config";
 import { initLang, withLang, useT } from "./lib/ek-i18n";
+import { t } from "./lib/ek-i18n";
+import * as cartStore from "./lib/ek-cart-store";
+import PinSwitchModal from "./components/PinSwitchModal";
 import { useAuth }  from "./hooks/useAuth";
 import { useLowStock } from "./hooks/useLowStock";
 import { useToast } from "./hooks/useToast";
@@ -12,41 +15,28 @@ import Toast            from "./components/Toast";
 import Layout           from "./components/Layout";
 import AppUpdater       from "./components/AppUpdater";
 import { ConfirmProvider } from "./context/ConfirmProvider";
-import DashboardPage    from "./pages/DashboardPage";
-import ProductsPage     from "./pages/ProductsPage";
-import InventoryPage    from "./pages/InventoryPage";
-import StockTakePage    from "./pages/StockTakePage";
-import ExpensesPage     from "./pages/ExpensesPage";
-import LoyaltyPage      from "./pages/LoyaltyPage";
-import AnnouncementsPage from "./pages/AnnouncementsPage";
-import SupplyPage       from "./pages/SupplyPage";
-import TransfersPage    from "./pages/TransfersPage";
-import PricesPage       from "./pages/PricesPage";
-import CustomersPage    from "./pages/CustomersPage";
-import KassaPage        from "./pages/KassaPage";
-import ReportsPage      from "./pages/ReportsPage";
-import SalesPage        from "./pages/SalesPage";
-import CategoriesPage   from "./pages/admin/CategoriesPage";
-import CustomReportPage from "./pages/admin/CustomReportPage";
-import ShopUsersPage    from "./pages/admin/ShopUsersPage";
-import ShopsPage        from "./pages/admin/ShopsPage";
-import SettingsPage    from "./pages/SettingsPage";
 import LoginPage       from "./pages/LoginPage";
 import NotFound from "./pages/NotFound";
 import { isDesktop, isNativeShell, isMobileApp } from "./lib/ek-desktop";
+import { prime as sfxPrime } from "./lib/ek-sound";
 import MobileApp from "./mobile/MobileApp";
 import { hasRole, roleSet } from "./lib/ek-roles";
 import ErrorBoundary, { RouteErrorBoundary } from "./components/ek/ErrorBoundary";
+import { P } from "./lib/ek-pages";
+import { Progress } from "./components/ek/Loading";
 import { BadgeProvider } from "./context/BadgeProvider";
 import { KeyboardProvider } from "./context/KeyboardProvider";
-import SecurityPage from "./pages/SecurityPage";
-import AuditPage from "./pages/AuditPage";
-import CustomerPortal from "./portal/CustomerPortal";
+/* ⚠ MIJOZ DARAXTI KECHIKTIRIB YUKLANADI. Xodim ilovasi (kassa, ombor,
+   hisobotlar) bu ekranlarni HECH QACHON chizmaydi va aksincha — lekin
+   ular bitta kirish to'plamida turgani uchun kassir har ochilishda
+   mijoz kabinetini ham yuklab olardi. Do'kondagi internet esa sekin. */
+const CustomerPortal = lazy(() => import("./portal/CustomerPortal"));
 /* Mijoz ilovasi (V37) — telefon ilovasida kirish ekrani endi shu */
-import CustomerLogin from "./customer/CustomerLogin";
-import CustomerApp from "./customer/CustomerApp";
+const CustomerLogin = lazy(() => import("./customer/CustomerLogin"));
+const CustomerApp = lazy(() => import("./customer/CustomerApp"));
 /* Mijoz ilovasi BRAUZERDA (V40) — Telegram OIDC dan qaytish ham shu yerda */
-import CustomerWeb from "./customer/CustomerWeb";
+const CustomerWeb = lazy(() => import("./customer/CustomerWeb"));
+const DisplayPage = lazy(() => import("./pages/DisplayPage"));
 import { getAppToken } from "./customer/customerApi";
 
 // ⚠ Tilni URL dan olish MODUL TANASIDA, `replaceState` dan OLDIN bo'lishi
@@ -64,7 +54,15 @@ initLang();
    QR ni o'qigan xaridor to'g'ridan-to'g'ri kirish sahifasiga otilib
    ketardi va kartasini umuman ko'rmasdi.
    ══════════════════════════════════════════════════════════════════════════ */
-const IS_PORTAL = /^\/(qr|kabinet|c\/)(\/|$|\d)/.test(window.location.pathname);
+/* ⚠ `q/` ham shu yerda (V46): qarz tasdig'i sahifasi mijozniki va u
+   xodim daraxtiga umuman kirmasligi kerak.
+
+   ⚠ `t/` — QARZ TO'LOVINING CHEKI (V61) va u SHU RO'YXATDA bo'lishi
+   SHART. Yo'l bu yerda sanalmasa, qog'ozdagi QR ni o'qigan xaridor
+   xodim daraxtiga tushib, `localStorage.clear()` dan keyin kassa
+   kirish sahifasiga otilib ketardi — chek o'rniga parol so'ralardi.
+   Aynan shu xato `c/` bilan bir marta qilingan. */
+const IS_PORTAL = /^\/(qr|kabinet|c\/|q\/|t\/|j\/)(\/|$|\d)/.test(window.location.pathname);
 
 /* ══════════════════════════════════════════════════════════════════════════
    MIJOZ ILOVASI BRAUZERDA (V40)
@@ -183,7 +181,7 @@ export default function App() {
     return (
       <ErrorBoundary>
         <ConfirmProvider>
-          <CustomerWeb />
+          <Suspense fallback={<Progress />}><CustomerWeb /></Suspense>
         </ConfirmProvider>
       </ErrorBoundary>
     );
@@ -196,7 +194,7 @@ export default function App() {
             bo'lmaydigan amal va u brauzerning `confirm` i bilan emas,
             ilovaning modali bilan so'raladi (butun tizimda shunday). */}
         <ConfirmProvider>
-          <CustomerPortal />
+          <Suspense fallback={<Progress />}><CustomerPortal /></Suspense>
         </ConfirmProvider>
       </ErrorBoundary>
     );
@@ -204,6 +202,54 @@ export default function App() {
   const { user, login, logout }                           = useAuth();
   const { toasts, toast, dismiss }                        = useToast();
   const { lowStockItems, lowStockCount, refreshLowStock } = useLowStock();
+
+  /* ══ KASSIRNI PIN BILAN ALMASHTIRISH (V99) ═════════════════════════
+     Do'kon egasi: «PIN moduli `app` ga o'tkazilsin, `auth` alohida
+     serverda va yuklash vaqti tizimni sekinlashtiradi».
+
+     ⚠ Oyna SHU YERDA, `App` da: almashinuvdan keyin `login()`
+     chaqiriladi va u `useAuth` ning ichidagi holatni yangilaydi —
+     ya'ni sahifa QAYTA YUKLANMAYDI. Savat, ochiq smena, skaner
+     tinglovchisi va tarozi ulanishi joyida qoladi. Butun ishning
+     maqsadi aynan shu edi. */
+  const [pinOpen, setPinOpen] = useState(false);
+
+  /* ⚠ SAVAT BO'SH BO'LMASA ALMASHISH YO'Q. To'lanmagan savat boshqa
+     kassirning ismi bilan yopilsa, chekda ham, hisobotda ham noto'g'ri
+     odam turardi.
+
+     ⚠ Tekshiruv `hasItems()` bilan — `take()` savatni O'CHIRIB
+     yuborardi, ya'ni «savat bo'shmi?» degan savol savatni bo'shatib
+     qo'yardi. */
+  const askSwitchUser = () => {
+    if (cartStore.hasItems()) {
+      toast.error(t("pin.cartNotEmpty"));
+      return;
+    }
+    setPinOpen(true);
+  };
+
+
+  /* ══ OVOZ QULFI — BIRINCHI IMO-ISHORADA OCHILADI (V89) ═════════════
+     ⚠ USIZ BIRINCHI OVOZ JIMGINA YO'QOLADI. Brauzer `AudioContext` ni
+     foydalanuvchi sahifaga TEGMAGUNCHA `suspended` holatda tutadi va
+     rad etilgan ijro haqida faqat konsolda aytadi. Kassa uchun bu
+     «ishlamayapti» degani: eng birinchi xato ovozi — aynan kassir
+     e'tibor berishi kerak bo'lgani — chiqmasdi.
+
+     ⚠ `once: true` va HUJJAT darajasida: qaysi tugma bosilgani muhim
+     emas, faqat BIRINCHI tegish muhim. Shundan keyin tinglovchi o'zi
+     olib tashlanadi va hech qanday doimiy yuk qolmaydi. */
+  useEffect(() => {
+    const open = () => sfxPrime();
+    document.addEventListener("pointerdown", open, { once: true });
+    document.addEventListener("keydown", open, { once: true });
+    return () => {
+      document.removeEventListener("pointerdown", open);
+      document.removeEventListener("keydown", open);
+    };
+  }, []);
+
 
   /* Mijoz ilovasi (V37): sessiya kaliti va «xodim rejimi» bayrog'i.
      ⚠ `staffMode` SAQLANMAYDI: xodim kirgach `user` paydo bo'ladi va
@@ -235,16 +281,43 @@ export default function App() {
      ⚠ Mijoz tokeni bo'lsa, xodim kirishi umuman chizilmaydi: bitta
      qurilmada ikkalasi ham bo'lishi mumkin, lekin bir vaqtda bittasi
      ko'rinadi (do'kon egasi ham oddiy mijoz). */
+  /* ══ MIJOZ EKRANI — IKKINCHI MONITOR (V77) ═══════════════════════════
+
+     ⚠ ENG BIRINCHI TEKSHIRUV va bu ataylab. Bu ekran:
+
+       · SESSIYA SO'RAMAYDI. U hech qanday so'rov yubormaydi va faqat
+         kassa oynasi shu brauzerda saqlagan holatni chizadi. Sessiya
+         tekshiruvi kutilganda mijoz kassirning ishini ko'rmay,
+         yuklanish belgisiga qarab turardi — internet uzilganda esa
+         umuman ochilmasdi (kassa esa offline sotaveradi).
+
+       · YON MENYU VA SARLAVHASIZ. `Layout` ichida bo'lganda mijozga
+         qaragan monitorda do'konning ichki bo'limlari ko'rinardi.
+
+     ⚠ Manzil `window.location` dan o'qiladi, `useLocation` dan emas:
+     bu tekshiruv `BrowserRouter` DAN OLDIN turadi. */
+  if (typeof window !== "undefined" && window.location.pathname === "/display") {
+    return (
+      <ErrorBoundary>
+        <Suspense fallback={null}>
+          <DisplayPage />
+        </Suspense>
+      </ErrorBoundary>
+    );
+  }
+
   if (isMobileApp() && !user && !staffMode) {
     return (
       <ErrorBoundary>
         {/* ConfirmProvider kerak: hisobdan chiqish tasdig'i */}
         <ConfirmProvider>
           <Toast toasts={toasts} onDismiss={dismiss} />
-          {appToken
-            ? <CustomerApp onLoggedOut={() => setAppToken("")} />
-            : <CustomerLogin onLoggedIn={() => setAppToken(getAppToken())}
-                             onStaffLogin={() => setStaffMode(true)} />}
+          <Suspense fallback={<Progress />}>
+            {appToken
+              ? <CustomerApp onLoggedOut={() => setAppToken("")} />
+              : <CustomerLogin onLoggedIn={() => setAppToken(getAppToken())}
+                               onStaffLogin={() => setStaffMode(true)} />}
+          </Suspense>
           <AppUpdater loggedIn={false} toast={toast} />
         </ConfirmProvider>
       </ErrorBoundary>
@@ -319,12 +392,18 @@ export default function App() {
         <AppUpdater loggedIn toast={toast} />
         <Layout 
           user={user} 
-          onLogout={logout} 
           isAdmin={roleSet(user?.role).has("SUPERADMIN")}
           lowStockItems={lowStockItems} 
           lowStockCount={lowStockCount}
+          onSwitchUser={askSwitchUser}
         >
           <RouteErrorBoundary>
+          {/* ⚠ Fallback YENGIL bo'lishi shart. Sahifalar endi alohida
+              chunk va o'tishda qisqa kutish paydo bo'ladi; butun ekranni
+              egallaydigan yuklagich bunda miltillab, o'tishni sekin
+              ko'rsatardi. Ingichka chiziq — bor-yo'g'i "kutilmoqda"
+              belgisi. */}
+          <Suspense fallback={<Progress />}>
           <Routes>
             {/* Kassirning uy sahifasi — Kassa, Dashboard emas: u smenani
                 sotuvdan boshlaydi. Tekshiruv `hasRole` bilan emas, ANIQ:
@@ -333,51 +412,87 @@ export default function App() {
             <Route path="/" element={
               roleSet(user?.role).size === 1 && roleSet(user?.role).has("CASHIER")
                 ? <Navigate to="/sale" replace />
-                : <ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><DashboardPage toast={toast} /></ProtectedRoute>
+                : <ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><P.Dashboard toast={toast} /></ProtectedRoute>
             } />
-            <Route path="/sale" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"]}><KassaPage toast={toast} /></ProtectedRoute>} />
-            <Route path="/products" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><ProductsPage toast={toast} /></ProtectedRoute>} />
-            <Route path="/categories" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><CategoriesPage toast={toast} /></ProtectedRoute>} />
-            <Route path="/inventory" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><InventoryPage toast={toast} refreshLowStock={refreshLowStock} /></ProtectedRoute>} />
+            <Route path="/sale" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"]}><P.Kassa toast={toast} /></ProtectedRoute>} />
+            <Route path="/products" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><P.Products toast={toast} /></ProtectedRoute>} />
+            <Route path="/categories" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><P.Categories toast={toast} /></ProtectedRoute>} />
+            <Route path="/labels" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><P.Labels toast={toast} /></ProtectedRoute>} />
+            <Route path="/inventory" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><P.Inventory toast={toast} refreshLowStock={refreshLowStock} /></ProtectedRoute>} />
+            {/* ⚠ BITTA TOVARNING PARTIYALARI — alohida SAHIFA (V60).
+                Ilgari bu modal edi va uchta bo'lim (faol, muddati o'tgan,
+                arxiv) uni scrolga majbur qilardi. Sahifada havola ham
+                bo'ladi va brauzerning «orqaga» tugmasi ishlaydi. */}
+            <Route path="/inventory/:productId" element={
+              <ProtectedRoute user={user} roles={["OWNER", "SHOP_ADMIN", "STOREKEEPER"]}>
+                <P.Batches toast={toast} />
+              </ProtectedRoute>} />
             {/* Inventarizatsiya — omborchi va yuqorisi; kassirning bu
                 yerda ishi yo'q (backend ham shu cheklovni qo'yadi). */}
-            <Route path="/stock-take" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><StockTakePage toast={toast} /></ProtectedRoute>} />
+            <Route path="/stock-take" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><P.StockTake toast={toast} /></ProtectedRoute>} />
             {/* Kirim — tovarni jismonan qabul qiladigan odam hujjatni
                 ham yozadi, shuning uchun omborchiga ham ochiq. */}
-            <Route path="/supply" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><SupplyPage toast={toast} /></ProtectedRoute>} />
+            <Route path="/supply" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><P.Supply toast={toast} /></ProtectedRoute>} />
             {/* Filiallararo ko'chirish — ombor bilan bir xil doira:
                 tovarni mashinaga ortadigan va tushiradigan odam omborchi.
                 Kassirga yopiq (server ham shuni qo'yadi). */}
-            <Route path="/transfers" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><TransfersPage toast={toast} /></ProtectedRoute>} />
+            <Route path="/transfers" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><P.Transfers toast={toast} /></ProtectedRoute>} />
+            {/* OMBORDAN BERIB YUBORISH (V48). ⚠ KASSIR YO'Q: tovarni
+                chiqaruvchi bilan pulni oluvchi ajralgan bo'lishi kerak —
+                sabab `SecurityConfig` dagi izohda. */}
+            <Route path="/pickup" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><P.Pickup toast={toast} /></ProtectedRoute>} />
             {/* Narx — egasi va do'kon adminining ishi; omborchi narx
                 qo'ymaydi. */}
-            <Route path="/prices" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><PricesPage toast={toast} /></ProtectedRoute>} />
-            <Route path="/customers" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"]}><CustomersPage toast={toast} /></ProtectedRoute>} />
-            <Route path="/sales" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"]}><SalesPage toast={toast} /></ProtectedRoute>} />
-            <Route path="/reports" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><ReportsPage toast={toast} /></ProtectedRoute>} />
-            <Route path="/custom-report" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><CustomReportPage toast={toast} /></ProtectedRoute>} />
+            <Route path="/prices" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><P.Prices toast={toast} /></ProtectedRoute>} />
+            <Route path="/customers" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"]}><P.Customers toast={toast} /></ProtectedRoute>} />
+            <Route path="/sales" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"]}><P.Sales toast={toast} /></ProtectedRoute>} />
+            <Route path="/reports" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><P.Reports toast={toast} /></ProtectedRoute>} />
+            <Route path="/custom-report" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><P.CustomReport toast={toast} /></ProtectedRoute>} />
             {/* Xarajat — do'kon pulining qayerga ketgani; kassirga yopiq. */}
-            <Route path="/expenses" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><ExpensesPage toast={toast} /></ProtectedRoute>} />
-            <Route path="/shop-users" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><ShopUsersPage toast={toast} /></ProtectedRoute>} />
-            <Route path="/branches" element={<ProtectedRoute user={user} roles={["OWNER"]}><ShopsPage toast={toast} /></ProtectedRoute>} />
+            <Route path="/expenses" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><P.Expenses toast={toast} /></ProtectedRoute>} />
+            <Route path="/shop-users" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><P.ShopUsers toast={toast} /></ProtectedRoute>} />
+            <Route path="/branches" element={<ProtectedRoute user={user} roles={["OWNER"]}><P.Shops toast={toast} /></ProtectedRoute>} />
             {/* Sodiqlik jadvali — chegirma, ya'ni pulga tegadigan sozlama. */}
-            <Route path="/loyalty" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><LoyaltyPage toast={toast} /></ProtectedRoute>} />
+            <Route path="/loyalty" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><P.Loyalty toast={toast} /></ProtectedRoute>} />
             {/* Aksiyalar (V39) — do'konning MIJOZLARGA ketadigan gapi;
                 kassirga yopiq (server ham shu cheklovni qo'yadi). */}
-            <Route path="/announcements" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><AnnouncementsPage toast={toast} /></ProtectedRoute>} />
+            <Route path="/announcements" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><P.Announcements toast={toast} /></ProtectedRoute>} />
             {/* Sozlamalar — hamma rolga ochiq: mavzu va til xodimning
                 shaxsiy tanlovi, do'kon sozlamasi emas. */}
-            <Route path="/settings" element={<SettingsPage toast={toast} />} />
+            <Route path="/settings" element={<P.Settings toast={toast} />} />
             {/* Xavfsizlik — bajik, smena, tasdiqlar jurnali.
                 Egasi bajik chiqaradi; SHOP_ADMIN faqat jurnalni ko'radi
                 (backend ham shu cheklovni qo'yadi). */}
-            <Route path="/security" element={<ProtectedRoute user={user} roles={["OWNER", "SHOP_ADMIN"]}><SecurityPage toast={toast} /></ProtectedRoute>} />
+            <Route path="/security" element={<ProtectedRoute user={user} roles={["OWNER", "SHOP_ADMIN"]}><P.Security toast={toast} /></ProtectedRoute>} />
             {/* Jurnal — egasi va do'kon administratoriga; kassirga yopiq. */}
-            <Route path="/audit" element={<ProtectedRoute user={user} roles={["OWNER", "SHOP_ADMIN"]}><AuditPage toast={toast} /></ProtectedRoute>} />
+            <Route path="/audit" element={<ProtectedRoute user={user} roles={["OWNER", "SHOP_ADMIN"]}><P.Audit toast={toast} /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
+          </Suspense>
           </RouteErrorBoundary>
         </Layout>
+
+        {/* ⚠ `Layout` DAN TASHQARIDA: oyna butun ekran ustida turadi va
+            yon menyu yopilishi bilan yo'q bo'lib qolmasligi kerak. */}
+        {pinOpen && (
+          <PinSwitchModal
+            toast={toast}
+            onClose={() => setPinOpen(false)}
+            onSwitched={(d) => {
+              /* ⚠ ISM VA ROL SERVERDAN KELADI (`PinSwitchResponse`) va
+                 ular ko'rinish uchun emas: savat kaliti
+                 `shopCode_username` dan tuziladi — ism bo'lmasa yangi
+                 kassir eskisining savat maydoniga tushardi; menyu esa
+                 roldan quriladi — bo'sh rolda kassir hech qanday
+                 bo'limni ko'rmasdi. */
+              login({
+                token: d.accessToken, refresh: d.refreshToken,
+                shopCode: d.shopCode, username: d.username,
+                fullName: d.fullName, role: d.role,
+              });
+            }}
+          />
+        )}
       </BrowserRouter>
       </KeyboardProvider>
       </BadgeProvider>

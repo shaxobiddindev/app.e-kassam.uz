@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { t } from "../lib/ek-i18n";
 import { productApi, saleApi, shopApi } from "../api";
 import CatalogWizard from "./CatalogWizard";
+import { asArray } from "../lib/ek-array";
 
 /* ══════════════════════════════════════════════════════════════════════════
    Birinchi qadamlar (onboarding) — V31 ning davomi.
@@ -39,15 +40,15 @@ export default function OnboardingCard({ toast }) {
            tayyor katalogning o'zi 77 tovar qo'shadi va tovar bo'yicha
            qisqartma kartani katalog qadamidan keyinoq yashirib, qolgan
            qadamlarni yo'qotgan edi. 20+ sotuv — onboarding unga shovqin. */
-        const sales = (await saleApi.getAll()).data || [];
+        const sales = asArray((await saleApi.getAll()).data);
         if (sales.length > 20) {
           localStorage.setItem(doneKey(), "auto");
           if (alive) setState(null);
           return;
         }
         const [products, users] = await Promise.all([
-          productApi.getAll().then((r) => r.data || []).catch(() => []),
-          shopApi.getUsers().then((r) => r.data || []).catch(() => []),
+          productApi.getAll().then((r) => asArray(r.data)).catch(() => []),
+          shopApi.getUsers().then((r) => asArray(r.data)).catch(() => []),
         ]);
         const steps = {
           catalog: products.length > 0,

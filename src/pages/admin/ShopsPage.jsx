@@ -9,6 +9,7 @@ import Select from "../../components/ek/Select";
 import { SkeletonList } from "../../components/ek/Loading";
 import { useLoading } from "../../lib/use-loading";
 import { PhoneField } from "../../components/ek/EkFields";
+import { asArray } from "../../lib/ek-array";
 
 const EMPTY_BRANCH_FORM = { name: "", code: "", phone: "998", address: "" };
 
@@ -26,7 +27,7 @@ export default function ShopsPage({ toast }) {
     setLoading(true);
     try {
       const res = await shopApi.getBranches();
-      setBranches(res.data || []);
+      setBranches(asArray(res.data));
     } catch (err) {
       toast.error(t("branch.loadFailed"));
     } finally {

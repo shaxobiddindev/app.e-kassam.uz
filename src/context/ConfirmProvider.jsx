@@ -6,6 +6,9 @@ import ConfirmModal from "../components/ConfirmModal";
 
      const ok = await confirm({ title, message, type, confirmText, cancelText });
 
+   Faqat XABAR ko'rsatish uchun (savol emas) — `acknowledge: true`:
+   «Bekor qilish» chizilmaydi va va'da har doim `false` qaytaradi.
+
    ⚠ Javob `resolve` REF da saqlanadi, holatda EMAS: ilgari u holatda edi va
    `handleClose` eski holatga yopilib qolib, ketma-ket ikkita so'rovda
    birinchisining va'dasi HECH QACHON hal bo'lmasdi (chaqiruvchi `await` da
@@ -55,6 +58,8 @@ export function ConfirmProvider({ children }) {
           type={state.type}
           confirmText={state.confirmText}
           cancelText={state.cancelText}
+          /* Xabar oynasi — bitta tugma. `ConfirmModal` izohiga qarang. */
+          acknowledge={state.acknowledge}
           onConfirm={() => close(true)}
           onCancel={() => close(false)}
         />

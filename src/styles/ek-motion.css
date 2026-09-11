@@ -156,6 +156,12 @@
 @keyframes ek-toast-in  { from { opacity:0; transform:translateY(16px) scale(.96) } to { opacity:1; transform:none } }
 @keyframes ek-toast-out { to { opacity:0; transform:translateY(8px) scale(.98) } }
 
+/* Yuqoridan tushadigan variant — dasta ekranning YUQORI o'rtasida turadi,
+   shuning uchun kartochka pastdan emas, YUQORIDAN kirishi kerak. Eskisi
+   `.ek-undo` kabi pastdagi elementlarda qolgani uchun almashtirilmadi. */
+.ek-toast-drop { animation: ek-toast-drop 260ms var(--ease-spring) both }
+@keyframes ek-toast-drop { from { opacity:0; transform:translateY(-14px) scale(.96) } to { opacity:1; transform:none } }
+
 /* --- 10. KARUSEL ---------------------------------------------------------- */
 .ek-carousel { position: relative; overflow: hidden }
 .ek-carousel__track {
@@ -219,7 +225,22 @@
 
 /* --- 15. SAHIFA O'TISHI --------------------------------------------------- */
 /* Faqat opacity, 140ms. Siljish YO'Q — POS'da chalg'itadi. */
-.ek-page-in { animation: ek-fade-in var(--dur-fast) var(--ease-out) both }
+
+/* ⚠ `both` EMAS, `backwards` — VA BU JIDDIY XATO USTIGA YOZILGAN.
+   `both` animatsiya TUGAGANDAN KEYIN ham kuchda qoladi (`forwards`), ya'ni
+   `opacity` doim animatsiya tomonidan qo'llanilgan hisoblanadi. Brauzer esa
+   shunday elementga ALOHIDA «stacking context» ochadi — hatto `opacity: 1`
+   bo'lsa ham.
+
+   Natijasi: `.page` ichida chizilgan HAR QANDAY modal oynaning
+   `z-index: 500` i shu qutichaning ICHIDA hisoblanardi va tashqaridagi
+   `.topbar` (z-index 100) undan YUQORIDA chizilardi. Kichik oyna markazda
+   turgani uchun sezilmasdi; BALAND oyna esa yuqoriga cho'zilib, sarlavhasi
+   header ostiga kirib ketardi (foydalanuvchi shikoyati).
+
+   `backwards` boshlanishdan oldingi holatni saqlaydi (miltillash yo'q),
+   lekin tugagach kuchdan qoladi — quticha ham ochilmaydi. */
+.ek-page-in { animation: ek-fade-in var(--dur-fast) var(--ease-out) backwards }
 
 /* --- 16. KAM QOLDIQ PULSATSIYASI ----------------------------------------- */
 /* Bir marta, miltillash yo'q. */

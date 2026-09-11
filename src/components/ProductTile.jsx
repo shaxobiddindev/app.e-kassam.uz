@@ -1,4 +1,5 @@
 import { money, quantity as fmtQty } from "../utils";
+import { productCode } from "../lib/ek-code";
 import { unitLabel } from "../lib/ek-labels";
 import { mediaApi } from "../api";
 import { t } from "../lib/ek-i18n";
@@ -37,10 +38,20 @@ function initialsOf(name) {
   return words.map((w) => w[0]).join("").toUpperCase();
 }
 
-export default function ProductTile({ product, view = "tiles", onPick }) {
+/**
+ * `available` — SAVATNI hisobga olgan qoldiq (KassaPage beradi).
+ *
+ * ⚠ Nega alohida prop, nega `product.stockQuantity` ga yozilmagan: bosilganda
+ * `onPick(p)` AYNAN shu obyektni uzatadi va qoldiq nazorati o'sha yerda
+ * ishlaydi. Kamaytirilgan qiymatni obyektga yozib yuborsak, savat ikki
+ * marta ayirilardi va kassir hali bori bor tovarni qo'sha olmay qolardi.
+ */
+export default function ProductTile({ product, view = "tiles", onPick, available,
+                                     changed = false, showCode = false }) {
   const p = product;
   const tracks = p.stockQuantity != null;
-  const out = tracks && Number(p.stockQuantity) <= 0;
+  const shown = available != null ? available : p.stockQuantity;
+  const out = tracks && Number(shown) <= 0;
   const noPrice = p.salePrice == null;
   const color = COLOR_VAR[p.color] || "var(--bg-brand)";
   const thumb = mediaApi.url(p.thumbUrl);
@@ -51,6 +62,9 @@ export default function ProductTile({ product, view = "tiles", onPick }) {
     "product-card",
     view === "tiles" ? "product-card--tile" : "product-card--list",
     out || noPrice ? "is-dim" : "",
+    /* Qoldig'i endigina o'zgargan (boshqa kassada sotilgan) katakcha —
+       bir silkinib e'tiborni tortadi. Belgi KassaPage dan keladi. */
+    changed ? "is-changed" : "",
   ].filter(Boolean).join(" ");
 
   return (
@@ -65,6 +79,19 @@ export default function ProductTile({ product, view = "tiles", onPick }) {
       )}
 
       <span className="product-body">
+        {/* ⚠ QISQA RAQAM FAQAT RAQAM BILAN QIDIRILGANDA (V107).
+            Kassir raqamni ekrandan ko'rib O'RGANADI, lekin uni har
+            katakchada doim ko'rsatish bu ekranda qimmat: bu yerda
+            har piksel tovarlar ro'yxatidan olinadi va do'kon egasi
+            buni bir necha marta aytgan.
+
+            Shuning uchun raqam AYNAN KERAK BO'LGANDA chiqadi —
+            kassir raqam yozib qidirganda. Shunda u qaysi raqam
+            qaysi tovarni ochganini ko'radi va keyingi safar
+            to'g'ridan-to'g'ri yozadi. */}
+        {showCode && productCode(p) != null && (
+          <span className="product-code ek-num">№{productCode(p)}</span>
+        )}
         <span className="product-name">{p.name}</span>
 
         {p.attributes && <span className="product-attrs">{attrText(p.attributes)}</span>}
@@ -77,7 +104,7 @@ export default function ProductTile({ product, view = "tiles", onPick }) {
           {tracks && (
             <span className={`product-stock ek-num ${out ? "is-out" : ""}`}>
               {out ? t("kassa.outOfStock")
-                   : `${fmtQty(p.stockQuantity, p.unitDecimals)} ${unitLabel(p.unit)}`}
+                   : `${fmtQty(shown, p.unitDecimals)} ${unitLabel(p.unit)}`}
             </span>
           )}
         </span>

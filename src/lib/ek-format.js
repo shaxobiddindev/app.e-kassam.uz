@@ -13,10 +13,10 @@
    (docs/09-CHETLANISHLAR.md ga qarang).
    ========================================================================== */
 
-import { t, getLang } from "./ek-i18n";
+import { t, getLang } from "./ek-i18n.js";
 
 const NNBSP = " ";           // tor bo'shliq — razryad ajratgichi
-/* Oy va hafta nomlari — TILGA BOG'LIQ (`ek-locales.js` dagi `fmt.*`).
+/* Oy va hafta nomlari — TILGA BOG'LIQ (`locales/*.js` dagi `fmt.*`).
    Massiv sifatida modul darajasida saqlanmaydi: til o'zgarganda eskirardi. */
 const months   = () => t("fmt.months").split(",");
 const weekdays = () => t("fmt.weekdays").split(",");
@@ -45,6 +45,37 @@ export function groupDigits(n) {
 export function money(n, { withUnit = false } = {}) {
   const s = groupDigits(n);
   return withUnit ? `${s}${NNBSP}${t("fmt.currency")}` : s;
+}
+
+/**
+ * Pul, TIYINI BILAN — faqat u bor bo'lganda.
+ *
+ * ⚠ `money()` HAR DOIM yaxlitlaydi (`Math.round`) va bu odatda to'g'ri:
+ * tiyin muomalada yo'q. Lekin chekda ikkita joyda u ATAYLAB
+ * ko'rsatiladi (V80):
+ *
+ *   · tortiladigan qatorning aniq jamisi — `6.667 kg × 7 500 =
+ *     50 002.50`;
+ *   · uning ostidagi «Yaxlitlash −0.50» qatori.
+ *
+ * ⚠ Usiz chek O'ZI-O'ZIGA to'g'ri kelmasdi: qatorda 50 003, pastda esa
+ * 50 002 turar va mijoz «hisob noto'g'ri» derdi. Farqni yashirish emas,
+ * KO'RSATISH kerak.
+ *
+ * Butun sonda hech narsa o'zgarmaydi — `money()` bilan bir xil chiqadi.
+ */
+export function moneyFine(n, { withUnit = false } = {}) {
+  const num = Number(n);
+  const unit = withUnit ? `${NNBSP}${t("fmt.currency")}` : "";
+  if (!Number.isFinite(num)) return `0${unit}`;
+  /* Tiyin darajasida taqqoslanadi: 0.005 dan kichik farq — suzuvchi
+     nuqta changi, tiyin emas. */
+  if (Math.abs(num - Math.round(num)) < 0.005) return `${groupDigits(num)}${unit}`;
+  const sign = num < 0 ? "-" : "";
+  const abs = Math.abs(num);
+  const whole = Math.floor(abs);
+  const cents = Math.round((abs - whole) * 100);
+  return `${sign}${groupDigits(whole)}.${String(cents).padStart(2, "0")}${unit}`;
 }
 
 /** Miqdor: butun yoki 3 xonagacha (24 · 1.250) */
@@ -95,6 +126,23 @@ export function date(iso) {
   return `${d.getDate()}${sep}${months()[d.getMonth()]} ${d.getFullYear()}`;
 }
 
+/**
+ * Qisqa sana: `02-09-2026`.
+ *
+ * ⚠ KIRITISH MAYDONI bilan BIR XIL format (`DateField`). Ilgari
+ * yaroqlilik muddati jadvalda serverdan kelgan ISO ko'rinishida
+ * (`2026-09-02`) turardi, maydonda esa boshqacha — bitta ekranda ikki
+ * xil sana yozuvi «oldinda oymi, kunmi?» degan savolni tug'dirardi.
+ *
+ * ⚠ `date()` dan farqi: u oy nomini yozadi («2-sentabr 2026») va matn
+ * ichida o'qish uchun yaxshi. Jadval ustunida esa qat'iy kenglikdagi
+ * raqamlar kerak — ko'z ularni yuqoridan pastga solishtiradi.
+ */
+export function shortDate(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso ?? ""));
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : "—";
+}
+
 /** Topbar uchun: "Yak, 2-avgust 2026" · "Вс, 2 августа 2026" · "Sun, 2 August 2026" */
 export function weekdayDate(iso) {
   const d = iso ? new Date(iso) : new Date();
@@ -102,12 +150,22 @@ export function weekdayDate(iso) {
   return `${weekdays()[d.getDay()]}, ${date(d.toISOString())}`;
 }
 
-/** Jadval uchun sana+vaqt: 02.08.2026 14:32 */
+/**
+ * Jadval uchun sana+vaqt: 02-08-2026 14:32
+ *
+ * ⚠ AJRATGICH — CHIZIQCHA, nuqta emas (V76). Ilgari bu yerda nuqta
+ * turardi va u tizimdagi YAGONA joy edi: `shortDate` ham, sana
+ * kiritish niqobi ham (`dateDisplayInput` — foydalanuvchi
+ * `31-01-2026` deb YOZADI) chiziqcha bilan ishlaydi. Partiyalar
+ * jadvalida ikkala format yonma-yon ustunga tushdi va farq darrov
+ * ko'rindi: bir qatorda `06.09.2026`, yonida `11-09-2026`. Ikki xil
+ * ajratgich bir ekranda ikki xil sana tizimi borday tuyulardi.
+ */
 export function dateTime(iso) {
   if (!iso) return "—";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "—";
-  return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return `${pad(d.getDate())}-${pad(d.getMonth() + 1)}-${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 /** Faqat vaqt: 14:32 */

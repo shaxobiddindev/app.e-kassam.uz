@@ -23,6 +23,7 @@ import { useConfirm } from "../context/ConfirmProvider";
 import { SkeletonTable } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
 import { dateTime, date as fmtDate } from "../lib/ek-format";
+import { asArray } from "../lib/ek-array";
 
 const EMPTY_FORM = { title: "", body: "", startsAt: "", endsAt: "", active: true };
 
@@ -54,7 +55,7 @@ export default function AnnouncementsPage({ toast }) {
     setLoading(true);
     try {
       const res = await announceApi.list();
-      setItems(res.data || []);
+      setItems(asArray(res.data));
     } catch (err) {
       toast?.error(err.message);
     } finally {

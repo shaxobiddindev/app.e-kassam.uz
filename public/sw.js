@@ -15,7 +15,17 @@ const SHELL = `${VERSION}-shell`;
 
 self.addEventListener("install", (e) => {
   e.waitUntil(
-    caches.open(SHELL).then((c) => c.addAll(["/", "/index.html", "/icon-512.png", "/manifest.webmanifest"]))
+    caches.open(SHELL).then((c) =>
+      c.addAll(["/", "/index.html", "/icon-512.png", "/manifest.webmanifest"])
+        /* ⚠ OVOZ ALOHIDA VA O'Z `catch` I BILAN (V93). `addAll` ATOMAR:
+           ro'yxatdagi bitta manzil xato bersa, HAMMASI keshlanmaydi.
+           Chek ovozini o'sha ro'yxatga qo'shish — yo'lda bitta xato
+           bo'lsa BUTUN oflayn rejimni o'chirish degani bo'lardi, va uni
+           hech kim sezmasdi.
+
+           Ovoz esa ixtiyoriy: yetib kelmasa `ek-sound-web.js` ohangга
+           tushadi. Shuning uchun uning xatosi shu yerda yutiladi. */
+        .then(() => c.add("/sfx/done.mp3").catch(() => {})))
       .then(() => self.skipWaiting())
       .catch(() => self.skipWaiting())
   );
@@ -53,7 +63,21 @@ self.addEventListener("fetch", (e) => {
       caches.match(req).then((cached) => {
         const network = fetch(req)
           .then((res) => {
-            if (res.ok) caches.open(SHELL).then((c) => c.put(req, res.clone()));
+            /* ⚠ NUSXA DARHOL OLINADI, `caches.open(...)` NING ICHIDA EMAS.
+               `caches.open()` — promise: u hal bo'lgunicha javob
+               allaqachon brauzerga berilgan va TANASI O'QILGAN bo'ladi,
+               `clone()` esa o'qilgan tanani nusxalay olmaydi. Konsol
+               har rasm va har bo'lakda «Failed to execute 'clone' on
+               'Response': Response body is already used» bilan to'lardi
+               (do'kon egasi ko'rsatdi).
+
+               ⚠ Xato JIMGINA: sahifa ishlayveradi, faqat kesh
+               to'ldirilmaydi — ya'ni oflayn rejim asta-sekin bo'shab
+               qoladi va buni hech kim sezmaydi. */
+            if (res.ok) {
+              const copy = res.clone();
+              caches.open(SHELL).then((c) => c.put(req, copy)).catch(() => {});
+            }
             return res;
           })
           .catch(() => cached);

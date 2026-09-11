@@ -1,14 +1,19 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { t } from "../../lib/ek-i18n";
 import { productApi } from "../../api";
 import { BranchSelector } from "../../components";
 import Modal from "../../components/Modal";
-import { Empty, Field, FormGroup } from "../../components/ui";
+import { Empty, Field, FormGroup, SearchBar } from "../../components/ui";
+import DataFilter, { useDataFilter, SortTh } from "../../components/ek/DataFilter";
+import { SkeletonTable } from "../../components/ek/Loading";
+import { rankItems } from "../../lib/ek-search";
+import { fmtDateTime } from "../../utils";
 import { useConfirm } from "../../context/ConfirmProvider";
-import { SkeletonList, Spinner } from "../../components/ek/Loading";
+import { Spinner } from "../../components/ek/Loading";
 import { useLoading } from "../../lib/use-loading";
 import Select from "../../components/ek/Select";
 import { UNIT, MARKING_GROUP, options, unitLabel } from "../../lib/ek-labels";
+import { asArray } from "../../lib/ek-array";
 
 /* ══════════════════════════════════════════════════════════════════════════
    Kategoriyalar — endi DARAXT va STANDART QIYMATLAR manbai.
@@ -58,12 +63,13 @@ export default function CategoriesPage({ toast }) {
   const [form, setForm]             = useState(EMPTY_FORM);
   const [saving, setSaving]         = useState(false);
   const [branchId, setBranchId]     = useState(null);
+  const [search, setSearch]         = useState("");
 
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const res = await productApi.getCategories(branchId);
-      setCategories(res.data || []);
+      setCategories(asArray(res.data));
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -143,40 +149,35 @@ export default function CategoriesPage({ toast }) {
   const setValue = (k) => (v) => setForm((p) => ({ ...p, [k]: v }));
 
   const roots = categories.filter((c) => !c.parentId);
-  const childrenOf = (id) => categories.filter((c) => c.parentId === id);
+  const parentName = (id) => categories.find((c) => c.id === id)?.name || null;
 
-  const Card = ({ cat, child }) => (
-    <div className={`cat-card ${child ? "cat-card--child" : ""}`}>
-      <div className="cat-card__head">
-        <span className="cat-card__mark" style={{ background: colorVar(cat.color) }}>
-          {cat.icon
-            ? <i className={`fa-solid ${cat.icon}`} aria-hidden="true" />
-            : (cat.name?.[0]?.toUpperCase() || "?")}
-        </span>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div className="fw-800" style={{ fontSize: 14 }}>{cat.name}</div>
-          <div className="form-hint" style={{ marginTop: 2 }}>
-            {t("categories.productCount", { n: cat.productCount })}
-            {cat.defaultUnit && ` · ${unitLabel(cat.defaultUnit)}`}
-            {cat.defaultVatRate != null && ` · ${t("products.vatShort")} ${cat.defaultVatRate}%`}
-          </div>
-        </div>
-      </div>
-      <div style={{ display: "flex", gap: 6 }}>
-        <button className="btn btn-outline btn-sm" style={{ flex: 1, justifyContent: "center" }} onClick={() => openEdit(cat)}>
-          <i className="fa-solid fa-pen" /> {t("common.edit")}
-        </button>
-        {!child && (
-          <button className="btn btn-outline btn-sm" onClick={() => openAdd(cat.id)} title={t("categories.parent")}>
-            <i className="fa-solid fa-plus" />
-          </button>
-        )}
-        <button className="btn-icon danger" onClick={() => handleDelete(cat)} aria-label={t("common.delete")}>
-          <i className="fa-solid fa-trash" />
-        </button>
-      </div>
-    </div>
-  );
+  /* ⚠ DARAXT YASSILANDI, LEKIN YO'QOLMADI. Jadval saralanadigan
+     bo'lishi kerak — «tovari eng ko'p bo'lim» degan savolga daraxt
+     ko'rinishida umuman javob berib bo'lmasdi, chunki har shox
+     alohida saralanardi. Endi ota-ona ALOHIDA USTUN: saralashda ham
+     ko'rinadi, filtrda ham ishlatiladi. */
+  const COLS = useMemo(() => [
+    { key: "name",   label: t("common.name"),            type: "text",   get: (c) => c.name },
+    /* ⚠ TUR «matn», «son» EMAS — tovar kodidagi bilan bir xil sabab
+       (V115): «04» son sifatida 4 ga aylanib, filtr uni «4» bilan ham
+       topib qo'yardi. */
+    { key: "code",   label: t("cat.codeCol"),            type: "text",   get: (c) => c.code },
+    { key: "parent", label: t("categories.parent"),      type: "text",
+      get: (c) => parentName(c.parentId) },
+    { key: "prods",  label: t("cat.productsCol"),        type: "number", get: (c) => c.productCount },
+    { key: "subs",   label: t("cat.subCol"),             type: "number", get: (c) => c.childCount },
+    { key: "unit",   label: t("products.unit"),          type: "text",
+      get: (c) => (c.defaultUnit ? unitLabel(c.defaultUnit) : null) },
+    { key: "vat",    label: t("products.vatShort"),      type: "number", get: (c) => c.defaultVatRate },
+    { key: "date",   label: t("common.createdAt"),         type: "date",   get: (c) => c.createdAt },
+  ], [categories]);
+
+  const colFlt = useDataFilter(COLS, "categories");
+
+  const filtered = rankItems(colFlt.apply(categories), search, {
+    codes: (c) => [c.code],
+    texts: (c) => [c.name],
+  });
 
   return (
     <div>
@@ -191,27 +192,98 @@ export default function CategoriesPage({ toast }) {
             <i className="fa-solid fa-tags text-blue" />
             {t("cat.title")} (<span className="ek-num">{categories.length}</span>)
           </span>
-          <button className="btn btn-primary btn-sm" onClick={() => openAdd()}>
-            <i className="fa-solid fa-plus" /> {t("common.add")}
-          </button>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <SearchBar value={search} onChange={setSearch}
+                       placeholder={t("cat.search")} style={{ width: 240 }} />
+            <DataFilter cols={COLS} flt={colFlt} />
+            <button className="btn btn-primary btn-sm" onClick={() => openAdd()}>
+              <i className="fa-solid fa-plus" /> {t("common.add")}
+            </button>
+          </div>
         </div>
 
-        {busy ? <SkeletonList rows={6} avatar={false} /> : categories.length > 0 ? (
-          <div className="cat-list">
-            {roots.map((cat) => (
-              <div key={cat.id} className="cat-branch">
-                <Card cat={cat} />
-                {childrenOf(cat.id).length > 0 && (
-                  <div className="cat-children">
-                    {childrenOf(cat.id).map((child) => <Card key={child.id} cat={child} child />)}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        ) : (
-          <Empty icon="fa-tags" text={t("cat.none")} />
-        )}
+        <div className="table-wrap">
+          {busy ? (
+            <SkeletonTable rows={8} cols={["wide", "narrow", "text", "num", "num", "text"]} />
+          ) : filtered.length > 0 ? (
+            <table>
+              <thead>
+                <tr>
+                  <SortTh flt={colFlt} col="name">{t("common.name")}</SortTh>
+                  <SortTh flt={colFlt} col="code">{t("cat.codeCol")}</SortTh>
+                  <SortTh flt={colFlt} col="parent">{t("categories.parent")}</SortTh>
+                  <SortTh flt={colFlt} col="prods">{t("cat.productsCol")}</SortTh>
+                  <SortTh flt={colFlt} col="subs">{t("cat.subCol")}</SortTh>
+                  <SortTh flt={colFlt} col="unit">{t("products.unit")}</SortTh>
+                  <SortTh flt={colFlt} col="vat">{t("products.vatShort")}</SortTh>
+                  <SortTh flt={colFlt} col="date">{t("common.createdAt")}</SortTh>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((cat) => (
+                  <tr key={cat.id}>
+                    <td className="fw-700">
+                      <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+                        <span className="cat-card__mark cat-card__mark--sm"
+                              style={{ background: colorVar(cat.color) }}>
+                          {cat.icon
+                            ? <i className={`fa-solid ${cat.icon}`} aria-hidden="true" />
+                            : (cat.name?.[0]?.toUpperCase() || "?")}
+                        </span>
+                        <span>{cat.name}</span>
+                      </div>
+                    </td>
+                    {/* ⚠ RAQAM ENDI KO'RINADI. Kassada `*4` butun bo'limni
+                        ochadi (V128), lekin bu raqam hech qayerda
+                        yozilmagan edi — uni faqat tovar kartochkasidan
+                        taxmin qilish mumkin edi. */}
+                    <td className="ek-num">
+                      {cat.code
+                        ? <span className="cat-code">{cat.code}</span>
+                        : <span className="text-muted">—</span>}
+                    </td>
+                    <td>{parentName(cat.parentId) || <span className="text-muted">—</span>}</td>
+                    {/* ⚠ NOL «—» EMAS, AYNAN 0 (CLAUDE.md): «bo'limda tovar
+                        yo'q» va «son noma'lum» — boshqa-boshqa gaplar. */}
+                    <td className="text-end ek-num">{cat.productCount}</td>
+                    <td className="text-end ek-num">{cat.childCount}</td>
+                    <td>{cat.defaultUnit ? unitLabel(cat.defaultUnit)
+                                         : <span className="text-muted">—</span>}</td>
+                    <td className="text-end ek-num">
+                      {cat.defaultVatRate != null
+                        ? `${cat.defaultVatRate}%`
+                        : <span className="text-muted">—</span>}
+                    </td>
+                    <td className="ek-num">{fmtDateTime(cat.createdAt)}</td>
+                    <td className="text-end">
+                      <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                        <button className="btn-icon" onClick={() => openEdit(cat)}
+                                aria-label={t("common.edit")}>
+                          <i className="fa-solid fa-pen" />
+                        </button>
+                        {/* Ichki bo'lim qo'shish — faqat ildizga (V115: raqam
+                            ildizda, ya'ni ikki qavatdan chuqur ketmaydi). */}
+                        {!cat.parentId && (
+                          <button className="btn-icon" onClick={() => openAdd(cat.id)}
+                                  aria-label={t("categories.parent")} title={t("cat.addSub")}>
+                            <i className="fa-solid fa-plus" />
+                          </button>
+                        )}
+                        <button className="btn-icon danger" onClick={() => handleDelete(cat)}
+                                aria-label={t("common.delete")}>
+                          <i className="fa-solid fa-trash" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <Empty icon="fa-tags" text={categories.length ? t("common.notFound") : t("cat.none")} />
+          )}
+        </div>
       </div>
 
       {modal && (
@@ -243,7 +315,13 @@ export default function CategoriesPage({ toast }) {
                 // daraja bilan cheklangan (backend ham shuni tekshiradi).
                 ...roots
                   .filter((c) => !(modal?.cat && c.id === modal.cat.id))
-                  .map((c) => ({ value: String(c.id), label: c.name, icon: c.icon || "fa-folder" })),
+                  /* ⚠ RAQAM SHU YERDA HAM ko'rinsin (`hint` — alohida
+                     ustun): ota-onani tanlayotgan odam bo'limlarni
+                     aynan raqami bilan ajratadi, chunki kassada ham
+                     shu raqam teriladi. */
+                  .map((c) => ({ value: String(c.id), label: c.name,
+                                 hint: c.code || undefined,
+                                 icon: c.icon || "fa-folder" })),
               ]}
             />
           </FormGroup>

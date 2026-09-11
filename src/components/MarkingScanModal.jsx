@@ -2,7 +2,16 @@ import { useState, useEffect, useRef } from "react";
 import { t } from "../lib/ek-i18n";
 import { markingApi } from "../api";
 import { markingGroup } from "../lib/ek-labels";
+/* ⚠ `shortDate`, `fmtDate` EMAS: server bu yerga toza sana
+   yuboradi («2026-10-31», vaqtsiz). `fmtDate` uni `new Date()`
+   bilan o'qiydi va vaqtsiz sana UTC yarim tuni deb talqin
+   qilinadi — vaqt mintaqasiga qarab sana bir kunga surilishi
+   mumkin. Muddatda bir kun — «sotsa bo'ladi» va «bo'lmaydi»
+   orasidagi farq. `shortDate` matnni matn sifatida o'giradi
+   va bu yerda ham, partiyalar jadvalida ham bir xil ko'rinadi. */
+import { shortDate } from "../lib/ek-format";
 import { Spinner } from "./ek/Loading";
+import Overlay from "./ek/Overlay";
 
 /* ══════════════════════════════════════════════════════════════════════════
    Markirovka yorliqlarini skanerlash — kassada ham, omborda ham.
@@ -61,6 +70,8 @@ export default function MarkingScanModal({ product, mode = "sale", onDone, onClo
         code,
         ok: r.ok && !wrongProduct,
         reason: wrongProduct ? t("marking.otherProduct") : r.reason,
+        /* Kod ichidagi muddat (V85) — server o'qib qaytaradi. */
+        expiryDate: r.expiryDate || null,
       }]);
     } catch (err) {
       setCodes((prev) => [...prev, { code, ok: false, reason: err.message }]);
@@ -78,9 +89,9 @@ export default function MarkingScanModal({ product, mode = "sale", onDone, onClo
   };
 
   return (
-    <div className="pay-modal-overlay ek-overlay" role="dialog" aria-modal="true"
+    <Overlay className="pay-modal-overlay ek-overlay" role="dialog" aria-modal="true"
          aria-label={t("marking.scanTitle")}
-         onKeyDown={(e) => { if (e.key === "Escape") { e.preventDefault(); onClose(); } }}>
+         onEscape={onClose}>
       <div className="ek-dialog mark-modal">
         <div className="pay-modal-header">
           <div className="pay-modal-title">
@@ -131,6 +142,18 @@ export default function MarkingScanModal({ product, mode = "sale", onDone, onClo
                 <i className={`fa-solid ${c.ok === false ? "fa-triangle-exclamation" : "fa-circle-check"}`}
                    aria-hidden="true" />
                 <span className="mark-row__code ek-num">{c.code}</span>
+                {/* ⚠ MUDDAT HAR DOIM KO'RSATILADI (V85), faqat xatoda emas.
+                    Yaroqli tovarda ham «qachongacha» degan savol kassirga
+                    kerak: mijoz so'raydi va javob qutida yozilmagan
+                    bo'lishi mumkin. Xatoda esa sana sababni RAQAM bilan
+                    tushuntiradi — matnni o'qishdan tezroq. */}
+                {c.expiryDate && (
+                  <span className={`mark-row__expiry ${c.ok === false ? "is-bad" : ""}`}
+                        title={t("marking.codeExpiry")}>
+                    <i className="fa-solid fa-hourglass-half" aria-hidden="true" />{" "}
+                    {shortDate(c.expiryDate)}
+                  </span>
+                )}
                 {c.ok === false && <span className="mark-row__reason">{c.reason}</span>}
                 <button className="btn-icon danger" onClick={() => remove(c.code)}
                         aria-label={t("common.delete")}>
@@ -149,6 +172,6 @@ export default function MarkingScanModal({ product, mode = "sale", onDone, onClo
           </button>
         </div>
       </div>
-    </div>
+    </Overlay>
   );
 }

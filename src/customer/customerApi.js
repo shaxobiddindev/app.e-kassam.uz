@@ -61,6 +61,11 @@ export const appApi = {
      usulni ko'rsatib qo'yish odamni ishlamaydigan yo'lga boshlaydi. */
   methods:      ()             => call("/auth/methods", { auth: false }),
 
+  /* NAMOYISH HISOBIGA KIRISH (V50) — Google Play tekshiruvchisi uchun.
+     ⚠ Serverda yoqilgan bo'lsagina ishlaydi va FAQAT namoyish hisobini
+     ochadi; boshqa hech qaysi hisobga bu yo'l bilan kirib bo'lmaydi. */
+  demoLogin:    ()             => call("/auth/demo", { method: "POST", auth: false }),
+
   emailStart:   (email)        => call("/auth/email/start",
                                        { method: "POST", body: { email }, auth: false }),
   emailVerify:  (email, code)  => call("/auth/email/verify",
@@ -95,13 +100,45 @@ export const appApi = {
   /* ── Profil va do'konlar ── */
   me:         ()      => call("/me"),
   updateMe:   (data)  => call("/me", { method: "PUT", body: data }),
+  /* HISOBNI O'CHIRISH (V49) — Google Play talabi.
+     ⚠ Do'konning mijoz yozuvi (qarz, ball, xarid tarixi) O'CHMAYDI, faqat
+     bog'lanish uziladi — sabab serverdagi `deleteAccount` izohida va
+     foydalanuvchiga oynada ochiq aytiladi. */
+  deleteMe:   ()      => call("/me", { method: "DELETE" }),
   shops:      ()      => call("/shops"),
+  /* Aylanma karta siri (V45) — bir marta olinadi, keyin kod ILOVADA,
+     oflaynda yasaladi. ⚠ Bu chaqiruvdan keyin server o'sha kartadan
+     TOTP talab qila boshlaydi. */
+  cardSecret: (id)    => call(`/shops/${id}/card-secret`, { method: "POST" }),
+
+  /* ── Qarzlarim (V46) ──
+     ⚠ Ro'yxat PUSH DAN MUSTAQIL: push kelmasligi mumkin (tokeni yo'q,
+     telefon o'chiq, ruxsat berilmagan) — o'shanda ham mijoz ilovani
+     ochib qarzini ko'radi. */
+  debts:      ()      => call("/debts"),
+  answerDebt: (id, confirmed, note) =>
+    call(`/debts/${id}/answer?confirmed=${confirmed}`
+         + (note ? `&note=${encodeURIComponent(note)}` : ""), { method: "POST" }),
 
   /* ── Cheklar ──
      ⚠ Lenta HAMMA do'kon bo'yicha bitta ro'yxat (server qo'shib beradi),
      bitta chekni ochishda esa qaysi do'kondagi yozuv ekani ham
      yuboriladi — mijozning har do'konda alohida `customers.id` si bor. */
   receipts:   (limit = 30) => call(`/receipts?limit=${limit}`),
+
+  /* ── To'lovlarim (V61) ──
+     ⚠ Xarid cheklaridan ALOHIDA lenta. Ikkalasi bitta ro'yxatga
+     qo'shilsa, «jami qancha sarfladim» degan hisobda qarz to'lovi ham
+     xaridga qo'shilib ketardi — u esa allaqachon o'sha xaridda
+     sanalgan va mijoz pulini ikki marta sarflagan bo'lib chiqardi. */
+  payments:   (limit = 30) => call(`/payments?limit=${limit}`),
+
+  /* ── Jamg'armam (V63) ──
+     ⚠ Har do'kon ALOHIDA va ular QO'SHILMAYDI: pul do'konlar
+     o'rtasida ko'chmaydi, bir do'kondagi 200 000 ni boshqasida
+     ishlatib bo'lmaydi. Qo'shib ko'rsatish ishlatib bo'lmaydigan
+     raqamni va'da qilardi. */
+  savings:    ()           => call("/savings"),
 
   /* ── Ball tarixi ──
      ⚠ Do'kon bo'yicha ALOHIDA: ballar do'konlar o'rtasida ko'chmaydi,

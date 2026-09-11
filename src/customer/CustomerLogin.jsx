@@ -3,6 +3,8 @@ import { appApi, setAppToken } from "./customerApi";
 import { LOGO_URL, LOGO_DARK_URL } from "../config";
 import { isNativeShell } from "../lib/ek-desktop";
 import { nativeTelegramAvailable, loginWithTelegramApp } from "../lib/ek-tglogin";
+import { MaskedField } from "../components/ek/EkFields";
+import { phoneInput } from "../lib/ek-input";
 
 /* ══════════════════════════════════════════════════════════════════════════
    MIJOZ KIRISHI (V37 · V40)
@@ -51,6 +53,23 @@ export default function CustomerLogin({ onLoggedIn, onStaffLogin }) {
     appApi.methods().then(setMethods).catch(() => {});
     return () => clearInterval(poller.current);
   }, []);
+
+  /* ── Namoyish hisobi (V50) ────────────────────────────────────────
+     Sabab yuqoridagi tugma izohida. Bu yerda kod so'ralmaydi: server
+     to'g'ridan-to'g'ri namoyish hisobining kalitini beradi. */
+  const startDemo = async () => {
+    setError("");
+    setMode("demo");
+    try {
+      const r = await appApi.demoLogin();
+      if (!r?.token) throw new Error("Namoyish hisobi topilmadi");
+      setAppToken(r.token);
+      onLoggedIn();
+    } catch (e) {
+      setMode("idle");
+      setError(e.message || "Namoyish rejimini ochib bo'lmadi");
+    }
+  };
 
   /* ── 1. Bot orqali ────────────────────────────────────────────────── */
   const startBot = async () => {
@@ -246,6 +265,26 @@ export default function CustomerLogin({ onLoggedIn, onStaffLogin }) {
         </div>
       )}
 
+      {/* ══ NAMOYISH (V50) ══════════════════════════════════════════════
+          ⚠ FAQAT server yoqib qo'ygan bo'lsa chiziladi. Mijoz ilovasiga
+          kirishning uchala yo'li ham bir martalik kod talab qiladi va
+          Google Play tekshiruvchisi ularning hech birini o'tolmaydi —
+          bu tugmasiz ilova do'konga qo'yilmasdi.
+
+          ⚠ Ma'lumot O'YLAB TOPILGAN va bu yerda ochiq aytiladi: odam
+          «demo» tugmasini bosib, ballarini haqiqiy deb o'ylamasin. */}
+      {methods.demo && (
+        <div className="cu-demo">
+          <button className="cu-btn cu-btn--ghost" onClick={startDemo} disabled={mode === "demo"}>
+            <i className="fa-solid fa-circle-play" aria-hidden="true" />{" "}
+            {mode === "demo" ? "Ochilmoqda…" : "Demo rejimida ko'rish"}
+          </button>
+          <p className="cu-demo__note">
+            Namoyish hisobi — ma'lumotlar o'ylab topilgan. Telefon raqami talab qilinmaydi.
+          </p>
+        </div>
+      )}
+
       {/* Xodimlar uchun — kichik, lekin yashirin emas */}
       <button className="cu-staff" onClick={onStaffLogin}>
         Do'kon xodimiman
@@ -311,10 +350,15 @@ function OtpForm({ kind, onBack, onDone }) {
            to'liq raqam yozadi va u abonent raqami bo'lib tushadi. */
         <div className="pt-phone">
           <span className="pt-phone__cc">+998</span>
-          <input id="cu-otp-target" className="cu-input" type="tel" inputMode="tel"
-                 autoComplete="tel" placeholder="90 123 45 67" value={target}
-                 disabled={sent}
-                 onChange={(e) => setTarget(e.target.value)} />
+          {/* ⚠ NIQOB ORQALI. Ilgari bu oddiy matn maydoni edi: harf ham,
+              cheksiz raqam ham yozilaverardi va serverga tozalanmagan
+              matn ketardi. Endi u kassadagi maydon bilan bir xil
+              qoidada ishlaydi — `target` doim «+998901234567». */}
+          <MaskedField id="cu-otp-target" className="cu-input" mask={phoneInput}
+                       type="tel" inputMode="tel"
+                       autoComplete="tel" placeholder="90 123 45 67" value={target}
+                       disabled={sent}
+                       onChange={(e) => setTarget(e.target.value)} />
         </div>
       )}
 

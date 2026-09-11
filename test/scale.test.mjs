@@ -1,0 +1,223 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   TAROZI OQIMI (V111)
+
+   Do'kon egasi: «tarozi sticker chiqarmaydi, monoblokka ulangan —
+   kassa bilan aloqa qilishi kerak».
+
+   ═══ NIMA TEKSHIRILADI ═════════════════════════════════════════════════
+
+   Bu yerdan chiqadigan son to'g'ridan-to'g'ri chekka tushadi, shuning
+   uchun ikkita narsa qat'iy:
+
+     · YARIM RAMKADAN son olinmaydi — port ma'lumotni bo'lak-bo'lak
+       beradi va «0.1» bilan «23 kg» ikki o'qishda kelishi mumkin;
+     · TEBRANIB turgan o'lchov «barqaror» deb ko'rsatilmaydi.
+
+   Ishga tushirish:  node test/scale.test.mjs
+   ══════════════════════════════════════════════════════════════════════════ */
+const { splitFrames, parseFrame, stableOf, feed, weightQty, isWeighUnit } =
+  await import("../src/lib/ek-scale.js");
+const { readFileSync } = await import("node:fs");
+
+let pass = 0, fail = 0;
+const ok  = (m) => { pass++; console.log("  ✅ " + m); };
+const bad = (m, got) => { fail++; console.log("  ❌ " + m + (got === undefined ? "" : `\n     olindi: ${got}`)); };
+const eq  = (a, b, m) => (a === b ? ok(m) : bad(m, JSON.stringify(a)));
+
+console.log("── CAS / Mettler-Toledo ramkasi ──");
+{
+  const r = parseFrame("ST,GS,   0.123kg");
+  eq(r.kg, 0.123, "og'irlik 0.123 kg");
+  eq(r.stable, true, "«ST» — barqaror");
+  eq(r.net, false, "«GS» — brutto");
+}
+{
+  const r = parseFrame("US,NT,   1.500 kg");
+  eq(r.stable, false, "«US» — tebranmoqda");
+  eq(r.net, true, "«NT» — netto");
+}
+
+console.log("\n\u2500\u2500 \u26a0 HAQIQIY TAROZI: M-ER 328ACPX \u2500\u2500");
+/* Do'kondagi tarozidan olingan ramka (o'ylab topilmagan):
+
+     06 01 02 53 20 30 30 2E 34 38 38 6B 67 65 03 04
+     ACK SOH STX \u00abS\u00bb \u00ab \u00bb \u00ab00.488\u00bb \u00abkg\u00bb \u00abe\u00bb ETX EOT
+
+   Holat `ST`/`US` so'zlari bilan emas, BITTA HARF bilan aytiladi va
+   ramka boshi/oxiri boshqaruv baytlari bilan o'ralgan. */
+{
+  const B = [0x06, 0x01, 0x02, 0x53, 0x20, 0x30, 0x30, 0x2e,
+             0x34, 0x38, 0x38, 0x6b, 0x67, 0x65, 0x03, 0x04];
+  const raw = B.map((b) => String.fromCharCode(b)).join("");
+
+  const st = feed(null, raw + raw);
+  eq(st.kg, 0.488, "haqiqiy ramkadan 0.488 kg o'qildi");
+  eq(st.stable, true, "\u26a0 \u00abS\u00bb bayrog'i \u2014 tarozining O'ZI barqaror dedi");
+
+  /* \u26a0 \u00abkge\u00bb dagi \u00abg\u00bb GRAMM deb o'qilmasligi kerak: o'shanda
+     0.488 kg jimgina 0.000488 kg bo'lib qolardi. */
+  eq(feed(null, raw).kg, 0.488, "\u00abkge\u00bb gramm deb o'qilmadi");
+
+  const moving = raw.replace("S", "U");
+  eq(feed(null, moving).stable, false, "\u00abU\u00bb \u2014 tebranmoqda");
+
+  /* Oqim bo'lak-bo'lak keladi: ramka O'RTASIDAN bo'linsa ham
+     natija butun bo'lishi shart. */
+  let s2 = feed(null, raw.slice(0, 7));
+  s2 = feed(s2, raw.slice(7) + raw);
+  eq(s2.kg, 0.488, "ramka o'rtasidan bo'linsa ham to'g'ri o'qiladi");
+}
+
+console.log("\n── Sodda ASCII ──");
+eq(parseFrame("  0.250 kg").kg, 0.25, "faqat son va birlik");
+eq(parseFrame("0,250").kg, 0.25, "vergul ham nuqta kabi");
+eq(parseFrame("  0.250 ").stable, null, "barqarorlik AYTILMAGAN — `null`, `false` emas");
+
+console.log("\n── Birliklar ──");
+eq(parseFrame("450 g").kg, 0.45, "gramm kilogrammga o'giriladi");
+eq(parseFrame("1.5 kg").kg, 1.5, "kilogramm o'zgarmaydi");
+eq(parseFrame("ST,GS,0.123kg").kg, 0.123, "«GS» «gramm» deb o'qilmaydi");
+
+console.log("\n── Sonsiz ramka ──");
+eq(parseFrame(""), null, "bo'sh ramka — null");
+eq(parseFrame("ERR"), null, "xato belgisi — null");
+eq(parseFrame(null), null, "yo'q ramka — null");
+
+console.log("\n── ⚠ YARIM RAMKA ISHLATILMAYDI ──");
+{
+  const { frames, rest } = splitFrames("ST,GS,0.1kg\r\nST,GS,0.2");
+  eq(frames.length, 1, "faqat tugallangani olinadi");
+  eq(rest, "ST,GS,0.2", "yarmi keyingi o'qishga qoladi");
+}
+{
+  /* Port ikki bo'lakda berdi — natija BUTUN o'lchov bo'lishi shart. */
+  let st = feed(null, "ST,GS,   1.2");
+  eq(st.kg, null, "yarim ramkadan og'irlik olinmadi");
+  st = feed(st, "34 kg\r\n");
+  eq(st.kg, 1.234, "ikki bo'lak birlashib 1.234 kg berdi");
+}
+
+console.log("\n── ⚠ BARQARORLIK ──");
+eq(stableOf([1, 1, 1]), false, "to'rttadan kam o'lchov — hali barqaror emas");
+eq(stableOf([1, 1, 1, 1]), true, "to'rtta bir xil — barqaror");
+eq(stableOf([1, 1, 1.002, 1]), false, "oxirgilari farq qilsa — barqaror emas");
+eq(stableOf([0.5, 1, 1, 1, 1]), true, "eskisi ahamiyatsiz — oxirgi to'rttasi muhim");
+{
+  /* Tarozining O'Z so'zi kuzatuvdan ustun: aks holda barqaror
+     o'lchov ham to'rt o'qish kutishga majbur bo'lardi. */
+  const st = feed(null, "ST,GS,0.500kg\r\n");
+  eq(st.stable, true, "tarozi «ST» desa — darhol barqaror");
+}
+{
+  const st = feed(null, "US,GS,0.500kg\r\nUS,GS,0.500kg\r\nUS,GS,0.500kg\r\nUS,GS,0.500kg\r\n");
+  eq(st.stable, false, "⚠ tarozi «US» desa — bir xil kelsa ham barqaror EMAS");
+}
+{
+  /* Barqarorlikni aytmaydigan tarozi — kuzatuv bilan. */
+  let st = null;
+  for (let i = 0; i < 4; i++) st = feed(st, "0.750\r\n");
+  eq(st.stable, true, "aytmaydigan tarozida to'rt bir xil o'lchov — barqaror");
+  st = feed(st, "0.760\r\n");
+  eq(st.stable, false, "qiymat o'zgardi — yana barqaror emas");
+}
+
+console.log("\n── Tarix cheklangan ──");
+{
+  let st = null;
+  for (let i = 0; i < 50; i++) st = feed(st, `${i / 1000}\r\n`);
+  st.history.length <= 20 ? ok(`tarix ${st.history.length} ta bilan cheklangan`)
+                          : bad("tarix cheksiz o'smasin", st.history.length);
+}
+
+console.log("\n\u2500\u2500 Tarozi KILOGRAMM beradi (V113) \u2500\u2500");
+{
+  eq(weightQty("KG", 0.488), 0.488, "kg tovarda og'irlik o'z holicha");
+  eq(weightQty("GRAM", 0.488), 488, "gramm tovarda 1000 ga ko'paytiriladi");
+  eq(weightQty("kg", 0.488), 0.488, "registr farqi ahamiyatsiz");
+
+  /* ⚠ ASOSIY HOL. Miqdor oynasi LITR va METR uchun ham ochiladi va
+     tugma ilgari ULARDA HAM chizilardi: mato sotayotgan do'konda
+     «0.488 metr» deb turar, bosilsa chekka o'sha son tushardi. */
+  eq(weightQty("METR", 0.488), null, "\u26a0 metrda tugma chizilmaydi");
+  eq(weightQty("LITR", 1.5), null, "\u26a0 litrda tugma chizilmaydi");
+  eq(weightQty("METR_KV", 2), null, "\u26a0 kvadrat metrda tugma chizilmaydi");
+  eq(weightQty("SOAT", 1), null, "\u26a0 soatda tugma chizilmaydi");
+  eq(weightQty("DONA", 3), null, "donada tugma chizilmaydi");
+
+  /* Tarozi bo'sh yoki hali o'qimagan — tugma ham yo'q. */
+  eq(weightQty("KG", 0), null, "nol og'irlikda tugma yo'q");
+  eq(weightQty("KG", null), null, "og'irlik kelmagan bo'lsa tugma yo'q");
+  eq(weightQty("KG", -1), null, "manfiy og'irlik o'tmaydi");
+  eq(weightQty(null, 0.488), null, "birligi noma'lum tovarda tugma yo'q");
+}
+
+console.log("\n\u2500\u2500 Qaysi port TAROZI (V112) \u2500\u2500");
+{
+  const { portId } = await import("../src/lib/ek-serial.js");
+  const { pickPort } = await import("../src/lib/ek-scale-live.js");
+
+  const usb = (v, pr) => ({ getInfo: () => ({ usbVendorId: v, usbProductId: pr }) });
+  /* Monoblokning ichki RS-232 porti — USB raqamlari yo'q. */
+  const com = { getInfo: () => ({}) };
+
+  eq(portId(usb(1659, 8963)), "1659:8963", "USB porti belgisi bilan tanildi");
+  eq(portId(com), "", "ichki COM portda belgi yo'q");
+  eq(portId(undefined), "", "port bo'lmasa ham yiqilmaydi");
+
+  const printer = usb(1046, 20497);
+  const scale   = usb(1659, 8963);
+
+  eq(pickPort([], "1659:8963"), null, "port topilmasa \u2014 null");
+  eq(pickPort([printer, scale], ""), printer, "belgi yo'q \u2014 birinchisi olinadi");
+
+  /* ⚠ ASOSIY HOL. Monoblokka chek printeri ham, tarozi ham ulangan va
+     ro'yxatda printer birinchi turadi. Belgisiz tanlovda tarozi
+     jim qolar, printer esa axlat qabul qilardi. */
+  eq(pickPort([printer, scale], "1659:8963"), scale,
+     "\u26a0 bir nechta qurilmadan AYNAN tarozi tanlanadi");
+
+  eq(pickPort([printer, scale], "9:9"), null,
+     "\u26a0 belgi mos kelmadi va port ko'p \u2014 taxmin qilinmaydi");
+  eq(pickPort([scale], "9:9"), scale,
+     "port bitta \u2014 adapter almashgan bo'lsa ham o'sha qurilma");
+}
+
+console.log("\n\u2500\u2500 Og'irlik birligi \u2500\u2500");
+{
+  /* \u26a0 «Bo'linadigan» bilan «tortiladigan» BIR NARSA EMAS va aynan shu
+     farq ikki tomonga xato berardi: gramm bo'linmaydi (butun son), lekin
+     tortiladi; metr bo'linadi, lekin tarozi uni o'lchay olmaydi. */
+  eq(isWeighUnit("KG"), true, "KG og'irlik");
+  eq(isWeighUnit("GRAM"), true, "\u26a0 GRAM og'irlik \u2014 ziravor tarozida tortiladi");
+  eq(isWeighUnit("gram"), true, "kichik harf ham tanildi");
+  eq(isWeighUnit("METR"), false, "\u26a0 METR og'irlik EMAS \u2014 tarozi matoni o'lchay olmaydi");
+  eq(isWeighUnit("LITR"), false, "LITR og'irlik emas");
+  eq(isWeighUnit("DONA"), false, "DONA og'irlik emas");
+  eq(isWeighUnit(null), false, "birlik bo'lmasa ham yiqilmaydi");
+}
+
+console.log("\n\u2500\u2500 Ulanish: miqdor oynasi va PLU maydoni \u2500\u2500");
+{
+  /* \u26a0 NEGA MATN BO'YICHA. Asl xato HISOBDA emas, ULANISHDA edi:
+     `weightQty` grammni allaqachon to'g'ri o'girardi (`GRAM: 1000`),
+     lekin uni chaqiradigan miqdor oynasi `unitDecimals > 0` sharti
+     bilan yopiq turardi \u2014 ya'ni gramm uchun oyna umuman ochilmasdi va
+     jonli tarozi tugmasi chizilmasdi. Hisobni sinash buni ushlamasdi. */
+  const kassa = readFileSync(new URL("../src/pages/KassaPage.jsx", import.meta.url), "utf8");
+
+  eq(/const needsQty = \(product\) =>[^;]*isWeighUnit/.test(kassa), true,
+     "\u26a0 miqdor oynasining sharti og'irlik birligini bilmaydi");
+  eq(kassa.includes("if (isDivisible(product)) { setQtyModal"), false,
+     "\u26a0 tovar tanlashda hali ham eski shart \u2014 grammda oyna ochilmaydi");
+  eq(kassa.includes("if (isDivisible(item)) { setQtyModal"), false,
+     "\u26a0 savatdagi «+» hali ham eski shartda \u2014 grammda 1 gramm qo'shiladi");
+
+  const form = readFileSync(new URL("../src/pages/ProductsPage.jsx", import.meta.url), "utf8");
+  eq(/const weighable = isWeighUnit\(form\.unit\)/.test(form), true,
+     "tovar formasida og'irlik sharti yo'q");
+  eq(form.includes('disabled={!divisible} aria-label={t("products.plu")}'), false,
+     "\u26a0 PLU maydoni hali ham «bo'linadigan» shartida \u2014 gramm yopiq, metr ochiq");
+}
+
+console.log(`\n  ${pass} o'tdi, ${fail} yiqildi`);
+process.exit(fail ? 1 : 0);

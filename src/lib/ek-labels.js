@@ -10,7 +10,7 @@
    obyektlar ham yangi tilni qaytaradi va hech qayerda "eski tildagi yorliq"
    qotib qolmaydi. Bu yerda faqat KO'RINISH metama'lumoti: tone, icon, color.
 
-   Yorliq matnini `packages/ui/ek-locales.js` da tahrirlang.
+   Yorliq matnini `packages/ui/locales/uz.js` da tahrirlang.
 
    MANBA FAYL — packages/ui/ da tahrirlanadi, sync-tokens.ps1 tarqatadi.
    ========================================================================== */
@@ -46,14 +46,100 @@ export const PAYMENT_TYPE = dict("enum.payment", {
   /* Nasiya — to'lov EMAS: kassaga pul tushmaydi, mijozning qarzi oshadi.
      Rang ogohlantirish rangida: kassir uni tasodifan tanlab qo'ymasin. */
   CREDIT:{ icon: "fa-hand-holding-dollar",  color: "var(--fg-warning)" },
+  /* JAMG'ARMA (V63) — mijozning do'kondagi shaxsiy puli.
+     ⚠ Rang YASHIL (muvaffaqiyat), nasiyaniki kabi sariq EMAS: bu
+     haqiqiy to'lov va chek yopiladi. Sariq kassirni «bu ham qarz
+     ekan» deb o'ylatardi. */
+  SAVINGS:{ icon: "fa-sack-dollar",          color: "var(--fg-success)" },
 });
 
 /* ── Sotuv holati — SaleStatus ───────────────────────────────────────────── */
 export const SALE_STATUS = dict("enum.sale", {
   CREATED:   { tone: "info",    icon: "fa-clock" },
   PAID:      { tone: "success", icon: "fa-circle-check" },
+  /* ⚠ NASIYA CHEKI YASHIL EMAS (V46). Ilgari u ham `PAID` bo'lib, do'kon
+     egasining ko'zi oldida yashil «To'langan» yozuvi turardi — holbuki
+     kassaga bir tiyin tushmagan. Sariq: bu tugallanmagan ish. */
+  CREDIT:    { tone: "warning", icon: "fa-hand-holding-dollar" },
   CANCELLED: { tone: "danger",  icon: "fa-circle-xmark" },
 });
+
+/* ── Qaytarilgan tovar qayerga ketadi — ReturnDisposition (V103) ─────────
+   Do'kon egasi: «qaytarilgan tovar qayta sotuvga chiqarilishi yoki
+   hisobdan chiqarilishi kerak — tanlov bo'lsin».
+
+   ⚠ `RESALE` — STANDART va ko'k emas, YASHIL: bu odatdagi, yaxshi
+   yakun (tovar javonga qaytdi). Chiqit esa ogohlantirish rangida —
+   u do'konning YO'QOTISHI va kassir uni tasodifan tanlab
+   qo'ymasligi kerak. */
+export const RETURN_DISPOSITION = dict("enum.disposition", {
+  RESALE:    { icon: "fa-rotate-left",  color: "var(--fg-success)" },
+  WRITE_OFF: { icon: "fa-trash-can",    color: "var(--fg-warning)" },
+});
+
+/* ── Chiqit sababi — WriteOffReason ──────────────────────────────────────
+   Ro'yxat SERVERDAGI enum bilan bir xil tartibda: xodim ikkala joyda
+   bir xil ketma-ketlikni ko'rsin. `RECOUNT` bu yerda ATAYLAB YO'Q —
+   u hisob xatosi, qaytarishda esa tovar QO'LDA turadi va «raqam
+   noto'g'ri edi» degan javob ma'nosiz. */
+export const WRITE_OFF_REASON = dict("enum.writeOff", {
+  BREAKAGE:        { icon: "fa-hammer" },
+  SPOILAGE:        { icon: "fa-jar" },
+  EXPIRY:          { icon: "fa-hourglass-end" },
+  THEFT:           { icon: "fa-user-secret" },
+  SUPPLIER_RETURN: { icon: "fa-truck-ramp-box" },
+  OWN_USE:         { icon: "fa-store" },
+  /* ⚠ HISOB XATOSI — TOVAR YO'QOLGANI YO'Q, RAQAM noto'g'ri edi.
+     Serverda ham u «yo'qotish» sifatida sanalmaydi
+     (`WriteOffReason.RECOUNT`): aralashtirish «shu oy 4 million
+     yo'qotdik» degan yolg'on xulosaga olib kelardi. */
+  RECOUNT:         { icon: "fa-calculator" },
+  OTHER:           { icon: "fa-ellipsis" },
+});
+
+/** `Select` uchun tayyor ro'yxat — yorliqlar TILGA bog'liq, shuning
+    uchun funksiya (modul yuklanganda emas, chizilganda o'qiladi). */
+export const dispositionOptions = () =>
+  Object.entries(RETURN_DISPOSITION).map(([value, m]) =>
+    ({ value, label: m.label, icon: m.icon }));
+
+/**
+ * Chiqit sabablari — `Select` uchun.
+ *
+ * ⚠ RO'YXAT BITTA JOYDA (V116). Ilgari u uch joyda yozilgan edi —
+ * shu yerda, `InventoryPage.jsx` da va `BatchCorrectModal.jsx` da —
+ * va ular allaqachon ayni bir xil emas edi: `RECOUNT` shu yerdan
+ * tushib qolgan, `SPOILAGE` ning ikonkasi esa ikki xil bo'lgan
+ * (bir ekranda ko'za, boshqasida ogohlantirish uchburchagi).
+ *
+ * Ko'chirmaning yagona natijasi shu bo'ladi: ular bir-biridan
+ * asta-sekin uzoqlashadi va buni hech kim sezmaydi.
+ *
+ * @param exclude  ko'rsatilmaydigan sabablar
+ */
+export const writeOffOptions = ({ exclude = [] } = {}) =>
+  Object.entries(WRITE_OFF_REASON)
+    .filter(([value]) => !exclude.includes(value))
+    .map(([value, m]) => ({ value, label: m.label, icon: m.icon }));
+
+/**
+ * QAYTARISHDA hisob xatosi bo'lishi MUMKIN EMAS.
+ *
+ * ⚠ Qaytarilgan tovar qo'lda turibdi: uni «raqam noto'g'ri edi» deb
+ * hisobdan chiqarish ma'nosiz va hisobotni buzardi — `RECOUNT`
+ * yo'qotish sifatida sanalmaydi, ya'ni rostdan yo'q bo'lgan tovar
+ * hech qaerda ko'rinmay qolardi.
+ */
+export const RETURN_WRITE_OFF_EXCLUDE = ["RECOUNT"];
+
+/**
+ * KO'CHIRISHDA YO'LDA YO'QOLGAN tovar uchun sabablar.
+ *
+ * ⚠ Uchtasi tushib qoladi: yo'ldagi tovarni yetkazib beruvchiga
+ * qaytarib bo'lmaydi, do'kon o'z ehtiyoji uchun ham olmagan, va
+ * yo'qolish hisob xatosi emas — u ikki do'kon o'rtasida sanalgan.
+ */
+export const TRANSFER_SHORTAGE_EXCLUDE = ["SUPPLIER_RETURN", "OWN_USE", "RECOUNT"];
 
 /* ── Ko'chirish holati — TransferStatus (V22) ────────────────────────────── */
 export const TRANSFER_STATUS = dict("enum.transferStatus", {

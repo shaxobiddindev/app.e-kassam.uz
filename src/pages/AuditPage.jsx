@@ -10,7 +10,7 @@
    tasdiqladi».
    ══════════════════════════════════════════════════════════════════════════ */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { t } from "../lib/ek-i18n";
 import { shopApi } from "../api";
@@ -18,27 +18,29 @@ import { Empty, SearchBar } from "../components/ui";
 import Select from "../components/ek/Select";
 import { SkeletonTable } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
+import { dateTime } from "../lib/ek-format";
+import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
+import { AUDIT_ACTIONS as ACTIONS, AUDIT_MONEY as MONEY } from "../lib/ek-audit";
+import { asArray } from "../lib/ek-array";
 
-/* Ro'yxat qo'lda sanab chiqiladi: server enum'ni qaytarmaydi va uni
-   olish uchun alohida endpoint ochish ortiqcha bo'lardi. Yangi amal
-   qo'shilganda shu yerga ham qo'shiladi (lug'atga ham). */
-const ACTIONS = [
-  "SHIFT_CLOSE", "CASH_MOVEMENT", "SALE_CANCEL", "SALE_RETURN",
-  "PRICE_CHANGE", "PRICE_BULK_CHANGE", "STOCK_TAKE_CLOSE", "STOCK_TAKE_CANCEL",
-  "EXPENSE_CREATE", "EXPENSE_DELETE", "GOODS_RECEIPT", "SUPPLIER_PAYMENT",
-  "CUSTOMER_DEBT_ADJUST", "SHOP_SETTING_CHANGE",
-  "USER_CREATE", "USER_UPDATE", "USER_DELETE", "USER_BLOCK", "USER_UNBLOCK",
-  "USER_PASSWORD_CHANGE",
-];
+/* ⚠ RO'YXAT ENDI `lib/ek-audit.js` DA (V81).
 
-/* Pulga tegadigan amallar ko'zga tashlanadi — jurnalning asosiy
-   maqsadi aynan ularni topish. */
-const MONEY = new Set([
-  "CASH_MOVEMENT", "SALE_CANCEL", "SALE_RETURN", "EXPENSE_DELETE",
-  "CUSTOMER_DEBT_ADJUST", "SHOP_SETTING_CHANGE", "PRICE_BULK_CHANGE",
-]);
+   U shu yerda, sahifaning ichida edi va aynan shuning uchun sinovdan
+   tekshirilmasdi: React sahifasini Node'dan yuklab bo'lmaydi.
+   Natijada ro'yxat jimgina eskirdi — serverda amal qo'shilardi, bu
+   yerda esa yo'q.
 
-const fmtT = (iso) => (iso ? new Date(iso).toLocaleString("uz-UZ", { dateStyle: "short", timeStyle: "short" }) : "—");
+   O'shanda yigirmata amal turardi, do'konga esa qirq bittasi kelardi.
+   Qolgani — `TRANSFER_*`, `BONUS_*`, `CART_ABANDONED`, `DEVICE_*` va
+   hatto `SUBSCRIPTION_EXPIRED` — jurnalda KO'RINARDI, lekin
+   tanlanmasdi; ustiga o'n beshtasining yorlig'i ham yo'q edi va ular
+   ekranda xom kalit bo'lib chiqardi («enum.audit.TRANSFER_SEND»). */
+
+/* ⚠ SANA+VAQT — `lib/ek-format.js` dan (V70). Uchta sahifada
+   uchta bir xil mahalliy nusxa bor edi va ular `uz-UZ` ni
+   qattiq yozardi: ruscha yoki inglizcha tanlagan foydalanuvchi
+   ham o'zbekcha sanani ko'rardi. */
+const fmtT = dateTime;
 
 export default function AuditPage({ toast }) {
   /* Filtr manzilda ham turadi: bosh sahifadagi «Kassa kamomadi» satri shu
@@ -62,7 +64,7 @@ export default function AuditPage({ toast }) {
     setLoading(true);
     try {
       const r = await shopApi.audit({ action: action || null, actor: actor || null, page, size: 50 });
-      setRows(r.data?.items || []);
+      setRows(asArray(r.data?.items));
       setTotal(r.data?.totalItems || 0);
       setPages(r.data?.totalPages || 0);
     } catch (err) {
@@ -86,6 +88,33 @@ export default function AuditPage({ toast }) {
     if (next.toString() !== params.toString()) setParams(next, { replace: true });
   }, [action]);
 
+  /* ══ USTUNLAR BO'YICHA FILTR (V68) ═════════════════════════════════
+     ⚠ Yuqoridagi «amal» tanlagichi SERVERGA ketadi (sahifalash bilan),
+     bu esa KELGAN sahifani kesadi. Ikkalasi bir-birini almashtirmaydi:
+     server bittagina amalni bera oladi, bu yerda esa «narx VA
+     chegirma» kabi kombinatsiya va sana oralig'i ishlaydi. */
+  const COLS = useMemo(() => [
+    { key: "date",  label: t("common.date"),    type: "date", get: (r) => r.createdAt },
+    { key: "act",   label: t("audit.action"),   type: "enum",
+      options: ACTIONS.map((a) => ({ value: a, label: t(`enum.audit.${a}`) })),
+      get: (r) => r.action },
+    /* ⚠ QIYMATLAR HAM QIDIRUVGA KIRADI (V106). Tekshiruv ko'pincha
+       raqamdan boshlanadi — «9 000 ga kim tushirgan?» — va u faqat
+       shu ikki ustunda turadi. */
+    { key: "sum",   label: t("audit.summary"),  type: "text",
+      get: (r) => `${r.summary || ""} ${r.details || ""} ${r.oldValue || ""} ${r.newValue || ""}` },
+    { key: "actor", label: t("audit.actor"),    type: "text",
+      get: (r) => (r.actorType === "ADMIN" ? t("audit.actorSupport") : r.actorUsername) },
+    /* ⚠ TERMINAL — ALOHIDA FILTR (V106): «shu kassada nima bo'ldi?»
+       degan savol tekshiruvning o'zagi va IP unga javob bermaydi —
+       bitta do'kondagi hamma terminal bitta routerdan chiqadi.
+       Server ham aynan shu ustun uchun indeks yaratgan (V77). */
+    { key: "term",  label: t("audit.terminal"), type: "text",
+      get: (r) => r.terminalId || "" },
+  ], []);
+  const colFlt = useDataFilter(COLS, "audit");
+  const shown = colFlt.apply(rows);
+
   return (
     <div>
       <div className="page-header" style={{ marginBottom: 12 }}>
@@ -104,6 +133,7 @@ export default function AuditPage({ toast }) {
                 ...ACTIONS.map((a) => ({ value: a, label: t(`enum.audit.${a}`), icon: "fa-clock-rotate-left" }))]}
             />
             <SearchBar value={actor} onChange={setActor} placeholder={t("audit.actor")} style={{ width: 220 }} />
+            <DataFilter cols={COLS} flt={colFlt} />
           </div>
           <span className="text-muted mono" style={{ fontSize: 13 }}>{total}</span>
         </div>
@@ -113,23 +143,52 @@ export default function AuditPage({ toast }) {
             <table>
               <thead>
                 <tr>
-                  <th>{t("common.date")}</th>
-                  <th>{t("audit.action")}</th>
-                  <th>{t("audit.summary")}</th>
-                  <th>{t("audit.actor")}</th>
+                  <SortTh flt={colFlt} col="date">{t("common.date")}</SortTh>
+                  <SortTh flt={colFlt} col="act">{t("audit.action")}</SortTh>
+                  <SortTh flt={colFlt} col="sum">{t("audit.summary")}</SortTh>
+                  <SortTh flt={colFlt} col="actor">{t("audit.actor")}</SortTh>
                 </tr>
               </thead>
               <tbody>
-                {rows.length ? rows.map((r) => (
+                {shown.length ? shown.map((r) => (
                   <tr key={r.id}>
                     <td style={{ fontSize: 13, whiteSpace: "nowrap" }}>{fmtT(r.createdAt)}</td>
                     <td>
-                      <span className={`badge badge-${MONEY.has(r.action) ? "orange" : "blue"}`}>
+                      {/* ⚠ `badge-orange` USLUBI YO'Q EDI (V81) va natija
+                          maqsadning TESKARISI bo'lardi: pulga tegadigan
+                          qator — jurnalning butun ma'nosi — YAGONA
+                          foni yo'q qator bo'lib chiqardi, qolgan hammasi
+                          esa ko'k belgi bilan turardi. Sariq — `styles.css`
+                          da mavjud va ogohlantirish rangi. */}
+                      <span className={`badge badge-${MONEY.has(r.action) ? "yellow" : "blue"}`}>
                         {t(`enum.audit.${r.action}`)}
                       </span>
                     </td>
                     <td style={{ fontSize: 13 }}>
                       {r.summary}
+                      {/* ⚠ OLDINGI → YANGI (V106). Server buni V101 dan
+                          beri yozadi, ekran esa ko'rsatmasdi: ya'ni
+                          tekshiruvda birinchi so'raladigan ikki raqam
+                          bazada bor-u, egasining ko'zi oldida yo'q edi.
+
+                          Matn ichida emas, ALOHIDA qatorda: «narx
+                          12 000 dan 9 000 ga tushirildi» degan gapni
+                          o'qish kerak, `12 000 → 9 000` esa bir
+                          qarashda ko'rinadi.
+
+                          ⚠ Faqat bittasi bo'lsa o'q CHIZILMAYDI:
+                          yaratishda eski qiymat yo'q va «→ 9 000»
+                          «nimadandir 9 000 ga» degan yolg'on taassurot
+                          berardi. */}
+                      {(r.oldValue || r.newValue) && (
+                        <div className="audit-chg mono">
+                          {r.oldValue && <span className="audit-chg__old">{r.oldValue}</span>}
+                          {r.oldValue && r.newValue && (
+                            <i className="fa-solid fa-arrow-right-long audit-chg__arrow" aria-hidden="true" />
+                          )}
+                          {r.newValue && <span className="audit-chg__new">{r.newValue}</span>}
+                        </div>
+                      )}
                       {r.details && (
                         <div className="text-muted mono" style={{ fontSize: 11 }}>{r.details}</div>
                       )}
@@ -149,6 +208,20 @@ export default function AuditPage({ toast }) {
                           <i className="fa-solid fa-robot" aria-hidden="true" /> {t("audit.actorSystem")}
                         </span>
                       ) : r.actorUsername}
+                      {/* ⚠ QAYSI KASSADAN (V106) — «kim» bilan bir
+                          katakda: tekshiruvda ular birga so'raladi
+                          («kim, qayerdan») va alohida ustun jadvalni
+                          kengaytirib, telefonda yon-tomonga surardi.
+
+                          Eski yozuvlarda bo'sh — o'shanda hech narsa
+                          chizilmaydi: bo'sh chip «noma'lum terminal»
+                          degan yolg'on ma'lumot bo'lardi. */}
+                      {r.terminalId && (
+                        <div className="audit-term" title={t("audit.terminal")}>
+                          <i className="fa-solid fa-cash-register" aria-hidden="true" />
+                          {r.terminalId}
+                        </div>
+                      )}
                     </td>
                   </tr>
                 )) : (

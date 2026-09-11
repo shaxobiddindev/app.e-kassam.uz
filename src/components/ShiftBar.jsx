@@ -20,11 +20,29 @@ import { securityApi } from "../api";
 import { Modal } from "../components";
 import { Field } from "./ui";
 import { money } from "../utils";
+import { time as fmtTime, dateTime } from "../lib/ek-format";
 import { paymentLabel } from "../lib/ek-labels";
 import { printShiftReport } from "../lib/ek-hardware";
 import { isDesktop } from "../lib/ek-desktop";
 import { useBadge } from "../context/BadgeProvider";
 import { useOnline } from "../hooks/useOnline";
+import { asArray } from "../lib/ek-array";
+
+/**
+ * Smena ochilganidan beri qancha vaqt o'tdi: «3 s 36 d».
+ *
+ * ⚠ Sana noto'g'ri bo'lsa `null` — «Invalid Date» yoki «NaN s» EMAS.
+ * Bu butun fayl bo'ylab bir xil qoida: noma'lum vaqt ekranga son
+ * bo'lib chiqmasligi kerak.
+ */
+function elapsed(iso) {
+  if (!iso) return null;
+  const ms = Date.now() - new Date(iso).getTime();
+  if (!Number.isFinite(ms) || ms < 0) return null;
+  const min = Math.floor(ms / 60000);
+  const h = Math.floor(min / 60);
+  return h > 0 ? `${h} ${t("shift.h")} ${min % 60} ${t("shift.m")}` : `${min} ${t("shift.m")}`;
+}
 
 /** Kiritilgan matndan son — bo'sh bo'lsa 0. */
 const num = (v) => {
@@ -32,7 +50,27 @@ const num = (v) => {
   return Number.isFinite(n) ? n : 0;
 };
 
-export default function ShiftBar({ toast }) {
+/**
+ * @param compact  Bitta ixcham tugmaga siqiladi — IKKALA holatda ham.
+ * @param onState  Holat o'zgarganda ota-onaga xabar beradi:
+ *                 `{ open: boolean }`.
+ *
+ * ⚠ YOPIQ SMENA HAM ENDI IXCHAM (foydalanuvchi so'rovi: «smena oynasi
+ * yuqoridan joyni egallab turibdi»). Ilgari u butun kenglikdagi sariq
+ * qator edi va kassaning eng qimmatli joyidan — tovarlar ro'yxatidan —
+ * balandlik o'g'irlardi.
+ *
+ * ⚠ OGOHLANTIRISH YO'QOLMADI, KO'CHDI. Yopiq smena — TO'SIQ: bajik
+ * ishlamaydi va kassir muhim amalda «xodim smenada emas» degan
+ * tushunarsiz xatoga uriladi. Shuning uchun ogohlantirish endi
+ * TO'LOV TUGMASINING YONIDA turadi (`onState` orqali) — ya'ni aynan u
+ * to'sadigan joyda va aynan to'sadigan daqiqada. Tepadagi banner esa
+ * ish boshlanishidan oldin ko'rinar, keyin esa unutilardi: kassir uni
+ * har kuni ko'rib, o'qimay qo'yadi.
+ *
+ * Ya'ni ogohlik kuchaydi, egallagan joyi esa nolga tushdi.
+ */
+export default function ShiftBar({ toast, compact = false, onState }) {
   // Naqd amallari 428 qaytarishi mumkin (kamomad, inkassatsiya) — bajik
   // modalini shu ochadi va tasdiqdan keyin amalni O'ZI qayta yuboradi.
   const { guard } = useBadge();
@@ -45,6 +83,8 @@ export default function ShiftBar({ toast }) {
      `types` serverdan keladi: qaysi naqdsiz turlar bo'yicha sotuv bo'lgan.
      ⚠ SUMMALAR kelmaydi — kassir ularni terminal chekidan ko'chiradi. */
   const [closeForm, setCloseForm] = useState(null);
+  /** Ixcham tugma ostidagi smena oynasi. */
+  const [panel, setPanel] = useState(false);
   const [cashForm, setCashForm]   = useState(null); // { type, amount, reason }
 
   const load = useCallback(async () => {
@@ -59,6 +99,14 @@ export default function ShiftBar({ toast }) {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  /* ⚠ `shift` — obyekt, `onState` esa faqat OCHIQ/YOPIQ ni biladi.
+     Butun obyektni uzatsak, har yangilanishda ota-ona qayta chizilardi
+     (nusxa har safar boshqa havola bo'ladi). */
+  const isOpen = !!shift;
+  useEffect(() => {
+    if (shift !== undefined) onState?.({ open: isOpen });
+  }, [isOpen, shift, onState]);
 
   /* Ochish/yopish endi BIR BOSISHDA emas: ikkalasi ham naqd summa so'raydi.
      Ochishda — boshlang'ich qoldiq, yopishda — kassir SANAGAN summa. */
@@ -92,7 +140,7 @@ export default function ShiftBar({ toast }) {
   const askClose = async () => {
     let types = [];
     try {
-      types = (await securityApi.nonCashTypes()).data || [];
+      types = asArray((await securityApi.nonCashTypes()).data);
     } catch (_) {
       // Ro'yxat kelmasa ham yopishga yo'l ochiq qoldiramiz: server
       // yetishmagan turni baribir o'zi aytadi.
@@ -159,44 +207,20 @@ export default function ShiftBar({ toast }) {
     }
   };
 
-  const fmtT = (iso) => (iso ? new Date(iso).toLocaleString("uz-UZ", { dateStyle: "short", timeStyle: "short" }) : "-");
+  /* ⚠ TIZIMNING O'Z formatlagichi, `toLocaleString` EMAS. Ikkita
+     sabab: (1) u noto'g'ri sanada «Invalid Date» deb YOZADI —
+     `dateTime` esa «—» beradi; (2) `uz-UZ` locale brauzerga qarab
+     boshqa-boshqa ko'rinish berardi va u tizimdagi qolgan sanalarga
+     (`dd-mm-yyyy hh:mm`) mos kelmasdi. */
+  const fmtT = dateTime;
 
   if (shift === undefined) return null;
 
-  return (
+  /* ⚠ Modallar IKKALA ko'rinishda ham kerak: ixchamida ham X hisobot,
+     naqd harakati va yopish oynalari o'sha-o'sha. Nusxa ko'chirish
+     o'rniga bir marta yig'ib, ikkalasiga ham qo'yiladi. */
+  const modals = (
     <>
-      <div style={{
-        display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10,
-        padding: "8px 14px", borderRadius: 10, marginBottom: 10,
-        background: shift ? "var(--green-l, #dcfce7)" : "#fef3c7",
-        border: `1px solid ${shift ? "var(--green, #16a34a)" : "#f59e0b"}`,
-      }}>
-        <span style={{ fontSize: 13, fontWeight: 700, color: shift ? "var(--green-d, #166534)" : "#92400e" }}>
-          <i className={`fa-solid ${shift ? "fa-circle-check" : "fa-triangle-exclamation"}`} aria-hidden="true" />{" "}
-          {shift
-            ? `${t("shift.openSince")} ${new Date(shift.openedAt).toLocaleTimeString("uz-UZ", { hour: "2-digit", minute: "2-digit" })}`
-            : t("shift.closedWarn")}
-        </span>
-        <span style={{ display: "flex", gap: 8 }}>
-          {shift && (
-            <button className="btn btn-outline btn-sm" onClick={showX} title={t("shift.viewXHint")}>
-              <i className="fa-solid fa-chart-simple" aria-hidden="true" /> {t("shift.viewX")}
-            </button>
-          )}
-          {shift && (
-            <button className="btn btn-outline btn-sm" onClick={() => setCashForm({ type: "COLLECTION", amount: "", reason: "" })}
-                    title={t("cash.title")}>
-              <i className="fa-solid fa-money-bill-transfer" aria-hidden="true" /> {t("cash.title")}
-            </button>
-          )}
-          <button className={`btn btn-sm ${shift ? "btn-outline" : "btn-primary"}`}
-                  onClick={() => (shift ? askClose() : askOpen())} disabled={busy}>
-            <i className={`fa-solid ${shift ? "fa-right-from-bracket" : "fa-right-to-bracket"}`} aria-hidden="true" />{" "}
-            {shift ? t("shift.close") : t("shift.open")}
-          </button>
-        </span>
-      </div>
-
       {/* ── X/Z hisobot modali ── */}
       {report && (
         <Modal
@@ -380,6 +404,130 @@ export default function ShiftBar({ toast }) {
                  onChange={(e) => setCashForm({ ...cashForm, reason: e.target.value })} />
         </Modal>
       )}
+    </>
+  );
+
+  /* ══════════════════════════════════════════════════════════════════
+     IXCHAM KO'RINISH — ikkala holat ham bitta tugmada.
+
+     ⚠ Yopiq smenada tugma SARIQ va matnli («Smena yopiq»), ochiqda esa
+     yashil va faqat vaqtni ko'rsatadi. Ya'ni holat rangdan bir
+     qarashda bilinadi, joy esa ikkalasida ham bir qator EMAS, bir
+     tugma.
+     ══════════════════════════════════════════════════════════════════ */
+  if (compact) {
+    /* ⚠⚠ «INVALID DATE» SHU YERDA CHIQARDI. `shift` — server javobi va
+       u kutilmagan shaklda kelishi mumkin (bo'sh massiv, sanasiz
+       obyekt); `new Date(undefined).toLocaleTimeString()` esa
+       ekranga «Invalid Date» deb yozardi. Kassir tepada shu yozuvni
+       ko'rib turardi va u hech narsani anglatmasdi.
+
+       `time()` bunday holatda «—» qaytaradi — ya'ni «ma'lum emas»
+       degan ma'no ekranda TO'G'RI ko'rinadi. */
+    const at = shift ? fmtTime(shift.openedAt) : null;
+
+    /* ⚠ QANCHA VAQT O'TGANI — smenaning eng foydali raqami.
+       Ochilish soati «08:42» o'zi savolga javob bermaydi: kassir
+       «hozir soat nechada?» ni ham bilishi kerak. Davomiylik esa
+       to'g'ridan-to'g'ri javob va u uzoq smenani (unutib qo'yilganini)
+       darrov ko'rsatadi. */
+    const dur = shift ? elapsed(shift.openedAt) : null;
+    const label = shift ? `${t("shift.openSince")} ${at}` : t("shift.closedShort");
+
+    return (
+      <>
+        <button type="button"
+                className={`shift-chip ${shift ? "" : "shift-chip--off"}`}
+                onClick={() => (shift ? setPanel(true) : askOpen())}
+                disabled={busy}
+                /* ⚠ YOPIQ SMENADA — O'Z MASLAHATIMIZ (V83), brauzerniki
+                   emas: u sekin va kichkina, monoblokda o'qib
+                   bo'lmaydi. Ochiq smenada esa oddiy `title` yetarli —
+                   u yerda gap bir qatorlik ma'lumotda. */
+                {...(shift ? { title: label } : {})}
+                aria-label={shift ? label : `${label} — ${t("shift.closedWarn")}`}>
+          <i className={`fa-solid ${shift ? "fa-circle-check" : "fa-triangle-exclamation"}`}
+             aria-hidden="true" />
+          <span className={shift ? "ek-num" : ""}>{shift ? at : t("shift.closedShort")}</span>
+          {/* ⚠ Davomiylik ALOHIDA element emas, o'sha tugmaning
+              ichida: kassa ekranida har qo'shimcha qutichaning narxi
+              — tovarlar ro'yxatidan o'g'irlangan balandlik. */}
+          {dur && <span className="shift-chip__dur ek-num">{dur}</span>}
+          {/* ⚠ TO'LIQ IZOH — FAQAT HOVERDA (V83). Do'kon so'rovi:
+              ogohlantirish JAMI kartochkasidan olib tashlansin, u
+              «joyni isrof qilyapti».
+
+              ⚠ `aria-hidden`: matn tugmaning `aria-label` ida
+              allaqachon bor va ekran o'quvchi uni ikki marta
+              o'qimasligi kerak. */}
+          {!shift && (
+            <span className="shift-chip__tip" aria-hidden="true">
+              {t("shift.closedWarn")}
+            </span>
+          )}
+        </button>
+
+        {panel && shift && (
+          <Modal title={t("shift.title")} onClose={() => setPanel(false)}
+                 footer={<button className="btn btn-outline btn-sm" onClick={() => setPanel(false)}>
+                           {t("common.close")}
+                         </button>}>
+            <div style={{ display: "grid", gap: 10 }}>
+              <Row k={t("shift.openSince")} v={at} strong />
+              <button className="btn btn-outline btn-full" onClick={() => { setPanel(false); showX(); }}>
+                <i className="fa-solid fa-chart-simple" aria-hidden="true" /> {t("shift.viewX")}
+              </button>
+              <button className="btn btn-outline btn-full"
+                      onClick={() => { setPanel(false); setCashForm({ type: "COLLECTION", amount: "", reason: "" }); }}>
+                <i className="fa-solid fa-money-bill-transfer" aria-hidden="true" /> {t("cash.title")}
+              </button>
+              <button className="btn btn-danger btn-full" disabled={busy}
+                      onClick={() => { setPanel(false); askClose(); }}>
+                <i className="fa-solid fa-right-from-bracket" aria-hidden="true" /> {t("shift.close")}
+              </button>
+            </div>
+          </Modal>
+        )}
+        {modals}
+      </>
+    );
+  }
+
+  return (
+    <>
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10,
+        padding: "8px 14px", borderRadius: 10, marginBottom: 10,
+        background: shift ? "var(--green-l, #dcfce7)" : "#fef3c7",
+        border: `1px solid ${shift ? "var(--green, #16a34a)" : "#f59e0b"}`,
+      }}>
+        <span style={{ fontSize: 13, fontWeight: 700, color: shift ? "var(--green-d, #166534)" : "#92400e" }}>
+          <i className={`fa-solid ${shift ? "fa-circle-check" : "fa-triangle-exclamation"}`} aria-hidden="true" />{" "}
+          {shift
+            ? `${t("shift.openSince")} ${fmtTime(shift.openedAt)}`
+            : t("shift.closedWarn")}
+        </span>
+        <span style={{ display: "flex", gap: 8 }}>
+          {shift && (
+            <button className="btn btn-outline btn-sm" onClick={showX} title={t("shift.viewXHint")}>
+              <i className="fa-solid fa-chart-simple" aria-hidden="true" /> {t("shift.viewX")}
+            </button>
+          )}
+          {shift && (
+            <button className="btn btn-outline btn-sm" onClick={() => setCashForm({ type: "COLLECTION", amount: "", reason: "" })}
+                    title={t("cash.title")}>
+              <i className="fa-solid fa-money-bill-transfer" aria-hidden="true" /> {t("cash.title")}
+            </button>
+          )}
+          <button className={`btn btn-sm ${shift ? "btn-outline" : "btn-primary"}`}
+                  onClick={() => (shift ? askClose() : askOpen())} disabled={busy}>
+            <i className={`fa-solid ${shift ? "fa-right-from-bracket" : "fa-right-to-bracket"}`} aria-hidden="true" />{" "}
+            {shift ? t("shift.close") : t("shift.open")}
+          </button>
+        </span>
+      </div>
+
+      {modals}
     </>
   );
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, lazy, Suspense } from "react";
 import { t } from "../lib/ek-i18n";
 import { customerApi } from "../api";
 import { BranchSelector } from "../components";
@@ -6,14 +6,44 @@ import { maskPhone, cleanPhone, money } from "../config";
 import Modal from "../components/Modal";
 import { Empty, Field, SearchBar, Avatar, FormGroup } from "../components/ui";
 import { useConfirm } from "../context/ConfirmProvider";
-import { paymentLabel } from "../lib/ek-labels";
 import { roleSet } from "../lib/ek-roles";
 import { useAuth } from "../hooks/useAuth";
+import { shortDate, dateTime } from "../lib/ek-format";
+import SaleDetailModal from "../components/SaleDetailModal";
+import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
+import { asArray } from "../lib/ek-array";
+/* ⚠ SEKIN YUKLANADI: to'lov cheki kunda bir necha marta ochiladi,
+   mijozlar sahifasi esa doim. Chekni asosiy bo'lakka qo'shish uni
+   hech qachon ochmaydigan kassirga ham yuklatardi. */
+const PaymentReceipt = lazy(() => import("../portal/PaymentReceipt"));
+import DebtPayModal from "../components/DebtPayModal";
+import StatementModal from "../components/StatementModal";
+import ReversePaymentModal from "../components/ReversePaymentModal";
+import ManualDebtModal from "../components/ManualDebtModal";
+import SavingsModal from "../components/SavingsModal";
+import { printDebtReceipt } from "../lib/ek-hardware";
+import { saleApi } from "../api";
 import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
 import { PhoneField } from "../components/ek/EkFields";
+import { rankItems } from "../lib/ek-search";
 
-const EMPTY_FORM = { fullName: "", phone: "998", creditLimit: "" };
+/* Yangi mijozda telefon BO'SH boshlanadi. Ilgari bu yerda `"998"` turardi
+   va maydon «(99) 8» bilan to'ldirilgan holda ochilardi: odam uni
+   o'chirib, keyin o'z raqamini yozishi kerak edi. */
+const EMPTY_FORM = { fullName: "", phone: "" };
+
+/**
+ * Jurnal qatorining MIJOZ KO'ZI BILAN ishorali summasi.
+ *
+ * Qarz — manfiy (odam qarzga botdi), to'lov — musbat (qarz yopildi).
+ * Balans esa teskari yo'nalishda yuradi, shuning uchun bu yerda ishora
+ * ataylab AGDARILADI.
+ */
+const ledgerSigned = (l) => {
+  const v = Number(l.amount) || 0;
+  return l.type === "PAYMENT" ? Math.abs(v) : -v;
+};
 
 /** Qarz necha kundan beri turibdi. `null` — jurnal bo'sh (eski ma'lumot). */
 const daysSince = (iso) => {
@@ -24,10 +54,8 @@ const daysSince = (iso) => {
 
 export default function CustomersPage({ toast }) {
   const confirm = useConfirm();
-  const { user } = useAuth();
   /* Chegarani egasi yoki do'kon administratori qo'yadi (2026-08-10, 5-qaror).
      Kassir uni ko'ra oladi, lekin o'zgartira olmaydi — backend ham shunday. */
-  const canSetLimit = [...roleSet(user?.role)].some((r) => r === "OWNER" || r === "SHOP_ADMIN");
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading]     = useState(true);
   // Ekranda ko'rsatiladigan holat: tez javobda skeleton UMUMAN chizilmaydi
@@ -42,10 +70,54 @@ export default function CustomersPage({ toast }) {
      qabul qiladi, ham jurnalni ko'rsatadi. Ikkita alohida oyna kassirni
      ortiqcha bosishga majbur qilardi. */
   const [debt, setDebt]           = useState(null);
+  /* ⚠ QARZ JURNALIDAN CHEKKA (V47). «Bu 76 970 so'm qayerdan chiqdi?»
+     degan savol aynan shu oynada tug'iladi va unga javob berish uchun
+     do'kon egasi Sotuvlar sahifasiga o'tib, chekni qidirishi kerak
+     edi. Endi qatorning o'zi bosiladi. */
+  const { user } = useAuth();
+  /* ⚠ NOMI `canDelete` EDI (V62 da o'zgardi). O'chirish endi umuman
+     yo'q — bu bayroq faqat RAHBAR amallarini (qo'lda qarz kiritish)
+     to'sadi. Eski nom qolganda, keyingi o'quvchi «demak o'chirish bor
+     ekan» deb o'ylardi. */
+  const isManager = [...roleSet(user?.role)].some((r) => r === "OWNER" || r === "SHOP_ADMIN");
+  const [payOpen, setPayOpen] = useState(false);
+  /* Mijoz hisoboti (V98) — qarz oynasidan ochiladi. */
+  const [stOpen, setStOpen] = useState(false);
+  /* To'lovni bekor qilish (V102): bekor qilinayotgan jurnal qatori. */
+  const [reverse, setReverse] = useState(null);
+  const [reversing, setReversing] = useState(false);
+  /* Ekranda turgan to'lov cheki: to'lovdan keyin darhol, yoki jurnaldagi
+     tugmadan. `null` — yopiq. */
+  const [receipt, setReceipt] = useState(null);
+  const [receiptLoading, setReceiptLoading] = useState(null);
+  /* Jamg'arma oynasi (V63): `{ customer, account }` yoki `null`. */
+  const [savings, setSavings] = useState(null);
+  const [savingsBusy, setSavingsBusy] = useState(false);
+  const [saleDetail, setSaleDetail] = useState(null);
+  const [saleLoading, setSaleLoading] = useState(null);
+
+  const openSale = async (saleId) => {
+    if (!saleId || saleLoading) return;
+    setSaleLoading(saleId);
+    try {
+      const r = await saleApi.getById(saleId);
+      setSaleDetail(r?.data || null);
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setSaleLoading(null);
+    }
+  };
+
   const [paying, setPaying]       = useState(false);
-  /* "all" | "debtors". Alohida sahifa emas, chunki ikkala ro'yxatda ham
-     bir xil amal qilinadi (qarz to'lash) va yon menyuda yana bitta qator
-     qarzdorlar yo'q do'konlar uchun bo'sh joy egallardi. */
+  /* "all" | "debtors" | "savings". Alohida sahifa emas, chunki uchala
+     ro'yxatda ham bir xil amal qilinadi (qarz to'lash, jamg'arma) va
+     yon menyuda yana bitta qator bo'sh joy egallardi.
+
+     ⚠ JAMG'ARMA — MIJOZNING PULI, do'konning emas. Do'kon egasi
+     «kimda mening pulim turibdi?» degan savolga javob topa olmasdi:
+     jamg'armasi bor mijozni ro'yxatda ko'zi bilan qidirishga to'g'ri
+     kelardi va u qarz kabi hech qayerda yig'ilmasdi. */
   const [view, setView]           = useState("all");
 
   const loadData = async () => {
@@ -54,10 +126,21 @@ export default function CustomersPage({ toast }) {
       // Qarzdorlar ro'yxati SERVERDA saralanadi va "necha kundan beri"
       // ma'lumotini ham olib keladi — uni mijozlar ro'yxatidan hisoblab
       // bo'lmaydi.
+      /* ⚠ JAMG'ARMA UCHUN YANGI YO'L KERAK EMAS: `savingsBalance`
+         mijozlar ro'yxatida allaqachon bor. Alohida endpoint qo'shish
+         serverga ikkinchi so'rov va ikkinchi saralash mantig'ini
+         qo'shar, foydasi esa nol bo'lardi. Qarzdorlar ALOHIDA, chunki
+         u yerda qarz YOSHI kerak va uni ro'yxatdan hisoblab bo'lmaydi. */
       const res = view === "debtors"
         ? await customerApi.debtors()
         : await customerApi.getAll(branchId);
-      setCustomers(res.data || []);
+      const list = asArray(res.data);
+      setCustomers(view === "savings"
+        /* Eng kattasi tepada: do'kon egasi avval eng katta majburiyatni
+           ko'rishi kerak. */
+        ? list.filter((c) => Number(c.savingsBalance) > 0)
+              .sort((a, b) => Number(b.savingsBalance) - Number(a.savingsBalance))
+        : list);
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -75,22 +158,74 @@ export default function CustomersPage({ toast }) {
   /* Qarz oynasi jurnal bilan birga ochiladi: "qancha qarzim bor" degan
      savoldan keyin darhol "qayerdan chiqdi" savoli keladi. */
   const openDebt = async (c) => {
-    setDebt({ customer: c, amount: "", method: "CASH", ledger: null });
+    setDebt({ customer: c, ledger: null });
+    setPayOpen(false);
     try {
       const r = await customerApi.ledger(c.id);
-      setDebt((d) => (d && d.customer.id === c.id ? { ...d, ledger: r.data || [] } : d));
+      setDebt((d) => (d && d.customer.id === c.id ? { ...d, ledger: asArray(r.data) } : d));
     } catch (_) { /* jurnal kelmasa ham to'lov qabul qilinaveradi */ }
   };
 
-  const submitDebt = async () => {
+  /**
+   * Qarz oynasini TO'LOV shaklida ochadi.
+   *
+   * ⚠ `openDebt` jurnalni kutadi: to'lov oynasi «alohida qarzlarni
+   * tanlash» rejimida aynan shu jurnaldan foydalanadi. Shuning uchun
+   * `payOpen` jurnal kelgandan KEYIN yoqiladi — aks holda oyna bo'sh
+   * ro'yxat bilan ochilib, kassir «qarz yo'q» deb o'ylardi.
+   */
+  const openDebtPay = async (c) => {
+    await openDebt(c);
+    setPayOpen(true);
+  };
+
+  const submitDebt = async ({ amount, method, payments, mode, chargeIds }) => {
     setPaying(true);
     try {
-      const r = await customerApi.payDebt(debt.customer.id, {
-        amount: Number(debt.amount) || 0,
-        method: debt.method,
-      });
-      toast.success(`${t("credit.left")}: ${money(r.data)}`);
+      /* ⚠ JAVOB — CHEKNING O'ZI (V61), qolgan balans emas: har
+         to'lovning o'z raqami, o'z havolasi va o'z QR i bor.
+         `mode`/`chargeIds` (V65): avto — eng eskisidan, alohida —
+         tanlangan qarzlar. */
+      /* ⚠ `payments` — ARALASH TO'LOV QISMLARI (V96). `method` HAM
+         yuboriladi: server yangilanmagan bo'lsa (yoki oflayn
+         navbatdagi so'rov eski serverga tushsa) to'lov baribir
+         o'tishi kerak. Yangi server ro'yxatni afzal ko'radi. */
+      const r = await customerApi.payDebt(debt.customer.id,
+        { amount, method, payments, mode, chargeIds });
+      const rc = r?.data || null;
+      const left = Number(rc?.balanceAfter) || 0;
+      toast.success(`${t("credit.left")}: ${money(left)}`);
+
+      /* ⚠ CHEK MIJOZ UCHUN (V47). U pul berdi va buning izini olishi
+         kerak — aks holda «to'lagandim-ku» degan tortishuv yana
+         do'konning so'ziga qarshi mijozning so'zi bo'lib qolardi.
+         Chop etish XATOSI to'lovni bekor qilmaydi: pul allaqachon
+         kassada va chekni qayta chiqarish mumkin. */
+      try {
+        await printDebtReceipt({
+          customer: debt.customer, amount, method, balanceAfter: left,
+          /* Raqam va havola SERVERDAN (V61): qog'ozdagi QR aynan shu
+             chekni ochadi va qog'ozdagi raqam ekrandagi bilan bir xil
+             bo'lishi shart. */
+          receiptNo: rc?.receiptNo, qrUrl: rc?.qrUrl,
+          balanceBefore: rc?.balanceBefore,
+          toSavings: rc?.toSavings, bonusEarned: rc?.bonusEarned,
+          shopName: rc?.shopName || localStorage.getItem("ek_shopName")
+                    || localStorage.getItem("ek_shopCode") || "",
+          cashier: rc?.cashierName || localStorage.getItem("ek_fullName") || "",
+          date: rc?.date ? new Date(rc.date) : new Date(),
+        });
+      } catch (e) {
+        toast.info(e.message || t("hw.errPopup"));
+      }
+
+      setPayOpen(false);
       setDebt(null);
+      /* ⚠ CHEK EKRANDA HAM QOLADI. Printersiz do'konda (yoki qog'oz
+         tugaganda) chop etish jimgina yo'q bo'lardi va mijoz yana
+         quruq qo'l bilan ketardi — endi u chekni telefoniga QR orqali
+         ko'chirib oladi. */
+      if (rc) setReceipt(rc);
       loadData();
     } catch (err) {
       toast.error(err.message);
@@ -99,13 +234,52 @@ export default function CustomersPage({ toast }) {
     }
   };
 
+  /**
+   * TO'LOVNI BEKOR QILISH (V102).
+   *
+   * ⚠ HECH NARSA O'CHIRILMAYDI: server to'lov qatorini joyida
+   * qoldirib, ustiga bog'langan kompensatsiya qatorini yozadi. Bu
+   * yerdagi ish — sababni olish va jurnalni yangilash.
+   *
+   * ⚠ JURNAL QAYTA O'QILADI, qo'lda tuzatilmaydi. Bekor qilish qarzni
+   * ham, qoldiqni ham, ochiq qarzlar ro'yxatini ham o'zgartiradi;
+   * ekrandagi nusxani «taxminan» to'g'irlash u bilan bazadagi
+   * haqiqatni ajratib yuborardi.
+   */
+  const submitReverse = async (reason) => {
+    if (!reverse || !debt) return;
+    setReversing(true);
+    try {
+      await customerApi.reverseDebtPayment(debt.customer.id, reverse.id, { reason });
+      toast.success(t("credit.reversed"));
+      setReverse(null);
+      const r = await customerApi.ledger(debt.customer.id);
+      setDebt((d) => (d ? { ...d, ledger: asArray(r.data) } : d));
+      loadData();
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setReversing(false);
+    }
+  };
+
+  /* Jurnaldagi ESKI to'lovning cheki. ⚠ Mijoz «o'tgan hafta
+     to'lagandim, qog'ozi yo'q» deb kelganda javob «qaytadan to'lang»
+     bo'lmasligi kerak. */
+  const openReceipt = async (ledgerId) => {
+    setReceiptLoading(ledgerId);
+    try {
+      const r = await customerApi.paymentReceipt(ledgerId);
+      setReceipt(r.data);
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setReceiptLoading(null);
+    }
+  };
+
   const openEdit = (customer) => {
-    setForm({
-      fullName: customer.fullName,
-      phone: customer.phone,
-      // Bo'sh — "do'kon standarti", `0` esa "bu mijozga nasiya yo'q".
-      creditLimit: customer.creditLimit == null ? "" : String(customer.creditLimit),
-    });
+    setForm({ fullName: customer.fullName, phone: customer.phone });
     setModal({ type: "edit", customer });
   };
 
@@ -118,24 +292,21 @@ export default function CustomersPage({ toast }) {
     }
     setSaving(true);
     try {
-      const { creditLimit, ...profile } = form;
+      const profile = form;
       let customerId;
       if (modal === "add") {
         const r = await customerApi.create(profile);
         customerId = r?.data?.id;
-        toast.success(t("cust.added"));
+        /* ⚠ SERVERNING XABARI USTUN (V47). Arxivlangan mijoz qayta
+           qo'shilganda server «ro'yxatga qaytarildi — eski xaridlari va
+           ballari joyida» deydi. Bu yerda doim «qo'shildi» yozilsa,
+           do'kon YANGI yozuv ochilgan deb o'ylardi va o'sha mijozning
+           eski ballari qayerdan chiqqanini tushunmasdi. */
+        toast.success(r?.message || t("cust.added"));
       } else {
         customerId = modal.customer.id;
         await customerApi.update(customerId, profile);
         toast.success(t("cust.updated"));
-      }
-
-      /* Chegara ALOHIDA endpoint bilan saqlanadi (`null` = do'kon standarti)
-         va faqat haqiqatan o'zgargan bo'lsa yuboriladi — kassir ismni
-         tuzatgan har safar chegarani ham qayta yozib yubormasin. */
-      const before = modal === "add" ? "" : (modal.customer.creditLimit == null ? "" : String(modal.customer.creditLimit));
-      if (canSetLimit && customerId && String(creditLimit).trim() !== before) {
-        await customerApi.setCreditLimit(customerId, String(creditLimit).trim() || null);
       }
 
       closeModal();
@@ -147,28 +318,168 @@ export default function CustomersPage({ toast }) {
     }
   };
 
-  const handleDelete = async (customer) => {
-    const ok = await confirm({
-      title: t("cust.deleteTitle"),
-      message: `"${customer.fullName}" mijozini tizimdan o'chirib tashlamoqchimisiz?`,
-      type: "danger"
-    });
-    if (!ok) return;
+  /* ── MIJOZ JAMG'ARMASI (V63) ─────────────────────────────────────
+     ⚠ Bu KESHBEK EMAS: ball do'konning sovg'asi (kuyadi, naqdga
+     chiqarilmaydi), jamg'arma esa mijozning do'konga bergan puli va
+     do'kon uchun majburiyat. */
+  const openSavings = async (c) => {
     try {
-      await customerApi.delete(customer.id);
-      toast.success(t("cust.deleted"));
-      loadData();
+      const r = await customerApi.savings(c.id);
+      setSavings({ customer: c, account: r.data });
     } catch (err) {
       toast.error(err.message);
     }
   };
 
+  /* ⚠ Javobda YANGI holat qaytadi va oyna shundan yangilanadi —
+     qayta so'rov yuborilmaydi. Ikki so'rov orasida kassir eski
+     qoldiqni ko'rib turardi. */
+  /* ⚠ USUL SAQLANADI (V66): ilgari bu yerda doim «CASH» ketardi — mijoz
+     kartadan bergan bo'lsa ham. Endi summa ham, usul ham kassadagi
+     oynadan keladi. `true/false` — oyna faqat muvaffaqiyatda yopiladi. */
+  const runSavings = (fn) => async ({ amount, method, payments }) => {
+    setSavingsBusy(true);
+    try {
+      /* Aralash to'lov (V96) — sabab `submitDebt` dagi bilan bir xil. */
+      const r = await fn(savings.customer.id,
+        { amount, method: method || "CASH", payments });
+      setSavings((prev) => ({ ...prev, account: r.data }));
+      toast.success(r.message || t("common.saved"));
+      loadData();
+      /* KVITANSIYA (V66) — qog'ozga va ekranga, qarz to'lovidagidek. */
+      const rc = r.data?.receipt;
+      if (rc) {
+        try {
+          await printDebtReceipt({
+            kind: rc.kind, customer: savings.customer, amount, method: rc.method || "CASH",
+            balanceAfter: rc.balanceAfter, balanceBefore: rc.balanceBefore,
+            receiptNo: rc.receiptNo, qrUrl: rc.qrUrl, shopName: rc.shopName,
+            cashier: rc.cashierName || localStorage.getItem("ek_fullName") || "",
+            date: rc.date ? new Date(rc.date) : new Date(),
+          });
+        } catch (e) {
+          toast.info(e.message || t("hw.errPopup"));
+        }
+        setReceipt(rc);
+      }
+      return true;
+    } catch (err) {
+      toast.error(err.message);
+      return false;
+    } finally {
+      setSavingsBusy(false);
+    }
+  };
+
+  /* Jamg'arma lentasidagi ESKI qatorning kvitansiyasi (V66). */
+  const openSavingsReceipt = async (entryId) => {
+    setReceiptLoading("s" + entryId);
+    try {
+      const r = await customerApi.savingsReceipt(entryId);
+      setReceipt(r.data);
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setReceiptLoading(null);
+    }
+  };
+
   const setField = (key) => (e) => setForm((prev) => ({ ...prev, [key]: e.target.value }));
 
-  const filtered = customers.filter((c) =>
-    c.fullName?.toLowerCase().includes(search.toLowerCase()) ||
-    c.phone?.includes(search)
-  );
+  /* ⚠ QIDIRUV — kassadagi bilan BIR XIL algoritm (`lib/ek-search.js`).
+     Ilgari bu yerda oddiy `includes` turardi: «Абдулла» deb kiritilgan
+     mijozni «abdulla» deb qidirgan kassir TOPA OLMASDI, xato yozilgan
+     harf esa umuman natija bermasdi. Telefon raqami maxsus ishlanadi —
+     odam oxirgi raqamlarni eslaydi, to'liq raqamni emas. */
+  /* Muddat qo'yilgan do'konda kamida bitta qarz kechikkanmi (V43).
+     Ustun shu holatda chiziladi: muddatsiz do'konda u har qatorda
+     chiziqcha ko'rsatib, jadvalni bekorga kengaytirardi. */
+  const hasOverdue = view === "debtors" && customers.some((c) => Number(c.overdue) > 0);
+
+  /* ══ USTUNLAR BO'YICHA FILTR (V68) ═══════════════════════════════════
+     ⚠ RO'YXAT KO'RINISHGA QARAB O'ZGARADI. Jadvalning o'rta ustunlari
+     «hammasi» va «qarzdorlar» da BOSHQA (sarflagan puli ↔ qarz sanasi,
+     yoshi, muddati o'tgani) — filtrda ekranda YO'Q ustun turishi
+     natijani tushuntirib bo'lmas qilardi. Ko'rinish almashganda
+     saqlangan shart ham tashlanadi (`useDataFilter` o'zi qiladi:
+     ustuni yo'q shartni o'chiradi).
+
+     ⚠ Telefon MATN sifatida: qidiruvi «oxirgi raqamlar» bo'yicha
+     ketadi va son solishtiruvi bunda ma'nosiz. */
+  const COLS = useMemo(() => [
+    { key: "name",  label: t("cust.col"),        type: "text",   get: (c) => c.fullName },
+    { key: "phone", label: t("common.phone"),    type: "text",   get: (c) => c.phone },
+    ...(view === "debtors"
+      ? [{ key: "since",   label: t("credit.debtSince"), type: "date",   get: (c) => c.debtSince },
+         { key: "age",     label: t("credit.since"),     type: "number", get: (c) => daysSince(c.lastChargeAt) },
+         ...(hasOverdue
+           ? [{ key: "overdue", label: t("credit.overdue"), type: "number", get: (c) => c.overdue }]
+           : [])]
+      : view === "savings"
+        /* ⚠ «Sarflagani» o'rniga JAMG'ARMA: bu ro'yxatga aynan shu
+           raqam uchun kiriladi va uni ustun sifatida saralash ham,
+           filtrlash ham mumkin bo'lishi kerak. */
+        ? [{ key: "savings", label: t("savings.title"), type: "number",
+             get: (c) => c.savingsBalance }]
+        : [{ key: "spent",   label: t("cust.totalSpent"),  type: "number", get: (c) => c.totalSpent }]),
+    { key: "debt",  label: t("credit.balance"),  type: "number", get: (c) => c.balance },
+  ], [view, hasOverdue]);
+  /* Kalit ko'rinishga bog'liq: ikki ro'yxatning filtri bir-birini
+     bosib ketmasin — «qarzdorlar» dagi shart «hammasi» ga qaytganda
+     yo'qolishi tabiiy emas edi. */
+  const colFlt = useDataFilter(COLS,
+    view === "debtors" ? "cust-debt" : view === "savings" ? "cust-sav" : "cust");
+
+  const filtered = rankItems(colFlt.apply(customers), search, {
+    texts:  (c) => [c.fullName],
+    digits: (c) => [c.phone],
+  });
+
+  const [reminding, setReminding] = useState(false);
+  /* QO'LDA QARZDOR (V48) — daftardan ko'chirish. Serverda ham FAQAT
+     rahbarga ochiq: pul harakatisiz qarz tug'dirish `adjust` bilan bir
+     xil xavf. Tugmani kassirga ko'rsatib, keyin 403 berish esa
+     tushunarsiz bo'lardi. */
+  const [manualDebt, setManualDebt] = useState(false);
+  const [savingDebt, setSavingDebt] = useState(false);
+
+  const saveManualDebt = async (payload) => {
+    setSavingDebt(true);
+    try {
+      const r = await customerApi.addManualDebt(payload);
+      toast.success(r?.message || t("common.saved"));
+      setManualDebt(false);
+      /* Ro'yxat DARHOL yangilanadi: do'koncha endigina kiritgan
+         qarzdorni ko'rmasa, «yozildimi?» degan savol qolardi.
+         Tugma faqat qarzdorlar ro'yxatida turadi, ya'ni `loadData`
+         aynan shu ro'yxatni qayta o'qiydi. */
+      await loadData();
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setSavingDebt(false);
+    }
+  };
+  /**
+   * Qarz eslatmalarini darhol yuborish (V44).
+   *
+   * ⚠ Natija ANIQ aytiladi: «0 ta» ham javob. Sozlama o'chiq bo'lsa yoki
+   * hammaga yaqinda yuborilgan bo'lsa hech narsa ketmaydi va egasi buni
+   * bilishi kerak — aks holda u tugmani qayta-qayta bosardi.
+   */
+  const remindDebtors = async () => {
+    setReminding(true);
+    try {
+      const r = await customerApi.remindDebtors();
+      const n = Number(r?.data) || 0;
+      if (n > 0) toast.success(t("credit.remindSent", { n }));
+      else toast.info(t("credit.remindNone"));
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setReminding(false);
+    }
+  };
 
   return (
     <div>
@@ -186,10 +497,17 @@ export default function CustomersPage({ toast }) {
             placeholder={t("cust.search")}
             style={{ width: 280 }}
           />
+          <DataFilter cols={COLS} flt={colFlt} />
           {/* Qarzdorlar — alohida RO'YXAT, filtr emas: u serverdan qarz
               bo'yicha saralangan holda va qarz yoshi bilan keladi. */}
           <div className="cat-tabs" role="tablist" aria-label={t("credit.debtors")}>
-            {[["all", t("common.all")], ["debtors", t("credit.debtors")]].map(([k, label]) => (
+            {[["all", t("common.all")],
+              ["debtors", t("credit.debtors")],
+              /* ⚠ Jamg'arma qarzning TESKARISI: qarzda do'kon mijozdan
+                 oladi, jamg'armada mijoz do'kondan. Ikkalasi yonma-yon
+                 turishi kerak — do'kon egasining savoli bitta:
+                 «kim bilan hisob-kitobim bor?» */
+              ["savings", t("savings.title")]].map(([k, label]) => (
               <button key={k} type="button" role="tab" aria-selected={view === k}
                       className={`cat-tab ${view === k ? "active" : ""}`}
                       onClick={() => setView(k)}>
@@ -197,6 +515,25 @@ export default function CustomersPage({ toast }) {
               </button>
             ))}
           </div>
+          {/* Eslatma tugmasi FAQAT muddati o'tgan qarz bo'lganda (V44).
+              Yuboradigan narsa yo'q joyda turgan tugma bosiladi-yu,
+              «0 ta yuborildi» deydi — bu foydali emas, chalg'ituvchi.
+              Kunlik ish har kuni 10:30 da o'zi yuboradi; bu tugma
+              sozlamani endigina yoqqan egaga «ishlayaptimi?» degan
+              javobni beradi. Haftalik oyna bu yerda ham amal qiladi. */}
+          {hasOverdue && (
+            <button className="btn btn-outline btn-sm" onClick={remindDebtors} disabled={reminding}>
+              <i className="fa-solid fa-bell" /> {t("credit.remindNow")}
+            </button>
+          )}
+          {/* Qarzdorlar ro'yxatida asosiy amal — MIJOZ emas, QARZ
+              qo'shish: do'koncha bu ro'yxatga aynan daftarini
+              ko'chirish uchun kiradi. */}
+          {view === "debtors" && isManager && (
+            <button className="btn btn-outline btn-sm" onClick={() => setManualDebt(true)}>
+              <i className="fa-solid fa-file-pen" /> {t("credit.manualAdd")}
+            </button>
+          )}
           <button className="btn btn-primary btn-sm" onClick={openAdd}>
             <i className="fa-solid fa-plus" /> Mijoz qo'shish
           </button>
@@ -209,15 +546,24 @@ export default function CustomersPage({ toast }) {
             <table>
               <thead>
                 <tr>
-                  <th>{t("cust.col")}</th>
-                  <th>{t("common.phone")}</th>
-                  {/* Qarzdorlar ro'yxatida "jami xarid" o'rniga chegara va
-                      qarz yoshi turadi — bu ekranda aynan shu ikkisi
-                      qaror qabul qilishga kerak. */}
+                  <SortTh flt={colFlt} col="name">{t("cust.col")}</SortTh>
+                  <SortTh flt={colFlt} col="phone">{t("common.phone")}</SortTh>
+                  {/* ⚠ Chegara ustuni OLIB TASHLANDI (V46) va o'rniga
+                      «qachondan beri qarzdor» turadi. Chegara endi yo'q;
+                      qarzning YOSHI esa qaror uchun aynan kerak: bugungi
+                      300 ming va yarim yillik 300 ming boshqa gap. */}
                   {view === "debtors"
-                    ? <><th>{t("credit.limit")}</th><th>{t("credit.since")}</th></>
-                    : <th>{t("cust.totalSpent")}</th>}
-                  <th>{t("credit.balance")}</th>
+                    ? <><SortTh flt={colFlt} col="since">{t("credit.debtSince")}</SortTh>
+                        <SortTh flt={colFlt} col="age">{t("credit.since")}</SortTh>
+                        {/* Muddati o'tgan qism (V43) — do'kon muddat
+                            qo'ymagan bo'lsa ustun umuman chizilmaydi:
+                            har qatorda nol turgan ustun jadvalni
+                            kengaytiradi-yu, hech narsa aytmaydi. */}
+                        {hasOverdue && <SortTh flt={colFlt} col="overdue">{t("credit.overdue")}</SortTh>}</>
+                    : view === "savings"
+                      ? <SortTh flt={colFlt} col="savings">{t("savings.title")}</SortTh>
+                      : <SortTh flt={colFlt} col="spent">{t("cust.totalSpent")}</SortTh>}
+                  <SortTh flt={colFlt} col="debt">{t("credit.balance")}</SortTh>
                   <th></th>
                 </tr>
               </thead>
@@ -234,7 +580,11 @@ export default function CustomersPage({ toast }) {
                       <td className="mono" style={{ fontSize: 13 }}>{maskPhone(c.phone)}</td>
                       {view === "debtors" ? (
                         <>
-                          <td className="mono">{money(c.limit)}</td>
+                          <td className="mono" style={{ fontSize: 13 }}>
+                            {c.debtSince
+                              ? shortDate(c.debtSince)
+                              : <span className="text-muted">—</span>}
+                          </td>
                           {/* Qarz yoshi — kunlarda. Jurnalsiz eski qarzda
                               sana yo'q, shunda chiziqcha qo'yiladi: "0 kun"
                               yozilsa u yangi qarzdek ko'rinardi. */}
@@ -243,7 +593,23 @@ export default function CustomersPage({ toast }) {
                               ? <span className="text-muted">—</span>
                               : <span className="mono">{t("credit.daysAgo").replace("{n}", daysSince(c.lastChargeAt))}</span>}
                           </td>
+                          {hasOverdue && (
+                            <td>
+                              {Number(c.overdue) > 0
+                                ? <span className="mono fw-800" style={{ color: "var(--fg-danger)" }}>{money(c.overdue)}</span>
+                                : <span className="text-muted">—</span>}
+                            </td>
+                          )}
                         </>
+                      ) : view === "savings" ? (
+                        /* ⚠ JAMG'ARMA — MIJOZNING PULI, ya'ni do'konning
+                           MAJBURIYATI. Qarz qizil (do'kon oladi), jamg'arma
+                           yashil (do'kon beradi): ikkalasi bir xil rangda
+                           bo'lsa, do'kon egasi qaysi tomonga qarab
+                           turganini bir qarashda ajrata olmasdi. */
+                        <td>
+                          <span className="mono fw-700 text-success">{money(c.savingsBalance)}</span>
+                        </td>
                       ) : (
                         <td>
                           <span className="mono fw-700 text-blue">{money(c.totalSpent)}</span>
@@ -252,30 +618,169 @@ export default function CustomersPage({ toast }) {
                       {/* Qarz — MUSBAT bo'lsa qizil: bu do'konning pulini
                           ushlab turgan summa va u ko'zga tashlanishi kerak. */}
                       <td>
+                        {/* ⚠ QARZSIZDA «0», TIRE EMAS. Tire «ma'lumot
+                            yo'q» degani va do'kon egasini «hisoblanmagan
+                            bo'lsa kerak» deb o'ylatardi. Nol esa ANIQ
+                            javob: bu mijoz hech narsa qarz emas.
+                            Rangi ham boshqa — qizil faqat haqiqiy qarzda. */}
                         {Number(c.balance) > 0
                           ? <span className="mono fw-800" style={{ color: "var(--fg-danger)" }}>{money(c.balance)}</span>
-                          : <span className="text-muted">—</span>}
+                          : <span className="mono text-muted">{money(0)}</span>}
                       </td>
                       <td>
                         <div style={{ display: "flex", gap: 6 }}>
-                          {Number(c.balance) > 0 && (
-                            <button className="btn-icon" title={t("credit.pay")} onClick={() => openDebt(c)}>
-                              <i className="fa-solid fa-hand-holding-dollar" />
+                          {/* ⚠ TUGMA QARZ TUGAGACH HAM QOLADI (V60).
+                              Ilgari sharti faqat `balance > 0` edi:
+                              mijoz qarzini to'liq to'lagach tugma
+                              yo'qolar va u bilan birga JURNAL OYNASIGA
+                              kiradigan yagona eshik ham yo'qolardi —
+                              «qachon, qancha to'ladi?» degan savolga
+                              javob berib bo'lmasdi. Jurnal bazada ham,
+                              API da ham joyida edi; yetishmagani eshik
+                              edi.
+
+                              Qarzi borida — to'lash, tugaganida —
+                              tarix: ikkalasi bitta oyna, lekin tugma
+                              nima qilishini aniq aytishi kerak. */}
+                          {/* ⚠ ENDI SHARTSIZ (V105). `hasDebtHistory`
+                              qolgan oxirgi darvoza edi: hech qachon qarz
+                              olmagan mijozda tugma umuman chizilmas va
+                              qatorda uchta emas, ikkita tugma turardi.
+                              Do'kon egasi buni ayni xato deb ko'rsatdi:
+                              «qarz olmagani uchun tarix ko'rsatmayapti,
+                              bunda ham ko'rsatsin — faqat 0 bosa 0 deb».
+
+                              Sabab shunchaki bir tugma emas: bir xil
+                              qatorda tugmalar soni mijozdan mijozga
+                              o'zgarsa, qolganlari SURILADI — kassir
+                              «tahrirlash» ni mo'ljallab bosgan barmog'i
+                              qo'shni mijozda «jamg'arma» ga tushadi.
+
+                              Bo'sh javob ham javob: oyna qoldiqni 0 deb
+                              ko'rsatadi, jurnal o'rnida «Qarz yo'q»
+                              turadi, «To'lash» va «Hisobot» esa o'chiq —
+                              yo'q narsani to'lab ham, chop etib ham
+                              bo'lmaydi. */}
+                          {/* ══ TUGMALAR RO'YXATGA QARAB (do'kon egasi, 2026-09-09) ══
+
+                              Ilgari uchala ro'yxatda ham bir xil to'plam
+                              chizilardi va bu ikki joyda noto'g'ri edi:
+
+                              · JAMG'ARMA ro'yxatida tahrirlash tugmasi
+                                turardi — u yerda hech kim mijozni
+                                tahrirlamaydi, buning uchun «hammasi»
+                                bor. Ortiqcha tugma faqat adashtirardi.
+
+                              · QARZDORLARDA bitta tugma qoldiqqa qarab
+                                goh «to'lash», goh «tarix» bo'lardi.
+                                Ya'ni qarzdorlar ro'yxatida turib
+                                TARIXNI ochish uchun avval qarzni to'lash
+                                kerak edi — ro'yxat nima uchun ochilgan
+                                bo'lsa, o'sha ishning yarmi yo'q edi.
+
+                              ⚠ HAR RO'YXATDA TUGMALAR SONI QAT'IY.
+                              Qatorda tugmalar soni mijozdan mijozga
+                              o'zgarsa, qolganlari SURILADI va kassirning
+                              «tahrirlash» ni mo'ljallagan barmog'i
+                              qo'shni mijozda «jamg'arma» ga tushardi.
+                              Shuning uchun qarzi yo'q mijozda «to'lash»
+                              YASHIRILMAYDI, faqat o'chiriladi — o'rni
+                              qoladi. */}
+                          {view === "debtors" ? (
+                            <>
+                              {/* ⚠ TO'G'RIDAN-TO'G'RI TO'LOV OYNASI.
+                                  Qarzdorlar ro'yxatidagi yagona ish —
+                                  qarzni yopish; oradagi qadam ortiqcha. */}
+                              <button className="btn-icon"
+                                      title={t("credit.pay")} aria-label={t("credit.pay")}
+                                      disabled={!(Number(c.balance) > 0)}
+                                      onClick={() => openDebtPay(c)}>
+                                <i className="fa-solid fa-hand-holding-dollar" />
+                              </button>
+                              <button className="btn-icon"
+                                      title={t("credit.history")} aria-label={t("credit.history")}
+                                      onClick={() => openDebt(c)}>
+                                <i className="fa-solid fa-clock-rotate-left" />
+                              </button>
+                            </>
+                          ) : view === "savings" ? (
+                            /* ⚠ JAMG'ARMA RO'YXATIDA — FAQAT TARIX.
+                               Qarzni to'lash bu yerning ishi emas; u
+                               «hammasi» va «qarzdorlar» da bor. */
+                            <button className="btn-icon"
+                                    title={t("credit.history")} aria-label={t("credit.history")}
+                                    onClick={() => openDebt(c)}>
+                              <i className="fa-solid fa-clock-rotate-left" />
+                            </button>
+                          ) : (
+                            <button className="btn-icon"
+                                    title={Number(c.balance) > 0 ? t("credit.pay") : t("credit.history")}
+                                    aria-label={Number(c.balance) > 0 ? t("credit.pay") : t("credit.history")}
+                                    onClick={() => openDebt(c)}>
+                              <i className={`fa-solid ${Number(c.balance) > 0
+                                  ? "fa-hand-holding-dollar" : "fa-clock-rotate-left"}`} />
                             </button>
                           )}
-                          {/* Qarzdorlar ro'yxatida tahrirlash/o'chirish YO'Q:
-                              u yerdagi qator to'liq mijoz yozuvi emas (server
-                              faqat qarz uchun kerakli maydonlarni yuboradi)
-                              va formani undan to'ldirish chegarani jimgina
-                              buzardi. */}
-                          {view === "all" && (
+                          {/* ⚠ CHEGARA «hammasi» EMAS, «qarzdor emas» (V105).
+
+                              Ilgari bu yerda `view === "all"` turardi va
+                              JAMG'ARMA ro'yxatida — aynan jamg'arma uchun
+                              ochilgan ro'yxatda — jamg'arma tugmasi
+                              YO'QOLARDI. Do'kon egasi «kimda pulim
+                              turibdi» ni ko'rar, lekin o'sha qatorning
+                              o'zidan pul QO'SHA olmasdi: «hammasi» ga
+                              qaytib, mijozni qaytadan qidirishi kerak
+                              edi — ro'yxat nima uchun ochilgan bo'lsa,
+                              aynan o'sha ish undan chiqib ketgandi.
+
+                              Chegaraning haqiqiy sababi ro'yxat NOMIDA
+                              emas, MA'LUMOTIDA: qarzdorlar qatori to'liq
+                              mijoz yozuvi emas (server faqat qarz uchun
+                              kerakli maydonlarni yuboradi) va formani
+                              undan to'ldirish chegarani jimgina buzardi.
+                              Jamg'arma ro'yxati esa o'sha `/customers`
+                              dan keladi — to'liq yozuv, ya'ni to'siq
+                              hech qachon kerak emas edi. */}
+                          {view !== "debtors" && (
                             <>
-                              <button className="btn-icon" onClick={() => openEdit(c)}>
-                                <i className="fa-solid fa-pen" />
+                              {/* ⚠ TAHRIRLASH FAQAT «HAMMASI» DA (do'kon
+                                  egasi, 2026-09-09): jamg'arma ro'yxati
+                                  pul qo'shish uchun ochiladi, mijozni
+                                  tahrirlash uchun emas. */}
+                              {view === "all" && (
+                                <button className="btn-icon" onClick={() => openEdit(c)}>
+                                  <i className="fa-solid fa-pen" />
+                                </button>
+                              )}
+                              {/* ⚠ JAMG'ARMA TUGMASI DOIM BOR (V63),
+                                  qoldiq nol bo'lsa ham: kassir aynan
+                                  shu yerdan pul QO'SHADI. Qarz
+                                  tugmasidan farqi shunda — u tarixni
+                                  ochadi, bu esa ish qildiradi. */}
+                              <button className="btn-icon" title={t("savings.title")}
+                                      aria-label={t("savings.title")}
+                                      onClick={() => openSavings(c)}>
+                                <i className="fa-solid fa-sack-dollar"
+                                   style={Number(c.savingsBalance) > 0
+                                     ? { color: "var(--fg-success)" } : undefined} />
                               </button>
-                              <button className="btn-icon danger" onClick={() => handleDelete(c)}>
-                                <i className="fa-solid fa-trash" />
-                              </button>
+                              {/* ═══ ⚠ O'CHIRISH TUGMASI YO'Q — ATAYLAB (V62)
+                                  Ilgari bu yerda rahbarga ochiq savat
+                                  tugmasi turardi.
+
+                                  Yozuv MIJOZNIKI: unda odamning ismi,
+                                  telefoni, xarid tarixi va ballari
+                                  yotadi. Do'kon uni ro'yxatdan yashira
+                                  olsa, mijoz o'z ma'lumoti ustidan
+                                  nazoratini yo'qotardi.
+
+                                  ⚠ Rolni qattiqroq qilish yetmasdi:
+                                  masala huquqda emas, EGALIKDA. Server
+                                  ham endi bu yo'lni bermaydi —
+                                  `DELETE /customers/{id}` UMUMAN yo'q.
+
+                                  O'chirishni mijozning o'zi ilovadan
+                                  qiladi («Hisobni o'chirish»). ═══ */}
                             </>
                           )}
                         </div>
@@ -285,8 +790,19 @@ export default function CustomersPage({ toast }) {
                 ) : (
                   <tr>
                     <td colSpan={view === "debtors" ? 6 : 5}>
-                      <Empty icon="fa-users"
-                             text={view === "debtors" ? t("credit.noDebtors") : t("cust.notFound")} />
+                      {/* ⚠ HAR RO'YXAT O'Z SABABINI AYTADI (V105).
+                          Jamg'arma ro'yxati bo'sh qolganda «Mijoz
+                          topilmadi» yozilardi va bu YOLG'ON edi:
+                          mijozlar bor, jamg'armasi bor mijoz yo'q.
+                          Do'kon egasi buni «ro'yxat ishlamayapti» deb
+                          o'qirdi — bo'sh natija va buzuq ekran bir xil
+                          ko'rinardi. */}
+                      <Empty icon={view === "savings" ? "fa-sack-dollar" : "fa-users"}
+                             text={view === "debtors"
+                                 ? t("credit.noDebtors")
+                                 : view === "savings"
+                                   ? t("savings.noneYet")
+                                   : t("cust.notFound")} />
                     </td>
                   </tr>
                 )}
@@ -330,41 +846,49 @@ export default function CustomersPage({ toast }) {
               onChange={(e) => setForm(prev => ({ ...prev, phone: e.target.value }))}
             />
           </FormGroup>
-          {/* Shu mijozning ALOHIDA nasiya chegarasi. Bo'sh qoldirilsa
-              do'kon standarti ishlaydi — shuning uchun placeholder'da
-              amaldagi qiymat ko'rsatiladi. */}
-          {canSetLimit && (
-            <FormGroup label={t("credit.limit")}>
-              <Field
-                kind="money"
-                className="form-input ek-num"
-                value={form.creditLimit}
-                onChange={setField("creditLimit")}
-                placeholder={modal !== "add" && modal.customer?.effectiveLimit != null
-                  ? `${t("staff.shopDefault")}: ${money(modal.customer.effectiveLimit)}`
-                  : t("credit.limitHint")}
-              />
-              <div className="text-muted" style={{ fontSize: 12, marginTop: 4 }}>
-                {t("credit.limitHint")}
-              </div>
-            </FormGroup>
-          )}
         </Modal>
       )}
 
-      {/* ── Qarz oynasi: to'lov + jurnal ───────────────────────────────── */}
-      {debt && (
+      {/* ── QO'LDA QARZDOR (V48) ── */}
+      {manualDebt && (
+        <ManualDebtModal
+          onClose={() => setManualDebt(false)}
+          onSave={saveManualDebt}
+          saving={savingDebt}
+        />
+      )}
+
+      {/* ── QARZ OYNASI (V47): jurnal + KASSA KO'RINISHIDAGI to'lov ────
+          ⚠ To'lov ALOHIDA oynada: kassa kabi katta summa, to'lov turi
+          katakchalari va raqamli klaviatura bilan. Jurnalni ham, raqamli
+          klaviaturani ham bitta oynaga tiqish uni ekrandan uzun qilardi. */}
+      {debt && !payOpen && !stOpen && (
         <Modal
-          title={`${t("credit.title")} — ${debt.customer.fullName}`}
+          /* Sarlavha holatga qarab: qarzi borida «Qarz», tugaganida
+             «Qarz tarixi» — oyna bir xil, savol boshqa. */
+          title={`${Number(debt.customer.balance) > 0 ? t("credit.title") : t("credit.history")}`
+                 + ` — ${debt.customer.fullName}`}
           onClose={() => setDebt(null)}
-          maxWidth={520}
+          /* ⚠ KENG (720): jurnalda endi to'rt ustun bor — tur, SANA-VAQT,
+             izoh va summa. 520 da sana summani siqib, raqamlar
+             o'ralib ketardi. */
+          maxWidth={720}
           footer={
             <>
               <button className="btn btn-outline btn-sm" onClick={() => setDebt(null)}>
                 {t("common.close")}
               </button>
-              <button className="btn btn-primary btn-sm" onClick={submitDebt}
-                      disabled={paying || !(Number(debt.amount) > 0)}>
+              {/* ⚠ HISOBOT QARZI YO'QLARDA HAM OCHILADI — «To'lash» dan
+                  farqli. Mijoz «men hammasini to'laganman» deb kelsa,
+                  unga aynan TO'LANGAN qarzning tarixini ko'rsatish
+                  kerak; tugma o'chiq bo'lsa, do'kon dalilini chiqara
+                  olmasdi. */}
+              <button className="btn btn-outline btn-sm" onClick={() => setStOpen(true)}
+                      disabled={!(debt.ledger || []).length}>
+                <i className="fa-solid fa-file-invoice" /> {t("credit.statement")}
+              </button>
+              <button className="btn btn-primary btn-sm" onClick={() => setPayOpen(true)}
+                      disabled={!(Number(debt.customer.balance) > 0)}>
                 <i className="fa-solid fa-hand-holding-dollar" /> {t("credit.pay")}
               </button>
             </>
@@ -372,58 +896,236 @@ export default function CustomersPage({ toast }) {
         >
           <div className="row" style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
             <span className="fw-700">{t("credit.balance")}</span>
-            <span className="mono fw-800" style={{ color: "var(--fg-danger)" }}>{money(debt.customer.balance)}</span>
+            {/* ⚠ QIZIL — do'kon ushlab turgan pul. Nol esa yomon xabar
+                emas: qarz yopilgan. Uni ham qizil qilib ko'rsatish
+                tarixni ochgan egaga «hali ham muammo bor» degan yolg'on
+                taassurot berardi. */}
+            <span className="mono fw-800"
+                  style={{ color: Number(debt.customer.balance) > 0
+                    ? "var(--fg-danger)" : "var(--fg-success)" }}>
+              {money(debt.customer.balance)}
+            </span>
           </div>
-          {/* Chegara ham ko'rsatiladi: "yana nasiya berish mumkinmi" degan
-              savol aynan shu oynada tug'iladi. Qarzdorlar ro'yxatidan
-              kelgan qatorda maydon `limit`, mijozlar ro'yxatida
-              `effectiveLimit` deb ataladi. */}
-          <div className="row text-muted" style={{ display: "flex", justifyContent: "space-between", marginBottom: 12, fontSize: 13 }}>
-            <span>{t("credit.limit")}</span>
-            <span className="mono">{money(debt.customer.limit ?? debt.customer.effectiveLimit ?? 0)}</span>
-          </div>
-
-          <label className="form-label">{t("credit.payAmount")}</label>
-          <Field kind="money" max={debt.customer.balance}
-                 className="form-input ek-num" autoFocus
-                 value={debt.amount}
-                 onChange={(e) => setDebt({ ...debt, amount: e.target.value })} />
-
-          <label className="form-label" style={{ marginTop: 10 }}>{t("credit.method")}</label>
-          <div className="cat-tabs" role="tablist" aria-label={t("credit.method")}>
-            {["CASH", "CARD"].map((k) => (
-              <button key={k} type="button" role="tab" aria-selected={debt.method === k}
-                      className={`cat-tab ${debt.method === k ? "active" : ""}`}
-                      onClick={() => setDebt({ ...debt, method: k })}>
-                {paymentLabel(k)}
-              </button>
-            ))}
-          </div>
+          {/* ⚠ Chegara O'RNIGA «qachondan beri qarzdor» (V46): «yana
+              nasiya berish mumkinmi» degan savolga endi raqam emas,
+              qarzning yoshi javob beradi. */}
+          {debt.customer.debtSince && (
+            <div className="row text-muted" style={{ display: "flex", justifyContent: "space-between", marginBottom: 12, fontSize: 13 }}>
+              <span>{t("credit.debtSince")}</span>
+              <span className="mono">{shortDate(debt.customer.debtSince)}</span>
+            </div>
+          )}
 
           {/* Jurnal — "qarz qayerdan chiqdi" degan savolga javob. */}
           <div className="form-label" style={{ marginTop: 14 }}>{t("credit.ledger")}</div>
-          <div className="table-wrap" style={{ maxHeight: 220, overflowY: "auto" }}>
+          {/* ⚠ BALANDLIK EKRANGA QARAB (`vh`), qat'iy 220px EMAS. Ilgari
+              oynada bor-yo'g'i to'rt qator ko'rinardi va yillik qarz
+              tarixi millimetrlab aylantiriladigan darchadan o'qilardi.
+              Endi bo'sh joyning yarmigacha cho'ziladi; kichkina
+              monoblokda esa `min()` uni 260px dan pastga tushirmaydi,
+              ya'ni oyna ekrandan chiqib ketmaydi. */}
+          <div className="table-wrap"
+               style={{ maxHeight: "min(52vh, 520px)", minHeight: 260, overflowY: "auto" }}>
             <table>
               <tbody>
                 {(debt.ledger || []).map((l) => (
                   <tr key={l.id}>
                     <td style={{ fontSize: 12 }}>{t(`credit.type.${l.type}`)}</td>
-                    <td className="mono" style={{ fontSize: 12 }}>
-                      {l.saleId ? `#${l.saleId}` : (l.reason || "—")}
+                    {/* ⚠ SANA VA VAQT (do'kon egasining talabi). Usiz
+                        jurnal «kim qachon nima qildi» degan savolga
+                        javob bermasdi: bir kunda ikkita to'lov bo'lsa,
+                        qaysi biri ertalab, qaysi biri kechqurun ekani
+                        ko'rinmasdi — tortishuv esa aynan shundan
+                        boshlanadi. VAQT ham kerak, faqat sana emas. */}
+                    <td className="mono text-muted"
+                        style={{ fontSize: 12, whiteSpace: "nowrap" }}>
+                      {dateTime(l.createdAt)}
                     </td>
+                    <td className="mono" style={{ fontSize: 12 }}>
+                      {l.saleId
+                        ? <button type="button" className="ek-linkbtn"
+                                  onClick={() => openSale(l.saleId)}
+                                  disabled={saleLoading === l.saleId}
+                                  title={t("sales.details")}>
+                            {saleLoading === l.saleId ? <Spinner small /> : `#${l.saleId}`}
+                          </button>
+                        : (l.reason || "—")}
+                      {/* ⚠ MIJOZ TASDIG'I (V46) — aynan shu qatorda.
+                          Tortishuv «qaysi qarz?» degan savoldan
+                          boshlanadi: holat qarzdan ajralib, alohida
+                          ro'yxatda tursa, do'kon ularni o'zi
+                          solishtirishga majbur bo'lardi.
+                          `NONE` ko'rsatilmaydi: «so'ralmagan» — bu
+                          xabar emas, shovqin. */}
+                      {l.confirmState && l.confirmState !== "NONE" && (
+                        <div style={{ fontSize: 11, marginTop: 2 }}
+                             className={l.confirmState === "REJECTED" ? "text-danger" : "text-muted"}>
+                          {t(`debt.state.${l.confirmState}`)}
+                          {l.confirmNote ? ` — «${l.confirmNote}»` : ""}
+                        </div>
+                      )}
+                    </td>
+                    {/* ⚠ ISHORA MIJOZNING KO'ZI BILAN (foydalanuvchi
+                        talabi): qarz — MANFIY, to'lov — MUSBAT. Ilgari
+                        teskari edi (balans o'sishi «+» bilan) va do'kon
+                        egasi jurnalga qarab «bu men olganmi yoki men
+                        berganmi?» deb o'ylab qolardi.
+
+                        ⚠ `ADJUSTMENT` ning summasi O'ZI imzoli, shuning
+                        uchun u ham shunchaki teskarilanadi: qarzni
+                        kamaytirgan to'g'irlash «+» bo'lib, yashil
+                        chiqadi — to'lov bilan bir xil ma'noda. */}
                     <td className="mono fw-700"
-                        style={{ color: l.type === "PAYMENT" ? "var(--fg-success)" : "var(--fg-danger)" }}>
-                      {l.type === "PAYMENT" ? "-" : "+"}{money(l.amount)}
+                        style={{ color: ledgerSigned(l) >= 0 ? "var(--fg-success)" : "var(--fg-danger)" }}>
+                      {ledgerSigned(l) >= 0 ? "+" : "−"}{money(Math.abs(ledgerSigned(l)))}
+                      {/* ⚠ QARZNING QOLDIG'I (V65) — qisman to'langan qarz
+                          summasi ostida «qoldi: X». To'liq yopilgani esa
+                          «yopildi»: egasi jurnalga qarab qaysi qarz hali
+                          ochiq ekanini bir qarashda ko'radi. */}
+                      {l.remaining != null && (
+                        <div style={{ fontSize: 11, fontWeight: 400,
+                                      color: Number(l.remaining) > 0 ? undefined : "var(--fg-success)" }}
+                             className={Number(l.remaining) > 0 ? "text-muted" : ""}>
+                          {Number(l.remaining) > 0
+                            ? `${t("credit.left")}: ${money(l.remaining)}`
+                            : t("credit.settled")}
+                        </div>
+                      )}
+                      {/* ⚠ BEKOR QILINGAN TO'LOV QATORDA QOLADI (V102) —
+                          moliyaviy yozuv o'chirilmaydi. Belgisiz esa u
+                          jurnalda haqiqiy to'lovdek ko'rinar va do'kon
+                          egasi bir pulni ikki marta sanardi. */}
+                      {l.reversed && (
+                        <div className="text-danger" style={{ fontSize: 11, fontWeight: 700 }}>
+                          <i className="fa-solid fa-rotate-left" aria-hidden="true" />
+                          {" "}{t("credit.reversedBadge")}
+                        </div>
+                      )}
+                    </td>
+                    {/* ⚠ CHEK FAQAT TO'LOVDA (V61). Qarz qatorining
+                        cheki — o'sha sotuvning cheki va u yonidagi
+                        `#id` tugmasidan ochiladi; to'g'irlashda esa
+                        umuman chek yo'q (mijoz pul bermagan). Har
+                        qatorga tugma qo'yish jurnalni tugmalar
+                        devoriga aylantirardi. */}
+                    <td style={{ width: 72, textAlign: "right", whiteSpace: "nowrap" }}>
+                      {/* ⚠ QARZ QATORIDA HAM CHEK BOR (V62). Ilgari
+                          faqat to'lovda edi va qarz olgan mijozning
+                          qo'lida hech narsa qolmasdi — ayniqsa QO'LDA
+                          kiritilgan qarzda (daftardan ko'chirilgan),
+                          u yerda sotuv ham, chek ham umuman yo'q.
+
+                          TO'G'IRLASHDA tugma YO'Q: uni mijoz emas,
+                          do'kon qiladi (kechirdi, xato tuzatdi) va
+                          server ham uni ochmaydi. */}
+                      {/* ⚠ BEKOR QILISH — FAQAT RAHBARGA va faqat
+                          TO'LOVDA (V102). Amal yashikdan naqd
+                          chiqaradi: kassirga ochiq bo'lsa, u mijozdan
+                          pul olib, chekni berib, keyin to'lovni «bekor
+                          qilib» pulni o'zida qoldira olardi. Server ham
+                          shu qoidani tekshiradi — bu yerdagi shart
+                          tugmani ko'rsatmaslik uchun, himoya uchun
+                          emas.
+
+                          Bir marta bekor qilingan qator ikkinchi marta
+                          bosilmaydi: tugma umuman chizilmaydi. */}
+                      {l.type === "PAYMENT" && isManager && !l.reversed && (
+                        <button type="button" className="btn-icon danger"
+                                title={t("credit.reverseTitle")}
+                                aria-label={t("credit.reverseTitle")}
+                                onClick={() => setReverse(l)}>
+                          <i className="fa-solid fa-rotate-left" />
+                        </button>
+                      )}
+                      {l.type !== "ADJUSTMENT" && (
+                        <button type="button" className="btn-icon"
+                                title={t("credit.receipt")}
+                                aria-label={t("credit.receipt")}
+                                disabled={receiptLoading === l.id}
+                                onClick={() => openReceipt(l.id)}>
+                          {receiptLoading === l.id
+                            ? <Spinner small />
+                            : <i className="fa-solid fa-receipt" />}
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
                 {debt.ledger && debt.ledger.length === 0 && (
-                  <tr><td colSpan={3}><Empty icon="fa-receipt" text={t("credit.noDebt")} /></td></tr>
+                  <tr><td colSpan={5}><Empty icon="fa-receipt" text={t("credit.noDebt")} /></td></tr>
                 )}
               </tbody>
             </table>
           </div>
         </Modal>
+      )}
+
+      {/* Kassa ko'rinishidagi to'lov oynasi (V47). */}
+      {debt && payOpen && (
+        <DebtPayModal
+          customer={debt.customer}
+          ledger={debt.ledger}
+          paying={paying}
+          onClose={() => setPayOpen(false)}
+          onSubmit={submitDebt}
+        />
+      )}
+
+      {/* ⚠ QARZ OYNASI YASHIRILADI, ustiga chizilmaydi — to'lov oynasi
+          bilan bir xil qoida (V24 «modal ustma-ustligi»). Ikkita oyna
+          ustma-ust tushganda foydalanuvchi qaysi biri faol ekanini
+          bilmay qoladi va ESC qaysinisini yopishi ham noaniq. */}
+      {debt && stOpen && (
+        <StatementModal
+          customer={debt.customer}
+          ledger={debt.ledger}
+          shopName={localStorage.getItem("ek_shopName") || ""}
+          toast={toast}
+          onClose={() => setStOpen(false)}
+        />
+      )}
+
+      {/* ⚠ QARZ OYNASINING USTIDAN chiziladi (V102) va uni YOPMAYDI:
+          bekor qilingandan keyin kassir o'sha jurnalga qaytadi va
+          natijani ko'radi. `Overlay` ustki qatlamni o'zi belgilaydi,
+          shuning uchun DOM tartibi yetarli. */}
+      {debt && reverse && (
+        <ReversePaymentModal
+          entry={reverse}
+          customer={debt.customer}
+          busy={reversing}
+          onClose={() => setReverse(null)}
+          onSubmit={submitReverse}
+        />
+      )}
+
+      {/* ⚠ CHEK TAFSILOTI ENG OXIRIDA chiziladi (V47): u qarz oynasining
+          USTIDAN ochilishi kerak. Ilgari u yuqorida turardi va bir xil
+          `z-index` da DOM tartibi hal qilardi — chek oynasi qarz
+          oynasining ORQASIDA qolib, ko'rinmasdi. */}
+      <SaleDetailModal sale={saleDetail} onClose={() => setSaleDetail(null)} />
+
+      {/* ⚠ TO'LOV CHEKI ENG OXIRIDA — chek tafsiloti bilan bir xil
+          sabab: u qarz oynasining USTIDAN ochilishi kerak va bir xil
+          `z-index` da buni DOM tartibi hal qiladi. */}
+      {savings && (
+        <SavingsModal
+          account={savings.account}
+          customer={savings.customer}
+          canRefund={isManager}
+          busy={savingsBusy}
+          onTopUp={runSavings(customerApi.topUpSavings)}
+          onRefund={runSavings(customerApi.refundSavings)}
+          onReceipt={openSavingsReceipt}
+          receiptLoading={typeof receiptLoading === "string" ? Number(receiptLoading.slice(1)) : null}
+          onClose={() => setSavings(null)}
+        />
+      )}
+
+      {receipt && (
+        <Suspense fallback={null}>
+          <PaymentReceipt data={receipt} onClose={() => setReceipt(null)} />
+        </Suspense>
       )}
     </div>
   );

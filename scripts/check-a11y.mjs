@@ -58,7 +58,7 @@ await new Promise((r) => server.listen(PORT, r));
 const axeSource = fs.readFileSync(path.join(ROOT, "node_modules", "axe-core", "axe.min.js"), "utf8");
 const browser = await puppeteer.launch({
   executablePath: CHROME, headless: "new",
-  args: ["--no-sandbox", "--disable-dev-shm-usage", "--hide-scrollbars"],
+  args: ["--no-sandbox", "--disable-dev-shm-usage", "--hide-scrollbars", "--no-proxy-server"],
 });
 
 let bad = 0;
@@ -67,12 +67,29 @@ for (const theme of ["light", "dark"]) {
   const page = await browser.newPage();
   await page.setViewport({ width: 1440, height: 900 });
   await page.setRequestInterception(true);
+  /* ⚠ CORS SARLAVHALARISIZ SOXTA JAVOB YETIB BORMAYDI. So'rov
+     `https://api.e-kassam.uz` ga, ya'ni BOSHQA manbaga ketadi va
+     `credentials: "include"` bilan. Sarlavhasiz javobni brauzerning
+     o'zi rad etadi — `fetch` yiqiladi va tekshiruv sahifaning
+     ISHLAYDIGAN holatini emas, XATO holatini ko'radi (bo'sh ro'yxat,
+     «server javob bermadi» yozuvi). Ya'ni bu qatorlar yozilganidan
+     beri a11y aslida boshqa ekranlarni tekshirib kelgan.
+
+     ⚠ `Allow-Headers: *` ISHLAMAYDI: credentialli so'rovda brauzer
+     yulduzchani qabul qilmaydi va `Authorization` ni rad etadi.
+     Shuning uchun preflight so'ragan sarlavhalar qaytarib beriladi. */
   page.on("request", (req) => {
-    if (req.url().includes("/api/")) {
-      return req.respond({ status: 200, contentType: "application/json",
-                           body: JSON.stringify({ success: true, data: [] }) });
-    }
-    req.continue();
+    if (!req.url().includes("/api/")) return req.continue();
+    const cors = {
+      "Access-Control-Allow-Origin": `http://127.0.0.1:${PORT}`,
+      "Access-Control-Allow-Credentials": "true",
+      "Access-Control-Allow-Headers":
+        req.headers()["access-control-request-headers"] || "authorization,content-type",
+      "Access-Control-Allow-Methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+    };
+    if (req.method() === "OPTIONS") return req.respond({ status: 204, headers: cors });
+    return req.respond({ status: 200, contentType: "application/json",
+                         headers: cors, body: JSON.stringify({ success: true, data: [] }) });
   });
   await page.evaluateOnNewDocument(() => {
     localStorage.setItem("ek_token", "a11y");

@@ -3,6 +3,7 @@ import { shopApi } from "../api";
 import { useAuth } from "../hooks/useAuth";
 import Select from "./ek/Select";
 import { t } from "../lib/ek-i18n";
+import { asArray } from "../lib/ek-array";
 
 export default function BranchSelector({ selectedId, onSelect, style = {} }) {
   const { user } = useAuth();
@@ -15,7 +16,7 @@ export default function BranchSelector({ selectedId, onSelect, style = {} }) {
     if (!isOwnerOrAdmin) return;
     setLoading(true);
     shopApi.getBranches()
-      .then((res) => setBranches(res.data || []))
+      .then((res) => setBranches(asArray(res.data)))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [isOwnerOrAdmin]);
@@ -30,6 +31,8 @@ export default function BranchSelector({ selectedId, onSelect, style = {} }) {
   return (
     <div style={{ display: "flex", alignItems: "center", ...style }}>
       <Select
+        /* Filiallar ham MA'LUMOT ro'yxati — o'sib boradi. */
+        searchable
         value={selectedId ? String(selectedId) : ""}
         onChange={(v) => onSelect(v || null)}
         options={options}

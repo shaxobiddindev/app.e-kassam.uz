@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { API_BASE } from "../config";
 import { code128Svg } from "../lib/ek-barcode";
+import { groupDigits } from "../lib/ek-format";
 import { qrSvg } from "../lib/ek-qr";
 import { saveReceiptPdf } from "../lib/ek-receipt-pdf";
 import CodeZoom from "../components/CodeZoom";
+import Overlay from "../components/ek/Overlay";
 
 /* ══════════════════════════════════════════════════════════════════════════
    ELEKTRON CHEK — QOG'OZ CHEKNING AYNAN O'ZI
@@ -24,18 +26,27 @@ import CodeZoom from "../components/CodeZoom";
    so'mga farq qilishi mumkin edi — mijoz uchun bu «aldash» ko'rinadi.
    ══════════════════════════════════════════════════════════════════════════ */
 
-const money = (v) =>
-  new Intl.NumberFormat("uz-UZ", { maximumFractionDigits: 2 }).format(Number(v || 0));
+/* ⚠ AJRATGICH BUTUN MAHSULOTDA BIR XIL (02-DESIGN-SYSTEM.md).
+   Bu yerda `Intl.NumberFormat("uz-UZ")` turardi va u brauzerga qarab
+   VERGUL qaytarardi: mijoz SMS da «500 000 so'm», chekda esa
+   «500,000 so'm» ko'rib, ikkalasi bir xil summami deb o'ylardi.
+   Xuddi shu xato mijoz ilovasida bir marta tuzatilgan edi. */
+const money = (v) => groupDigits(v);
 
-const PAY_LABEL = {
-  CASH: "Naqd",
-  CARD: "Karta",
-  MIXED: "Aralash",
-  CREDIT: "Nasiya",
-  CLICK: "Click",
-  PAYME: "Payme",
-  TRANSFER: "O'tkazma",
+/* ⚠ MIQDOR — ALOHIDA. `groupDigits` butunlashtiradi va u pul uchun
+   to'g'ri (so'mda tiyin ishlatilmaydi), MIQDOR uchun esa halokatli:
+   1,5 kg go'sht chekda «2 kg» bo'lib chiqardi va mijoz o'zi ko'rgan
+   tarozidan boshqa raqamni o'qirdi. Shuning uchun kasr qismi
+   SAQLANADI, keraksiz nollar esa olib tashlanadi (2,000 → 2). */
+const qty = (v) => {
+  const n = Number(v || 0);
+  return Number.isInteger(n) ? groupDigits(n) : String(n).replace(".", ",");
 };
+
+/* ⚠ TO'LOV TURI CHEKDA KO'RSATILMAYDI — qog'oz chek bilan bir xil
+   qoida (`ek-hardware.js`). Ilgari bu yerda usul yorliqlari lug'ati
+   turardi; ekrandagi nusxa qog'ozdagidan farq qilmasligi kerak,
+   shuning uchun u ham olib tashlandi. */
 
 const UNIT_LABEL = {
   DONA: "dona", KG: "kg", GRAM: "g", LITR: "l", METR: "m", QUTI: "quti", UPAK: "upak",
@@ -96,16 +107,16 @@ export default function Receipt({ token, appToken, customerId, id, signedId, sig
     }
   };
 
-  // Esc bilan yopish — telefonda ham, brauzerda ham kutiladigan xatti-harakat
-  useEffect(() => {
-    const onKey = (e) => { if (e.key === "Escape") onClose(); };
-    addEventListener("keydown", onKey);
-    return () => removeEventListener("keydown", onKey);
-  }, [onClose]);
-
   return (
-    <div className="pt-modal" onClick={onClose} role="dialog" aria-modal="true">
-      <div className="pt-modal__inner" onClick={(e) => e.stopPropagation()}>
+    /* ⚠ `Overlay` orqali: qo'lda yozilgan `div` sahifa daraxtida qoladi
+       va portal bilan chizilgan oynaning ORQASIGA tushadi. Esc ham shu
+       yerdan — u FAQAT eng ustidagi oynani yopadi. */
+    /* ⚠ ORQA FONGA BOSISH YOPMAYDI (V72) — butun tizimda bir xil
+       qoida: sensor ekranda chetga tasodifan tegish oddiy hol.
+       Chiqish yo'llari: ✕ va ESC. */
+    <Overlay className="pt-modal" onEscape={onClose}
+             role="dialog" aria-modal="true">
+      <div className="pt-modal__inner">
         <button className="pt-close" onClick={onClose} aria-label="Yopish">
           <i className="fa-solid fa-xmark" aria-hidden="true" />
         </button>
@@ -140,10 +151,23 @@ export default function Receipt({ token, appToken, customerId, id, signedId, sig
                 <div className="pt-line__name">{l.name}</div>
                 <div className="pt-tape__row">
                   <span>
-                    {money(l.quantity)} {UNIT_LABEL[l.unit] || ""} × {money(l.price)}
+                    {qty(l.quantity)} {UNIT_LABEL[l.unit] || ""} × {money(l.price)}
                   </span>
                   <span>{money(l.sum)}</span>
                 </div>
+                {/* ⚠ QATOR CHEGIRMASI — QOG'OZ CHEK BILAN BIR XIL (V57).
+                    Qog'ozda u allaqachon chiqardi (`buildReceipt`), bu
+                    yerda esa yo'q edi: mijoz ikkalasini yonma-yon qo'yib
+                    solishtiradi va farq ishonchni yo'qotadi. Undan ham
+                    yomoni — chegirma ko'rinmasa, tushirilgan narx XATO
+                    bo'lib tuyuladi: mijoz e'lon narxini eslaydi, chekda
+                    esa boshqa raqam turadi. */}
+                {Number(l.discount) > 0 && (
+                  <div className="pt-tape__row pt-line__cut">
+                    <span>Chegirma</span>
+                    <span>−{money(l.discount)}</span>
+                  </div>
+                )}
               </div>
             ))}
 
@@ -164,9 +188,6 @@ export default function Receipt({ token, appToken, customerId, id, signedId, sig
 
             <div className="pt-tape__row pt-total">
               <span>JAMI</span><span>{money(data.total)}</span>
-            </div>
-            <div className="pt-tape__row">
-              <span>To'lov</span><span>{PAY_LABEL[data.paymentType] || data.paymentType || "—"}</span>
             </div>
 
             {Number(data.bonusEarned) > 0 && (
@@ -205,7 +226,14 @@ export default function Receipt({ token, appToken, customerId, id, signedId, sig
                     dangerouslySetInnerHTML={{ __html: code128Svg(`S-${String(data.id).padStart(6, "0")}`) }} />
             <div className="pt-center pt-tape__no">S-{String(data.id).padStart(6, "0")}</div>
             <div className="pt-center pt-thanks">Xarid uchun rahmat!</div>
-            <div className="pt-center pt-tape__site">e-kassam.uz</div>
+            {/* ⚠ «e-kassam.uz» OLIB TASHLANDI (V85). Elektron chek ham
+                CHEK: mijoz uni QR orqali ochadi va unda begona brend
+                turishi qog'oz chekdagi bilan bir xil xato edi.
+                O'rniga do'kon o'zi yozgan matn — bo'sh bo'lsa hech
+                narsa chizilmaydi. */}
+            {data.shopFooter && (
+              <div className="pt-center pt-tape__site">{data.shopFooter}</div>
+            )}
           </div>
         )}
 
@@ -228,6 +256,6 @@ export default function Receipt({ token, appToken, customerId, id, signedId, sig
             onClose={() => setZoom(null)} />
         )}
       </div>
-    </div>
+    </Overlay>
   );
 }

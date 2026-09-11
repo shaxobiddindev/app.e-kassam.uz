@@ -22,12 +22,15 @@
    (`ref`), kassa esa skanerdan keyin maydonni tanlaydi. Oddiy
    funksiya-komponent `ref` ni yutib yuboradi va bu JIMGINA buziladi.
    ========================================================================== */
-import { forwardRef, useRef, useLayoutEffect, useImperativeHandle } from "react";
+import { forwardRef, useRef, useState, useEffect, useLayoutEffect, useImperativeHandle } from "react";
 import {
   numberInput, displayNumber, countDigits,
   phoneInput, emailInput, barcodeInput, mxikInput,
-  codeInput, usernameInput, nameInput, otpInput, skuInput, dateInput,
+  codeInput, usernameInput, nameInput, otpInput, skuInput,
+  dateDisplayInput, isoToDisplayDate, displayDateToIso, dateInputError,
 } from "../../lib/ek-input";   // ⚠ ilova ichidagi yo'l (sync-tokens `src/lib/` ga qo'yadi)
+import { t } from "../../lib/ek-i18n";
+import { unitDecimals } from "../../lib/ek-labels";
 
 /* Kursorni raqam indeksiga qarab tiklaydi. */
 function useCaret(ref) {
@@ -71,6 +74,16 @@ const KINDS = {
 /**
  * `kind`: "money" | "qty" | "percent" | "int" | "signed".
  *
+ * ⚠ MIQDOR MAYDONIGA `unit` BERING — `kind="qty"` YOLG'IZ YETMAYDI.
+ * Uning `decimals` i 3 ga qotib qolgan, ya'ni DONA tovarda ham `0.6`
+ * yozib bo'lardi. Kassada aynan shu bo'ldi: yarim dona non savatga
+ * tushar, server esa uni jimgina `1` ga yaxlitlab, mijozdan butun dona
+ * uchun pul olardi (foydalanuvchi shikoyati).
+ *
+ * `unit` berilganda kasr xonalari birlikdan olinadi va bo'linmaydigan
+ * tovarda nuqtani UMUMAN yozib bo'lmaydi — xato xabar bilan emas,
+ * MAYDONNING O'ZI bilan to'siladi.
+ *
  * ⚠ `type="number"` ATAYLAB ISHLATILMAYDI. Sabablari:
  *   1. `min="0"` kiritishni to'smaydi — `-500` bemalol yoziladi;
  *   2. brauzer "e", "+", "-" belgilarini qabul qiladi ("1e5" — son emas);
@@ -78,12 +91,13 @@ const KINDS = {
  *   4. razryadlarga ajratib bo'lmaydi (1 240 000 o'qilishi kerak).
  */
 export const NumField = forwardRef(function NumField({
-  kind = "money", value, onChange, name,
+  kind = "money", value, onChange, name, unit,
   decimals, min, max, className = "form-input ek-num", onBlur, ...rest
 }, fwdRef) {
   const preset = KINDS[kind] || KINDS.money;
   const opts = {
-    decimals: decimals ?? preset.decimals,
+    /* Ustunlik: aniq berilgan `decimals` → birlik → tur qoidasi. */
+    decimals: decimals ?? (unit != null ? unitDecimals(unit) : preset.decimals),
     /* ⚠ `??` EMAS: `signed` turida `preset.min` ATAYLAB `null` (minus
        ruxsat etilgan), `??` esa uni 0 ga almashtirib qo'yardi. */
     min: min !== undefined ? min : preset.min,
@@ -130,7 +144,18 @@ export const NumField = forwardRef(function NumField({
 
 /* ── Niqobli matn maydonlari ─────────────────────────────────────────── */
 
-const MaskedField = forwardRef(function MaskedField(
+/**
+ * ⚠ EKSPORT QILINGAN — mijoz sahifalari uchun (`CustomerLogin`,
+ * `CustomerPortal`). Ular o'z ko'rinishiga ega (`pt-phone` ramkasi,
+ * kattaroq maydon) va `PhoneField` ning o'ramini ishlatolmaydi, lekin
+ * NIQOB ular uchun ham AYNAN SHU bo'lishi kerak.
+ *
+ * Ilgari o'sha ikkita maydon umuman niqobsiz edi: harf ham, cheksiz
+ * raqam ham yozilaverardi va serverga tozalanmagan matn ketardi. Yangi
+ * niqob yozish o'rniga mavjudi ochildi — ikkinchi nusxa yana bir kun
+ * kelib boshqacha ishlab qolardi.
+ */
+export const MaskedField = forwardRef(function MaskedField(
   { mask, value, onChange, name, className = "form-input", keepCaret = true, ...rest }, fwdRef
 ) {
   const ref = useRef(null);
@@ -140,12 +165,34 @@ const MaskedField = forwardRef(function MaskedField(
 
   function handle(e) {
     const el = e.target;
-    const pos = el.selectionStart ?? el.value.length;
-    const before = el.value.slice(0, pos);
-    const next = mask(el.value);
+    let pos = el.selectionStart ?? el.value.length;
+    let text = el.value;
+    let next = mask(text);
+
+    /* ⚠ AJRATGICHNI O'CHIRIB BO'LMASDI (foydalanuvchi shikoyati:
+       «telefon raqamni o'chirsa o'chmay qolyapti»).
+
+       Niqob matnni qaytadan yasaydi. Odam `)` yoki `-` ustida
+       «backspace» bossa, RAQAMLAR soni o'zgarmaydi va niqob o'sha
+       ajratgichni QAYTA QO'YADI — maydon o'zgarmagandek ko'rinadi va
+       odam tugmani bosaverib, «buzuq» deb o'ylaydi.
+
+       Yechim: o'chirish AMALDA hech narsani o'zgartirmagan bo'lsa,
+       kursordan oldingi belgini ham olib tashlaymiz — mazmunli belgi
+       (raqam/harf) o'chguncha. Faqat `deleteContent*` da ishlaydi,
+       ya'ni yozishga aralashmaydi. */
+    const deleting = String(e.nativeEvent?.inputType || "").startsWith("delete");
+    let guard = 0;
+    while (deleting && pos > 0 && next.raw === (value ?? "") && guard++ < 8) {
+      text = text.slice(0, pos - 1) + text.slice(pos);
+      pos -= 1;
+      next = mask(text);
+    }
+
     if (keepCaret) {
-      caret.current = pos >= el.value.length ? "end"
-                                             : Math.min(countDigits(before), countDigits(next.raw));
+      const before = text.slice(0, pos);
+      caret.current = pos >= text.length ? "end"
+                                         : Math.min(countDigits(before), countDigits(next.raw));
     }
     onChange?.({ target: { value: next.raw, name } });
   }
@@ -247,28 +294,61 @@ export const SkuField = masked("SkuField", plain(skuInput), {
   autoComplete: "off", spellCheck: false, keepCaret: false, className: "form-input mono",
 });
 
-/**
- * Sana: `2026-08-14`, yonida kalendar tugmasi.
- *
- * ⚠ Nega `type="date"` emas — `dateInput()` izohiga qarang: uning
- * ko'rinishi brauzer tiliga bog'liq va bitta ekranda ikki xil format
- * paydo bo'ladi.
- */
+/* ══════════════════════════════════════════════════════════════════════════
+   SANA MAYDONI — ko'rinishi `DD-MM-YYYY`, saqlanishi `YYYY-MM-DD`.
+
+   ⚠ NEGA ICHKI HOLAT KERAK. `MaskedField` bitta `mask` funksiyasini ham
+   chizishda, ham yozishda ishlatadi. Ikkala format bir xil bo'lganda bu
+   yetarli edi, endi esa yo'q: yarim yozilgan «31» dan ISO chiqmaydi
+   (yil yo'q), ya'ni yuqoriga bo'sh qiymat ketadi va keyingi chizishda
+   maydon O'ZINI TOZALAB yuborardi — yozib bo'lmasdi.
+
+   Shuning uchun yozilayotgan matn shu yerda turadi (`draft`), yuqoriga
+   esa faqat TO'LIQ sana ISO ko'rinishida uzatiladi.
+
+   ⚠ Qiymat TASHQARIDAN o'zgarsa (kalendar, forma tozalanishi) `draft`
+   tashlanadi. Buni bilish uchun `draft` ning ISO si kelgan qiymatga
+   teng-emasligiga qaraladi: teng bo'lsa — o'zimiz yozganmiz.
+   ══════════════════════════════════════════════════════════════════════════ */
 export const DateField = forwardRef(function DateField(
   { className = "form-input ek-num", value, onChange, name, style, ...rest }, ref
 ) {
   const nativeRef = useRef(null);
+  const [draft, setDraft] = useState(null);
+
+  useEffect(() => {
+    if (draft !== null && displayDateToIso(draft) === (value || "")) return;
+    setDraft(null);
+  }, [value]);   // eslint-disable-line react-hooks/exhaustive-deps
+
+  const display = draft ?? isoToDisplayDate(value);
+
+  /* ⚠ XATO DARHOL AYTILADI. `32-09-2026` — raqamlar to'g'ri joyda, lekin
+     bunday kun yo'q. Ilgari maydon jimgina turaverardi va omborchi buni
+     «Saqlash» dan keyin, serverdan qaytgan xatodan bilardi — kiritilgan
+     boshqa maydonlar bilan birga qaytadan qarab chiqishga to'g'ri kelardi.
+
+     Faqat TO'LIQ yozilganda tekshiriladi: «3» ni yozgan odamga darrov
+     «noto'g'ri» deyish yozishga xalaqit berardi. */
+  const invalid = dateInputError(display);
+
+  const handle = (e) => {
+    const masked = dateDisplayInput(e.target.value);
+    setDraft(masked);
+    onChange?.({ target: { value: displayDateToIso(masked), name } });
+  };
+
   return (
-    <span className="ek-date" style={style}>
-      <MaskedField
+    <span className={`ek-date ${invalid ? "is-invalid" : ""}`} style={style}>
+      <input
         ref={ref}
-        mask={(v) => { const raw = dateInput(v); return { raw, display: raw }; }}
-        inputMode="numeric"
-        placeholder="2026-01-31"
-        maxLength={10}
+        aria-invalid={invalid || undefined}
         className={className}
-        value={value}
-        onChange={onChange}
+        inputMode="numeric"
+        placeholder="31-01-2026"
+        maxLength={10}
+        value={display}
+        onChange={handle}
         name={name}
         {...rest}
       />
@@ -289,8 +369,13 @@ export const DateField = forwardRef(function DateField(
         tabIndex={-1}
         aria-hidden="true"
         value={/^\d{4}-\d{2}-\d{2}$/.test(value || "") ? value : ""}
-        onChange={(e) => onChange?.({ target: { value: e.target.value, name } })}
+        onChange={(e) => { setDraft(null); onChange?.({ target: { value: e.target.value, name } }); }}
       />
+      {invalid && (
+        <span className="ek-date__err" role="alert">
+          <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" /> {t("validation.dateInvalid")}
+        </span>
+      )}
     </span>
   );
 });

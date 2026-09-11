@@ -27,14 +27,63 @@ if (!fs.existsSync(DIST)) {
 }
 
 const files = fs.readdirSync(DIST);
-const sum = (ext) => files
-  .filter((f) => f.endsWith(ext))
-  .reduce((n, f) => n + gzipSync(fs.readFileSync(path.join(DIST, f))).length, 0);
+const gz = (f) => gzipSync(fs.readFileSync(path.join(DIST, f))).length;
+const sum = (ext) => files.filter((f) => f.endsWith(ext)).reduce((n, f) => n + gz(f), 0);
+
+/* ⚠ KIRISH TO'PLAMI ALOHIDA O'LCHANADI (2026-08-27).
+
+   Ilova marshrutlar bo'yicha bo'lingandan keyin «hamma faylning
+   yig'indisi» yuqoridagi maqsadni O'LCHAMAY QO'YDI: chunklarning ko'pi
+   birinchi ochilishda umuman yuklanmaydi. Aksincha, bo'lish umumiy
+   hajmni bir oz OSHIRADI (har chunkning o'z yuki bor) — ya'ni eski
+   o'lchov bo'yicha to'g'ri qilingan ish «yomonlashish» bo'lib ko'rinardi.
+
+   Endi ikkita raqam bor va IKKALASI HAM majburiy:
+
+     KIRISH — `index.html` so'raydigan to'plam va uslub. Aynan shuni
+              kassir har ochilishda kutadi. Sarlavhadagi «4G dagi
+              qo'shimcha soniyalar» — shu raqam.
+
+     JAMI   — hamma JS. Kirish raqami yaxshi ko'rinsin deb kodni
+              cheksiz ko'paytirishning oldini oladi: bo'lish bahona
+              bo'lib qolmasin.
+
+   Kirish fayli `dist/index.html` dan o'qiladi — build qanday nomlashidan
+   qat'i nazar to'g'ri topiladi. */
+const html = fs.readFileSync(path.join(ROOT, "dist", "index.html"), "utf8");
+const pick = (re) => {
+  const m = html.match(re);
+  return m && files.includes(m[1]) ? gz(m[1]) : 0;
+};
+const entry = pick(/\/assets\/([A-Za-z0-9_.-]+\.js)/) + pick(/\/assets\/([A-Za-z0-9_.-]+\.css)/);
+
+/* ⚠ TARJIMA — KOD EMAS (V60).
+
+   Ilova uch tilda va har til o'z bo'lagida (`ru-*.js`, `en-*.js`).
+   Do'kon BITTA tilda ishlaydi, ya'ni foydalanuvchi ularning faqat
+   bittasini yuklaydi — qolgani diskda yotadi va hech qachon tarmoqqa
+   chiqmaydi.
+
+   «JAMI JS» ilgari ularni ham sanardi va bu o'lchovni buzardi:
+   byudjet chegarasiga yetganda «kodni kamaytir» degan signal
+   kelardi-yu, aslida o'sgani TARJIMA edi. Ya'ni o'lchov tarjima
+   ishini jazolardi, holbuki uning maqsadi — KOD cheksiz o'smasin
+   degan qoida.
+
+   Endi ular alohida sanaladi va o'z byudjeti bor. «Jami kod» esa
+   o'z ishini qiladi: bo'lish kodni ko'paytirishga bahona bo'lmasin.
+
+   ⚠ O'ZBEKCHA BU YERDA YO'Q: u kirish to'plamining ichida (statik) va
+   allaqachon KIRISH raqamida sanalgan. */
+const isLang = (f) => /^(ru|en)-[A-Za-z0-9_-]+\.js$/.test(f);
+const langBytes = files.filter(isLang).reduce((n, f) => n + gz(f), 0);
 
 const kb = (n) => Math.round(n / 1024);
 const results = [
-  ["JS  (gzip)", kb(sum(".js")),  budget.jsKb],
-  ["CSS (gzip)", kb(sum(".css")), budget.cssKb],
+  ["KIRISH   (gzip)", kb(entry),                    budget.entryKb],
+  ["JAMI KOD (gzip)", kb(sum(".js") - langBytes),   budget.jsKb],
+  ["TILLAR   (gzip)", kb(langBytes),                budget.langKb],
+  ["CSS      (gzip)", kb(sum(".css")),              budget.cssKb],
 ];
 
 let failed = false;

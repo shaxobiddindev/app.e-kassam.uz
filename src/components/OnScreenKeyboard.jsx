@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { t } from "../lib/ek-i18n";
 import { insert, backspace, clear, isNumericField } from "../lib/ek-keys";
 
@@ -24,6 +25,11 @@ const NUM_ROWS = [
   ["4", "5", "6"],
   ["1", "2", "3"],
   [".", "0", "⌫"],
+  /* ⚠ `000` — KASSA KLAVIATURALARIDAGI ODATIY TUGMA va u eng ko'p
+     bosiladigan raqam: summalar ming bilan yuriladi (50 000, 200 000).
+     Nolni uch marta bosish har chekda uchta ortiqcha teginish edi.
+     Butun kenglikda — barmoq bilan adashmay bosish uchun. */
+  ["000"],
 ];
 
 /* Lotin — o'zbekcha `oʻ gʻ ʼ` bilan. Ular alohida tugma: kassir ularni
@@ -66,6 +72,50 @@ export default function OnScreenKeyboard({ target, onClose }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
+  /* ⚠⚠ HOOK ERTA `return` DAN YUQORIDA. Bu komponent hozir faqat
+     `target` bor bo'lganda o'rnatiladi (`KeyboardProvider`), ya'ni
+     quyidagi qorovul amalda ishlamaydi. Lekin hookni undan pastda
+     qoldirish MINA qo'yish bilan teng: kimdir komponentni shartsiz
+     chizishi bilan hooklar soni o'zgarib, React butun ekranni
+     yiqitardi (#310) — aynan shu xato Sanoq sahifasida bo'lgan.
+     `scripts/check-hooks.mjs` shuni qo'riqlaydi. */
+  /* ══ O'LCHAMNI E'LON QILISH (V67) ═══════════════════════════════════
+     Klaviatura oynaning USTIDA turadi — bu to'g'ri, lekin u oynani
+     BOSIB qo'ymasligi ham kerak: do'kon egasi rasmda ko'rsatdi, o'ng
+     pastdagi raqamli pad to'lov turlarini va summa maydonini yopib
+     turgan edi.
+
+     CSS o'zi bilmaydi: klaviaturaning balandligi rejimga qarab
+     o'zgaradi (raqamli ~5 qator, harfli ~4 qator + probel), kengligi
+     esa `min(360px, 100%)`. Shuning uchun o'lcham SHU YERDA o'lchanadi
+     va o'zgaruvchiga yoziladi — oynalarni joylashtirish qoidasi
+     `styles.css` da o'shanga tayanadi.
+
+     ⚠ `useLayoutEffect`: o'lcham chizishdan OLDIN yoziladi, aks holda
+     oyna bir kadr davomida eski joyida turib «sakrardi». */
+  useLayoutEffect(() => {
+    const el = boxRef.current;
+    if (!el) return undefined;
+    const root = document.documentElement;
+    const write = () => {
+      root.style.setProperty("--osk-h", `${Math.round(el.offsetHeight)}px`);
+      root.style.setProperty("--osk-w", `${Math.round(el.offsetWidth)}px`);
+    };
+    write();
+    /* Rejim almashsa (raqam ↔ harf, kirill) balandlik o'zgaradi. */
+    const ro = typeof ResizeObserver === "function" ? new ResizeObserver(write) : null;
+    ro?.observe(el);
+    window.addEventListener("resize", write);
+    document.body.classList.toggle("osk-num", numeric);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener("resize", write);
+      root.style.removeProperty("--osk-h");
+      root.style.removeProperty("--osk-w");
+      document.body.classList.remove("osk-num");
+    };
+  }, [numeric]);
+
   if (!target) return null;
 
   const press = (key) => {
@@ -103,9 +153,21 @@ export default function OnScreenKeyboard({ target, onClose }) {
     onClose();
   };
 
+
   const rows = numeric ? NUM_ROWS : (cyr ? CYR_ROWS : LAT_ROWS);
 
-  return (
+  /* ⚠ PORTAL — `body` OXIRIGA (V67). Ilgari klaviatura provayder
+     ichida, ya'ni `#root` daraxtida chizilardi. `z-index: 900` esa
+     modallarnikidan (600) yuqori bo'lsa ham, u FAQAT o'z «stacking
+     context» ida ishlaydi: `#root` ichidagi istalgan `transform`,
+     `filter` yoki `opacity` yangi kontekst ochadi va butun klaviatura
+     portal orqali chiqqan oynaning TAGIDA qolardi — sensorli
+     monoblokda bu kassirni yozishdan butunlay mahrum qiladi.
+
+     Bu aynan `Overlay.jsx` da tasvirlangan tuzoq; klaviatura o'sha
+     tuzatishda e'tibordan chetda qolgan ekan. Endi u ham `body` ning
+     bevosita farzandi va `900 > 600` global tartibda ishlaydi. */
+  return createPortal(
     <div
       className={`osk ${numeric ? "osk--num" : "osk--text"}`}
       ref={boxRef}
@@ -128,7 +190,8 @@ export default function OnScreenKeyboard({ target, onClose }) {
               <button
                 key={k}
                 type="button"
-                className={`osk__key${k === "⌫" ? " osk__key--wide" : ""}${k === "⇧" && caps ? " is-on" : ""}`}
+                className={`osk__key${k === "⌫" ? " osk__key--wide" : ""}${
+                  k === "000" ? " osk__key--zeros" : ""}${k === "⇧" && caps ? " is-on" : ""}`}
                 onPointerDown={hold}
                 onClick={() => press(k)}
               >
@@ -163,6 +226,7 @@ export default function OnScreenKeyboard({ target, onClose }) {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

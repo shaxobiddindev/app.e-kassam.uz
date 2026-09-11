@@ -106,7 +106,12 @@ export function displayNumber(raw, { decimals = 0 } = {}) {
   const [int = "", frac] = s.replace("-", "").split(".");
   const cleanInt = onlyDigits(int) || (s.replace("-", "").startsWith(".") ? "0" : "");
   if (cleanInt === "" && !frac) return "";
-  const f = frac === undefined ? null : String(frac).slice(0, decimals);
+  /* ⚠ `decimals === 0` DA NUQTA HECH QACHON CHIQMAYDI. Ilgari xom
+     qiymat «7249.99» bo'lsa (server 2 kasr bilan yuborgan ball)
+     kasr kesilar-u NUQTA qolardi va maydonda «7 249.» degan chala
+     raqam turardi — do'kon egasi aynan shuni ko'rsatdi. Butun son
+     maydonida nuqtaning o'rni yo'q, «yozilayotgan» holat ham yo'q. */
+  const f = frac === undefined || decimals === 0 ? null : String(frac).slice(0, decimals);
   return sign + groupInt(cleanInt || "0") + (f !== null ? "." + f : "");
 }
 
@@ -120,7 +125,20 @@ export function displayNumber(raw, { decimals = 0 } = {}) {
  * na SMS ketadi, na qo'ng'iroq: mijoz bazasi jimgina buziladi.
  */
 export function phoneInput(input) {
-  let d = onlyDigits(input);
+  /* ⚠⚠ `+998` PREFIKSI ANIQ OLIB TASHLANADI (foydalanuvchi shikoyati:
+     «telefon raqamni o'zgartirmoqchi bo'lsa xato ishlayapti»).
+
+     Niqob o'z natijasini (`raw` = `+998` + raqamlar) qayta o'qiydi.
+     Ilgari kod FAQAT raqamlar soni 9 dan oshganda kesilardi — bu esa
+     raqam TO'LIQ bo'lganda to'g'ri ishlab, qisqarganda buzilardi:
+     abonent raqami 6 xonaga tushganda `+998901234` da atigi 9 ta raqam
+     qoladi, «998» kesilmaydi va u ABONENT raqamiga aylanib ketadi
+     («(99) 890-12-34»). Ya'ni odam raqamni o'chira boshlasa, u
+     qisqarish o'rniga O'ZGARIB ketardi. */
+  let str = String(input ?? "").trim();
+  if (str.startsWith("+998")) str = str.slice(4);
+
+  let d = onlyDigits(str);
   /* ⚠ Kod (`+998`) MAYDONNING O'ZIDA EMAS — u yonidagi o'zgarmas
      yorliqda (`PhoneField`). Shuning uchun bu yerda kod faqat odam uni
      O'ZI yozgan yoki to'liq raqamni joylashtirgan holda uchraydi, ya'ni
@@ -241,6 +259,60 @@ export function dateInput(v) {
   return out;
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   SANA: KO'RSATISH FORMATI ≠ SAQLASH FORMATI
+
+   Odam sanani `31-01-2026` deb o'qiydi, server esa `2026-01-31` kutadi
+   (`LocalDate`). Ilgari maydonda ISO turardi va omborchi «2026-01-31» ni
+   ko'rib, qaysi raqam kun ekanini bir zum o'ylab qolardi.
+
+   ⚠ SAQLANADIGAN QIYMAT O'ZGARMADI. Faqat ko'rinish o'zgardi — API ham,
+   `isDate` tekshiruvi ham, brauzer kalendari ham avvalgidek ISO bilan
+   ishlaydi. Aks holda to'rtta sahifadagi har bir chaqiruvni qayta yozish
+   kerak bo'lardi.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/** Yozilayotgan matnni `DD-MM-YYYY` qolipiga soladi. */
+export function dateDisplayInput(v) {
+  const d = onlyDigits(v).slice(0, 8);
+  let out = d.slice(0, 2);
+  if (d.length > 2) out += "-" + d.slice(2, 4);
+  if (d.length > 4) out += "-" + d.slice(4, 8);
+  return out;
+}
+
+/**
+ * Sana HAQIQIYmi (ISO ko'rinishida).
+ *
+ * ⚠ `new Date` ning o'zi yetmaydi: u `2026-02-30` ni 2-martga «tuzatib»
+ * yuboradi. Shuning uchun natija qaytadan solishtiriladi.
+ */
+/**
+ * Kiritilayotgan sanadagi xato — DARHOL, oxirigacha yozilishini kutmasdan.
+ *
+ * ⚠ NEGA QISMLAB TEKSHIRILADI. «32» ni yozgan odam yil raqamini ham
+ * yozib bo'lgunicha kutib turishi shart emas — xato o'sha ikki raqamda
+ * allaqachon ma'lum. Sakkizta raqam to'lguncha jim turish esa aynan
+ * shu kutishni yaratardi.
+ *
+ * ⚠ YARIM YOZILGANI XATO EMAS. «3», «30-0» — hali tugallanmagan, xolos.
+ * Har bosishda qizil ko'rsatish yozishning o'ziga xalaqit berardi.
+ */
+export function dateInputError(display) {
+  const d = onlyDigits(display);
+  if (d.length >= 2) {
+    const day = Number(d.slice(0, 2));
+    if (day < 1 || day > 31) return true;
+  }
+  if (d.length >= 4) {
+    const mon = Number(d.slice(2, 4));
+    if (mon < 1 || mon > 12) return true;
+  }
+  // Sakkizta raqam to'lgach — kalendar bo'yicha (30-fevral kabi hollar).
+  if (d.length === 8) return !displayDateToIso(display);
+  return false;
+}
+
 export const isDate = (s) => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(s ?? ""))) return false;
   const [y, m, day] = String(s).split("-").map(Number);
@@ -248,6 +320,31 @@ export const isDate = (s) => {
   const dt = new Date(Date.UTC(y, m - 1, day));
   return dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === day;
 };
+
+/** `2026-01-31` → `31-01-2026`. To'liq bo'lmasa — bo'sh satr. */
+export function isoToDisplayDate(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso ?? ""));
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : "";
+}
+
+/**
+ * `31-01-2026` → `2026-01-31`. To'liq YOKI HAQIQIY bo'lmasa — bo'sh satr.
+ *
+ * ⚠ Bo'sh satr ATAYLAB: yarim yozilgan sana serverga yuborilmasligi
+ * kerak. «31-01» dan yil chiqmaydi va uni taxmin qilish xato bo'lardi.
+ *
+ * ⚠ MAVJUD BO'LMAGAN SANA HAM BO'SH QAYTARADI. `32-09-2026` yoki
+ * `30-02-2026` — raqamlari to'g'ri joyda turibdi-yu, bunday kun yo'q.
+ * Ilgari u ISO ga aylantirilib yuqoriga uzatilardi va xato faqat
+ * serverdan qaytardi — omborchi «Saqlash» ni bosgandan keyin.
+ * Endi qiymat CHIQMAYDI, maydon esa darhol ogohlantiradi.
+ */
+export function displayDateToIso(display) {
+  const d = onlyDigits(display);
+  if (d.length !== 8) return "";
+  const iso = `${d.slice(4, 8)}-${d.slice(2, 4)}-${d.slice(0, 2)}`;
+  return isDate(iso) ? iso : "";
+}
 
 /* ── Umumiy tekshiruvlar (saqlashdan oldin) ──────────────────────────── */
 

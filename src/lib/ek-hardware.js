@@ -21,43 +21,31 @@
 import { isDesktop, invoke } from "./ek-desktop";
 import { Receipt, WIDTH_80, WIDTH_58, drawerKickBytes } from "./ek-escpos";
 import { t } from "./ek-i18n";
-import { money, quantity } from "../utils";
+import { shopHead } from "./ek-shop-print";
+import { qrModuleSize } from "./ek-qr-size";
+/* ⚠ Qoida ALOHIDA modulda — sabab o'sha faylda: bu fayl
+   brauzer modullariga bog'langan va uni Node'dan yuklab
+   bo'lmaydi, ya'ni qoida sinovsiz qolardi. */
+import { isFiscalReceipt } from "./ek-receipt-type";
+import { money, moneyFine, quantity } from "../utils";
 import { paymentLabel, unitLabel } from "./ek-labels";
 import { code128Svg, saleCode } from "./ek-barcode";
+import { spreadDiscount } from "./ek-discount";
 /* Brauzer cheki uchun QR (V34). ESC/POS printerda QR ni apparatning O'ZI
    chizadi (`Receipt.qr`), brauzerda esa SVG kerak. */
 import { qrSvg } from "./ek-qr";
+import { shortDate } from "./ek-format";
+import { DEFAULTS, getSettings, saveSettings } from "./ek-hw-settings";
 
-const KEY = "ek_hw";
+/* ── Sozlamalar ────────────────────────────────────────────────────────
+   ⚠ ULAR ENDI `ek-hw-settings.js` DA va bu yerdan QAYTA EKSPORT
+   qilinadi. Sabab: sozlamani o'qish uchun shu butun modulni import
+   qilish kerak edi, u esa `qrcode-generator` ni ham (51 KB) o'zi bilan
+   olib kelardi — «skaner yoqilganmi?» degan bitta savol uchun.
 
-const DEFAULTS = {
-  transport:   "windows",  // "windows" | "tcp" | "browser"
-  printerName: "",         // windows: drayver nomi
-  host:        "",         // tcp: IP
-  port:        9100,
-  width:       80,         // 80 | 58 (mm)
-  autoPrint:   true,       // sotuv yakunlanganda chek o'zi chiqsin
-  openDrawer:  true,       // naqd to'lovda yashik ochilsin
-  scanner:     true,       // global barkod tutish
-};
-
-/* ── Sozlamalar ────────────────────────────────────────────────────────── */
-export function getSettings() {
-  try {
-    return { ...DEFAULTS, ...JSON.parse(localStorage.getItem(KEY) || "{}") };
-  } catch (_) {
-    return { ...DEFAULTS };
-  }
-}
-
-export function saveSettings(patch) {
-  const next = { ...getSettings(), ...patch };
-  localStorage.setItem(KEY, JSON.stringify(next));
-  // Sozlama o'zgarishi ochiq ekranlarga yetib borsin (Sozlamalar va Kassa
-  // bir vaqtda ochiq bo'lishi mumkin).
-  window.dispatchEvent(new CustomEvent("ek:hw", { detail: next }));
-  return next;
-}
+   Qayta eksport eski importlarni ishlaydigan qoldiradi va ikki manba
+   paydo bo'lishiga yo'l qo'ymaydi. */
+export { DEFAULTS, getSettings, saveSettings } from "./ek-hw-settings";
 
 /** Windows drayverlari ro'yxati. Brauzerda — bo'sh massiv. */
 export async function listPrinters() {
@@ -88,15 +76,60 @@ function transportOf(s) {
   return s.transport === "tcp" ? "tcp" : "windows";
 }
 
+/* ══════════════════════════════════════════════════════════════════════
+   PRINTER HOLATI (V79)
+
+   ⚠ NEGA KERAK. Kassir printer ishlamayotganini FAQAT sotuv
+   tugagandan keyin bilib qolardi: chek chiqmas, mijoz esa allaqachon
+   pulini bergan bo'lardi. Bunday paytda chekni qayta chiqarish
+   mumkin, lekin buni bilish uchun avval nosozlikni PAYQASH kerak.
+
+   ⚠ PRINTERNI «SO'RAB» BO'LMAYDI. Brauzerda uni tekshiradigan yo'l
+   yo'q, desktopda esa har so'rov qurilmaga murojaat qiladi va
+   sekinlashtiradi. Shuning uchun holat OXIRGI URINISHDAN olinadi: bu
+   ham «hozir ishlayaptimi?» degan savolga eng ishonchli javob, chunki
+   u haqiqiy chekning natijasi.
+
+   ⚠ HOLAT SAQLANMAYDI (`localStorage` da emas): brauzer yopilib
+   ochilganda «qizil» qolib ketishi noto'g'ri bo'lardi — yangi
+   sessiyada hech narsa chop etilmagan va nosozlik ham noma'lum.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/** `null` — hali hech narsa chop etilmagan. */
+let printerState = null;
+
+/** Oxirgi chop etish natijasi: `{ ok, at, error }` yoki `null`. */
+export const printerHealth = () => printerState;
+
+function markPrinter(ok, error) {
+  printerState = { ok, at: Date.now(), error: error ? String(error.message || error) : null };
+  /* Ochiq ekranlar (Kassa, Sozlamalar) darhol bilsin. */
+  try {
+    window.dispatchEvent(new CustomEvent("ek:printer", { detail: printerState }));
+  } catch { /* SSR yoki sinov muhiti */ }
+}
+
 async function send(bytes) {
   const s = getSettings();
   if (!isDesktop()) throw new Error(t("hw.errNoDesktop"));
 
-  if (transportOf(s) === "tcp") {
-    if (!s.host) throw new Error(t("hw.errNoHost"));
-    return invoke("print_tcp", { host: s.host, port: Number(s.port) || 9100, data: bytes });
+  try {
+    let out;
+    if (transportOf(s) === "tcp") {
+      if (!s.host) throw new Error(t("hw.errNoHost"));
+      out = await invoke("print_tcp", { host: s.host, port: Number(s.port) || 9100, data: bytes });
+    } else {
+      out = await invoke("print_raw", { printer: s.printerName || null, data: bytes });
+    }
+    markPrinter(true, null);
+    return out;
+  } catch (e) {
+    /* ⚠ Xato QAYTA OTILADI: holat belgilash chaqiruvchining xato
+       ishlovini almashtirmaydi — u chekni qayta chiqarishni taklif
+       qilishi kerak. */
+    markPrinter(false, e);
+    throw e;
   }
-  return invoke("print_raw", { printer: s.printerName || null, data: bytes });
 }
 
 /* ── Chek ──────────────────────────────────────────────────────────────── */
@@ -108,35 +141,116 @@ async function send(bytes) {
  * o'tib, haqiqiysi buzilib chiqishi mumkin edi.
  */
 export function buildReceipt({ saleId, serverSaleId, cart = [], total = 0, subtotal, discount = 0,
-                               payType, customer, offline, shopName, cashier, fiscal, receiptUrl }) {
+                               customer, offline, shopName, cashier, fiscal, receiptUrl,
+                               credit, toSavings, rounding = 0, saleType = "SALE" }) {
   const s = getSettings();
   const r = new Receipt(s.width === 58 ? WIDTH_58 : WIDTH_80);
 
-  r.center().double().line(shopName || "E-KASSAM.UZ").double(false);
-  r.line(t("kassa.receiptSystem"));
+  /* ⚠ NOM KESHDAN (V62). Ilgari `shopName` chaqiruvchidan kelardi va u
+     `localStorage.ek_shopName` dan o'qilardi — o'sha kalit esa hech
+     qayerda YOZILMASDI. Natijada chekda do'konning nomi emas, KODI
+     («ulash01») yoki «E-KASSAM.UZ» chiqardi. Mijoz qo'lidagi qog'ozda
+     do'konning haqiqiy nomi hech qachon bo'lmagan. */
+  const head = shopHead(shopName);
+  /* ⚠ Nom BO'SH bo'lsa qator umuman chizilmaydi (V85): bo'sh qalin
+     satr chekning boshida sababsiz oq joy qoldirardi. */
+  if (head.name) r.center().double().line(head.name).double(false);
+  else r.center();
+  /* Telefon — nom ostida, sozlama yoqilgan bo'lsa (`shopHead` izohi). */
+  if (head.phone) r.line(head.phone);
+  /* ⚠ «CRM Tizimi» satri OLIB TASHLANDI (V85). Do'kon nomi ostida
+     dasturning nomi turishi mijozga hech narsa bermasdi va soliq
+     hujjatida uning o'rni yo'q edi. */
   r.left().rule();
 
   r.row(`${t("kassa.receiptNo")} ${saleId ?? "-"}`, new Date().toLocaleString("uz-UZ"));
   if (cashier) r.row(t("kassa.receiptCashier"), cashier);
   r.rule();
 
-  for (const i of cart) {
+  /* ⚠ CHEK CHEGIRMASI QATORLARGA TAQSIMLANADI (V48).
+     Chekda faqat «Chegirma −50 000» tursa, mijoz ham, do'kon ham
+     ertaga bitta tovarni qaytarganda qancha pul qaytishini bilmaydi.
+     Server chegirmani qatorlarga taqsimlab saqlaydi va qaytarish AYNAN
+     shundan hisoblanadi — chek ham xuddi o'sha raqamlarni ko'rsatishi
+     kerak (`ek-discount.js` — serverdagi qoidaning nusxasi). */
+  const shares = spreadDiscount(cart, discount);
+
+  cart.forEach((i, idx) => {
     // Tovar nomi ALOHIDA qatorda: uzun nomlar narx ustuniga bosim qilmasin.
     r.wrap(i.name);
     // Miqdor birligi bilan: "0.35 kg x 95 000". Birliksiz "0.35 x 95 000"
     // mijozga nima sotilganini aytmasdi.
     const qtyText = `${quantity(i.qty, i.unitDecimals)}${i.unit ? " " + unitLabel(i.unit) : ""}`;
-    r.row(`  ${qtyText} x ${money(i.salePrice)}`, money(i.salePrice * i.qty));
-  }
+    /* ⚠ QATOR JAMISI ANIQ KO'RSATILADI (V80): tortiladigan tovarda u
+       kasr bo'ladi (50 002.50) va pastdagi «Yaxlitlash» qatori bilan
+       birga chek o'zi-o'ziga to'g'ri keladi. Butun sonda hech narsa
+       o'zgarmaydi. */
+    r.row(`  ${qtyText} x ${money(i.salePrice)}`, moneyFine(i.salePrice * i.qty));
+
+    /* Qator chegirmasi = kassir tushirgan narx + chek chegirmasidan
+       tushgan ulush. Chegirmasiz qatorda satr umuman chiqmaydi —
+       chekni bekorga uzaytirmaslik uchun. */
+    const lineDisc = (Number(i.discount) || 0) + (shares[idx] || 0);
+    if (lineDisc > 0) r.row(`    ${t("kassa.discount")}`, "-" + money(lineDisc));
+  });
 
   r.rule();
-  if (discount > 0) {
-    r.row(t("kassa.receiptSubtotal"), money(subtotal ?? (total + discount)));
-    r.row(t("kassa.discount"), "-" + money(discount));
+  /* ⚠ JAMI CHEGIRMA — qator chegirmalari BILAN birga (V48). Ilgari bu
+     yerda faqat chek chegirmasi turardi va kassir narxni qatorda
+     tushirgan bo'lsa, chekdagi «Jami − Chegirma» ayirmasi yakuniy
+     summaga to'g'ri kelmasdi. */
+  const lineDisc = cart.reduce((sum, i) => sum + (Number(i.discount) || 0), 0);
+  const discTotal = discount + lineDisc;
+  if (discTotal > 0) {
+    r.row(t("kassa.receiptSubtotal"), money(subtotal ?? (total + discTotal)));
+    r.row(t("kassa.discount"), "-" + money(discTotal));
   }
+  /* ══ ⚠ YAXLITLASH QATORI (V80) ══════════════════════════════════════
+     Tortiladigan tovarda pul o'zi kasr bo'ladi: 6.667 kg × 7 500 =
+     50 002.5 so'm. Tiyin muomalada yo'q, shuning uchun chek butun
+     so'mga PASTGA yaxlitlanadi va yarim so'm mijozda qoladi.
+
+     ⚠ CHEKDA KO'RINADI, chunki usiz chek O'ZI-O'ZIGA to'g'ri kelmasdi:
+     mijoz qatorlarni qo'shsa 50 002.50 chiqar, pastda esa 50 002
+     turardi. «Hisob noto'g'ri» degan bahs aynan shu farqdan boshlanadi.
+
+     ⚠ NOL BO'LSA CHIQMAYDI. Donalab sotiladigan chekda yaxlitlash
+     umuman bo'lmaydi va bo'sh qator faqat qog'ozni yeyardi. */
+  if (Number(rounding) > 0) r.row(t("kassa.rounding"), "-" + moneyFine(rounding));
   r.bold().double().row(t("kassa.receiptTotal"), money(total)).double(false).bold(false);
-  r.row(t("kassa.receiptPayment"), paymentLabel(payType));
+  /* ══ ⚠ TO'LOV TURI CHEKDA CHIQMAYDI ═════════════════════════════════
+     Ilgari bu yerda «To'lov: Naqd» qatori va aralash to'lovda usullar
+     bo'yicha taqsimot (V53) turardi. Chekning vazifasi — mijoz NIMA
+     olgani va QANCHA to'laganini qog'ozda qoldirish; pul qaysi usulda
+     kelgani do'konning ICHKI hisobi va u smena hisobotida (X/Z)
+     usul-usul bo'yicha turibdi — o'sha yerdan olib tashlanmaydi,
+     chunki kassir yashikdagi naqdni aynan shu qator bilan sanaydi.
+
+     ⚠ QARZ VA JAMG'ARMA QATORLARI QOLDI: ular «usul» emas, mijozning
+     PULI. Nasiya bloki qancha qarz qolganini, jamg'arma qatori esa
+     qaytim qayerga ketganini aytadi — ikkalasi ham mijoz ertaga
+     so'raydigan raqam. */
+  /* Qaytim mijoz jamg'armasiga qo'yildi (V66) — mijoz uzatgan pulning
+     TO'LIQ taqdiri qog'ozda turishi kerak. */
+  if (Number(toSavings) > 0) r.row(t("savings.toSavings"), "+" + money(toSavings));
   if (customer?.fullName) r.row(t("kassa.receiptCustomer"), customer.fullName);
+
+  /* ── NASIYA BLOKI (V47) ────────────────────────────────────────────
+     ⚠ Chek mijozning QO'LIDA qoladigan yagona hujjat. «Nasiya» degan
+     bitta so'z yetmaydi: mijoz uyiga borib «qancha qarzim bor edi?»
+     deb o'ylab qoladi va ertaga do'kon bilan tortishadi. Shu chek
+     qarzi, JAMI qarz va muddat — uchalasi ham shu yerda turadi. */
+  if (credit && Number(credit.amount) > 0) {
+    r.rule();
+    r.center().bold().line(t("kassa.receiptCredit")).bold(false).left();
+    r.row(t("kassa.receiptCreditThis"), money(credit.amount));
+    if (credit.balance != null) r.row(t("kassa.receiptCreditTotal"), money(credit.balance));
+    if (credit.dueDate) r.row(t("kassa.receiptCreditDue"), credit.dueDate);
+    /* ⚠ IMZO JOYI. Qog'ozdagi imzo — do'konning eng oddiy va eng
+       ishonchli dalili; ilova tasdig'i (V46) bo'lmagan mijozda esa
+       yagona dalil. */
+    r.feed().row(t("kassa.receiptCreditSign"), "______________");
+  }
 
   if (offline) {
     r.feed().center().line(t("kassa.receiptOffline")).line(t("kassa.receiptOfflineSub")).left();
@@ -158,15 +272,31 @@ export function buildReceipt({ saleId, serverSaleId, cart = [], total = 0, subto
   /* ── Fiskal blok ───────────────────────────────────────────────────
      Faqat fiskal belgi HAQIQATAN olingan bo'lsa chiqadi. Belgisiz
      "fiskal chek" ko'rinishini yasash — xaridorni ham, do'konni ham
-     aldash bo'lardi. */
-  if (fiscal?.fiscalSign) {
+     aldash bo'lardi.
+
+     ══ ⚠ IKKINCHI QOROVUL: CHEK TURI (V85) ═══════════════════════════
+     943-son qaror bo'nak, bo'lib to'lash va kredit cheklarida fiskal
+     belgi va QR CHIQMASLIGINI talab qiladi. Server bunday chek uchun
+     fiskal yozuv umuman yaratmaydi (`SaleType.isFiscalDocument`), ya'ni
+     `fiscal` bu yerga `null` bo'lib keladi.
+
+     Shunda ham tur BU YERDA qayta tekshiriladi va bu ataylab: chek
+     qayta chop etilganda yoki eski keshdan qurilganda `fiscal`
+     obyekti qolib ketishi mumkin. Bitta qorovulga tayanish —
+     tekshiruv kunida bilib qolinadigan turdagi xato. */
+  if (fiscal?.fiscalSign && isFiscalReceipt(saleType)) {
     r.rule();
     r.center().line(t("kassa.receiptFiscal")).left();
     r.row(t("kassa.receiptFiscalSign"), fiscal.fiscalSign);
     if (fiscal.terminalId) r.row(t("kassa.receiptTerminal"), fiscal.terminalId);
     if (fiscal.receiptNo) r.row(t("kassa.receiptFiscalNo"), fiscal.receiptNo);
     if (fiscal.qrUrl) {
-      r.feed().center().qr(fiscal.qrUrl).left();
+      /* ⚠ MODUL KATTALIGI HISOBLANADI (V85). Ilgari standart `8`
+         ishlatilardi va qisqa havolada QR atigi 21 mm chiqardi —
+         943-qaror esa kamida 30 mm talab qiladi. Xato jimgina edi:
+         chek chiqadi, QR ko'rinadi, faqat kichik va eski telefon
+         kamerasi uni o'qiy olmaydi. */
+      r.feed().center().qr(fiscal.qrUrl, qrModuleSize(fiscal.qrUrl, s.width)).left();
     }
   }
 
@@ -199,7 +329,16 @@ export function buildReceipt({ saleId, serverSaleId, cart = [], total = 0, subto
   }
 
   r.rule();
-  r.center().line(t("kassa.receiptThanks")).line("e-kassam.uz");
+  r.center().line(t("kassa.receiptThanks"));
+  /* ══ ⚠ CHEK OSTI (V85) ════════════════════════════════════════════
+     Ilgari bu yerda «e-kassam.uz» turardi — mijozning qo'lidagi
+     qog'ozdagi BEGONA brend. Do'kon uni tanlamagan va soliq
+     hujjatida uning o'rni yo'q. Olib tashlandi.
+
+     O'rniga do'kon O'ZI yozadigan matn (Sozlamalar → chek osti).
+     Bo'sh bo'lsa hech narsa chizilmaydi va bu standart. */
+  if (head.footer) r.wrap(head.footer);
+  r.left();
   return r;
 }
 
@@ -217,6 +356,110 @@ export async function printReceipt(sale) {
 
   const r = buildReceipt(sale);
   if (s.openDrawer && sale.payType === "CASH") r.kick();
+  r.cut();
+  await send(r.build());
+}
+
+/**
+ * QARZ TO'LOVI CHEKI (V47).
+ *
+ * ⚠ NEGA ALOHIDA CHEK. Qarz to'lovi — bu SOTUV EMAS: tovar yo'q, qatorlar
+ * yo'q, QQS yo'q. Uni sotuv cheki qolipiga tiqish chalkashtirardi (bo'sh
+ * tovar ro'yxati, «jami 0»). Mijozga esa qog'oz kerak: u pul berdi va
+ * buning izini olishi kerak — aks holda «to'lagandim-ku» degan tortishuv
+ * yana do'konning so'ziga qarshi mijozning so'zi bo'lib qolardi.
+ */
+/**
+ * Chekning SO'ZLARI — qarz cheki yoki jamg'arma kvitansiyasi (V66).
+ *
+ * ⚠ Shakl BITTA, so'zlar boshqa. Jamg'arma kvitansiyasi qarz cheki
+ * bilan aynan bir xil satrlardan iborat (kim, qachon, qancha, usul,
+ * qoldiq oldin-keyin) — faqat «qarz» o'rniga «jamg'arma». Ikkinchi
+ * qolip yozilsa, ikkalasi asta-sekin ajralib ketardi. `kind`
+ * `SAVINGS_` bilan boshlansa — jamg'arma.
+ */
+function debtLabels(kind) {
+  const sav = String(kind || "").startsWith("SAVINGS_");
+  if (!sav) {
+    return { sav, title: t("kassa.receiptDebtPay"), main: t("kassa.receiptPaid"),
+             before: t("credit.wasDebt"), after: t("kassa.receiptDebtLeft") };
+  }
+  const type = String(kind).slice(8);
+  return { sav, title: t("savings.receiptTitle"), main: t(`savings.rcp.${type}`),
+           before: t("savings.wasBalance"), after: t("savings.nowBalance") };
+}
+
+export function buildDebtReceipt({ customer, amount, balanceAfter, balanceBefore, method,
+                                   shopName, cashier, date, receiptNo, qrUrl,
+                                   toSavings, bonusEarned, kind, linkedNo }) {
+  const s = getSettings();
+  const r = new Receipt(s.width === 58 ? WIDTH_58 : WIDTH_80);
+  const L = debtLabels(kind);
+
+  const head = shopHead(shopName);
+  /* ⚠ Nom BO'SH bo'lsa qator umuman chizilmaydi (V85): bo'sh qalin
+     satr chekning boshida sababsiz oq joy qoldirardi. */
+  if (head.name) r.center().double().line(head.name).double(false);
+  else r.center();
+  if (head.phone) r.line(head.phone);
+  r.line(L.title);
+  r.left().rule();
+
+  /* ⚠ CHEK RAQAMI (V61). Usiz qog'ozni tizimdagi yozuv bilan
+     bog'lashning yo'li yo'q edi: mijoz chekni ko'rsatadi, do'kon esa
+     uni sana va summa bo'yicha qidirishga majbur bo'lardi — bir kunda
+     bir xil summali ikkita to'lov bo'lsa, qaysi biri ekani noaniq
+     qolardi. */
+  if (receiptNo) r.row(t("kassa.receiptNo"), receiptNo);
+  r.row(t("common.date"), (date || new Date()).toLocaleString("uz-UZ"));
+  if (cashier) r.row(t("kassa.receiptCashier"), cashier);
+  if (customer?.fullName) r.row(t("kassa.receiptCustomer"), customer.fullName);
+  r.rule();
+
+  r.bold().double().row(L.main, money(Math.abs(Number(amount) || 0))).double(false).bold(false);
+  /* ⚠ To'lov turi bu yerda ham chiqmaydi — sotuv chekidagi bilan bir
+     xil sabab. Mijozga kerakli raqam pastdagi «qolgan qarz» qatori. */
+  if (linkedNo) r.row(t("savings.linkedSale"), linkedNo);
+  if (balanceBefore != null) r.row(L.before, money(balanceBefore));
+  /* Qolgan qarz — mijoz aynan shuni so'raydi. Nol bo'lsa ham yoziladi:
+     «qarzingiz qolmadi» degan qator eng qimmatli qator. */
+  r.row(L.after, money(balanceAfter ?? 0));
+  /* Ortig'i jamg'armaga va keshbek (V64) — mijoz uzatgan pulning
+     TO'LIQ taqdiri qog'ozda turishi kerak. */
+  if (Number(toSavings) > 0) r.row(t("savings.toSavings"), money(toSavings));
+  if (Number(bonusEarned) > 0) r.row(t("kassa.receiptBonusEarned"), "+" + money(bonusEarned));
+
+  /* ⚠ QR — chekning elektron nusxasiga (V61). Termal qog'oz vaqt
+     o'tib xiralashadi va aynan qarz cheki eng uzoq saqlanishi kerak
+     bo'lgan qog'oz: tortishuv oylar keyin ham chiqishi mumkin.
+     Telefonga ko'chirilgan nusxa esa xiralashmaydi. */
+  if (qrUrl) {
+    r.rule();
+    r.center().line(t("kassa.receiptQrHint"));
+    r.qr(qrUrl, 6);
+  }
+
+  r.rule();
+  r.center().line(t("kassa.receiptThanks"));
+  /* ══ ⚠ CHEK OSTI (V85) ════════════════════════════════════════════
+     Ilgari bu yerda «e-kassam.uz» turardi — mijozning qo'lidagi
+     qog'ozdagi BEGONA brend. Do'kon uni tanlamagan va soliq
+     hujjatida uning o'rni yo'q. Olib tashlandi.
+
+     O'rniga do'kon O'ZI yozadigan matn (Sozlamalar → chek osti).
+     Bo'sh bo'lsa hech narsa chizilmaydi va bu standart. */
+  if (head.footer) r.wrap(head.footer);
+  r.left();
+  return r;
+}
+
+/** Qarz to'lovi chekini chiqaradi (naqdda pul yashigi ham ochiladi). */
+export async function printDebtReceipt(payment) {
+  const s = getSettings();
+  if (!isDesktop()) return printInBrowser({ ...payment, __debt: true });
+
+  const r = buildDebtReceipt(payment);
+  if (s.openDrawer && payment.method === "CASH") r.kick();
   r.cut();
   await send(r.build());
 }
@@ -323,7 +566,9 @@ export async function printShiftReport(r, shopName) {
     }
   }
   rc.rule();
-  rc.center().line(new Date().toLocaleString("uz-UZ")).line("e-kassam.uz");
+  /* ⚠ Bu ICHKI hujjat (smena hisoboti), mijozga bermaydi — lekin
+     begona brend bu yerda ham keraksiz (V85). */
+  rc.center().line(new Date().toLocaleString("uz-UZ"));
   rc.cut();
   await send(rc.build());
 }
@@ -367,6 +612,49 @@ export async function printPriceLabels(items = [], opts = {}) {
 }
 
 /**
+ * YORLIQ PRINTERIGA XOM BUYRUQ (G3/G4).
+ *
+ * ⚠ YANGI KANAL EMAS — chek printeri uchun ishlab turgan AYNAN
+ * o'sha `send()`. Yorliq printeri ham USB yoki TCP orqali xom
+ * baytlarni qabul qiladi; farq faqat baytlarning TILIDA (TSPL,
+ * ZPL), va uni `ek-label-bytes.js` yasaydi.
+ *
+ * ⚠ MATN BAYTGA O'GIRILADI: TSPL va ZPL — ASCII buyruqlar. Lotin
+ * bo'lmagan belgilar printerning ichki kodlash jadvaliga bog'liq
+ * va uni bu yerdan boshqarib bo'lmaydi — shuning uchun matnli
+ * yorliqlar uchun drayver yo'li ishonchliroq.
+ */
+export async function printRawLabel(text) {
+  if (!isDesktop()) throw new Error(t("hw.errNoDesktop"));
+  if (!text) throw new Error(t("hw.errNoData"));
+
+  /* ══════════════════════════════════════════════════════════════════
+     ⚠ `send()` ISHLATILMAYDI — VA BU ENG MUHIM QATOR.
+
+     `send()` CHEK printeriga qadalgan: u `getSettings().printerName`
+     ni oladi va natijani `markPrinter()` bilan CHEK printerining
+     sog'ligiga yozadi. Ya'ni yorliqning TSPL/ZPL matni chek
+     printeriga borardi — u esa bu buyruqlarni MATN deb bosib
+     chiqaradi: rulon to'la `SIZE 58 mm,40 mm` kabi qatorlar.
+
+     Ikkinchi zarari yashirin: muvaffaqiyatsizlik chek printerining
+     sog'ligini «nosoz» deb belgilab, kassa ekranida soxta
+     ogohlantirish yoqardi.
+     ══════════════════════════════════════════════════════════════════ */
+  const name = (getSettings().labelPrinterName || "").trim();
+
+  /* ⚠ STANDART PRINTERGA TUSHIB KETMASIN: nom bo'sh bo'lsa Rust tomoni
+     tizimning standart printerini oladi va TSPL matni A4 ofis
+     printeriga varaqlab chiqardi. */
+  if (!name) throw new Error(t("hw.errNoLabelPrinter"));
+
+  await invoke("print_raw", {
+    printer: name,
+    data: new TextEncoder().encode(String(text)),
+  });
+}
+
+/**
  * Yorliq lentasini ESC/POS baytlariga yig'adi.
  *
  * Chop etishdan ALOHIDA — `buildReceipt` bilan bir xil sabab: sinov va
@@ -390,6 +678,17 @@ export function buildPriceLabels(items = [], { copies = 1, shopName, width } = {
       // yorliqni foydasiz qiladi — «Sut 2,5% 1l» ning «Sut 2,5%» qismi
       // yonidagi boshqa qadoqdan farq qilmaydi.
       r.bold().wrap(item.name || "-").bold(false);
+      /* ⚠ QISQA RAQAM (V108) — kassir yorliqdan aynan shuni o'qib,
+         kassada yozadi. Ekranda raqam har doim ko'rinmaydi (kassa
+         katakchasida faqat raqam bilan qidirilganda), javonda esa
+         DOIM turadi — raqam yodda qolishining asosiy yo'li shu.
+
+         ⚠ «№» EMAS, «KOD» — ATAYLAB. `toBytes` ASCII bo'lmagan har
+         qanday belgini `?` ga aylantiradi va yorliqda «?142» chiqardi.
+         Ekranda va A4 varaqda «№142» qoladi — u yerda UTF-8 ishlaydi. */
+      if (item.shortCode != null && item.shortCode !== "") {
+        r.bold().line(`KOD ${item.shortCode}`).bold(false);
+      }
       r.feed();
       // ⚠ Narx IKKI BARAVAR shriftda: yorliqning butun ma'nosi shu raqamda
       // va u bir metr naridan o'qilishi kerak.
@@ -401,7 +700,11 @@ export function buildPriceLabels(items = [], { copies = 1, shopName, width } = {
       }
       r.feed();
       if (item.barcode) {
-        if (!r.barcodeEan13(item.barcode)) r.barcode128(item.barcode, { hri: true });
+        /* ⚠ TARTIB: EAN-13 → EAN-8 → Code 128 (V98). EAN-8 do'konning
+           o'z kodi uchun; usiz u Code 128 bo'lib chiqar va kichik
+           stikerga zo'rg'a sig'ardi. */
+        if (!r.barcodeEan13(item.barcode)
+            && !r.barcodeEan8(item.barcode)) r.barcode128(item.barcode, { hri: true });
         r.feed();
       }
       r.line(new Date().toLocaleDateString("uz-UZ"));
@@ -416,6 +719,253 @@ export function buildPriceLabels(items = [], { copies = 1, shopName, width } = {
 
   r.cut();
   return r.build();
+}
+
+/* ── Muddat stikerlari (V48) ───────────────────────────────────────────── */
+/**
+ * MUDDATI YAQIN TOVARGA STIKER.
+ *
+ * ═══ NEGA ALOHIDA, NARX YORLIG'IDAN FARQLI ══════════════════════════════
+ *
+ * Narx yorlig'ida asosiy raqam — NARX; bu yerda esa SANA. Xodim javon
+ * oralab yurib, «bu qachon tugaydi?» degan savolga bir metr naridan
+ * javob topishi kerak. Shuning uchun sana ikki baravar shriftda, narx
+ * esa pastda kichik — ikkisi joyini almashsa, stikerning ma'nosi
+ * yo'qolardi.
+ *
+ * ⚠ QOG'OZ MASALASI. Chek lentasi YOPISHQOQ EMAS: uni tovarga yopishtirib
+ * bo'lmaydi, faqat javonga qo'yish mumkin. Shuning uchun brauzerda
+ * stikerlar A4 varaqqa KARTOCHKA bo'lib chiqadi — do'kon oddiy
+ * yopishqoq varaq oladi va oddiy printerda bosadi. Ish stolida
+ * (Tauri) esa chek printeri ham ishlatiladi: kimdadir shunisi bor.
+ *
+ * @param items [{ name, expiryDate, daysLeft, salePrice, barcode, qty, unit }]
+ */
+export async function printExpiryLabels(items = [], opts = {}) {
+  const list = (items || []).filter(Boolean);
+  if (!list.length) throw new Error(t("label.nothing"));
+  if (!isDesktop()) return printExpiryInBrowser(list, opts);
+  await send(buildExpiryLabels(list, opts));
+}
+
+/** Stiker lentasini ESC/POS baytlariga yig'adi (ish stoli yo'li). */
+export function buildExpiryLabels(items = [], { copies = 1, shopName, width } = {}) {
+  const list = (items || []).filter(Boolean);
+  if (!list.length) throw new Error(t("label.nothing"));
+
+  const s = getSettings();
+  const w = width ?? (s.width === 58 ? WIDTH_58 : WIDTH_80);
+  const r = new Receipt(w);
+  const n = Math.max(1, Math.min(20, Number(copies) || 1));
+
+  for (const item of list) {
+    for (let i = 0; i < n; i++) {
+      r.center();
+      if (shopName) r.line(shopName);
+      r.bold().line(t("label.expiryTitle")).bold(false);
+      r.bold().wrap(item.name || "-").bold(false);
+      r.feed();
+      // ⚠ SANA ikki baravar shriftda — stikerning butun ma'nosi shunda.
+      r.double().line(shortDate(item.expiryDate)).double(false);
+      if (item.daysLeft != null) {
+        r.line(item.daysLeft <= 0 ? t("label.expiryToday")
+                                  : t("inv.nearDays", { n: item.daysLeft }));
+      }
+      if (item.salePrice != null) r.line(money(item.salePrice, { withUnit: true }));
+      r.feed();
+      if (item.barcode) {
+        /* ⚠ TARTIB: EAN-13 → EAN-8 → Code 128 (V98). EAN-8 do'konning
+           o'z kodi uchun; usiz u Code 128 bo'lib chiqar va kichik
+           stikerga zo'rg'a sig'ardi. */
+        if (!r.barcodeEan13(item.barcode)
+            && !r.barcodeEan8(item.barcode)) r.barcode128(item.barcode, { hri: true });
+        r.feed();
+      }
+      // Kesish chizig'i — sabab `buildPriceLabels` izohida.
+      r.left().line("- ".repeat(Math.floor(r.width / 2)).trimEnd()).center();
+    }
+  }
+  r.cut();
+  return r.build();
+}
+
+/**
+ * Brauzer yo'li: A4 varaqqa kartochkalar.
+ *
+ * ⚠ O'lcham 62×40 mm — sotuvdagi eng keng tarqalgan yopishqoq varaq
+ * kataklari shunga yaqin. Aniq mos kelmasa ham, kartochka chetidagi
+ * uzuq-uzuq chiziq bo'ylab qirqish har doim ishlaydi.
+ */
+function printExpiryInBrowser(items, { shopName } = {}) {
+  const win = window.open("", "_blank", "width=820,height=900");
+  if (!win) throw new Error(t("hw.errPopup"));
+
+  const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+  const cards = items.map((i) => {
+    const left = i.daysLeft;
+    const leftText = left == null ? ""
+      : left <= 0 ? t("label.expiryToday") : t("inv.nearDays", { n: left });
+    return `<div class="lbl">
+      <div class="hdr">${esc(t("label.expiryTitle"))}</div>
+      <div class="nm">${esc(i.name || "-")}</div>
+      <div class="dt">${esc(shortDate(i.expiryDate))}</div>
+      ${leftText ? `<div class="lf">${esc(leftText)}</div>` : ""}
+      ${i.salePrice != null ? `<div class="pr">${esc(money(i.salePrice, { withUnit: true }))}</div>` : ""}
+      ${i.barcode ? `<div class="bc">${code128Svg(String(i.barcode), { height: 22 })}</div>` : ""}
+      ${shopName ? `<div class="sh">${esc(shopName)}</div>` : ""}
+    </div>`;
+  }).join("");
+
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
+    <title>${esc(t("label.expiryTitle"))}</title>
+    <style>
+      @page { size: A4; margin: 8mm; }
+      * { margin:0; padding:0; box-sizing:border-box; }
+      body { font-family: ui-sans-serif, system-ui, "Segoe UI", Arial, sans-serif; color:#000;
+             display:flex; flex-wrap:wrap; gap:0; }
+      /* Uzuq-uzuq ramka — qirqish chizig'i. Kartochkalar yonma-yon
+         tursin deb chetlari birlashtirilmaydi: ikki chiziq orasidan
+         qirqish osonroq. */
+      .lbl { width:62mm; height:40mm; border:1px dashed #000; padding:2mm;
+             display:flex; flex-direction:column; align-items:center; justify-content:center;
+             text-align:center; overflow:hidden; }
+      .hdr { font-size:8pt; font-weight:800; letter-spacing:.5px; }
+      .nm  { font-size:10pt; font-weight:700; line-height:1.15; margin-top:1mm;
+             display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+      /* SANA — eng katta raqam: stiker aynan shu uchun yopishtiriladi. */
+      .dt  { font-size:19pt; font-weight:900; line-height:1.1; margin-top:1mm;
+             font-variant-numeric: tabular-nums; }
+      .lf  { font-size:9pt; font-weight:700; }
+      .pr  { font-size:10pt; font-weight:700; margin-top:.5mm; }
+      .bc  { margin-top:1mm; }
+      .bc svg { height:22px; }
+      .sh  { font-size:7pt; margin-top:auto; }
+      @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+    </style></head><body>${cards}</body></html>`);
+  win.document.close();
+  /* Chop etish dialogi RASMLAR chizilgandan keyin — `buildReceipt`
+     yo'lidagi bilan bir xil sabab. */
+  win.onload = () => { win.focus(); win.print(); };
+  return Promise.resolve();
+}
+
+/* ── Ombor varaqasi (V48) ──────────────────────────────────────────────── */
+/**
+ * OMBOR VARAQASI — omborchi qo'lidagi qog'oz.
+ *
+ * ═══ NEGA KERAK ════════════════════════════════════════════════════════
+ *
+ * Ekran omborchining stolida turadi, tovar esa hovlida. U ro'yxatni
+ * yodda saqlab, ikki qavat pastga tushib, keyin qaytib kelib tekshira
+ * olmaydi. Qog'oz — o'sha ro'yxatning qo'lda olib yuriladigan nusxasi
+ * va u mijozning chekiga MOS bo'lishi shart: ikkalasida bir xil raqam
+ * turadi va omborchi ularni yonma-yon qo'yib solishtiradi.
+ *
+ * ⚠ NARX YO'Q. Ombor varaqasi — TOVAR hujjati: nima, qancha va qaysi
+ * chek bo'yicha. Narxni omborchi bilishi shart emas va u mijoz bilan
+ * «narx boshqa edi-ku» degan keraksiz suhbatni ochardi; pul masalasi
+ * kassada allaqachon yopilgan.
+ *
+ * ⚠ IKKI IMZO joyi: omborchi berdi, mijoz oldi. Qog'ozdagi imzo —
+ * «men olmadim» degan tortishuvda do'konning yagona dalili.
+ */
+export async function printPickupSlip(order, opts = {}) {
+  if (!order) throw new Error(t("label.nothing"));
+  if (!isDesktop()) return printPickupInBrowser(order, opts);
+  await send(buildPickupSlip(order, opts));
+}
+
+/** Ombor varaqasini ESC/POS baytlariga yig'adi. */
+export function buildPickupSlip(order, { shopName, width } = {}) {
+  const s = getSettings();
+  const r = new Receipt(width ?? (s.width === 58 ? WIDTH_58 : WIDTH_80));
+
+  r.center().double().line(t("pickup.slipTitle")).double(false);
+  if (shopName) r.line(shopName);
+  r.left().rule();
+
+  r.row(`${t("kassa.receiptNo")} ${order.saleCode || "-"}`,
+        order.createdAt ? new Date(order.createdAt).toLocaleString("uz-UZ") : "");
+  if (order.cashierName) r.row(t("kassa.receiptCashier"), order.cashierName);
+  if (order.customerName) r.row(t("kassa.receiptCustomer"), order.customerName);
+  if (order.customerPhone) r.row(t("common.phone"), order.customerPhone);
+  r.rule();
+
+  for (const i of order.items || []) {
+    r.wrap(i.productName);
+    /* ⚠ MIQDOR ikki baravar shriftda: omborchi aynan shu raqamga qarab
+       tovar sanaydi va uni bir qarashda o'qishi kerak.
+       ⚠ `row` EMAS, `line`: qo'sh shriftda satrga ikki baravar kam
+       belgi sig'adi va `row` ning bo'shliq hisobi buzilib, o'ng ustun
+       qatorning tashqarisiga chiqib ketardi. */
+    r.double().line(`  ${quantity(i.quantity)} ${unitLabel(i.unit)}`).double(false);
+  }
+
+  r.rule();
+  /* Chek raqami barkodi — omborchi uni skanerlab ekranda ochadi.
+     Mijozning chekidagi barkod bilan AYNAN bir xil. */
+  if (order.saleId) {
+    const code = saleCode(order.saleId);
+    r.feed().center().barcode128(code).line(code).left();
+  }
+  r.feed();
+  r.row(t("pickup.signStore"), "______________");
+  r.feed().row(t("pickup.signCustomer"), "______________");
+  r.cut();
+  return r.build();
+}
+
+/** Brauzer yo'li — chek qog'ozi kengligidagi sahifa. */
+function printPickupInBrowser(order, { shopName } = {}) {
+  const win = window.open("", "_blank", "width=360,height=640");
+  if (!win) throw new Error(t("hw.errPopup"));
+  const mm = getSettings().width === 58 ? 58 : 80;
+  const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+  const rows = (order.items || []).map((i) =>
+    `<div class="it"><div class="nm">${esc(i.productName)}</div>
+     <div class="qt">${esc(quantity(i.quantity))} ${esc(unitLabel(i.unit))}</div></div>`).join("");
+
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
+    <title>${esc(t("pickup.slipTitle"))} ${esc(order.saleCode || "")}</title>
+    <style>
+      @page { size: ${mm}mm auto; margin: 0; }
+      * { margin:0; padding:0; box-sizing:border-box; }
+      body { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+             font-variant-numeric: tabular-nums; font-size:12px; line-height:1.35;
+             color:#000; width:${mm}mm; padding:3mm; }
+      .c { text-align:center; }
+      .hr { border:none; border-top:1px dashed #000; margin:6px 0; }
+      .row { display:flex; justify-content:space-between; gap:8px; padding:2px 0; }
+      .ttl { font-size:16px; font-weight:800; letter-spacing:.5px; }
+      .it { padding:4px 0; border-bottom:1px dotted #999; }
+      .nm { font-weight:700; }
+      /* Miqdor — eng katta raqam: omborchi shunga qarab sanaydi. */
+      .qt { font-size:18px; font-weight:900; text-align:right; }
+      @media print { body { -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
+    </style></head><body>
+      <div class="c"><div class="ttl">${esc(t("pickup.slipTitle"))}</div>
+        ${shopName ? `<small>${esc(shopName)}</small>` : ""}</div>
+      <div class="hr"></div>
+      <div class="row"><b>${esc(t("kassa.receiptNo"))} ${esc(order.saleCode || "-")}</b>
+        <span>${esc(order.createdAt ? new Date(order.createdAt).toLocaleString("uz-UZ") : "")}</span></div>
+      ${order.cashierName ? `<div class="row"><span>${esc(t("kassa.receiptCashier"))}</span><span>${esc(order.cashierName)}</span></div>` : ""}
+      ${order.customerName ? `<div class="row"><span>${esc(t("kassa.receiptCustomer"))}</span><span>${esc(order.customerName)}</span></div>` : ""}
+      ${order.customerPhone ? `<div class="row"><span>${esc(t("common.phone"))}</span><span>${esc(order.customerPhone)}</span></div>` : ""}
+      <div class="hr"></div>
+      ${rows}
+      <div class="hr"></div>
+      ${order.saleId ? `<div class="c">${code128Svg(saleCode(order.saleId), { height: 14 })}
+        <div><b>${esc(saleCode(order.saleId))}</b></div></div>` : ""}
+      <div class="row" style="margin-top:14px"><span>${esc(t("pickup.signStore"))}</span><span>______________</span></div>
+      <div class="row" style="margin-top:12px"><span>${esc(t("pickup.signCustomer"))}</span><span>______________</span></div>
+    </body></html>`);
+  win.document.close();
+  win.onload = () => { win.focus(); win.print(); };
+  return Promise.resolve();
 }
 
 /** Printer ulanganini tekshirish. */
@@ -450,22 +1000,66 @@ export async function testPrint() {
  * chaqiriladi.
  */
 function printInBrowser({ saleId, serverSaleId, cart = [], total = 0, subtotal, discount = 0,
-                          payType, customer, offline, shopName, cashier, receiptUrl }) {
+                          customer, offline, shopName, cashier, receiptUrl,
+                          credit, __debt, amount, balanceAfter, balanceBefore, date,
+                          receiptNo, qrUrl, toSavings, bonusEarned, kind, linkedNo , rounding = 0 }) {
   const win = window.open("", "_blank", "width=360,height=640,toolbar=no,menubar=no");
   if (!win) throw new Error(t("hw.errPopup"));
+  /* Qarz cheki yoki jamg'arma kvitansiyasi — so'zlar `kind` dan (V66). */
+  const L = debtLabels(kind);
 
   // Qog'oz kengligi — apparat sozlamasidan (58 yoki 80 mm).
   const mm = getSettings().width === 58 ? 58 : 80;
+  /* ⚠ ESC/POS cheki bilan BIR XIL manbadan: brauzer cheki boshqa nom
+     yoki boshqa telefon ko'rsatsa, ikkalasi ham ishonchini yo'qotardi. */
+  const head = shopHead(shopName);
 
   const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
-  const rows = cart.map((i) => {
+  /* Chek chegirmasi qatorlarga taqsimlanadi — `buildReceipt` dagi bilan
+     BIR XIL qoida (`ek-discount.js`). Brauzer cheki apparat chekidan
+     boshqacha raqam ko'rsatsa, ikkalasi ham ishonchini yo'qotardi. */
+  const shares = spreadDiscount(cart, discount);
+  const lineDiscTotal = cart.reduce((sum, i) => sum + (Number(i.discount) || 0), 0);
+  const discTotal = discount + lineDiscTotal;
+
+  const rows = cart.map((i, idx) => {
     const qtyText = `${quantity(i.qty, i.unitDecimals)}${i.unit ? " " + unitLabel(i.unit) : ""}`;
-    return `<div class="row"><span>${esc(i.name)} × ${esc(qtyText)}</span><span>${esc(money(i.salePrice * i.qty))}</span></div>`;
+    const lineDisc = (Number(i.discount) || 0) + (shares[idx] || 0);
+    return `<div class="row"><span>${esc(i.name)} × ${esc(qtyText)}</span><span>${esc(money(i.salePrice * i.qty))}</span></div>`
+      + (lineDisc > 0
+          ? `<div class="row sub"><span>${esc(t("kassa.discount"))}</span><span>-${esc(money(lineDisc))}</span></div>`
+          : "");
   }).join("");
 
-  win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(t("kassa.receiptNo"))} ${esc(saleId)}</title>
+  /* ⚠ QARZ TO'LOVI — BOSHQA HUJJAT: tovar qatorlari, QQS va chek raqami
+     yo'q. Uni sotuv qolipiga tiqish «jami 0» li bo'sh chek berardi. */
+  const debtBody = !__debt ? "" : `
+      <div class="c"><div class="logo">${esc(head.name)}</div>
+        ${head.phone ? `<small>${esc(head.phone)}</small><br>` : ""}
+        <small>${esc(L.title)}</small></div>
+      <div class="hr"></div>
+      ${receiptNo ? `<div class="row"><span>${esc(t("kassa.receiptNo"))}</span><span>${esc(receiptNo)}</span></div>` : ""}
+      <div class="row"><span>${esc(t("common.date"))}</span><span>${esc((date || new Date()).toLocaleString("uz-UZ"))}</span></div>
+      ${cashier ? `<div class="row"><span>${esc(t("kassa.receiptCashier"))}</span><span>${esc(cashier)}</span></div>` : ""}
+      ${customer?.fullName ? `<div class="row"><span>${esc(t("kassa.receiptCustomer"))}</span><span>${esc(customer.fullName)}</span></div>` : ""}
+      <div class="hr"></div>
+      <div class="row"><b>${esc(L.main)}</b><b>${esc(money(Math.abs(Number(amount) || 0)))}</b></div>
+      ${linkedNo ? `<div class="row"><span>${esc(t("savings.linkedSale"))}</span><span>${esc(linkedNo)}</span></div>` : ""}
+      ${balanceBefore != null ? `<div class="row"><span>${esc(L.before)}</span><span>${esc(money(balanceBefore))}</span></div>` : ""}
+      <div class="row"><span>${esc(L.after)}</span><span>${esc(money(balanceAfter ?? 0))}</span></div>
+      ${Number(toSavings) > 0 ? `<div class="row"><span>${esc(t("savings.toSavings"))}</span><span>${esc(money(toSavings))}</span></div>` : ""}
+      ${Number(bonusEarned) > 0 ? `<div class="row"><span>${esc(t("kassa.receiptBonusEarned"))}</span><span>+${esc(money(bonusEarned))}</span></div>` : ""}
+      ${qrUrl ? `<div class="hr"></div><div class="c">
+        ${qrSvg(qrUrl, { size: 96, margin: 1 })}
+        <small>${esc(t("kassa.receiptQrHint"))}</small>
+      </div>` : ""}
+      <div class="hr"></div>
+      <div class="c"><p>${esc(t("kassa.receiptThanks"))}</p>${
+        head.footer ? `<small>${esc(head.footer)}</small>` : ""}</div>`;
+
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(__debt ? L.title : t("kassa.receiptNo") + " " + saleId)}</title>
     <style>
       /* CHEK QOG'OZI - A4 EMAS.
          @page bo'lmasa brauzer chekni A4 sahifaga joylashtiradi, chetiga
@@ -487,6 +1081,8 @@ function printInBrowser({ saleId, serverSaleId, cart = [], total = 0, subtotal, 
       .hr { border:none; border-top:1px dashed #000; margin:6px 0; }
       .row { display:flex; justify-content:space-between; padding:2px 0; gap:8px; }
       .row span:last-child { white-space: nowrap; }
+      /* Qatorga tushgan chegirma — tovar ostida, ichkariroq surilgan. */
+      .row.sub { padding-left: 10px; font-size: 11px; }
       .logo { font-size:15px; font-weight:800; letter-spacing:.5px; }
       .off { margin-top:6px; padding:4px; border:1px dashed #000; font-size:10px; text-align:center; }
       .no { font-size:13px; font-weight:800; }
@@ -495,18 +1091,27 @@ function printInBrowser({ saleId, serverSaleId, cart = [], total = 0, subtotal, 
         body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       }
     </style></head><body>
-      <div class="c"><div class="logo">${esc(shopName || "E-KASSAM.UZ")}</div>
-        <small>${esc(t("kassa.receiptSystem"))}</small></div>
+      ${debtBody}
+      ${__debt ? "" : `
+      <div class="c"><div class="logo">${esc(head.name)}</div>
+        ${head.phone ? `<small>${esc(head.phone)}</small>` : ""}</div>
       <div class="hr"></div>
       <div class="row"><span>${esc(t("kassa.receiptNo"))} ${esc(saleId)}</span><span>${esc(new Date().toLocaleString("uz-UZ"))}</span></div>
       <div class="hr"></div>
       ${rows}
       <div class="hr"></div>
-      ${discount > 0 ? `<div class="row"><span>${esc(t("kassa.receiptSubtotal"))}</span><span>${esc(money(subtotal ?? (total + discount)))}</span></div>
-      <div class="row"><span>${esc(t("kassa.discount"))}</span><span>-${esc(money(discount))}</span></div>` : ""}
+      ${discTotal > 0 ? `<div class="row"><span>${esc(t("kassa.receiptSubtotal"))}</span><span>${esc(money(subtotal ?? (total + discTotal)))}</span></div>
+      <div class="row"><span>${esc(t("kassa.discount"))}</span><span>-${esc(money(discTotal))}</span></div>` : ""}
+      ${Number(rounding) > 0 ? `<div class="row"><span>${esc(t("kassa.rounding"))}</span><span>-${esc(moneyFine(rounding))}</span></div>` : ""}
       <div class="row"><b>${esc(t("kassa.receiptTotal"))}</b><b>${esc(money(total))}</b></div>
-      <div class="row"><span>${esc(t("kassa.receiptPayment"))}</span><span>${esc(paymentLabel(payType))}</span></div>
+      ${Number(toSavings) > 0 && !__debt ? `<div class="row"><span>${esc(t("savings.toSavings"))}</span><span>+${esc(money(toSavings))}</span></div>` : ""}
       ${customer?.fullName ? `<div class="row"><span>${esc(t("kassa.receiptCustomer"))}</span><span>${esc(customer.fullName)}</span></div>` : ""}
+      ${credit && Number(credit.amount) > 0 ? `<div class="hr"></div>
+      <div class="c"><b>${esc(t("kassa.receiptCredit"))}</b></div>
+      <div class="row"><span>${esc(t("kassa.receiptCreditThis"))}</span><b>${esc(money(credit.amount))}</b></div>
+      ${credit.balance != null ? `<div class="row"><span>${esc(t("kassa.receiptCreditTotal"))}</span><span>${esc(money(credit.balance))}</span></div>` : ""}
+      ${credit.dueDate ? `<div class="row"><span>${esc(t("kassa.receiptCreditDue"))}</span><span>${esc(credit.dueDate)}</span></div>` : ""}
+      <div class="row" style="margin-top:10px"><span>${esc(t("kassa.receiptCreditSign"))}</span><span>______________</span></div>` : ""}
       ${offline ? `<div class="off">${esc(t("kassa.receiptOffline"))}<br>${esc(t("kassa.receiptOfflineSub"))}</div>` : ""}
       ${serverSaleId ? `<div class="c" style="margin-top:6px">
         ${code128Svg(saleCode(serverSaleId), { height: 12 })}
@@ -517,7 +1122,8 @@ function printInBrowser({ saleId, serverSaleId, cart = [], total = 0, subtotal, 
         <small>${esc(t("kassa.receiptQrHint"))}</small>
       </div>` : ""}
       <div class="hr"></div>
-      <div class="c"><p>${esc(t("kassa.receiptThanks"))}</p><small>e-kassam.uz</small></div>
+      <div class="c"><p>${esc(t("kassa.receiptThanks"))}</p>${
+        head.footer ? `<small>${esc(head.footer)}</small>` : ""}</div>`}
     </body></html>`);
   win.document.close();
   /* Tizim shrifti ishlatilgani uchun kutish shart emas — bir kadr yetadi.

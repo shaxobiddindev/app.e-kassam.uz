@@ -3,6 +3,7 @@ import { t, getLang } from "../lib/ek-i18n";
 import { saleApi } from "../api";
 import { money } from "../utils";
 import { paymentEntry } from "../lib/ek-labels";
+import { asArray } from "../lib/ek-array";
 
 /* Oxirgi cheklar lentasi — egasi «hozir nima sotilyapti?» deb qaraydi.
    Faqat o'qish: bekor qilish/qaytarish kassada, telefon esa nazorat. */
@@ -13,7 +14,7 @@ export default function MobileSales({ toast, branchId }) {
   const load = useCallback(() => {
     setBusy(true);
     saleApi.getAll(branchId)
-      .then((r) => setSales((r.data || []).slice(0, 40)))
+      .then((r) => setSales((asArray(r.data)).slice(0, 40)))
       .catch((e) => toast?.error(e.message))
       .finally(() => setBusy(false));
   }, [branchId, toast]);

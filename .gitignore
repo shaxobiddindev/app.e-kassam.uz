@@ -32,3 +32,6 @@ src-tauri/target/
 
 # Android APK artefakti (build-apk.sh)
 /e-kassam.apk
+
+# Ohang renderi (scripts/sfx-render.mjs) — vaqtinchalik chiqish
+sfx-out/
