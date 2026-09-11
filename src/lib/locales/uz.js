@@ -956,6 +956,10 @@ export default {
   "products.costPrice": "Tan narxi",
   "products.category": "Kategoriya",
   "products.noCategory": "Kategoriya tanlanmagan",
+  "products.pickCategory": "Kategoriyani tanlang",
+  "products.categoryLocked": "Kategoriya o'zgartirilmaydi: u o'tgan oylarning hisobotiga ham tegadi.",
+  "products.needCategory": "Kategoriyani tanlang. Har bir tovar kategoriyaga kirishi kerak.",
+  "products.noCategoriesYet": "Bu do'konda hali kategoriya yo'q. Avval «Kategoriyalar» bo'limida bittasini yarating.",
   "products.inactive": "Nofaol",
   /* ── Tarozi barkodi va PLU (V42) ── */
   "products.plu": "PLU — tarozi kodi",

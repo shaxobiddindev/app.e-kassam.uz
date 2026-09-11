@@ -310,9 +310,29 @@ export default function ProductsPage({ toast }) {
   const removePackBarcode = (idx) =>
     setForm((f) => ({ ...f, barcodes: f.barcodes.filter((_, i) => i !== idx) }));
 
+  /* ⚠ KATEGORIYA BIR MARTA QO'YILADI — keyin ALMASHTIRILMAYDI.
+     Sabab hisobotda: kategoriya sotuv tarixiga ham tegadi. Tovar
+     bugun «Ichimliklar» dan «Oziq-ovqat» ga ko'chirilsa, MARTDAGI
+     hisobot ham o'zgarib ketadi — o'tgan oy yopilgan, raqamlar
+     egasiga aytilgan, endi esa ular boshqacha. Bu jimgina bo'ladi:
+     xato chiqmaydi, shunchaki tarix qayta yoziladi.
+
+     ⚠ BO'SH BO'LSA — OCHIQ QOLADI. Eski tovarlarning bir qismi
+     kategoriyasiz va maydon butunlay qulflansa ular ABADIY shunday
+     qolardi — ya'ni «har bir tovar kategoriyada bo'lsin» talabining
+     o'zi bajarilmay qolardi. Qulf «tanlanganini o'zgartirib
+     bo'lmaydi» degani, «tanlab bo'lmaydi» degani emas. */
+  const categoryLocked = Boolean(modal?.product?.categoryId);
+
   // ── Saqlash ────────────────────────────────────────────────
   const handleSave = async () => {
     if (!form.name) { toast.error(t("products.requiredFields")); return; }
+    /* ⚠ KATEGORIYA MAJBURIY. Kategoriyasiz tovar kassa ekranida
+       kategoriya tugmasi ostida CHIQMAYDI va hisobotda «boshqalar»
+       ustuniga tushadi — ya'ni u kiritilgan, lekin amalda ko'rinmas
+       bo'lib qoladi. Aynan shu sababli tekshiruv saqlashdan OLDIN:
+       serverdan qaytgan xato formani yopib ulgurgan bo'lardi. */
+    if (!form.categoryId) { toast.error(t("products.needCategory")); return; }
     setSaving(true);
     try {
       const num = (v) => (v === "" || v == null ? null : Number(v));
@@ -349,7 +369,10 @@ export default function ProductsPage({ toast }) {
         colorHex: form.colorHex.trim(),
         season: form.season || null,
         material: form.material.trim(),
-        categoryId: form.categoryId || null,
+        /* ⚠ Qulflangan kategoriya ASL yozuvdan olinadi, formadan
+           emas. Forma holati ishonchli manba emas va server hozircha
+           bu qoidani tekshirmaydi — ya'ni yagona to'siq shu yerda. */
+        categoryId: categoryLocked ? modal.product.categoryId : (form.categoryId || null),
         type: form.type,
         unit: form.unit,
         minQuantity: num(form.minQuantity),
@@ -1124,9 +1147,9 @@ export default function ProductsPage({ toast }) {
               </div>
             </FormGroup>
 
-            <FormGroup label={t("products.category")}>
+            <FormGroup label={`${t("products.category")} *`}>
               <Select
-                block variant="field" ariaLabel={t("products.category")} placeholder={t("products.noCategory")}
+                block variant="field" ariaLabel={t("products.category")} placeholder={t("products.pickCategory")}
                 /* ⚠ QIDIRUV MAJBURIY, avtomatik emas. Avtomatik qoida
                    bandlar soni 8 dan oshganda ishlaydi, kategoriyalar
                    esa MA'LUMOT ro'yxati: bugun beshta bo'lsa ham
@@ -1136,10 +1159,14 @@ export default function ProductsPage({ toast }) {
                    birligi) qidiruv ortiqcha bosqich — u hech qachon
                    o'smaydi va joylashuvi yodda qoladi. */
                 searchable searchPlaceholder={t("common.searchShort")}
+                disabled={categoryLocked}
                 value={form.categoryId ? String(form.categoryId) : ""}
                 onChange={(v) => setForm((f) => ({ ...f, categoryId: v }))}
                 options={[
-                  { value: "", label: t("products.noCategory"), icon: "fa-tag" },
+                  /* ⚠ «Kategoriyasiz» BANDI OLIB TASHLANDI. U turgan ekan,
+                     kategoriya majburiy deyish ma'nosiz edi: eng tez yo'l
+                     ro'yxatning birinchi bandi bo'lib turardi va tovarlar
+                     o'sha yerga oqib ketardi. */
                   /* Guruh raqami kassadagi bilan bir xil joyda — omborchi
                      tovar qo'shayotganda kod qaysi guruhdan chiqishini
                      oldindan ko'radi. */
@@ -1148,6 +1175,20 @@ export default function ProductsPage({ toast }) {
                                               icon: c.icon || "fa-tags" })),
                 ]}
               />
+              {/* ⚠ BOSHI BERK KO'CHAGA TUSHIB QOLMASIN. Yangi do'konda
+                  kategoriya hali yo'q va majburiy maydon uni tovar
+                  qo'sha olmaydigan holatga tushirardi — xato chiqadi,
+                  lekin nima qilish kerakligi aytilmasdi. */}
+              {categoryLocked && (
+                <div className="set-row__hint" style={{ marginTop: 4 }}>
+                  <i className="fa-solid fa-lock" aria-hidden="true" /> {t("products.categoryLocked")}
+                </div>
+              )}
+              {!categoryLocked && categories.length === 0 && (
+                <div className="set-row__hint" style={{ marginTop: 4 }}>
+                  {t("products.noCategoriesYet")}
+                </div>
+              )}
             </FormGroup>
           </div>
 
