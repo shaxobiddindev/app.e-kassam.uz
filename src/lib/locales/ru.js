@@ -535,6 +535,7 @@ export default {
   "login.tabAdmin": "Админ",
   "login.adminNote": "Только для системных администраторов",
   "login.shopCode": "Код магазина",
+  "login.otherShop": "Другой магазин или первый вход",
   "login.login": "Логин",
   "login.password": "Пароль",
   "login.showPassword": "Показать пароль",

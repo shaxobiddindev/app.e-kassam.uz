@@ -552,6 +552,7 @@ export default {
   "login.tabAdmin": "Admin",
   "login.adminNote": "Faqat tizim administratorlari uchun",
   "login.shopCode": "Do'kon kodi",
+  "login.otherShop": "Boshqa do'kon yoki birinchi kirish",
   "login.login": "Login",
   "login.password": "Parol",
   "login.showPassword": "Parolni ko'rsatish",

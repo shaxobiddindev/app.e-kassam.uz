@@ -2372,6 +2372,26 @@ img.logo--dark { display: none; }
 }
 .auth__eye:hover { color: var(--fg-primary); }
 
+/* Eslab qolingan do'kon va «boshqa do'kon» havolasi (V98 — brauzer
+   versiyasidagi bilan bir xil xatti-harakat). Ranglar tokenlardan;
+   `--fg-tertiary` ISHLATILMAYDI (qoida 6b — u bezak rangi). */
+.auth__remembered {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 12px; margin-bottom: 12px;
+  border-radius: var(--r-md);
+  background: var(--bg-sunken); color: var(--fg-secondary);
+  font-size: 13px; font-weight: 600;
+}
+.auth__alt {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%; min-height: var(--hit-min);
+  margin-bottom: 12px; padding: 0 12px;
+  border: 1px dashed var(--border-default); border-radius: var(--r-md);
+  background: none; color: var(--fg-secondary);
+  font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.auth__alt:hover { color: var(--fg-brand); border-color: var(--border-brand); }
+
 /* Xato: aniq matn, uzr so'ramaydi, noaniq emas. 6px silkinish — BIR MARTA. */
 .auth__error {
   display: flex; align-items: flex-start; gap: 9px;

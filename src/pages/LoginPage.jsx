@@ -72,6 +72,24 @@ async function get(path, token) {
 export default function LoginPage({ onLogin }) {
   const { t } = useT();
   const [form, setForm]         = useState({ shopCode: "", username: "", password: "", deviceCode: "" });
+
+  /* ⚠ QURILMA OXIRGI KIRISHNI ESLAB QOLADI (V98 — auth'dagi bilan bir xil).
+     Saqlanadigan narsa: do'kon kodi, do'kon NOMI va login. PAROL HECH
+     QACHON saqlanmaydi.
+
+     Nega kerak: kassa bitta qurilmada, bitta do'konda turadi va kassir
+     har smenada bir xil kodni qayta terardi. Brauzer versiyasida bu
+     allaqachon olib tashlangan edi, `.exe` esa eski holicha qolgan —
+     ya'ni bitta kassir ikki joyda ikki xil ish qilardi. */
+  const [last] = useState(() => {
+    try {
+      const v = JSON.parse(localStorage.getItem("ek_lastLogin") || "null");
+      return v && v.username ? v : null;
+    } catch (_) { return null; }
+  });
+  /* Kod maydoni yopiq turadi va faqat kerak bo'lganda ochiladi:
+     boshqa do'kon yoki birinchi kirish. */
+  const [showShopCode, setShowShopCode] = useState(false);
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState("");
   const [notice, setNotice]     = useState("");
@@ -83,6 +101,7 @@ export default function LoginPage({ onLogin }) {
   const [intro, setIntro] = useState(() => isMobileApp() && !REDUCED && !introShown);
 
   const firstFieldRef = useRef(null);
+  const shopCodeRef   = useRef(null);
   const deviceRef     = useRef(null);
 
   // Kassir sichqonchaga tegmasin — birinchi maydon darhol fokusda.
@@ -93,10 +112,16 @@ export default function LoginPage({ onLogin }) {
   const set = (k) => (e) => { setError(""); setForm((p) => ({ ...p, [k]: e.target.value })); };
   const fail = (msg) => { setError(msg); setShake((n) => n + 1); setLoading(false); };
 
+  /* ⚠ FAQAT LOGIN tushadi, do'kon kodi TUSHMAYDI: kod o'zgargan
+     bo'lishi mumkin va eskisini jimgina qayta yuborish xato beradi.
+     Kod kerak bo'lsa, server 4xx qaytaradi va maydon ochiladi. */
+  useEffect(() => {
+    if (last?.username) setForm((p) => ({ ...p, username: last.username }));
+  }, [last]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    if (!form.shopCode.trim()) return fail(t("login.needShopCode"));
     if (!form.username.trim()) return fail(t("login.needUsername"));
     if (!form.password)        return fail(t("login.needPassword"));
 
@@ -105,7 +130,10 @@ export default function LoginPage({ onLogin }) {
       const deviceId = getDeviceId();
       const r = await post("/auth/login",
         {
-          shopCode: form.shopCode.trim(), username: form.username.trim(), password: form.password,
+          /* ⚠ BO'SH BO'LSA UMUMAN YUBORILMAYDI (`undefined`), bo'sh
+             satr emas: niyat so'rovning o'zida ko'rinib tursin. */
+          shopCode: form.shopCode.trim() || undefined,
+          username: form.username.trim(), password: form.password,
           deviceCode: form.deviceCode.trim() || undefined,
         },
         { "X-Device-Id": deviceId });
@@ -118,6 +146,16 @@ export default function LoginPage({ onLogin }) {
 
       const roles = me.roles || asArray(r.data?.roles);
       const roleStr = roles.map((x) => x?.type || x?.name || String(x || "")).filter(Boolean).join(",");
+
+      /* ⚠ Do'kon NOMI serverdan keladi — kassir kodni emas, nomni
+         biladi. Parol saqlanmaydi. */
+      try {
+        localStorage.setItem("ek_lastLogin", JSON.stringify({
+          shopCode: r.data.shopCode || form.shopCode.trim() || "",
+          shopName: r.data.shopName || "",
+          username: me.username || form.username.trim(),
+        }));
+      } catch (_) { /* xotira yo'q — qulaylik yo'qoladi, kirish ishlayveradi */ }
 
       onLogin({
         token:    r.data.accessToken,
@@ -178,17 +216,35 @@ export default function LoginPage({ onLogin }) {
             </div>
           )}
 
-          <div className="auth__field">
-            <label className="auth__label" htmlFor="shopCode">{t("login.shopCode")}</label>
-            <CodeField id="shopCode" ref={firstFieldRef} className="auth__input mono"
-                   placeholder="shop-code"
-                   value={form.shopCode} onChange={set("shopCode")}
-                   aria-invalid={error ? "true" : undefined} />
-          </div>
+          {/* ⚠ ESLAB QOLINGAN DO'KON — kod emas, NOM ko'rsatiladi.
+              Kassir do'kon kodini yodda saqlamaydi, nomini biladi. */}
+          {last?.shopName && !showShopCode && (
+            <div className="auth__remembered">
+              <i className="fa-solid fa-store" aria-hidden="true" /> {last.shopName}
+            </div>
+          )}
+
+          {!showShopCode && (
+            <button type="button" className="auth__alt"
+                    onClick={() => { setShowShopCode(true);
+                                     setTimeout(() => shopCodeRef.current?.focus(), 30); }}>
+              <i className="fa-solid fa-store" aria-hidden="true" /> {t("login.otherShop")}
+            </button>
+          )}
+
+          {showShopCode && (
+            <div className="auth__field">
+              <label className="auth__label" htmlFor="shopCode">{t("login.shopCode")}</label>
+                <CodeField id="shopCode" ref={shopCodeRef} className="auth__input mono"
+                     placeholder="shop-code"
+                     value={form.shopCode} onChange={set("shopCode")}
+                     aria-invalid={error ? "true" : undefined} />
+            </div>
+          )}
 
           <div className="auth__field">
             <label className="auth__label" htmlFor="username">{t("common.username")}</label>
-            <UsernameField id="username" className="auth__input"
+            <UsernameField id="username" ref={firstFieldRef} className="auth__input"
                    value={form.username} onChange={set("username")}
                    aria-invalid={error ? "true" : undefined} />
           </div>
