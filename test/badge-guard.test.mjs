@@ -25,7 +25,7 @@
    ══════════════════════════════════════════════════════════════════════════ */
 
 import { readdirSync, readFileSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { join, sep } from "node:path";
 
 let pass = 0, fail = 0;
 const ok  = (m) => { pass++; console.log("  ✅ " + m); };
@@ -59,12 +59,21 @@ const EXEMPT = [
   ["src/pages/PricesPage.jsx", "payload(true)"],
 ];
 
+/* ⚠ YO'LLAR QIYSHIQ CHIZIQQA KELTIRILADI (`sep` -> "/").
+   Windows'da `join` yo'lni teskari chiziq bilan quradi, quyidagi
+   ikkita taqqoslash esa qiyshiq chiziq bilan yozilgan:
+   `endsWith("src/api/index.js")` va `EXEMPT` ro'yxati. Ya'ni ular
+   Windows'da HECH QACHON mos kelmasdi va ataylab chetlatilgan
+   ikkita chaqiruv («oflayn navbat» va narxning `dryRun` ko'rinishi)
+   «qo'riqlanmagan» bo'lib chiqardi. Linux'da hammasi joyida edi —
+   shuning uchun CI yashil, yolg'on qizil esa faqat egasining
+   mashinasida. */
 const files = [];
 (function walk(dir) {
   for (const e of readdirSync(dir)) {
     const p = join(dir, e);
     if (statSync(p).isDirectory()) walk(p);
-    else if (/\.jsx?$/.test(p)) files.push(p);
+    else if (/\.jsx?$/.test(p)) files.push(p.split(sep).join("/"));
   }
 })("src");
 
