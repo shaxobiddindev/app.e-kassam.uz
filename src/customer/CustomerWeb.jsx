@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { appApi, getAppToken, setAppToken, clearAppToken } from "./customerApi";
 import CustomerApp from "./CustomerApp";
 import CustomerLogin from "./CustomerLogin";
+import { t } from "../lib/ek-i18n";
 
 /* ══════════════════════════════════════════════════════════════════════════
    MIJOZ ILOVASI BRAUZERDA (V40)
@@ -48,7 +49,7 @@ export default function CustomerWeb() {
   if (phase === "exchanging") {
     return (
       <div className="cu-wrap">
-        <div className="cu-card cu-center">Telegram javobi tekshirilmoqda…</div>
+        <div className="cu-card cu-center">{t("cu.tgChecking")}</div>
       </div>
     );
   }
@@ -58,7 +59,7 @@ export default function CustomerWeb() {
       <div className="cu-wrap">
         <div className="cu-card cu-center">
           <i className="fa-solid fa-circle-exclamation cu-big-icon" aria-hidden="true" />
-          <p><b>Kirib bo'lmadi</b></p>
+          <p><b>{t("cu.loginFailed")}</b></p>
           <p className="cu-muted">{error}</p>
           <button className="cu-btn" onClick={() => { setPhase("idle"); setError(""); }}>
             Qaytadan urinish

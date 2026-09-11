@@ -119,5 +119,47 @@ if (hits.length === 0) {
   console.log("     nomi bo'lsa — yuqoridagi `EXEMPT` ga SABABI bilan yozing.");
 }
 
+/* ══ 2-BO'LIM: `t()` chaqiriladi, lekin IMPORT QILINMAGAN ══════════════
+   ⚠ BU BUILD DAN O'TADI. Vite `t` ni tashqi nom deb hisoblaydi va jim
+   o'tkazadi; komponent esa faqat CHIZILGANDA `ReferenceError` bilan
+   yiqiladi — ya'ni nosozlik foydalanuvchining ekranida chiqadi,
+   ishlab chiquvchining terminalida emas.
+
+   Bu bir necha soat ichida UCH MARTA sodir bo'ldi (`CodeZoom`,
+   `CustomerLogin`, `CustomerWeb`) — ya'ni tasodif emas, sinf.
+
+   Doira KENGROQ: butun `src/`, chunki tekshiruv aniq va shovqinsiz. */
+const ALL = [];
+(function walkAll(dir) {
+  for (const e of readdirSync(dir)) {
+    const p = join(dir, e);
+    if (statSync(p).isDirectory()) walkAll(p);
+    else if (p.endsWith(".jsx") || p.endsWith(".js")) ALL.push(p.split(sep).join("/"));
+  }
+})("src");
+
+const missingImport = [];
+for (const file of ALL) {
+  const src = readFileSync(file, "utf8");
+  if (!/[^\w.]t\(\s*["'`]/.test(src)) continue;
+  /* Yo'l kengaytma bilan ham bo'lishi mumkin: `./ek-i18n.js`. */
+  if (/from ['"][^'"]*ek-i18n(\.js)?['"]/.test(src)) continue;
+  if (/(const|let|var|function)\s+t\b/.test(src)) continue;
+  if (file.endsWith("lib/ek-i18n.js")) continue;
+  missingImport.push(file);
+}
+
+console.log("\n═══ `t()` chaqirilgan, lekin import qilinmagan ═══\n");
+if (missingImport.length === 0) {
+  pass++;
+  console.log("  ✅ Har bir fayl `t` ni import qilgan");
+} else {
+  fail++;
+  console.log("  ❌ Import yetishmaydi:");
+  for (const m of missingImport) console.log("     " + m);
+  console.log("\n     Build bunday xatoni O'TKAZIB YUBORADI — u faqat");
+  console.log("     komponent chizilganda ko'rinadi.");
+}
+
 console.log(`\n${fail === 0 ? "✅" : "❌"}  ${pass} o'tdi, ${fail} yiqildi\n`);
 process.exit(fail === 0 ? 0 : 1);

@@ -5,6 +5,7 @@ import { isNativeShell } from "../lib/ek-desktop";
 import { nativeTelegramAvailable, loginWithTelegramApp } from "../lib/ek-tglogin";
 import { MaskedField } from "../components/ek/EkFields";
 import { phoneInput } from "../lib/ek-input";
+import { t } from "../lib/ek-i18n";
 
 /* ══════════════════════════════════════════════════════════════════════════
    MIJOZ KIRISHI (V37 · V40)
@@ -160,16 +161,16 @@ export default function CustomerLogin({ onLoggedIn, onStaffLogin }) {
         <img src={LOGO_DARK_URL} alt="" aria-hidden="true" className="cu-logo logo--dark"
              onError={(e) => { e.target.style.display = "none"; }} />
 
-        <h1 className="cu-login__title">Xaridlaringiz — bir joyda</h1>
+        <h1 className="cu-login__title">{t("cu.loginTitle")}</h1>
         <p className="cu-login__lead">
           Do'konlardagi ballaringiz, cheklaringiz va kartangiz shu ilovada.
           Ro'yxatdan o'tish bir daqiqa oladi.
         </p>
 
         <ul className="cu-login__points">
-          <li><i className="fa-solid fa-percent" aria-hidden="true" /> Har xariddan ball</li>
-          <li><i className="fa-solid fa-receipt" aria-hidden="true" /> Barcha cheklar telefoningizda</li>
-          <li><i className="fa-solid fa-store" aria-hidden="true" /> Bir nechta do'kon — bitta karta</li>
+          <li><i className="fa-solid fa-percent" aria-hidden="true" /> {t("cu.benefitPoints")}</li>
+          <li><i className="fa-solid fa-receipt" aria-hidden="true" /> {t("cu.benefitReceipts")}</li>
+          <li><i className="fa-solid fa-store" aria-hidden="true" /> {t("cu.benefitOneCard")}</li>
         </ul>
       </div>
 
@@ -178,7 +179,7 @@ export default function CustomerLogin({ onLoggedIn, onStaffLogin }) {
       {mode === "waiting" && (
         <div className="cu-waiting">
           <i className="fa-brands fa-telegram cu-waiting__icon" aria-hidden="true" />
-          <p><b>Telegram ochildi</b></p>
+          <p><b>{t("cu.tgOpened")}</b></p>
           <p className="cu-muted">
             «📱 Telefon raqamimni yuborish» tugmasini bosing — bu yerga o'zi qaytadi.
           </p>
@@ -199,8 +200,8 @@ export default function CustomerLogin({ onLoggedIn, onStaffLogin }) {
       {mode === "waiting-native" && (
         <div className="cu-waiting">
           <i className="fa-brands fa-telegram cu-waiting__icon" aria-hidden="true" />
-          <p><b>Telegram ochildi</b></p>
-          <p className="cu-muted">Ruxsat bering — ilova o'zi davom ettiradi.</p>
+          <p><b>{t("cu.tgOpened")}</b></p>
+          <p className="cu-muted">{t("cu.tgAllow")}</p>
           <button className="cu-btn cu-btn--ghost" onClick={() => setMode("idle")}>
             Bekor qilish
           </button>
@@ -364,7 +365,7 @@ function OtpForm({ kind, onBack, onDone }) {
 
       {sent && (
         <>
-          <label className="cu-label" htmlFor="cu-otp-code">Kelgan kod</label>
+          <label className="cu-label" htmlFor="cu-otp-code">{t("cu.otpCode")}</label>
           <input id="cu-otp-code" className="cu-input" inputMode="numeric"
                  autoComplete="one-time-code" maxLength={6} placeholder="123456"
                  value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))} />
@@ -382,7 +383,7 @@ function OtpForm({ kind, onBack, onDone }) {
               onClick={sent ? verify : send}>
         {busy ? "Kutilmoqda…" : sent ? "Kirish" : "Kod yuborish"}
       </button>
-      <button className="cu-btn cu-btn--ghost" onClick={onBack}>Orqaga</button>
+      <button className="cu-btn cu-btn--ghost" onClick={onBack}>{t("common.back")}</button>
     </div>
   );
 }
