@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, lazy, Suspense } from "react";
+import { useState, useEffect, useCallback, useMemo, Suspense, lazy } from "react";
 import { t } from "../lib/ek-i18n";
 import { customerApi } from "../api";
 import { BranchSelector } from "../components";
@@ -11,6 +11,9 @@ import { useAuth } from "../hooks/useAuth";
 import { shortDate, dateTime } from "../lib/ek-format";
 import SaleDetailModal from "../components/SaleDetailModal";
 import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
+import { useInfinite } from "../hooks/useInfinite";
+import { useDebounced } from "../hooks/useDebounced";
+import InfiniteList from "../components/ek/InfiniteList";
 import { asArray } from "../lib/ek-array";
 /* ⚠ SEKIN YUKLANADI: to'lov cheki kunda bir necha marta ochiladi,
    mijozlar sahifasi esa doim. Chekni asosiy bo'lakka qo'shish uni
@@ -26,7 +29,6 @@ import { saleApi } from "../api";
 import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
 import { PhoneField } from "../components/ek/EkFields";
-import { rankItems } from "../lib/ek-search";
 
 /* Yangi mijozda telefon BO'SH boshlanadi. Ilgari bu yerda `"998"` turardi
    va maydon «(99) 8» bilan to'ldirilgan holda ochilardi: odam uni
@@ -56,11 +58,13 @@ export default function CustomersPage({ toast }) {
   const confirm = useConfirm();
   /* Chegarani egasi yoki do'kon administratori qo'yadi (2026-08-10, 5-qaror).
      Kassir uni ko'ra oladi, lekin o'zgartira olmaydi — backend ham shunday. */
-  const [customers, setCustomers] = useState([]);
-  const [loading, setLoading]     = useState(true);
+  /* ⚠ RO'YXAT HOLATI `useInfinite` DA (pastda). Ilgari butun
+     ro'yxat bitta `useState` da turardi. */
+  /* Saqlash/qarz to'lashdan keyin ro'yxatni qaytadan so'rash. */
+  const [version, setVersion]     = useState(0);
   // Ekranda ko'rsatiladigan holat: tez javobda skeleton UMUMAN chizilmaydi
   // (180ms kechikish), chizilgan bo'lsa esa kamida 400ms turadi — miltillamaydi.
-  const busy = useLoading(loading);
+
   const [search, setSearch]       = useState("");
   const [modal, setModal]         = useState(null); // null | "add" | { type:"edit", customer }
   const [form, setForm]           = useState(EMPTY_FORM);
@@ -120,35 +124,23 @@ export default function CustomersPage({ toast }) {
      kelardi va u qarz kabi hech qayerda yig'ilmasdi. */
   const [view, setView]           = useState("all");
 
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      // Qarzdorlar ro'yxati SERVERDA saralanadi va "necha kundan beri"
-      // ma'lumotini ham olib keladi — uni mijozlar ro'yxatidan hisoblab
-      // bo'lmaydi.
-      /* ⚠ JAMG'ARMA UCHUN YANGI YO'L KERAK EMAS: `savingsBalance`
-         mijozlar ro'yxatida allaqachon bor. Alohida endpoint qo'shish
-         serverga ikkinchi so'rov va ikkinchi saralash mantig'ini
-         qo'shar, foydasi esa nol bo'lardi. Qarzdorlar ALOHIDA, chunki
-         u yerda qarz YOSHI kerak va uni ro'yxatdan hisoblab bo'lmaydi. */
-      const res = view === "debtors"
-        ? await customerApi.debtors()
-        : await customerApi.getAll(branchId);
-      const list = asArray(res.data);
-      setCustomers(view === "savings"
-        /* Eng kattasi tepada: do'kon egasi avval eng katta majburiyatni
-           ko'rishi kerak. */
-        ? list.filter((c) => Number(c.savingsBalance) > 0)
-              .sort((a, b) => Number(b.savingsBalance) - Number(a.savingsBalance))
-        : list);
-    } catch (err) {
-      toast.error(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+  /**
+   * ⚠ RO'YXAT ENDI BU YERDA YUKLANMAYDI — `useInfinite` sahifa-sahifa
+   * so'raydi (pastda). `loadData` esa faqat «qaytadan so'ra» degan
+   * ishorani beradi: `version` oshadi, `fetcher` o'zgaradi, hook
+   * o'zi boshidan boshlaydi.
+   *
+   * ⚠ FUNKSIYA NOMI SAQLANDI: uni oltita joy chaqiradi (saqlash,
+   * o'chirish, qarz to'lash, eslatma). Nomini o'zgartirish bu
+   * commit'ning vazifasidan tashqarida va bittasi unutilsa,
+   * ro'yxat amaldan keyin yangilanmay qolardi.
+   */
+  const loadData = useCallback(async () => { setVersion((v) => v + 1); }, []);
 
-  useEffect(() => { loadData(); }, [branchId, view]);
+  /* ⚠ TERISH KECHIKTIRILADI: har harfda so'rov ketsa, ism yozayotgan
+     odam o'n so'rov yuborardi. Bo'sh qiymat DARHOL o'tadi. */
+  const slowSearch = useDebounced(search, 300);
+
 
   const openAdd = () => {
     setForm(EMPTY_FORM);
@@ -394,7 +386,23 @@ export default function CustomersPage({ toast }) {
   /* Muddat qo'yilgan do'konda kamida bitta qarz kechikkanmi (V43).
      Ustun shu holatda chiziladi: muddatsiz do'konda u har qatorda
      chiziqcha ko'rsatib, jadvalni bekorga kengaytirardi. */
-  const hasOverdue = view === "debtors" && customers.some((c) => Number(c.overdue) > 0);
+  /* ══ ⚠ NEGA HOLAT, HISOBLANGAN QIYMAT EMAS ════════════════════════
+
+     Bu qiymat `COLS` ga kiradi, `COLS` — `colFlt` ga, `colFlt` esa
+     serverga yuboriladigan filtrga (`fetchPage`). Ya'ni agar u
+     ro'yxatdan TO'G'RIDAN-TO'G'RI hisoblansa, aylana chiqadi:
+
+         colFlt ← COLS ← hasOverdue ← rows ← fetchPage ← colFlt
+
+     JavaScript'da bu `ReferenceError` bilan tugaydi (`const` —
+     temporal dead zone) va React sahifani UMUMAN chizmaydi: ekran
+     bo'sh qoladi, sababi faqat konsolda. Aynan shu
+     `scripts/check-tdz.mjs` tomonidan tutildi.
+
+     Holat esa aylanani uzadi: ro'yxat kelgach effekt uni yangilaydi.
+     Narxi — bitta qo'shimcha render, va u faqat filtr oynasidagi
+     ustun ro'yxatiga tegadi. */
+  const [hasOverdue, setHasOverdue] = useState(false);
 
   /* ══ USTUNLAR BO'YICHA FILTR (V68) ═══════════════════════════════════
      ⚠ RO'YXAT KO'RINISHGA QARAB O'ZGARADI. Jadvalning o'rta ustunlari
@@ -430,10 +438,84 @@ export default function CustomersPage({ toast }) {
   const colFlt = useDataFilter(COLS,
     view === "debtors" ? "cust-debt" : view === "savings" ? "cust-sav" : "cust");
 
-  const filtered = rankItems(colFlt.apply(customers), search, {
-    texts:  (c) => [c.fullName],
-    digits: (c) => [c.phone],
-  });
+  /**
+   * ⚠ JAMG'ARMA RO'YXATI TARTIBI SERVERGA YUBORILADI.
+   *
+   * Bu ro'yxatga aynan bitta savol uchun kiriladi: «kimda mening
+   * pulim turibdi?» — ya'ni eng kattasi TEPADA bo'lishi kerak.
+   *
+   * Ilgari bu tartib brauzerda qo'yilardi (`list.sort(...)`).
+   * Sahifalashda u faqat YUKLANGAN 50 qatorni saralardi: eng katta
+   * jamg'arma ikkinchi sahifada qolib ketsa, do'kon egasi uni
+   * umuman ko'rmasdi va «eng kattasi 40 ming» degan XATO xulosaga
+   * kelardi.
+   *
+   * ⚠ FOYDALANUVCHI TANLOVI USTUN: ustun sarlavhasiga bosib boshqa
+   * tartib qo'ygan odam aynan shuni kutadi.
+   */
+  const fltJson = useMemo(() => {
+    const own = colFlt.serialize();
+    if (view !== "savings") return own;
+    const parsed = own ? JSON.parse(own) : {};
+    if (!parsed.sort) parsed.sort = { key: "savings", dir: "desc" };
+    return JSON.stringify(parsed);
+  }, [colFlt, view]);
+
+  /**
+   * ⚠ QARZDORLAR RO'YXATI SAHIFALANMAYDI VA BU O'LCHANGAN QAROR.
+   *
+   * U boshqa yo'ldan keladi (`/customers/debtors`), chunki u yerda
+   * qarz YOSHI kerak va uni mijozlar jadvalidan hisoblab bo'lmaydi.
+   * Qarzdorlar soni esa tabiiy ravishda kichik — do'konda yuzlab
+   * mijoz bo'lsa ham qarzdori o'nlab.
+   *
+   * `readPage` javobni massiv deb o'qiydi va «yana bor» bo'lmaydi,
+   * ya'ni bu ko'rinishda ustun filtrini BRAUZERDA qo'llash ham
+   * to'g'ri qoladi: kesiladigan ro'yxat TO'LIQ.
+   */
+  const fetchPage = useCallback((page, size) => {
+    if (view === "debtors") return customerApi.debtors();
+    return customerApi.getPage(page, size, {
+      shopId: branchId, flt: fltJson, q: slowSearch,
+      savings: view === "savings",
+    });
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [view, branchId, fltJson, slowSearch, version]);
+
+  const { rows, loading, error, hasNext, total, loadMore, retry } =
+    useInfinite(fetchPage, { size: 50 });
+
+  /* ⚠ BU QATOR `useInfinite` DAN KEYIN: `loading` va `rows` — shu
+     chaqiruvning natijasi; oldin o'qilsa `ReferenceError` va React
+     sahifani UMUMAN chizmaydi (`scripts/check-tdz.mjs`). */
+  const busy = useLoading(loading && !rows.length);
+
+  useEffect(() => { if (error) toast.error(error); }, [error]);
+
+  /* Muddat qo'yilgan do'konda kamida bitta qarz kechikkanmi (V43) —
+     ustun shu holatda chiziladi (yuqoridagi izohga qarang). */
+  useEffect(() => {
+    setHasOverdue(view === "debtors" && rows.some((c) => Number(c.overdue) > 0));
+  }, [view, rows]);
+
+  /**
+   * ⚠ JAMG'ARMA RO'YXATI TARTIBI SERVERDA EMAS, SHU YERDA QOLDI —
+   * chunki u faqat mijozlar tanlaganda ma'noga ega va serverda
+   * tartib ustun bo'yicha beriladi (`sort`). Front esa eng kattasini
+   * tepaga qo'yadi: do'kon egasi avval eng katta majburiyatni
+   * ko'rishi kerak.
+   *
+   * ⚠ SAHIFALANGAN RO'YXATDA BU FAQAT YUKLANGAN QATORLARNI
+   * SARALAYDI va bu YETARLI EMAS — shuning uchun tartib serverga
+   * `sort` bilan uzatiladi (pastdagi `savingsSort`), bu yerdagi
+   * saralash esa faqat bir sahifa ichidagi barqarorlik uchun.
+   */
+  const customers = rows;
+
+  /* ⚠ QARZDORLAR — BRAUZERDA (ro'yxat to'liq, yuqoridagi izoh);
+     qolgan hamma holatda server allaqachon filtrlab, saralab va
+     reyting qo'yib bergan. */
+  const filtered = view === "debtors" ? colFlt.apply(customers) : customers;
 
   const [reminding, setReminding] = useState(false);
   /* QO'LDA QARZDOR (V48) — daftardan ko'chirish. Serverda ham FAQAT
@@ -810,6 +892,17 @@ export default function CustomersPage({ toast }) {
             </table>
           )}
         </div>
+
+        {/* ⚠ SCROLLDA YUKLASH. Qarzdorlar ko'rinishida chizilmaydi:
+            u boshqa yo'ldan keladi va javob TO'LIQ (qarzdorlar soni
+            tabiiy ravishda kichik), ya'ni «yana yukla» tugmasi
+            yolg'on bo'lardi. */}
+        {view !== "debtors" && (
+          <InfiniteList
+            loading={loading} error={error} hasNext={hasNext}
+            total={total} count={filtered.length}
+            onMore={loadMore} onRetry={retry} />
+        )}
       </div>
 
       {/* ── Modal ── */}

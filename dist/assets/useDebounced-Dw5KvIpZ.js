@@ -1,0 +1,1 @@
+import{r as o}from"./index-EzkJEjEp.js";function u(t,r=300){const[s,e]=o.useState(t);return o.useEffect(()=>{if(t===""||t==null){e(t);return}const n=setTimeout(()=>e(t),r);return()=>clearTimeout(n)},[t,r]),s}export{u};

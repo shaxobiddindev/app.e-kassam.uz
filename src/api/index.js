@@ -995,6 +995,25 @@ export const customerApi = {
   remindDebtors: () => request(`/customers/debt-remind`, { method: "POST" }),
 
   getAll:  (shopId)    => request(`/customers${shopId ? `?shopId=${shopId}` : ""}`),
+  /**
+   * ⚠ SAHIFALANGAN VARIANT — ALOHIDA METOD, `getAll` TEGILMAYDI.
+   *
+   * Server sahifalashni IXTIYORIY qildi: `page` bo'lmasa javob
+   * avvalgidek to'liq massiv. `getAll` ni kassa mijoz tanlashda
+   * chaqiradi va u yerda ROSTDAN HAM butun ro'yxat kerak.
+   */
+  getPage: (page = 0, size = 50, opts = {}) => {
+             const p = new URLSearchParams({ page, size });
+             if (opts.shopId) p.set("shopId", opts.shopId);
+             /* ⚠ USTUN FILTRI VA QIDIRUV SERVERGA — aks holda ular
+                faqat yuklangan 50 qatorga tegardi va do'konchi
+                «mijoz yo'q» deb mijozni QAYTA yaratardi (qarz
+                tarixi ikkiga bo'linadi). */
+             if (opts.flt) p.set("flt", opts.flt);
+             if (opts.q) p.set("q", opts.q);
+             if (opts.savings) p.set("savings", "true");
+             return request(`/customers?${p}`);
+           },
   getById: (id)        => request(`/customers/${id}`),
   create:  (data)      => request("/customers",      { method: "POST", body: JSON.stringify(data) }),
   update:  (id, data)  => request(`/customers/${id}`, { method: "PUT",  body: JSON.stringify(data) }),
