@@ -6520,3 +6520,16 @@ button.stk__c:hover { background: var(--bg-hover); }
 
 .ek-check           { display: flex; align-items: center; gap: 8px; min-height: 44px; }
 .ek-check input     { width: 18px; height: 18px; }
+
+/* ══ CHEKSIZ RO'YXAT OXIRI ══════════════════════════════════════════
+   ⚠ BALANDLIK DOIM BIR XIL (min-height): holat almashganda
+   («yuklanmoqda» → tugma → «hammasi») ro'yxat sakrab ketmasligi
+   kerak — foydalanuvchi o'qiyotgan qator ko'z oldidan siljib
+   ketardi. */
+.inf            { display: flex; align-items: center; justify-content: center;
+                  gap: 10px; min-height: 56px; padding: 12px;
+                  font-size: 13px; color: var(--fg-secondary); }
+.inf--done      { color: var(--fg-muted, var(--fg-secondary)); font-size: 12px; }
+.inf--error     { color: var(--fg-danger); flex-wrap: wrap; }
+/* Sezgir chiziq ko'rinmaydi, lekin joy egallashi kerak emas. */
+.inf__sentinel  { width: 1px; height: 1px; }

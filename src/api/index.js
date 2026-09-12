@@ -441,6 +441,23 @@ export const labelApi = {
 // ─── Mahsulotlar ──────────────────────────────────────────────
 export const productApi = {
   getAll:       (shopId)   => request(`/products${shopId ? `?shopId=${shopId}` : ""}`),
+  /**
+   * ⚠ SAHIFALANGAN VARIANT — ALOHIDA METOD, `getAll` TEGILMAYDI.
+   *
+   * Server sahifalashni IXTIYORIY qildi: `page` bo'lmasa javob
+   * avvalgidek to'liq massiv. Shu sababli `getAll` ni o'zgartirish
+   * ham shart emas edi — uni 4 joyda chaqiruvchilar bor va
+   * ularning ba'zisi (yorliq chop etish, boshlang'ich sozlash)
+   * ROSTDAN HAM butun ro'yxatni talab qiladi.
+   *
+   * Ya'ni tanlov chaqiruvchida qoladi: kimga sahifa kerak — shuni
+   * chaqiradi, kimga hammasi kerak — `getAll`.
+   */
+  getPage:      (page = 0, size = 50, shopId) => {
+                  const p = new URLSearchParams({ page, size });
+                  if (shopId) p.set("shopId", shopId);
+                  return request(`/products?${p}`);
+                },
   /** Kassa ro'yxati — kategoriya va «tez tovarlar» filtri bilan. */
   search:       (q = "", page = 0, size = 30, shopId, opts = {}) => {
                   const p = new URLSearchParams({ q, page, size });

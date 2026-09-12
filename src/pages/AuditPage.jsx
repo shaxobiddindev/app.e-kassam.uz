@@ -21,7 +21,8 @@ import { useLoading } from "../lib/use-loading";
 import { dateTime } from "../lib/ek-format";
 import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
 import { AUDIT_ACTIONS as ACTIONS, AUDIT_MONEY as MONEY } from "../lib/ek-audit";
-import { asArray } from "../lib/ek-array";
+import { useInfinite } from "../hooks/useInfinite";
+import InfiniteList from "../components/ek/InfiniteList";
 
 /* ⚠ RO'YXAT ENDI `lib/ek-audit.js` DA (V81).
 
@@ -48,36 +49,44 @@ export default function AuditPage({ toast }) {
      egasini filtrsiz jurnalga tashlab ketardi va u kerakli qatorni
      yuzta boshqasi orasidan qidirishga majbur bo'lardi. */
   const [params, setParams] = useSearchParams();
-  const [rows, setRows] = useState([]);
-  const [total, setTotal] = useState(0);
-  const [pages, setPages] = useState(0);
-  const [page, setPage] = useState(0);
+  /* ⚠ RO'YXAT HOLATI `useInfinite` DA: `rows`, `page`, `total` va
+     «yana bormi» — hammasi u yerda. Ilgari bu yerda to'rtta alohida
+     `useState` turardi va ular orasidagi muvofiqlikni har o'zgarishda
+     qo'lda saqlash kerak edi. */
   const [action, setAction] = useState(() => {
     const a = params.get("action");
     return ACTIONS.includes(a) ? a : "";
   });
   const [actor, setActor] = useState("");
-  const [loading, setLoading] = useState(true);
-  const busy = useLoading(loading);
+  /* ⚠ `fetcher` `useCallback` BILAN O'RALGAN VA BU SHART: u har
+     renderda yangi bo'lsa `useInfinite` cheksiz so'rov yuborardi.
+     Filtr o'zgarsa `fetcher` ham o'zgaradi — va hook buni
+     «boshqa ro'yxat» deb tushunib, o'zi boshidan boshlaydi. Ya'ni
+     ilgari qo'lda yozilgan `setPage(0)` endi kerak emas. */
+  const fetchPage = useCallback(
+    (page, size) => shopApi.audit({
+      action: action || null, actor: actor || null, page, size,
+    }),
+    [action, actor]);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const r = await shopApi.audit({ action: action || null, actor: actor || null, page, size: 50 });
-      setRows(asArray(r.data?.items));
-      setTotal(r.data?.totalItems || 0);
-      setPages(r.data?.totalPages || 0);
-    } catch (err) {
-      toast?.error(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }, [action, actor, page, toast]);
+  const { rows, loading, error, hasNext, total, loadMore, retry } =
+    useInfinite(fetchPage, { size: 50 });
 
-  useEffect(() => { load(); }, [load]);
-  // Filtr o'zgarsa birinchi sahifaga qaytamiz — aks holda bo'sh sahifada
-  // "jurnal bo'sh" ko'rinib, sabab tushunarsiz bo'lardi.
-  useEffect(() => { setPage(0); }, [action, actor]);
+  /* ⚠ BU QATOR `useInfinite` DAN KEYIN TURISHI SHART: `loading` va
+     `rows` — shu chaqiruvning `const` natijalari, ya'ni undan oldin
+     o'qilsa `ReferenceError` bo'ladi va React butun sahifani
+     chizmaydi — bo'sh ekran, sababi esa faqat konsolda. Aynan shu
+     xato birinchi urinishda bor edi va uni `scripts/check-audit.mjs`
+     tutdi (`tbody tr` umuman chizilmadi).
+
+     ⚠ Birinchi yuklash SKELET bilan, keyingilari ro'yxat oxirida:
+     butun jadvalni har sahifada skeletga almashtirish o'qilayotgan
+     qatorni ko'z oldidan olib tashlardi. */
+  const busy = useLoading(loading && !rows.length);
+
+  /* ⚠ XATO TOASTDA HAM CHIQADI: `InfiniteList` ro'yxat OXIRIDA
+     ko'rinadi, foydalanuvchi esa tepada turgan bo'lishi mumkin. */
+  useEffect(() => { if (error) toast?.error(error); }, [error, toast]);
 
   /* Tanlangan amal manzilga yoziladi — havola ulashiladi va F5 filtrni
      saqlaydi. `replace` bilan: har bir tanlov tarixga yozilsa, "orqaga"
@@ -232,17 +241,16 @@ export default function AuditPage({ toast }) {
           )}
         </div>
 
-        {pages > 1 && (
-          <div className="card-body" style={{ display: "flex", justifyContent: "center", gap: 8 }}>
-            <button className="btn btn-outline btn-sm" disabled={page === 0} onClick={() => setPage(page - 1)}>
-              <i className="fa-solid fa-chevron-left" />
-            </button>
-            <span className="mono" style={{ alignSelf: "center", fontSize: 13 }}>{page + 1} / {pages}</span>
-            <button className="btn btn-outline btn-sm" disabled={page + 1 >= pages} onClick={() => setPage(page + 1)}>
-              <i className="fa-solid fa-chevron-right" />
-            </button>
-          </div>
-        )}
+        {/* ⚠ RAQAMLI SAHIFALAR O'RNIGA SCROLL. Eski «‹ 3 / 12 ›»
+            tugmalari har bosishda ro'yxatni BUTUNLAY almashtirardi:
+            do'konchi 4-sahifadagi qatorni ko'rib, 5-ga o'tib, keyin
+            qaytib kelsa — o'sha qatorni yana qidirishi kerak edi.
+            Endi qatorlar ustiga qo'shiladi va ko'rilgani joyida
+            qoladi. */}
+        <InfiniteList
+          loading={loading} error={error} hasNext={hasNext}
+          total={total} count={rows.length}
+          onMore={loadMore} onRetry={retry} />
       </div>
     </div>
   );

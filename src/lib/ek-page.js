@@ -56,6 +56,28 @@ export function readPage(data) {
       paged: true,
     };
   }
+  /* ⚠ AUDIT JURNALINING O'Z SHAKLI: `{items, totalItems, totalPages}`.
+     U `PageResponse` dan OLDIN yozilgan va serverda bitta joyda
+     ishlatiladi (o'lchandi: 1 DTO, frontda 2 fayl).
+
+     Shakllarni birlashtirish vasvasasi bor edi, lekin server javobini
+     o'zgartirish eski mijozni buzardi — aynan shu sababdan sahifalash
+     ixtiyoriy qilingan. Shuning uchun tushunish FRONTDA qo'shildi:
+     bitta joyda olti qator, serverda esa hech narsa o'zgarmaydi.
+
+     `hasNext` bu shaklda YO'Q, shuning uchun sahifa raqamidan
+     hisoblanadi — va aynan shu yerda `page` kerak bo'ladi. */
+  if (data && Array.isArray(data.items)) {
+    const page = Number(data.page ?? data.currentPage ?? 0);
+    const pages = Number(data.totalPages ?? 0);
+    return {
+      rows: data.items,
+      hasNext: Number.isFinite(pages) && page + 1 < pages,
+      total: Number.isFinite(Number(data.totalItems)) ? Number(data.totalItems) : null,
+      paged: true,
+    };
+  }
+
   return { rows: [], hasNext: false, total: 0, paged: false };
 }
 

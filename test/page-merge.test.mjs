@@ -44,6 +44,18 @@ head("Server javobi");
   ok("sanalmagan umumiy son `null` bo'ladi", unknown.total === null,
      "nol bo'lsa ekranda «0 ta topildi» chiqardi");
 
+  /* ⚠ AUDIT JURNALINING O'Z SHAKLI — u `PageResponse` dan oldin
+     yozilgan va serverda hamon shunday. */
+  const audit = readPage({ items: rows(0, 50), page: 0, totalItems: 137, totalPages: 3 });
+  ok("audit shakli (`items`) o'qildi", audit.rows.length === 50);
+  ok("audit da `hasNext` sahifa raqamidan hisoblandi", audit.hasNext === true,
+     "bu shaklda `hasNext` maydoni yo'q");
+  ok("audit da umumiy son olindi", audit.total === 137);
+
+  const auditLast = readPage({ items: rows(100, 37), page: 2, totalItems: 137, totalPages: 3 });
+  ok("audit oxirgi sahifasida «yana bor» YO'Q", auditLast.hasNext === false,
+     "3 sahifadan 3-si — tugadi");
+
   ok("buzuq javob yiqitmaydi", readPage(null).rows.length === 0
      && readPage(undefined).rows.length === 0
      && readPage({}).rows.length === 0
