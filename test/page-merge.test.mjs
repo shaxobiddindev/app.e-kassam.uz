@@ -1,0 +1,134 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   CHEKSIZ RO'YXAT MANTIQI
+
+   ⚠ ENG MUHIM SINOV — ESKI JAVOB SHAKLI. Server sahifalashni
+   IXTIYORIY qildi (`Paging.maybe`), ya'ni ko'p endpoint hali
+   to'liq massiv qaytaradi. Front ikkalasi bilan ham ishlashi shart;
+   aks holda sahifalanmagan bo'lim bo'sh ko'rinardi.
+
+   Ishga tushirish:  node test/page-merge.test.mjs
+   ══════════════════════════════════════════════════════════════════════════ */
+import fs from "node:fs";
+import path from "node:path";
+import {
+  PAGE_SIZE, emptyState, mergePage, readPage, shouldLoadMore,
+} from "../src/lib/ek-page.js";
+
+let pass = 0, fail = 0;
+const ok = (name, cond, extra = "") => {
+  if (cond) { pass++; console.log(`  ✅ ${name}`); }
+  else { fail++; console.log(`  ❌ ${name}${extra ? " — " + extra : ""}`); }
+};
+const head = (s) => console.log(`\n── ${s} ──`);
+
+const rows = (from, n) =>
+  Array.from({ length: n }, (_, i) => ({ id: from + i, name: "q" + (from + i) }));
+
+/* ══ 1. JAVOB SHAKLI ══ */
+head("Server javobi");
+{
+  const paged = readPage({ content: rows(0, 50), page: 0, size: 50, total: 120, hasNext: true });
+  ok("sahifalangan javob o'qildi", paged.rows.length === 50 && paged.hasNext === true);
+  ok("umumiy son olindi", paged.total === 120);
+  ok("`paged` belgilandi", paged.paged === true);
+
+  /* ⚠ ESKI SHAKL — sahifalanmagan endpoint. */
+  const plain = readPage(rows(0, 7));
+  ok("to'liq massiv ham o'qildi", plain.rows.length === 7);
+  ok("to'liq massivda «yana bor» YO'Q", plain.hasNext === false,
+     "aks holda cheksiz scroll bir xil ro'yxatni qayta so'rardi");
+  ok("`paged` false", plain.paged === false);
+
+  /* ⚠ `total: -1` — «sanalmadi», nol emas. */
+  const unknown = readPage({ content: rows(0, 5), hasNext: true, total: -1 });
+  ok("sanalmagan umumiy son `null` bo'ladi", unknown.total === null,
+     "nol bo'lsa ekranda «0 ta topildi» chiqardi");
+
+  ok("buzuq javob yiqitmaydi", readPage(null).rows.length === 0
+     && readPage(undefined).rows.length === 0
+     && readPage({}).rows.length === 0
+     && readPage("matn").rows.length === 0);
+}
+
+/* ══ 2. QO'SHISH ══ */
+head("Sahifalarni qo'shish");
+{
+  ok("bo'shdan boshlanadi", mergePage([], rows(0, 3)).length === 3);
+  ok("ketma-ket qo'shiladi", mergePage(rows(0, 50), rows(50, 50)).length === 100);
+
+  /* ⚠ ASOSIY HOLAT: ro'yxat ko'rilayotganda yangi qator qo'shilsa,
+     chegara suriladi va bitta yozuv IKKI MARTA keladi. */
+  const overlap = mergePage(rows(0, 50), rows(45, 50));
+  ok("takrorlangan qator BIR MARTA qoladi", overlap.length === 95,
+     `olindi: ${overlap.length}`);
+  const ids = overlap.map((r) => r.id);
+  ok("takror `id` yo'q", new Set(ids).size === ids.length);
+  ok("tartib saqlandi", ids.every((v, i) => i === 0 || v > ids[i - 1]));
+
+  /* ⚠ BUTUNLAY BIR XIL SAHIFA (tarmoq takrorlagan so'rov). */
+  ok("bir xil sahifa ikki marta — o'zgarmaydi",
+     mergePage(rows(0, 50), rows(0, 50)).length === 50);
+
+  /* ⚠ KALITI YO'Q QATOR — hisobot qatorlari. */
+  const noKey = mergePage([{ a: 1 }], [{ a: 2 }, { a: 3 }]);
+  ok("kaliti yo'q qatorlar yo'qolmaydi", noKey.length === 3);
+
+  ok("boshqa kalit bo'yicha ham ishlaydi",
+     mergePage([{ code: "x" }], [{ code: "x" }, { code: "y" }], "code").length === 2);
+
+  /* ⚠ ASL RO'YXAT O'ZGARMASLIGI kerak — React holati. */
+  const before = rows(0, 3);
+  const snapshot = JSON.stringify(before);
+  mergePage(before, rows(3, 3));
+  ok("kirish ro'yxati o'zgartirilmadi", JSON.stringify(before) === snapshot);
+
+  ok("bo'sh sahifa qo'shilsa shu ro'yxat qaytadi",
+     mergePage(rows(0, 5), []).length === 5);
+  ok("buzuq kirish yiqitmaydi",
+     mergePage(null, null).length === 0 && mergePage(undefined, rows(0, 2)).length === 2);
+}
+
+/* ══ 3. QACHON SO'RALADI ══ */
+head("Keyingi sahifani so'rash sharti");
+{
+  ok("yana bor va bo'sh — so'raladi",
+     shouldLoadMore({ hasNext: true, loading: false, error: null }) === true);
+  ok("yana yo'q — so'ralmaydi",
+     shouldLoadMore({ hasNext: false, loading: false, error: null }) === false);
+
+  /* ⚠ YUKLANAYOTGANDA SO'RALMAYDI: scroll chegarasida kuzatuvchi
+     bir necha marta ishga tushadi va bu o'nlab bir xil so'rov
+     yuborardi. */
+  ok("yuklanayotganda so'ralmaydi",
+     shouldLoadMore({ hasNext: true, loading: true, error: null }) === false);
+
+  /* ⚠ XATODAN KEYIN AVTOMATIK TAKRORLANMAYDI: aks holda tarmoq
+     uzilganda cheksiz aylanish boshlanardi. */
+  ok("xatodan keyin avtomatik takrorlanmaydi",
+     shouldLoadMore({ hasNext: true, loading: false, error: "tarmoq" }) === false);
+}
+
+/* ══ 4. BOSHLANG'ICH HOLAT ══ */
+head("Boshlang'ich holat");
+{
+  const s = emptyState();
+  ok("bo'sh ro'yxatdan boshlanadi", s.rows.length === 0 && s.page === 0);
+  /* ⚠ `hasNext` BOSHIDA `true`: aks holda birinchi sahifa ham
+     so'ralmasdi va ro'yxat bo'sh qolardi. */
+  ok("boshida «yana bor» true", s.hasNext === true,
+     "false bo'lsa birinchi sahifa ham yuklanmasdi");
+  ok("har chaqiruvda YANGI obyekt", emptyState() !== emptyState());
+  ok("sahifa hajmi serverdagi bilan bir xil", PAGE_SIZE === 50);
+}
+
+/* ══ 5. KUTUBXONA TOZA ══ */
+head("Kutubxona");
+{
+  const src = fs.readFileSync(
+    path.resolve(import.meta.dirname, "..", "src", "lib", "ek-page.js"), "utf8");
+  ok("i18n import qilinmagan", !/from\s+["'][^"']*ek-i18n/.test(src));
+  ok("React import qilinmagan — sof mantiq", !/from\s+["']react["']/.test(src));
+}
+
+console.log(`\n  ${pass} o'tdi, ${fail} yiqildi\n`);
+process.exit(fail ? 1 : 0);
