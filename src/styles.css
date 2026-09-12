@@ -1210,6 +1210,11 @@ select.form-input { cursor: pointer; }
    saqlash to'silmaydi: bu «tekshirib ko'ring» degani, «noto'g'ri»
    degani emas. Xato uchun alohida uslub bor (`.form-input.is-bad`). */
 .form-hint--warn { color: var(--fg-warning); font-weight: 600; }
+/* Kategoriya jadvalidagi arxiv soni. Rang emas, MATN ajratadi
+   (qoida 6): son yonida «arxivda» yozuvi turadi. Rangi
+   `--fg-secondary` — `--fg-tertiary` oq fonda 2.65:1 va o`qish
+   uchun yaramaydi (qoida 6b). */
+.cat-archived-n { color: var(--fg-secondary); font-weight: 600; font-size: 11.5px; }
 .ek-note         { display: flex; gap: 9px; align-items: flex-start; padding: 10px 12px; border-radius: 9px;
                    background: var(--bg-brand-subtle); border: 1px solid var(--border-brand);
                    color: var(--fg-brand); font-size: 12px; font-weight: 600; line-height: 1.45; }
@@ -1676,7 +1681,13 @@ select.form-input { cursor: pointer; }
   font-weight: 900;
   color: var(--fg-on-brand);
   font-family: var(--mono);
-  line-height: 1.2;
+  /* 1.2 EMAS. JetBrains Mono ning harf qutisi 1.2 qatoridan baland va
+     matn o'z qutisidan 2px toshib chiqadi — brauzer buni
+     scrol deb hisoblaydi. Ikki piksel ko'zga ko'rinmaydi, lekin
+     BUTUN to'lov oynasida scrol paydo bo'ladi va do'kon egasining
+     talabi aniq edi: bu oynada scrol bo'lmaydi.
+     Qorovul: scripts/check-pay.mjs, 9-bo'lim. */
+  line-height: 1.3;
 }
 
 .pay-modal-total-qty {
@@ -2360,6 +2371,26 @@ img.logo--dark { display: none; }
   border-radius: var(--r-md);
 }
 .auth__eye:hover { color: var(--fg-primary); }
+
+/* Eslab qolingan do'kon va «boshqa do'kon» havolasi (V98 — brauzer
+   versiyasidagi bilan bir xil xatti-harakat). Ranglar tokenlardan;
+   `--fg-tertiary` ISHLATILMAYDI (qoida 6b — u bezak rangi). */
+.auth__remembered {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 12px; margin-bottom: 12px;
+  border-radius: var(--r-md);
+  background: var(--bg-sunken); color: var(--fg-secondary);
+  font-size: 13px; font-weight: 600;
+}
+.auth__alt {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%; min-height: var(--hit-min);
+  margin-bottom: 12px; padding: 0 12px;
+  border: 1px dashed var(--border-default); border-radius: var(--r-md);
+  background: none; color: var(--fg-secondary);
+  font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.auth__alt:hover { color: var(--fg-brand); border-color: var(--border-brand); }
 
 /* Xato: aniq matn, uzr so'ramaydi, noaniq emas. 6px silkinish — BIR MARTA. */
 .auth__error {

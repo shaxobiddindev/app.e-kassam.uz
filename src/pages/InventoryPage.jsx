@@ -933,7 +933,7 @@ export default function InventoryPage({ toast }) {
                           {t(`mov.${m.type}`)}
                         </span>
                       </td>
-                      <td className="mono fw-700" style={{ color: m.delta < 0 ? "var(--red, #dc2626)" : "var(--green, #16a34a)" }}>
+                      <td className="mono fw-700" style={{ color: m.delta < 0 ? "var(--red)" : "var(--green)" }}>
                         {m.delta > 0 ? `+${m.delta}` : m.delta}
                       </td>
                       <td>{m.expiryDate ? shortDate(m.expiryDate) : "-"}</td>
@@ -1254,20 +1254,20 @@ export default function InventoryPage({ toast }) {
           }
         >
           {/* Muddati o'tgan ogohlantirish */}
+          {/* ⚠ UMUMIY A'ZO, o'z uslubi EMAS. Ilgari bu yerda uchta
+              qattiq amber rang turardi (fon, ramka, matn) va ular
+              temaga MOSLASHMASDI: qorong'i rejimda butun panel qora
+              bo'lib, shu blok yorqin sariq bo'lib yonardi — panelning
+              yagona moslashmagan elementi. `ek-note--warn` esa
+              tokenlardan quriladi va ikkala temada ham to'g'ri chiqadi.
+
+              ⚠ Ikonka ham qoladi: rang yolg'iz signal bo'lmaydi
+              (CLAUDE.md №6) — rangni ajratmaydigan odam uchun matn va
+              belgi qoladi. */}
           {modal.expiredAll && (
-            <div
-              style={{
-                background: "#fef3c7",
-                border: "1px solid #f59e0b",
-                borderRadius: 10,
-                padding: "10px 14px",
-                marginBottom: 14,
-                fontSize: 13,
-                color: "#92400e",
-                lineHeight: 1.5,
-              }}
-            >
-              ⚠️ {t("inv.expiredWarn")}
+            <div className="ek-note ek-note--warn" style={{ marginBottom: 14 }}>
+              <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />
+              <div>{t("inv.expiredWarn")}</div>
             </div>
           )}
 

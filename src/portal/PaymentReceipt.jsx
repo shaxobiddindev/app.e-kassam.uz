@@ -5,6 +5,7 @@ import { saveReceiptPdf } from "../lib/ek-receipt-pdf";
 import { groupDigits } from "../lib/ek-format";
 import { useRef } from "react";
 import Overlay from "../components/ek/Overlay";
+import { t } from "../lib/ek-i18n";
 
 /* ══════════════════════════════════════════════════════════════════════════
    QARZ JURNALINING CHEKI (V61) — «QARZ OLINDI» va «QARZ TO'LANDI»
@@ -155,7 +156,7 @@ export default function PaymentReceipt({
         </button>
 
         {error && <div className="pt-tape pt-center">{error}</div>}
-        {!data && !error && <div className="pt-tape pt-center">Yuklanmoqda…</div>}
+        {!data && !error && <div className="pt-tape pt-center">{t("common.loading")}</div>}
 
         {data && (
           <div className="pt-tape ek-tear" ref={tapeRef}>
@@ -187,7 +188,7 @@ export default function PaymentReceipt({
                 ikkalasini ham ko'rsatishi kerak. */}
             {data.reversedAt && (
               <div className="pt-void">
-                <div className="pt-void__title">BEKOR QILINGAN</div>
+                <div className="pt-void__title">{t("rcp.cancelled")}</div>
                 <div className="pt-void__when">{when(data.reversedAt)}</div>
                 {data.reversedReason && (
                   <div className="pt-void__why">{data.reversedReason}</div>
@@ -197,10 +198,10 @@ export default function PaymentReceipt({
 
             <div className="pt-hr" />
 
-            <div className="pt-tape__row"><span>Chek</span><span>{data.receiptNo}</span></div>
-            <div className="pt-tape__row"><span>Sana</span><span>{when(data.date)}</span></div>
+            <div className="pt-tape__row"><span>{t("kassa.receiptNo")}</span><span>{data.receiptNo}</span></div>
+            <div className="pt-tape__row"><span>{t("common.date")}</span><span>{when(data.date)}</span></div>
             {data.customerName && (
-              <div className="pt-tape__row"><span>Mijoz</span><span>{data.customerName}</span></div>
+              <div className="pt-tape__row"><span>{t("rcp.customer")}</span><span>{data.customerName}</span></div>
             )}
             {data.cashierName && (
               /* ⚠ Yorliq ham teskari: to'lovda pulni QABUL QILGAN,
@@ -224,7 +225,7 @@ export default function PaymentReceipt({
             </div>
             {/* Xaridga bog'liq jamg'arma qatori — QAYSI xarid (V66). */}
             {data.linkedNo && (
-              <div className="pt-tape__row"><span>Xarid cheki</span><span>{data.linkedNo}</span></div>
+              <div className="pt-tape__row"><span>{t("rcp.saleReceipt")}</span><span>{data.linkedNo}</span></div>
             )}
 
             <div className="pt-hr" />
@@ -261,20 +262,20 @@ export default function PaymentReceipt({
                 «qolgan 50 mingim qani?» deydi — javob shu satrda. */}
             {Number(data.toSavings) > 0 && (
               <div className="pt-tape__row pt-earn">
-                <span>Jamg'armaga</span><span>+{money(data.toSavings)}</span>
+                <span>{t("rcp.toSavings")}</span><span>+{money(data.toSavings)}</span>
               </div>
             )}
             {Number(data.bonusEarned) > 0 && (
               <div className="pt-tape__row pt-earn">
-                <span>Ball yig'ildi</span><span>+{money(data.bonusEarned)}</span>
+                <span>{t("kassa.receiptBonusEarned")}</span><span>+{money(data.bonusEarned)}</span>
               </div>
             )}
             {data.reason && (
-              <div className="pt-tape__row"><span>Izoh</span><span>{data.reason}</span></div>
+              <div className="pt-tape__row"><span>{t("rcp.note")}</span><span>{data.reason}</span></div>
             )}
             {/* Jamg'arma — keshbek EMAS; mijoz buni qog'ozda ham o'qisin. */}
             {sav && (
-              <div className="pt-center pt-tape__no">Bu sizning pulingiz — kuymaydi, xaridda to'liq ishlatiladi</div>
+              <div className="pt-center pt-tape__no">{t("rcp.savingsHint")}</div>
             )}
 
             {/* ⚠ QR faqat KASSA javobida bo'ladi (`qrUrl`): mijoz o'z
@@ -285,13 +286,13 @@ export default function PaymentReceipt({
                 <div className="pt-hr" />
                 <div className="pt-center"
                      dangerouslySetInnerHTML={{ __html: qrSvg(data.qrUrl, { size: 110, margin: 1 }) }} />
-                <div className="pt-center pt-tape__no">Chekni telefonda ochish</div>
+                <div className="pt-center pt-tape__no">{t("rcp.openOnPhone")}</div>
               </>
             )}
 
             <div className="pt-hr" />
             <div className="pt-center pt-tape__no">{data.receiptNo}</div>
-            <div className="pt-center pt-thanks">Rahmat!</div>
+            <div className="pt-center pt-thanks">{t("rcp.thanks")}</div>
             {/* ⚠ «e-kassam.uz» OLIB TASHLANDI (V85). Elektron chek ham
                 CHEK: mijoz uni QR orqali ochadi va unda begona brend
                 turishi qog'oz chekdagi bilan bir xil xato edi.

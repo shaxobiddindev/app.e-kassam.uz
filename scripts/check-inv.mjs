@@ -76,10 +76,23 @@ const bad = (m, extra = "") => { fail++; console.log(`  ❌ ${m}${extra ? ` — 
 const is  = (cond, m, extra = "") => (cond ? ok(m, extra) : bad(m, extra));
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
+/* ⚠ `toISOString()` ISHLATILMAYDI — u UTC beradi, Toshkent esa
+   UTC+5. Yarim tundan soat 05:00 gacha u KECHAGI kunni qaytaradi:
+   `day(-3)` uch kun emas, TO'RT kun oldingi sanani berardi va
+   «kechikish N kun» bandi aynan shu soatlarda yiqilardi. Ya'ni
+   qorovul har kecha besh soat davomida yolg'on qizil bo'lardi — va
+   bunday qorovulga bir haftadan keyin hech kim qaramaydi.
+
+   Bu qoida loyihada allaqachon yozilgan (`src/lib/ek-due.js` boshidagi
+   izoh) va u yerda hurmat qilinadi; bu yerga yetib kelmagan edi.
+
+   Sana MAHALLIY qismlardan yig'iladi: brauzer ham, ilova ham
+   mahalliy vaqtda hisoblaydi. */
 const day = (offset) => {
   const d = new Date();
   d.setDate(d.getDate() + offset);
-  return d.toISOString().slice(0, 10);
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 };
 
 /* ── Soxta ombor ────────────────────────────────────────────────────────

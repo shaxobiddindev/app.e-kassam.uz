@@ -51,14 +51,15 @@ export const codeDigits = (s) => String(s ?? "").trim().slice(1).replace(/\D/g, 
 /**
  * `*123` ni tovar `id` lariga aylantiradi.
  *
- * @returns {{active: boolean, ids: Set<number>, loading: boolean, ready: boolean}}
+ * @returns {{active: boolean, order: Map<number, number>, loading: boolean, ready: boolean}}
  *   `active` — so'rov raqam rejimida; `ready` — javob keldi (shu paytgacha
- *   sahifa «topilmadi» deb ko'rsatmasligi kerak).
+ *   sahifa «topilmadi» deb ko'rsatmasligi kerak); `order` — tovar `id` si
+ *   serverdagi O'RNIGA, ya'ni javobning TARTIBI.
  */
 export function useCodeSearch(query, shopId, limit = 200) {
   const active = isCodeQuery(query);
   const digits = active ? codeDigits(query) : "";
-  const [state, setState] = useState({ ids: new Set(), loading: false, ready: false });
+  const [state, setState] = useState({ order: new Map(), loading: false, ready: false });
 
   /* ⚠ HAR JAVOB O'Z NAVBATINI TEKSHIRADI. Tez terilganda `*1`, `*12`,
      `*123` ketma-ket ketadi va ular TARTIBSIZ qaytishi mumkin: `*1`
@@ -68,7 +69,7 @@ export function useCodeSearch(query, shopId, limit = 200) {
 
   useEffect(() => {
     if (!active || !digits) {
-      setState({ ids: new Set(), loading: false, ready: !digits });
+      setState({ order: new Map(), loading: false, ready: !digits });
       return;
     }
     const mine = ++seq.current;
@@ -80,14 +81,21 @@ export function useCodeSearch(query, shopId, limit = 200) {
         .then((r) => {
           if (mine !== seq.current) return;
           const list = Array.isArray(r?.data) ? r.data : [];
-          setState({ ids: new Set(list.map((p) => p.id)), loading: false, ready: true });
+          /* ⚠ `Map`, `Set` EMAS: serverdagi O'RNI ham saqlanadi.
+             To'plam faqat «bu tovar javobda bormi» degan savolga javob
+             berardi, tartib esa — javobning yarmi — yo'qolardi. */
+          setState({
+            order: new Map(list.map((p, i) => [p.id, i])),
+            loading: false,
+            ready: true,
+          });
         })
         .catch(() => {
           if (mine !== seq.current) return;
           /* ⚠ XATO = BO'SH EMAS, «hali tayyor emas». Aks holda tarmoq
              uzilganda sahifa ishonch bilan «bunday raqam yo'q» deb
              ko'rsatardi — holbuki u shunchaki so'ray olmadi. */
-          setState({ ids: new Set(), loading: false, ready: false });
+          setState({ order: new Map(), loading: false, ready: false });
         });
     }, 180);
 
@@ -98,7 +106,21 @@ export function useCodeSearch(query, shopId, limit = 200) {
 }
 
 /**
- * Qatorlarni raqam qidiruvi bo'yicha filtrlaydi.
+ * Qatorlarni raqam qidiruvi bo'yicha filtrlaydi — SERVER TARTIBINI SAQLAB.
+ *
+ * ⚠ TARTIB — JAVOBNING BIR QISMI, bezak emas. Server kodlarni ataylab
+ * saralaydi (`ProductRepository.findByCodePrefix`): aynan mos kod
+ * birinchi, keyin eski kod (alias), keyin qisqadan uzunga («2» → «20»
+ * → «200»), arxivdagisi esa oxirida. `*2` terilganda kodi AYNAN «2»
+ * bo'lgan tovar birinchi turishi shundan keladi.
+ *
+ * ⚠ ILGARI TARTIB AYNAN SHU YERDA YO'QOLARDI. Yordamchi serverdan faqat
+ * `id` lar TO'PLAMINI olardi va qatorlar SAHIFANING o'z tartibida
+ * (nom, `sortOrder`) qolardi. Natijada `*1` teriganda kodi aynan «1»
+ * bo'lgan tovar «10», «11», «100» orasida qayerga tushsa — o'sha yerda
+ * qolaverardi. Kassa ekranida esa hammasi joyida edi: u server javobini
+ * o'zgartirmasdan ko'rsatadi. Bir xil raqam, ikki xil javob — aynan shu
+ * yordamchi oldini olish uchun yozilgan holat.
  *
  * @param rows    sahifaning qatorlari
  * @param getId   qatordan tovar `id` sini oladi
@@ -107,5 +129,9 @@ export function useCodeSearch(query, shopId, limit = 200) {
 export function filterByCode(rows, getId, code) {
   if (!code.active) return rows;
   if (!code.ready) return [];
-  return (rows || []).filter((r) => code.ids.has(getId(r)));
+  /* ⚠ `filter` YANGI massiv qaytaradi, ya'ni `sort` sahifaning o'z
+     ro'yxatini joyida o'zgartirib yubormaydi. */
+  return (rows || [])
+    .filter((r) => code.order.has(getId(r)))
+    .sort((a, b) => code.order.get(getId(a)) - code.order.get(getId(b)));
 }

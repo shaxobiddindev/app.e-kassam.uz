@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { t } from "../lib/ek-i18n";
 import { checkUpdate, installUpdate } from "../lib/ek-update";
-import { isDesktop, isMobileApp } from "../lib/ek-desktop";
+import { isDesktop, isMobileApp, canDistributeApk } from "../lib/ek-desktop";
 
 /* ══════════════════════════════════════════════════════════════════════════
    SOZLAMALARDAGI «YANGILANISH» BO'LIMI (2026-08-17)
@@ -48,7 +48,14 @@ export default function UpdatePanel({ version, toast }) {
     }
   };
 
-  /* ── Android: ilova o'zini almashtira olmaydi ── */
+  /* ── Android, Play build: yangilanishni Play yetkazadi ──
+     ⚠ Havola KO'RSATILMAYDI: Play tarqatayotgan ilova o'z APK sini
+     bera olmaydi (do'kondan olib tashlash sababi). */
+  if (isMobileApp() && !canDistributeApk()) {
+    return <p className="set-card__hint">{t("update.playHint")}</p>;
+  }
+
+  /* ── Android, yondan o'rnatilgan: ilova o'zini almashtira olmaydi ── */
   if (isMobileApp()) {
     return (
       <>

@@ -38,6 +38,28 @@ export const isMobileApp = () =>
 export const isNativeShell = () => isDesktop() || isMobileApp();
 
 /**
+ * Bu build GOOGLE PLAY uchun yig'ilganmi (`build-aab.sh`).
+ *
+ * ⚠ Ish vaqtida bilib bo'lmaydi: Play'dan o'rnatilgan ilova ham, yondan
+ * o'rnatilgani ham bir xil ko'rinadi. Shuning uchun bayroq QURISH
+ * paytida qo'yiladi — `build-aab.sh` `VITE_PLAY_BUILD=1` beradi,
+ * `build-apk.sh` esa bermaydi.
+ */
+export const isPlayBuild = () => import.meta.env.VITE_PLAY_BUILD === "1";
+
+/**
+ * Ilova o'zining o'rnatuvchi faylini (APK) tarqata oladimi.
+ *
+ * ⚠⚠ PLAY QOIDASI: Play tarqatayotgan ilova o'z APK sini bermasligi
+ * SHART va jazosi ogohlantirish emas — DO'KONDAN OLIB TASHLASH. Yondan
+ * o'rnatiladigan APK va brauzer versiyasi Play orqali tarqalmaydi, ya'ni
+ * ularda havola o'z o'rnida qolaveradi: yangilanishning yagona yo'li
+ * o'sha. Faqat Play build'ida yopiladi — u yerda yangilanishni Play
+ * yetkazadi.
+ */
+export const canDistributeApk = () => !isPlayBuild();
+
+/**
  * Rust tomonidagi buyruqni chaqiradi.
  *
  * Brauzerda `null` qaytaradi — TASHLAMAYDI. Chaqiruvchi joylar `isDesktop()`

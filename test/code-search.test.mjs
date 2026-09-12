@@ -42,6 +42,16 @@ console.log("\n── Yordamchi: kod so'rovi ──");
   const fn = lib.slice(lib.indexOf("export function filterByCode"));
   ok(/if \(!code\.ready\) return \[\]/.test(fn),
      "⚠ javob kelmaguncha bo'sh — eski ro'yxat ko'rinib qolmaydi");
+
+  /* ⚠ TARTIB — JAVOBNING BIR QISMI. Server aynan mos kodni birinchi
+     qo'yadi, keyin qisqadan uzunga. Sahifa buni o'z tartibiga
+     almashtirsa, «*1» da kodi «1» bo'lgan tovar «10» va «100» orasida
+     ko'milib ketardi — kassa ekranida esa birinchi turardi. Bir xil
+     raqam, ikki xil javob: aynan shu yordamchi oldini oladi. */
+  ok(/new Map\(list\.map\(\(p, i\) => \[p\.id, i\]\)\)/.test(lib),
+     "⚠ serverdagi O'RIN saqlanadi (Map, Set emas)");
+  ok(/\.sort\(\(a, b\) => code\.order\.get\(getId\(a\)\) - code\.order\.get\(getId\(b\)\)\)/.test(fn),
+     "⚠ qatorlar SERVER tartibida chiqadi — aynan mos kod birinchi");
 }
 
 console.log("\n── Ulanish: sahifalar ──");

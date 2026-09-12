@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { qrSvg } from "../lib/ek-qr";
 import { code128Svg } from "../lib/ek-barcode";
 import { maxBrightness, restoreBrightness } from "../lib/ek-brightness";
+import { t } from "../lib/ek-i18n";
 
 /* ══════════════════════════════════════════════════════════════════════════
    KODNI KATTALASHTIRISH — kassada ko'rsatish uchun
@@ -69,7 +70,7 @@ export default function CodeZoom({ kind = "qr", value, svg: readySvg, caption, o
 
       {caption && <div className="ekz__num" onClick={(e) => e.stopPropagation()}>{caption}</div>}
 
-      <div className="ekz__hint">Yopish uchun bo'sh joyga bosing</div>
+      <div className="ekz__hint">{t("codeZoom.close")}</div>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { qrSvg } from "../lib/ek-qr";
+import { t } from "../lib/ek-i18n";
 
 /* ══════════════════════════════════════════════════════════════════════════
    DO'KON QR PLAKATI — devorga osiladigan A4 (V36)
@@ -71,18 +72,17 @@ export function printQrPoster({ url, shopName }) {
   .bonus { font-size: 17pt; font-weight: 700; color: #1663D8; }
 </style></head><body>
   <div class="shop">${esc(shopName)}</div>
-  <div class="bonus">Mijozlar kartasi — har xariddan ball</div>
+  <div class="bonus">${esc(t("poster.title"))}</div>
   <div class="lead">
-    Telefoningiz kamerasini QR kodga tuting va bir daqiqada ro'yxatdan o'ting.
-    Ballaringiz va barcha cheklaringiz telefoningizda saqlanadi.
+    ${esc(t("poster.lead"))}
   </div>
 
   <div class="qr">${qr}</div>
 
   <div class="steps">
-    <div class="step"><span class="num">1</span><div>Kamerani QR ga tuting</div></div>
-    <div class="step"><span class="num">2</span><div>Ism va telefon raqamingizni yozing</div></div>
-    <div class="step"><span class="num">3</span><div>Kassada kartangizni ko'rsating</div></div>
+    <div class="step"><span class="num">1</span><div>${esc(t("poster.step1"))}</div></div>
+    <div class="step"><span class="num">2</span><div>${esc(t("poster.step2"))}</div></div>
+    <div class="step"><span class="num">3</span><div>${esc(t("poster.step3"))}</div></div>
   </div>
 
   <div class="foot">e-kassam.uz</div>

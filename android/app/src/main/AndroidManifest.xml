@@ -1,7 +1,15 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- ⚠ ZAXIRALASH O'CHIRILGAN. Ilova ichida xodimning kirish tokeni
+         (`ek_token`), mijozning kabinet kaliti (`ek_app_token`) va qurilma
+         ro'yxatga olish identifikatori turadi. Android ularni Google
+         hisobiga nusxalasa — qurilma qulfidan TASHQARIDA ikkinchi nusxa
+         paydo bo'ladi. Narxi: telefon almashtirilganda qaytadan kirish,
+         bu bir necha soniya. Qoidalar: res/xml/data_extraction_rules.xml -->
     <application
-        android:allowBackup="true"
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"

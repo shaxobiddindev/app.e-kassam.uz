@@ -8,6 +8,7 @@ import { useConfirm } from "../context/ConfirmProvider";
 import CodeZoom from "../components/CodeZoom";
 import { dateTime, groupDigits } from "../lib/ek-format";
 import { registerPushIfPossible, getPushToken } from "../lib/ek-push";
+import { t } from "../lib/ek-i18n";
 
 /* ══════════════════════════════════════════════════════════════════════════
    MIJOZ ILOVASI (V37–V39) — Korzinka Go / Makro uslubidagi sodda daraxt
@@ -81,17 +82,17 @@ export default function CustomerApp({ onLoggedOut }) {
       <div className="cu-wrap">
         <div className="cu-card cu-center">
           <i className="fa-solid fa-wifi cu-big-icon" aria-hidden="true" />
-          <p><b>Ma'lumot yuklanmadi</b></p>
+          <p><b>{t("cu.loadFailed")}</b></p>
           <p className="cu-muted">{error}</p>
           <button className="cu-btn" onClick={() => { setError(""); load(); }}>
             Qayta urinish
           </button>
-          <button className="cu-btn cu-btn--ghost" onClick={logout}>Chiqish</button>
+          <button className="cu-btn cu-btn--ghost" onClick={logout}>{t("cu.logout")}</button>
         </div>
       </div>
     );
   }
-  if (!me)   return <div className="cu-wrap"><div className="cu-card cu-center">Yuklanmoqda…</div></div>;
+  if (!me)   return <div className="cu-wrap"><div className="cu-card cu-center">{t("common.loading")}</div></div>;
 
   return (
     <div className="cu-app">
@@ -125,7 +126,7 @@ function Retry({ text, onRetry }) {
     <div className="cu-card cu-center">
       <i className="fa-solid fa-wifi cu-big-icon" aria-hidden="true" />
       <p className="cu-muted">{text}</p>
-      <button className="cu-btn" onClick={onRetry}>Qayta urinish</button>
+      <button className="cu-btn" onClick={onRetry}>{t("common.retry")}</button>
     </div>
   );
 }
@@ -150,7 +151,7 @@ function DebtsBanner({ debts, onAnswer, busy }) {
     <div className="cu-card cu-debt">
       <div className="cu-debt__head">
         <i className="fa-solid fa-hand-holding-dollar" aria-hidden="true" />
-        <b>Nasiya tasdig'i</b>
+        <b>{t("cu.debtConfirm")}</b>
       </div>
       {debts.map((d) => (
         <div key={d.id} className="cu-debt__row">
@@ -162,10 +163,10 @@ function DebtsBanner({ debts, onAnswer, busy }) {
           <div className="cu-debt__btns">
             <button type="button" className="cu-btn cu-btn--sm"
                     disabled={busy === d.id}
-                    onClick={() => onAnswer(d, true)}>Ha, oldim</button>
+                    onClick={() => onAnswer(d, true)}>{t("cu.debtYes")}</button>
             <button type="button" className="cu-btn cu-btn--sm cu-btn--ghost"
                     disabled={busy === d.id}
-                    onClick={() => onAnswer(d, false)}>Men olmadim</button>
+                    onClick={() => onAnswer(d, false)}>{t("cu.debtNo")}</button>
           </div>
         </div>
       ))}
@@ -332,7 +333,7 @@ function CardScreen({ me, shops }) {
           qo'yish «ko'rmadim» degan javobga olib kelardi. */}
       <DebtsBanner debts={debts} onAnswer={answerDebt} busy={debtBusy} />
       <div className="cu-hero">
-        <span className="cu-hero__label">Jami ballaringiz</span>
+        <span className="cu-hero__label">{t("cu.totalPoints")}</span>
         <b className="cu-hero__value">{money(me.totalBonus)}</b>
         <span className="cu-hero__sub">{me.shopCount} ta do'konda</span>
       </div>
@@ -376,10 +377,10 @@ function CardScreen({ me, shops }) {
               Kassada shu kodni ko'rsating · <b>{left} s</b> dan keyin yangilanadi
             </p>
           ) : (
-            <p className="cu-muted cu-center">Kassada shu kodni ko'rsating — kattalashtirish uchun bosing</p>
+            <p className="cu-muted cu-center">{t("cu.showCode")}</p>
           )}
           <div className="cu-code__bonus">
-            <span>Shu do'kondagi ball</span><b>{money(picked.bonusBalance)}</b>
+            <span>{t("cu.shopPoints")}</span><b>{money(picked.bonusBalance)}</b>
           </div>
           {/* Muddat ogohlantirishi kartaning O'ZIDA: mijoz bu ekranni
               kassada ochadi va aynan o'sha payt «kuyib ketishidan oldin
@@ -394,7 +395,7 @@ function CardScreen({ me, shops }) {
       ) : (
         <div className="cu-card cu-center">
           <i className="fa-solid fa-qrcode cu-big-icon" aria-hidden="true" />
-          <p><b>Hali do'konga qo'shilmagansiz</b></p>
+          <p><b>{t("cu.noShopYet")}</b></p>
           <p className="cu-muted">
             Do'kondagi QR kodni skanerlang — karta shu yerda paydo bo'ladi.
           </p>
@@ -425,16 +426,16 @@ function NewsScreen() {
   useEffect(load, []);
 
   if (error)  return <div className="cu-screen"><Retry text={error} onRetry={load} /></div>;
-  if (!items) return <div className="cu-screen"><div className="cu-card cu-center">Yuklanmoqda…</div></div>;
+  if (!items) return <div className="cu-screen"><div className="cu-card cu-center">{t("common.loading")}</div></div>;
 
   return (
     <div className="cu-screen">
-      <h1 className="cu-title">Aksiyalar</h1>
+      <h1 className="cu-title">{t("cu.promos")}</h1>
 
       {items.length === 0 && (
         <div className="cu-card cu-center">
           <i className="fa-solid fa-bullhorn cu-big-icon" aria-hidden="true" />
-          <p><b>Hozircha e'lon yo'q</b></p>
+          <p><b>{t("cu.noPromos")}</b></p>
           <p className="cu-muted">
             Do'konlaringiz chegirma yoki yangilik e'lon qilsa, u shu yerda paydo bo'ladi.
           </p>
@@ -529,12 +530,12 @@ function ReceiptsScreen() {
   );
 
   if (error) {
-    return <div className="cu-screen"><h1 className="cu-title">Cheklarim</h1>{tabs}
+    return <div className="cu-screen"><h1 className="cu-title">{t("cu.myReceipts")}</h1>{tabs}
              <Retry text={error} onRetry={load} /></div>;
   }
   if (!items) {
-    return <div className="cu-screen"><h1 className="cu-title">Cheklarim</h1>{tabs}
-             <div className="cu-card cu-center">Yuklanmoqda…</div></div>;
+    return <div className="cu-screen"><h1 className="cu-title">{t("cu.myReceipts")}</h1>{tabs}
+             <div className="cu-card cu-center">{t("common.loading")}</div></div>;
   }
 
   const paid = kind === "paid";
@@ -542,7 +543,7 @@ function ReceiptsScreen() {
 
   return (
     <div className="cu-screen">
-      <h1 className="cu-title">Cheklarim</h1>
+      <h1 className="cu-title">{t("cu.myReceipts")}</h1>
       {tabs}
 
       {items.length === 0 && (
@@ -598,7 +599,7 @@ function ReceiptsScreen() {
                      oldingi yozuv) — o'shanda satr chiqmaydi. */
                   ? (r.balanceAfter != null && (
                       Number(r.balanceAfter) === 0
-                        ? <small className="cu-pos">Qarz yopildi</small>
+                        ? <small className="cu-pos">{t("cu.debtClosed")}</small>
                         : <small className="cu-muted">
                             {r.kind === "CHARGE" ? "Jami qarz: " : "Qoldi: "}{money(r.balanceAfter)}
                           </small>
@@ -653,7 +654,7 @@ function ShopsScreen({ shops }) {
 
   return (
     <div className="cu-screen">
-      <h1 className="cu-title">Do'konlarim</h1>
+      <h1 className="cu-title">{t("cu.myShops")}</h1>
 
       {items.length === 0 && (
         <div className="cu-card cu-center">
@@ -683,7 +684,7 @@ function ShopsScreen({ shops }) {
               </span>
               <span className="cu-shop__right">
                 <b className="cu-pos">{money(s.bonusBalance)}</b>
-                <small className="cu-muted">ball</small>
+                <small className="cu-muted">{t("cu.pointsShort")}</small>
                 {/* ⚠ JAMG'ARMA BALLDAN PASTDA va BOSHQA yozuv bilan.
                     Ikkalasi bitta ustunda turadi va chalkashish xavfi
                     real: ball — do'konning sovg'asi (kuyadi), jamg'arma
@@ -702,7 +703,7 @@ function ShopsScreen({ shops }) {
 
       {items.length > 0 && (
         <div className="cu-total">
-          <span>Jami</span><b>{money(shops.totalBonus)}</b>
+          <span>{t("cu.total")}</span><b>{money(shops.totalBonus)}</b>
         </div>
       )}
 
@@ -771,7 +772,7 @@ function BonusSheet({ customerId, shopName, savings, onClose }) {
           <i className="fa-solid fa-chevron-left" aria-hidden="true" />
         </button>
         <div>
-          <b>Ball tarixi</b>
+          <b>{t("cu.pointsHistory")}</b>
           <small className="cu-muted">{shopName}</small>
         </div>
       </header>
@@ -779,7 +780,7 @@ function BonusSheet({ customerId, shopName, savings, onClose }) {
       <div className="cu-sheet__body">
         {error && <Retry text={error} onRetry={() =>
           { setError(""); appApi.bonus(customerId).then(setData).catch((e) => setError(e.message)); }} />}
-        {!data && !error && <div className="cu-card cu-center">Yuklanmoqda…</div>}
+        {!data && !error && <div className="cu-card cu-center">{t("common.loading")}</div>}
 
         {/* ── JAMG'ARMA (V63) — BALLDAN OLDIN va ALOHIDA kartochkada.
              ⚠ Farq matn bilan AYTILADI, chunki ular bitta ekranda
@@ -838,11 +839,11 @@ function BonusSheet({ customerId, shopName, savings, onClose }) {
         {data && (
           <>
             <div className="cu-card cu-center">
-              <span className="cu-muted">Hozirgi ball</span>
+              <span className="cu-muted">{t("cu.pointsNow")}</span>
               <div className="cu-sheet__sum">{money(data.balance)}</div>
               {data.expiryDays
                 ? <p className="cu-muted">Ball yig'ilganidan {data.expiryDays} kun ichida ishlatilishi kerak</p>
-                : <p className="cu-muted">Bu do'konda ball muddati yo'q</p>}
+                : <p className="cu-muted">{t("cu.noExpiry")}</p>}
               {Number(data.expiringSoon) > 0 && (
                 <p className="cu-warn">
                   <i className="fa-solid fa-clock" aria-hidden="true" />{" "}
@@ -852,7 +853,7 @@ function BonusSheet({ customerId, shopName, savings, onClose }) {
             </div>
 
             {data.items.length === 0 && (
-              <p className="cu-muted cu-center">Hali harakat yo'q.</p>
+              <p className="cu-muted cu-center">{t("cu.noActivity")}</p>
             )}
 
             <ul className="cu-list">
@@ -964,16 +965,16 @@ function ProfileScreen({ me, onSaved, onLogout }) {
 
   return (
     <div className="cu-screen">
-      <h1 className="cu-title">Profil</h1>
+      <h1 className="cu-title">{t("cu.profile")}</h1>
 
       <div className="cu-card">
-        <label className="cu-label" htmlFor="cu-name">Ismingiz</label>
+        <label className="cu-label" htmlFor="cu-name">{t("cu.yourName")}</label>
         <input id="cu-name" className="cu-input" value={name}
                onChange={(e) => setName(e.target.value)} />
 
         {/* ⚠ Telefon o'zgartirilmaydi: u hisobning kaliti va Telegram
             orqali tasdiqlangan. O'zgartirish kerak bo'lsa — yangi hisob. */}
-        <label className="cu-label">Telefon</label>
+        <label className="cu-label">{t("common.phone")}</label>
         <div className="cu-readonly">+998 {me.phone}</div>
 
         <button className="cu-btn" onClick={save} disabled={busy}>
@@ -985,7 +986,7 @@ function ProfileScreen({ me, onSaved, onLogout }) {
 
       <div className="cu-card">
         <div className="cu-row">
-          <span><i className="fa-solid fa-bell" aria-hidden="true" /> Bildirishnomalar</span>
+          <span><i className="fa-solid fa-bell" aria-hidden="true" /> {t("cu.notifications")}</span>
           <button className={`cu-switch ${me.pushEnabled ? "on" : ""}`} onClick={togglePush}
                   aria-pressed={me.pushEnabled} aria-label="Bildirishnomalar">
             <span />
@@ -996,7 +997,7 @@ function ProfileScreen({ me, onSaved, onLogout }) {
         </p>
       </div>
 
-      <button className="cu-btn cu-btn--ghost" onClick={askLogout}>Chiqish</button>
+      <button className="cu-btn cu-btn--ghost" onClick={askLogout}>{t("cu.logout")}</button>
 
       {/* ══ HISOBNI O'CHIRISH (V49) ══════════════════════════════════════
           ⚠ GOOGLE PLAY TALABI: hisob ochishga ruxsat beradigan ilova uni
@@ -1053,8 +1054,8 @@ function EmailCard({ me, onSaved }) {
   return (
     <div className="cu-card">
       <div className="cu-row">
-        <span><i className="fa-solid fa-envelope" aria-hidden="true" /> Pochta bilan kirish</span>
-        {me.emailVerified && <span className="cu-pos">tasdiqlangan</span>}
+        <span><i className="fa-solid fa-envelope" aria-hidden="true" /> {t("cu.emailLogin")}</span>
+        {me.emailVerified && <span className="cu-pos">{t("cu.verified")}</span>}
       </div>
       <p className="cu-muted" style={{ fontSize: 13, margin: "6px 0 8px" }}>
         Telegramsiz ham kira olishingiz uchun. Kirish kodi shu manzilga keladi.
@@ -1070,7 +1071,7 @@ function EmailCard({ me, onSaved }) {
         </>
       ) : (
         <>
-          <label className="cu-label" htmlFor="cu-email">Pochta manzili</label>
+          <label className="cu-label" htmlFor="cu-email">{t("cu.emailAddr")}</label>
           <input id="cu-email" className="cu-input" type="email" inputMode="email"
                  autoComplete="email" placeholder="ism@pochta.uz" value={email}
                  disabled={stage === "code"}
@@ -1078,7 +1079,7 @@ function EmailCard({ me, onSaved }) {
 
           {stage === "code" && (
             <>
-              <label className="cu-label" htmlFor="cu-email-code">Kelgan kod</label>
+              <label className="cu-label" htmlFor="cu-email-code">{t("cu.otpCode")}</label>
               <input id="cu-email-code" className="cu-input" inputMode="numeric"
                      autoComplete="one-time-code" maxLength={6} placeholder="123456"
                      value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))} />

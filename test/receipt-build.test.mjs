@@ -26,6 +26,7 @@ import * as esbuild from "esbuild";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 
 /* ── Brauzer muhitining eng kichik qismi ─────────────────────────────── */
 const store = new Map();
@@ -49,7 +50,13 @@ await esbuild.build({
   outfile: out, logLevel: "silent",
   define: { "import.meta.env": JSON.stringify({ DEV: false, PROD: true, MODE: "production" }) },
 });
-const { buildReceipt, buildDebtReceipt } = await import(out);
+/* ⚠ `import()` GA MUTLAQ YO'L BERILMAYDI. Windows'da Node
+   `C:...` ni sxema deb o'qiydi va
+   `ERR_UNSUPPORTED_ESM_URL_SCHEME` bilan yiqiladi — `protocol 'c:'`.
+   Linux'da xato bermaydi, shuning uchun u CI da ko'rinmasdi va faqat
+   egasining mashinasida chiqardi: `npm test` AYNAN shu yerda
+   to'xtab, undan keyingi ~50 sinov umuman yugurmasdi. */
+const { buildReceipt, buildDebtReceipt } = await import(pathToFileURL(out).href);
 fs.unlinkSync(out);
 
 let pass = 0, fail = 0;

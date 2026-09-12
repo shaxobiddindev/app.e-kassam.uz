@@ -26,9 +26,17 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
+/* ⚠ `URL.pathname` YO'L EMAS. Windows'da u
+   `/C:/Users/.../E-KASSAM%20Project/...` beradi: oldida ortiqcha
+   qiyshiq chiziq, ichida esa `%20` — va `readFileSync` bunday
+   nomdagi faylni topa olmaydi. Sinov shu sababdan egasining O'Z
+   mashinasida umuman ishlamasdi, ya'ni kontrast qoidasi u yerda
+   hech qachon tekshirilmasdi. `fileURLToPath` ikkala holatni ham
+   to'g'ri yechadi. */
 const CSS = fs.readFileSync(
-  path.join(path.dirname(new URL(import.meta.url).pathname), "..", "src", "styles.css"), "utf8");
+  path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "src", "styles.css"), "utf8");
 
 let pass = 0, fail = 0;
 const ok  = (m) => { pass++; console.log("  ✅ " + m); };
