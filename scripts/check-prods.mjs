@@ -91,7 +91,39 @@ page.on("request", (r) => {
     "Access-Control-Allow-Methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
   };
   if (r.method() === "OPTIONS") return r.respond({ status: 204, headers: CORS });
-  const p = new URL(r.url()).pathname;
+  const url = new URL(r.url());
+  const p = url.pathname;
+  const qs = url.searchParams;
+
+  /* ══ ⚠ SOXTA SERVER ENDI FILTRNI O'ZI BAJARADI ════════════════════
+
+     Ilgari bu yerda har so'rovga bir xil ro'yxat qaytarilardi va shu
+     yetardi: filtrni FRONT, yuklangan massiv ustida bajarardi.
+
+     Sahifalash kiritilgach filtr SERVERGA ko'chdi. O'shanda bu
+     tekshiruv yiqildi va u TO'G'RI yiqildi: soxta server `below`
+     parametrini e'tiborsiz qoldirib, uch qator qaytarardi.
+
+     ⚠ MUHIMI: tekshiruvni «uch qator kelsa ham bo'ladi» deb
+     yumshatish MUMKIN EMAS edi. O'shanda u o'z vazifasini
+     bajarmay qo'yardi — bosh sahifadagi «zarariga sotilyapti»
+     havolasi ro'yxatni toraytirishi SHART va aynan shu yerda
+     qo'riqlanadi.
+
+     Shuning uchun soxta server haqiqiysiga o'xshatildi: `below` va
+     `q` parametrlari qaraladi, javob esa sahifalangan shaklda
+     (`{content, total, hasNext}`) qaytadi. */
+  const paged = qs.has("page") || qs.has("flt") || qs.has("q") || qs.has("below");
+  let rows = PRODUCTS;
+  if (qs.get("below") === "true") {
+    rows = rows.filter((x) => x.belowCost || x.belowWholesale);
+  }
+  const q = (qs.get("q") || "").trim().toLowerCase();
+  if (q) {
+    rows = rows.filter((x) => [x.name, x.barcode, x.sku]
+      .some((v) => String(v ?? "").toLowerCase().includes(q)));
+  }
+
   /* ⚠ `generate-code` ALOHIDA: umumiy `/products` javobi massiv
      qaytaradi va `r?.data?.barcode` `undefined` bo'lib qolardi —
      ya'ni tugma bosilsa ham kodni yozadigan tarmoq umuman
@@ -99,7 +131,10 @@ page.on("request", (r) => {
   const body = /\/generate-code$/.test(p)
     ? { success: true, data: { barcode: "20001421" } }
     : /\/products\b/.test(p)
-    ? { success: true, data: PRODUCTS }
+    ? { success: true,
+        data: paged
+          ? { content: rows, page: 0, size: 50, total: rows.length, hasNext: false }
+          : rows }
     : { success: true, data: [] };
   return r.respond({ status: 200, contentType: "application/json",
                      headers: CORS, body: JSON.stringify(body) });

@@ -1623,6 +1623,7 @@ export default {
   "sale.loyaltyDiscount": "Скидка по лояльности",
   "label.print": "Печать ценника",
   "label.printFiltered": "Ценники ({n})",
+  "label.tooMany": "{n} товаров — слишком много: за раз можно напечатать до {cap} ценников. Уточните фильтр.",
   "label.printFilteredHint": "Лента ценников для товаров, видимых в списке",
   "label.sent": "Ценников отправлено на печать: {n}",
   "label.nothing": "Нет товаров для печати ценников",

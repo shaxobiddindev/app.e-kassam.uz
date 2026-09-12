@@ -1708,6 +1708,7 @@ export default {
   "label.print": "Yorliq chiqarish",
   /* JAVON YORLIG'I OYNASI (V108) */
   "label.printFiltered": "Yorliq ({n} ta)",
+  "label.tooMany": "{n} ta tovar juda ko'p — bir marta {cap} tagacha yorliq chiqarish mumkin. Filtrni toraytiring.",
   "label.printFilteredHint": "Ro'yxatda ko'rinib turgan tovarlar uchun yorliq lentasi chiqadi",
   "label.sent": "{n} ta yorliq printerga yuborildi",
   "label.nothing": "Yorliq chiqariladigan tovar yo'q",

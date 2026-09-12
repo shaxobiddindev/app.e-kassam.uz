@@ -227,3 +227,79 @@ export const blankCond = (col) => ({
   value: (col.type === "enum") ? [] : "",
   value2: "",
 });
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SHARTLARNI SERVERGA YUBORISH UCHUN YOZISH
+
+   ═══ NEGA KERAK BO'LDI ════════════════════════════════════════════════
+
+   Yuqoridagi hamma narsa BRAUZERDA, yuklangan massiv ustida ishlaydi.
+   Ro'yxatlar sahifalanayotgan ekan, bu jimgina buziladi:
+
+       do'konchi «Coca» deb yozadi  →  birinchi 50 qatorda yo'q
+                                    →  «tovar yo'q» degan XATO xulosa
+
+   Shuning uchun shartlar SERVERGA yuboriladi va u butun katalog
+   ustida filtrlaydi. Bu yerdagi ishning hammasi — bir xil shakl.
+
+   ═══ ⚠ NEGA JSON, AJRATGICH EMAS ══════════════════════════════════════
+
+   Birinchi o'yda `f=name:has:cola` ko'rinishi bor edi. U yaramaydi:
+   tovar nomida ham, kategoriyada ham IKKI NUQTA uchraydi
+   («Sut 2.5%: yangi») va shart o'rtasidan bo'linib ketardi. JSON da
+   esa qochirish qoidasi tilning o'zida.
+
+   ⚠ O'LIK SHART YUBORILMAYDI: foydalanuvchi qatorni qo'shdi-yu,
+   qiymatni hali yozmadi — u ro'yxatni kesmasligi kerak. Server ham
+   shu qoidani takrorlaydi (`ColumnFilter.isLive`), lekin ikkinchi
+   himoya arzon: yuborilmagan shart tarmoqda ham ko'rinmaydi va
+   xatoni izlash osonroq bo'ladi.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * Shart RO'YXATNI HAQIQATAN KESADIMI.
+ *
+ * ⚠ `DataFilter.jsx` dagi `isLive` ning AYNAN o'zi, lekin bu yerda —
+ * u yerda React bor va node'dan sinab bo'lmaydi. Qoida bittaligi
+ * uchun u yerdagisi shuni chaqiradi.
+ */
+export function isLiveCond(c) {
+  if (!c || !c.op) return false;
+  if (!NEEDS_VALUE.has(c.op)) return true;
+  if (c.type === "enum") return Array.isArray(c.value) && c.value.length > 0;
+  if (NEEDS_SECOND.has(c.op)) return c.value !== "" || c.value2 !== "";
+  return c.value !== "" && c.value !== undefined && c.value !== null;
+}
+
+/**
+ * Shartlar va tartibni server tushunadigan JSON ga aylantiradi.
+ *
+ * @param conds shartlar (to'ldirilmaganlari tashlanadi)
+ * @param sort  `{key, dir}`
+ * @returns JSON matni, yoki `null` — yuboradigan narsa yo'q
+ */
+export function serializeFilter(conds, sort) {
+  const live = (Array.isArray(conds) ? conds : []).filter(isLiveCond).map((c) => {
+    const out = { key: c.key, type: c.type || "text", op: c.op };
+    if (!NEEDS_VALUE.has(c.op)) return out;
+    if (c.type === "enum") {
+      out.value = Array.isArray(c.value) ? c.value : [];
+      return out;
+    }
+    /* ⚠ QIYMAT MATN BO'LIB KETADI — son ham. Ekranda odam «12 000»
+       deb yozadi va ajratgichni server tashlaydi (`FilterCols.decimal`).
+       Bu yerda tozalash mumkin edi, lekin o'shanda ikki joyda ikki
+       xil tozalash qoidasi paydo bo'lardi. */
+    out.value = c.value == null ? "" : String(c.value);
+    if (NEEDS_SECOND.has(c.op)) out.value2 = c.value2 == null ? "" : String(c.value2);
+    return out;
+  });
+
+  const key = sort?.key || null;
+  if (!live.length && !key) return null;
+
+  const body = {};
+  if (live.length) body.conds = live;
+  if (key) body.sort = { key, dir: sort.dir === "desc" ? "desc" : "asc" };
+  return JSON.stringify(body);
+}

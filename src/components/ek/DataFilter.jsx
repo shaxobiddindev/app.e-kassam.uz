@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { t } from "../../lib/ek-i18n";
-import { OPS, NEEDS_VALUE, NEEDS_SECOND, applyAll, blankCond } from "../../lib/ek-filter";
+import { OPS, NEEDS_VALUE, NEEDS_SECOND, applyAll, blankCond, isLiveCond,
+         serializeFilter } from "../../lib/ek-filter";
 import Select from "./Select";
 import Overlay from "./Overlay";
 
@@ -45,12 +46,15 @@ import Overlay from "./Overlay";
  * ular vaqt o'tib bir-biridan uzoqlashardi va ekranda «2 ta shart»
  * deb yozilib, ro'yxat esa bittasi bilan kesilgan bo'lardi.
  */
-export const isLive = (c) => {
-  if (!NEEDS_VALUE.has(c.op)) return true;
-  if (c.type === "enum") return Array.isArray(c.value) && c.value.length > 0;
-  if (NEEDS_SECOND.has(c.op)) return c.value !== "" || c.value2 !== "";
-  return c.value !== "" && c.value != null;
-};
+/* ⚠ QOIDA `ek-filter.js` DA, BU YERDA FAQAT QAYTA CHIQARISH.
+   Ilgari nusxa shu yerda turardi; shartlarni SERVERGA yuborish
+   qo'shilgach, uchinchi nusxa ham kerak bo'lib qoldi (server o'lik
+   shartni tashlashi kerak). Uch nusxa vaqt o'tib ajralib ketardi va
+   o'shanda ekranda «2 ta shart» deb yozilib, ro'yxat bittasi bilan
+   kesilgan bo'lardi. Endi front tomonda bitta manba bor — server
+   nusxasi esa `ColumnFilter.isLive` da va sinov ikkisini
+   solishtiradi. */
+export const isLive = isLiveCond;
 
 /** Amal nomlari — tarjima kalitlari `filter.op.*`. */
 const opLabel = (op) => t(`filter.op.${op}`);
@@ -129,7 +133,24 @@ export function useDataFilter(cols, storageKey) {
   /* Faol (to'ldirilgan) shartlar soni — tugmadagi belgi shundan. */
   const activeCount = useMemo(() => conds.filter(isLive).length, [conds]);
 
-  return { cols, conds, set, sort, setSorting, toggleSort, apply, open, setOpen, activeCount,
+  /**
+   * Shartlarni SERVERGA yuborish uchun yozadi.
+   *
+   * ⚠ `apply` BILAN IKKI XIL YO'L, VA IKKISI HAM KERAK:
+   *   · `apply(rows)`  — to'liq ro'yxat allaqachon qo'lda bo'lganda
+   *     (sahifalanmagan ekranlar);
+   *   · `serialize()`  — ro'yxat sahifalanganda, filtr SERVERDA
+   *     bajarilishi shart, aks holda u faqat yuklangan 50 qatorga
+   *     tegardi.
+   *
+   * ⚠ `useMemo` SHART: natija `useInfinite` ning `fetcher` iga
+   * kiradi va har renderda yangi matn bo'lsa, hook ro'yxatni
+   * boshidan yuklab, cheksiz so'rov yuborardi.
+   */
+  const serialize = useMemo(() => () => serializeFilter(conds, sort), [conds, sort]);
+
+  return { cols, conds, set, sort, setSorting, toggleSort, apply, serialize,
+           open, setOpen, activeCount,
            /* ⚠ BITTA yozuv: ikkita alohida chaqiruv bir-birining
               yozganini bosib ketardi (yuqoridagi izoh). */
            clear: () => write([], { key: null, dir: "asc" }) };

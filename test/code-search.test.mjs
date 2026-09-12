@@ -56,15 +56,58 @@ console.log("\n── Yordamchi: kod so'rovi ──");
 
 console.log("\n── Ulanish: sahifalar ──");
 {
-  /* Har bir tovarli sahifa AYNAN shu yordamchini ishlatsin. Sahifa
-     o'z nusxasini yozsa, u bir kuni ajralib ketadi. */
+  /* ══ ⚠ QO'RIQLANADIGAN NARSA: RAQAM SERVERDAN KELADI ══════════════
+
+     Bu yordamchining butun ma'nosi — `*425` so'rovi HAMMA sahifada
+     kassa bilan BIR XIL javob berishi. Sabab bazada: tovar qayta
+     kodlanganda javondagi eski yorliq ishlashda davom etadi
+     (`product_code_aliases`) va bu bog'lanishni faqat server
+     ko'radi. Mahalliy qidiruv esa eski yorliqqa «topilmadi»
+     berardi — kassada topilib, omborda yo'q.
+
+     ═══ ⚠ IKKI XIL ULANISH BOR VA IKKALASI HAM TO'G'RI ══════════════
+
+     Sahifalar ikki turga bo'lindi:
+
+       · TO'LIQ RO'YXATLI sahifa (ombor) — butun ro'yxat qo'lda,
+         `useCodeSearch` server javobidagi `id` larni beradi,
+         `filterByCode` esa qatorlarni SERVER TARTIBIDA saralaydi;
+
+       · SAHIFALANGAN ro'yxat (tovarlar) — butun ro'yxat YO'Q,
+         shuning uchun `id` bo'yicha filtrlashning ma'nosi ham yo'q:
+         sahifa server javobining O'ZINI ro'yxat qilib oladi
+         (`productApi.search("*"+…)` ≤200 qator, ya'ni TO'LIQ).
+
+     Shuning uchun quyida shakl emas, MAQSAD tekshiriladi: raqam
+     rejimida so'rov SERVERGA ketadimi va mahalliy reyting
+     ishlamaydimi. */
   for (const page of ["pages/ProductsPage.jsx", "pages/InventoryPage.jsx"]) {
     const p = src(page);
     ok(/from "\.\.\/lib\/ek-code-search"/.test(p), `${page}: umumiy yordamchi import qilinadi`);
-    ok(/useCodeSearch\(/.test(p) && /filterByCode\(/.test(p),
-       `${page}: raqam rejimi ulangan`);
-    ok(/code\.active[\s\S]{0,200}?filterByCode/.test(p),
+
+    /* 1-yo'l: `id` lar bo'yicha filtrlash (to'liq ro'yxatli sahifa). */
+    const byIds = /useCodeSearch\(/.test(p) && /filterByCode\(/.test(p)
+                  && /code\.active[\s\S]{0,200}?filterByCode/.test(p);
+    /* 2-yo'l: server javobi ro'yxatning O'ZI (sahifalangan sahifa). */
+    const byServer = /isCodeQuery\(/.test(p)
+                     && /productApi\.search\(\s*normalizeCodeQuery\(/.test(p);
+
+    ok(byIds || byServer, `${page}: raqam rejimi SERVERGA ulangan`);
+
+    /* ⚠ ASOSIY TAQIQ: raqam rejimida mahalliy reyting ISHLAMAYDI.
+       `rankItems` bu yerda ishlatilsa, server bergan tartib
+       (aynan mos kod birinchi) buzilardi. */
+    ok(!/rankItems\(/.test(p) || byIds,
        `${page}: ⚠ raqam rejimida MAHALLIY reyting ishlamaydi`);
+
+    /* ⚠ SAHIFALANGAN SAHIFADA QO'SHIMCHA SHART: raqam rejimi
+       sahifalangan yo'lga TUSHMASLIGI kerak. Tushsa, `?q=425`
+       oddiy qidiruvga aylanib, eski yorliq (alias) yana
+       topilmasdi — ya'ni tuzatilgan nuqson qaytardi. */
+    if (byServer) {
+      ok(/if \(codeMode\)[\s\S]{0,200}?productApi\.search\(/.test(p),
+         `${page}: ⚠ raqam rejimi sahifalangan yo'ldan OLDIN tekshiriladi`);
+    }
   }
 }
 

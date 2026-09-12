@@ -453,9 +453,15 @@ export const productApi = {
    * Ya'ni tanlov chaqiruvchida qoladi: kimga sahifa kerak — shuni
    * chaqiradi, kimga hammasi kerak — `getAll`.
    */
-  getPage:      (page = 0, size = 50, shopId) => {
+  getPage:      (page = 0, size = 50, opts = {}) => {
                   const p = new URLSearchParams({ page, size });
-                  if (shopId) p.set("shopId", shopId);
+                  if (opts.shopId) p.set("shopId", opts.shopId);
+                  /* ⚠ USTUN FILTRI SERVERGA — aks holda u faqat
+                     yuklangan 50 qatorga tegardi va do'konchi
+                     «tovar yo'q» degan xato xulosaga kelardi. */
+                  if (opts.flt) p.set("flt", opts.flt);
+                  if (opts.q) p.set("q", opts.q);
+                  if (opts.below) p.set("below", "true");
                   return request(`/products?${p}`);
                 },
   /** Kassa ro'yxati — kategoriya va «tez tovarlar» filtri bilan. */

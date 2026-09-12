@@ -1623,6 +1623,7 @@ export default {
   "sale.loyaltyDiscount": "Loyalty discount",
   "label.print": "Print price label",
   "label.printFiltered": "Labels ({n})",
+  "label.tooMany": "{n} products is too many — up to {cap} labels can be printed at once. Narrow the filter.",
   "label.printFilteredHint": "Prints a label tape for the products visible in the list",
   "label.sent": "{n} label(s) sent to the printer",
   "label.nothing": "No products to print labels for",

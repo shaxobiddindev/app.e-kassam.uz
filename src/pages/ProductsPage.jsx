@@ -24,8 +24,10 @@ import { NumField, BarcodeField } from "../components/ek/EkFields";
 import { useSearchParams } from "react-router-dom";
 import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
 import { checkPrices, marginPercent, VIOLATION } from "../lib/ek-prices";
-import { rankItems, PRODUCT_SPEC } from "../lib/ek-search";
-import { useCodeSearch, filterByCode } from "../lib/ek-code-search";
+import { isCodeQuery, normalizeCodeQuery } from "../lib/ek-code-search";
+import { useInfinite } from "../hooks/useInfinite";
+import { useDebounced } from "../hooks/useDebounced";
+import InfiniteList from "../components/ek/InfiniteList";
 import { asArray } from "../lib/ek-array";
 import { barcodeSuspicious } from "../lib/ek-barcode-check";
 import { isStoreCode, prettyStoreCode, storeCodeShort } from "../lib/ek-store-code";
@@ -71,13 +73,13 @@ export default function ProductsPage({ toast }) {
   const confirm = useConfirm();
   /* Arxivdagi tovar bilan to'qnashuv — ikkita yo'l taklif qilinadi (B). */
   const [archivedConflict, setArchivedConflict] = useState(null);
-  const [products, setProducts]     = useState([]);
   const [categories, setCategories] = useState([]);
-  const [loading, setLoading]       = useState(true);
-  // Ekranda ko'rsatiladigan holat: tez javobda skeleton UMUMAN chizilmaydi
-  // (180ms kechikish), chizilgan bo'lsa esa kamida 400ms turadi — miltillamaydi.
-  const busy = useLoading(loading);
+  /* ⚠ RO'YXAT HOLATI `useInfinite` DA (pastda): `rows`, `total`,
+     «yana bormi» — hammasi u yerda. Ilgari bu yerda butun katalog
+     bitta `useState` da turardi. O'lchandi: bazada 12 493 tovar. */
   const [search, setSearch]         = useState("");
+  /* Saqlash/o'chirishdan keyin ro'yxatni qaytadan so'rash uchun. */
+  const [version, setVersion]       = useState(0);
   const [modal, setModal]           = useState(null); // null | "add" | { type:"edit", product }
   const [form, setForm]             = useState(EMPTY_FORM);
 
@@ -166,21 +168,28 @@ export default function ProductsPage({ toast }) {
   const isHeadUser = user?.role === "OWNER" || user?.role === "SHOP_ADMIN" || user?.role === "ADMIN";
 
   // ── Yuklash ────────────────────────────────────────────────
+  /**
+   * ⚠ TOVARLAR ENDI BU YERDA YUKLANMAYDI. Ilgari `productApi.getAll`
+   * butun katalogni bitta so'rovda olardi va har qatorga qoldiq,
+   * barkodlar, chegirma chegarasi hisoblanardi. Endi `useInfinite`
+   * sahifa-sahifa so'raydi (pastda).
+   *
+   * Kategoriyalar esa QOLDI: ular tovar formasidagi ro'yxat uchun
+   * kerak va soni o'nlab (o'lchandi: 48).
+   */
   const loadData = useCallback(async () => {
-    setLoading(true);
+    /* ⚠ `version` OSHADI VA SHU YETARLI: u `fetchPage` ga kiradi,
+       `useInfinite` esa `fetcher` o'zgarganini «boshqa ro'yxat» deb
+       tushunib, o'zi boshidan yuklaydi. Alohida `reload()` yozish
+       kerak emas — va u ikkinchi yo'l bo'lib, biri unutilardi. */
+    setVersion((v) => v + 1);
     try {
-      const [prodRes, catRes] = await Promise.all([
-        productApi.getAll(branchId),
-        productApi.getCategories(),
-      ]);
-      setProducts(asArray(prodRes.data));
+      const catRes = await productApi.getCategories();
       setCategories(asArray(catRes.data));
     } catch (err) {
       toast.error(err.message);
-    } finally {
-      setLoading(false);
     }
-  }, [branchId]);
+  }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -205,7 +214,13 @@ export default function ProductsPage({ toast }) {
     catalogApi.globalUpdates()
       .then((r) => setGupdCount(asArray(r.data).length))
       .catch(() => setGupdCount(0));
-  }, [branchId, products.length]);
+
+  /* ⚠ BOG'LIQLIK `version`, RO'YXAT UZUNLIGI EMAS. Ilgari
+     `products.length` turardi va u to'g'ri ishlardi: katalog bir
+     marta yuklanib, uzunlik bir marta o'zgarardi. Sahifalashda esa
+     uzunlik HAR SAHIFADA o'zgaradi — ya'ni bu uchta yordamchi
+     so'rov har scrollda qaytadan ketardi. */
+  }, [branchId, version]);
 
   /* ══ UMUMIY BAZADA O'XSHASHI BORMI (V91) ═══════════════════════════
      ⚠ MAQSAD — DUBLIKATNI KIRISHDAN OLDIN TO'XTATISH. Umumiy bazada
@@ -528,10 +543,15 @@ export default function ProductsPage({ toast }) {
   };
 
   /* ── Qidiruv ────────────────────────────────────────────────
-     ⚠ KASSADAGI BILAN AYNAN BIR XIL (`PRODUCT_SPEC`). Ilgari bu yerda
-     oddiy `includes` turardi va Katalog kassadan boshqacha javob
-     berardi: kassada topilgan tovar Katalogda topilmasdi va do'kon
-     egasi «tovar yo'qolib qoldi» deb o'ylardi. */
+     ⚠ QIDIRUV ENDI SERVERDA (`?q=`), lekin QOIDA O'ZGARMADI:
+     bosqichlar `ProductSearchRank` da frontdagi `RANK` dan
+     ko'chirilgan — kod aynan mos → nom aynan mos → kod tugaydi →
+     nom boshlanadi → so'z boshi → nom ichida → kod ichida →
+     o'xshash (trigramm).
+
+     Talab o'zgarmagani uchun saqlanadi: kassada topilgan tovar
+     Katalogda ham topilishi SHART, aks holda do'kon egasi «tovar
+     yo'qolib qoldi» deb o'ylardi. */
   /* ══ USTUNLAR BO'YICHA FILTR (V68) ═══════════════════════════════════
      Jadvaldagi olti ustunning hammasi. «Holat» — hisoblanadigan ustun:
      ekranda ko'rinadigan yorliqning AYNAN o'zi (nofaol → tugagan →
@@ -572,18 +592,72 @@ export default function ProductsPage({ toast }) {
   const [params, setParams] = useSearchParams();
   const belowOnly = params.get("below") === "1";
 
-  const base = belowOnly
-    ? products.filter((p) => p.belowCost || p.belowWholesale)
-    : products;
-  /* ⚠ RAQAM REJIMI (`*425`) — kassadagi bilan AYNAN BIR XIL javob.
-     Raqam SERVERDAN so'raladi, mahalliy ro'yxatdan emas: eski kod
-     (alias) bog'lanishi faqat bazada va mahalliy qidiruv uni
-     ko'rmasdi — javondagi eski yorliq kassada topilib, shu yerda
-     «yo'q» bo'lardi. */
-  const code = useCodeSearch(search, undefined);
-  const filtered = code.active
-    ? filterByCode(colFlt.apply(base), (p) => p.id, code)
-    : rankItems(colFlt.apply(base), search, PRODUCT_SPEC);
+  /* ══ RO'YXAT — SERVERDAN, SAHIFA-SAHIFA ═══════════════════════════
+
+     ⚠ FILTR, QIDIRUV VA TARTIB SERVERDA. Ilgari uchalasi ham
+     brauzerda, butun katalog ustida bajarilardi. Sahifalash bilan u
+     JIMGINA buzilardi:
+
+         do'konchi «Coca» deb yozadi  →  birinchi 50 qatorda yo'q
+                                      →  «tovar yo'q» degan XATO xulosa
+                                      →  tovarni QAYTA yaratadi
+
+     Ekranda hech qanday xato ko'rinmaydi — shuning uchun bu yo'l
+     tanlanmadi. */
+
+  /* ⚠ TERISH KECHIKTIRILADI: har harfda so'rov ketsa «shokolad»
+     so'zi 8 ta so'rov yuborardi va ularning 7 tasi darhol keraksiz
+     bo'lib qolardi. */
+  const slowSearch = useDebounced(search, 300);
+  const codeMode = isCodeQuery(slowSearch);
+  const fltJson = colFlt.serialize();
+
+  /**
+   * ⚠ RAQAM REJIMI (`*425`) ALOHIDA YO'L VA BU ATAYLAB.
+   *
+   * Kassadagi bilan AYNAN BIR XIL javob kerak: eski kod (alias)
+   * bog'lanishi faqat bazada va oddiy qidiruv uni ko'rmaydi —
+   * javondagi eski yorliq kassada topilib, shu yerda «yo'q»
+   * bo'lardi.
+   *
+   * ⚠ SAHIFA KERAK EMAS: server kod bo'yicha ko'pi bilan 200 qator
+   * beradi, ya'ni javob TO'LIQ. Shuning uchun `readPage` uni massiv
+   * deb o'qiydi va «yana bor» bo'lmaydi — va aynan shu sababdan bu
+   * rejimda ustun filtrini BRAUZERDA qo'llash TO'G'RI: kesiladigan
+   * ro'yxat to'liq, sahifa emas.
+   */
+  const fetchPage = useCallback((page, size) => {
+    if (codeMode) {
+      return productApi.search(normalizeCodeQuery(slowSearch), 0, 200, branchId);
+    }
+    return productApi.getPage(page, size, {
+      shopId: branchId, flt: fltJson, q: slowSearch, below: belowOnly,
+    });
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [codeMode, slowSearch, fltJson, branchId, belowOnly, version]);
+
+  const { rows, loading, error, hasNext, total, loadMore, retry } =
+    useInfinite(fetchPage, { size: 50 });
+
+  /* ⚠ BU QATOR `useInfinite` DAN KEYIN: `loading` va `rows` — shu
+     chaqiruvning natijasi. Oldin o'qilsa `ReferenceError` va React
+     sahifani UMUMAN chizmaydi (`scripts/check-tdz.mjs` qo'riqlaydi).
+
+     Ekranda ko'rsatiladigan holat: tez javobda skeleton UMUMAN
+     chizilmaydi (180ms kechikish), chizilgan bo'lsa esa kamida
+     400ms turadi — miltillamaydi. */
+  const busy = useLoading(loading && !rows.length);
+
+  useEffect(() => { if (error) toast?.error(error); }, [error, toast]);
+
+  /* Kod rejimida ustun filtri brauzerda (yuqoridagi izoh), qolgan
+     hamma holatda server allaqachon filtrlab bergan. */
+  const filtered = codeMode ? colFlt.apply(rows) : rows;
+
+  /* ⚠ JAMI SON SERVERDAN: ekranda «nechta tovar bor» degan javob
+     yuklangan qatorlar soni EMAS. `total` bo'lmasa (kod rejimi)
+     ro'yxat uzunligi to'g'ri javob, chunki u to'liq. */
+  const shownTotal = codeMode || total == null ? filtered.length : total;
 
   const setField = (key) => (e) => setForm((prev) => ({ ...prev, [key]: e.target.value }));
   const setValue = (key) => (v) => setForm((prev) => ({ ...prev, [key]: v }));
@@ -649,6 +723,68 @@ export default function ProductsPage({ toast }) {
   };
 
   const [labelItems, setLabelItems] = useState(null);
+  const [labelBusy, setLabelBusy] = useState(false);
+
+  /**
+   * ══ ⚠ FILTRLANGANLARGA YORLIQ — HAMMASI, YUKLANGANI EMAS ══════════
+   *
+   * Bu sahifalashning ENG QIMMAT jim buzilishi bo'lardi. Tugma
+   * «filtrlangan tovarlarga yorliq chiqar» deydi va ilgari
+   * `filtered` butun (filtrlangan) katalog edi. Sahifalashdan keyin
+   * esa u faqat EKRANGA YUKLANGAN qatorlar — ya'ni:
+   *
+   *     do'konchi narxni 300 tovarga o'zgartirdi
+   *       → «filtrlanganlarga yorliq» bosdi
+   *       → 50 ta yorliq chiqdi
+   *       → 250 tovar javonda ESKI NARX bilan qoldi
+   *
+   * Va buni u faqat javonda, mijoz oldida bilib qolardi.
+   *
+   * ⚠ SHUNING UCHUN BOSILGANDA QOLGAN SAHIFALAR SO'RALADI. Server
+   * bir so'rovda ko'pi bilan 200 qator beradi (`Paging.MAX_SIZE`),
+   * shuning uchun tugadi degancha aylanadi.
+   *
+   * ⚠ CHEGARA BOR (5000): yorliq lentasi cheksiz emas va xato
+   * bosilgan tugma bir rulonni yeb qo'yardi. Chegaradan oshsa
+   * ogohlantiriladi va HECH NARSA chiqarilmaydi — yarmini chiqarish
+   * eng yomon natija bo'lardi (qaysi yarmi ekani ko'rinmaydi).
+   */
+  const LABEL_CAP = 5000;
+  const collectAll = async () => {
+    /* Kod rejimida ro'yxat allaqachon to'liq (server ≤200 beradi). */
+    if (codeMode || total == null || filtered.length >= total) return filtered;
+    if (total > LABEL_CAP) {
+      toast?.error(t("label.tooMany", { n: total, cap: LABEL_CAP }));
+      return null;
+    }
+    const size = 200;
+    const out = [];
+    for (let page = 0; page * size < total; page++) {
+      const r = await productApi.getPage(page, size, {
+        shopId: branchId, flt: fltJson, q: slowSearch, below: belowOnly,
+      });
+      const got = asArray(r?.data?.content ?? r?.data);
+      if (!got.length) break;
+      out.push(...got);
+      /* ⚠ HIMOYA: server «yana bor» deb turib, bir xil sahifani
+         qaytarsa (tartib noyob emas), sikl abadiy aylanardi. */
+      if (out.length >= total) break;
+    }
+    return out;
+  };
+
+  const printFiltered = async () => {
+    setLabelBusy(true);
+    try {
+      const all = await collectAll();
+      if (all) openLabels(all);
+    } catch (err) {
+      toast?.error(err.message);
+    } finally {
+      setLabelBusy(false);
+    }
+  };
+
   const openLabels = (items) => {
     /* Xizmatda javon yorliq ham bo'lmaydi: «soch olish» ni javonga
        qo'yib bo'lmaydi va barkodi ham yo'q. */
@@ -682,9 +818,14 @@ export default function ProductsPage({ toast }) {
               yoki qidiruv natijasi — 800 ta tovarni lenta qilib chiqarish
               hech kimga kerak emas va bir rulon qog'ozni yeydi. */}
           {filtered.length > 0 && (
-            <button className="btn btn-outline btn-sm" onClick={() => openLabels(filtered)}
-                    title={t("label.printFilteredHint")}>
-              <i className="fa-solid fa-tags" /> {t("label.printFiltered", { n: filtered.length })}
+            <button className="btn btn-outline btn-sm" onClick={printFiltered}
+                    disabled={labelBusy} title={t("label.printFilteredHint")}>
+              {labelBusy ? <Spinner /> : <i className="fa-solid fa-tags" />}{" "}
+              {/* ⚠ SON `shownTotal` DAN, `filtered.length` DAN EMAS:
+                  ekranda 50 qator turgan bo'lsa ham tugma 300 ta
+                  yorliq chiqaradi va do'konchi shuni oldindan
+                  bilishi kerak. */}
+              {t("label.printFiltered", { n: shownTotal })}
             </button>
           )}
           <BranchSelector selectedId={branchId} onSelect={setBranchId} />
@@ -915,6 +1056,21 @@ export default function ProductsPage({ toast }) {
             </table>
           )}
         </div>
+
+        {/* ⚠ SCROLLDA YUKLASH — RAQAMLI SAHIFA EMAS. Raqamli
+            tugmalar har bosishda ro'yxatni BUTUNLAY almashtirardi:
+            do'konchi 4-sahifadagi tovarni ko'rib, 5-ga o'tib, keyin
+            qaytsa — o'sha qatorni yana qidirishi kerak edi.
+
+            ⚠ KOD REJIMIDA KO'RINMAYDI: u yerda javob to'liq (server
+            ≤200 qator beradi) va «yana yukla» degan tugma yolg'on
+            bo'lardi. */}
+        {!codeMode && (
+          <InfiniteList
+            loading={loading} error={error} hasNext={hasNext}
+            total={total} count={filtered.length}
+            onMore={loadMore} onRetry={retry} />
+        )}
       </div>
 
       {/* ── Tayyor katalog ustasi ── */}
