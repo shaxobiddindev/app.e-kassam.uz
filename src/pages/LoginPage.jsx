@@ -4,7 +4,7 @@ import { useT, getLang } from "../lib/ek-i18n";
 import { Spinner } from "../components/ek/Loading";
 import LangSelect from "../components/ek/LangSelect";
 import ThemeSelect from "../components/ek/ThemeSelect";
-import { CodeField, UsernameField, OtpField } from "../components/ek/EkFields";
+import { UsernameField, OtpField } from "../components/ek/EkFields";
 import { isMobileApp } from "../lib/ek-desktop";
 import EkIntro from "../components/EkIntro";
 import { asArray } from "../lib/ek-array";
@@ -71,7 +71,7 @@ async function get(path, token) {
 
 export default function LoginPage({ onLogin }) {
   const { t } = useT();
-  const [form, setForm]         = useState({ shopCode: "", username: "", password: "", deviceCode: "" });
+  const [form, setForm]         = useState({ username: "", password: "", deviceCode: "" });
 
   /* ⚠ QURILMA OXIRGI KIRISHNI ESLAB QOLADI (V98 — auth'dagi bilan bir xil).
      Saqlanadigan narsa: do'kon kodi, do'kon NOMI va login. PAROL HECH
@@ -87,9 +87,18 @@ export default function LoginPage({ onLogin }) {
       return v && v.username ? v : null;
     } catch (_) { return null; }
   });
-  /* Kod maydoni yopiq turadi va faqat kerak bo'lganda ochiladi:
-     boshqa do'kon yoki birinchi kirish. */
-  const [showShopCode, setShowShopCode] = useState(false);
+  /* ⚠ DO'KON KODI MAYDONI UMUMAN YO'Q (2026-09-12).
+     Server do'konni FOYDALANUVCHI NOMIDAN topadi (`AuthService`:
+     `shop = user.getShop()`), ya'ni kod oddiy kirishda hech qachon
+     kerak emas edi — u faqat kassirga qo'shimcha maydon bo'lib
+     turardi va har smenada qayta terilardi.
+
+     ⚠ BITTA HOLAT QOLADI: bazada faqat harf registri bilan farq
+     qiladigan ikkita bir xil login bo'lsa (eski «Kassir» va
+     «kassir»), server kirishni rad etadi. Bunday hisob uchun yo'l —
+     brauzer versiyasi (`auth.e-kassam.uz`), u yerda kod maydoni
+     havola ostida turibdi. Bu holat eski bazalarda uchraydi va
+     kassaning kundalik ishiga tegmaydi. */
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState("");
   const [notice, setNotice]     = useState("");
@@ -101,7 +110,6 @@ export default function LoginPage({ onLogin }) {
   const [intro, setIntro] = useState(() => isMobileApp() && !REDUCED && !introShown);
 
   const firstFieldRef = useRef(null);
-  const shopCodeRef   = useRef(null);
   const deviceRef     = useRef(null);
 
   // Kassir sichqonchaga tegmasin — birinchi maydon darhol fokusda.
@@ -130,9 +138,6 @@ export default function LoginPage({ onLogin }) {
       const deviceId = getDeviceId();
       const r = await post("/auth/login",
         {
-          /* ⚠ BO'SH BO'LSA UMUMAN YUBORILMAYDI (`undefined`), bo'sh
-             satr emas: niyat so'rovning o'zida ko'rinib tursin. */
-          shopCode: form.shopCode.trim() || undefined,
           username: form.username.trim(), password: form.password,
           deviceCode: form.deviceCode.trim() || undefined,
         },
@@ -151,7 +156,8 @@ export default function LoginPage({ onLogin }) {
          biladi. Parol saqlanmaydi. */
       try {
         localStorage.setItem("ek_lastLogin", JSON.stringify({
-          shopCode: r.data.shopCode || form.shopCode.trim() || "",
+          /* Kod endi faqat SERVERDAN keladi — formada u yo'q. */
+          shopCode: r.data.shopCode || "",
           shopName: r.data.shopName || "",
           username: me.username || form.username.trim(),
         }));
@@ -164,7 +170,7 @@ export default function LoginPage({ onLogin }) {
         username: me.username || form.username.trim(),
         fullName: me.fullName || me.username || form.username.trim(),
         role:     roleStr,
-        shopCode: form.shopCode.trim(),
+        shopCode: r.data.shopCode || "",
       });
     } catch (err) {
       /* 428 — XATO EMAS: parol to'g'ri, endi pochtadagi kod kerak (V29). */
@@ -218,27 +224,9 @@ export default function LoginPage({ onLogin }) {
 
           {/* ⚠ ESLAB QOLINGAN DO'KON — kod emas, NOM ko'rsatiladi.
               Kassir do'kon kodini yodda saqlamaydi, nomini biladi. */}
-          {last?.shopName && !showShopCode && (
+          {last?.shopName && (
             <div className="auth__remembered">
               <i className="fa-solid fa-store" aria-hidden="true" /> {last.shopName}
-            </div>
-          )}
-
-          {!showShopCode && (
-            <button type="button" className="auth__alt"
-                    onClick={() => { setShowShopCode(true);
-                                     setTimeout(() => shopCodeRef.current?.focus(), 30); }}>
-              <i className="fa-solid fa-store" aria-hidden="true" /> {t("login.otherShop")}
-            </button>
-          )}
-
-          {showShopCode && (
-            <div className="auth__field">
-              <label className="auth__label" htmlFor="shopCode">{t("login.shopCode")}</label>
-                <CodeField id="shopCode" ref={shopCodeRef} className="auth__input mono"
-                     placeholder="shop-code"
-                     value={form.shopCode} onChange={set("shopCode")}
-                     aria-invalid={error ? "true" : undefined} />
             </div>
           )}
 
