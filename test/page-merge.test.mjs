@@ -63,6 +63,38 @@ head("Server javobi");
 }
 
 /* ══ 2. QO'SHISH ══ */
+head("⚠ Spring `Page` shakli");
+{
+  /* ⚠ NEGA UCHINCHI SHAKL BOR. Umumiy katalog (admin paneli) bazadagi
+     sahifalashni TO'G'RIDAN-TO'G'RI javobga chiqaradi — Spring'ning
+     `Page` i: `{content, number, totalElements, totalPages}`. Bizning
+     `PageResponse` esa `{content, page, size, total, hasNext}`.
+
+     Ikkisi tashqi ko'rinishidan bir xil (`content` bor), ichi esa
+     boshqa. Va aynan shu yerda JIM BUZILISH bo'lardi: Spring
+     shaklida `hasNext` YO'Q, `Boolean(undefined)` → `false`, ya'ni
+     cheksiz scroll BIRINCHI SAHIFADA to'xtab, ekranda «hammasi
+     ko'rsatildi — 50 ta» deb yozilib turardi. Bazada mingtasi
+     bo'lsa ham. */
+  const r = readPage({ content: [{ id: 1 }], number: 0, totalElements: 137, totalPages: 3 });
+  ok("qatorlar o'qildi", r.rows.length === 1);
+  ok("⚠ `hasNext` YO'Q bo'lsa sahifa raqamidan hisoblanadi", r.hasNext === true);
+  ok("jami son `totalElements` dan", r.total === 137);
+
+  ok("⚠ oxirgi sahifada «yana bor» o'chadi",
+     readPage({ content: [{ id: 9 }], number: 2, totalElements: 137, totalPages: 3 })
+       .hasNext === false);
+
+  /* ⚠ O'ZIMIZNING SHAKL BUZILMADI: unda `hasNext` BOR va u
+     serverdan olinadi — hisoblanmaydi. */
+  ok("o'zimizning shakl o'zgarmadi",
+     readPage({ content: [{ id: 1 }], page: 0, size: 50, total: 137, hasNext: true })
+       .hasNext === true);
+  ok("o'zimizning shaklda `hasNext` yolg'on bo'lmaydi",
+     readPage({ content: [], page: 2, size: 50, total: 137, hasNext: false })
+       .hasNext === false);
+}
+
 head("Sahifalarni qo'shish");
 {
   ok("bo'shdan boshlanadi", mergePage([], rows(0, 3)).length === 3);

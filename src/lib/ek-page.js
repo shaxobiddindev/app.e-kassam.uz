@@ -47,6 +47,41 @@ export function readPage(data) {
     return { rows: data, hasNext: false, total: data.length, paged: false };
   }
   if (data && Array.isArray(data.content)) {
+    /* ══ ⚠ IKKI XIL `content` SHAKLI BOR ═════════════════════════════
+
+       Bu ikkisi tashqi ko'rinishidan bir xil, ichi esa boshqa:
+
+         · `{content, page, size, total, hasNext}` — o'zimizning
+           `PageResponse` (sahifalash uchun ataylab yozilgan);
+         · `{content, number, totalElements, totalPages}` — Spring'ning
+           `Page` i, ya'ni bazadagi sahifalash natijasi
+           TO'G'RIDAN-TO'G'RI javobga chiqqan (umumiy katalog,
+           admin paneli).
+
+       ⚠ IKKINCHISIDA `hasNext` YO'Q va aynan shu yerda xato
+       bo'lardi: `Boolean(undefined)` → `false`, ya'ni cheksiz
+       scroll BIRINCHI SAHIFADA to'xtab qolardi. Ekranda esa
+       «hammasi ko'rsatildi — 50 ta» deb yozilib turardi, holbuki
+       bazada mingtasi bor. Jim buzilishning aynan o'zi.
+
+       Shuning uchun `hasNext` YO'Q bo'lsa, u sahifa raqami va
+       sahifalar sonidan hisoblanadi. */
+    if (data.hasNext === undefined
+        && (data.totalPages !== undefined || data.totalElements !== undefined)) {
+      const page = Number(data.number ?? data.page ?? 0);
+      const pages = Number(data.totalPages ?? 0);
+      const els = Number(data.totalElements);
+      return {
+        rows: data.content,
+        hasNext: Number.isFinite(pages) && pages > 0
+          ? page + 1 < pages
+          /* `totalPages` ham yo'q — to'liq sahifa «yana bor» degani. */
+          : data.content.length > 0 && Number.isFinite(els)
+            && (page + 1) * data.content.length < els,
+        total: Number.isFinite(els) && els >= 0 ? els : null,
+        paged: true,
+      };
+    }
     return {
       rows: data.content,
       /* ⚠ `hasNext` SERVERDAN OLINADI, hisoblanmaydi: ba'zi ro'yxatda
