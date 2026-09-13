@@ -1260,6 +1260,7 @@ export default {
   "sales.kpiPaid": "To'langan",
   "sales.kpiCount": "{n} ta chek",
   "sales.exportHint": "Ko'ringan {n} ta chekni Excel'ga chiqarish",
+  "sales.exportTooMany": "{n} ta chek juda ko'p — bir marta {cap} tagacha chiqarish mumkin. Davrni yoki filtrni toraytiring.",
   "sales.colPayment": "To'lov",
   "sales.colPrice": "Narxi",
 

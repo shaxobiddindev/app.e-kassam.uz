@@ -25,11 +25,13 @@ import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
 import Select from "../components/ek/Select";
 import { topRole } from "../lib/ek-roles";
 import { useScanner } from "../hooks/useScanner";
+import { useDebounced } from "../hooks/useDebounced";
+import { useInfinite } from "../hooks/useInfinite";
+import InfiniteList from "../components/ek/InfiniteList";
 import { useOnline } from "../hooks/useOnline";
 import { parseSaleCode } from "../lib/ek-barcode";
-import { rankItems } from "../lib/ek-search";
 import { refundFor, refundSuggestion } from "../lib/ek-refund";
-import { saleRow, salesTotals } from "../lib/ek-sales-row";
+import { saleRow } from "../lib/ek-sales-row";
 import { downloadXlsx } from "../lib/ek-xlsx";
 
 /* ── Chekni qayta chiqarish ────────────────────────────────────────────────
@@ -116,11 +118,15 @@ export default function SalesPage({ toast }) {
   const [fiscalOn, setFiscalOn]   = useState(false);
   const [corr, setCorr]           = useState(null);
   const [printing, setPrinting]   = useState(null);
-  const [sales, setSales]         = useState([]);
-  const [loading, setLoading]     = useState(true);
-  // Ekranda ko'rsatiladigan holat: tez javobda skeleton UMUMAN chizilmaydi
-  // (180ms kechikish), chizilgan bo'lsa esa kamida 400ms turadi — miltillamaydi.
-  const busy = useLoading(loading);
+  /* ⚠ RO'YXAT HOLATI `useInfinite` DA (pastda). Ilgari bu yerda
+     `sales` massivi turardi va butun davr bir so'rovda kelardi —
+     kuniga 200 chek qiladigan do'kon bir yilda 73 000 qatorga
+     yetadi va monoblokdagi brauzer bunday javobni ochib
+     ulgurmasdi. */
+  /* Ro'yxatni qayta so'rash uchun hisoblagich: `useInfinite`
+     `fetcher` o'zgarganini «boshqa ro'yxat» deb tushunadi. */
+  const [version, setVersion]     = useState(0);
+  const reload = useCallback(() => setVersion((v) => v + 1), []);
   const [search, setSearch]       = useState("");
   // Holat bo'yicha saralash. Standart — BARCHASI: tarix to'liq ko'rinishi
   // kerak, filtrni foydalanuvchi o'zi tanlaydi.
@@ -147,25 +153,27 @@ export default function SalesPage({ toast }) {
   const [period, setPeriod] = useState("month");
   const range = useMemo(() => periodRange(period, new Date()), [period]);
 
-  const loadSales = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await saleApi.getAll(branchId, isoInstant(range.from), isoInstant(range.to));
-      // Teskari tartib: yangi sotuvlar yuqorida
-      const sorted = (asArray(res.data)).sort((a, b) => {
-        const da = new Date(a.createdAt || 0).getTime();
-        const db = new Date(b.createdAt || 0).getTime();
-        return db - da;
-      });
-      setSales(sorted);
-    } catch (err) {
-      toast.error(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }, [branchId, range.from, range.to]);
+  /* ══ KASSIRGA FAQAT BUGUN — VA BU SERVERGA YUBORILADI ═══════════════
+     ⚠ Ilgari cheklash BRAUZERDA edi: butun davr yuklanar, keyin
+     `saleDate < todayStart` bo'yicha kesilardi. Sahifalashdan keyin
+     bu jimgina buzilardi — server birinchi 50 chekni beradi, ular
+     esa kechagi bo'lishi mumkin va kassir BO'SH ro'yxat ko'rardi.
 
-  useEffect(() => { loadSales(); }, [loadSales]);
+     ⚠ SANA MAHALLIY YARIM TUNDAN olinadi, `toISOString().slice(0,10)`
+     dan EMAS: UTC+5 da yarim tundan keyingi soatlarda u KECHAGI
+     kunni berardi. */
+  const fromIso = useMemo(() => {
+    if (!isCashier) return isoInstant(range.from);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return isoInstant(range.from > today ? range.from : today);
+  }, [isCashier, range.from]);
+  const toIso = useMemo(() => isoInstant(range.to), [range.to]);
+
+  /* ⚠ TARTIB ENDI SERVERDA. Ilgari javob brauzerda `createdAt`
+     bo'yicha saralanardi; sahifada esa bu faqat YUKLANGAN 50
+     qatorni saralar va ro'yxat sahifadan sahifaga sakrab
+     ketardi. */
 
   /* Do'kon fiskal rejimda ishlayaptimi (V86).
 
@@ -182,9 +190,7 @@ export default function SalesPage({ toast }) {
     return () => { alive = false; };
   }, [isCashier]);
 
-  // CASHIER uchun faqat bugungi sotuvlar
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
+
 
   /**
    * Tarixdagi sotuvning chekini qayta chiqaradi.
@@ -217,23 +223,11 @@ export default function SalesPage({ toast }) {
     return false;
   };
 
-  // Holat filtri qidiruvdan OLDIN qo'llanadi, shunda chiplardagi sonlar
-  // qidiruvga bog'liq bo'lmay, "shu do'konda nechta bekor qilingan sotuv
-  // bor" degan savolga javob beradi.
-  const byPeriod = sales.filter((s) => {
-    // CASHIER bo'lsa faqat bugungi
-    if (isCashier && s.createdAt) {
-      const saleDate = new Date(s.createdAt);
-      if (saleDate < todayStart) return false;
-    }
-    return true;
-  });
-  const counts = {
-    ALL:       byPeriod.length,
-    PAID:      byPeriod.filter((s) => s.status === "PAID").length,
-    CREDIT:    byPeriod.filter((s) => s.status === "CREDIT").length,
-    CANCELLED: byPeriod.filter((s) => s.status === "CANCELLED").length,
-  };
+  /* ⚠ CHIPLARDAGI SONLAR SERVERDAN (pastdagi `sum`). Ilgari ular
+     yuklangan massivdan sanalardi va bu to'g'ri edi — massiv butun
+     davrni o'z ichiga olardi. Sahifalashdan keyin esa chip «bekor
+     qilinganlar: 0» deb turar, aslida ular keyingi sahifalarda
+     bo'lardi. */
 
   /* ── Chek barkodini skanerlash ────────────────────────────────────
      Kassir mijoz olib kelgan chekni skanerlaydi va kerakli sotuv darhol
@@ -243,10 +237,19 @@ export default function SalesPage({ toast }) {
      ⚠ Tovar barkodi bu yerda E'TIBORSIZ qoldiriladi: `parseSaleCode`
      faqat `S-` prefiksli kodni tanidi. Aks holda kassir tovarni
      skanerlaganda tushunarsiz "topilmadi" xatosi chiqardi. */
-  useScanner((code) => {
+  useScanner(async (code) => {
     const id = parseSaleCode(code);
     if (id == null) return;
-    const sale = sales.find((x) => x.id === id);
+    /* ⚠ CHEK SERVERDAN OLINADI, RO'YXATDAN EMAS. Ilgari bu yerda
+       `sales.find(...)` turardi va sahifalashdan keyin u faqat
+       YUKLANGAN 50 chekni ko'rardi: mijoz ertalabki chekni olib
+       kelsa, kassir «topilmadi» degan yolg'on xatoni olardi va
+       qaytarish umuman mumkin bo'lmasdi. */
+    let sale = null;
+    try {
+      const r = await saleApi.getById(id);
+      sale = r?.data || null;
+    } catch { sale = null; }
     if (!sale) { toast.error(`${t("ret.notFound")}: ${code}`); return; }
     if (sale.type === "RETURN" || sale.status === "CANCELLED") {
       toast.error(t("ret.notReturnable"));
@@ -309,7 +312,7 @@ export default function SalesPage({ toast }) {
       await guard(() => saleApi.returnSale(ret.sale.id, { items, reason: ret.reason }));
       toast.success(t("ret.done"));
       setRet(null);
-      loadSales();
+      reload();
     } catch (err) {
       if (!err?.cancelled) toast.error(err.message);
     } finally {
@@ -448,42 +451,137 @@ export default function SalesPage({ toast }) {
   ], []);
   const colFlt = useDataFilter(COLS, "sales");
 
-  const byStatus = byPeriod.filter((s) => status === "ALL" || s.status === status);
-  /* Chek raqami RAQAMLI maydon sifatida: do'koncha «…347» deb oxirgi
-     raqamlarni eslaydi, to'liq raqamni emas — matn qoidasi bunda
-     ishlamasdi. */
-  const filtered = rankItems(colFlt.apply(byStatus), search, {
-    /* ⚠ SHTRIX-KOD ham RAQAM sifatida (V97). Do'kon egasining ish
-       oqimi: qaytarib kelingan tovarni skanerlaydi va «bu qaysi
-       chekdan chiqqan?» degan savolga javob oladi — ilgari buni
-       faqat cheklarni birma-bir ochib topsa bo'lardi. */
-    digits: (s) => [String(s.id), ...(s.items || []).map((i) => i.barcode).filter(Boolean)],
-    /* ⚠ NOM YETMAYDI: bir do'konda bir xil nomli o'nlab tovar bo'ladi
-       («Futbolka»), SKU esa yagona. */
-    texts:  (s) => [s.customerName, s.cashierName,
-                    ...(s.items || []).flatMap((i) => [i.productName, i.sku])].filter(Boolean),
-  });
+  /* ══ RO'YXAT — SERVERDAN, SAHIFA-SAHIFA ════════════════════════════
 
-  /* ⚠ KPI KO'RINGAN RO'YXATDAN hisoblanadi, alohida so'rovdan EMAS.
-     Egasi filtrni o'zgartirsa raqamlar ham o'zgarishi kerak — aks
-     holda ekranda bir-biriga zid ikkita haqiqat turardi. */
-  const kpi = useMemo(() => salesTotals(filtered), [filtered]);
+     ⚠ FILTR, QIDIRUV VA HOLAT CHIPI — HAMMASI SERVERDA. Ilgari
+     uchalasi ham brauzerda, yuklangan massiv ustida bajarilardi.
+     Sahifalash bilan bu JIMGINA buzilardi:
 
-  /**
-   * KO'RINGAN RO'YXATNI Excel'ga chiqaradi.
-   *
-   * ⚠ Aynan `filtered` — filtr va qidiruvdan O'TGANI. Butun ro'yxatni
-   * chiqarish osonroq bo'lardi, lekin egasi ekranda ko'rgan narsasini
-   * kutadi: «shu uchta kassirning shu haftadagi cheklarini ber»
-   * degani, «hamma narsani» degani emas.
-   *
-   * ⚠ SUMMALAR SON bo'lib ketadi, matn bo'lib emas: Excel'da ular
-   * ustidan yig'indi olinadi. Matn bo'lsa, ustunni qo'lda qayta
-   * terish kerak bo'lardi.
-   */
-  const exportXlsx = () => {
+         egasi «Akmal» deb yozadi  →  birinchi 50 chekda yo'q
+                                   →  «bunday chek yo'q» degan xulosa
+
+     Ekranda hech qanday xato ko'rinmaydi — shuning uchun bu yo'l
+     tanlanmadi.
+
+     ⚠ TERISH KECHIKTIRILADI: har harfda so'rov ketsa «Dilnoza»
+     so'zi 7 ta so'rov yuborardi va ularning 6 tasi darhol keraksiz
+     bo'lib qolardi. */
+  const slowSearch = useDebounced(search, 300);
+  const fltJson = colFlt.serialize();
+
+  const fetchPage = useCallback((page, size) => saleApi.getPage(page, size, {
+    shopId: branchId, from: fromIso, to: toIso,
+    flt: fltJson, q: slowSearch, status,
+  /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }), [branchId, fromIso, toIso, fltJson, slowSearch, status, version]);
+
+  const { rows: sales, loading, error, hasNext, total, loadMore, retry } =
+    useInfinite(fetchPage, { size: 50 });
+
+  /* ⚠ BU QATOR `useInfinite` DAN KEYIN: `loading` va `sales` — shu
+     chaqiruvning natijasi. Oldin o'qilsa `ReferenceError` va React
+     sahifani UMUMAN chizmaydi (`scripts/check-tdz.mjs` qo'riqlaydi).
+
+     Skeleton faqat BIRINCHI sahifada: keyingilarida ro'yxat
+     ekranda turadi va uni skeletonga almashtirish sakrash
+     berardi. */
+  const busy = useLoading(loading && !sales.length);
+  useEffect(() => { if (error) toast.error(error); }, [error]);
+
+  /* Server allaqachon filtrlab, saralab va reytinglab bergan. */
+  const filtered = sales;
+
+  /* ══ CHIPLAR VA KPI — ALOHIDA SO'ROV ═══════════════════════════════
+
+     ⚠ ULARNI RO'YXATDAN HISOBLAB BO'LMAYDI. Ilgari KPI paneli
+     `salesTotals(filtered)` edi va bu to'g'ri edi: `filtered` butun
+     davrni qamrab olardi. Sahifada esa u 50 qator — panel «bu oy
+     4 200 000 so'm» o'rniga «bu sahifada 4 200 000 so'm» degan
+     raqamni ko'rsatardi va ekranda hech qanday belgi qolmasdi.
+
+     ⚠ XATO JIMGINA YUTILADI: bu so'rov ro'yxatning ishlashi uchun
+     KERAK EMAS. U yiqilsa panel chizilmaydi — ya'ni ekranda
+     YOLG'ON raqam emas, hech narsa turadi. */
+  const [sum, setSum] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    saleApi.summary({
+      shopId: branchId, from: fromIso, to: toIso,
+      flt: fltJson, q: slowSearch, status,
+    })
+      .then((r) => { if (alive) setSum(r?.data || null); })
+      .catch(() => { if (alive) setSum(null); });
+    return () => { alive = false; };
+  }, [branchId, fromIso, toIso, fltJson, slowSearch, status, version]);
+
+  const counts = {
+    ALL:       sum?.counts?.all ?? 0,
+    PAID:      sum?.counts?.paid ?? 0,
+    CREDIT:    sum?.counts?.credit ?? 0,
+    CANCELLED: sum?.counts?.cancelled ?? 0,
+  };
+  const kpi = sum?.totals || null;
+
+  /* ══ EXCEL ═════════════════════════════════════════════════════════
+
+     ⚠ QOLGAN SAHIFALAR HAM SO'RALADI.
+
+     Eksport «ko'ringan ro'yxatni» chiqarishga va'da beradi va
+     sahifalashgacha bu rost edi. Endi ekranda 50 qator turadi —
+     ya'ni tugmani bosgan odam 3 400 chekdan 50 tasini oladi va
+     buni FAQAT Excel'ni ochganda biladi. Eng yomon natija shu:
+     to'liqsiz fayl to'liqdek ko'rinadi.
+
+     ⚠ CHEGARA BOR: server bir so'rovda ko'pi bilan 200 qator
+     beradi (`Paging.MAX_SIZE`), shuning uchun 20 000 chek 100 ta
+     so'rov degani. Chegaradan oshsa ogohlantiriladi va HECH NARSA
+     chiqarilmaydi — yarmini berish eng yomon yechim bo'lardi
+     (qaysi yarmi ekani ko'rinmaydi).
+
+     ⚠ SUMMALAR SON bo'lib ketadi, matn bo'lib emas: Excel'da ular
+     ustidan yig'indi olinadi. */
+  const EXPORT_CAP = 20000;
+  const [exporting, setExporting] = useState(false);
+
+  const collectAll = async () => {
+    if (total == null) return sales;
+    if (total > EXPORT_CAP) {
+      toast.error(t("sales.exportTooMany", { n: total, cap: EXPORT_CAP }));
+      return null;
+    }
+    if (sales.length >= total) return sales;
+    const size = 200;
+    const out = [];
+    for (let page = 0; page * size < total; page++) {
+      const r = await saleApi.getPage(page, size, {
+        shopId: branchId, from: fromIso, to: toIso,
+        flt: fltJson, q: slowSearch, status,
+      });
+      const got = asArray(r?.data?.content ?? r?.data);
+      if (!got.length) break;
+      out.push(...got);
+      /* ⚠ HIMOYA: server «yana bor» deb turib bir xil sahifani
+         qaytarsa (tartib noyob emas), sikl abadiy aylanardi. */
+      if (out.length >= total) break;
+    }
+    return out;
+  };
+
+  const exportXlsx = async () => {
+    setExporting(true);
+    try {
+      const all = await collectAll();
+      if (all) buildXlsx(all);
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const buildXlsx = (list) => {
     const head = (...cols) => cols.map((v) => ({ v, bold: true }));
-    const rows = filtered.map((s) => {
+    const rows = list.map((s) => {
       const r = saleRow(s);
       return [
         s.id,
@@ -552,7 +650,10 @@ export default function SalesPage({ toast }) {
 
           ⚠ Bo'sh ro'yxatda panel CHIZILMAYDI: to'rtta nol egasiga
           hech narsa aytmaydi va faqat joy egallaydi. */}
-      {filtered.length > 0 && (
+      {/* ⚠ `kpi` YO'Q BO'LSA PANEL CHIZILMAYDI: jamlama so'rovi
+          yiqilgan bo'lsa, ekranda YOLG'ON raqam emas, hech narsa
+          turishi kerak. */}
+      {kpi && kpi.count + kpi.returnCount > 0 && (
         <div className="sales-kpi">
           <div className="sales-kpi__item">
             <span className="sales-kpi__label">{t("sales.kpiSales")}</span>
@@ -584,10 +685,15 @@ export default function SalesPage({ toast }) {
             {/* ⚠ Faqat KO'RINGAN cheklar bor bo'lganda: bo'sh faylni
                 yuklab olish foydasiz va tugma «ishlamadi» degan
                 taassurot berardi. */}
-            {filtered.length > 0 && (
+            {/* ⚠ SON SERVERDAN (`total`), ekrandagi qatorlar soni
+                EMAS: «50 ta chekni chiqarish» deb turgan tugma
+                aslida 3 400 tasini chiqarardi. */}
+            {total > 0 && (
               <button className="btn btn-outline btn-sm" onClick={exportXlsx}
-                      title={t("sales.exportHint", { n: filtered.length })}>
-                <i className="fa-solid fa-file-excel" aria-hidden="true" /> Excel
+                      disabled={exporting}
+                      title={t("sales.exportHint", { n: total })}>
+                {exporting ? <Spinner small />
+                  : <i className="fa-solid fa-file-excel" aria-hidden="true" />} Excel
               </button>
             )}
             {isCashier && (
@@ -599,7 +705,7 @@ export default function SalesPage({ toast }) {
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
             <DataFilter cols={COLS} flt={colFlt} />
-            <button className="btn btn-outline btn-sm" onClick={loadSales}>
+            <button className="btn btn-outline btn-sm" onClick={reload}>
               <i className="fa-solid fa-rotate-right" /> {t("common.refresh")}
             </button>
           </div>
@@ -654,7 +760,7 @@ export default function SalesPage({ toast }) {
                 </tr>
               </thead>
               <tbody>
-                {filtered.length > 0 ? filtered.map((sale) => {
+                {sales.length > 0 ? sales.map((sale) => {
                   const st = statusBadge(sale.status);
                   const row = saleRow(sale);
                   return (
@@ -769,6 +875,11 @@ export default function SalesPage({ toast }) {
             </table>
           )}
         </div>
+
+        <InfiniteList
+          loading={loading} error={error} hasNext={hasNext}
+          total={total} count={sales.length}
+          onMore={loadMore} onRetry={retry} />
       </div>
 
       {/* ── Detail Modal ── */}
@@ -784,7 +895,7 @@ export default function SalesPage({ toast }) {
           sale={corr}
           toast={toast}
           onClose={() => setCorr(null)}
-          onDone={() => { setCorr(null); toast.success(t("corr.done")); loadSales(); }}
+          onDone={() => { setCorr(null); toast.success(t("corr.done")); reload(); }}
         />
       )}
 

@@ -1204,6 +1204,7 @@ export default {
   "sales.kpiPaid": "Оплачено",
   "sales.kpiCount": "{n} чеков",
   "sales.exportHint": "Выгрузить показанные {n} чеков в Excel",
+  "sales.exportTooMany": "{n} чеков — слишком много: за раз можно выгрузить до {cap}. Сузьте период или фильтр.",
   "sales.colPayment": "Оплата",
   "sales.colPrice": "Цена",
 

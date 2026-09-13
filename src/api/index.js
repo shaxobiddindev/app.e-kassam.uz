@@ -1045,6 +1045,49 @@ export const saleApi = {
     const s = q.toString();
     return request(`/sales${s ? `?${s}` : ""}`);
   },
+  /**
+   * BITTA SAHIFA — ustun filtri, qidiruv va holat chipi SERVERDA.
+   *
+   * ⚠ `getAll` TEGILMADI: `page` berilmasa server avvalgidek massiv
+   * qaytaradi. Ishlab turgan kassalarning bir qismi hali
+   * `desktop-v1.10.0` da va ular javobni massiv deb o'qiydi.
+   *
+   * ⚠ FILTR VA QIDIRUV SERVERGA — aks holda ular faqat yuklangan
+   * 50 qatorga tegardi va do'kon egasi chekni «yo'q» deb
+   * hisoblardi.
+   */
+  getPage: (page = 0, size = 50, opts = {}) => {
+    const p = new URLSearchParams({ page, size });
+    if (opts.shopId) p.set("shopId", opts.shopId);
+    if (opts.from) p.set("from", opts.from);
+    if (opts.to) p.set("to", opts.to);
+    if (opts.flt) p.set("flt", opts.flt);
+    if (opts.q) p.set("q", opts.q);
+    /* ⚠ «ALL» YUBORILMAYDI: server uni «hammasi» deb tushunadi,
+       lekin bo'sh qoldirish shartnomani soddaroq qiladi. */
+    if (opts.status && opts.status !== "ALL") p.set("status", opts.status);
+    return request(`/sales?${p}`);
+  },
+
+  /**
+   * CHIPLAR VA KPI PANELI — ro'yxatdan ALOHIDA so'rov.
+   *
+   * ⚠ NEGA ALOHIDA: sahifadagi 50 qator butun davrni ifodalay
+   * olmaydi. Ilgari panel yuklangan massivdan hisoblanardi va
+   * sahifalashdan keyin u JIMGINA «bu oy» o'rniga «bu sahifada»
+   * degan raqamni ko'rsatardi.
+   */
+  summary: (opts = {}) => {
+    const p = new URLSearchParams();
+    if (opts.shopId) p.set("shopId", opts.shopId);
+    if (opts.from) p.set("from", opts.from);
+    if (opts.to) p.set("to", opts.to);
+    if (opts.flt) p.set("flt", opts.flt);
+    if (opts.q) p.set("q", opts.q);
+    if (opts.status && opts.status !== "ALL") p.set("status", opts.status);
+    const qs = p.toString();
+    return request(`/sales/summary${qs ? `?${qs}` : ""}`);
+  },
   getById: (id)          => request(`/sales/${id}`),
   create:  (data)        => request("/sales",       { method: "POST",  body: JSON.stringify(data) }),
   cancel:  (id)          => request(`/sales/${id}/cancel`, { method: "PATCH" }),

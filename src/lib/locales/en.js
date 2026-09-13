@@ -1204,6 +1204,7 @@ export default {
   "sales.kpiPaid": "Paid",
   "sales.kpiCount": "{n} receipts",
   "sales.exportHint": "Export the {n} shown receipts to Excel",
+  "sales.exportTooMany": "{n} receipts is too many — up to {cap} can be exported at once. Narrow the period or filter.",
   "sales.colPayment": "Payment",
   "sales.colPrice": "Price",
 
