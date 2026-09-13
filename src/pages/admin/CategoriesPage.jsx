@@ -68,6 +68,9 @@ export default function CategoriesPage({ toast }) {
      oyna faqat kerakligini ko'rsatadi: ikkita alohida endpoint
      ikkita alohida yo'l bo'lardi va ular bir kun ajralib ketardi. */
   const [peek, setPeek]             = useState(null);
+  /* `{ cat, target }` — «ko'chirib o'chirish» oynasi. */
+  const [merge, setMerge]           = useState(null);
+  const [merging, setMerging]       = useState(false);
   const [form, setForm]             = useState(EMPTY_FORM);
   const [saving, setSaving]         = useState(false);
   const [branchId, setBranchId]     = useState(null);
@@ -104,6 +107,21 @@ export default function CategoriesPage({ toast }) {
   };
 
   const closeModal = () => setModal(null);
+
+  const doMerge = async () => {
+    if (!merge?.target) return;
+    setMerging(true);
+    try {
+      await productApi.mergeCategory(merge.cat.id, Number(merge.target), branchId);
+      toast.success(t("cat.merged"));
+      setMerge(null);
+      loadData();
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setMerging(false);
+    }
+  };
 
   /* ⚠ RO'YXAT HAR OCHILISHDA SERVERDAN. Keshlanmaydi: tovar boshqa
      oynada arxivlanishi yoki qo'shilishi mumkin va eski ro'yxat
@@ -151,6 +169,11 @@ export default function CategoriesPage({ toast }) {
   };
 
   const handleDelete = async (cat) => {
+    /* ⚠ TOVARI BOR BO'LSA — SO'ROV YUBORILMAYDI. Ilgari o'chirish
+       urinilib, server rad etardi va foydalanuvchi «tovarlar bor»
+       degan xabarni olardi — nima qilish kerakligi aytilmasdi.
+       Endi darhol ko'chirish oynasi ochiladi. */
+    if (cat.productCount > 0) { setMerge({ cat, target: "" }); return; }
     const ok = await confirm({
       title: t("cat.deleteTitle"),
       message: `"${cat.name}" — ${t("common.delete")}?`,
@@ -346,6 +369,61 @@ export default function CategoriesPage({ toast }) {
           jadvalda ular ko'rinmaydi (o'chirilgan tovar sotiladigan tovar
           emas), lekin ular kategoriyani o'chirishni TO'SADI. Egasi
           nimaga to'silayotganini ko'ra olishi kerak. */}
+      {/* ══ KO'CHIRIB O'CHIRISH ═══════════════════════════════════════
+          ⚠ OYNA HISOBOTGA TA'SIRINI OCHIQ AYTADI. O'lchandi: hisobot
+          kategoriyani TIRIK `product.category` dan oladi va NOM
+          bo'yicha guruhlaydi (`AnalyticsService`) — ya'ni ko'chirish
+          o'tgan oylar hisobotini ham o'zgartiradi. Buni yashirish eng
+          yomon yo'l bo'lardi: raqamlar jimgina o'zgarardi. */}
+      {merge && (
+        <Modal
+          title={t("cat.mergeTitle")}
+          onClose={() => setMerge(null)}
+          maxWidth={560}
+          footer={
+            <>
+              <button className="btn btn-outline" onClick={() => setMerge(null)} disabled={merging}>
+                {t("common.cancel")}
+              </button>
+              <button className="btn btn-danger" onClick={doMerge}
+                      disabled={!merge.target || merging}>
+                {merging ? <Spinner /> : <i className="fa-solid fa-code-merge" />}
+                {" "}{t("cat.mergeAction")}
+              </button>
+            </>
+          }
+        >
+          <p style={{ marginTop: 0 }}>
+            {t("cat.mergeIntro", {
+              name: merge.cat.name,
+              n: merge.cat.productCount,
+              live: merge.cat.productCount - (merge.cat.archivedProductCount || 0),
+              arch: merge.cat.archivedProductCount || 0,
+            })}
+          </p>
+
+          <FormGroup label={t("cat.mergeTarget")}>
+            <Select
+              block variant="field" searchable
+              searchPlaceholder={t("common.searchShort")}
+              placeholder={t("cat.mergePick")}
+              value={merge.target}
+              onChange={(v) => setMerge((m) => ({ ...m, target: v }))}
+              /* O'ziga ko'chirib bo'lmaydi — qolgan hamma bo'lim maqsad. */
+              options={categories
+                .filter((c) => c.id !== merge.cat.id)
+                .map((c) => ({ value: String(c.id), label: c.name,
+                               icon: c.icon || "fa-tags" }))}
+            />
+          </FormGroup>
+
+          {/* ⚠ Ogohlantirish MATN bilan — rang yolg'iz signal emas. */}
+          <div className="ek-note ek-note--warn" style={{ marginTop: 12 }}>
+            <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />
+            <div>{t("cat.mergeReportWarn")}</div>
+          </div>
+        </Modal>
+      )}
       {peek && (() => {
         /* ⚠ FILTR SHU YERDA, so'rovda emas — izohga qarang. */
         const rows = peek.rows === null ? null

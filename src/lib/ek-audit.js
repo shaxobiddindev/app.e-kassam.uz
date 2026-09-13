@@ -44,7 +44,7 @@ export const AUDIT_ACTIONS = [
   "CART_ABANDONED",
 
   /* ── Tovar va narx ── */
-  "PRODUCT_DELETE", "PRODUCT_CODE_ISSUE", "PRODUCT_BARCODE_RELEASE",
+  "PRODUCT_DELETE", "PRODUCT_CODE_ISSUE", "PRODUCT_BARCODE_RELEASE", "CATEGORY_MERGE",
   "PRODUCT_RESTORE",
   "PRICE_CHANGE", "PRICE_BULK_CHANGE",
   /* ⚠ Yorliq chiqarish narx bilan bir guruhda va bu ataylab:

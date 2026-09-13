@@ -548,6 +548,12 @@ export const productApi = {
   updateCategory: (id, data, shopId) => request(`/products/categories/${id}${shopId ? `?shopId=${shopId}` : ""}`,
                                           { method: "PUT", body: JSON.stringify(typeof data === "string" ? { name: data } : data) }),
   deleteCategory: (id, shopId)       => request(`/products/categories/${id}${shopId ? `?shopId=${shopId}` : ""}`, { method: "DELETE" }),
+  /* ⚠ Bo'limni o'chirib, tovarlarini BOSHQA bo'limga ko'chirish.
+     Sotuv tarixi bor tovarlar to'la bo'limni o'chirishning yagona
+     yo'li — va u o'tgan davr hisobotini qayta yozadi. */
+  mergeCategory: (id, targetId, shopId) =>
+    request(`/products/categories/${id}/merge?targetId=${targetId}${shopId ? `&shopId=${shopId}` : ""}`,
+            { method: "POST" }),
   /* Kategoriyadagi tovarlar — ARXIVDAGILAR HAM. Jadvaldagi ikkita
      sonning ortidagi narsani ko'rsatadi. */
   categoryProducts: (id, shopId) =>
