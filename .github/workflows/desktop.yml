@@ -165,9 +165,49 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $tag = $env:GITHUB_REF_NAME
+
+          # ══ AVVAL QORALAMA, KEYIN NASHR ═══════════════════════════════
+          #
+          # ⚠ NEGA IKKI QADAM. 2026-09-13 da `gh release create` (nashr
+          # etilgan holda) shu repoda TO'RT MARTA ketma-ket `HTTP 500`
+          # bilan yiqildi. Har yiqilish o'zidan QORALAMA qoldirdi, ya'ni
+          # GitHub reliz yozuvini yaratardi-yu, uni nashr qila olmasdi.
+          # Qoralamalar to'planib, keyingi urinishlarni ham buzardi.
+          #
+          # Qoralama yaratish va keyin alohida nashr qilish ishlaydi.
+          # Bu shuningdek TO'G'RIROQ tartib: fayllar relizga ULANGANDAN
+          # KEYIN u ko'rinadigan bo'ladi. Aks holda oraliqda `latest`
+          # mavjud, `latest.json` esa hali yo'q holat bo'lishi mumkin —
+          # va o'sha lahzada yangilanishni so'ragan kassa manifestni
+          # topa olmasdi.
+          #
+          # ⚠ ESKI QORALAMA AVVAL TOZALANADI. Aks holda bitta tegga bir
+          # nechta reliz to'g'ri kelib, GitHub yangisini yarata olmaydi.
+          $stale = gh api "repos/$env:GITHUB_REPOSITORY/releases" --paginate `
+                     --jq ".[] | select(.draft and .tag_name == \"$tag\") | .id"
+          foreach ($id in $stale) {
+            if ($id) {
+              Write-Host "Eski qoralama o'chirilmoqda: $id"
+              gh api -X DELETE "repos/$env:GITHUB_REPOSITORY/releases/$id" | Out-Null
+            }
+          }
+
           # ⚠ `latest.json` ham qo'shiladi — auto-update AYNAN shu faylni
           # o'qiydi. U tushib qolsa ilova yangilanishni topa olmaydi va
           # buni hech kim sezmaydi: xato chiqmaydi, shunchaki jimlik.
           gh release create $tag (Get-ChildItem release/*.exe, release/latest.json | ForEach-Object FullName) `
+            --draft `
             --title "e-Kassam $($tag -replace '^desktop-v','') — Windows" `
             --notes "Windows uchun o'rnatuvchi. Doimiy havola: https://github.com/$env:GITHUB_REPOSITORY/releases/latest/download/e-Kassam-setup.exe"
+
+          # Fayllar joyida — endi ko'rinadigan qilamiz.
+          gh release edit $tag --draft=false --latest
+
+          # ⚠ HAQIQATAN NASHR BO'LDIMI. `gh` ba'zan xatoni yutadi;
+          # nashr etilmagan reliz esa kassalarga KO'RINMAYDI va buni
+          # hech kim sezmaydi — auto-update shunchaki jim qoladi.
+          $isDraft = gh api "repos/$env:GITHUB_REPOSITORY/releases/tags/$tag" --jq ".draft"
+          if ($isDraft -ne "false") {
+            throw "Reliz qoralama holida qoldi — kassalar uni ko'rmaydi."
+          }
+          Write-Host "✅ Reliz nashr etildi: $tag"
