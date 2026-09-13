@@ -548,6 +548,10 @@ export const productApi = {
   updateCategory: (id, data, shopId) => request(`/products/categories/${id}${shopId ? `?shopId=${shopId}` : ""}`,
                                           { method: "PUT", body: JSON.stringify(typeof data === "string" ? { name: data } : data) }),
   deleteCategory: (id, shopId)       => request(`/products/categories/${id}${shopId ? `?shopId=${shopId}` : ""}`, { method: "DELETE" }),
+  /* Kategoriyadagi tovarlar — ARXIVDAGILAR HAM. Jadvaldagi ikkita
+     sonning ortidagi narsani ko'rsatadi. */
+  categoryProducts: (id, shopId) =>
+    request(`/products/categories/${id}/products${shopId ? `?shopId=${shopId}` : ""}`),
 
   getVariantGroups: (shopId) => request(`/products/variant-groups${shopId ? `?shopId=${shopId}` : ""}`),
   /* ── Kiyim: filtr va variantlar (V57) ──────────────────────────────

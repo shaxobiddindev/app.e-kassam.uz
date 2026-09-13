@@ -8,6 +8,7 @@ import DataFilter, { useDataFilter, SortTh } from "../../components/ek/DataFilte
 import { SkeletonTable } from "../../components/ek/Loading";
 import { rankItems } from "../../lib/ek-search";
 import { fmtDateTime } from "../../utils";
+import { money } from "../../lib/ek-format";
 import { useConfirm } from "../../context/ConfirmProvider";
 import { Spinner } from "../../components/ek/Loading";
 import { useLoading } from "../../lib/use-loading";
@@ -60,6 +61,13 @@ export default function CategoriesPage({ toast }) {
   const [loading, setLoading]       = useState(true);
   const busy = useLoading(loading);
   const [modal, setModal]           = useState(null);
+  /* `{ cat, mode, rows }` — `mode`: "active" yoki "archived".
+     `rows === null` — javob hali kelmadi.
+
+     ⚠ IKKI REJIM, BITTA SO'ROV. Server ikkalasini ham qaytaradi va
+     oyna faqat kerakligini ko'rsatadi: ikkita alohida endpoint
+     ikkita alohida yo'l bo'lardi va ular bir kun ajralib ketardi. */
+  const [peek, setPeek]             = useState(null);
   const [form, setForm]             = useState(EMPTY_FORM);
   const [saving, setSaving]         = useState(false);
   const [branchId, setBranchId]     = useState(null);
@@ -96,6 +104,21 @@ export default function CategoriesPage({ toast }) {
   };
 
   const closeModal = () => setModal(null);
+
+  /* ⚠ RO'YXAT HAR OCHILISHDA SERVERDAN. Keshlanmaydi: tovar boshqa
+     oynada arxivlanishi yoki qo'shilishi mumkin va eski ro'yxat
+     jadvaldagi sonlar bilan ziddiyatga tushardi. */
+  const openPeek = async (cat, mode) => {
+    setPeek({ cat, mode, rows: null });
+    try {
+      const res = await productApi.categoryProducts(cat.id, branchId);
+      setPeek((p) => (p && p.cat.id === cat.id
+        ? { ...p, rows: Array.isArray(res?.data) ? res.data : [] } : p));
+    } catch (err) {
+      toast.error(err.message);
+      setPeek((p) => (p && p.cat.id === cat.id ? { ...p, rows: [] } : p));
+    }
+  };
 
   const handleSave = async () => {
     if (!form.name.trim()) { toast.error(t("cat.needName")); return; }
@@ -257,13 +280,12 @@ export default function CategoriesPage({ toast }) {
 
                         ⚠ Arxiv soni MATN bilan ajratiladi, rang
                         bilan emas (qoida №6). */}
+                    {/* ⚠ FAQAT SOTILADIGAN TOVARLAR. Arxivdagilar —
+                        o'chirilganlar, ya'ni ular «tovarlar» sonida
+                        turmasligi kerak. Ular «ko'z» oynasida, o'z
+                        holati va sanasi bilan ko'rinadi. */}
                     <td className="text-end ek-num">
                       {cat.productCount - (cat.archivedProductCount || 0)}
-                      {cat.archivedProductCount > 0 && (
-                        <span className="cat-archived-n">
-                          {" + "}{cat.archivedProductCount} {t("cat.archivedShort")}
-                        </span>
-                      )}
                     </td>
                     <td className="text-end ek-num">{cat.childCount}</td>
                     <td>{cat.defaultUnit ? unitLabel(cat.defaultUnit)
@@ -276,6 +298,21 @@ export default function CategoriesPage({ toast }) {
                     <td className="ek-num">{fmtDateTime(cat.createdAt)}</td>
                     <td className="text-end">
                       <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                        {/* ⚠ KO'Z — jadvaldagi ikkita sonning ortidagi
+                            tovarlar. Arxivdagilar ham chiqadi. */}
+                        <button className="btn-icon" onClick={() => openPeek(cat, "active")}
+                                aria-label={t("cat.peek")} title={t("cat.peek")}>
+                          <i className="fa-solid fa-eye" />
+                        </button>
+                        {/* ⚠ ARXIV ALOHIDA OYNADA va tugma FAQAT arxiv
+                            bo'lganda chiqadi: bo'sh oynani ochadigan
+                            tugma foydalanuvchini bekorga yuritadi. */}
+                        {cat.archivedProductCount > 0 && (
+                          <button className="btn-icon" onClick={() => openPeek(cat, "archived")}
+                                  aria-label={t("cat.peekArchived")} title={t("cat.peekArchived")}>
+                            <i className="fa-solid fa-box-archive" />
+                          </button>
+                        )}
                         <button className="btn-icon" onClick={() => openEdit(cat)}
                                 aria-label={t("common.edit")}>
                           <i className="fa-solid fa-pen" />
@@ -303,6 +340,69 @@ export default function CategoriesPage({ toast }) {
           )}
         </div>
       </div>
+
+      {/* ══ KATEGORIYADAGI TOVARLAR ═══════════════════════════════════
+          ⚠ ARXIVDAGILAR HAM CHIQADI va bu oynaning butun ma'nosi shu:
+          jadvalda ular ko'rinmaydi (o'chirilgan tovar sotiladigan tovar
+          emas), lekin ular kategoriyani o'chirishni TO'SADI. Egasi
+          nimaga to'silayotganini ko'ra olishi kerak. */}
+      {peek && (() => {
+        /* ⚠ FILTR SHU YERDA, so'rovda emas — izohga qarang. */
+        const rows = peek.rows === null ? null
+          : peek.rows.filter((p) => (peek.mode === "archived" ? !p.active : p.active));
+        const archived = peek.mode === "archived";
+        return (
+        <Modal
+          title={`${peek.cat.name} — ${archived ? t("cat.peekArchived") : t("cat.peek")}`}
+          onClose={() => setPeek(null)}
+          maxWidth={860}
+        >
+          {archived && (
+            <div className="ek-note" style={{ marginBottom: 12 }}>
+              <i className="fa-solid fa-circle-info" aria-hidden="true" />
+              <div>{t("cat.archivedHint")}</div>
+            </div>
+          )}
+          {rows === null ? (
+            <SkeletonTable rows={6} cols={["wide", "text", "num", "num", "text"]} />
+          ) : rows.length === 0 ? (
+            <Empty icon="fa-box-open" title={archived ? t("cat.archivedEmpty") : t("cat.peekEmpty")} />
+          ) : (
+            <div className="table-wrap">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>{t("common.name")}</th>
+                    <th>{t("kassa.codeMode")}</th>
+                    <th className="text-end">{t("products.salePrice")}</th>
+                    <th className="text-end">{t("inv.currentQty")}</th>
+                    <th>{t("cat.createdCol")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((p) => (
+                    <tr key={p.id}>
+                      <td>{p.name}</td>
+                      <td className="ek-num">{p.searchCode || "—"}</td>
+                      <td className="text-end ek-num">
+                        {p.salePrice == null ? "—" : money(p.salePrice)}
+                      </td>
+                      <td className="text-end ek-num">
+                        {p.stockQuantity == null ? "—" : p.stockQuantity}
+                      </td>
+                      {/* ⚠ «Holat» ustuni YO'Q: qaysi oynada turgani
+                          uni allaqachon aytadi. Ikki joyda bir xil
+                          ma'lumot — ortiqcha ustun. */}
+                      <td className="ek-num">{fmtDateTime(p.createdAt)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Modal>
+        );
+      })()}
 
       {modal && (
         <Modal

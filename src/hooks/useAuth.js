@@ -1,7 +1,7 @@
 import { LOGIN_URL } from "../config";
 import { t, withLang } from "../lib/ek-i18n";
 import { isNativeShell } from "../lib/ek-desktop";
-import { useState, useCallback } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 import { resetShopFeatures } from "./useShopFeatures";
 
 function ls(...keys) {
@@ -25,8 +25,36 @@ function readUser() {
   };
 }
 
+/* ══ HOLAT UMUMIY — HAR HOOK O'ZINIKI EMAS ════════════════════════════
+   ⚠ ILGARI `useState` EDI va bu jimgina nosozlik berardi. `useAuth`
+   to'rt joyda chaqiriladi (`App`, `SettingsPage`, `BranchSelector`,
+   `ShopUsersPage`) va har chaqiruv O'Z holatini yaratardi. Sozlamalardan
+   chiqilganda `logout()` SettingsPage nusxasini `null` qilardi,
+   `App.jsx` niki esa tegilmasdi — ekran o'zgarmay qolardi va kassir
+   ilovani X bilan yopib qayta ochishga majbur bo'lardi.
+
+   ⚠ BRAUZERDA BU KO'RINMASDI: u yerda `logout` sahifani butunlay
+   almashtiradi (`location.replace`), ya'ni holat baribir noldan
+   o'qilardi. Nosozlik FAQAT `.exe` va telefon ilovasida chiqardi —
+   o'sha yerda chiqish oynani tashlab ketmaydi.
+
+   Naqsh loyihada allaqachon bor (`components/ek/Overlay.jsx`). */
+let cached;                       // `undefined` — hali o'qilmagan
+const subscribers = new Set();
+
+/* ⚠ NATIJA KESHLANADI. `readUser()` har chaqiruvda YANGI obyekt
+   qaytaradi; keshsiz React "snapshot o'zgardi" deb cheksiz qayta
+   chizardi. */
+const snapshot = () => {
+  if (cached === undefined) cached = readUser();
+  return cached;
+};
+const subscribe = (fn) => { subscribers.add(fn); return () => subscribers.delete(fn); };
+/** `localStorage` o'zgargach — hamma chaqiruvchiga xabar. */
+const refreshUser = () => { cached = readUser(); subscribers.forEach((fn) => fn()); };
+
 export function useAuth() {
-  const [user, setUser] = useState(readUser);
+  const user = useSyncExternalStore(subscribe, snapshot, snapshot);
 
   /**
    * Desktop'dagi kirish natijasini saqlaydi.
@@ -48,7 +76,7 @@ export function useAuth() {
     // bilan yangilash "boshqa qurilma" deb rad etiladi va foydalanuvchi bir
     // soatda chiqib ketadi.
     if (deviceId) localStorage.setItem("ek_deviceId", deviceId);
-    setUser(readUser());
+    refreshUser();
   }, []);
 
   const logout = useCallback(() => {
@@ -63,7 +91,7 @@ export function useAuth() {
 
     // Desktop'da chiqish oynani TASHLAB KETMAYDI: holat tozalanadi va
     // kirish ekrani shu oynada chiziladi.
-    if (isNativeShell()) { setUser(null); return; }
+    if (isNativeShell()) { refreshUser(); return; }
     window.location.replace(withLang(`${LOGIN_URL}?logged_out=1`));
   }, []);
 
