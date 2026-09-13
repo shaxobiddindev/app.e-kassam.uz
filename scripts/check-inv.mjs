@@ -98,30 +98,150 @@ const day = (offset) => {
 /* ── Soxta ombor ────────────────────────────────────────────────────────
    ⚠ Har bir holat KAMIDA bitta tovar bilan: segment soni bor holat
    uchungina chiziladi va nol turgan holat sinovdan tushib qolardi. */
-/* ⚠ API PARTIYA qatorlarini beradi (`/inventory`), guruhlarni emas —
-   sahifa ularni `groupByProduct` bilan o'zi yig'adi. Soxta javob ham
-   AYNAN shu shaklda bo'lishi shart, aks holda jadval bo'sh chiqadi va
-   sinov «filtr ishlamadi» deb yolg'on gapirardi. */
-const batch = (id, name, code, qty, cost, price, minQ, exp) => ({
+/* ⚠ QATOR ENDI TOVAR, PARTIYA EMAS (`InventoryRowResponse`).
+
+   Ilgari API partiya qatorlarini berardi va sahifa ularni
+   `groupByProduct` bilan yig'ardi. Sahifalash bilan bu jimgina
+   buzilardi: bitta tovarning partiyalari ikki sahifaga bo'linib,
+   qoldig'i XATO chiqardi. Endi kesish birligi tovar va partiyalar
+   qator ICHIDA keladi.
+
+   ⚠ SOXTA JAVOB AYNAN SHU SHAKLDA bo'lishi shart — aks holda jadval
+   bo'sh chiqadi va sinov «filtr ishlamadi» deb yolg'on gapirardi. */
+const batch = (id, qty, exp, cost = 6000) => ({
   /* ⚠ `inventoryId` SHART: «To'g'irlash» tugmasi faqat haqiqiy
      partiyada chiziladi (`single.inventoryId != null`). Usiz qatorda
      bitta tugma qolardi va «tugmalar yopishib qolgan» degan holat
      sinovda umuman yuzaga kelmasdi. */
-  id: id * 100, inventoryId: id * 100, productId: id, productName: name, barcode: code,
-  quantity: qty, minQuantity: minQ, costPrice: cost, salePrice: price,
-  expiryDate: exp, unit: "DONA",
+  inventoryId: id, quantity: qty, costPrice: cost, expiryDate: exp,
+  expired: Boolean(exp && exp < day(0)), status: "ACTIVE", unit: "DONA",
+});
+const row = (id, name, code, qty, cost, price, minQ, exp) => ({
+  productId: id, productName: name, barcode: code, unit: "DONA",
+  costPrice: cost, salePrice: price, minQuantity: minQ,
+  batches: [batch(id * 100, qty, exp, cost)],
 });
 const GOOD = [
-  batch(1, "Suv 1L", "1000", 120, 2000,  3000,  10, null),
-  batch(2, "Choy",   "1001",  80, 9000,  14000,  5, null),
-  batch(3, "Shakar", "1002",  45, 11000, 15000,  5, null),
+  row(1, "Suv 1L", "1000", 120, 2000,  3000,  10, null),
+  row(2, "Choy",   "1001",  80, 9000,  14000,  5, null),
+  row(3, "Shakar", "1002",  45, 11000, 15000,  5, null),
 ];
 const BAD = [
   ...GOOD,
-  batch(4, "Sut 1L", "2000", 12, 8000, 11000, 5, day(-3)),   // muddati o'tgan
-  batch(5, "Qatiq",  "2001",  7, 6000,  9000, 5, day(3)),    // muddati yaqin
-  batch(6, "Non",    "2002",  1, 2500,  4000, 20, null),     // kam qolgan
+  row(4, "Sut 1L", "2000", 12, 8000, 11000, 5, day(-3)),   // muddati o'tgan
+  row(5, "Qatiq",  "2001",  7, 6000,  9000, 5, day(3)),    // muddati yaqin
+  row(6, "Non",    "2002",  1, 2500,  4000, 20, null),     // kam qolgan
 ];
+
+/* ══ SOXTA SERVER ══════════════════════════════════════════════════
+
+   ⚠ FILTR, SARALASH VA TEZ FILTR ENDI SERVERDA. Soxta javob ularni
+   ham bajarishi SHART: aks holda sinov «chip bosildi, qatorlar
+   o'zgarmadi» degan holatni ko'rar va sababini ayta olmasdi.
+
+   ⚠ Bu yerdagi qoidalar `InventoryFilterCols` dagilarning AYNAN
+   o'zi: sotiladigan qoldiq — muddati o'tmagan partiyalar yig'indisi;
+   «chirigan» — qoldig'i bor, muddati o'tgan partiya bor. */
+const NEAR_DAYS = 7;
+const stock = (r) => r.batches.filter((b) => !b.expired)
+                              .reduce((n, b) => n + (b.quantity || 0), 0);
+const nearest = (r) => r.batches.filter((b) => !b.expired && b.expiryDate && b.quantity > 0)
+                                .map((b) => b.expiryDate).sort()[0] || null;
+const rowExpired = (r) => r.batches.some((b) => b.expired && b.quantity > 0);
+const rowNear = (r) => !rowExpired(r) && nearest(r) !== null && nearest(r) <= day(NEAR_DAYS);
+const rowOut = (r) => stock(r) <= 0;
+const rowLow = (r) => !rowOut(r) && stock(r) <= (r.minQuantity ?? 5);
+const rowState = (r) => (rowExpired(r) ? "expired" : rowNear(r) ? "near"
+                        : rowOut(r) ? "out" : rowLow(r) ? "low" : "ok");
+
+const FIELD = {
+  name:   (r) => r.productName,
+  code:   (r) => r.barcode,
+  qty:    (r) => stock(r),
+  cost:   (r) => r.costPrice,
+  price:  (r) => r.salePrice,
+  expiry: (r) => nearest(r),
+  state:  (r) => rowState(r),
+};
+
+const matchCond = (r, c) => {
+  const v = FIELD[c.key]?.(r);
+  if (c.type === "enum") return (c.value || []).includes(v);
+  if (c.type === "number") {
+    const a = Number(String(c.value).replace(/\s/g, ""));
+    const b = Number(String(c.value2 ?? "").replace(/\s/g, ""));
+    const n = Number(v);
+    switch (c.op) {
+      case "eq":  return n === a;
+      case "ne":  return n !== a;
+      case "gt":  return n > a;
+      case "gte": return n >= a;
+      case "lt":  return n < a;
+      case "lte": return n <= a;
+      case "between": return (!c.value || n >= a) && (!c.value2 || n <= b);
+      default: return true;
+    }
+  }
+  if (c.type === "date") {
+    if (!v) return false;
+    if (c.op === "from") return v >= c.value;
+    if (c.op === "to") return v <= c.value;
+    return (!c.value || v >= c.value) && (!c.value2 || v <= c.value2);
+  }
+  const t = String(v ?? "").toLowerCase();
+  const q = String(c.value ?? "").toLowerCase();
+  switch (c.op) {
+    case "empty":    return t === "";
+    case "notEmpty": return t !== "";
+    case "eq":       return t === q;
+    case "starts":   return t.startsWith(q);
+    default:         return t.includes(q);
+  }
+};
+
+function invServe(u, source) {
+  let out = [...source];
+  const state = u.searchParams.get("state");
+  if (state && state !== "all") {
+    /* ⚠ «kam» chipi TUGAGANNI HAM oladi — frontdagi `needsOrder`. */
+    out = out.filter((r) => (state === "expired" ? rowExpired(r)
+                           : state === "near" ? rowNear(r)
+                           : rowLow(r) || rowOut(r)));
+  }
+  const q = (u.searchParams.get("q") || "").toLowerCase();
+  if (q) out = out.filter((r) => r.productName.toLowerCase().includes(q)
+                              || String(r.barcode || "").includes(q));
+  const flt = u.searchParams.get("flt");
+  if (flt) {
+    const parsed = JSON.parse(flt);
+    for (const c of parsed.conds || []) out = out.filter((r) => matchCond(r, c));
+    const key = parsed.sort?.key;
+    if (key && FIELD[key]) {
+      const dir = parsed.sort.dir === "desc" ? -1 : 1;
+      out.sort((a, b) => {
+        const x = FIELD[key](a); const y = FIELD[key](b);
+        if (typeof x === "number" || typeof y === "number") return ((x || 0) - (y || 0)) * dir;
+        return String(x ?? "").localeCompare(String(y ?? "")) * dir;
+      });
+    }
+  }
+  const page = Number(u.searchParams.get("page") || 0);
+  const size = Number(u.searchParams.get("size") || 50);
+  const from = page * size;
+  const slice = out.slice(from, from + size);
+  return { content: slice, page, size, total: out.length, hasNext: from + slice.length < out.length };
+}
+
+/** Chiplar va katakchalar — BUTUN ro'yxatdan, sahifadan emas. */
+const invSummary = (source) => ({
+  counts: {
+    all: source.length,
+    expired: source.filter(rowExpired).length,
+    near: source.filter(rowNear).length,
+    low: source.filter((r) => rowLow(r) || rowOut(r)).length,
+  },
+  facets: { categories: [], brands: [], sizes: [], colors: [], targets: [], seasons: [] },
+});
 
 /* ══════════════════════════════════════════════════════════════════════
    PARTIYALAR SAHIFASI (V76) — soxta ma'lumot
@@ -212,8 +332,10 @@ async function openInv(items, advice = null) {
        ko'rinmasdi — tavsiya oynasi umuman ochilmasdi. */
     const body = /\/inventory\/product\/\d+\/add$/.test(p) && advice
       ? { success: true, message: "ok", data: { inventoryId: 1, priceAdvice: advice } }
+      : p === "/api/inventory/summary"
+      ? { success: true, data: invSummary(items) }
       : p === "/api/inventory"
-      ? { success: true, data: items }
+      ? { success: true, data: invServe(new URL(r.url()), items) }
       : r.url().includes("/shop/profile")
         ? { success: true, data: { creditEnabled: false, nearExpiryDays: 7 } }
         : { success: true, data: [] };
@@ -338,7 +460,7 @@ console.log("\n── C. Ustun filtri ──");
   await new Promise((r) => setTimeout(r, 300));
 
   const n = await rowCount(page);
-  const expect = BAD.filter((x) => x.quantity < 20).length;
+  const expect = BAD.filter((x) => stock(x) < 20).length;
   is(n === expect, `qoldiq < 20 → ${expect} qator`, String(n));
   is(!!(await page.$(".flt-chip")), "faol shart CHIP bo'lib ko'rinadi");
   await shot(page, "inv-filter");
@@ -351,7 +473,7 @@ console.log("\n── C. Ustun filtri ──");
   });
   await new Promise((r) => setTimeout(r, 300));
   const both = await rowCount(page);
-  const expectBoth = BAD.filter((x) => x.quantity < 20 && x.expiryDate && x.expiryDate < day(0)).length;
+  const expectBoth = BAD.filter((x) => stock(x) < 20 && rowExpired(x)).length;
   is(both === expectBoth, `muddati o'tgan VA qoldiq < 20 → ${expectBoth}`, String(both));
 
   await page.evaluate(() => {

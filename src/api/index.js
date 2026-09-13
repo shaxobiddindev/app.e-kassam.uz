@@ -719,6 +719,55 @@ export const mediaApi = {
 
 // ─── Ombor ────────────────────────────────────────────────────
 export const inventoryApi = {
+  /**
+   * BITTA SAHIFA — qatori TOVAR, partiya EMAS.
+   *
+   * ⚠ ESKI `getAll` TEGILMADI: `page` berilmasa server avvalgidek
+   * partiya qatorlari massivini qaytaradi.
+   *
+   * ⚠ QATOR BIRLIGI SAHIFADA BOSHQA VA BU SHART. Partiya bo'yicha
+   * kesish bitta tovarning 5 partiyasidan 2 tasini birinchi
+   * sahifaga, 3 tasini ikkinchisiga tushirardi — ekranda tovar ikki
+   * marta ko'rinar va qoldig'i XATO chiqardi.
+   *
+   * @param opts.state tez filtr chipi: `expired` | `near` | `low`
+   * @param opts.near  «muddati yaqin» chegarasi (do'kon sozlamasi)
+   * @param opts.ids   raqam rejimida topilgan tovarlar
+   */
+  getPage: (page = 0, size = 50, opts = {}) => {
+    const p = new URLSearchParams({ page, size });
+    if (opts.shopId) p.set("shopId", opts.shopId);
+    if (opts.flt) p.set("flt", opts.flt);
+    if (opts.q) p.set("q", opts.q);
+    if (opts.state && opts.state !== "all") p.set("state", opts.state);
+    if (opts.near != null) p.set("near", opts.near);
+    /* ⚠ HAR QIYMAT ALOHIDA PARAMETR (`?sizes=M&sizes=L`). Vergul
+       bilan birlashtirish qilinmadi: brend va rang nomida vergul
+       uchraydi va «Dolce, Gabbana» ikkita qiymatga bo'linib
+       ketardi. */
+    for (const key of ["brands", "sizes", "colors", "targets", "seasons"]) {
+      for (const v of opts[key] || []) p.append(key, v);
+    }
+    for (const id of opts.ids || []) p.append("ids", id);
+    return request(`/inventory?${p}`);
+  },
+
+  /**
+   * TEZ FILTR CHIPLARI VA FILTR KATAKCHALARI — alohida so'rov.
+   *
+   * ⚠ NEGA ALOHIDA: sahifadagi 50 qator butun omborni ifodalay
+   * olmaydi. Ilgari chiplar yuklangan massivdan sanalardi va
+   * sahifalashdan keyin «Muddati yaqin: 0» deb turardi — chirigan
+   * tovar esa javonda qolardi.
+   */
+  summary: (shopId, near) => {
+    const p = new URLSearchParams();
+    if (shopId) p.set("shopId", shopId);
+    if (near != null) p.set("near", near);
+    const qs = p.toString();
+    return request(`/inventory/summary${qs ? `?${qs}` : ""}`);
+  },
+
   getAll: (shopId) => request(`/inventory${shopId ? `?shopId=${shopId}` : ""}`),
   getLow: () => request("/inventory/low-stock"),
   // expiryDate ixtiyoriy — bo'sh bo'lsa muddatsiz partiya (idish, kanstovar)

@@ -48,6 +48,7 @@ const PAGES = [
   { file: "pages/ProductsPage.jsx",  api: "productApi.getPage",  apply: true },
   { file: "pages/CustomersPage.jsx", api: "customerApi.getPage", apply: true },
   { file: "pages/SalesPage.jsx",     api: "saleApi.getPage",     apply: false },
+  { file: "pages/InventoryPage.jsx", api: "inventoryApi.getPage", apply: false },
 ];
 
 console.log("\n═══ Sahifalangan ro'yxatlar ═══\n");
@@ -135,6 +136,44 @@ ok(/setHours\(0, 0, 0, 0\)/.test(sales) && /fromIso/.test(sales),
    tundan keyingi soatlarda u KECHAGI kunni berardi. */
 ok(!/toISOString\(\)\.slice\(0, 10\)/.test(sales.slice(0, sales.indexOf("const exportXlsx"))),
    "⚠ bugungi sana MAHALLIY yarim tundan olinadi, UTC dan emas");
+
+/* ══ 3. Ombor sahifasiga xos ═══════════════════════════════════════ */
+
+const inv = bare(src("pages/InventoryPage.jsx"));
+console.log("\n── InventoryPage: omborga xos qoidalar");
+
+/* ⚠ QATOR BIRLIGI TOVAR. Guruhlash brauzerda qolsa, partiya bo'yicha
+   kesilgan sahifada bitta tovarning 5 partiyasidan 2 tasi ko'rinar va
+   qoldiq XATO chiqardi — omborchi esa noto'g'ri buyurtma berardi. */
+ok(!/function groupByProduct/.test(inv),
+   "⚠ partiyalarni BRAUZERDA guruhlash YO'Q");
+ok(/function summarize\(row\)/.test(inv) && /row\.batches/.test(inv),
+   "⚠ qator serverdan TO'LIQ partiyalari bilan keladi");
+
+/* ⚠ CHIPLAR VA KATAKCHALAR SERVERDAN: ekrandagi 50 qatordan sanash
+   «Muddati yaqin: 0» deb ko'rsatar, chirigan tovar javonda qolardi. */
+ok(/inventoryApi\.summary\(/.test(inv),
+   "chiplar va katakchalar alohida so'rovdan keladi");
+ok(/sum\?\.counts/.test(inv), "⚠ chip sonlari SERVERDAN");
+ok(/sum\?\.facets/.test(inv), "⚠ filtr katakchalari SERVERDAN");
+
+/* ⚠ TEZ FILTR VA KIYIM FILTRI HAM SERVERGA: ular brauzerda qolsa,
+   «Muddati yaqin» chipini bosgan omborchi faqat birinchi 50 qator
+   ichidagilarni ko'rardi va qolganlari javonda chirib ketardi. */
+ok(/state: flt/.test(inv), "⚠ tez filtr chipi SERVERGA yuboriladi");
+ok(/brands: clothFilter\.brands/.test(inv),
+   "⚠ kiyim filtri SERVERGA yuboriladi");
+
+/* ⚠ STIKERLAR: «muddati yaqin» ning HAMMASI. Sahifadagi 8 tasiga
+   stiker chiqarilsa, qolgan 38 tasi javonda BELGISIZ qolardi va buni
+   faqat tovar buzilganda bilib bo'lardi. */
+ok(/const collectNear\s*=\s*async/.test(inv),
+   "⚠ stikerlar uchun qolgan sahifalar ham so'raladi");
+
+/* ⚠ JONLI YANGILANISH RO'YXATNI TEPAGA OTMASIN: ikkinchi sahifagacha
+   scroll qilgan omborchi har 15 soniyada boshiga qaytarilardi. */
+ok(/bumpSummary/.test(inv) && /onePage/.test(inv),
+   "⚠ fonda faqat jamlama yangilanadi, ro'yxat joyida qoladi");
 
 console.log(`\n${fail === 0 ? "✅" : "❌"}  ${pass} o'tdi, ${fail} yiqildi\n`);
 process.exit(fail === 0 ? 0 : 1);

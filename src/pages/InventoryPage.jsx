@@ -10,6 +10,9 @@ import DataFilter, { useDataFilter, SortTh, FilterChips } from "../components/ek
 import VariantMatrixModal from "../components/VariantMatrixModal";
 import Select from "../components/ek/Select";
 import { useAuth } from "../hooks/useAuth";
+import { useDebounced } from "../hooks/useDebounced";
+import { useInfinite } from "../hooks/useInfinite";
+import InfiniteList from "../components/ek/InfiniteList";
 import { useBadge } from "../context/BadgeProvider";
 import { money, quantity as fmtQty } from "../utils";
 import { shortDate, dateTime } from "../lib/ek-format";
@@ -19,7 +22,6 @@ import { useLoading } from "../lib/use-loading";
 import { NumField, DateField } from "../components/ek/EkFields";
 import { DEFAULT_NEAR_EXPIRY_DAYS, daysLeft } from "../lib/ek-expiry";
 import { printExpiryLabels } from "../lib/ek-hardware";
-import { rankItems } from "../lib/ek-search";
 import { useCodeSearch, filterByCode } from "../lib/ek-code-search";
 import { asArray } from "../lib/ek-array";
 
@@ -95,87 +97,66 @@ function flagsOf(g, nearDays) {
    allaqachon asosiy ro'yxatdan farq qila boshlagan edi. */
 
 /**
- * Partiyalarni MAHSULOT bo'yicha guruhlash.
+ * SERVERDAN KELGAN QATORNI EKRAN KUTGAN SHAKLGA KELTIRADI.
  *
- * ⚠ Jadval mahsulotga BITTA qator ko'rsatadi. Backend har xil muddatli
- * kirimni alohida partiya qilib saqlaydi (FEFO uchun shart) va ilgari har
- * partiya alohida qator edi — ikkinchi kirimdan keyin omborchi "mahsulot
- * ikkita bo'lib qoldi" deb ko'rardi. Endi asosiy qatorda jami sotiladigan
- * qoldiq, partiyalar esa chevron bilan ochiladi.
+ * ⚠ ILGARI BU YERDA GURUHLASH TURARDI. Server partiya qatorlarini
+ * berardi va sahifa ularni `productId` bo'yicha yig'ardi. Ro'yxat
+ * sahifalanmaguncha bu zararsiz edi: massiv to'liq kelardi.
+ *
+ * Sahifalash bilan u JIMGINA buziladi — bitta tovarning beshta
+ * partiyasidan ikkitasi birinchi sahifaga, uchtasi ikkinchisiga
+ * tushar va ekranda «Sut — qoldiq 12» (aslida 30) turardi. Shuning
+ * uchun kesish birligi TOVAR bo'ldi va server har qatorga uning
+ * BARCHA partiyalarini qo'shib beradi.
+ *
+ * ⚠ HISOB SHU YERDA QOLDI: qaysi partiya «sotiladigan», qaysi biri
+ * «chirigan» degan qoida ekrandagi rang, yozuv va ogohlantirish
+ * bilan bitta joydan chiqishi kerak.
  */
-function groupByProduct(items) {
-  const map = new Map();
-  for (const item of items) {
-    if (!map.has(item.productId)) map.set(item.productId, []);
-    map.get(item.productId).push(item);
-  }
-  return [...map.values()].map((batches) => {
-    // FEFO tartibi: muddati yaqin birinchi, muddatsiz eng oxirida
-    const sorted = [...batches].sort((a, b) => {
-      if (!a.expiryDate && !b.expiryDate) return 0;
-      if (!a.expiryDate) return 1;
-      if (!b.expiryDate) return -1;
-      return a.expiryDate < b.expiryDate ? -1 : 1;
-    });
-    const valid = sorted.filter((b) => !isBatchExpired(b));
-    const sellable = valid.reduce((s, b) => s + (b.quantity || 0), 0);
-    const minQ = Math.min(...sorted.map((b) => b.minQuantity ?? 5));
-    // "Chirigan" — sotiladigan qoldiq yo'g'u, chirigan qoldiq BOR bo'lsa.
-    // Shunchaki tugagan mahsulot chirigan emas.
-    const expiredAll = sellable === 0 &&
-      sorted.some((b) => isBatchExpired(b) && (b.quantity || 0) > 0);
-    /* ⚠ `expiredAll` — tovar BUTUNLAY o'lgan (sotiladigani qolmagan).
-       `hasExpired` esa YUMSHOQROQ: sotiladigan qoldiq bor-u, omborda
-       muddati o'tgan partiya ham yotibdi. Aynan shunisi ko'rinmasdi —
-       chiqit qilinmagan tovar jimgina qoldiqda turaverardi. */
-    const hasExpired = sorted.some((b) => isBatchExpired(b) && (b.quantity || 0) > 0);
-    /* ⚠ Muddat ogohlantirishi faqat QOLDIG'I BOR partiyadan olinadi.
-       Ilgari bo'shab qolgan partiya ham hisobga olinardi: qoldig'i nol
-       tovarda «Yaroqlilik: 4 kun qoldi» va «Tugagan» yonma-yon turardi.
-       Sotiladigan narsa qolmagan bo'lsa, uning muddati ham ma'nosiz. */
-    const nearest = valid.find((b) => b.expiryDate && (b.quantity || 0) > 0)?.expiryDate || null;
-    const f = sorted[0];
-    return {
-      productId: f.productId,
-      productName: f.productName,
-      barcode: f.barcode,
-      markingGroup: f.markingGroup,
-      costPrice: f.costPrice,
-      salePrice: f.salePrice,
-      /* Birlik — «Kam qoldi: 3 dona» yozuvi uchun. Partiyalar bitta
-         mahsulotniki, shuning uchun birinchisiniki hammasiga yetadi. */
-      unit: f.unit,
-      /* Kiyim atributlari (V57) — partiyalar bitta tovarniki, shuning
-         uchun birinchisiniki hammasiga yetadi. Filtr ham, jadvaldagi
-         «M / qora» yozuvi ham shulardan. */
-      brand: f.brand,
-      targetGroup: f.targetGroup,
-      sizeLabel: f.sizeLabel,
-      sizeSort: f.sizeSort,
-      colorName: f.colorName,
-      colorHex: f.colorHex,
-      season: f.season,
-      variantGroupId: f.variantGroupId,
-      variantGroupName: f.variantGroupName,
-      batches: sorted,
-      sellable,
-      minQ,
-      nearest,
-      expiredAll,
-      hasExpired,
-    };
+function summarize(row) {
+  // FEFO tartibi: muddati yaqin birinchi, muddatsiz eng oxirida
+  const sorted = [...(row.batches || [])].sort((a, b) => {
+    if (!a.expiryDate && !b.expiryDate) return 0;
+    if (!a.expiryDate) return 1;
+    if (!b.expiryDate) return -1;
+    return a.expiryDate < b.expiryDate ? -1 : 1;
   });
+  const valid = sorted.filter((b) => !isBatchExpired(b));
+  const sellable = valid.reduce((sum, b) => sum + (b.quantity || 0), 0);
+  /* ⚠ CHEGARA TOVARDAN: ilgari partiyalardan eng kichigi olinardi,
+     lekin har partiyaga bir xil tovar chegarasi yozilgani uchun
+     natija baribir o'sha edi. */
+  const minQ = Number(row.minQuantity ?? 5);
+  /* ⚠ `hasExpired` — sotiladigan qoldiq bor-u, omborda muddati
+     o'tgan partiya ham yotibdi. Aynan shunisi ko'rinmasdi: chiqit
+     qilinmagan tovar jimgina qoldiqda turaverardi. */
+  const hasExpired = sorted.some((b) => isBatchExpired(b) && (b.quantity || 0) > 0);
+  /* `expiredAll` — tovar BUTUNLAY o'lgan (sotiladigani qolmagan).
+     Shunchaki tugagan tovar chirigan emas. */
+  const expiredAll = sellable === 0 && hasExpired;
+  /* ⚠ Muddat ogohlantirishi faqat QOLDIG'I BOR partiyadan olinadi.
+     Ilgari bo'shab qolgan partiya ham hisobga olinardi: qoldig'i nol
+     tovarda «Yaroqlilik: 4 kun qoldi» va «Tugagan» yonma-yon
+     turardi. */
+  const nearest = valid.find((b) => b.expiryDate && (b.quantity || 0) > 0)?.expiryDate || null;
+  return { ...row, batches: sorted, sellable, minQ, nearest, expiredAll, hasExpired };
 }
-
 export default function InventoryPage({ toast }) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { guard } = useBadge();
-  const [items, setItems]     = useState([]);
-  const [loading, setLoading] = useState(true);
-  // Ekranda ko'rsatiladigan holat: tez javobda skeleton UMUMAN chizilmaydi
-  // (180ms kechikish), chizilgan bo'lsa esa kamida 400ms turadi — miltillamaydi.
-  const busy = useLoading(loading);
+  /* ⚠ RO'YXAT HOLATI `useInfinite` DA (pastda). Ilgari butun ombor
+     bitta javobda kelardi va u faqat o'sardi. */
+  /* Ro'yxatni qayta so'rash uchun hisoblagich: `useInfinite`
+     `fetcher` o'zgarganini «boshqa ro'yxat» deb tushunadi. */
+  const [version, setVersion] = useState(0);
+  const reload = useCallback(() => setVersion((v) => v + 1), []);
+  /* ⚠ JAMLAMA ALOHIDA HISOBLAGICHDA: fonda faqat chiplar
+     yangilanishi kerak, ro'yxat esa joyida qolishi (pastdagi
+     izoh). Bitta hisoblagich bo'lsa, har 15 soniyada ro'yxat ham
+     boshidan yuklanardi. */
+  const [sumVersion, setSumVersion] = useState(0);
+  const bumpSummary = useCallback(() => setSumVersion((v) => v + 1), []);
   const [search, setSearch]   = useState("");
   const [modal, setModal]     = useState(null); // null | {productId,...}  (kirim)
   const [correct, setCorrect] = useState(null); // null | batch            (to'g'irlash)
@@ -245,29 +226,6 @@ export default function InventoryPage({ toast }) {
   const [movements, setMovements] = useState([]);
   const [movLoading, setMovLoading] = useState(false);
 
-  /**
-   * `silent` — FON yangilanishi.
-   *
-   * ⚠ Fonda skeleton chizilmaydi va xato ko'rsatilmaydi. Sabab: bu
-   * yangilanishni kassir SO'RAMAGAN. Har 15 soniyada jadval miltillab
-   * tursa ishlab bo'lmaydi; tarmoq bir lahzaga uzilganda esa hech kim
-   * bosmagan tugma uchun qizil xabar chiqishi bundan ham yomon —
-   * ekrandagi ma'lumot baribir joyida qoladi va keyingi urinishda
-   * yangilanadi.
-   */
-  const loadData = useCallback(async ({ silent = false } = {}) => {
-    if (!silent) setLoading(true);
-    try {
-      const res = await inventoryApi.getAll(branchId);
-      setItems(asArray(res.data));
-    } catch (err) {
-      if (!silent) toast.error(err.message);
-    } finally {
-      if (!silent) setLoading(false);
-    }
-  }, [branchId]);
-
-  useEffect(() => { loadData(); }, [loadData]);
 
   /* ⚠ Modal ochiq bo'lsa fon yangilanishi TO'XTAYDI. Kirim yoki
      to'g'irlash oynasi ochiq turganda jadval qayta chizilsa, qatorlar
@@ -296,18 +254,6 @@ export default function InventoryPage({ toast }) {
      ochiq turadi — uni har 15 soniyada so'rovga tutish serverni ham,
      tarmoqni ham bekorga band qilardi. Tabga qaytilganda esa darhol
      yangilanadi: odam aynan o'sha lahzada ekranga qaraydi. */
-  useEffect(() => {
-    const tick = () => {
-      if (document.visibilityState !== "visible" || pausedRef.current) return;
-      loadData({ silent: true });
-    };
-    const timer = setInterval(tick, LIVE_REFRESH_MS);
-    document.addEventListener("visibilitychange", tick);
-    return () => {
-      clearInterval(timer);
-      document.removeEventListener("visibilitychange", tick);
-    };
-  }, [loadData]);
 
   const loadMovements = useCallback(async () => {
     setMovLoading(true);
@@ -322,26 +268,6 @@ export default function InventoryPage({ toast }) {
   }, []);
 
   useEffect(() => { if (showHistory) loadMovements(); }, [showHistory, loadMovements]);
-
-  const groups = useMemo(() => groupByProduct(items), [items]);
-
-  /* Har qatorning holati bir marta hisoblanadi: u ham rang, ham yozuv,
-     ham filtr, ham ogohlantirishdagi raqam uchun kerak. */
-  const rows = useMemo(() => groups.map((g) => ({ g, f: flagsOf(g, nearDays) })), [groups, nearDays]);
-
-  /* Ochilgan tafsilot — HOZIRGI ma'lumotdan. Mahsulot ro'yxatdan
-     yo'qolsa (filial almashdi, o'chirildi) oyna o'zi yopiladi. */
-  const detail = detailId == null ? null : (rows.find((r) => r.g.productId === detailId)?.g || null);
-
-  /* ⚠ Raqamlar QIDIRUVDAN OLDINGI ro'yxatdan olinadi: ogohlantirish
-     do'kondagi haqiqiy holatni aytishi kerak, qidiruv maydonida nima
-     yozilganini emas. */
-  /* ⚠ «Kam qolgan» = KAM + TUGAGAN. Yozuvda ikkalasi ajratiladi (tugagan
-     tovarni «kam qoldi» deb atash yolg'on), lekin FILTR bo'yicha ular bir
-     xil ish talab qiladi: buyurtma berish. Ajratganda tugagan tovar
-     ro'yxatdan butunlay tushib qolardi — ya'ni eng shoshilinchi tovar
-     ko'rinmay qolardi. */
-  const needsOrder = (f) => f.low || f.out;
 
   /* ══ USTUNLAR BO'YICHA FILTR (V68) ═════════════════════════════════
      Do'kon egasi: «ekranda ko'ringan har bir ustun bilan filtr qila
@@ -379,11 +305,158 @@ export default function InventoryPage({ toast }) {
   ], []);
   const colFlt = useDataFilter(COLS, "inv");
 
-  const counts = useMemo(() => ({
-    expired: rows.filter((r) => r.f.expired).length,
-    near:    rows.filter((r) => r.f.near).length,
-    low:     rows.filter((r) => needsOrder(r.f)).length,
-  }), [rows]);
+  /* ══ RO'YXAT — SERVERDAN, SAHIFA-SAHIFA ════════════════════════════
+
+     ⚠ QATOR BIRLIGI TOVAR, PARTIYA EMAS. Partiya bo'yicha kesish
+     bitta tovarni ikki sahifaga bo'lib, qoldig'ini XATO
+     ko'rsatardi (`summarize` izohi).
+
+     ⚠ FILTR, QIDIRUV, TEZ FILTR VA KIYIM FILTRI — HAMMASI SERVERDA.
+     Ilgari to'rttasi ham brauzerda, yuklangan massiv ustida
+     bajarilardi. Sahifalash bilan bu jimgina buzilardi: «Muddati
+     yaqin» chipini bosgan omborchi faqat birinchi 50 qator ichidagi
+     tovarlarni ko'rar, qolganlari javonda chirib ketardi.
+
+     ⚠ TERISH KECHIKTIRILADI: har harfda so'rov ketsa «shokolad»
+     so'zi 8 ta so'rov yuborardi. */
+  const slowSearch = useDebounced(search, 300);
+  const fltJson = colFlt.serialize();
+
+  /* ⚠ RAQAM REJIMI (`*425`) ALOHIDA YO'L VA BU ATAYLAB.
+
+     Omborchi qo'lida javon yorlig'i turadi va unda tovarning NOMI
+     emas, RAQAMI yozilgan. Eski kod (alias) bog'lanishi esa faqat
+     bazada va oddiy qidiruv uni ko'rmaydi: javondagi eski yorliq
+     kassada topilib, shu yerda «yo'q» bo'lardi.
+
+     ⚠ SAHIFA KERAK EMAS: kod bo'yicha ko'pi bilan 200 tovar chiqadi,
+     ya'ni javob TO'LIQ. Aynan shu sababdan bu rejimda tartibni
+     BRAUZERDA berish TO'G'RI: kesiladigan ro'yxat to'liq, sahifa
+     emas. */
+  const code = useCodeSearch(search, branchId);
+  const codeIds = code.active ? [...code.order.keys()] : null;
+  /* ⚠ JAVOB KELMAGUNCHA SO'RAMAYMIZ. Bo'sh ro'yxat bilan so'rasak,
+     server halol ravishda «hech narsa topilmadi» deb javob berar va
+     omborchi raqamni noto'g'ri deb o'ylardi — holbuki sahifa
+     shunchaki hali so'ray olmagan. */
+  const codeReady = !code.active || code.ready;
+
+  const fetchPage = useCallback((page, size) => inventoryApi.getPage(
+    code.active ? 0 : page, code.active ? 200 : size, {
+      shopId: branchId, flt: fltJson, near: nearDays,
+      q: code.active ? null : slowSearch,
+      state: flt, ids: codeIds,
+      brands: clothFilter.brands, sizes: clothFilter.sizes,
+      colors: clothFilter.colors, targets: clothFilter.targets,
+      seasons: clothFilter.seasons,
+    }),
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+    [branchId, fltJson, slowSearch, flt, nearDays, clothFilter,
+     /* ⚠ `code.order` — RO'YXAT O'ZGARGANINI BILDIRADIGAN YAGONA
+        belgi. Usiz `useCallback` eski `codeIds` ni ushlab qolar va
+        javob kelganda ham BO'SH ro'yxat yuborilardi: ekranda
+        «topilmadi» turardi. */
+     code.active, code.order, version]);
+
+  const { rows: pageRows, loading, error, hasNext, total, loadMore, retry } =
+    useInfinite(fetchPage, { size: 50, key: "productId", enabled: codeReady });
+
+  /* ⚠ BU QATOR `useInfinite` DAN KEYIN: `loading` va `pageRows` — shu
+     chaqiruvning natijasi. Oldin o'qilsa `ReferenceError` va React
+     sahifani UMUMAN chizmaydi (`scripts/check-tdz.mjs` qo'riqlaydi).
+
+     Ekranda ko'rsatiladigan holat: tez javobda skeleton UMUMAN
+     chizilmaydi (180ms kechikish), chizilgan bo'lsa esa kamida 400ms
+     turadi — miltillamaydi. Skeleton faqat BIRINCHI sahifada:
+     keyingilarida ro'yxat ekranda turadi va uni skeletonga
+     almashtirish sakrash berardi. */
+  const busy = useLoading(loading && !pageRows.length);
+  useEffect(() => { if (error) toast.error(error); }, [error]);
+
+  /* ══ CHIPLAR VA KATAKCHALAR — ALOHIDA SO'ROV ═══════════════════════
+
+     ⚠ ULARNI SAHIFADAN HISOBLAB BO'LMAYDI. Ilgari ikkalasi ham
+     yuklangan massivdan chiqardi va massiv butun omborni qamrab
+     olgani uchun bu to'g'ri edi. Sahifada esa u 50 qator — chip
+     «Muddati yaqin: 0» deb turar, chirigan tovar javonda qolardi.
+
+     ⚠ XATO JIMGINA YUTILADI: bu so'rov ro'yxatning ishlashi uchun
+     KERAK EMAS. U yiqilsa panel chizilmaydi — ekranda YOLG'ON raqam
+     emas, hech narsa turadi. */
+  const [sum, setSum] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    inventoryApi.summary(branchId, nearDays)
+      .then((r) => { if (alive) setSum(r?.data || null); })
+      .catch(() => { if (alive) setSum(null); });
+    return () => { alive = false; };
+  }, [branchId, nearDays, version, sumVersion]);
+
+  /* Server har qatorga tovarning BARCHA partiyalarini qo'shib beradi,
+     ya'ni hisob har doim to'liq ro'yxat ustida bajariladi. */
+  const groups = useMemo(() => pageRows.map(summarize), [pageRows]);
+
+  /* ⚠ SAHIFALASHDAN KEYIN YANGILANISH TANLAB BO'LDI.
+
+     Ro'yxatni har 15 soniyada boshidan yuklash uni ikkinchi
+     sahifagacha scroll qilgan omborchini har safar TEPAGA otib
+     yuborardi — ya'ni ishlab bo'lmasdi.
+
+     Shuning uchun fonda faqat JAMLAMA (chiplar va katakchalar)
+     yangilanadi: «muddati yaqin 46 ta» degan ogohlantirish aynan
+     shu yerda ko'rinadi va u eskirmasligi kerak. Ro'yxatning o'zi
+     esa faqat BIRINCHI sahifada turgan bo'lsa yangilanadi —
+     o'shanda sakraydigan joy yo'q.
+
+     ⚠ Sahifa KO'RINMASA so'rov yuborilmaydi. Ombor tabi kun bo'yi
+     orqada ochiq turadi. Tabga qaytilganda esa darhol yangilanadi:
+     odam aynan o'sha lahzada ekranga qaraydi. */
+  const liveRef = useRef(null);
+  liveRef.current = { onePage: pageRows.length <= 50, reload, bumpSummary };
+  useEffect(() => {
+    const tick = () => {
+      if (document.visibilityState !== "visible" || pausedRef.current) return;
+      const live = liveRef.current;
+      if (live.onePage) live.reload();
+      else live.bumpSummary();
+    };
+    const timer = setInterval(tick, LIVE_REFRESH_MS);
+    document.addEventListener("visibilitychange", tick);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", tick);
+    };
+  }, []);
+
+  /* Har qatorning holati bir marta hisoblanadi: u ham rang, ham yozuv,
+     ham filtr, ham ogohlantirishdagi raqam uchun kerak. */
+  const rows = useMemo(() => groups.map((g) => ({ g, f: flagsOf(g, nearDays) })), [groups, nearDays]);
+
+  /* Ochilgan tafsilot — HOZIRGI ma'lumotdan. Mahsulot ro'yxatdan
+     yo'qolsa (filial almashdi, o'chirildi) oyna o'zi yopiladi. */
+  const detail = detailId == null ? null : (rows.find((r) => r.g.productId === detailId)?.g || null);
+
+  /* ⚠ «Kam qolgan» = KAM + TUGAGAN. Yozuvda ikkalasi ajratiladi
+     (tugagan tovarni «kam qoldi» deb atash yolg'on), lekin FILTR
+     bo'yicha ular bir xil ish talab qiladi: buyurtma berish.
+     Ajratganda tugagan tovar ro'yxatdan butunlay tushib qolardi —
+     ya'ni eng shoshilinchi tovar ko'rinmay qolardi. */
+  const needsOrder = (f) => f.low || f.out;
+
+  /* ⚠ SONLAR SERVERDAN, EKRANDAGI QATORLARDAN EMAS. Ilgari ular
+     yuklangan massivdan sanalardi va massiv butun omborni qamrab
+     olgani uchun bu to'g'ri edi. Sahifada esa chip birinchi 50
+     qatorni sanar va «Muddati yaqin: 0» deb turardi — chirigan
+     tovar esa javonda qolardi.
+
+     ⚠ Raqamlar QIDIRUVDAN VA FILTRDAN QAT'I NAZAR: ogohlantirish
+     do'kondagi haqiqiy holatni aytishi kerak, qidiruv maydonida
+     nima yozilganini emas. */
+  const counts = {
+    expired: sum?.counts?.expired ?? 0,
+    near:    sum?.counts?.near ?? 0,
+    low:     sum?.counts?.low ?? 0,
+  };
 
   /* Panelning segmentlari — ekrandagi tartibda. `tone` FAQAT songa
      beriladi: butun tugmani bo'yash panelni yana «sariq devor» ga
@@ -393,7 +466,7 @@ export default function InventoryPage({ toast }) {
      qiladi — buyurtma berish, va ajratilganda eng shoshilinchi tovar
      ikkinchi ro'yxatga tushib ko'rinmay qolardi. */
   const STATES = [
-    { key: "all",     icon: "",                    n: rows.length,    tone: "" },
+    { key: "all",     icon: "",                    n: sum?.counts?.all ?? 0, tone: "" },
     { key: "expired", icon: "fa-hourglass-end",    n: counts.expired, tone: "danger" },
     { key: "near",    icon: "fa-clock",            n: counts.near,    tone: "warn" },
     { key: "low",     icon: "fa-arrow-trend-down", n: counts.low,     tone: "danger" },
@@ -408,12 +481,53 @@ export default function InventoryPage({ toast }) {
      yopishtirib chiqadi — shundan keyin «muddati yaqin» ombor
      hisoboti emas, javondagi ko'rinadigan belgi bo'ladi.
 
-     ⚠ Chiqadigan ro'yxat — EKRANDAGISI (`filtered`), hammasi emas:
-     omborchi «Muddati yaqin» filtrini bosib, aynan o'sha tovarlarga
-     stiker chiqaradi. Butun omborni stikerlash hech kimga kerak emas
-     va bir dasta qog'ozni yeydi. */
+     ⚠ CHIQADIGAN RO'YXAT — «MUDDATI YAQIN» NING HAMMASI, sahifada
+     ko'ringani emas. Sahifalashgacha ular bir xil edi: ro'yxat to'liq
+     kelardi. Endi tugma 46 ta tovardan 8 tasiga stiker chiqarar va
+     qolgan 38 tasi javonda BELGISIZ qolardi — buni esa faqat tovar
+     buzilganda bilib bo'lardi.
+
+     ⚠ CHEGARA BOR: stiker lentasi cheksiz emas va xato bosilgan tugma
+     bir rulonni yeb qo'yardi. Chegaradan oshsa ogohlantiriladi va
+     HECH NARSA chiqarilmaydi — yarmini chiqarish eng yomon natija
+     bo'lardi (qaysi yarmi ekani ko'rinmaydi). */
+  const LABEL_CAP = 5000;
   const [labeling, setLabeling] = useState(false);
-  const printLabels = async (list) => {
+
+  /** «Muddati yaqin» ning HAMMASI — qolgan sahifalar ham. */
+  const collectNear = async () => {
+    const size = 200;
+    const out = [];
+    for (let page = 0; page < 50; page++) {
+      const r = await inventoryApi.getPage(page, size, {
+        shopId: branchId, near: nearDays, state: "near",
+      });
+      const got = asArray(r?.data?.content ?? r?.data);
+      out.push(...got);
+      if (out.length > LABEL_CAP) {
+        toast?.error(t("label.tooMany", { n: out.length, cap: LABEL_CAP }));
+        return null;
+      }
+      /* ⚠ HIMOYA: server «yana bor» deb turib bir xil sahifani
+         qaytarsa, sikl abadiy aylanardi. */
+      if (!got.length || !r?.data?.hasNext) break;
+    }
+    return out.map(summarize).map((g) => ({ g, f: flagsOf(g, nearDays) }));
+  };
+
+  const printNearLabels = async () => {
+    setLabeling(true);
+    try {
+      const all = await collectNear();
+      if (all) await printLabels(all, { keepBusy: true });
+    } catch (err) {
+      toast?.error(err.message);
+    } finally {
+      setLabeling(false);
+    }
+  };
+
+  const printLabels = async (list, { keepBusy = false } = {}) => {
     const items = list
       .filter(({ g }) => g.nearest)          // muddatsiz tovarga stiker yo'q
       .map(({ g, f }) => ({
@@ -424,56 +538,38 @@ export default function InventoryPage({ toast }) {
         barcode: g.barcode,
       }));
     if (!items.length) { toast?.error(t("label.nothing")); return; }
-    setLabeling(true);
+    if (!keepBusy) setLabeling(true);
     try {
       await printExpiryLabels(items, { shopName: localStorage.getItem("ek_shopName") || "" });
       toast?.success(t("label.sent", { n: items.length }));
     } catch (err) {
       toast?.error(err.message);
     } finally {
-      setLabeling(false);
+      if (!keepBusy) setLabeling(false);
     }
   };
 
   /* ══ KIYIM FILTRI (V57) ═══════════════════════════════════════════════
-     ⚠ MIJOZ TOMONIDA, serverda emas. Ombor jadvali qoldiqlar bo'yicha
-     KELIB BO'LGAN (`inventoryApi.getAll`) va u allaqachon xotirada.
-     Serverga qayta murojaat qilish javobni kutishni va jonli
-     yangilanish bilan poygani qo'shardi — natija esa AYNAN o'sha.
+     ⚠ KATAKCHALAR SERVERDAN — LEKIN OMBOR RO'YXATI USTIDAN.
 
-     ⚠ Katakchalar ham SHU RO'YXATDAN olinadi: sanoq omborchi
-     ko'rayotgan jadvalga to'g'ri keladi. Server `facets` i butun
-     katalogni sanardi va «Zara (40)» deb turgan katakcha bosilganda
-     omborda 3 tasi chiqib, omborchi tizimni buzuq deb o'ylardi. */
-  const invFacets = useMemo(() => {
-    const bucket = { brands: new Map(), sizes: new Map(), colors: new Map(),
-                     targets: new Map(), seasons: new Map() };
-    const add = (map, value, label, hex, ord) => {
-      if (!value) return;
-      const cur = map.get(value) || { value, label: label || value, count: 0, hex, ord };
-      cur.count++;
-      map.set(value, cur);
-    };
-    for (const { g } of rows) {
-      add(bucket.brands,  g.brand, g.brand, null, 0);
-      add(bucket.sizes,   g.sizeLabel, g.sizeLabel, null, g.sizeSort ?? 9999);
-      add(bucket.colors,  g.colorName, g.colorName, g.colorHex, 0);
-      add(bucket.targets, g.targetGroup, t(`target.${(g.targetGroup || "").toLowerCase()}`), null, 0);
-      add(bucket.seasons, g.season, t(`season.${(g.season || "").toLowerCase()}`), null, 0);
-    }
-    const out = (map, byOrd) => {
-      const list = [...map.values()];
-      /* O'lchamlar TARTIB RAQAMI bo'yicha — alifboda «L, M, S» chiqardi. */
-      list.sort((a, b) => (byOrd ? a.ord - b.ord : 0) || a.label.localeCompare(b.label));
-      return list;
-    };
-    return {
-      categories: [],
-      brands: out(bucket.brands), sizes: out(bucket.sizes, true),
-      colors: out(bucket.colors), targets: out(bucket.targets),
-      seasons: out(bucket.seasons),
-    };
-  }, [rows]);
+     Ilgari ular ekrandagi massivdan sanalardi va bu ataylab edi:
+     tovarlar sahifasining `facets` i butun katalogni sanardi,
+     ya'ni «Zara (40)» deb turgan katakcha bosilganda omborda 3
+     tasi chiqib, omborchi tizimni buzuq deb o'ylardi.
+
+     Sahifalash bilan ekrandan sanash ham yolg'on bo'ldi — endi 50
+     qator sanaladi. Shuning uchun server ombor uchun ALOHIDA
+     katakcha so'rovini beradi: shart ro'yxatniki bilan bir xil
+     (faol, qoldiq yuritiladigan tovar), ya'ni sanoq omborchi
+     ko'rayotgan jadvalga to'g'ri keladi. */
+  const invFacets = useMemo(() => ({
+    categories: [],
+    brands:  sum?.facets?.brands || [],
+    sizes:   sum?.facets?.sizes || [],
+    colors:  sum?.facets?.colors || [],
+    targets: sum?.facets?.targets || [],
+    seasons: sum?.facets?.seasons || [],
+  }), [sum]);
 
   /**
    * Filtr umuman kerakmi — kiyimsiz omborda tugma ham chiqmaydi.
@@ -493,41 +589,19 @@ export default function InventoryPage({ toast }) {
     [clothFilter],
   );
 
-  /* ⚠ Avval HOLAT bo'yicha filtrlanadi, keyin qidiruv REYTINGLAYDI.
-     Tartib muhim: qidiruv natijani mosligiga qarab saralaydi va
-     undan keyin filtrlash saralashni buzardi. Algoritm kassadagi
-     bilan bir xil (`lib/ek-search.js`). */
-  const byState = rows.filter(({ f, g }) => {
-    if (flt === "expired" && !f.expired) return false;
-    if (flt === "near"    && !f.near)    return false;
-    if (flt === "low"     && !needsOrder(f)) return false;
+  /* ⚠ HOLAT, USTUN FILTRI, QIDIRUV VA KIYIM FILTRI — HAMMASI
+     SERVERDA (`fetchPage`). Ilgari to'rttasi ham shu yerda,
+     yuklangan massiv ustida bajarilardi va sahifalashdan keyin
+     ular faqat 50 qatorga tegardi.
 
-    /* ⚠ HAR O'Q ICHIDA «YOKI», O'QLAR ORASIDA «VA». «M + L» ikkala
-       o'lchamni ham beradi, «M + qora» esa faqat qora M ni. Boshqacha
-       bo'lsa filtr toraytirmasdi, kengaytirardi — checkbox dan
-       kutiladigan narsa esa aynan toraytirish. */
-    const ok = (sel, v) => !sel?.length || sel.includes(v);
-    return ok(clothFilter.brands,  g.brand)
-        && ok(clothFilter.sizes,   g.sizeLabel)
-        && ok(clothFilter.colors,  g.colorName)
-        && ok(clothFilter.targets, g.targetGroup)
-        && ok(clothFilter.seasons, g.season);
-  });
-  /* ⚠ TARTIB: tez filtr (chiplar) → USTUN FILTRI → qidiruv. Qidiruv
-     oxirida, chunki u natijani MOSLIK bo'yicha saralaydi; ustun
-     saralashi esa qidiruvsiz ishlaydi. */
-  /* ⚠ RAQAM REJIMI (`*425`) — omborchi qo'lida javon yorlig'i turadi
-     va unda tovarning NOMI emas, RAQAMI yozilgan. Raqam serverdan
-     so'raladi (kassa bilan bir xil yo'l), qatorlar esa `productId`
-     bo'yicha filtrlanadi — ya'ni qatori tovar emas, QOLDIQ bo'lgan
-     bu sahifa ham xuddi shu qidiruvni oladi. */
-  const code = useCodeSearch(search, branchId);
+     ⚠ RAQAM REJIMIDA TARTIB BRAUZERDA: server kod bo'yicha ko'pi
+     bilan 200 tovar beradi, ya'ni ro'yxat TO'LIQ — kesiladigan
+     narsa sahifa emas. Tartib esa kodning o'z reytingi
+     (`ek-code-search`), uni serverdagi nom tartibi bosib
+     ketmasligi kerak. */
   const filtered = code.active
-    ? filterByCode(colFlt.apply(byState), (row) => row.g?.productId ?? row.productId, code)
-    : rankItems(colFlt.apply(byState), search, {
-        codes: ({ g }) => [g.barcode],
-        texts: ({ g }) => [g.productName],
-      });
+    ? filterByCode(rows, (row) => row.g?.productId ?? row.productId, code)
+    : rows;
 
 
   /**
@@ -576,8 +650,11 @@ export default function InventoryPage({ toast }) {
   // Mahsulot bir marta muddat bilan kiritilgan bo'lsa — MUDDATLI: keyingi
   // kirimlarda muddat majburiy (backend ham xuddi shuni tekshiradi). Sut
   // kabi tovarda muddat unutilsa, o'sha partiya nazoratsiz qolardi.
-  const productHasExpiry = (g) =>
-    items.some((i) => i.productId === g.productId && i.expiryDate);
+  /* ⚠ QATORNING O'Z PARTIYALARIDAN. Ilgari butun ombor massivi
+     titilardi (`items.some(...)`); endi server har qatorga
+     tovarning BARCHA partiyalarini qo'shib beradi, ya'ni javob
+     o'sha-o'sha, lekin sahifadan qat'i nazar to'g'ri. */
+  const productHasExpiry = (g) => (g?.batches || []).some((b) => b.expiryDate);
 
   /**
    * Tavsiya qilingan narxlarni tovarga qo'yadi.
@@ -607,7 +684,7 @@ export default function InventoryPage({ toast }) {
       toast.success(t("inv.adviceApplied"));
       setAdvice(null);
       if (backTo != null) goBack(); else setModal(null);
-      loadData();
+      reload();
     } catch (err) {
       /* Bajik oynasi bekor qilingani xato emas — `check-cancel.mjs`. */
       if (!err?.cancelled) toast.error(err.message);
@@ -653,7 +730,7 @@ export default function InventoryPage({ toast }) {
       if (adv) {
         setAdvice(adv);
       } else if (backTo != null) { goBack(); } else { setModal(null); }
-      loadData();
+      reload();
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -691,7 +768,7 @@ export default function InventoryPage({ toast }) {
         correct.inventoryId, Number(qty), reason.trim(), isDecrease ? woReason : null));
       toast.success(t("inv.correctTitle"));
       if (backTo != null) goBack(); else setCorrect(null);
-      loadData();
+      reload();
     } catch (err) {
       if (!err?.cancelled) toast.error(err.message);
     } finally {
@@ -849,7 +926,7 @@ export default function InventoryPage({ toast }) {
                 bosadi va darhol shu qatordan stikerni chiqaradi. */}
             {counts.near > 0 && (
               <button type="button" className="btn btn-sm btn-outline" disabled={labeling}
-                      onClick={() => printLabels(rows.filter(({ f }) => f.near))}
+                      onClick={printNearLabels}
                       title={t("label.expiryHint")}>
                 <i className="fa-solid fa-tag" aria-hidden="true" /> {t("label.expiryPrint")}
               </button>
@@ -897,7 +974,7 @@ export default function InventoryPage({ toast }) {
             >
               <i className="fa-solid fa-clock-rotate-left" /> {t("inv.history")}
             </button>
-            <button className="btn btn-outline btn-sm" onClick={() => (showHistory ? loadMovements() : loadData())} title={t("products.refreshTitle")}>
+            <button className="btn btn-outline btn-sm" onClick={() => (showHistory ? loadMovements() : reload())} title={t("products.refreshTitle")}>
               <i className="fa-solid fa-rotate-right" /> {t("common.refresh")}
             </button>
           </div>
@@ -1103,6 +1180,15 @@ export default function InventoryPage({ toast }) {
             </table>
           )}
         </div>
+
+        {/* ⚠ SCROLLDA YUKLASH. Raqam rejimida ham chizilaveradi:
+            u yerda javob to'liq (server ≤200 beradi), ya'ni «yana
+            bor» bo'lmaydi va komponent «hammasi ko'rsatildi» deb
+            yozadi — bu ham foydali javob. */}
+        <InfiniteList
+          loading={loading} error={error} hasNext={hasNext}
+          total={total} count={filtered.length}
+          onMore={loadMore} onRetry={retry} />
       </div>
 
       {/* ── Mahsulot tafsiloti ──────────────────────────────────────────
