@@ -1568,6 +1568,18 @@ export default function InventoryPage({ toast }) {
               {advice.marginPercent == null ? "—" : `${Number(advice.marginPercent).toFixed(1)}%`}
             </span>
           </div>
+          {/* ⚠ USTAMA MARJA BILAN YONMA-YON. Do'kon egasi «necha foiz
+              qo'shdim?» deb o'ylaydi (ustama), tizim esa marja bilan
+              gapiradi: 100 000 → 120 000 da ustama 20%, marja 16,67%.
+              Bittasi yolg'iz turganda u ikkinchisi deb o'qiladi va
+              ular teskari qaytarilmaydi (20% marja = 25% ustama). */}
+          <div className="inv-detail__row">
+            <span className="inv-detail__label">{t("inv.adviceMarkup")}</span>
+            <span className="inv-detail__value ek-num"
+                  style={{ color: advice.belowCost ? "var(--fg-danger)" : undefined }}>
+              {advice.markupPercent == null ? "—" : `${Number(advice.markupPercent).toFixed(1)}%`}
+            </span>
+          </div>
           {advice.recommendedSale != null && (
             <div className="inv-detail__row">
               <span className="inv-detail__label">{t("inv.adviceRecommend")}</span>
@@ -1593,6 +1605,15 @@ export default function InventoryPage({ toast }) {
                   {advice.wholesaleMarginPercent == null
                     ? "—"
                     : `${Number(advice.wholesaleMarginPercent).toFixed(1)}%`}
+                </span>
+              </div>
+              <div className="inv-detail__row">
+                <span className="inv-detail__label">{t("inv.adviceWholesaleMarkup")}</span>
+                <span className="inv-detail__value ek-num"
+                      style={{ color: advice.belowWholesale ? "var(--fg-danger)" : undefined }}>
+                  {advice.wholesaleMarkupPercent == null
+                    ? "—"
+                    : `${Number(advice.wholesaleMarkupPercent).toFixed(1)}%`}
                 </span>
               </div>
               {advice.recommendedWholesale != null && (

@@ -67,6 +67,31 @@ export function marginPercent(cost, sale) {
 }
 
 /**
+ * Ustama foizda: (sotuv − tannarx) / tannarx × 100.
+ *
+ * ⚠ MAXRAJDA TANNARX — `marginPercent` dan aynan shu bilan farq qiladi
+ * va ikkisi BOSHQA-BOSHQA savolga javob beradi:
+ *
+ *     100 000 → 120 000
+ *       ustama: «necha foiz qo'shib sotdim?»      → 20%
+ *       marja:  «tushumning necha foizi meniki?» → 16,67%
+ *
+ * ⚠ ULAR TESKARI QAYTARILMAYDI va bu eng ko'p adashtiradigan joy:
+ * 20% ustama 16,67% marja beradi, 20% MARJA uchun esa 25% ustama
+ * kerak. Shuning uchun ekranda ikkalasi YONMA-YON turadi — bittasi
+ * ko'rsatilsa, do'kon egasi uni ikkinchisi deb o'qishi mumkin.
+ *
+ * `null` — tannarx yo'q yoki nol. Cheksiz EMAS: tannarxsiz tovarda
+ * ustama ta'riflanmagan va ekranda «—» turishi kerak.
+ */
+export function markupPercent(cost, sale) {
+  const c = nOrNull(cost);
+  const s = nOrNull(sale);
+  if (c == null || s == null || c <= 0) return null;
+  return ((s - c) / c) * 100;
+}
+
+/**
  * Tannarx o'zgarganda MARJANI SAQLAB qoladigan sotuv narxi.
  * `null` — eski marja noma'lum, tavsiya berilmaydi.
  */

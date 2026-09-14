@@ -23,7 +23,7 @@ import { productCode } from "../lib/ek-code";
 import { NumField, BarcodeField } from "../components/ek/EkFields";
 import { useSearchParams } from "react-router-dom";
 import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
-import { checkPrices, marginPercent, VIOLATION } from "../lib/ek-prices";
+import { checkPrices, marginPercent, markupPercent, VIOLATION } from "../lib/ek-prices";
 import { isCodeQuery, normalizeCodeQuery } from "../lib/ek-code-search";
 import { useInfinite } from "../hooks/useInfinite";
 import { useDebounced } from "../hooks/useDebounced";
@@ -114,10 +114,23 @@ export default function ProductsPage({ toast }) {
     return money(Math.max(cost, Math.round(sale - (profit * pct) / 100)));
   })();
 
+  /* ⚠ MARJA VA USTAMA — YONMA-YON.
+
+     Ular bitta savolga ikki xil javob emas, ikki BOSHQA savolga javob:
+     100 000 → 120 000 da ustama 20%, marja esa 16,67%. Do'kon egasi
+     «necha foiz qo'shdim?» deb o'ylaydi (ustama), hisobot esa marja
+     bilan gapiradi.
+
+     ⚠ BITTASINI KO'RSATISH XAVFLI: raqam yolg'iz turganda u ikkinchisi
+     deb o'qiladi. Ular teskari ham qaytarilmaydi — 20% marja uchun 25%
+     ustama kerak. Shuning uchun ikkalasi bitta qatorda. */
   const marginText = (() => {
     const m = marginPercent(form.costPrice, form.salePrice);
-    if (m == null) return "—";
-    return `${m.toFixed(1)}%`;
+    const u = markupPercent(form.costPrice, form.salePrice);
+    if (m == null && u == null) return "—";
+    if (u == null) return `${m.toFixed(1)}%`;
+    if (m == null) return `${u.toFixed(1)}%`;
+    return t("products.marginMarkup", { m: m.toFixed(1), u: u.toFixed(1) });
   })();
   const [saving, setSaving]         = useState(false);
   const [uploading, setUploading]   = useState(false);
@@ -1411,7 +1424,7 @@ export default function ProductsPage({ toast }) {
                        onChange={setField("wholesalePrice")} placeholder="0" />
                 <div className="form-hint">{t("products.wholesaleHint")}</div>
               </FormGroup>
-              <FormGroup label={t("products.margin")}>
+              <FormGroup label={`${t("products.margin")} / ${t("products.markup")}`}>
                 <div className="ek-margin">{marginText}</div>
               </FormGroup>
             </div>

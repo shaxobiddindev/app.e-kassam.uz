@@ -1635,6 +1635,10 @@ export default function DashboardPage({ toast }) {
              detail={<>
                <Line label={t("rpt2.cogs")} value={money(k?.cogs)} />
                <Line label={t("rpt2.margin")} value={percent(k?.margin)} />
+               {/* ⚠ USTAMA HAM: egasi narxni ustama bilan qo'yadi,
+                   hisobot marja bilan gapiradi. Ikkisi boshqa savolga
+                   javob va teskari qaytarilmaydi. */}
+               <Line label={t("rpt2.markup")} value={percent(k?.markup)} />
              </>} />
         <Kpi label={t("rpt2.expenses")} value={k?.expenses} good="down"
              delta={pct(k?.expenses, kp?.expenses)} hint={t("dash.hintExpenses")}

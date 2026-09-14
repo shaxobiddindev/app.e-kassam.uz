@@ -193,6 +193,7 @@ function exportXlsx(d, range, periodLabel) {
       [t("rpt2.cogs"),          n(k.cogs)],
       [t("rpt2.grossProfit"),   n(k.grossProfit)],
       [t("rpt2.margin"),        n(k.margin)],
+      [t("rpt2.markup"),        n(k.markup)],
       [t("rpt2.expenses"),      n(k.expenses)],
       [t("rpt2.inventoryLoss"), n(k.inventoryLoss)],
       [t("rpt2.netProfit"),     n(k.netProfit)],
@@ -530,7 +531,7 @@ function Home({ d, k, p, points, days, target, range, period }) {
              sub={t("rpt2.perDay", { v: shortNum(perDay) })} />
         <Kpi label={t("rpt2.grossProfit")} value={money(k.grossProfit)}
              now={k.grossProfit} prev={p.grossProfit} icon="fa-arrow-trend-up" tone="good"
-             sub={`${t("rpt2.margin")}: ${percent(k.margin)}`} />
+             sub={`${t("rpt2.margin")}: ${percent(k.margin)} · ${t("rpt2.markup")}: ${percent(k.markup)}`} />
         <Kpi label={t("rpt2.netProfit")} value={money(k.netProfit)}
              now={k.netProfit} prev={p.netProfit} icon="fa-wallet"
              tone={num(k.netProfit) < 0 ? "bad" : "good"}
@@ -851,6 +852,12 @@ function Profit({ d, k, p }) {
       <div className="kpi-grid">
         <Kpi label={t("rpt2.grossProfit")} value={money(k.grossProfit)} now={k.grossProfit} prev={p.grossProfit} icon="fa-arrow-trend-up" tone="good" />
         <Kpi label={t("rpt2.margin")} value={percent(k.margin)} now={k.margin} prev={p.margin} icon="fa-percent" />
+        {/* ⚠ USTAMA MARJA YONIDA. Do'kon egasi narxni USTAMA bilan
+            qo'yadi («20% qo'shaman»), hisobot esa marja bilan
+            gapiradi: 100 000 → 120 000 da ustama 20%, marja 16,67%.
+            Bittasi yolg'iz turganda u ikkinchisi deb o'qiladi va ular
+            teskari qaytarilmaydi (20% marja = 25% ustama). */}
+        <Kpi label={t("rpt2.markup")} value={percent(k.markup)} now={k.markup} prev={p.markup} icon="fa-arrow-up-right-dots" />
         <Kpi label={t("rpt2.netProfit")} value={money(k.netProfit)} now={k.netProfit} prev={p.netProfit}
              icon="fa-wallet" tone={num(k.netProfit) < 0 ? "bad" : "good"} />
         <Kpi label={t("rpt2.lossSales")} value={money(k.lossAmount)} icon="fa-arrow-trend-down"

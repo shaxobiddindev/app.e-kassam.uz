@@ -12,7 +12,7 @@
    Ishga tushirish:  node test/prices.test.mjs
    ══════════════════════════════════════════════════════════════════════════ */
 
-const { checkPrices, marginPercent, recommendSale, VIOLATION } =
+const { checkPrices, marginPercent, markupPercent, recommendSale, VIOLATION } =
   await import("../src/lib/ek-prices.js");
 
 let pass = 0, fail = 0;
@@ -39,6 +39,26 @@ near(marginPercent(8000, 10000), 20, "8000 → 10000 = 20% marja");
 near(marginPercent(10000, 10000), 0, "tannarx = sotuv → 0%");
 near(marginPercent(12000, 10000), -20, "zarariga → MANFIY marja, nolga qisilmaydi");
 eq(marginPercent(8000, 0), null, "sotuv nol — hisoblanmaydi");
+
+/* ══ USTAMA ═══════════════════════════════════════════════════════════
+   ⚠ MARJA BILAN ADASHTIRILMASIN. Do'kon egasining savoli: «100 000 lik
+   tovarni 120 000 ga sotdim — daromad 20% mi, 16,6% mi?». Ikkalasi ham
+   to'g'ri, lekin boshqa savolga javob beradi va ular TESKARI
+   QAYTARILMAYDI. Shu sinov ikkovini bir joyda qulflaydi. */
+near(markupPercent(100000, 120000), 20, "100 000 → 120 000 = 20% ustama");
+near(marginPercent(100000, 120000), 16.6667, "...o'sha tovarda marja esa 16,67%");
+
+/* ⚠ 20% USTAMA ≠ 20% MARJA: 20% marja uchun 25% ustama kerak. */
+near(markupPercent(8000, 10000), 25, "8000 → 10000 = 25% ustama (marja 20%)");
+near(marginPercent(8000, 10000), 20, "...aynan shu narxda marja 20%");
+
+near(markupPercent(10000, 10000), 0, "tannarx = sotuv → 0%");
+near(markupPercent(10000, 8000), -20, "zarariga → MANFIY ustama");
+/* ⚠ CHEKSIZ EMAS, `null`: tannarxsiz tovarda ustama TA'RIFLANMAGAN va
+   ekranda «—» turishi kerak. Nolga bo'lish `Infinity` berardi va u
+   ekranga «Infinity%» bo'lib chiqardi. */
+eq(markupPercent(0, 10000), null, "tannarx nol — hisoblanmaydi");
+eq(markupPercent(null, 10000), null, "tannarx yo'q — hisoblanmaydi");
 eq(marginPercent("", 10000), null, "tannarx yo'q — hisoblanmaydi");
 
 console.log("\n═══ 4. Marjani saqlaydigan tavsiya ═══");
