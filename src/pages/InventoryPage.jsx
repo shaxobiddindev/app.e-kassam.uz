@@ -1056,7 +1056,14 @@ export default function InventoryPage({ toast }) {
               <tbody>
                 {filtered.map(({ g, f }) => {
                   const multi = g.batches.length > 1;
-                  const single = g.batches[0];
+                  /* ⚠ PARTIYASIZ TOVAR BO'LADI va bu normal holat: hali
+                     kirim olmagan tovar ham ro'yxatda turadi («qoldiq 0,
+                     buyurtma kerak»). Ilgari server bunday tovarga SOXTA
+                     partiya qatori yasardi (`emptyRow`), ya'ni `batches[0]`
+                     doim mavjud edi. Sahifalashda soxta qator olib
+                     tashlandi — va `single.expiryDate` butun bo'limni
+                     yiqitdi (2026-09-14, jonli serverda). */
+                  const single = g.batches[0] || null;
                   return [
                     /* ── Asosiy qator: mahsulot bo'yicha JAMI ── */
                     /* ⚠ `opacity: .6` OLIB TASHLANDI. U matn kontrastini ham
@@ -1142,7 +1149,7 @@ export default function InventoryPage({ toast }) {
                       <td>
                         {multi
                           ? <span className="text-muted">{t("inv.batchCount", { n: g.batches.length })}{g.nearest ? ` · ${shortDate(g.nearest)}` : ""}</span>
-                          : (single.expiryDate ? shortDate(single.expiryDate) : t("inv.noExpiry"))}
+                          : (single?.expiryDate ? shortDate(single.expiryDate) : t("inv.noExpiry"))}
                       </td>
                       <td>{stateBadges(f, g)}</td>
                       {/* ⚠ FLEX VA GAP, matn bo'shlig'i EMAS. Ilgari ikkala
@@ -1165,7 +1172,7 @@ export default function InventoryPage({ toast }) {
                               partiyaga tegishli amal, shuning uchun bunda u
                               ko'rsatilmaydi — «Kirim» esa ishlaydi va
                               birinchi partiyani o'zi ochadi. */}
-                          {!multi && single.inventoryId != null && (
+                          {!multi && single?.inventoryId != null && (
                             <button className="btn btn-outline btn-sm" onClick={() => openCorrect(single)} title={t("inv.correctHint")}>
                               <i className="fa-solid fa-sliders" /> {t("inv.correctAction")}
                             </button>

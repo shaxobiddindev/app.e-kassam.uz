@@ -126,11 +126,27 @@ const GOOD = [
   row(2, "Choy",   "1001",  80, 9000,  14000,  5, null),
   row(3, "Shakar", "1002",  45, 11000, 15000,  5, null),
 ];
+/* ⚠ PARTIYASIZ TOVAR — HAQIQIY NUQSON USTIGA QO'SHILDI (2026-09-14).
+
+   Hali kirim olmagan tovar ham ro'yxatda turadi («qoldiq 0, buyurtma
+   kerak») va uning `batches` i BO'SH. Eski API bunday tovarga soxta
+   partiya qatori berardi, ya'ni ekrandagi `g.batches[0]` doim mavjud
+   edi. Sahifalashda soxta qator olib tashlandi va `single.expiryDate`
+   butun Ombor bo'limini yiqitdi — jonli serverda.
+
+   ⚠ Fiksturada har tovarda AYNAN BITTA partiya bor edi, shuning uchun
+   qo'riqchi buni tutmadi. Endi bitta qator partiyasiz. */
+const noBatch = (id, name, code, cost, price, minQ) => ({
+  productId: id, productName: name, barcode: code, unit: "DONA",
+  costPrice: cost, salePrice: price, minQuantity: minQ, batches: [],
+});
+
 const BAD = [
   ...GOOD,
   row(4, "Sut 1L", "2000", 12, 8000, 11000, 5, day(-3)),   // muddati o'tgan
   row(5, "Qatiq",  "2001",  7, 6000,  9000, 5, day(3)),    // muddati yaqin
   row(6, "Non",    "2002",  1, 2500,  4000, 20, null),     // kam qolgan
+  noBatch(7, "Yangi tovar", "2003", 3000, 5000, 5),        // hali kirim yo'q
 ];
 
 /* ══ SOXTA SERVER ══════════════════════════════════════════════════
