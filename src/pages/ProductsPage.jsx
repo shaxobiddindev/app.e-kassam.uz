@@ -29,6 +29,7 @@ import { useInfinite } from "../hooks/useInfinite";
 import { useDebounced } from "../hooks/useDebounced";
 import InfiniteList from "../components/ek/InfiniteList";
 import { asArray } from "../lib/ek-array";
+import { hasRole } from "../lib/ek-roles";
 import { barcodeSuspicious } from "../lib/ek-barcode-check";
 import { isStoreCode, prettyStoreCode, storeCodeShort } from "../lib/ek-store-code";
 
@@ -165,7 +166,15 @@ export default function ProductsPage({ toast }) {
   const [bizType, setBizType]       = useState("");
   const fileRef = useRef(null);
 
-  const isHeadUser = user?.role === "OWNER" || user?.role === "SHOP_ADMIN" || user?.role === "ADMIN";
+  /* ⚠ `hasRole`, ANIQ TENGLIK EMAS. Sessiyada rol bir NECHTA bo'lishi
+     mumkin va vergul bilan saqlanadi (`"OWNER,CASHIER"`), ba'zi kirish
+     yo'llari esa `ROLE_` prefiksi bilan yozadi. Aniq tenglik ikkala
+     holatda ham YOLG'ON beradi va butun boshqaruv tugmalari jimgina
+     yo'qolardi — do'kon egasi «maxsulot kiritish yo'q» deb qolardi
+     (2026-09-14, jonli serverda o'lchandi).
+
+     ⚠ `OWNER` ro'yxatga yozilmaydi: `hasRole` uni o'zi o'tkazadi. */
+  const isHeadUser = hasRole(user?.role, ["SHOP_ADMIN", "ADMIN"]);
 
   // ── Yuklash ────────────────────────────────────────────────
   /**

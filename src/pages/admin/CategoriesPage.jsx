@@ -70,6 +70,11 @@ export default function CategoriesPage({ toast }) {
   const [peek, setPeek]             = useState(null);
   /* `{ cat, target }` — «ko'chirib o'chirish» oynasi. */
   const [merge, setMerge]           = useState(null);
+  /* Sotiladigan tovarlar soni — jadvaldagi ustun bilan AYNAN bir xil
+     hisob (arxiv chiqarilgan). Oyna matni shunga qarab tanlanadi. */
+  const mergeLive = merge
+    ? merge.cat.productCount - (merge.cat.archivedProductCount || 0)
+    : 0;
   const [merging, setMerging]       = useState(false);
   const [form, setForm]             = useState(EMPTY_FORM);
   const [saving, setSaving]         = useState(false);
@@ -393,13 +398,29 @@ export default function CategoriesPage({ toast }) {
             </>
           }
         >
+          {/* ⚠ SOTILADIGANI YO'Q BO'LSA — BOSHQA MATN.
+
+              Jadvaldagi ustun FAQAT sotiladigan tovarni sanaydi (arxiv
+              undan chiqarilgan), bu oyna esa JAMI sonni aytardi. Natijada
+              ekranda «0» turib, oyna «3 ta tovar bor» derdi — do'kon egasi
+              buni ilova buzilgan deb tushunardi va haq edi: ikkala raqam
+              ham to'g'ri, lekin ular bir-birini inkor qilardi.
+
+              Endi sotiladigani bo'lmaganda matn to'g'ridan-to'g'ri
+              O'CHIRILGAN tovarlar haqida gapiradi — ya'ni jadvaldagi «0»
+              bilan zid emas. */}
           <p style={{ marginTop: 0 }}>
-            {t("cat.mergeIntro", {
-              name: merge.cat.name,
-              n: merge.cat.productCount,
-              live: merge.cat.productCount - (merge.cat.archivedProductCount || 0),
-              arch: merge.cat.archivedProductCount || 0,
-            })}
+            {mergeLive > 0
+              ? t("cat.mergeIntro", {
+                  name: merge.cat.name,
+                  n: merge.cat.productCount,
+                  live: mergeLive,
+                  arch: merge.cat.archivedProductCount || 0,
+                })
+              : t("cat.mergeIntroArchived", {
+                  name: merge.cat.name,
+                  arch: merge.cat.archivedProductCount || 0,
+                })}
           </p>
 
           <FormGroup label={t("cat.mergeTarget")}>

@@ -2079,6 +2079,7 @@ export default {
   "cat.mergeAction": "Ko'chirib o'chirish",
   "cat.mergeTarget": "Tovarlar qaysi bo'limga ko'chsin",
   "cat.mergePick": "Bo'limni tanlang",
+  "cat.mergeIntroArchived": "«{name}» bo'limida sotiladigan tovar yo'q. O'chirilgan {arch} ta tovar hamon shu bo'limga bog'langan. O'chirish uchun ularni boshqasiga ko'chiring.",
   "cat.mergeIntro": "«{name}» bo'limida {n} ta tovar bor ({live} ta sotiladigan, {arch} ta o'chirilgan). Bo'limni o'chirish uchun ular boshqa bo'limga ko'chishi kerak.",
   "cat.mergeReportWarn": "O'tgan oylar hisoboti ham o'zgaradi. Hisobot tovarning hozirgi bo'limini oladi. Amal jurnalga yoziladi.",
   "cat.merged": "Bo'lim o'chirildi, tovarlar ko'chirildi",

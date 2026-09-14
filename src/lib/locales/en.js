@@ -1985,6 +1985,7 @@ export default {
   "cat.mergeAction": "Move and delete",
   "cat.mergeTarget": "Which section should the products move to",
   "cat.mergePick": "Choose a section",
+  "cat.mergeIntroArchived": "«{name}» has no sellable products. But {arch} deleted products are still linked to it. Move them elsewhere to delete the section.",
   "cat.mergeIntro": "The section «{name}» holds {n} products ({live} on sale, {arch} deleted). To delete the section they must move to another one.",
   "cat.mergeReportWarn": "Past reports change too. A report takes the product's current section. The action is logged.",
   "cat.merged": "Section deleted, products moved",
