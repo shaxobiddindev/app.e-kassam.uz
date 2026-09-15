@@ -2584,15 +2584,43 @@ img.logo--dark { display: none; }
 :root[data-touch="1"] td,
 :root[data-touch="1"] th          { padding-top: 14px; padding-bottom: 14px; }
 
-/* Barmoq bilan surish: inersiya va chetga chiqmaslik. `overscroll-behavior`
-   bo'lmasa jadval oxiriga yetganda butun sahifa siljib ketadi va kassir
-   "ilova sakrayapti" deb o'ylaydi. */
+/* Barmoq bilan surish: inersiya va yumshoq scrollbar. */
 :root[data-touch="1"] .table-wrap,
 :root[data-touch="1"] .modal-body,
 :root[data-touch="1"] .cat-tabs {
   -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
   scrollbar-width: thin;
+}
+
+/* ══ ⚠ `overscroll-behavior: contain` FAQAT HAQIQIY VERTIKAL IDISHDA ══
+
+   Ilgari u yuqoridagi uchala tanlovchida ham turardi va sensorli
+   monoblokda SICHQONCHA G'ILDIRAGINI BUTUNLAY O'LDIRARDI — do'kon
+   egasi shikoyat qildi, ekranda esa hech qanday xato yo'q edi.
+
+   ⚠ SABABI CSS NING KAM MA'LUM QOIDASIDA. `.table-wrap` da faqat
+   `overflow-x: auto` yozilgan, lekin bir o'q `visible` bo'lmasa
+   IKKINCHISI HAM `auto` ga aylanadi. Ya'ni `.table-wrap` —
+   vertikal scroll idishi, ichida esa suriladigan narsa YO'Q
+   (`scrollHeight === clientHeight`).
+
+   `contain` esa aynan shu holatda zanjirni uzadi: g'ildirak idishga
+   tushadi, u sura olmaydi va sahifaga ham O'TKAZMAYDI. Jadval esa
+   ekranning ko'p qismini egallaydi — natijada g'ildirak umuman
+   ishlamayotgandek tuyuladi. `.cat-tabs` da ham ayni hol.
+
+   ⚠ `overscroll-behavior-x: contain` ham YARAMAYDI — o'lchandi:
+   bitta o'q cheklansa ham vertikal zanjir uziladi.
+
+   ⚠ NIMA YO'QOTILDI: keng jadvalni barmoq bilan chetigacha surib,
+   davom ettirilganda sahifa ham biroz siljiydi. Bu — g'ildirakning
+   butunlay ishlamasligiga nisbatan arzimas narxi.
+
+   Quyidagilar HAQIQATAN vertikal suriladi (`max-height` + `overflow-y`)
+   va ularda `contain` o'rinli: modal tanasi, `.facet__list` va
+   tugash arafasidagi tovarlar ro'yxati. */
+:root[data-touch="1"] .modal-body {
+  overscroll-behavior: contain;
 }
 /* Teginishda uzoq bosilganda matn belgilanib, ko'k dog' chiqib ketardi */
 :root[data-touch="1"] .btn,
