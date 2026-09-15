@@ -174,14 +174,32 @@ export default function CategoriesPage({ toast }) {
   };
 
   const handleDelete = async (cat) => {
-    /* ⚠ TOVARI BOR BO'LSA — SO'ROV YUBORILMAYDI. Ilgari o'chirish
-       urinilib, server rad etardi va foydalanuvchi «tovarlar bor»
-       degan xabarni olardi — nima qilish kerakligi aytilmasdi.
-       Endi darhol ko'chirish oynasi ochiladi. */
-    if (cat.productCount > 0) { setMerge({ cat, target: "" }); return; }
+    /* ⚠ SOTILADIGAN TOVARI BOR BO'LSA — SO'ROV YUBORILMAYDI. Ilgari
+       o'chirish urinilib, server rad etardi va foydalanuvchi «tovarlar
+       bor» degan xabarni olardi — nima qilish kerakligi aytilmasdi.
+       Endi darhol ko'chirish oynasi ochiladi.
+
+       ⚠⚠ SON JADVALDAGI USTUN BILAN BIR XIL — ARXIV CHIQARILGAN.
+       Ilgari bu yerda JAMI hisob turardi va O'CHIRILGAN tovar bo'limni
+       abadiy qulflab qo'yardi: ustunda «0» ko'rinardi, o'chirishga
+       bosilganda esa ko'chirish oynasi ochilardi va foydalanuvchi o'z
+       qo'li bilan o'chirgan tovarni BOSHQA bo'limga tiqishi kerak
+       bo'lardi. Do'konda bitta bo'lim bo'lsa — ko'chiradigan joy ham
+       yo'q, ya'ni chiqish yo'li umuman qolmasdi. */
+    const live = cat.productCount - (cat.archivedProductCount || 0);
+    if (live > 0) { setMerge({ cat, target: "" }); return; }
+
+    /* ⚠ ARXIVDAGILAR BO'LSA — OQIBATI OLDINDAN AYTILADI. Ular bo'limsiz
+       qoladi va o'tgan davr hisobotida «Turkumsiz» bo'lib ko'rinadi
+       (`rpt2.noCategory`): hisobot kategoriyani TIRIK tovardan oladi.
+       Buni jimgina qilish eng yomon yo'l bo'lardi — raqamlar sababsiz
+       o'zgarardi. */
+    const arch = cat.archivedProductCount || 0;
     const ok = await confirm({
       title: t("cat.deleteTitle"),
-      message: `"${cat.name}" — ${t("common.delete")}?`,
+      message: arch > 0
+        ? t("cat.deleteArchived", { name: cat.name, arch })
+        : `"${cat.name}" — ${t("common.delete")}?`,
       type: "danger",
     });
     if (!ok) return;
@@ -372,8 +390,8 @@ export default function CategoriesPage({ toast }) {
       {/* ══ KATEGORIYADAGI TOVARLAR ═══════════════════════════════════
           ⚠ ARXIVDAGILAR HAM CHIQADI va bu oynaning butun ma'nosi shu:
           jadvalda ular ko'rinmaydi (o'chirilgan tovar sotiladigan tovar
-          emas), lekin ular kategoriyani o'chirishni TO'SADI. Egasi
-          nimaga to'silayotganini ko'ra olishi kerak. */}
+          emas), lekin bo'lim o'chirilganda AYNAN ULAR bo'limsiz qoladi.
+          Egasi tasdiqlashdan oldin ro'yxatni ko'ra olishi kerak. */}
       {/* ══ KO'CHIRIB O'CHIRISH ═══════════════════════════════════════
           ⚠ OYNA HISOBOTGA TA'SIRINI OCHIQ AYTADI. O'lchandi: hisobot
           kategoriyani TIRIK `product.category` dan oladi va NOM
@@ -398,29 +416,19 @@ export default function CategoriesPage({ toast }) {
             </>
           }
         >
-          {/* ⚠ SOTILADIGANI YO'Q BO'LSA — BOSHQA MATN.
-
-              Jadvaldagi ustun FAQAT sotiladigan tovarni sanaydi (arxiv
-              undan chiqarilgan), bu oyna esa JAMI sonni aytardi. Natijada
-              ekranda «0» turib, oyna «3 ta tovar bor» derdi — do'kon egasi
-              buni ilova buzilgan deb tushunardi va haq edi: ikkala raqam
-              ham to'g'ri, lekin ular bir-birini inkor qilardi.
-
-              Endi sotiladigani bo'lmaganda matn to'g'ridan-to'g'ri
-              O'CHIRILGAN tovarlar haqida gapiradi — ya'ni jadvaldagi «0»
-              bilan zid emas. */}
+          {/* ⚠ OYNA FAQAT SOTILADIGAN TOVAR BO'LGANDA OCHILADI, ya'ni
+              «sotiladigani yo'q» varianti bu yerda umuman bo'lmaydi:
+              arxivdagilargina qolgan bo'lim oddiy tasdiqlash bilan
+              o'chiriladi (yuqoridagi `handleDelete`). Ilgari u ham shu
+              oynaga kelardi va do'kon egasi O'CHIRGAN tovarini boshqa
+              bo'limga ko'chirishga majbur bo'lardi. */}
           <p style={{ marginTop: 0 }}>
-            {mergeLive > 0
-              ? t("cat.mergeIntro", {
-                  name: merge.cat.name,
-                  n: merge.cat.productCount,
-                  live: mergeLive,
-                  arch: merge.cat.archivedProductCount || 0,
-                })
-              : t("cat.mergeIntroArchived", {
-                  name: merge.cat.name,
-                  arch: merge.cat.archivedProductCount || 0,
-                })}
+            {t("cat.mergeIntro", {
+              name: merge.cat.name,
+              n: merge.cat.productCount,
+              live: mergeLive,
+              arch: merge.cat.archivedProductCount || 0,
+            })}
           </p>
 
           <FormGroup label={t("cat.mergeTarget")}>

@@ -462,6 +462,11 @@ export const productApi = {
                   if (opts.flt) p.set("flt", opts.flt);
                   if (opts.q) p.set("q", opts.q);
                   if (opts.below) p.set("below", "true");
+                  /* ⚠ ARXIV — ALOHIDA RO'YXAT, katalog bilan
+                     aralashmaydi: server `active = false` ni qaytaradi
+                     va faqat shu rejimda «qachon o'chirilgan» bilan
+                     «oxirgi sotuv» sanalari to'ldiriladi. */
+                  if (opts.archived) p.set("archived", "true");
                   return request(`/products?${p}`);
                 },
   /** Kassa ro'yxati — kategoriya va «tez tovarlar» filtri bilan. */

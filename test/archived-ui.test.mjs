@@ -72,11 +72,58 @@ console.log("\n── Tovar formasi: ikkita yo'l ──");
   eq(/setArchivedConflict\(/.test(save), true, "oyna holati qo'yilmayapti");
 }
 
+console.log("\n── Arxiv ro'yxati: o'chirilganlarni ko'rish va tiklash ──");
+{
+  /* ⚠ NEGA QO'RIQCHI KERAK. 2026-09-15 gacha bu ro'yxat UMUMAN yo'q
+     edi: o'chirilgan tovarni faqat barkodini skanerlab topish mumkin
+     edi, ya'ni xato o'chirilgan tovarni qaytarish uchun uni avval
+     topish kerak edi-yu, topadigan ekran yo'q edi.
+
+     Bu yerdagi uchta ulanishning bittasi uzilsa, ro'yxat JIMGINA
+     noto'g'ri ishlaydi: `archived` yuborilmasa — ekranda «Arxiv» deb
+     turib KATALOG chiziladi (server parametrsiz katalogni beradi). */
+  const p = read("src/pages/ProductsPage.jsx");
+  const api = read("src/api/index.js");
+
+  eq(/archived,?\s*\n?\s*\}\);|archived,/.test(p), true,
+     "⚠ `archived` serverga yuborilmayapti — «Arxiv» deb turib katalog chiziladi");
+  eq(/p\.set\("archived", "true"\)/.test(api), true,
+     "⚠ api qatlami `archived` parametrini qo'ymayapti");
+  eq(/handleRestore/.test(p), true, "tovarlar sahifasida tiklash amali yo'q");
+
+  /* ⚠ ARXIVDA TAHRIRLASH VA O'CHIRISH TUGMASI BO'LMASIN: server
+     ularni baribir rad etadi (`findActiveById`), ishlamaydigan tugma
+     esa eng yomon yo'l. */
+  const at = p.indexOf("handleRestore(p)");
+  /* Oraliq KENG: qatordagi izohlar uzun va ular ikkala tugma
+     orasida turadi — tor oyna qo'riqchini kod O'ZGARMAGANDA ham
+     yiqitardi. */
+  const actions = at < 0 ? "" : p.slice(at - 600, at + 2400);
+  eq(/archived \? \(/.test(actions), true,
+     "⚠ tiklash tugmasi arxiv shartidan TASHQARIDA — u katalogda ham chiqadi");
+  eq(/handleDelete\(p\)/.test(actions), true,
+     "⚠ tahrirlash/o'chirish tugmalari arxivda ham qolgan — server ularni "
+     + "baribir rad etadi, ishlamaydigan tugma esa eng yomon yo'l");
+
+  /* ⚠ ROLGA QARAB: kassa ekranidagi bilan bir xil qoida. */
+  eq(/canRestore/.test(p), true,
+     "⚠ tiklash rolga qarab to'silmayapti — kassir 403 oladi");
+
+  /* ⚠ ARXIVDA KOD REJIMI YO'Q: `*425` kassa qidiruviga ketadi va u
+     o'chirilganlarni ATAYLAB qaytarmaydi — javob doim bo'sh bo'lardi. */
+  eq(/!archived && isCodeQuery/.test(p), true,
+     "⚠ arxivda kod rejimi yoqiq qolgan — natija doim bo'sh chiqadi");
+}
+
 console.log("\n── Uchala til ──");
 {
   const keys = ["kassa.archivedAsk", "kassa.archivedFound", "kassa.archivedRestore",
                 "products.archivedAsk", "products.archivedRestore",
-                "products.archivedCreateNew", "products.restored"];
+                "products.archivedCreateNew", "products.restored",
+                "products.archiveView", "products.catalogView", "products.archiveNote",
+                "products.archiveEmpty", "products.archivedAtCol", "products.neverSold",
+                "products.restore", "products.restoreTitle", "products.restoreAsk",
+                "products.restoreNoRight"];
   for (const lang of ["uz", "ru", "en"]) {
     const src = read(`src/lib/locales/${lang}.js`);
     const miss = keys.filter((k) => !src.includes(`"${k}"`));

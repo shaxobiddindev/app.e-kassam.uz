@@ -229,6 +229,11 @@ export default function KassaPage({ toast, refreshLowStock }) {
       : c)));
   const [search, setSearch]         = useState("");
   const [searching, setSearching]   = useState(true);   // birinchi yuklash
+  /* ⚠ BO'SH JAVOBNING SABABI — SERVERDAN. «Topilmadi» bilan «bu kod
+     o'chirilgan tovarga tegishli» bir xil xabar emas: birinchisida
+     kassir raqamni qayta tekshiradi, ikkinchisida egaga aytadi.
+     Ilgari server sababni aytardi-yu, ekran uni tashlab yuborardi. */
+  const [searchNote, setSearchNote] = useState("");
   /* Katakchada RAQAM ko'rinadimi (V107, V128 da kengaytirildi).
      Bo'sh so'rovda emas: bo'shda butun katalog chiqadi va har
      katakchada raqam turishi shovqin bo'lardi.
@@ -717,6 +722,9 @@ export default function KassaPage({ toast, refreshLowStock }) {
          har chekdan keyin yarim ekran silkinishi shovqindan boshqa narsa
          emas. Belgi BOSHQA odam qilgan o'zgarish uchun. */
       if (silent) flagChanges(list);
+      /* Sabab faqat BO'SH javobda ma'noli — natija bor ekan, uni
+         ekranga chiqarish shovqin. */
+      setSearchNote(list.length === 0 ? (res?.message || "") : "");
       setProducts(list);
     } catch (_) { /* oflaynda katalog eskicha qoladi */ }
     finally { if (!silent) setSearching(false); }
@@ -813,6 +821,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
          xato belgi uchun kassirni to'xtatib turishning ma'nosi yo'q. */
       const code = "*" + val.slice(1).replace(/\D/g, "").slice(0, 12);
       setSearch(code);
+      setSearchNote("");
       setProducts([]);
       clearTimeout(debounceRef.current);
       debounceRef.current = setTimeout(() => doSearch(code), 180);
@@ -824,6 +833,9 @@ export default function KassaPage({ toast, refreshLowStock }) {
     /* 1-bosqich: server javobini kutmasdan mahalliy saralash. Bo'sh
        so'rovda keshdagi to'liq ro'yxat qaytariladi. */
     const base = baseProducts.current;
+    /* Mahalliy saralash serverning sababini bilmaydi — eski xabar
+       yangi so'rov ustida qolib ketmasin. */
+    setSearchNote("");
     if (base) setProducts(val ? rankLocal(base, val) : base);
 
     clearTimeout(debounceRef.current);
@@ -3179,7 +3191,13 @@ export default function KassaPage({ toast, refreshLowStock }) {
               ))}
               {products.length === 0 && !searching && (
                 <div style={{ gridColumn: "1/-1" }}>
-                  <Empty icon="fa-magnifying-glass" text={t("products.notFound")} />
+                  {/* ⚠ SERVER SABABNI AYTGAN BO'LSA — O'SHA MATN.
+                      «Bu kod o'chirilgan tovarga tegishli» degan javob
+                      «Topilmadi» dan butunlay boshqa narsani bildiradi
+                      va uni umumlashtirib yuborish kassirni yorliqni
+                      qayta-qayta terishga majbur qilardi. */}
+                  <Empty icon="fa-magnifying-glass"
+                         text={searchNote || t("products.notFound")} />
                 </div>
               )}
             </div>

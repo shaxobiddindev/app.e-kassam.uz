@@ -189,6 +189,25 @@ export default function ProductsPage({ toast }) {
      ⚠ `OWNER` ro'yxatga yozilmaydi: `hasRole` uni o'zi o'tkazadi. */
   const isHeadUser = hasRole(user?.role, ["SHOP_ADMIN", "ADMIN"]);
 
+  /* ⚠ TIKLASH HAMMAGA EMAS — server ham `OWNER`/`SHOP_ADMIN`/
+     `STOREKEEPER` dan boshqasini qo'ymaydi (kassa ekranida ham
+     shu qoida). Tugmani ko'rsatib, keyin 403 berish faqat umid
+     uyg'otardi. */
+  const canRestore = hasRole(user?.role, ["SHOP_ADMIN", "STOREKEEPER"]);
+
+  /* ══ ARXIV: O'CHIRILGAN TOVARLAR ══════════════════════════════════
+     ⚠ NEGA ALOHIDA RO'YXAT, katalogdagi «holat» filtri emas.
+     O'chirilgan tovarlar katalogga qo'shilsa, do'kon egasi
+     «tovarlarim» deb ochgan ro'yxatda o'zi o'chirgan qatorlar
+     turardi va har filtr ularni ham sanardi. Arxiv — boshqa savol
+     («nimani qaytarsam bo'ladi?») va uning o'z ekrani bor.
+
+     ⚠ Ilgari bu ro'yxat UMUMAN yo'q edi: o'chirilgan tovarni faqat
+     barkodini skanerlab topish mumkin edi. Ya'ni xato o'chirilgan
+     tovarni qaytarish uchun uni avval topish kerak edi-yu, topadigan
+     joy yo'q edi. */
+  const [archived, setArchived] = useState(false);
+
   // ── Yuklash ────────────────────────────────────────────────
   /**
    * ⚠ TOVARLAR ENDI BU YERDA YUKLANMAYDI. Ilgari `productApi.getAll`
@@ -564,6 +583,31 @@ export default function ProductsPage({ toast }) {
     }
   };
 
+  /**
+   * ARXIVDAGI TOVARNI TIKLASH.
+   *
+   * <p>⚠ SERVER XABARI USTUN. Barkodi boshqa faol tovarga o'tib
+   * ketgan bo'lsa, tovar BARKODSIZ tiklanadi va buni faqat server
+   * biladi. O'z matnimizni ko'rsatish do'kon egasini «hammasi
+   * joyida» deb ishontirib, keyin kassada «topilmadi» bilan
+   * qoldirardi.
+   */
+  const handleRestore = async (product) => {
+    const ok = await confirm({
+      title: t("products.restoreTitle"),
+      message: `${product.name}\n\n${t("products.restoreAsk")}`,
+      confirmText: t("products.restore"),
+    });
+    if (!ok) return;
+    try {
+      const res = await productApi.restore(product.id);
+      toast.success(res?.message || t("products.restored"));
+      loadData();
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
+
   /* ── Qidiruv ────────────────────────────────────────────────
      ⚠ QIDIRUV ENDI SERVERDA (`?q=`), lekin QOIDA O'ZGARMADI:
      bosqichlar `ProductSearchRank` da frontdagi `RANK` dan
@@ -631,7 +675,10 @@ export default function ProductsPage({ toast }) {
      so'zi 8 ta so'rov yuborardi va ularning 7 tasi darhol keraksiz
      bo'lib qolardi. */
   const slowSearch = useDebounced(search, 300);
-  const codeMode = isCodeQuery(slowSearch);
+  /* ⚠ ARXIVDA KOD REJIMI YO'Q. `*425` kassa qidiruviga ketadi va u
+     endi o'chirilganlarni ATAYLAB qaytarmaydi — ya'ni arxivda bu
+     rejim doim bo'sh javob berardi va sabab ko'rinmasdi. */
+  const codeMode = !archived && isCodeQuery(slowSearch);
   const fltJson = colFlt.serialize();
 
   /**
@@ -654,9 +701,10 @@ export default function ProductsPage({ toast }) {
     }
     return productApi.getPage(page, size, {
       shopId: branchId, flt: fltJson, q: slowSearch, below: belowOnly,
+      archived,
     });
     /* eslint-disable-next-line react-hooks/exhaustive-deps */
-  }, [codeMode, slowSearch, fltJson, branchId, belowOnly, version]);
+  }, [codeMode, slowSearch, fltJson, branchId, belowOnly, archived, version]);
 
   const { rows, loading, error, hasNext, total, loadMore, retry } =
     useInfinite(fetchPage, { size: 50 });
@@ -835,11 +883,33 @@ export default function ProductsPage({ toast }) {
           <button className="btn btn-outline btn-sm" onClick={loadData} title={t("products.refreshTitle")}>
             <i className="fa-solid fa-rotate-right" /> {t("common.refresh")}
           </button>
+          {/* ⚠ ARXIV — HAR DOIM KO'RINADI, tovar bor-yo'qligidan qat'i
+              nazar. Bo'sh arxiv «o'chirilgan tovar yo'q» degan javob
+              beradi; tugmaning o'zi bo'lmasa esa do'kon egasi bunday
+              ro'yxat borligini umuman bilmasdi — xato o'chirilgan
+              tovarni qidiradigan joy ham shu.
+
+              ⚠ YOZUV O'ZGARMAYDI, HOLAT o'zgaradi. Ilgari bu yerda
+              arxivda turganda «Katalog» deb yozilardi va natija
+              chalkash edi: yoqilgan (ko'k) tugma «Katalog» deb
+              tursa, u «siz katalogdasiz» degan ma'noni berardi.
+              Endi tugma doim «Arxiv» — u YOQILGANI arxivda ekaningni
+              aytadi (`aria-pressed` ham shuni aytadi), qaytish yo'li
+              esa pastdagi yozuvda, bitta aniq tugma bilan. */}
+          <button className={`btn btn-sm ${archived ? "btn-primary" : "btn-outline"}`}
+                  onClick={() => { setArchived((v) => !v); setSearch(""); }}
+                  aria-pressed={archived}
+                  title={t("products.archiveViewHint")}>
+            <i className="fa-solid fa-box-archive" /> {t("products.archiveView")}
+          </button>
           {/* ⚠ FILTRLANGANLAR chiqadi, hammasi emas. Narx o'zgargandan
               keyin yorliq kerak bo'ladi va bu odatda bitta kategoriya
               yoki qidiruv natijasi — 800 ta tovarni lenta qilib chiqarish
               hech kimga kerak emas va bir rulon qog'ozni yeydi. */}
-          {filtered.length > 0 && (
+          {/* ⚠ ARXIVDA YORLIQ CHIQARILMAYDI: o'chirilgan tovarning
+              yorlig'i javonga qo'yiladigan narsa emas va uni bosish
+              faqat qog'oz sarflardi. */}
+          {!archived && filtered.length > 0 && (
             <button className="btn btn-outline btn-sm" onClick={printFiltered}
                     disabled={labelBusy} title={t("label.printFilteredHint")}>
               {labelBusy ? <Spinner /> : <i className="fa-solid fa-tags" />}{" "}
@@ -851,7 +921,11 @@ export default function ProductsPage({ toast }) {
             </button>
           )}
           <BranchSelector selectedId={branchId} onSelect={setBranchId} />
-          {!branchId && isHeadUser && (
+          {/* ⚠ ARXIVDA YARATISH TUGMALARI YASHIRILADI. «Yangi tovar»
+              yoki «Tayyor katalog» arxiv ro'yxati ustida turgan odamga
+              boshqa ishni taklif qiladi: u bu yerga BOR tovarni
+              qaytarish uchun kelgan. */}
+          {!branchId && isHeadUser && !archived && (
             <>
               <button className="btn btn-outline btn-sm" onClick={() => setWizard(true)}>
                 <i className="fa-solid fa-wand-magic-sparkles" /> {t("products.fromCatalog")}
@@ -919,6 +993,20 @@ export default function ProductsPage({ toast }) {
             qayoqqa ketdi?» deb o'ylardi — signaldan kelgan odam
             filtr qo'yilganini bilmaydi. Tozalash ham shu yerda:
             manzilni qo'lda tahrirlash yechim emas. */}
+        {/* ⚠ ARXIVDA EKANI YOZUV BILAN HAM AYTILADI — rang va tugma
+            holati yolg'iz signal bo'lmasligi kerak (qoida №6). Matn
+            oqibatini ham aytadi: bu tovarlar kassada YO'Q. */}
+        {archived && (
+          <div className="ek-note prod-below-note">
+            <i className="fa-solid fa-box-archive" aria-hidden="true" />
+            <div>{t("products.archiveNote")}</div>
+            <button type="button" className="btn btn-outline btn-sm"
+                    onClick={() => { setArchived(false); setSearch(""); }}>
+              {t("products.catalogView")}
+            </button>
+          </div>
+        )}
+
         {belowOnly && (
           <div className="ek-note ek-note--warn prod-below-note">
             <i className="fa-solid fa-arrow-trend-down" aria-hidden="true" />
@@ -941,8 +1029,29 @@ export default function ProductsPage({ toast }) {
                   <SortTh flt={colFlt} col="code">{t("products.barcode")}</SortTh>
                   <SortTh flt={colFlt} col="cat">{t("products.category")}</SortTh>
                   <SortTh flt={colFlt} col="price">{t("products.salePrice")}</SortTh>
-                  <SortTh flt={colFlt} col="qty">{t("inv.currentQty")}</SortTh>
-                  <SortTh flt={colFlt} col="st">{t("common.status")}</SortTh>
+                  {/* ⚠ ARXIVDA BOSHQA IKKI USTUN. «Qoldiq» u yerda doim
+                      nol (qoldig'i bor tovarni o'chirib bo'lmaydi) va
+                      «Holat» ham doim bir xil — ikkalasi ham bo'sh
+                      ustun bo'lardi. O'rniga qaror uchun kerak bo'lgan
+                      ikki sana turadi.
+
+                      ⚠ Saralanmaydi (`th`, `SortTh` emas): server bu
+                      ustunlarni oq ro'yxatga kiritmagan va bosilganda
+                      «saralanmaydi» degan xato qaytardi. Arxiv o'zi
+                      yaqinda o'chirilgani birinchi bo'lib keladi. */}
+                  {archived ? (
+                    <>
+                      <th>{t("products.archivedAtCol")}</th>
+                      {/* Kalit ARXIVDAGI BARKOD oynasidan qayta
+                          ishlatildi — ikkala joyda bir xil savol. */}
+                      <th>{t("products.archivedLastSold")}</th>
+                    </>
+                  ) : (
+                    <>
+                      <SortTh flt={colFlt} col="qty">{t("inv.currentQty")}</SortTh>
+                      <SortTh flt={colFlt} col="st">{t("common.status")}</SortTh>
+                    </>
+                  )}
                   <th></th>
                 </tr>
               </thead>
@@ -1022,6 +1131,27 @@ export default function ProductsPage({ toast }) {
                           </span>
                         )}
                       </td>
+                      {archived ? (
+                        <>
+                          {/* ⚠ «—» AYNAN SANA NOMA'LUM bo'lganda:
+                              `archivedAt` ustuni V121 da qo'shilgan va
+                              undan oldin o'chirilganlarda bo'sh. «Bugun»
+                              deb taxmin qilish yolg'on bo'lardi. */}
+                          <td className="ek-num">
+                            {p.archivedAt ? fmtDateTime(p.archivedAt)
+                                          : <span className="text-muted">—</span>}
+                          </td>
+                          {/* ⚠ HECH QACHON SOTILMAGAN tovar — alohida
+                              javob, bo'sh katak emas: uni tiklash
+                              qarori butunlay boshqacha. */}
+                          <td className="ek-num">
+                            {p.lastSoldAt
+                              ? fmtDateTime(p.lastSoldAt)
+                              : <span className="text-muted">{t("products.neverSold")}</span>}
+                          </td>
+                        </>
+                      ) : (
+                      <>
                       <td>
                         {p.stockQuantity == null
                           ? <span className="text-muted">—</span>
@@ -1049,8 +1179,33 @@ export default function ProductsPage({ toast }) {
                           <span className="badge badge-green">{t("common.active")}</span>
                         )}
                       </td>
+                      </>
+                      )}
                       <td>
                         <div style={{ display: "flex", gap: 6 }}>
+                          {/* ⚠ ARXIVDA BITTA AMAL: TIKLASH. Tahrirlash
+                              ham, o'chirish ham bu yerda ma'nosiz —
+                              tovar allaqachon o'chirilgan va serverning
+                              o'zi ham ularni rad etadi (`findActiveById`).
+                              Ishlamaydigan tugma ko'rsatish esa eng
+                              yomon yo'l. */}
+                          {archived ? (
+                            canRestore ? (
+                              <button className="btn btn-outline btn-sm"
+                                      onClick={() => handleRestore(p)}
+                                      title={t("products.restoreTitle")}>
+                                <i className="fa-solid fa-rotate-left" />{" "}
+                                {t("products.restore")}
+                              </button>
+                            ) : (
+                              /* Kassirga tugma ko'rsatib, keyin 403
+                                 berish faqat umid uyg'otardi. */
+                              <span className="text-muted" style={{ fontSize: 12 }}>
+                                {t("products.restoreNoRight")}
+                              </span>
+                            )
+                          ) : (
+                          <>
                           {/* Yorliq — endi brauzerda ham: A4 varaqqa
                               chiqadi (V108). */}
                           <button className="btn-icon" onClick={() => openLabels([p])}
@@ -1063,6 +1218,8 @@ export default function ProductsPage({ toast }) {
                           <button className="btn-icon danger" onClick={() => handleDelete(p)} aria-label={t("common.delete")}>
                             <i className="fa-solid fa-trash" />
                           </button>
+                          </>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -1070,7 +1227,14 @@ export default function ProductsPage({ toast }) {
                 ) : (
                   <tr>
                     <td colSpan={7}>
-                      <Empty icon="fa-box-open" text={t("products.notFound")} />
+                      {/* ⚠ BO'SH ARXIV — XATO EMAS, JAVOB: «o'chirilgan
+                          tovar yo'q». Umumiy «topilmadi» matni bu yerda
+                          odamni «qidiruvim noto'g'rimi?» degan savolga
+                          qo'yardi. */}
+                      <Empty icon="fa-box-open"
+                             text={archived && !search
+                               ? t("products.archiveEmpty")
+                               : t("products.notFound")} />
                     </td>
                   </tr>
                 )}
