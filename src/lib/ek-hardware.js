@@ -33,7 +33,6 @@ import { code128Svg, saleCode } from "./ek-barcode";
 import { spreadDiscount } from "./ek-discount";
 /* Brauzer cheki uchun QR (V34). ESC/POS printerda QR ni apparatning O'ZI
    chizadi (`Receipt.qr`), brauzerda esa SVG kerak. */
-import { qrSvg } from "./ek-qr";
 import { shortDate } from "./ek-format";
 import { DEFAULTS, getSettings, saveSettings } from "./ek-hw-settings";
 
@@ -141,7 +140,7 @@ async function send(bytes) {
  * o'tib, haqiqiysi buzilib chiqishi mumkin edi.
  */
 export function buildReceipt({ saleId, serverSaleId, cart = [], total = 0, subtotal, discount = 0,
-                               customer, offline, shopName, cashier, fiscal, receiptUrl,
+                               customer, offline, shopName, cashier, fiscal,
                                credit, toSavings, rounding = 0, saleType = "SALE" }) {
   const s = getSettings();
   const r = new Receipt(s.width === 58 ? WIDTH_58 : WIDTH_80);
@@ -317,16 +316,13 @@ export function buildReceipt({ saleId, serverSaleId, cart = [], total = 0, subto
     r.feed().center().barcode128(code).line(code).left();
   }
 
-  /* ── ELEKTRON CHEK QR (V34) ────────────────────────────────────────
-     Mijoz uni telefon kamerasi bilan o'qiydi va chekning elektron
-     nusxasini oladi — qog'oz yo'qolsa ham xarid tarixi qoladi.
+  /* ⚠ ELEKTRON CHEK QR OLIB TASHLANDI (do'kon egasining qarori).
+     Ilgari bu yerda chekning elektron nusxasiga QR bosilardi (V34).
+     Endi CHEKDA QR UMUMAN BO'LMAYDI — na bu yerda, na qarz/jamg'arma
+     chekida, na brauzerdan bosib chiqarilganida.
 
-     ⚠ Havolani SERVER beradi (`receiptUrl`, imzo bilan): front uni o'zi
-     yasay olmaydi va yasamasligi ham kerak — imzo siri faqat serverda.
-     Havola yo'q bo'lsa (oflayn chek yoki eski server) QR chizilmaydi. */
-  if (receiptUrl) {
-    r.feed().center().qr(receiptUrl, 6).line(t("kassa.receiptQrHint")).left();
-  }
+     ⚠ Havolaning O'ZI serverda qoladi: uni mijozga boshqa yo'l bilan
+     (portal, xabar) yetkazish mumkin. O'chirilgani — QOG'OZDAGI kod. */
 
   r.rule();
   r.center().line(t("kassa.receiptThanks"));
@@ -390,7 +386,7 @@ function debtLabels(kind) {
 }
 
 export function buildDebtReceipt({ customer, amount, balanceAfter, balanceBefore, method,
-                                   shopName, cashier, date, receiptNo, qrUrl,
+                                   shopName, cashier, date, receiptNo,
                                    toSavings, bonusEarned, kind, linkedNo }) {
   const s = getSettings();
   const r = new Receipt(s.width === 58 ? WIDTH_58 : WIDTH_80);
@@ -429,15 +425,10 @@ export function buildDebtReceipt({ customer, amount, balanceAfter, balanceBefore
   if (Number(toSavings) > 0) r.row(t("savings.toSavings"), money(toSavings));
   if (Number(bonusEarned) > 0) r.row(t("kassa.receiptBonusEarned"), "+" + money(bonusEarned));
 
-  /* ⚠ QR — chekning elektron nusxasiga (V61). Termal qog'oz vaqt
-     o'tib xiralashadi va aynan qarz cheki eng uzoq saqlanishi kerak
-     bo'lgan qog'oz: tortishuv oylar keyin ham chiqishi mumkin.
-     Telefonga ko'chirilgan nusxa esa xiralashmaydi. */
-  if (qrUrl) {
-    r.rule();
-    r.center().line(t("kassa.receiptQrHint"));
-    r.qr(qrUrl, 6);
-  }
+  /* ⚠ QR OLIB TASHLANDI. Ilgari bu yerda chekning elektron nusxasiga
+     QR bosilardi (V61) — sabab: termal qog'oz xiralashadi, qarz cheki
+     esa eng uzoq saqlanishi kerak. Sabab o'z kuchida qoladi, lekin
+     qaror do'kon egasiniki: chekda QR bo'lmaydi. */
 
   r.rule();
   r.center().line(t("kassa.receiptThanks"));
@@ -1000,9 +991,9 @@ export async function testPrint() {
  * chaqiriladi.
  */
 function printInBrowser({ saleId, serverSaleId, cart = [], total = 0, subtotal, discount = 0,
-                          customer, offline, shopName, cashier, receiptUrl,
+                          customer, offline, shopName, cashier,
                           credit, __debt, amount, balanceAfter, balanceBefore, date,
-                          receiptNo, qrUrl, toSavings, bonusEarned, kind, linkedNo , rounding = 0 }) {
+                          receiptNo, toSavings, bonusEarned, kind, linkedNo , rounding = 0 }) {
   const win = window.open("", "_blank", "width=360,height=640,toolbar=no,menubar=no");
   if (!win) throw new Error(t("hw.errPopup"));
   /* Qarz cheki yoki jamg'arma kvitansiyasi — so'zlar `kind` dan (V66). */
@@ -1051,10 +1042,6 @@ function printInBrowser({ saleId, serverSaleId, cart = [], total = 0, subtotal, 
       <div class="row"><span>${esc(L.after)}</span><span>${esc(money(balanceAfter ?? 0))}</span></div>
       ${Number(toSavings) > 0 ? `<div class="row"><span>${esc(t("savings.toSavings"))}</span><span>${esc(money(toSavings))}</span></div>` : ""}
       ${Number(bonusEarned) > 0 ? `<div class="row"><span>${esc(t("kassa.receiptBonusEarned"))}</span><span>+${esc(money(bonusEarned))}</span></div>` : ""}
-      ${qrUrl ? `<div class="hr"></div><div class="c">
-        ${qrSvg(qrUrl, { size: 96, margin: 1 })}
-        <small>${esc(t("kassa.receiptQrHint"))}</small>
-      </div>` : ""}
       <div class="hr"></div>
       <div class="c"><p>${esc(t("kassa.receiptThanks"))}</p>${
         head.footer ? `<small>${esc(head.footer)}</small>` : ""}</div>`;
@@ -1116,10 +1103,6 @@ function printInBrowser({ saleId, serverSaleId, cart = [], total = 0, subtotal, 
       ${serverSaleId ? `<div class="c" style="margin-top:6px">
         ${code128Svg(saleCode(serverSaleId), { height: 12 })}
         <div class="no">${esc(saleCode(serverSaleId))}</div>
-      </div>` : ""}
-      ${receiptUrl ? `<div class="c" style="margin-top:8px">
-        ${qrSvg(receiptUrl, { size: 96, margin: 1 })}
-        <small>${esc(t("kassa.receiptQrHint"))}</small>
       </div>` : ""}
       <div class="hr"></div>
       <div class="c"><p>${esc(t("kassa.receiptThanks"))}</p>${

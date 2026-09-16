@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { API_BASE } from "../config";
-import { qrSvg } from "../lib/ek-qr";
 import { saveReceiptPdf } from "../lib/ek-receipt-pdf";
 import { groupDigits } from "../lib/ek-format";
 import { useRef } from "react";
@@ -278,17 +277,11 @@ export default function PaymentReceipt({
               <div className="pt-center pt-tape__no">{t("rcp.savingsHint")}</div>
             )}
 
-            {/* ⚠ QR faqat KASSA javobida bo'ladi (`qrUrl`): mijoz o'z
-                ekranida allaqachon chekning ichida va kod unga o'zini
-                ko'rsatishdan boshqa hech narsa bermaydi. */}
-            {data.qrUrl && (
-              <>
-                <div className="pt-hr" />
-                <div className="pt-center"
-                     dangerouslySetInnerHTML={{ __html: qrSvg(data.qrUrl, { size: 110, margin: 1 }) }} />
-                <div className="pt-center pt-tape__no">{t("rcp.openOnPhone")}</div>
-              </>
-            )}
+            {/* ⚠ QR OLIB TASHLANDI (do'kon egasining qarori): chekda —
+                qog'ozda ham, ekranda ham — QR bo'lmaydi. Ilgari u faqat
+                KASSA javobida chiqardi (`qrUrl`), mijozning o'z
+                ekranida esa baribir ma'nosiz edi: u allaqachon
+                chekning ichida turgan bo'ladi. */}
 
             <div className="pt-hr" />
             <div className="pt-center pt-tape__no">{data.receiptNo}</div>

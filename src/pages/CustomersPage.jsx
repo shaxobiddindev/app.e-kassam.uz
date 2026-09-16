@@ -196,10 +196,10 @@ export default function CustomersPage({ toast }) {
       try {
         await printDebtReceipt({
           customer: debt.customer, amount, method, balanceAfter: left,
-          /* Raqam va havola SERVERDAN (V61): qog'ozdagi QR aynan shu
-             chekni ochadi va qog'ozdagi raqam ekrandagi bilan bir xil
-             bo'lishi shart. */
-          receiptNo: rc?.receiptNo, qrUrl: rc?.qrUrl,
+          /* Raqam SERVERDAN (V61): qog'ozdagi raqam ekrandagi bilan
+             bir xil bo'lishi shart. (Havola ham kelardi — chekdagi QR
+             uchun edi, endi chekda QR yo'q.) */
+          receiptNo: rc?.receiptNo,
           balanceBefore: rc?.balanceBefore,
           toSavings: rc?.toSavings, bonusEarned: rc?.bonusEarned,
           shopName: rc?.shopName || localStorage.getItem("ek_shopName")
@@ -345,7 +345,7 @@ export default function CustomersPage({ toast }) {
           await printDebtReceipt({
             kind: rc.kind, customer: savings.customer, amount, method: rc.method || "CASH",
             balanceAfter: rc.balanceAfter, balanceBefore: rc.balanceBefore,
-            receiptNo: rc.receiptNo, qrUrl: rc.qrUrl, shopName: rc.shopName,
+            receiptNo: rc.receiptNo, shopName: rc.shopName,
             cashier: rc.cashierName || localStorage.getItem("ek_fullName") || "",
             date: rc.date ? new Date(rc.date) : new Date(),
           });

@@ -1913,7 +1913,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
           await printDebtReceipt({
             kind: rc.kind, customer: c, amount, method,
             balanceAfter: rc.balanceAfter, balanceBefore: rc.balanceBefore,
-            receiptNo: rc.receiptNo, qrUrl: rc.qrUrl, shopName: rc.shopName,
+            receiptNo: rc.receiptNo, shopName: rc.shopName,
             cashier: rc.cashierName || localStorage.getItem("ek_fullName") || "",
             date: rc.date ? new Date(rc.date) : new Date(),
           });
@@ -2360,7 +2360,6 @@ export default function KassaPage({ toast, refreshLowStock }) {
     let receiptNo = null;
     let offline   = false;
     let res_saleId = null;
-    let receiptUrl = null;
 
     try {
       if (!navigator.onLine) throw new Error("OFFLINE");
@@ -2373,10 +2372,10 @@ export default function KassaPage({ toast, refreshLowStock }) {
       const res = await guard(() => saleApi.create(payload));
       res_saleId = res?.data?.id ?? null;
       receiptNo = res_saleId != null ? `A-${res_saleId}` : null;
-      /* Elektron chek havolasi (V34) — chekka QR bo'lib bosiladi.
-         ⚠ Havolani SERVER beradi (imzo siri faqat u yerda), front uni
-         o'zi yasay olmaydi. Eski serverda maydon yo'q — QR chizilmaydi. */
-      receiptUrl = res?.data?.receiptUrl || null;
+      /* ⚠ ELEKTRON CHEK HAVOLASI ENDI O'QILMAYDI. Ilgari u chekka QR
+         bo'lib bosilardi (V34); chekda QR bo'lmagach, havolani bu
+         yerda ushlab turishning ma'nosi qolmadi. Server uni baribir
+         qaytaradi — mijozga boshqa yo'l bilan yetkazish mumkin. */
     } catch (err) {
       // Tarmoq xatosi yoki oflayn → navbatga. Boshqa xato (masalan qoldiq
       // yetmasligi) esa haqiqiy xato: sotuv qayd etilmaydi.
@@ -2414,7 +2413,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
       } catch (_) { /* fiskal yo'q — chek baribir chiqadi */ }
     }
 
-    lastSale.current = { ...snapshot, saleId: receiptNo, serverSaleId: res_saleId, offline, fiscal, receiptUrl };
+    lastSale.current = { ...snapshot, saleId: receiptNo, serverSaleId: res_saleId, offline, fiscal };
 
     /* ⚠ ENG YANGISI BOSHIDA va ro'yxat BESHTA bilan cheklangan:
        kassirning savoli «hozirgina nima sotdim?», o'n beshinchi chek
@@ -2427,7 +2426,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
     /* `serverSaleId` — chekdagi barkod uchun. Oflayn sotuvda `null`:
        serverda bunday sotuv hali yo'q va barkodni skanerlash hech narsa
        topmasdi. */
-    printReceipt({ saleId: receiptNo, serverSaleId: res_saleId, ...snapshot, offline, shopName, cashier, fiscal, receiptUrl })
+    printReceipt({ saleId: receiptNo, serverSaleId: res_saleId, ...snapshot, offline, shopName, cashier, fiscal })
       .catch((err) => toast.error(`${t("hw.printFailed")}: ${err.message}`));
 
     /* ⚠ «RAHMAT» EKRANI shu yerdan, savat kuzatuvchisidan EMAS: sotuv

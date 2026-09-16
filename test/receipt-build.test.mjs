@@ -215,5 +215,43 @@ console.log("\n─ 5. ⚠ To'lov turi chekda YO'Q ─");
   has(t, "Olim Karimov", "qarz chekida mijoz ismi joyida");
 }
 
+/* ══ ⚠ CHEKDA QR YO'Q — DO'KON EGASINING QARORI ════════════════════
+   Ilgari chekka elektron nusxaga QR bosilardi (V34/V61). Do'kon egasi
+   uni butunlay olib tashlashni so'radi.
+
+   ⚠ NEGA MATN TEKSHIRUVI YETARLI EMAS: QR ichidagi havola chekning
+   O'QILADIGAN matnida umuman ko'rinmaydi — u ESC/POS buyrug'i ichida
+   ketadi. Shuning uchun bu yerda BAYTLAR qaraladi: `GS ( k`
+   (0x1D 0x28 0x6B) — QR ning boshlanishi. Matnga qarab yozilgan
+   qo'riqchi QR qaytib kelganda ham YASHIL turardi.
+
+   ⚠ FISKAL QR bu tekshiruvga KIRMAYDI va u ataylab: u soliq talabi
+   (943-qaror, kamida 30 mm) va faqat fiskal rejim yoqilganda chiqadi.
+   Shuning uchun quyida `fiscal` UMUMAN berilmaydi. */
+console.log("\n─ ⚠ Chekda QR bo'lmaydi ─");
+const hasQrCommand = (built) => {
+  const b = Array.from(built?.bytes || []);
+  for (let i = 0; i + 2 < b.length; i++) {
+    if (b[i] === 0x1d && b[i + 1] === 0x28 && b[i + 2] === 0x6b) return true;
+  }
+  return false;
+};
+{
+  /* ⚠ `receiptUrl` ATAYLAB uzatiladi: chaqiruvchi eski bo'lib qolsa
+     ham chekda QR paydo bo'lmasligi kerak. */
+  const built = buildReceipt({
+    saleId: 60, cart: CART, total: 14000, payType: "CASH",
+    receiptUrl: "https://e-kassam.uz/c/abc123" });
+  (!hasQrCommand(built) ? ok : bad)("sotuv chekida QR buyrug'i yo'q");
+  hasnt(textOf(built), "e-kassam.uz/c/abc123", "havola chek matnida ham yo'q");
+}
+{
+  const built = buildDebtReceipt({
+    customer: { fullName: "Olim Karimov" }, amount: 900,
+    balanceBefore: 1000, balanceAfter: 100, method: "CASH",
+    qrUrl: "https://e-kassam.uz/p/xyz789" });
+  (!hasQrCommand(built) ? ok : bad)("qarz to'lovi chekida ham QR yo'q");
+}
+
 console.log(`\n${fail ? "❌" : "✅"} chek quruvchisi: ${pass} o'tdi, ${fail} yiqildi`);
 process.exit(fail ? 1 : 0);
