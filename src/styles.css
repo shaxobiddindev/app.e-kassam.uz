@@ -2361,6 +2361,33 @@ img.logo--dark { display: none; }
 .auth__input[aria-invalid="true"] { border-color: var(--border-danger); }
 .auth__input--pass { padding-right: 48px; font-family: var(--font-mono); letter-spacing: .04em; }
 
+/* ⚠ WEBVIEW2 NING O'Z «KO'Z» TUGMASI O'CHIRILADI — DESKTOPDA IKKITA
+   TOGGLE CHIQARDI.
+
+   Desktop ilova Tauri ustida ishlaydi, u esa Windowsda WebView2 dan
+   foydalanadi. Edge/WebView2 har `type="password"` maydoniga O'ZINING
+   «parolni ko'rsat» tugmasini (`::-ms-reveal`) qo'shadi. Bizning
+   `.auth__eye` tugmamiz bilan birga ular IKKITA ko'z bo'lib turardi —
+   yonma-yon, har biri boshqa holatni ko'rsatib.
+
+   ⚠ NEGA BRAUZERDA SEZILMAGAN: Chrome va Safari bunday tugma
+   qo'shmaydi, ya'ni xato FAQAT desktop ilovada ko'rinardi. Do'kon
+   egasi uni desktopda topdi.
+
+   ⚠ FAQAT `--pass` SINFIDA va bu ataylab: boshqa parol maydonlarida
+   (admin panelidagi xodim formalari) bizning ko'zimiz YO'Q, ya'ni
+   u yerda WebView2 ning tugmasi — parolni ko'rishning YAGONA yo'li.
+   Uni hamma joyda o'chirish bir xatoni ikkinchisi bilan almashtirardi.
+
+   `::-ms-clear` ham shu yerda: u matn maydonidagi «✕» va bizning
+   ko'zimiz ustiga chiqib qolardi. */
+/* ⚠ IKKI ALOHIDA QOIDA, bitta ro'yxat EMAS: CSS da ro'yxatdagi
+   BITTA yaroqsiz selektor BUTUN qoidani bekor qiladi. Ikkalasi ham
+   Edge'ga xos va biri kelajakda olib tashlansa, ikkinchisi ham
+   jimgina ishlamay qolardi. */
+.auth__input--pass::-ms-reveal { display: none; }
+.auth__input--pass::-ms-clear  { display: none; }
+
 .auth__eye {
   position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
   width: var(--hit-min); height: var(--hit-min);
