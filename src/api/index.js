@@ -856,6 +856,11 @@ export const inventoryApi = {
 export const supplyApi = {
   suppliers:       () => request("/supply/suppliers"),
   createSupplier:  (data) => request("/supply/suppliers", { method: "POST", body: JSON.stringify(data) }),
+  /* ⚠ `PUT` — kartochka TO'LIQ yuboriladi. Qisman yuborishda «maydon
+     berilmadi» bilan «maydon tozalandi» ni ajratib bo'lmasdi: telefonni
+     o'chirmoqchi bo'lgan odam uni o'zgarishsiz qoldirardi. */
+  updateSupplier:  (id, data) => request(`/supply/suppliers/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  restoreSupplier: (id) => request(`/supply/suppliers/${id}/restore`, { method: "POST" }),
   archiveSupplier: (id) => request(`/supply/suppliers/${id}`, { method: "DELETE" }),
   ledger:          (id) => request(`/supply/suppliers/${id}/ledger`),
   pay:             (id, data) => request(`/supply/suppliers/${id}/payment`, { method: "POST", body: JSON.stringify(data) }),

@@ -6587,3 +6587,57 @@ button.stk__c:hover { background: var(--bg-hover); }
 .inf--error     { color: var(--fg-danger); flex-wrap: wrap; }
 /* Sezgir chiziq ko'rinmaydi, lekin joy egallashi kerak emas. */
 .inf__sentinel  { width: 1px; height: 1px; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   YOZUV RAQAMI USTUNI — «1 · №142»
+
+   Ikkita son bitta katakda: kichkina xira — ekrandagi O'RIN (bo'shliqsiz),
+   qalin — yozuvning O'Z raqami (o'zgarmaydi, qidiriladi). Sabab
+   `components/ek/RowNo.jsx` da yozilgan.
+
+   ⚠ RANG YOLG'IZ SIGNAL EMAS: ikkalasi O'LCHAMI bilan ham ajraladi —
+   xira rang ko'rinmaydigan ekranda ham o'rin raqami kichik qoladi.
+
+   ⚠ `--fg-tertiary` ATAYLAB EMAS: u plaseholder rangi (oq fonda 2.65:1) va
+   o'qiladigan matnga berilmaydi (CLAUDE.md 6b). O'rin raqami kichik bo'lsa
+   ham O'QILADI — do'konchi «uchinchi qator» deb aytadi.
+   ══════════════════════════════════════════════════════════════════════════ */
+.ek-rowno {
+  white-space: nowrap;
+  /* Ikkala son ham o'z ustunida turadi — qatorlar orasida sakramasin. */
+  display: flex; align-items: baseline; gap: 8px;
+}
+.ek-rowno__seq {
+  min-width: 2ch; text-align: right;
+  font-size: 11px; font-weight: 600;
+  color: var(--fg-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.ek-rowno__no { font-weight: 800; font-size: 13px; }
+
+/* ══════════════════════════════════════════════════════════════════════
+   TA'MINOTCHI KARTOCHKASI (V137)
+
+   ⚠ TO'RT BO'LIM, BITTA UZUN RO'YXAT EMAS. Kundalik ish (nom, telefon)
+   birinchi bo'limda tugaydi; bank rekvizitlari va STIR yiliga bir marta
+   to'ldiriladi va ular kundalik maydonlarni pastga surib yuborishi
+   kerak emas — tovar formasidagi bilan bir xil qoida.
+   ══════════════════════════════════════════════════════════════════════ */
+.sup-form__sec {
+  margin: 18px 0 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: var(--fs-xs); font-weight: 700; letter-spacing: .04em;
+  text-transform: uppercase;
+  /* ⚠ `--fg-secondary`, `--fg-tertiary` EMAS: bu O'QILADIGAN sarlavha,
+     bezak emas (CLAUDE.md qoidasi 6b). */
+  color: var(--fg-secondary);
+}
+.sup-form__sec:first-child { margin-top: 0; }
+
+/* ⚠ Ikki ustun — FAQAT keng ekranda. Telefonda ular yonma-yon 150px ga
+   siqilib, raqam ko'rinmay qolardi. */
+.sup-form__row { display: grid; grid-template-columns: 1fr; gap: 0 14px; }
+@media (min-width: 560px) {
+  .sup-form__row { grid-template-columns: 1fr 1fr; }
+}

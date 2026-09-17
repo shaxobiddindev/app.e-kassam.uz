@@ -22,6 +22,7 @@ import { money, shortDate, dateTime } from "../lib/ek-format";
 import { TRANSFER_STATUS, transferStatus, unitLabel,
          writeOffOptions, TRANSFER_SHORTAGE_EXCLUDE } from "../lib/ek-labels";
 import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
+import { NoTh, NoTd, NO_COL } from "../components/ek/RowNo";
 import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
 import { asArray } from "../lib/ek-array";
@@ -273,7 +274,11 @@ export default function TransfersPage({ toast }) {
      o'qiladi, lekin filtr uchun bu BITTA ustun: ekranda ham bitta
      ustun turibdi va foydalanuvchi uni «qarshi tomon» deb ko'radi. */
   const COLS = useMemo(() => [
-    { key: "id",    label: "#",                 type: "number", get: (r) => r.id },
+    /* ⚠ ICHKI `id` O'RNIGA HUJJAT RAQAMI: `id` butun baza bo'ylab
+       o'sadi va egasi uchun ma'nosiz («#8471» deb aytilmaydi).
+       Saqlangan eski filtr `id` ga ishora qilsa, `useDataFilter`
+       uni jimgina tashlaydi — ustun endi yo'q. */
+    NO_COL,
     { key: "date",  label: t("common.date"),    type: "date",   get: (r) => r.sentAt },
     { key: "side",  label: tab === "incoming" ? t("transfer.from") : t("transfer.to"),
       type: "text",   get: (r) => (tab === "incoming" ? r.fromShopName : r.toShopName) },
@@ -290,7 +295,7 @@ export default function TransfersPage({ toast }) {
     <table>
       <thead>
         <tr>
-          <SortTh flt={colFlt} col="id">#</SortTh>
+          <NoTh flt={colFlt} />
           <SortTh flt={colFlt} col="date">{t("common.date")}</SortTh>
           <SortTh flt={colFlt} col="side">{tab === "incoming" ? t("transfer.from") : t("transfer.to")}</SortTh>
           <SortTh flt={colFlt} col="lines">{t("transfer.lines")}</SortTh>
@@ -300,9 +305,9 @@ export default function TransfersPage({ toast }) {
         </tr>
       </thead>
       <tbody>
-        {rows.length ? rows.map((r) => (
+        {rows.length ? rows.map((r, i) => (
           <tr key={r.id}>
-            <td className="mono">{r.id}</td>
+            <NoTd seq={i + 1} no={r.docNo} />
             {/* ⚠ SANA + VAQT (V70). Ilgari `slice(0, 10)` bilan faqat
                 sana olinardi, holbuki `sentAt` — LAHZA. Ko'chirish kun
                 davomida bo'ladi va bir kunda bir necha marta yuboriladi:

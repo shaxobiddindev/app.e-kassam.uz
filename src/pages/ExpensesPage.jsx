@@ -23,6 +23,7 @@ import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
 import { DateField } from "../components/ek/EkFields";
 import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
+import { NoTh, NoTd, NO_COL } from "../components/ek/RowNo";
 import { asArray } from "../lib/ek-array";
 
 /** Oyning birinchi kuni va bugun — `YYYY-MM-DD`. */
@@ -130,6 +131,7 @@ export default function ExpensesPage({ toast }) {
      «Manba» — RO'YXAT (kassadan / tashqaridan): bu ikkitadan biri va
      matn qidiruvi bunda ortiqcha ish bo'lardi. */
   const COLS = useMemo(() => [
+    NO_COL,
     { key: "date", label: t("common.date"),      type: "date",   get: (e) => e.spentAt },
     { key: "cat",  label: t("expense.category"), type: "text",   get: (e) => e.categoryName },
     { key: "sum",  label: t("common.sum"),       type: "number", get: (e) => e.amount },
@@ -194,6 +196,7 @@ export default function ExpensesPage({ toast }) {
               <table>
                 <thead>
                   <tr>
+                    <NoTh flt={colFlt} />
                     <SortTh flt={colFlt} col="date">{t("common.date")}</SortTh>
                     <SortTh flt={colFlt} col="cat">{t("expense.category")}</SortTh>
                     <SortTh flt={colFlt} col="sum">{t("common.sum")}</SortTh>
@@ -203,8 +206,9 @@ export default function ExpensesPage({ toast }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {items.length ? items.map((e) => (
+                  {items.length ? items.map((e, i) => (
                     <tr key={e.id}>
+                      <NoTd seq={i + 1} no={e.docNo} />
                       {/* ⚠ `spentAt` — KUN (vaqti yo'q va kerak emas:
                           xarajat kun bo'yicha yoziladi). Lekin u xom
                           `2026-09-05` ko'rinishida chiqardi, ilovaning

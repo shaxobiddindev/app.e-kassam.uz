@@ -12,7 +12,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "../lib/ek-i18n";
-import { supplyApi, productApi } from "../api";
+import { supplyApi, productApi, shopApi } from "../api";
 import { Modal } from "../components";
 import { Empty, Field, FormGroup } from "../components/ui";
 import Select from "../components/ek/Select";
@@ -23,9 +23,36 @@ import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
 import { NumField, DateField } from "../components/ek/EkFields";
 import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
+import { NoTh, NoTd, NO_COL } from "../components/ek/RowNo";
 import { asArray } from "../lib/ek-array";
 
 const today = () => new Date().toISOString().slice(0, 10);
+
+/* ⚠ BO'SH KARTOCHKA BITTA JOYDA. Ilgari forma `{ name: "", phone: "" }`
+   deb IKKI joyda yozilardi (tugma va «ta'minotchi yo'q» yo'li) va uchinchi
+   maydon qo'shilganda biri unutilardi — o'shanda forma `undefined` qiymat
+   bilan ochilib, React «controlled → uncontrolled» deb ogohlantirardi. */
+const EMPTY_SUPPLIER = {
+  id: null,
+  name: "", phone: "", note: "",
+  tin: "", tinType: "", address: "",
+  bankAccount: "", bankMfo: "", bankName: "",
+  contactPerson: "", phone2: "", email: "", telegram: "",
+  paymentDays: "", creditLimit: "", managerId: "",
+};
+
+/* Serverdagi kartochkani formaga keltiradi: `null` → bo'sh matn, aks
+   holda React nazoratsiz maydonga o'tib ketadi. */
+const toForm = (x) => ({
+  id: x.id,
+  name: x.name || "", phone: x.phone || "", note: x.note || "",
+  tin: x.tin || "", tinType: x.tinType || "", address: x.address || "",
+  bankAccount: x.bankAccount || "", bankMfo: x.bankMfo || "", bankName: x.bankName || "",
+  contactPerson: x.contactPerson || "", phone2: x.phone2 || "",
+  email: x.email || "", telegram: x.telegram || "",
+  paymentDays: x.paymentDays ?? "", creditLimit: x.creditLimit ?? "",
+  managerId: x.managerId ? String(x.managerId) : "",
+});
 
 export default function SupplyPage({ toast }) {
   const [tab, setTab] = useState("receipts");     // receipts | suppliers
@@ -35,7 +62,11 @@ export default function SupplyPage({ toast }) {
   const busy = useLoading(loading);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(null);         // yangi hujjat
-  const [newSup, setNewSup] = useState(null);     // yangi yetkazib beruvchi
+  const [newSup, setNewSup] = useState(null);     // kartochka: yangi yoki tahrir
+  /* ⚠ XODIMLAR FAQAT FORMA OCHILGANDA so'raladi. Sahifa ochilishida
+     yuklash har kirimda bekorga so'rov bo'lardi — ro'yxat faqat
+     «mas'ul xodim» tanlagichida kerak. */
+  const [staff, setStaff] = useState([]);
   const [pay, setPay] = useState(null);           // { supplier, amount, method, ledger }
   const [view, setView] = useState(null);         // hujjat tafsiloti
 
@@ -58,7 +89,7 @@ export default function SupplyPage({ toast }) {
 
   const openNew = () => {
     const active = suppliers.filter((s) => s.active);
-    if (!active.length) { setNewSup({ name: "", phone: "" }); return; }
+    if (!active.length) { openSupplier(); return; }
     setForm({
       supplierId: String(active[0].id),
       docNumber: "",
@@ -143,16 +174,65 @@ export default function SupplyPage({ toast }) {
 
   /* ── Yetkazib beruvchi ────────────────────────────────────────────── */
 
+  /**
+   * Kartochkani ochadi — yangi yoki mavjudini TAHRIRLASH uchun.
+   *
+   * ⚠ TAHRIRLASH ILGARI UMUMAN YO'Q EDI: telefon xato terilgan bo'lsa,
+   * yagona yo'l arxivlab yangisini yaratish edi va o'shanda butun
+   * hisob-kitob tarixi eskisida qolardi.
+   */
+  const openSupplier = (row) => {
+    setNewSup(row ? toForm(row) : EMPTY_SUPPLIER);
+    /* Xatosi JIM yutiladi: mas'ul xodim — ixtiyoriy maydon va uning
+       ro'yxati kelmagani butun formani to'sib qo'ymasligi kerak. */
+    shopApi.getUsers().then((r) => setStaff(asArray(r.data))).catch(() => setStaff([]));
+  };
+
   const saveSupplier = async () => {
     setSaving(true);
     try {
-      await supplyApi.createSupplier({ name: newSup.name.trim(), phone: newSup.phone || null });
+      /* ⚠ BO'SH MATN → `null`. Server uchun «» va «yo'q» bir xil emas:
+         bo'sh satr bazaga tushib, keyin ekranda bo'sh katak bo'lib
+         ko'rinardi va uni «kiritilmagan» dan ajratib bo'lmasdi. */
+      const v = (x) => { const t2 = String(x ?? "").trim(); return t2 === "" ? null : t2; };
+      const body = {
+        name: newSup.name.trim(),
+        phone: v(newSup.phone), note: v(newSup.note),
+        tin: v(newSup.tin), tinType: v(newSup.tinType), address: v(newSup.address),
+        bankAccount: v(newSup.bankAccount), bankMfo: v(newSup.bankMfo),
+        bankName: v(newSup.bankName),
+        contactPerson: v(newSup.contactPerson), phone2: v(newSup.phone2),
+        email: v(newSup.email), telegram: v(newSup.telegram),
+        paymentDays: newSup.paymentDays === "" ? null : Number(newSup.paymentDays),
+        creditLimit: newSup.creditLimit === "" ? null : Number(newSup.creditLimit),
+        managerId: newSup.managerId ? Number(newSup.managerId) : null,
+      };
+      if (newSup.id) await supplyApi.updateSupplier(newSup.id, body);
+      else await supplyApi.createSupplier(body);
       setNewSup(null);
       await load();
     } catch (err) {
       toast?.error(err.message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  /**
+   * Arxivlash va tiklash.
+   *
+   * ⚠ ARXIVLASH — O'CHIRISH EMAS: hujjatlar egasiz qolmasin. Tiklash
+   * ham shu sababdan kerak: xato arxivlangan ta'minotchi bilan yangi
+   * hujjat yaratib bo'lmasdi va yagona yo'l dublikat yaratish edi —
+   * o'shanda hisob-kitob ikkiga bo'linardi.
+   */
+  const toggleArchive = async (row) => {
+    try {
+      if (row.active) await supplyApi.archiveSupplier(row.id);
+      else await supplyApi.restoreSupplier(row.id);
+      await load();
+    } catch (err) {
+      toast?.error(err.message);
     }
   };
 
@@ -193,7 +273,11 @@ export default function SupplyPage({ toast }) {
      BOSHQA-BOSHQA ustunlarga ega; bitta filtr ikkalasiga ishlaganda
      «qarz > 0» sharti kirimlar jadvalida ma'nosiz turib qolardi. */
   const RCPT_COLS = useMemo(() => [
-    { key: "id",   label: "#",                    type: "number", get: (r) => r.id },
+    /* ⚠ ICHKI `id` O'RNIGA HUJJAT RAQAMI: `id` butun baza bo'ylab
+       o'sadi va egasi uchun ma'nosiz («#8471» deb aytilmaydi).
+       Eski saqlangan filtr `id` ga ishora qilsa, `useDataFilter` uni
+       jimgina tashlaydi — ustun endi yo'q. */
+    NO_COL,
     { key: "date", label: t("common.date"),       type: "date",   get: (r) => r.receivedAt },
     { key: "sup",  label: t("supply.supplier"),   type: "text",   get: (r) => r.supplierName },
     { key: "doc",  label: t("supply.docNumber"),  type: "text",   get: (r) => r.docNumber },
@@ -203,9 +287,13 @@ export default function SupplyPage({ toast }) {
   const shownReceipts = rcptFlt.apply(receipts);
 
   const SUP_COLS = useMemo(() => [
+    NO_COL,
     { key: "name",  label: t("supply.supplier"), type: "text",   get: (x) => x.name },
     { key: "phone", label: t("common.phone"),    type: "text",   get: (x) => x.phone },
     { key: "debt",  label: t("supply.debt"),     type: "number", get: (x) => x.balance },
+    /* ⚠ MUDDAT SON EMAS, SANA: «14 kundan keyin» deb filtrlash
+       kerak bo'lganda son bo'yicha filtr javob bera olmasdi. */
+    { key: "due",   label: t("supply.dueCol"),   type: "date",   get: (x) => x.nextDueDate },
   ], []);
   const supFlt = useDataFilter(SUP_COLS, "supply-sup");
   const shownSuppliers = supFlt.apply(suppliers);
@@ -215,7 +303,7 @@ export default function SupplyPage({ toast }) {
       <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
         <h2 className="page-title">{t("supply.title")}</h2>
         <div style={{ display: "flex", gap: 8 }}>
-          <button className="btn btn-outline btn-sm" onClick={() => setNewSup({ name: "", phone: "" })}>
+          <button className="btn btn-outline btn-sm" onClick={() => openSupplier()}>
             <i className="fa-solid fa-truck" /> {t("supply.newSupplier")}
           </button>
           <button className="btn btn-primary btn-sm" onClick={openNew}>
@@ -251,7 +339,7 @@ export default function SupplyPage({ toast }) {
               <table>
                 <thead>
                   <tr>
-                    <SortTh flt={rcptFlt} col="id">#</SortTh>
+                    <NoTh flt={rcptFlt} />
                     <SortTh flt={rcptFlt} col="date">{t("common.date")}</SortTh>
                     <SortTh flt={rcptFlt} col="sup">{t("supply.supplier")}</SortTh>
                     <SortTh flt={rcptFlt} col="doc">{t("supply.docNumber")}</SortTh>
@@ -260,9 +348,9 @@ export default function SupplyPage({ toast }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {shownReceipts.length ? shownReceipts.map((r) => (
+                  {shownReceipts.length ? shownReceipts.map((r, i) => (
                     <tr key={r.id}>
-                      <td className="mono">{r.id}</td>
+                      <NoTd seq={i + 1} no={r.docNo} />
                       <td className="mono" style={{ fontSize: 13 }}>{r.receivedAt}</td>
                       <td className="fw-700">{r.supplierName}</td>
                       <td className="mono text-muted" style={{ fontSize: 13 }}>{r.docNumber || "—"}</td>
@@ -282,15 +370,18 @@ export default function SupplyPage({ toast }) {
               <table>
                 <thead>
                   <tr>
+                    <NoTh flt={supFlt} />
                     <SortTh flt={supFlt} col="name">{t("supply.supplier")}</SortTh>
                     <SortTh flt={supFlt} col="phone">{t("common.phone")}</SortTh>
                     <SortTh flt={supFlt} col="debt">{t("supply.debt")}</SortTh>
+                    <SortTh flt={supFlt} col="due">{t("supply.dueCol")}</SortTh>
                     <th></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {shownSuppliers.length ? shownSuppliers.map((s) => (
+                  {shownSuppliers.length ? shownSuppliers.map((s, i) => (
                     <tr key={s.id} style={s.active ? undefined : { opacity: 0.5 }}>
+                      <NoTd seq={i + 1} no={s.docNo} />
                       <td className="fw-700">{s.name}</td>
                       <td className="mono" style={{ fontSize: 13 }}>{s.phone || "—"}</td>
                       {/* Qarz MUSBAT bo'lsa qizil: bu bizning to'lanmagan
@@ -300,16 +391,51 @@ export default function SupplyPage({ toast }) {
                           ? <span className="mono fw-800" style={{ color: "var(--fg-danger)" }}>{money(s.balance)}</span>
                           : <span className="text-muted">—</span>}
                       </td>
+                      {/* ⚠ MUDDAT USTUNI — QARZNING YARMI SHU YERDA.
+                          Ilgari tizim «12 mln qarzdormiz» derdi-yu,
+                          QACHON to'lash kerakligini bilmasdi: egasi
+                          kechikkanini faqat ta'minotchi qo'ng'iroq
+                          qilganda bilardi.
+
+                          ⚠ Muddati o'tgani RANG BILAN EMAS, YOZUV
+                          bilan ham ajratiladi (qoida №6). */}
                       <td>
-                        {Number(s.balance) > 0 && (
-                          <button className="btn btn-outline btn-sm" onClick={() => openPay(s)}>
-                            <i className="fa-solid fa-money-bill-transfer" /> {t("supply.pay")}
-                          </button>
+                        {Number(s.overdueAmount) > 0 ? (
+                          <span className="badge badge-red" title={t("supply.overdueHint")}>
+                            <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />
+                            {" "}{t("supply.overdue")}: <span className="ek-num">{money(s.overdueAmount)}</span>
+                          </span>
+                        ) : s.nextDueDate ? (
+                          <span className="ek-num">{s.nextDueDate}</span>
+                        ) : (
+                          <span className="text-muted">—</span>
                         )}
+                      </td>
+                      <td>
+                        <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                          {Number(s.balance) > 0 && (
+                            <button className="btn btn-outline btn-sm" onClick={() => openPay(s)}>
+                              <i className="fa-solid fa-money-bill-transfer" /> {t("supply.pay")}
+                            </button>
+                          )}
+                          <button className="btn-icon" onClick={() => openSupplier(s)}
+                                  aria-label={t("common.edit")} title={t("common.edit")}>
+                            <i className="fa-solid fa-pen" />
+                          </button>
+                          {/* ⚠ Arxivlangan qatorda tugma TIKLASHGA aylanadi,
+                              yo'qolmaydi: yo'qolgan tugma «bu qatorni
+                              qaytarib bo'lmaydi» degan ma'no berardi. */}
+                          <button className={`btn-icon ${s.active ? "danger" : ""}`}
+                                  onClick={() => toggleArchive(s)}
+                                  aria-label={t(s.active ? "supply.archive" : "products.restore")}
+                                  title={t(s.active ? "supply.archive" : "products.restore")}>
+                            <i className={`fa-solid ${s.active ? "fa-box-archive" : "fa-rotate-left"}`} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   )) : (
-                    <tr><td colSpan={4}><Empty icon="fa-truck" text={t("supply.noSuppliers")} /></td></tr>
+                    <tr><td colSpan={6}><Empty icon="fa-truck" text={t("supply.noSuppliers")} /></td></tr>
                   )}
                 </tbody>
               </table>
@@ -422,26 +548,128 @@ export default function SupplyPage({ toast }) {
       {/* ── Yangi yetkazib beruvchi ────────────────────────────────────── */}
       {newSup && (
         <Modal
-          title={t("supply.newSupplier")}
+          title={newSup.id ? t("supply.editSupplier") : t("supply.newSupplier")}
           onClose={() => setNewSup(null)}
-          maxWidth={420}
+          maxWidth={640}
           footer={
             <>
               <button className="btn btn-outline btn-sm" onClick={() => setNewSup(null)}>{t("common.cancel")}</button>
               <button className="btn btn-primary btn-sm" onClick={saveSupplier} disabled={saving || !newSup.name.trim()}>
-                <i className="fa-solid fa-check" /> {t("common.save")}
+                {saving ? <Spinner /> : <i className="fa-solid fa-check" />} {t("common.save")}
               </button>
             </>
           }
         >
-          <FormGroup label={t("common.fullName")}>
-            <Field className="form-input" autoFocus value={newSup.name}
-                   onChange={(e) => setNewSup({ ...newSup, name: e.target.value })} />
-          </FormGroup>
-          <FormGroup label={t("common.phone")}>
-            <Field className="form-input mono ek-num" kind="phone" value={newSup.phone}
-                   onChange={(e) => setNewSup({ ...newSup, phone: e.target.value })} />
-          </FormGroup>
+          {/* ⚠ TO'RT BO'LIM, BITTA UZUN RO'YXAT EMAS. Kundalik ish
+              (nom, telefon) birinchi bo'limda tugaydi; bank va
+              rekvizitlar yiliga bir marta to'ldiriladi va ular
+              kundalik maydonlarni pastga surib yuborishi kerak emas.
+              Tovar formasidagi bilan bir xil qoida. */}
+          <div className="sup-form">
+            <div className="sup-form__sec">{t("supply.secMain")}</div>
+            {/* ⚠ «Nomi», «Ism familiya» EMAS: ta'minotchi ko'pincha
+                TASHKILOT («Oqtepa Savdo MChJ»), odam emas. Eski yorliq
+                kartochkaga qaragan odamni jismoniy shaxs deb
+                o'ylashga majbur qilardi. */}
+            <FormGroup label={t("common.name")}>
+              <Field className="form-input" autoFocus value={newSup.name}
+                     onChange={(e) => setNewSup({ ...newSup, name: e.target.value })} />
+            </FormGroup>
+            <div className="sup-form__row">
+              <FormGroup label={t("common.phone")}>
+                <Field className="form-input mono ek-num" kind="phone" value={newSup.phone}
+                       onChange={(e) => setNewSup({ ...newSup, phone: e.target.value })} />
+              </FormGroup>
+              <FormGroup label={t("supply.phone2")}>
+                <Field className="form-input mono ek-num" kind="phone" value={newSup.phone2}
+                       onChange={(e) => setNewSup({ ...newSup, phone2: e.target.value })} />
+              </FormGroup>
+            </div>
+            <div className="sup-form__row">
+              <FormGroup label={t("supply.contactPerson")}>
+                <Field className="form-input" value={newSup.contactPerson}
+                       onChange={(e) => setNewSup({ ...newSup, contactPerson: e.target.value })} />
+              </FormGroup>
+              <FormGroup label={t("supply.manager")}>
+                <Select block variant="field" value={newSup.managerId}
+                        placeholder={t("supply.managerNone")}
+                        onChange={(v) => setNewSup({ ...newSup, managerId: v })}
+                        options={[{ value: "", label: t("supply.managerNone") },
+                                  ...staff.map((u) => ({ value: String(u.id), label: u.fullName || u.username }))]} />
+              </FormGroup>
+            </div>
+            <div className="sup-form__row">
+              <FormGroup label={t("supply.email")}>
+                <Field className="form-input" value={newSup.email}
+                       onChange={(e) => setNewSup({ ...newSup, email: e.target.value })} />
+              </FormGroup>
+              <FormGroup label={t("supply.telegram")}>
+                <Field className="form-input" value={newSup.telegram}
+                       onChange={(e) => setNewSup({ ...newSup, telegram: e.target.value })} />
+              </FormGroup>
+            </div>
+            <FormGroup label={t("supply.address")}>
+              <Field className="form-input" value={newSup.address}
+                     onChange={(e) => setNewSup({ ...newSup, address: e.target.value })} />
+            </FormGroup>
+
+            <div className="sup-form__sec">{t("supply.secTerms")}</div>
+            {/* ⚠ MUDDAT — STANDART, MAJBURIYAT EMAS. Har hujjatda uni
+                o'zgartirish mumkin va yozuv shuni aytadi, aks holda
+                egasi «nega bu hujjatda boshqa sana?» deb o'ylardi. */}
+            <div className="sup-form__row">
+              <FormGroup label={t("supply.paymentDays")}>
+                <NumField className="form-input ek-num" value={newSup.paymentDays}
+                          onChange={(e) => setNewSup({ ...newSup, paymentDays: e.target.value })} />
+                {/* ⚠ IZOH MAYDON OSTIDA, `FormGroup` ichida emas: u
+                    `hint` ni bilmaydi va berilgani JIMGINA yo'qolardi —
+                    kalit lug'atda «ishlatilgan» bo'lib turib, ekranda
+                    hech qachon chiqmasdi. */}
+                <div className="form-hint">{t("supply.paymentDaysHint")}</div>
+              </FormGroup>
+              <FormGroup label={t("supply.creditLimit")}>
+                <NumField className="form-input ek-num" value={newSup.creditLimit}
+                          onChange={(e) => setNewSup({ ...newSup, creditLimit: e.target.value })} />
+              </FormGroup>
+            </div>
+
+            <div className="sup-form__sec">{t("supply.secOfficial")}</div>
+            <div className="sup-form__row">
+              <FormGroup label={t("supply.tinType")}>
+                <Select block variant="field" value={newSup.tinType}
+                        placeholder={t("supply.tinTypeNone")}
+                        onChange={(v) => setNewSup({ ...newSup, tinType: v })}
+                        options={[{ value: "", label: t("supply.tinTypeNone") },
+                                  { value: "LEGAL", label: t("supply.tinLegal") },
+                                  { value: "INDIVIDUAL", label: t("supply.tinIndividual") }]} />
+              </FormGroup>
+              <FormGroup label={t("supply.tin")}>
+                <Field className="form-input mono ek-num" value={newSup.tin}
+                       onChange={(e) => setNewSup({ ...newSup, tin: e.target.value })} />
+              </FormGroup>
+            </div>
+
+            <div className="sup-form__sec">{t("supply.secBank")}</div>
+            <FormGroup label={t("supply.bankAccount")}>
+              <Field className="form-input mono ek-num" value={newSup.bankAccount}
+                     onChange={(e) => setNewSup({ ...newSup, bankAccount: e.target.value })} />
+            </FormGroup>
+            <div className="sup-form__row">
+              <FormGroup label={t("supply.bankMfo")}>
+                <Field className="form-input mono ek-num" value={newSup.bankMfo}
+                       onChange={(e) => setNewSup({ ...newSup, bankMfo: e.target.value })} />
+              </FormGroup>
+              <FormGroup label={t("supply.bankName")}>
+                <Field className="form-input" value={newSup.bankName}
+                       onChange={(e) => setNewSup({ ...newSup, bankName: e.target.value })} />
+              </FormGroup>
+            </div>
+
+            <FormGroup label={t("common.details")}>
+              <Field className="form-input" value={newSup.note}
+                     onChange={(e) => setNewSup({ ...newSup, note: e.target.value })} />
+            </FormGroup>
+          </div>
         </Modal>
       )}
 

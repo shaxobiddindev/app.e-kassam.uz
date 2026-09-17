@@ -26,6 +26,7 @@
     "react-router-dom": "^6.20.0"
   },
   "devDependencies": {
+    "@babel/parser": "^7.29.8",
     "@capacitor/cli": "^8.5.0",
     "@tauri-apps/cli": "^2.11.4",
     "@vitejs/plugin-react": "^4.3.4",

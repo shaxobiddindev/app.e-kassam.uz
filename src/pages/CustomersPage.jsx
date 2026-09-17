@@ -14,6 +14,7 @@ import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
 import { useInfinite } from "../hooks/useInfinite";
 import { useDebounced } from "../hooks/useDebounced";
 import InfiniteList from "../components/ek/InfiniteList";
+import { NoTh, NoTd, NO_COL } from "../components/ek/RowNo";
 import { asArray } from "../lib/ek-array";
 /* ⚠ SEKIN YUKLANADI: to'lov cheki kunda bir necha marta ochiladi,
    mijozlar sahifasi esa doim. Chekni asosiy bo'lakka qo'shish uni
@@ -415,6 +416,7 @@ export default function CustomersPage({ toast }) {
      ⚠ Telefon MATN sifatida: qidiruvi «oxirgi raqamlar» bo'yicha
      ketadi va son solishtiruvi bunda ma'nosiz. */
   const COLS = useMemo(() => [
+    NO_COL,
     { key: "name",  label: t("cust.col"),        type: "text",   get: (c) => c.fullName },
     { key: "phone", label: t("common.phone"),    type: "text",   get: (c) => c.phone },
     ...(view === "debtors"
@@ -623,11 +625,12 @@ export default function CustomersPage({ toast }) {
 
         <div className="table-wrap">
           {busy ? (
-            <SkeletonTable rows={7} cols={["wide", "text", "num", "narrow"]} />
+            <SkeletonTable rows={7} cols={["narrow", "wide", "text", "num", "narrow"]} />
           ) : (
             <table>
               <thead>
                 <tr>
+                  <NoTh flt={colFlt} />
                   <SortTh flt={colFlt} col="name">{t("cust.col")}</SortTh>
                   <SortTh flt={colFlt} col="phone">{t("common.phone")}</SortTh>
                   {/* ⚠ Chegara ustuni OLIB TASHLANDI (V46) va o'rniga
@@ -651,8 +654,9 @@ export default function CustomersPage({ toast }) {
               </thead>
               <tbody>
                 {filtered.length > 0 ? (
-                  filtered.map((c) => (
+                  filtered.map((c, i) => (
                     <tr key={c.id}>
+                      <NoTd seq={i + 1} no={c.docNo} />
                       <td>
                         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                           <Avatar name={c.fullName} size={30} />

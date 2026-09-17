@@ -22,6 +22,7 @@ import { useBadge } from "../context/BadgeProvider";
 import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
 import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
+import { NoTh, NoTd, NO_COL } from "../components/ek/RowNo";
 import { asArray } from "../lib/ek-array";
 
 /* ⚠ SANA+VAQT — `lib/ek-format.js` dan (V70). Uchta sahifada
@@ -173,7 +174,11 @@ export default function StockTakePage({ toast }) {
      ko'rinardi va faqat MA'LUMOT KELGANDA yiqilardi. Endi buni
      `scripts/check-hooks.mjs` qo'riqlaydi. */
   const HCOLS = useMemo(() => [
-    { key: "id",    label: "#",                      type: "number", get: (h) => h.id },
+    /* ⚠ ICHKI `id` O'RNIGA HUJJAT RAQAMI: `id` butun baza bo'ylab
+       o'sadi va egasi uchun ma'nosiz («#8471» deb aytilmaydi).
+       Eski saqlangan filtr `id` ga ishora qilsa, `useDataFilter` uni
+       jimgina tashlaydi — ustun endi yo'q. */
+    NO_COL,
     { key: "st",    label: t("common.status"),       type: "enum",
       options: ["OPEN", "CLOSED", "CANCELLED"].map((k) => ({ value: k, label: t(`stocktake.status.${k}`) })),
       get: (h) => h.status },
@@ -291,7 +296,7 @@ export default function StockTakePage({ toast }) {
             <table>
               <thead>
                 <tr>
-                  <SortTh flt={hFlt} col="id">#</SortTh>
+                  <NoTh flt={hFlt} />
                   <SortTh flt={hFlt} col="st">{t("common.status")}</SortTh>
                   <SortTh flt={hFlt} col="open">{t("sec.openedAt")}</SortTh>
                   <SortTh flt={hFlt} col="close">{t("shift.closedAt")}</SortTh>
@@ -300,9 +305,9 @@ export default function StockTakePage({ toast }) {
                 </tr>
               </thead>
               <tbody>
-                {shownHistory.length ? shownHistory.map((h) => (
+                {shownHistory.length ? shownHistory.map((h, i) => (
                   <tr key={h.id}>
-                    <td className="mono">{h.id}</td>
+                    <NoTd seq={i + 1} no={h.docNo} />
                     <td>
                       <span className={`badge badge-${h.status === "CLOSED" ? "green" : h.status === "OPEN" ? "blue" : "red"}`}>
                         {t(`stocktake.status.${h.status}`)}
