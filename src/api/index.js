@@ -867,6 +867,12 @@ export const supplyApi = {
   receipts:        (from, to) => request(`/supply/receipts${from ? `?from=${from}&to=${to}` : ""}`),
   receipt:         (id) => request(`/supply/receipts/${id}`),
   createReceipt:   (data) => request("/supply/receipts", { method: "POST", body: JSON.stringify(data) }),
+  /* Ta'minotchiga qaytarish (V138) — qarzni KAMAYTIRADIGAN hujjat.
+     ⚠ Qatorda narx yuborilmaydi: u partiyadan olinadi, aks holda
+     qarzni o'ylab topilgan songa kamaytirib bo'lardi. */
+  returns:         (from, to) => request(`/supply/returns${from ? `?from=${from}&to=${to}` : ""}`),
+  returnDoc:       (id) => request(`/supply/returns/${id}`),
+  createReturn:    (data) => request("/supply/returns", { method: "POST", body: JSON.stringify(data) }),
 };
 
 // ─── Filiallararo ko'chirish (V22) ────────────────────────────

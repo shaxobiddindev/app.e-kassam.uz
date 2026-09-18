@@ -129,8 +129,31 @@ export const writeOffOptions = ({ exclude = [] } = {}) =>
  * hisobdan chiqarish ma'nosiz va hisobotni buzardi — `RECOUNT`
  * yo'qotish sifatida sanalmaydi, ya'ni rostdan yo'q bo'lgan tovar
  * hech qaerda ko'rinmay qolardi.
+ *
+ * ⚠ `SUPPLIER_RETURN` ham tushib qoladi (V138): u qarzga TEGMAYDI,
+ * ya'ni «ta'minotchiga qaytardim» degan yozuv qoldirardi-yu, qarz
+ * joyida turardi. Buning o'z hujjati bor — `MANUAL_WRITE_OFF_EXCLUDE`
+ * izohiga qarang.
  */
-export const RETURN_WRITE_OFF_EXCLUDE = ["RECOUNT"];
+export const RETURN_WRITE_OFF_EXCLUDE = ["RECOUNT", "SUPPLIER_RETURN"];
+
+/**
+ * QO'LDA CHIQITDA «ta'minotchiga qaytarildi» TANLANMAYDI (V138).
+ *
+ * ⚠ ENG UZOQ DAVOM ETGAN JIM YOLG'ON SHU EDI. Qiymat enumda ham,
+ * chiqit ekranida ham turardi va omborchi uni bemalol tanlardi —
+ * lekin u FAQAT tovarni ombordan chiqarardi. Qarz bir tiyin ham
+ * kamaymasdi: do'kon egasi ishni bajardim deb o'ylardi, zarar esa
+ * do'konning hisobida qolardi. Xato ham, xabar ham yo'q edi.
+ *
+ * ⚠ Endi buning O'Z HUJJATI bor: «Ta'minot → Qaytarishlar». U tovarni
+ * ham chiqaradi, qarzni ham kamaytiradi va summani partiyadan oladi.
+ *
+ * ⚠ LUG'ATDAN OLIB TASHLANMADI, faqat QO'LDA tanlashdan chiqarildi:
+ * qaytarish hujjatining o'zi ombor harakatini aynan shu sabab bilan
+ * yozadi, ya'ni u hisobotda ko'rinishda qolishi kerak.
+ */
+export const MANUAL_WRITE_OFF_EXCLUDE = ["SUPPLIER_RETURN"];
 
 /**
  * KO'CHIRISHDA YO'LDA YO'QOLGAN tovar uchun sabablar.
@@ -140,6 +163,31 @@ export const RETURN_WRITE_OFF_EXCLUDE = ["RECOUNT"];
  * yo'qolish hisob xatosi emas — u ikki do'kon o'rtasida sanalgan.
  */
 export const TRANSFER_SHORTAGE_EXCLUDE = ["SUPPLIER_RETURN", "OWN_USE", "RECOUNT"];
+
+/* ── Ta'minotchiga qaytarish sababi — SupplierReturnReason (V138) ───────── */
+
+/**
+ * NEGA ta'minotchiga qaytardik.
+ *
+ * ⚠ `WRITE_OFF_REASON` DAN ALOHIDA va bu ataylab. Ikkisi ikki xil
+ * savolga javob beradi: `WRITE_OFF_REASON.SUPPLIER_RETURN` — «tovar
+ * ombordan nega chiqdi?» (chunki qaytarildi), bu lug'at esa — «nega
+ * qaytardik?». Bittasi bilan cheklansak, ombor hisobotida sabab
+ * yo'qolardi yoki qaytarish sababi chiqit turkumlariga aralashardi.
+ */
+export const SUPPLIER_RETURN_REASON = dict("enum.supplierReturn", {
+  DEFECT:     { icon: "fa-hammer" },
+  EXPIRED:    { icon: "fa-hourglass-end" },
+  WRONG_ITEM: { icon: "fa-arrows-turn-to-dots" },
+  SURPLUS:    { icon: "fa-layer-group" },
+  /* Izoh MAJBURIY bo'ladi — server ham shuni talab qiladi. */
+  OTHER:      { icon: "fa-ellipsis" },
+});
+
+export const supplierReturnReason = (v) => entry(SUPPLIER_RETURN_REASON, v);
+export const returnReasonOptions = () =>
+  Object.entries(SUPPLIER_RETURN_REASON).map(([value, m]) =>
+    ({ value, label: m.label, icon: m.icon }));
 
 /* ── Ko'chirish holati — TransferStatus (V22) ────────────────────────────── */
 export const TRANSFER_STATUS = dict("enum.transferStatus", {

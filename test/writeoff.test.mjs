@@ -82,7 +82,11 @@ console.log("\n── 3. Qaytarishda «hisob xatosi» yo'q ──");
      deb hisobdan chiqarish hisobotni buzardi — `RECOUNT` yo'qotish
      sifatida sanalmaydi, ya'ni rostdan yo'q bo'lgan tovar hech
      qayerda ko'rinmay qolardi. */
-  /RETURN_WRITE_OFF_EXCLUDE\s*=\s*\["RECOUNT"\]/.test(labels)
+  /* ⚠ RŒYXAT KENGAYISHI MUMKIN, QISQARISHI YO'Q: shart aynan
+     tenglik emas, `RECOUNT` BORLIGI tekshiriladi. Aynan tenglikda
+     ro'yxatga yangi sabab qo'shilishi (V138 dagi `SUPPLIER_RETURN`)
+     qo'riqchini hech qanday xatosiz yiqitardi. */
+  /RETURN_WRITE_OFF_EXCLUDE\s*=\s*\[[^\]]*"RECOUNT"[^\]]*\]/.test(labels)
     ? ok("`RETURN_WRITE_OFF_EXCLUDE` — `RECOUNT`")
     : bad("qaytarish yo'lida `RECOUNT` chiqarib tashlanishi kerak", "yo'q");
 
@@ -90,6 +94,46 @@ console.log("\n── 3. Qaytarishda «hisob xatosi» yo'q ──");
   /writeOffOptions\(\{\s*exclude:\s*RETURN_WRITE_OFF_EXCLUDE\s*\}\)/.test(sales)
     ? ok("sotuvlar sahifasi shu ro'yxatdan foydalanadi")
     : bad("SalesPage `exclude` bilan chaqirishi kerak", "chaqirmaydi");
+}
+
+console.log("\n── 3b. Qo'lda chiqitda «ta'minotchiga qaytarildi» yo'q (V138) ──");
+{
+  /* ⚠ ENG UZOQ DAVOM ETGAN JIM YOLG'ON. `SUPPLIER_RETURN` chiqit
+     ekranida tanlanardi, lekin u FAQAT tovarni ombordan chiqarardi:
+     qarz bir tiyin ham kamaymasdi. Do'kon egasi ishni bajardim deb
+     o'ylardi, zarar esa do'konning hisobida qolardi.
+
+     Endi buning o'z hujjati bor («Ta'minot → Qaytarishlar») va bu
+     qo'riqchi eski yo'lning QAYTIB KELMASLIGINI tekshiradi. */
+  /MANUAL_WRITE_OFF_EXCLUDE\s*=\s*\[[^\]]*"SUPPLIER_RETURN"[^\]]*\]/.test(labels)
+    ? ok("`MANUAL_WRITE_OFF_EXCLUDE` — `SUPPLIER_RETURN`")
+    : bad("qo'lda chiqitdan `SUPPLIER_RETURN` chiqarilishi kerak", "yo'q");
+
+  /* Sotuv qaytarishida ham shu sabab bo'lmasligi kerak. */
+  /RETURN_WRITE_OFF_EXCLUDE\s*=\s*\[[^\]]*"SUPPLIER_RETURN"[^\]]*\]/.test(labels)
+    ? ok("sotuv qaytarishida ham yo'q")
+    : bad("`RETURN_WRITE_OFF_EXCLUDE` da `SUPPLIER_RETURN` yo'q", "yo'q");
+
+  /* ⚠ CHAQIRUVLAR HAM TEKSHIRILADI: ro'yxatni e'lon qilib, uni
+     ekranda ISHLATMASLIK eng oson qilinadigan xato bo'lardi. */
+  for (const rel of [["pages", "InventoryPage.jsx"], ["components", "BatchCorrectModal.jsx"]]) {
+    const src = fs.readFileSync(path.join(SRC, ...rel), "utf8");
+    const bare = /writeOffOptions\(\s*\)/.test(src);
+    const used = /writeOffOptions\(\{\s*exclude:\s*MANUAL_WRITE_OFF_EXCLUDE\s*\}\)/.test(src);
+    used && !bare
+      ? ok(`${rel[1]} ro'yxatdan foydalanadi`)
+      : bad(`${rel[1]}: qo'lda chiqit ro'yxati cheklanmagan`,
+            bare ? "`writeOffOptions()` bo'sh chaqirilgan" : "chaqirilmagan");
+  }
+
+  /* Omborchiga QAYERGA borishi aytiladi — tushib qolgan sabab
+     jimgina yo'qolmasin. */
+  for (const lang of ["uz", "ru", "en"]) {
+    const loc = fs.readFileSync(path.join(SRC, "lib", "locales", `${lang}.js`), "utf8");
+    loc.includes('"inv.supplierReturnHint"')
+      ? ok(`${lang}: qayerga borish aytilgan`)
+      : bad(`${lang}: \`inv.supplierReturnHint\` yo'q`, "yo'q");
+  }
 }
 
 console.log("\n── 4. Uchala tilda yorlig'i bor ──");

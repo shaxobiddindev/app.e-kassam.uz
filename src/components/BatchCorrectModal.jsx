@@ -8,7 +8,8 @@ import { inventoryApi } from "../api";
 import { useBadge } from "../context/BadgeProvider";
 import { shortDate } from "../lib/ek-format";
 import { quantity as fmtQty } from "../utils";
-import { unitLabel, unitDecimals, writeOffOptions } from "../lib/ek-labels";
+import { unitLabel, unitDecimals, writeOffOptions,
+         MANUAL_WRITE_OFF_EXCLUDE } from "../lib/ek-labels";
 
 /* ══════════════════════════════════════════════════════════════════════════
    PARTIYA QOLDIG'INI TO'G'IRLASH — UMUMIY OYNA (V60)
@@ -106,8 +107,11 @@ export default function BatchCorrectModal({ batch, onClose, onSaved, toast }) {
           <Select value={woReason} onChange={setWoReason} block variant="field"
                   invalid={!woReason} placeholder={t("inv.writeOffReasonPh")}
                   ariaLabel={t("inv.writeOffReason")}
-                  options={writeOffOptions()} />
+                  options={writeOffOptions({ exclude: MANUAL_WRITE_OFF_EXCLUDE })} />
           <div className="text-muted" style={{ fontSize: 12, marginTop: 4 }}>{t("inv.writeOffHint")}</div>
+          {/* ⚠ Ro'yxatdan tushib qolgan sabab JIM yo'qolmaydi: uni
+              qidirayotgan omborchiga qayerga borishi aytiladi. */}
+          <div className="text-muted" style={{ fontSize: 12, marginTop: 4 }}>{t("inv.supplierReturnHint")}</div>
         </div>
       )}
 

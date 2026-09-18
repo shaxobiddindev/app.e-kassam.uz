@@ -24,9 +24,17 @@ import { useLoading } from "../lib/use-loading";
 import { NumField, DateField } from "../components/ek/EkFields";
 import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
 import { NoTh, NoTd, NO_COL } from "../components/ek/RowNo";
+import { returnReasonOptions, supplierReturnReason } from "../lib/ek-labels";
 import { asArray } from "../lib/ek-array";
 
 const today = () => new Date().toISOString().slice(0, 10);
+
+/* ⚠ QARZNI KAMAYTIRADIGAN JURNAL TURLARI.
+   Ilgari faqat `PAYMENT` minus bilan chizilardi. `RETURN` qo'shilgach
+   (V138) u «+450 000» bo'lib ko'rinardi — ya'ni qarzni OSHIRGANDEK,
+   holbuki balans aynan shu qatordan KAMAYADI. Jurnal bilan balans
+   qarama-qarshi gapirishi eng chalkash holat bo'lardi. */
+const DEBT_DOWN = ["PAYMENT", "RETURN"];
 
 /* ⚠ BO'SH KARTOCHKA BITTA JOYDA. Ilgari forma `{ name: "", phone: "" }`
    deb IKKI joyda yozilardi (tugma va «ta'minotchi yo'q» yo'li) va uchinchi
@@ -55,8 +63,9 @@ const toForm = (x) => ({
 });
 
 export default function SupplyPage({ toast }) {
-  const [tab, setTab] = useState("receipts");     // receipts | suppliers
+  const [tab, setTab] = useState("receipts");     // receipts | returns | suppliers
   const [receipts, setReceipts] = useState([]);
+  const [returns, setReturns] = useState([]);     // ta'minotchiga qaytarish (V138)
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(true);
   const busy = useLoading(loading);
@@ -69,6 +78,8 @@ export default function SupplyPage({ toast }) {
   const [staff, setStaff] = useState([]);
   const [pay, setPay] = useState(null);           // { supplier, amount, method, ledger }
   const [view, setView] = useState(null);         // hujjat tafsiloti
+  const [retForm, setRetForm] = useState(null);   // yangi qaytarish
+  const [retView, setRetView] = useState(null);   // qaytarish tafsiloti
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -76,6 +87,15 @@ export default function SupplyPage({ toast }) {
       const [r, s] = await Promise.all([supplyApi.receipts(), supplyApi.suppliers()]);
       setReceipts(asArray(r.data));
       setSuppliers(asArray(s.data));
+      /* ⚠ QAYTARISHLAR ALOHIDA SO'RALADI VA XATOSI JIM YUTILADI.
+         Ular `Promise.all` ichida bo'lganida, eski serverda
+         (`/supply/returns` hali yo'q) butun sahifa — kirimlar ham,
+         ta'minotchilar ham — bo'sh qolardi. Ya'ni yangi bo'lim eski
+         ishlayotgan ikkitasini o'ldirardi. */
+      try {
+        const q = await supplyApi.returns();
+        setReturns(asArray(q.data));
+      } catch (_) { setReturns([]); }
     } catch (err) {
       toast?.error(err.message);
     } finally {
@@ -164,6 +184,77 @@ export default function SupplyPage({ toast }) {
       });
       toast?.success(t("supply.saved"));
       setForm(null);
+      await load();
+    } catch (err) {
+      toast?.error(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  /* ── Qaytarish (V138) ─────────────────────────────────────────────── */
+
+  /**
+   * TA'MINOTCHIGA QAYTARISH — kirimning ko'zgusi.
+   *
+   * ⚠ ILGARI BU YO'L YARIM EDI VA JIM YOLG'ON GAPIRARDI: buzuq mol
+   * chiqit qilinardi, «Ta'minotchiga qaytarildi» sababi tanlanardi —
+   * qarz esa bir tiyin ham kamaymasdi. Do'kon egasi ishni bajardim
+   * deb o'ylardi, zarar do'konning hisobida qolardi.
+   */
+  const openReturn = () => {
+    const active = suppliers.filter((x) => x.active);
+    if (!active.length) { openSupplier(); return; }
+    setRetForm({
+      supplierId: String(active[0].id),
+      returnedAt: today(),
+      reason: "DEFECT",
+      note: "",
+      lines: [],
+      code: "",
+    });
+  };
+
+  const addRetLine = async () => {
+    const code = retForm.code.trim();
+    if (!code) return;
+    try {
+      const r = await productApi.scan(code);
+      const p = r?.data?.product;
+      if (!p) { toast?.error(t("common.notFound")); return; }
+      setRetForm((f) => ({
+        ...f,
+        code: "",
+        lines: [...f.lines, {
+          productId: p.id, productName: p.name, unit: p.unit, quantity: "1",
+        }],
+      }));
+    } catch (err) {
+      toast?.error(err.message);
+    }
+  };
+
+  const setRetLine = (i, value) =>
+    setRetForm((f) => ({ ...f, lines: f.lines.map((l, j) => (j === i ? { ...l, quantity: value } : l)) }));
+  const dropRetLine = (i) =>
+    setRetForm((f) => ({ ...f, lines: f.lines.filter((_, j) => j !== i) }));
+
+  const saveReturn = async () => {
+    setSaving(true);
+    try {
+      /* ⚠ NARX YUBORILMAYDI. U partiyadan olinadi: qaytarilgan dona
+         qaysi partiyadan chiqqan bo'lsa, unga qancha to'langan
+         bo'lsa — qarz shuncha kamayadi. Qo'lda kiritilsa, qarzni
+         o'ylab topilgan songa kamaytirib bo'lardi. */
+      await supplyApi.createReturn({
+        supplierId: Number(retForm.supplierId),
+        returnedAt: retForm.returnedAt,
+        reason: retForm.reason,
+        note: retForm.note.trim() || null,
+        lines: retForm.lines.map((l) => ({ productId: l.productId, quantity: Number(l.quantity) })),
+      });
+      toast?.success(t("supply.returnSaved"));
+      setRetForm(null);
       await load();
     } catch (err) {
       toast?.error(err.message);
@@ -286,6 +377,21 @@ export default function SupplyPage({ toast }) {
   const rcptFlt = useDataFilter(RCPT_COLS, "supply-rcpt");
   const shownReceipts = rcptFlt.apply(receipts);
 
+  /* ⚠ QAYTARISHDA «HUJJAT RAQAMI» USTUNI YO'Q: kirimda u
+     TA'MINOTCHINING nakladnoysi edi, qaytarishni esa do'konning
+     o'zi yozadi — tashqi raqam yo'q. O'rniga SABAB turadi, chunki
+     ta'minotchi bilan gaplashganda birinchi shu so'raladi. */
+  const RET_COLS = useMemo(() => [
+    NO_COL,
+    { key: "date", label: t("common.date"),         type: "date",   get: (r) => r.returnedAt },
+    { key: "sup",  label: t("supply.supplier"),     type: "text",   get: (r) => r.supplierName },
+    { key: "why",  label: t("supply.returnReason"), type: "text",
+      get: (r) => supplierReturnReason(r.reason).label },
+    { key: "sum",  label: t("common.sum"),          type: "number", get: (r) => r.totalAmount },
+  ], []);
+  const retFlt = useDataFilter(RET_COLS, "supply-ret");
+  const shownReturns = retFlt.apply(returns);
+
   const SUP_COLS = useMemo(() => [
     NO_COL,
     { key: "name",  label: t("supply.supplier"), type: "text",   get: (x) => x.name },
@@ -306,6 +412,11 @@ export default function SupplyPage({ toast }) {
           <button className="btn btn-outline btn-sm" onClick={() => openSupplier()}>
             <i className="fa-solid fa-truck" /> {t("supply.newSupplier")}
           </button>
+          {/* ⚠ QAYTARISH TUGMASI ASOSIY EMAS: kundalik ish — kirim.
+              Qaytarish esa oyda bir necha marta bo'ladi. */}
+          <button className="btn btn-outline btn-sm" onClick={openReturn}>
+            <i className="fa-solid fa-rotate-left" /> {t("supply.newReturn")}
+          </button>
           <button className="btn btn-primary btn-sm" onClick={openNew}>
             <i className="fa-solid fa-plus" /> {t("supply.newReceipt")}
           </button>
@@ -313,7 +424,9 @@ export default function SupplyPage({ toast }) {
       </div>
 
       <div className="cat-tabs" role="tablist" style={{ marginBottom: 14 }}>
-        {[["receipts", t("supply.receipts")], ["suppliers", t("supply.suppliers")]].map(([k, label]) => (
+        {[["receipts", t("supply.receipts")],
+          ["returns", t("supply.returns")],
+          ["suppliers", t("supply.suppliers")]].map(([k, label]) => (
           <button key={k} type="button" role="tab" aria-selected={tab === k}
                   className={`cat-tab ${tab === k ? "active" : ""}`} onClick={() => setTab(k)}>
             {label}
@@ -325,13 +438,14 @@ export default function SupplyPage({ toast }) {
         <div className="card">
           <div className="card-header">
             <span className="card-title">
-              {tab === "receipts" ? t("supply.receipts") : t("supply.suppliers")}
+              {t(`supply.${tab}`)}
               <span className="text-muted" style={{ marginLeft: 8, fontWeight: 600 }}>
-                {tab === "receipts" ? shownReceipts.length : shownSuppliers.length}
+                {tab === "receipts" ? shownReceipts.length
+                  : tab === "returns" ? shownReturns.length : shownSuppliers.length}
               </span>
             </span>
-            {tab === "receipts"
-              ? <DataFilter cols={RCPT_COLS} flt={rcptFlt} />
+            {tab === "receipts" ? <DataFilter cols={RCPT_COLS} flt={rcptFlt} />
+              : tab === "returns" ? <DataFilter cols={RET_COLS} flt={retFlt} />
               : <DataFilter cols={SUP_COLS} flt={supFlt} />}
           </div>
           <div className="table-wrap">
@@ -366,6 +480,48 @@ export default function SupplyPage({ toast }) {
                   )}
                 </tbody>
               </table>
+            ) : tab === "returns" ? (
+              <table>
+                <thead>
+                  <tr>
+                    <NoTh flt={retFlt} />
+                    <SortTh flt={retFlt} col="date">{t("common.date")}</SortTh>
+                    <SortTh flt={retFlt} col="sup">{t("supply.supplier")}</SortTh>
+                    <SortTh flt={retFlt} col="why">{t("supply.returnReason")}</SortTh>
+                    <SortTh flt={retFlt} col="sum">{t("common.sum")}</SortTh>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {shownReturns.length ? shownReturns.map((r, i) => (
+                    <tr key={r.id}>
+                      <NoTd seq={i + 1} no={r.docNo} />
+                      <td className="ek-num" style={{ fontSize: 13 }}>{r.returnedAt}</td>
+                      <td className="fw-700">{r.supplierName}</td>
+                      {/* ⚠ Sabab RANG BILAN EMAS, ikonka va YOZUV bilan
+                          (qoida №6): «buzuq» va «muddati o'tgan» ni
+                          rang farqi bilan ajratib bo'lmasdi. */}
+                      <td style={{ fontSize: 13 }}>
+                        <i className={`fa-solid ${supplierReturnReason(r.reason).icon}`} aria-hidden="true" />
+                        {" "}{supplierReturnReason(r.reason).label}
+                      </td>
+                      {/* ⚠ MINUS BILAN: bu qator QARZNI KAMAYTIRADI.
+                          Kirim jadvalidagi son bilan bir xil ko'rinsa,
+                          ikkalasi qarzni oshiradigandek tuyulardi. */}
+                      <td className="ek-num fw-700" style={{ color: "var(--fg-success)" }}>
+                        -{money(r.totalAmount)}
+                      </td>
+                      <td>
+                        <button className="btn-icon" title={t("common.details")} onClick={() => setRetView(r)}>
+                          <i className="fa-solid fa-eye" />
+                        </button>
+                      </td>
+                    </tr>
+                  )) : (
+                    <tr><td colSpan={6}><Empty icon="fa-rotate-left" text={t("supply.noReturns")} /></td></tr>
+                  )}
+                </tbody>
+              </table>
             ) : (
               <table>
                 <thead>
@@ -387,9 +543,19 @@ export default function SupplyPage({ toast }) {
                       {/* Qarz MUSBAT bo'lsa qizil: bu bizning to'lanmagan
                           majburiyatimiz va ko'zga tashlanishi kerak. */}
                       <td>
-                        {Number(s.balance) > 0
-                          ? <span className="mono fw-800" style={{ color: "var(--fg-danger)" }}>{money(s.balance)}</span>
-                          : <span className="text-muted">—</span>}
+                        {Number(s.balance) > 0 ? (
+                          <span className="mono fw-800" style={{ color: "var(--fg-danger)" }}>{money(s.balance)}</span>
+                        ) : Number(s.balance) < 0 ? (
+                          /* ⚠ MANFIY = TA'MINOTCHI BIZGA QARZDOR (V138).
+                             Ilgari bu yerda «—» turardi va qaytarilgan
+                             mol qarzdan ko'p bo'lsa, do'kon bergan pul
+                             HECH QAYERDA ko'rinmasdi. Rang yolg'iz
+                             signal emas — yozuv ham bor (qoida №6). */
+                          <span className="badge badge-green" title={t("supply.owesUsHint")}>
+                            {t("supply.owesUs")}:{" "}
+                            <span className="ek-num">{money(Math.abs(Number(s.balance)))}</span>
+                          </span>
+                        ) : <span className="text-muted">—</span>}
                       </td>
                       {/* ⚠ MUDDAT USTUNI — QARZNING YARMI SHU YERDA.
                           Ilgari tizim «12 mln qarzdormiz» derdi-yu,
@@ -542,6 +708,163 @@ export default function SupplyPage({ toast }) {
                     disabled={saving} />
           {/* ⚠ Naqd to'lov kassaga TA'SIR QILADI — aytib qo'yamiz. */}
           <p className="form-hint">{t("supply.paidHint")}</p>
+        </Modal>
+      )}
+
+      {/* ── Qaytarish hujjati (V138) ───────────────────────────────────── */}
+      {retForm && (
+        <Modal
+          title={t("supply.newReturn")}
+          onClose={() => setRetForm(null)}
+          maxWidth={680}
+          footer={
+            <>
+              <button className="btn btn-outline btn-sm" onClick={() => setRetForm(null)}>{t("common.cancel")}</button>
+              {/* ⚠ «Boshqa» sababda izohsiz saqlash TO'SILADI — server ham
+                  rad etadi. Xatoni saqlashdan KEYIN ko'rsatish omborchini
+                  bekorga ish qildirardi. */}
+              <button className="btn btn-primary btn-sm" onClick={saveReturn}
+                      disabled={saving || !retForm.lines.length
+                                || retForm.lines.some((l) => !(Number(l.quantity) > 0))
+                                || (retForm.reason === "OTHER" && !retForm.note.trim())}>
+                {saving ? <Spinner /> : <i className="fa-solid fa-check" />} {t("common.save")}
+              </button>
+            </>
+          }
+        >
+          <p className="form-hint" style={{ marginTop: 0 }}>{t("supply.returnHint")}</p>
+
+          <div className="grid-2">
+            <FormGroup label={t("supply.supplier")}>
+              <Select block variant="field" ariaLabel={t("supply.supplier")}
+                      searchable searchPlaceholder={t("common.searchShort")}
+                      value={retForm.supplierId}
+                      onChange={(v) => setRetForm({ ...retForm, supplierId: v })}
+                      options={suppliers.filter((x) => x.active)
+                        .map((x) => ({ value: String(x.id), label: x.name, icon: "fa-truck" }))} />
+            </FormGroup>
+            <FormGroup label={t("common.date")}>
+              <DateField className="form-input ek-num" value={retForm.returnedAt}
+                         onChange={(e) => setRetForm({ ...retForm, returnedAt: e.target.value })} />
+            </FormGroup>
+          </div>
+
+          <FormGroup label={t("supply.returnReason")}>
+            <Select block variant="field" ariaLabel={t("supply.returnReason")}
+                    value={retForm.reason}
+                    onChange={(v) => setRetForm({ ...retForm, reason: v })}
+                    options={returnReasonOptions()} />
+          </FormGroup>
+
+          <FormGroup label={t("supply.returnNote")}>
+            <Field className="form-input" value={retForm.note}
+                   onChange={(e) => setRetForm({ ...retForm, note: e.target.value })} />
+          </FormGroup>
+          {retForm.reason === "OTHER" && !retForm.note.trim() && (
+            <p className="form-hint">{t("supply.returnNoteRequired")}</p>
+          )}
+
+          <FormGroup label={t("supply.scanToAdd")}>
+            <input className="form-input mono" value={retForm.code} autoFocus
+                   placeholder={t("stocktake.scanPlaceholder")}
+                   onChange={(e) => setRetForm({ ...retForm, code: e.target.value })}
+                   onKeyDown={(e) => e.key === "Enter" && addRetLine()} />
+          </FormGroup>
+
+          <div className="table-wrap" style={{ maxHeight: 260, overflowY: "auto" }}>
+            <table>
+              <thead>
+                <tr><th>{t("products.col")}</th><th>{t("common.count")}</th><th></th></tr>
+              </thead>
+              <tbody>
+                {retForm.lines.length ? retForm.lines.map((l, i) => (
+                  <tr key={i}>
+                    <td className="fw-700" style={{ fontSize: 13 }}>{l.productName}</td>
+                    <td><NumField kind="qty" unit={l.unit} className="form-input ek-num" style={{ width: 90 }}
+                                  value={l.quantity} onChange={(e) => setRetLine(i, e.target.value)} /></td>
+                    <td>
+                      <button className="btn-icon danger" onClick={() => dropRetLine(i)}
+                              aria-label={t("common.delete")} title={t("common.delete")}>
+                        <i className="fa-solid fa-xmark" />
+                      </button>
+                    </td>
+                  </tr>
+                )) : (
+                  <tr><td colSpan={3}><Empty text={t("supply.scanHint")} /></td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* ⚠ FORMADA JAMI KO'RSATILMAYDI va bu ataylab: summa
+              PARTIYADAN hisoblanadi (qaysi partiyaga qancha to'langan
+              bo'lsa). Bu yerda taxminiy son ko'rsatilsa, u saqlangandan
+              keyingi haqiqiy sondan farq qilardi — do'kon egasi esa
+              birinchisiga ishonib qolardi. */}
+          <p className="form-hint">{t("supply.returnPriceHint")}</p>
+        </Modal>
+      )}
+
+      {/* ── Qaytarish tafsiloti ────────────────────────────────────────── */}
+      {retView && (
+        <Modal title={`${t("supply.return")} №${retView.docNo ?? retView.id}`}
+               onClose={() => setRetView(null)} maxWidth={640}
+               footer={<button className="btn btn-outline btn-sm" onClick={() => setRetView(null)}>{t("common.close")}</button>}>
+          <div style={{ display: "grid", gap: 6, marginBottom: 12 }}>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span className="text-muted">{t("supply.supplier")}</span>
+              <span className="fw-700">{retView.supplierName}</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span className="text-muted">{t("common.date")}</span>
+              <span className="ek-num">{retView.returnedAt}</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span className="text-muted">{t("supply.returnReason")}</span>
+              <span>
+                <i className={`fa-solid ${supplierReturnReason(retView.reason).icon}`} aria-hidden="true" />
+                {" "}{supplierReturnReason(retView.reason).label}
+              </span>
+            </div>
+            {retView.note && (
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                <span className="text-muted">{t("supply.returnNote")}</span>
+                <span>{retView.note}</span>
+              </div>
+            )}
+            {retView.createdByName && (
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span className="text-muted">{t("supply.returnBy")}</span>
+                <span>{retView.createdByName}</span>
+              </div>
+            )}
+          </div>
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr><th>{t("products.col")}</th><th>{t("common.count")}</th><th>{t("dash.costPrice")}</th><th>{t("common.sum")}</th></tr>
+              </thead>
+              <tbody>
+                {retView.lines?.map((l) => (
+                  <tr key={l.id}>
+                    <td className="fw-700" style={{ fontSize: 13 }}>{l.productName}</td>
+                    <td className="ek-num">{l.quantity}</td>
+                    <td className="ek-num">{money(l.costPrice)}</td>
+                    <td className="ek-num fw-700">{money(l.lineTotal)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {/* ⚠ PASTDA «JAMI» EMAS, «QARZ SHUNCHAGA KAMAYDI»: hujjatning
+              butun ma'nosi shu va uni oddiy yig'indi qilib ko'rsatish
+              qaytarishni kirimdan farqsiz qilardi. */}
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12 }}>
+            <span className="fw-800">{t("supply.debt")}</span>
+            <span className="ek-num fw-800" style={{ color: "var(--fg-success)" }}>
+              -{money(retView.totalAmount)}
+            </span>
+          </div>
         </Modal>
       )}
 
@@ -720,8 +1043,8 @@ export default function SupplyPage({ toast }) {
                     <td style={{ fontSize: 12 }}>{t(`credit.type.${l.type}`)}</td>
                     <td className="mono" style={{ fontSize: 12 }}>{l.receiptId ? `#${l.receiptId}` : (l.reason || "—")}</td>
                     <td className="mono fw-700"
-                        style={{ color: l.type === "PAYMENT" ? "var(--fg-success)" : "var(--fg-danger)" }}>
-                      {l.type === "PAYMENT" ? "-" : "+"}{money(l.amount)}
+                        style={{ color: DEBT_DOWN.includes(l.type) ? "var(--fg-success)" : "var(--fg-danger)" }}>
+                      {DEBT_DOWN.includes(l.type) ? "-" : "+"}{money(l.amount)}
                     </td>
                   </tr>
                 ))}

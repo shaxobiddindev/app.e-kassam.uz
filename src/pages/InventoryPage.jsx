@@ -16,7 +16,8 @@ import InfiniteList from "../components/ek/InfiniteList";
 import { useBadge } from "../context/BadgeProvider";
 import { money, quantity as fmtQty } from "../utils";
 import { shortDate, dateTime } from "../lib/ek-format";
-import { unitLabel, unitDecimals, writeOffOptions } from "../lib/ek-labels";
+import { unitLabel, unitDecimals, writeOffOptions,
+         MANUAL_WRITE_OFF_EXCLUDE } from "../lib/ek-labels";
 import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
 import { NumField, DateField } from "../components/ek/EkFields";
@@ -1700,10 +1701,15 @@ export default function InventoryPage({ toast }) {
                 invalid={!woReason}
                 placeholder={t("inv.writeOffReasonPh")}
                 ariaLabel={t("inv.writeOffReason")}
-                options={writeOffOptions()}
+                options={writeOffOptions({ exclude: MANUAL_WRITE_OFF_EXCLUDE })}
               />
               <div className="text-muted" style={{ fontSize: 12, marginTop: 4 }}>
                 {t("inv.writeOffHint")}
+              </div>
+              {/* ⚠ Ro'yxatdan tushib qolgan sabab JIM yo'qolmaydi: uni
+                  qidirayotgan omborchiga qayerga borishi aytiladi. */}
+              <div className="text-muted" style={{ fontSize: 12, marginTop: 4 }}>
+                {t("inv.supplierReturnHint")}
               </div>
             </div>
           )}
