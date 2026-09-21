@@ -54,6 +54,25 @@ export function barcodeVerdict(barcode) {
 export const barcodeSuspicious = (barcode) => barcodeVerdict(barcode) === "CHECK_DIGIT";
 
 /**
+ * EAN-13 NAZORAT RAQAMI — tarozi barkodi uchun.
+ *
+ * ⚠ `barcodeVerdict` DAN BOSHQA YO'L va bu ataylab: u ichki kodni
+ * (`2…`) nazorat raqamini UMUMAN tekshirmasdan «INTERNAL» deb
+ * o'tkazadi. Tarozi barkodi esa har doim ichki prefiks bilan
+ * boshlanadi — ya'ni o'sha yo'l bilan ketilsa, skaner xato o'qigan
+ * `...008500...` jimgina 8.5 kg deb qabul qilinardi va mijoz uch
+ * baravar ko'p to'lardi.
+ *
+ * ⚠ Serverdagi `WeightBarcode.checkDigitValid` ning AYNAN JUFTI: u
+ * ham `ean13Valid` ni to'g'ridan-to'g'ri chaqiradi.
+ */
+export function ean13Valid(code) {
+  const s = String(code ?? "").trim();
+  if (s.length !== 13 || !/^\d+$/.test(s)) return false;
+  return modulo10Valid(s);
+}
+
+/**
  * GS1 «modulo 10» — EAN-8, UPC-A va EAN-13 uchun BIR XIL.
  *
  * ⚠ Vazn OXIRIDAN sanaladi. Uni boshidan sanash EAN-13 da to'g'ri,

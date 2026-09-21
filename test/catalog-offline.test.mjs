@@ -51,10 +51,43 @@ const cheese = {
   id: 3, name: "Pishloq", barcode: "4780000000048", salePrice: 45000,
   unit: "KG", unitDecimals: 3, categoryId: 8, packs: [],
 };
+/* ⚠ PLU tovar formasida NOLSIZ yoziladi («12»), barkodda esa qat'iy
+   uzunlikda («00012») — bu haqiqiy holat va sinovning mavzusi. */
+const meat = {
+  id: 4, name: "Mol go'shti", barcode: "4780000000055", plu: "12",
+  salePrice: 95000, unit: "KG", unitDecimals: 3, categoryId: 8, packs: [],
+};
+/* Grammda sotiladigan tovar: tarozi kilogramm beradi, tovar esa gramm. */
+const spice = {
+  id: 5, name: "Zira", plu: "77", salePrice: 300,
+  unit: "GRAM", unitDecimals: 0, categoryId: 8, packs: [],
+};
+/* DONA tovarga tarozi barkodi tegishli bo'lishi mumkin emas. */
+const box = {
+  id: 6, name: "Quti", plu: "88", salePrice: 5000,
+  unit: "DONA", unitDecimals: 0, categoryId: 8, packs: [],
+};
+
+/** Standart format: `2 PPPPP WWWWWW C`, og'irlik grammda. */
+const SCALE = { prefixes: ["2"], pluDigits: 5, valueDigits: 6,
+                valueType: "WEIGHT", valueDecimals: 3 };
+
+/**
+ * EAN-13 nazorat raqamini hisoblab qo'shadi.
+ *
+ * ⚠ Sinovda qo'lda yozilgan barkodlar kerak va ularning nazorat
+ * raqamini har safar qo'lda sanash xatoga olib kelardi.
+ */
+function withCheck(twelve) {
+  let sum = 0;
+  for (let i = 0; i < 12; i++) sum += Number(twelve[i]) * ((12 - i) % 2 === 1 ? 3 : 1);
+  return twelve + String((10 - (sum % 10)) % 10);
+}
 
 /** Serverning javobini taqlid qiladi. */
-const reply = (products, { full = true, goneIds = [], syncedAt = "2026-09-21T10:00:00Z" } = {}) =>
-  ({ data: { syncedAt, full, total: products.length, products, goneIds } });
+const reply = (products, { full = true, goneIds = [], syncedAt = "2026-09-21T10:00:00Z",
+                          scale = SCALE } = {}) =>
+  ({ data: { syncedAt, full, total: products.length, products, goneIds, scale } });
 
 /* ══ 1. KOD BO'YICHA TOPISH ════════════════════════════════════════ */
 console.log("\n══ 1. Kod bo'yicha topish ══");
@@ -168,6 +201,87 @@ console.log("\n══ 5. Filial almashsa kesh tashlanadi ══");
   eq((await cat.info()).count, 1, "eski filialning tovarlari qolmadi");
   eq((await cat.lookup("4780000000017")).source, "NONE",
      "⚠ birinchi filialning barkodi ikkinchisida ochilmaydi");
+}
+
+/* ══ 5b. TAROZI BARKODI ═══════════════════════════════════════════ */
+console.log("\n══ 5b. Tarozi barkodi ══");
+{
+  const index = cat.buildIndex([meat, spice, box, cola]);
+  const plu = cat.buildPluIndex([meat, spice, box]);
+  const find = (code) => cat.lookupIn(index, code, { scale: SCALE, pluIndex: plu });
+
+  /* 0.488 kg mol go'shti: `2` + `00012` + `000488` + nazorat raqami. */
+  let r = find("2000120004887");
+  eq(r.source, "WEIGHT", "tarozi barkodi tanildi");
+  eq(r.product?.id, 4, "⚠ PLU «00012» tovardagi «12» ga mos keldi");
+  eq(r.quantity, 0.488, "og'irlik kilogrammda");
+
+  /* ⚠ NAZORAT RAQAMI. Usiz skaner xato o'qigan kod jimgina qabul
+     qilinardi — mijoz uch baravar ko'p to'lardi. */
+  eq(find("2000120004880").source, "NONE", "⚠⚠ nazorat raqami xato — rad etiladi");
+
+  /* GRAMM: tarozi kilogramm beradi, tovar esa grammda sotiladi. */
+  const spiceCode = withCheck("2" + "00077" + "000150");
+  r = find(spiceCode);
+  eq(r.product?.id, 5, "ziravor topildi");
+  eq(r.quantity, 150, "0.150 kg → 150 gramm");
+
+  /* DONA tovarda tarozi barkodi ma'nosiz — 0.488 dona bo'lmaydi. */
+  eq(find(withCheck("2" + "00088" + "000488")).source, "NONE",
+     "⚠ tortilmaydigan birlikda tarozi barkodi qabul qilinmaydi");
+
+  /* Yo'q PLU. */
+  eq(find(withCheck("2" + "00099" + "000488")).source, "NONE", "noma'lum PLU — NONE");
+
+  /* Nol og'irlik — tarozi xatosi. */
+  eq(find(withCheck("2" + "00012" + "000000")).source, "NONE", "nol og'irlik qabul qilinmaydi");
+
+  /* ⚠ HAQIQIY TOVAR USTUN: barkodi tasodifan tarozi formatiga
+     o'xshagan tovar bo'lsa, u avval topilishi kerak. */
+  const clash = { id: 7, name: "Ichki kodli tovar", barcode: "2000120004887",
+                  salePrice: 1000, unit: "DONA", unitDecimals: 0, packs: [] };
+  const r2 = cat.lookupIn(cat.buildIndex([clash, meat]), "2000120004887",
+                          { scale: SCALE, pluIndex: plu });
+  eq(r2.source, "PRODUCT", "ro'yxatdagi haqiqiy tovar tarozidan ustun");
+
+  /* NARX kodlangan format (Штрих-Принт) — miqdor narxdan chiqariladi. */
+  const priceScale = { ...SCALE, valueType: "PRICE", valueDecimals: 0 };
+  const byPrice = cat.lookupIn(index, withCheck("2" + "00012" + "047500"),
+                               { scale: priceScale, pluIndex: plu });
+  eq(byPrice.source, "WEIGHT", "narx kodlangan barkod ham ochiladi");
+  eq(byPrice.quantity, 0.5, "47 500 so'm ÷ 95 000 = 0.5 kg");
+
+  /* ⚠⚠ NARX + GRAMM. Narx TOVAR BIRLIGIGA qo'yilgan (bir gramm
+     uchun 300 so'm), ya'ni summani narxga bo'lish darhol grammni
+     beradi. Bu yerda kilogrammga o'girish qo'shilsa, miqdor MING
+     BARAVAR ko'p chiqardi va uni hech narsa aytmasdi. */
+  const spiceByPrice = cat.lookupIn(index, withCheck("2" + "00077" + "047500"),
+                                    { scale: priceScale, pluIndex: plu });
+  eq(spiceByPrice.quantity, 158, "47 500 so'm ÷ 300 = 158 gramm");
+
+  /* Format kelmagan bo'lsa — tarozi yo'li umuman ochilmaydi. */
+  eq(cat.lookupIn(index, "2000120004887", { pluIndex: plu }).source, "NONE",
+     "format yo'q — tarozi barkodi tanilmaydi");
+}
+
+/* ══ 5c. TAROZI FORMATI KESHDA ════════════════════════════════════ */
+console.log("\n══ 5c. Format katalog bilan birga keladi ══");
+{
+  await cat.clear();
+  await cat.sync({ shopId: 1, fetcher: () => reply([meat]) });
+  eq((await cat.info()).scale?.pluDigits, 5, "format keshga tushdi");
+  eq((await cat.lookup("2000120004887")).source, "WEIGHT",
+     "⚠ kesh orqali ham tarozi barkodi ochiladi");
+
+  /* ⚠ Do'kon formatni o'zgartirsa, kesh eskirgan format bilan qolib
+     ketmasligi kerak: PLU noto'g'ri o'qilib BOSHQA tovar savatga
+     tushardi. */
+  await cat.sync({
+    shopId: 1,
+    fetcher: () => reply([], { full: false, syncedAt: "2026-09-21T11:00:00Z",
+                               scale: { ...SCALE, pluDigits: 4, valueDigits: 7 } }),
+  });
+  eq((await cat.info()).scale?.pluDigits, 4, "⚠ yangi format keshga yozildi");
 }
 
 /* ══ 6. KESHNING ESKILIGI ═════════════════════════════════════════ */

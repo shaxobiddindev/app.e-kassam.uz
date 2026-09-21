@@ -1272,6 +1272,23 @@ export default function KassaPage({ toast, refreshLowStock }) {
          shuning uchun quyidagi tarmoqlar aynan yuqoridagidek. */
       try {
         const r = await catalog.lookup(code);
+
+        /* ⚠ TAROZI — JIMGINA SAVATGA TUSHMAYDI. Do'kon formati
+           tarozining haqiqiy formatiga mos kelmasa, nazorat raqami
+           baribir to'g'ri chiqadi va PLU noto'g'ri o'qiladi. Shuning
+           uchun miqdor ekranda ko'rsatiladi va kassir tasdiqlaydi —
+           onlayn yo'ldagi bilan bir xil. */
+        if (r.source === "WEIGHT") {
+          setCacheOnly(true);
+          catalog.info().then(setCacheInfo).catch(() => {});
+          setQtyModal({ product: r.product, initial: Number(r.quantity) });
+          toast.info(t("kassa.weightScanned", {
+            qty: fmtQty(r.quantity, r.product.unitDecimals),
+            unit: unitLabel(r.product.unit),
+          }));
+          return;
+        }
+
         if (r.source === "PRODUCT" || r.source === "PACK") {
           setCacheOnly(true);
           catalog.info().then(setCacheInfo).catch(() => {});
