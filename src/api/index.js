@@ -830,6 +830,24 @@ export const inventoryApi = {
   batches: (productId, archived = false) =>
     request(`/inventory/product/${productId}${archived ? "?archived=true" : ""}`),
 
+  /**
+   * Partiyaning yaroqlilik muddatini o'zgartirish.
+   *
+   * ⚠ `correctBatch` DAN ALOHIDA YO'L. U faqat qoldiq bilan ishlaydi va
+   * `expiryDate` ni umuman o'qimaydi — ya'ni kirimda xato yozilgan sana
+   * partiya tugagunicha shundayligicha qolardi.
+   *
+   * ⚠ `expiryDate: null` — muddatni OLIB TASHLASH. Bu `undefined` bilan
+   * adashtirilmasin: server ikkalasini ham `null` deb oladi, shuning
+   * uchun chaqiruvchi nimani nazarda tutayotgani SHU YERDA aniq bo'lishi
+   * kerak.
+   */
+  changeBatchExpiry: (inventoryId, expiryDate, reason) =>
+    request(`/inventory/batch/${inventoryId}/expiry`, {
+      method: "PATCH",
+      body: JSON.stringify({ expiryDate: expiryDate || null, reason }),
+    }),
+
   /* ⚠ `PATCH`, `DELETE` emas: partiya bazadan o'chirilmaydi. Unga
      harakatlar jurnali va sotuvlar bog'langan va o'chirish tarixni
      buzardi — arxiv ko'rinishni o'zgartiradi, yozuvni emas. */

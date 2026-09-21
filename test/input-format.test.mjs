@@ -13,6 +13,7 @@ import {
   isBarcodeChecksumValid, mxikInput, isMxik, codeInput, usernameInput,
   isUsername, nameInput, skuInput, otpInput, digitsInput,
   dateDisplayInput, isoToDisplayDate, displayDateToIso, dateInputError,
+  expandShortYear, dateIncomplete,
   validate, required, positive, notNegative, between, minLen,
 } from "../src/lib/ek-input.js";
 
@@ -176,6 +177,37 @@ eq(dateInputError("30-00"), true, "«00» oy yo'q");
 eq(dateInputError("30-02-2026"), true, "30-fevral \u2014 kalendar tekshiruvi");
 eq(dateInputError("30-09-2026"), false, "to'g'ri sana \u2014 xato yo'q");
 eq(dateInputError(""), false, "bo'sh maydon xato emas");
+
+/* ══════════════════════════════════════════════════════════════════════════
+   IKKI XONALI YIL — omborchi qutidagidek yozadi
+
+   ⚠ QANDAY NOSOZLIKNI QAYTARMASLIK UCHUN. `22-10-26` olti raqam beradi,
+   `displayDateToIso` esa sakkiztasini talab qiladi → qiymat BO'SH edi.
+   `dateInputError` ham «hali yozilmoqda» deb jim turardi. Ya'ni maydon
+   TO'LDIRILGANDEK ko'rinardi, tizimda esa muddat YO'Q edi va yetkazib
+   beruvchi kirimi uni jimgina `null` qilib saqlardi.
+   ══════════════════════════════════════════════════════════════════════════ */
+console.log("\n═══ Sana: ikki xonali yil ═══");
+eq(expandShortYear("22-10-26"), "22-10-2026", "22-10-26 → 22-10-2026");
+eq(expandShortYear("01-01-25"), "01-01-2025", "01-01-25 → 01-01-2025");
+eq(displayDateToIso(expandShortYear("22-10-26")), "2026-10-22", "to'ldirilgandan keyin QIYMAT chiqadi");
+
+/* ⚠ FAQAT OLTI RAQAM. To'liq yozilgani va yarim yozilgani tegilmaydi —
+   aks holda `22-10-2026` ni yozayotgan odam oltinchi raqamda
+   `22-10-2020` ga aylanib qolardi. */
+eq(expandShortYear("22-10-2026"), "22-10-2026", "to'liq sana tegilmaydi");
+eq(expandShortYear("22-10-202"), "22-10-202", "yetti raqam — taxmin qilinmaydi");
+eq(expandShortYear("22-10"), "22-10", "to'rt raqam — taxmin qilinmaydi");
+eq(expandShortYear(""), "", "bo'sh maydon tegilmaydi");
+
+/* Yozilgan-u tugallanmagan sana — bo'sh maydondan BOSHQA holat. Muddatsiz
+   tovarda bo'sh qoldirish qonuniy, yarim yozilgani esa hech qachon. */
+eq(dateIncomplete(""), false, "bo'sh maydon tugallanmagan emas");
+eq(dateIncomplete("22-10-26"), false, "ikki xonali yil — to'ldiriladi, xato emas");
+eq(dateIncomplete("22-10-2026"), false, "to'liq sana — xato emas");
+eq(dateIncomplete("22-10-202"), true, "yetti raqam — TUGALLANMAGAN");
+eq(dateIncomplete("3"), true, "bitta raqam — TUGALLANMAGAN");
+eq(dateIncomplete("30-02-2026"), true, "mavjud bo'lmagan sana ham qiymat bermaydi");
 
 console.log(`\n  ${pass} o'tdi, ${fail} yiqildi\n`);
 process.exit(fail ? 1 : 0);

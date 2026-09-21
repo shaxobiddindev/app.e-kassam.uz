@@ -10,6 +10,7 @@ import { shortDate, dateTime } from "../lib/ek-format";
 import { unitLabel, unitDecimals } from "../lib/ek-labels";
 import { DEFAULT_NEAR_EXPIRY_DAYS, daysLeft } from "../lib/ek-expiry";
 import BatchCorrectModal from "../components/BatchCorrectModal";
+import BatchExpiryModal from "../components/BatchExpiryModal";
 import { asArray } from "../lib/ek-array";
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -112,6 +113,7 @@ export default function BatchesPage({ toast }) {
   const [tab, setTab] = useState("active");
   const [nearDays, setNearDays] = useState(DEFAULT_NEAR_EXPIRY_DAYS);
   const [correct, setCorrect] = useState(null);
+  const [expiryEdit, setExpiryEdit] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -529,6 +531,23 @@ export default function BatchesPage({ toast }) {
                             {t("inv.correctAction")}
                           </button>
                         )}
+                        {/* ⚠ MUDDAT — ALOHIDA TUGMA VA ARXIVDAN TASHQARI HAR
+                            QATORDA. Muddati o'tgan partiyada u aynan eng
+                            kerakli amal: kirimda yil xato yozilgan bo'lsa,
+                            ilgari uni tuzatishning yo'li YO'Q edi —
+                            qoldiqni nolga tushirib, tovarni qaytadan kirim
+                            qilishdan boshqa. Arxivdagi partiyada esa
+                            ko'rsatilmaydi: server ham rad etadi va
+                            tugagan partiyaning muddati hech narsaga
+                            ta'sir qilmaydi. */}
+                        {!b.archivedAt && (
+                          <button className="btn-icon" style={{ marginLeft: 6 }}
+                                  title={t("batch.expiryEdit")}
+                                  aria-label={`${t("batch.expiryEdit")} — ${b.productName || ""}`}
+                                  onClick={() => setExpiryEdit(b)}>
+                            <i className="fa-solid fa-calendar-day" aria-hidden="true" />
+                          </button>
+                        )}
                       </td>
                     </tr>
                   );
@@ -542,6 +561,11 @@ export default function BatchesPage({ toast }) {
       {correct && (
         <BatchCorrectModal batch={correct} toast={toast}
                            onClose={() => setCorrect(null)} onSaved={load} />
+      )}
+
+      {expiryEdit && (
+        <BatchExpiryModal batch={expiryEdit} toast={toast}
+                          onClose={() => setExpiryEdit(null)} onSaved={load} />
       )}
     </div>
   );

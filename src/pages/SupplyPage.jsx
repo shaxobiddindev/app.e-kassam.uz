@@ -154,8 +154,13 @@ export default function SupplyPage({ toast }) {
     }
   };
 
-  const setLine = (i, key, value) =>
-    setForm((f) => ({ ...f, lines: f.lines.map((l, j) => (j === i ? { ...l, [key]: value } : l)) }));
+  const setLine = (i, key, value, bad) =>
+    setForm((f) => ({
+      ...f,
+      lines: f.lines.map((l, j) => (j === i
+        ? { ...l, [key]: value, ...(bad === undefined ? {} : { [key + "Bad"]: bad }) }
+        : l)),
+    }));
   const dropLine = (i) =>
     setForm((f) => ({ ...f, lines: f.lines.filter((_, j) => j !== i) }));
 
@@ -163,6 +168,26 @@ export default function SupplyPage({ toast }) {
     (s, l) => s + (Number(l.quantity) || 0) * (Number(l.costPrice) || 0), 0);
 
   const saveReceipt = async () => {
+    /* ⚠ YARIM YOZILGAN MUDDAT BILAN SAQLANMAYDI. Ilgari `l.expiryDate || null`
+       yozilardi va tugallanmagan sana JIMGINA `null` ga aylanardi: omborchi
+       `22-10-26` deb yozgan, hujjat «saqlandi» degan, partiya esa MUDDATSIZ
+       yaratilgan bo'lardi. Bunday partiya hech qachon EXPIRED bo'lmaydi,
+       «muddati yaqin» ogohlantirishiga tushmaydi va FEFO da eng oxirida
+       turadi — ya'ni tovar muddatidan keyin ham sotilaveradi.
+
+       Ikki xonali yil endi maydonning o'zida to'ldiriladi
+       (`expandShortYear`), bu yerda esa qolgan hollar to'siladi. */
+    const badLine = (form.lines || []).findIndex((l) => l.expiryDateBad);
+    if (badLine >= 0) {
+      toast?.error(t("supply.badExpiry", { name: form.lines[badLine].productName }));
+      return;
+    }
+    /* Hujjat sanasi BUGUNDAN boshlanadi va bo'shatish hech qachon
+       ataylab qilinmaydi — yarim yozilgan sananing izi, xolos. */
+    if (!form.receivedAt) {
+      toast?.error(t("validation.dateIncomplete"));
+      return;
+    }
     setSaving(true);
     try {
       await supplyApi.createReceipt({
@@ -240,6 +265,10 @@ export default function SupplyPage({ toast }) {
     setRetForm((f) => ({ ...f, lines: f.lines.filter((_, j) => j !== i) }));
 
   const saveReturn = async () => {
+    if (!retForm.returnedAt) {
+      toast?.error(t("validation.dateIncomplete"));
+      return;
+    }
     setSaving(true);
     try {
       /* ⚠ NARX YUBORILMAYDI. U partiyadan olinadi: qaytarilgan dona
@@ -673,8 +702,14 @@ export default function SupplyPage({ toast }) {
                                value={l.quantity} onChange={(e) => setLine(i, "quantity", e.target.value)} /></td>
                     <td><NumField kind="money" className="form-input ek-num" style={{ width: 120 }}
                                value={l.costPrice} onChange={(e) => setLine(i, "costPrice", e.target.value)} /></td>
+                    {/* ⚠ `incomplete` HAM saqlanadi. Bo'sh muddat bu yerda
+                        QONUNIY (idish-tovoq, kanstovar), shuning uchun
+                        qiymatning bo'shligiga qarab to'xtatib bo'lmaydi —
+                        ikkalasini ajratmasa, yarim yozilgan sana muddatsiz
+                        partiyadan farq qilmay qolardi. */}
                     <td><DateField className="form-input ek-num" style={{ width: 150 }}
-                               value={l.expiryDate} onChange={(e) => setLine(i, "expiryDate", e.target.value)} /></td>
+                               value={l.expiryDate}
+                               onChange={(e) => setLine(i, "expiryDate", e.target.value, e.incomplete)} /></td>
                     <td className="mono fw-700">{money((Number(l.quantity) || 0) * (Number(l.costPrice) || 0))}</td>
                     <td>
                       <button className="btn-icon danger" onClick={() => dropLine(i)}>

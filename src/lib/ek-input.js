@@ -346,6 +346,47 @@ export function displayDateToIso(display) {
   return isDate(iso) ? iso : "";
 }
 
+/**
+ * `22-10-26` → `22-10-2026`. Ikki xonali yilni to'ldiradi.
+ *
+ * ⚠ NEGA KERAK BO'LIB QOLDI. Omborchi yaroqlilik muddatini qutining
+ * o'zidagidek — `22-10-26` deb yozadi. Maydon esa sakkizta raqam
+ * kutadi: oltitasi bilan `displayDateToIso` BO'SH qaytarardi,
+ * `dateInputError` esa «hali yozilmoqda» deb XATO HAM BERMASDI.
+ * Natijada maydon TO'LDIRILGANDEK ko'rinardi, qiymati esa yo'q edi.
+ *
+ * Yetkazib beruvchi kirimida bu jimgina muddatsiz partiya yaratardi:
+ * omborchi muddatni kiritdim deb o'ylaydi, tizimda esa muddat yo'q —
+ * ya'ni «muddati yaqin» ogohlantirishi hech qachon chiqmaydi va tovar
+ * muddatidan keyin ham sotilaveradi.
+ *
+ * ⚠ FAQAT FOKUSDAN CHIQQANDA chaqiriladi, har bosishda EMAS. Aks holda
+ * `22-10-2026` ni yozayotgan odam oltinchi raqamda `22-10-2020` ga
+ * aylanib qolardi.
+ *
+ * ⚠ HAR DOIM `20yy`. Bu maydon faqat ish sanalari uchun ishlatiladi —
+ * yaroqlilik muddati, kirim sanasi, xarajat sanasi, hisobot davri.
+ * Ularning hammasi shu asrda. Tug'ilgan sana maydoni loyihada yo'q;
+ * paydo bo'lsa, bu funksiya unga YARAMAYDI.
+ */
+export function expandShortYear(display) {
+  const d = onlyDigits(display);
+  if (d.length !== 6) return display;
+  return `${d.slice(0, 2)}-${d.slice(2, 4)}-20${d.slice(4, 6)}`;
+}
+
+/**
+ * Sana YOZILGAN, lekin tugallanmagan — ya'ni qiymat chiqmaydi.
+ *
+ * ⚠ Bo'sh maydon tugallanmagan EMAS: sana ko'p joyda ixtiyoriy
+ * (muddatsiz tovar, ochiq hisobot davri). Faqat odam raqam yozgan-u,
+ * to'liq sana chiqmagan holat xato hisoblanadi.
+ */
+export function dateIncomplete(display) {
+  const d = onlyDigits(display);
+  return d.length > 0 && !displayDateToIso(expandShortYear(display));
+}
+
 /* ── Umumiy tekshiruvlar (saqlashdan oldin) ──────────────────────────── */
 
 /**

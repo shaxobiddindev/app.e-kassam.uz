@@ -8,6 +8,7 @@ import { Empty, SearchBar } from "../components/ui";
 import FacetFilter from "../components/ek/FacetFilter";
 import DataFilter, { useDataFilter, SortTh, FilterChips } from "../components/ek/DataFilter";
 import VariantMatrixModal from "../components/VariantMatrixModal";
+import BatchExpiryModal from "../components/BatchExpiryModal";
 import Select from "../components/ek/Select";
 import { useAuth } from "../hooks/useAuth";
 import { useDebounced } from "../hooks/useDebounced";
@@ -161,8 +162,12 @@ export default function InventoryPage({ toast }) {
   const [search, setSearch]   = useState("");
   const [modal, setModal]     = useState(null); // null | {productId,...}  (kirim)
   const [correct, setCorrect] = useState(null); // null | batch            (to'g'irlash)
+  const [expiryEdit, setExpiryEdit] = useState(null); // null | batch      (muddat)
   const [qty, setQty]         = useState("");
   const [expiryDate, setExpiryDate] = useState("");
+  /* Sana YOZILGAN-u tugallanmagan. Bo'sh maydondan farq qiladi: muddatsiz
+     tovarda bo'sh qoldirish QONUNIY, yarim yozilgani esa hech qachon. */
+  const [expiryBad, setExpiryBad] = useState(false);
   const [reason, setReason]   = useState("");
   /* Kirim narxi — PARTIYAGA yoziladi (V53). Bo'sh qoldirilsa tovarning
      joriy tan narxi olinadi, ya'ni eski xatti-harakat. */
@@ -631,6 +636,7 @@ export default function InventoryPage({ toast }) {
     setModal(group);
     setQty("");
     setExpiryDate("");
+    setExpiryBad(false);
     setReason("");
     setMarkCodes([]);
     /* ⚠ Tan narx OLDINDAN to'ldirilmaydi. Ilgari to'ldirilsa omborchi
@@ -706,6 +712,15 @@ export default function InventoryPage({ toast }) {
     }
     if (!marked && (!qty || Number(qty) <= 0)) {
       toast.error(t("inv.needQty"));
+      return;
+    }
+    /* ⚠ TUGALLANMAGAN SANA — ALOHIDA XATO. Ilgari u bo'sh maydon bilan
+       bir xil ko'rinardi: `22-10-26` yozgan omborchi «Muddatni kiriting»
+       degan xabarni olardi, maydonda esa aynan o'sha sana turardi — ya'ni
+       tizim yozilgan narsani ko'rmayotganini aytmasdi. Muddatsiz tovarda
+       esa xabar umuman chiqmasdi va partiya muddatsiz yaratilardi. */
+    if (expiryBad) {
+      toast.error(t("validation.dateIncomplete"));
       return;
     }
     if (!expiryDate && productHasExpiry(modal)) {
@@ -1309,6 +1324,21 @@ export default function InventoryPage({ toast }) {
                         <i className="fa-solid fa-sliders" /> {t("inv.correctAction")}
                       </button>
                     )}
+                    {/* ⚠ MUDDAT — QOLDIQDAN ALOHIDA TUGMA. Kirimda sana
+                        xato yozilsa, ilgari uni tuzatishning yo'li yo'q
+                        edi: to'g'irlash faqat qoldiq bilan ishlaydi.
+                        Omborchi ko'pincha aynan shu oynada — kirimdan
+                        keyin — xatoni sezadi, shuning uchun tugma shu
+                        yerda ham turadi. */}
+                    {!branchId && b.inventoryId != null && (
+                      <button className="btn-icon" style={{ marginLeft: 6 }}
+                              title={t("batch.expiryEdit")}
+                              aria-label={`${t("batch.expiryEdit")} — ${detail.productName}`}
+                              onClick={() => fromDetail(() =>
+                                setExpiryEdit({ ...b, productName: detail.productName, unit: detail.unit }))}>
+                        <i className="fa-solid fa-calendar-day" aria-hidden="true" />
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -1444,7 +1474,7 @@ export default function InventoryPage({ toast }) {
             <DateField
               className="form-input ek-num"
               value={expiryDate}
-              onChange={(e) => setExpiryDate(e.target.value)}
+              onChange={(e) => { setExpiryDate(e.target.value); setExpiryBad(!!e.incomplete); }}
             />
             {!productHasExpiry(modal) && (
               <div className="text-muted" style={{ fontSize: 12, marginTop: 4 }}>
@@ -1746,6 +1776,18 @@ export default function InventoryPage({ toast }) {
           shopId={branchId}
           toast={toast}
           onClose={() => setMatrixGroup(null)}
+        />
+      )}
+
+      {/* ⚠ Saqlangandan keyin RO'YXAT yangilanadi: partiya `EXPIRED` ga
+          o'tgan bo'lishi mumkin va eski qatorni ekranda qoldirish
+          omborchiga «o'zgarmadi» degan yolg'on javob berardi. */}
+      {expiryEdit && (
+        <BatchExpiryModal
+          batch={expiryEdit}
+          toast={toast}
+          onClose={() => setExpiryEdit(null)}
+          onSaved={reload}
         />
       )}
     </div>

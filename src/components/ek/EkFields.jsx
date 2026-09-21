@@ -28,6 +28,7 @@ import {
   phoneInput, emailInput, barcodeInput, mxikInput,
   codeInput, usernameInput, nameInput, otpInput, skuInput,
   dateDisplayInput, isoToDisplayDate, displayDateToIso, dateInputError,
+  expandShortYear, dateIncomplete,
 } from "../../lib/ek-input";   // ⚠ ilova ichidagi yo'l (sync-tokens `src/lib/` ga qo'yadi)
 import { t } from "../../lib/ek-i18n";
 import { unitDecimals } from "../../lib/ek-labels";
@@ -311,10 +312,14 @@ export const SkuField = masked("SkuField", plain(skuInput), {
    teng-emasligiga qaraladi: teng bo'lsa — o'zimiz yozganmiz.
    ══════════════════════════════════════════════════════════════════════════ */
 export const DateField = forwardRef(function DateField(
-  { className = "form-input ek-num", value, onChange, name, style, ...rest }, ref
+  { className = "form-input ek-num", value, onChange, name, style, onBlur, ...rest }, ref
 ) {
   const nativeRef = useRef(null);
   const [draft, setDraft] = useState(null);
+  /* Maydon bir marta tark etilganmi. Tugallanmagan sana haqida FAQAT
+     shundan keyin gapiriladi — yozayotgan odamga «to'liq emas» deyish
+     har bosishda takrorlanadigan va foydasiz shovqin. */
+  const [left, setLeft] = useState(false);
 
   useEffect(() => {
     if (draft !== null && displayDateToIso(draft) === (value || "")) return;
@@ -330,12 +335,37 @@ export const DateField = forwardRef(function DateField(
 
      Faqat TO'LIQ yozilganda tekshiriladi: «3» ni yozgan odamga darrov
      «noto'g'ri» deyish yozishga xalaqit berardi. */
-  const invalid = dateInputError(display);
+  /* ⚠ IKKI XIL XATO, IKKI XIL MATN. «32-09-2026» — bunday kun yo'q.
+     «22-10-2» — sana yozilgan-u, tugallanmagan. Ilgari ikkinchisi
+     UMUMAN xato sanalmasdi: maydon to'ldirilgandek turardi, qiymati
+     esa bo'sh edi va omborchi buni hech qanday yo'l bilan bilolmasdi.
+     Bitta matn bilan ham bo'lmaydi — «bunday sana yo'q» deyilsa, odam
+     yozganini o'chirib qaytadan yozishga tushardi, aslida esa faqat
+     ikkita raqam yetishmayotgan bo'lardi. */
+  const badDate = dateInputError(display);
+  const partial = left && dateIncomplete(display);
+  const invalid = badDate || partial;
 
-  const handle = (e) => {
-    const masked = dateDisplayInput(e.target.value);
+  const emit = (masked) => {
     setDraft(masked);
-    onChange?.({ target: { value: displayDateToIso(masked), name } });
+    /* ⚠ `incomplete` — hodisaga QO'SHIMCHA xossa. Saqlash tugmasi
+       shu belgiga qarab to'xtaydi: `value` ning bo'shligi yetarli
+       emas, chunki bo'sh sana ko'p joyda QONUNIY (muddatsiz tovar).
+       Mavjud chaqiruvlar faqat `e.target.value` ni o'qiydi, ya'ni
+       qo'shimcha xossa ularga xalaqit bermaydi. */
+    onChange?.({ target: { value: displayDateToIso(masked), name },
+                 incomplete: dateIncomplete(masked) });
+  };
+
+  const handle = (e) => emit(dateDisplayInput(e.target.value));
+
+  /* Fokusdan chiqqanda ikki xonali yil to'ldiriladi: `22-10-26`
+     → `22-10-2026` (`expandShortYear` izohiga qarang). */
+  const handleBlur = (e) => {
+    setLeft(true);
+    const full = expandShortYear(display);
+    if (full !== display) emit(dateDisplayInput(full));
+    onBlur?.(e);
   };
 
   return (
@@ -349,6 +379,7 @@ export const DateField = forwardRef(function DateField(
         maxLength={10}
         value={display}
         onChange={handle}
+        onBlur={handleBlur}
         name={name}
         {...rest}
       />
@@ -369,11 +400,24 @@ export const DateField = forwardRef(function DateField(
         tabIndex={-1}
         aria-hidden="true"
         value={/^\d{4}-\d{2}-\d{2}$/.test(value || "") ? value : ""}
-        onChange={(e) => { setDraft(null); onChange?.({ target: { value: e.target.value, name } }); }}
+        /* ⚠ `incomplete: false` OSHKORA yuboriladi. Usiz xossa
+           `undefined` bo'lardi va chaqiruvchi eski `true` ni saqlab
+           qolardi: odam `22-10-2` yozib, keyin kalendardan sana
+           tanlaganda maydon TO'G'RI, saqlash esa hamon to'silgan
+           bo'lardi va sababi ko'rinmasdi. */
+        onChange={(e) => {
+          setDraft(null);
+          setLeft(false);
+          onChange?.({ target: { value: e.target.value, name }, incomplete: false });
+        }}
       />
       {invalid && (
         <span className="ek-date__err" role="alert">
-          <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" /> {t("validation.dateInvalid")}
+          <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />{" "}
+          {/* ⚠ Kalit HISOBLANMAYDI, ikkalasi ham MATN bo'lib turadi:
+              `check-locales` `t("...")` ni qidiradi va hisoblangan kalitni
+              ko'rmaydi — ikkala yozuv ham «o'lik» deb belgilanardi. */}
+          {badDate ? t("validation.dateInvalid") : t("validation.dateIncomplete")}
         </span>
       )}
     </span>

@@ -55,6 +55,7 @@ export const AUDIT_ACTIONS = [
 
   /* ── Ombor ── */
   "STOCK_TAKE_CLOSE", "STOCK_TAKE_CANCEL", "GOODS_RECEIPT",
+  "BATCH_EXPIRY_CHANGE",
   "TRANSFER_SEND", "TRANSFER_RECEIVE", "TRANSFER_CANCEL",
 
   /* ── Pul ── */
