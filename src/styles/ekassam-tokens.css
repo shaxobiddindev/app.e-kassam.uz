@@ -66,6 +66,12 @@
   --ek-success-800: #117A31;
   --ek-danger-50:   #FEF3F2;  --ek-danger-500:  #F04438;  --ek-danger-600:  #D92D20;  --ek-danger-700:  #B42318;
   --ek-warning-50:  #FFF4ED;  --ek-warning-500: #FB7A2A;  --ek-warning-600: #F76B15;  --ek-warning-700: #C4500A;
+  /* ⚠ 800 — MAYDA YOZUV uchun (V75). `700` och sariq fonda 4.32
+     beradi, talab esa 4.5: 11px qalin nishon yozuvi chegaradan
+     sal past qolardi. `800` da 5.63. Katta yozuvda `700` yetadi va
+     u tegilmagan — ranglar sonini oshirish o'rniga aniq bir vazifaga
+     bitta qadam qo'shildi. */
+  --ek-warning-800: #A84208;
   --ek-info-50:     #EAF6FE;  --ek-info-500:    #17A0E8;  --ek-info-600:    #0B84D6;  --ek-info-700:    #0764A8;
 
   /* ===== ROL RANGLARI (Egasi / Admin / Kassir / Omborchi / Superadmin) ===== */
@@ -148,11 +154,7 @@
   --dur-fast: 120ms; --dur-base: 180ms; --dur-slow: 260ms;
 
   /* ===== Z-QATLAM ===== */
-  /* ⚠ QATLAMLAR. `--z-modal` HAR QANDAY oyna uchun YAGONA qiymat: ikki
-     oyna orasidagi tartibni raqam emas, ochilish ketma-ketligi hal
-     qiladi (`lib/modal-stack.js`). Ekran klaviaturasi oyna USTIDA
-     bo'lishi shart — u aynan oynadagi maydonga yozish uchun ochiladi. */
-  --z-sticky: 100; --z-drawer: 200; --z-modal: 600; --z-osk: 900; --z-toast: 1000;
+  --z-sticky: 100; --z-drawer: 200; --z-modal: 300; --z-toast: 400;
 }
 
 /* --- QORONGʻI REJIM ------------------------------------------------------
@@ -296,6 +298,11 @@ body {
   --bg-warning-subtle: var(--ek-warning-50);
   --bg-warning-hover:  #FFE6D5;
   --fg-warning:        var(--ek-warning-700);
+  /* ⚠ MAYDA YOZUV uchun sariq (V75). Yorug' temada u QORONG'I,
+     qorong'ida esa OCH bo'lishi kerak: bitta qat'iy rang ikkala temada
+     ishlamaydi — biri fonda yo'qoladi. `--fg-warning` katta yozuv
+     uchun qoladi va tegilmagan. */
+  --fg-warning-strong: var(--ek-warning-800);
   --border-warning:    #FDBE8C;
 
   --bg-brand-hover:    var(--ek-blue-700);
@@ -310,6 +317,7 @@ body {
   --ek-amber-50:   var(--ek-warning-50);
   --ek-amber-200:  #FDBE8C;
   --ek-amber-700:  var(--ek-warning-700);
+  --ek-amber-800:  var(--ek-warning-800);
   --ek-red-50:     var(--ek-danger-50);
   --ek-red-200:    #FDA29B;
   --ek-red-500:    var(--ek-danger-500);
@@ -343,6 +351,7 @@ body {
   --fg-success:        var(--ek-green-400);
   --fg-danger:         #FF8A80;
   --fg-warning:        var(--ek-warning-500);
+  --fg-warning-strong: var(--ek-amber-200);
   --border-success:    rgba(53, 200, 99, .34);
   --border-danger:     rgba(240, 68, 56, .38);
   --border-warning:    rgba(251, 122, 42, .38);

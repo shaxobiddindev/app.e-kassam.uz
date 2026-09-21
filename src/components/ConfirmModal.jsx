@@ -85,7 +85,7 @@ export default function ConfirmModal({
         {/* ⚠ `pre-line`: uzun tasdiq matnlari (masalan hisobni o'chirish)
             abzaslarga bo'linadi. Usiz `\n` yo'qolib, hammasi bitta
             bloka aylanardi va o'qilmasdi. */}
-        <div style={{ fontSize: 15, lineHeight: 1.6, color: "var(--text-main)", whiteSpace: "pre-line" }}>
+        <div style={{ fontSize: 15, lineHeight: 1.6, color: "var(--fg-primary)", whiteSpace: "pre-line" }}>
           {message}
         </div>
       </div>

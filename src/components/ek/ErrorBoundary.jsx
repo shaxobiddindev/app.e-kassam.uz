@@ -47,7 +47,7 @@ class ErrorBoundary extends Component {
         minHeight: "60vh", gap: 14,
       }}>
         <i className="fa-solid fa-triangle-exclamation"
-           style={{ fontSize: 44, color: "var(--warn, #E0A82E)" }} aria-hidden="true" />
+           style={{ fontSize: 44, color: "var(--fg-warning)" }} aria-hidden="true" />
         <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>{t("err.title")}</h2>
         <p style={{ maxWidth: 460, opacity: 0.7, lineHeight: 1.6, margin: 0 }}>
           {t("err.desc")}
@@ -76,7 +76,7 @@ class ErrorBoundary extends Component {
           <pre style={{
             marginTop: 8, padding: 12, borderRadius: 8, fontSize: 12,
             whiteSpace: "pre-wrap", wordBreak: "break-word",
-            background: "var(--bg-soft, rgba(127,127,127,0.12))",
+            background: "var(--bg-sunken)",
           }}>{String(error?.message || error)}</pre>
         </details>
       </div>

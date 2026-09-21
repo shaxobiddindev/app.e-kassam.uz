@@ -201,7 +201,7 @@ td.num, th.num { text-align: right; font-family: var(--font-mono); font-variant-
   gap: 9px;
   min-height: var(--hit-min);
   padding: 6px 12px 6px 6px;
-  border: 1.5px solid var(--border-default);
+  border: 1.5px solid var(--border-subtle);
   border-radius: 999px;
   background: var(--bg-surface);
   color: var(--fg-secondary);
@@ -269,7 +269,7 @@ td.num, th.num { text-align: right; font-family: var(--font-mono); font-variant-
   gap: 9px;
   padding: 10px 14px;
   border-radius: var(--r-md);
-  border: 1.5px solid var(--border-default);
+  border: 1.5px solid var(--border-subtle);
   background: var(--bg-sunken);
   color: var(--fg-secondary);
   font-size: 12.5px;
@@ -359,8 +359,8 @@ td.num, th.num { text-align: right; font-family: var(--font-mono); font-variant-
      kichraytirilganda pastki qirra joyida qoladi, ya'ni ko'rinadigan
      bo'lak faqat siljishdan hosil bo'ladi va u aniq: har qatlam 8px. */
   transform-origin: bottom center;
-  transform: translateY(calc(var(--depth) * 8px)) scale(calc(1 - var(--depth) * 0.04));
-  opacity: calc(1 - var(--depth) * 0.3);
+  transform: translateY(calc(var(--depth, 0) * 8px)) scale(calc(1 - var(--depth, 0) * 0.04));
+  opacity: calc(1 - var(--depth, 0) * 0.3);
   transition: transform var(--dur-base) var(--ease-out),
               opacity   var(--dur-base) var(--ease-out);
 }

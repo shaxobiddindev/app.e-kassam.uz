@@ -9,6 +9,24 @@
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
+/* ── Z-QATLAM — SHU ILOVAGA XOS ─────────────────────────────────────────────
+   ⚠ QATLAMLAR. `--z-modal` HAR QANDAY oyna uchun YAGONA qiymat: ikki
+   oyna orasidagi tartibni raqam emas, ochilish ketma-ketligi hal
+   qiladi (`lib/modal-stack.js`). Ekran klaviaturasi oyna USTIDA
+   bo'lishi shart — u aynan oynadagi maydonga yozish uchun ochiladi.
+
+   ⚠ NEGA SHU YERDA, TOKENLAR FAYLIDA EMAS (2026-09-21). Ilgari bu qator
+   `styles/ekassam-tokens.css` NUSXASIGA yozilgan edi — ya'ni umumiy
+   manbadan ajralib ketgan yagona farq shu edi va aynan u tufayli
+   tokenlar fayli uchala ilovada uch xil bo'lib qolgandi. `--z-osk`
+   faqat kassa ilovasida bor (ekran klaviaturasi boshqa panellarda
+   yo'q), shuning uchun uning joyi — ilovaning o'z uslubi. */
+:root {
+  --z-modal: 600;
+  --z-osk:   900;
+  --z-toast: 1000;
+}
+
 /* ── ESKI O'ZGARUVCHILAR → SEMANTIK ALIASLAR ────────────────────────────────
    Loyihada 50 KB dan ortiq ishlaydigan CSS bor. Uni bir zumda qayta yozish
    o'rniga eski nomlar semantik aliaslarga bog'landi: bitta joyda o'zgartirish
@@ -1410,7 +1428,7 @@ select.form-input { cursor: pointer; }
 /* Bo'lim raqami — tovar kodidagi bilan bir xil ko'rinish: u kassada
    `*4` bo'lib teriladigan AYNAN o'sha raqam. */
 .cat-code { display: inline-block; padding: 1px 7px; border-radius: 6px;
-            background: var(--bg-subtle); border: 1px solid var(--border);
+            background: var(--bg-sunken); border: 1px solid var(--border);
             font-weight: 800; letter-spacing: .02em; }
 
 .grid-2  { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -1436,7 +1454,7 @@ select.form-input { cursor: pointer; }
   font: inherit; color: var(--fg-brand); font-weight: 700;
   text-decoration: underline; text-underline-offset: 2px;
 }
-.ek-linkbtn:hover:not(:disabled) { color: var(--fg-brand-strong, var(--fg-brand)); }
+.ek-linkbtn:hover:not(:disabled) { color: var(--ek-blue-700); }
 .ek-linkbtn:disabled { opacity: .6; cursor: progress; text-decoration: none; }
 
 /* Qarz to'lovidagi tez tugmalar («Hammasi», «Yarmi») — V47. */
@@ -2435,7 +2453,7 @@ img.logo--dark { display: none; }
   display: flex; align-items: center; gap: 8px;
   width: 100%; min-height: var(--hit-min);
   margin-bottom: 12px; padding: 0 12px;
-  border: 1px dashed var(--border-default); border-radius: var(--r-md);
+  border: 1px dashed var(--border-subtle); border-radius: var(--r-md);
   background: none; color: var(--fg-secondary);
   font-size: 13px; font-weight: 600; cursor: pointer;
 }
@@ -2690,7 +2708,7 @@ img.logo--dark { display: none; }
   border-top: 1px solid var(--border-subtle);
   box-shadow: 0 -8px 24px rgb(0 0 0 / .14);
   padding: 8px 10px calc(10px + env(safe-area-inset-bottom, 0px));
-  animation: oskUp var(--dur-normal, .18s) var(--ease-out);
+  animation: oskUp var(--dur-base) var(--ease-out);
   -webkit-user-select: none; user-select: none;
 }
 @keyframes oskUp { from { transform: translateY(100%); } to { transform: none; } }
@@ -3050,8 +3068,8 @@ img.logo--dark { display: none; }
    bir tomonga undardi va javobning qiymati tushardi. */
 .pt-debt-btns { display: flex; gap: 10px; width: 100%; margin-top: 4px; }
 .pt-debt-btns .pt-btn { flex: 1; }
-.pt-ok  { color: var(--success, #16a34a); font-weight: 600; }
-.pt-bad { color: var(--warning, #d97706); font-weight: 600; }
+.pt-ok  { color: var(--fg-success); font-weight: 600; }
+.pt-bad { color: var(--fg-warning); font-weight: 600; }
 .pt-logout { margin-top: 4px; min-height: 44px; font-size: var(--fs-sm); }
 .pt-error {
   margin-top: 14px; padding: 10px 14px; border-radius: var(--r-md);
@@ -3392,7 +3410,7 @@ img.logo--dark { display: none; }
    ayblagandek bo'lardi. Lekin u e'tibor talab qiladi — shuning uchun
    chapdagi qalin chiziq. */
 .cu-debt {
-  border-left: 4px solid var(--warning, #d97706);
+  border-left: 4px solid var(--bg-warning);
   gap: 12px; align-items: stretch; text-align: left;
 }
 .cu-debt__head {
@@ -3475,7 +3493,7 @@ img.logo--dark { display: none; }
   background: transparent; color: var(--fg-secondary); cursor: pointer;
   font-family: var(--font-sans); font-size: var(--fs-sm); font-weight: 700;
 }
-.cu-seg__btn.active { background: var(--bg-page); color: var(--fg-primary); box-shadow: var(--sh-sm); }
+.cu-seg__btn.active { background: var(--bg-surface); color: var(--fg-primary); box-shadow: var(--sh-sm); }
 
 /* Do'konlar ro'yxati */
 .cu-list { list-style: none; display: grid; gap: 8px; }
@@ -5135,7 +5153,7 @@ body.osk-open .mark-modal {
   position: absolute; top: 6px; inset-inline-end: 6px;
   padding: 8px 11px; border-radius: 10px; pointer-events: none;
   background: var(--bg-surface); border: 1px solid var(--border);
-  box-shadow: var(--shadow-md, 0 6px 20px rgba(0,0,0,.12));
+  box-shadow: var(--sh-md);
   font-size: 12px; min-width: 150px;
 }
 .chart__tip b { display: block; margin-bottom: 4px; }
@@ -5462,7 +5480,7 @@ body.osk-open .mark-modal {
   display: flex; align-items: center; justify-content: space-between;
   flex-wrap: wrap; gap: 12px;
   padding: 10px 0; margin: -4px 0 0;
-  background: var(--bg-page, var(--bg-surface));
+  background: var(--bg-surface);
 }
 .dash__left { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
 .dash__period {
@@ -6456,8 +6474,8 @@ button.stk__c:hover { background: var(--bg-hover); }
   flex: 0 0 auto;
   padding: 3px 9px;
   border-radius: 999px;
-  background: var(--primary-soft, rgba(37, 99, 235, .12));
-  color: var(--primary, #2563eb);
+  background: var(--bg-brand-subtle);
+  color: var(--fg-brand);
   font-size: 12px;
   font-weight: 700;
   white-space: nowrap;
@@ -6485,7 +6503,7 @@ button.stk__c:hover { background: var(--bg-hover); }
 .lbl-card         { position: relative; display: flex; flex-direction: column;
                     align-items: stretch; gap: 6px; padding: 10px;
                     border: 1px solid var(--border); border-radius: 12px;
-                    background: var(--bg-card); cursor: pointer; text-align: start;
+                    background: var(--bg-surface); cursor: pointer; text-align: start;
                     min-height: 176px; }
 .lbl-card:hover   { border-color: var(--border-brand); }
 .lbl-card.is-on   { border-color: var(--bg-brand); box-shadow: 0 0 0 1px var(--bg-brand) inset; }
@@ -6508,7 +6526,7 @@ button.stk__c:hover { background: var(--bg-hover); }
 .lbl-row      { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
 .lbl-row > *  { min-width: 0; }
 .lbl-add      { padding: 12px; border: 1px solid var(--border); border-radius: 10px;
-                background: var(--bg-subtle); }
+                background: var(--bg-sunken); }
 .lbl-summary  { display: flex; flex-direction: column; gap: 4px; font-weight: 600; }
 /* Chiqarilgan qator ko'rinadi, lekin diqqatni tortmaydi: ish
    QOLGANLARIDA. */
@@ -6520,7 +6538,7 @@ button.stk__c:hover { background: var(--bg-hover); }
 .lbl-preview__zoom  { display: flex; gap: 4px; margin-inline-start: auto; }
 
 .lbl-preview__stage { display: flex; justify-content: center; padding: 18px;
-                      background: var(--bg-subtle); border: 1px solid var(--border);
+                      background: var(--bg-sunken); border: 1px solid var(--border);
                       border-radius: 10px; overflow: auto; }
 /* ⚠ Yorliqning foni HAR DOIM oq — yuqoridagi izohga qarang. */
 .lbl-preview__paper { background: #fff; box-shadow: 0 1px 6px rgba(0,0,0,.18);
@@ -6528,7 +6546,7 @@ button.stk__c:hover { background: var(--bg-hover); }
 .lbl-preview__paper svg { display: block; }
 
 .lbl-calib        { display: flex; flex-direction: column; gap: 8px; padding: 12px;
-                    background: var(--bg-subtle); border: 1px solid var(--border);
+                    background: var(--bg-sunken); border: 1px solid var(--border);
                     border-radius: 10px; margin-bottom: 10px; }
 .lbl-calib__card  { height: 54px; border: 2px solid var(--bg-brand); border-radius: 6px;
                     display: flex; align-items: center; justify-content: center;
@@ -6540,9 +6558,9 @@ button.stk__c:hover { background: var(--bg-hover); }
                  font-size: 13px; }
 .lbl-warn li   { display: flex; gap: 8px; align-items: flex-start; }
 /* ⚠ RANG YOLG'IZ SIGNAL EMAS: har qatorda belgi ham, matn ham bor. */
-.lbl-warn--ok  { background: var(--bg-success-soft, var(--bg-subtle));
+.lbl-warn--ok  { background: var(--bg-success-subtle);
                  color: var(--fg-success); border: 1px solid var(--border); }
-.lbl-warn--bad { background: var(--bg-danger-soft, var(--bg-subtle));
+.lbl-warn--bad { background: var(--bg-danger-subtle);
                  color: var(--fg-danger); border: 1px solid var(--fg-danger); }
 
 /* ─── Shablon tahrirlagich (F4) ───────────────────────────────────── */
@@ -6568,7 +6586,7 @@ button.stk__c:hover { background: var(--bg-hover); }
 .lbl-issue          { display: flex; gap: 6px; align-items: flex-start;
                       font-size: 12px; color: var(--fg-secondary); }
 .lbl-issue--bad     { color: var(--fg-danger); font-weight: 700; }
-.lbl-warn--soft     { background: var(--bg-subtle); color: var(--fg-secondary);
+.lbl-warn--soft     { background: var(--bg-sunken); color: var(--fg-secondary);
                       border: 1px solid var(--border); }
 
 /* ── G6: «shablondan farq qiladi» ───────────────────────────────────
@@ -6579,15 +6597,15 @@ button.stk__c:hover { background: var(--bg-hover); }
                   font-weight: 600; }
 .lbl-diff__undo { display: inline-flex; align-items: center; justify-content: center;
                   width: 28px; height: 28px; padding: 0; border-radius: 6px;
-                  border: 1px solid var(--border); background: var(--bg-card);
+                  border: 1px solid var(--border); background: var(--bg-surface);
                   color: var(--fg-secondary); cursor: pointer; }
 .lbl-diff__undo:hover  { background: var(--bg-hover); color: var(--fg-primary); }
-.lbl-diff__undo:focus-visible { outline: 2px solid var(--fg-accent); outline-offset: 2px; }
+.lbl-diff__undo:focus-visible { outline: 2px solid var(--fg-brand); outline-offset: 2px; }
 
 .lbl-diffbar    { display: flex; align-items: center; justify-content: space-between;
                   gap: 12px; flex-wrap: wrap; margin-bottom: 12px;
                   padding: 8px 12px; border-radius: 8px;
-                  background: var(--bg-subtle); border: 1px solid var(--border);
+                  background: var(--bg-sunken); border: 1px solid var(--border);
                   font-size: 13px; font-weight: 600; color: var(--fg-warning); }
 .lbl-diffbar > span    { display: inline-flex; align-items: center; gap: 8px; }
 
