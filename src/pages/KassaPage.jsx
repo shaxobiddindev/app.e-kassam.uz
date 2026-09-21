@@ -26,6 +26,8 @@ import { FISCAL_UI, moneyBare } from "../config";
 import OfflineBar from "../components/OfflineBar";
 import ShiftBar from "../components/ShiftBar";
 import * as queue from "../lib/ek-offline";
+import * as catalog from "../lib/ek-catalog";
+import { useOnline } from "../hooks/useOnline";
 import * as cartStore from "../lib/ek-cart-store";
 import { PAYMENT_TYPE, paymentLabel } from "../lib/ek-labels";
 import { shortDate, time } from "../lib/ek-format";
@@ -292,6 +294,19 @@ export default function KassaPage({ toast, refreshLowStock }) {
      nusxasi `localStorage` da o'nlab kilobayt joy egallardi va
      brauzer xotirasi to'lganda savatning O'ZI saqlanmay qolardi —
      ya'ni muhimrog'i qurbon bo'lardi. */
+  /* ══ OFLAYN KATALOG ════════════════════════════════════════════════
+     ⚠ «Kassir ekrani internetsiz ishlaydi» qoidasining ikkinchi yarmi.
+     Sotuvni YUBORISH allaqachon oflayn ishlardi; savatni YIG'ISH esa
+     yo'q edi — barkod serverga ketardi va internetsiz kassir
+     «topilmadi» ni ko'rardi.
+
+     ⚠ `cacheOnly` — EKRANDA ROST AYTISH uchun. Keshdan kelgan
+     ro'yxatda qoldiq YO'Q va kassir buni bilishi kerak: aks holda u
+     «omborda bor» deb o'ylab va'da berib qo'yardi. */
+  const online = useOnline();
+  const [cacheOnly, setCacheOnly] = useState(false);
+  const [cacheInfo, setCacheInfo] = useState(null);
+
   const [lastSales, setLastSales] = useState([]);
   const [salesOpen, setSalesOpen] = useState(false);
 
@@ -726,9 +741,60 @@ export default function KassaPage({ toast, refreshLowStock }) {
          ekranga chiqarish shovqin. */
       setSearchNote(list.length === 0 ? (res?.message || "") : "");
       setProducts(list);
-    } catch (_) { /* oflaynda katalog eskicha qoladi */ }
+    } catch (_) {
+      /* ⚠ OFLAYN ZAXIRA. Ilgari bu yerda faqat izoh turardi: «katalog
+         eskicha qoladi». Amalda esa u XOTIRADAGI ro'yxat edi va
+         sahifa yangilanishi bilan yo'qolardi — internetsiz qayta
+         ochilgan kassa BO'SH ekran ko'rsatardi.
+
+         ⚠ FON YANGILANISHIDA TEGILMAYDI (`silent`): kassir bir narsa
+         so'ramagan bo'lsa, ekrandagi ro'yxatni keshdagisiga
+         almashtirish uni sababsiz sakratardi. */
+      if (!silent) {
+        try {
+          const local = await catalog.search(q, {
+            categoryId, favorites: favOnly, limit: 60,
+          });
+          setProducts(local);
+          setCacheOnly(true);
+          setSearchNote("");
+          catalog.info().then(setCacheInfo).catch(() => {});
+        } catch (_e) { /* kesh ham yo'q — ro'yxat eskicha qoladi */ }
+      }
+    }
     finally { if (!silent) setSearching(false); }
   }, [branchId, categoryId, favOnly, filter, flagChanges]);
+
+  /* ══ KATALOGNI KESHGA OLISH ════════════════════════════════════════
+
+     ⚠ QACHON: ochilganda, internet QAYTGANDA, filial almashganda va
+     har o'n daqiqada. Oxirgisi shart: kassa butun kun ochiq turadi va
+     faqat ochilishda yuklansa, kechqurun internet uzilganda kesh
+     ertalabki bo'lardi — kun davomida qo'shilgan tovarlar esa
+     oflaynda «topilmadi» berardi.
+
+     ⚠ O'N DAQIQA ARZON: birinchi marta to'liq yuklanadi, keyin faqat
+     FARQ keladi (`since`) va u odatda bir necha kilobayt.
+
+     ⚠ XATOSI JIM YUTILADI: katalog kelmagani sotuvga xalaqit
+     bermasligi kerak — ilova onlayn ishlashda davom etadi, kesh esa
+     eskicha qoladi. */
+  useEffect(() => {
+    if (!online) return undefined;
+    let alive = true;
+    const run = () => catalog.sync({ shopId: branchId })
+      .then(() => { if (alive) catalog.info().then(setCacheInfo).catch(() => {}); })
+      .catch(() => {});
+    run();
+    const timer = setInterval(run, 10 * 60 * 1000);
+    return () => { alive = false; clearInterval(timer); };
+  }, [online, branchId]);
+
+  /* Internet uzilganda keshning holati darhol ko'rinsin. */
+  useEffect(() => {
+    if (online) { setCacheOnly(false); return; }
+    catalog.info().then(setCacheInfo).catch(() => {});
+  }, [online]);
 
   /* Kategoriya, filtr yoki filial almashsa kesh yaroqsiz — ro'yxat boshqa. */
   useEffect(() => { baseProducts.current = null; }, [branchId, categoryId, favOnly, filter]);
@@ -1194,9 +1260,38 @@ export default function KassaPage({ toast, refreshLowStock }) {
         return;
       }
     } catch (_) {
-      // Oflayn — yuklangan ro'yxatdan qidiramiz.
-      const local = products.find((p) => p.barcode === code);
-      if (local) { addToCart(local, 1); return; }
+      /* ⚠ OFLAYN — KESHDAN QIDIRAMIZ.
+
+         Ilgari bu yerda `products.find((p) => p.barcode === code)`
+         turardi: u faqat EKRANDA turgan 60 qatorga qarardi va
+         faqat ASOSIY barkodni bilardi. Ya'ni qadoq barkodi, do'kon
+         kodi va ro'yxatda ko'rinmayotgan tovar — hammasi
+         «topilmadi» edi.
+
+         ⚠ Javob shakli serverdagi `ScanResponse` bilan bir xil,
+         shuning uchun quyidagi tarmoqlar aynan yuqoridagidek. */
+      try {
+        const r = await catalog.lookup(code);
+        if (r.source === "PRODUCT" || r.source === "PACK") {
+          setCacheOnly(true);
+          catalog.info().then(setCacheInfo).catch(() => {});
+
+          /* Markirovkalangan tovar oflaynda ham DataMatrix so'raydi:
+             oddiy barkod bilan sotilsa server uni rad etardi va xato
+             mijoz ketganidan keyin chiqardi. */
+          if (r.product?.markingGroup) { setMarkModal({ product: r.product }); return; }
+
+          addToCart(r.product, r.source === "PACK" ? (Number(r.quantity) || 1) : 1);
+          if (r.source === "PACK") {
+            toast.info(t("kassa.packAdded", {
+              label: r.packLabel || t("products.packBarcodes"),
+              qty: fmtQty(r.quantity, r.product.unitDecimals),
+              unit: unitLabel(r.product.unit),
+            }));
+          }
+          return;
+        }
+      } catch (_e) { /* kesh ham javob bermadi — pastdagi xabar chiqadi */ }
     }
 
     /* ⚠ AYNAN SHU VOQEA UCHUN OVOZ BOR (V89). Kassir skanerlaganda
@@ -3154,6 +3249,28 @@ export default function KassaPage({ toast, refreshLowStock }) {
                 ⚠ KATEGORIYA QATORI OLIB TASHLANDI — u endi qidiruv
                 yonidagi tanlagich. Butun bir qator (~46px) tovarlar
                 ro'yxatiga qaytdi. */}
+            {/* ══ OFLAYN KATALOG OGOHLANTIRISHI ═══════════════════════
+                ⚠ ROSTNI AYTISH SHART: bu ro'yxat keshdan keldi va
+                unda QOLDIQ YO'Q. Kassir buni bilmasa, «omborda bor»
+                deb o'ylab mijozga va'da berardi.
+
+                ⚠ Rang yolg'iz signal emas (qoida №6): ikonka va
+                yozuv ham bor. */}
+            {(cacheOnly || !online) && (
+              <div className="kassa-offline-note" role="status">
+                <i className="fa-solid fa-cloud-arrow-down" aria-hidden="true" />
+                <span>
+                  {t("kassa.offlineCatalog")}
+                  {cacheInfo?.count ? ` · ${cacheInfo.count}` : ""}
+                </span>
+                {cacheInfo && cacheInfo.freshness !== "fresh" && (
+                  <span className="kassa-offline-note__age">
+                    {t(`kassa.cache.${cacheInfo.freshness}`)}
+                  </span>
+                )}
+              </div>
+            )}
+
             {tilesBusy && products.length === 0 ? (
               <SkeletonTiles count={12} />
             ) : (

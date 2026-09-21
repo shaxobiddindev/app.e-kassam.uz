@@ -1274,6 +1274,12 @@ export default {
   "kassa.reprint": "Повторить чек",
   "kassa.reprintHint": "Печатает последний чек заново",
   "kassa.barcodeNotFound": "Этого штрихкода нет в базе: {code}. Добавьте товар в разделе \"{section}\".",
+
+  /* Oflayn katalog */
+  "kassa.offlineCatalog": "Каталог из кеша — остаток не показывается",
+  "kassa.cache.none": "Кеш ещё не загружен",
+  "kassa.cache.stale": "Старше суток",
+  "kassa.cache.old": "Давно не обновлялся — подключитесь к интернету",
   "kassa.otherBranchCode": "Это внутренний код филиала «{shop}» — здесь такого товара нет",
 
   "hw.title": "Кассовое оборудование",

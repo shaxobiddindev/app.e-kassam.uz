@@ -1332,6 +1332,12 @@ export default {
   "kassa.reprint": "Chekni qayta chiqarish",
   "kassa.reprintHint": "Oxirgi chekni qayta chop etadi",
   "kassa.barcodeNotFound": "Bu barkod bazada yo'q: {code}. Tovarni \"{section}\" bo'limidan qo'shing.",
+
+  /* Oflayn katalog */
+  "kassa.offlineCatalog": "Katalog keshdan — qoldiq ko'rsatilmaydi",
+  "kassa.cache.none": "Kesh hali yuklanmagan",
+  "kassa.cache.stale": "Bir kundan eski",
+  "kassa.cache.old": "Ancha eski — internetga ulaning",
   /* BEGONA FILIAL KODI (V108) — jim «topilmadi» o'rniga sabab. */
   "kassa.otherBranchCode": "Bu «{shop}» filialining ichki kodi — bu yerda bunday tovar yo'q",
 

@@ -1274,6 +1274,12 @@ export default {
   "kassa.reprint": "Reprint receipt",
   "kassa.reprintHint": "Prints the last receipt again",
   "kassa.barcodeNotFound": "This barcode is not in the database: {code}. Add the product under \"{section}\".",
+
+  /* Oflayn katalog */
+  "kassa.offlineCatalog": "Catalogue from cache — stock is not shown",
+  "kassa.cache.none": "The cache has not loaded yet",
+  "kassa.cache.stale": "More than a day old",
+  "kassa.cache.old": "Long out of date — go online",
   "kassa.otherBranchCode": "This is an internal code of \"{shop}\" — no such product here",
 
   "hw.title": "Cash hardware",

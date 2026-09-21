@@ -1224,6 +1224,29 @@ select.form-input { cursor: pointer; }
    ikkinchisi ham e'tibordan qolardi. */
 .ek-note--danger { background: var(--bg-danger-subtle); border-color: var(--border-danger); color: var(--fg-danger); }
 
+/* ══ OFLAYN KATALOG OGOHLANTIRISHI ══════════════════════════════════════
+   Kassa tovarlarni KESHDAN ko'rsatayotganini aytadi. Eng muhimi —
+   qoldiq yo'qligi: kassir buni bilmasa, «omborda bor» deb o'ylab
+   mijozga va'da berardi.
+
+   ⚠ SARIQ, QIZIL EMAS: hech kim xato qilmadi va sotuv ham
+   to'xtamagan — kassa ishlashda davom etadi. Qizil «bugun hal
+   qiling» degani va u bu yerda noto'g'ri kuch berardi.
+
+   ⚠ Ro'yxat ustida, ichida emas: katakchalar orasiga qo'yilsa,
+   kassirning qo'li ostidagi to'rni surib yuborardi. */
+.kassa-offline-note {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin: 0 0 10px; padding: 8px 12px; border-radius: 9px;
+  background: var(--bg-warning-subtle); border: 1px solid var(--border-warning);
+  color: var(--fg-warning); font-size: 12px; font-weight: 700; line-height: 1.4;
+}
+.kassa-offline-note__age {
+  margin-left: auto; font-weight: 600;
+  /* ⚠ `--fg-tertiary` EMAS (qoida 6b): bu o'qilishi kerak bo'lgan matn. */
+  color: var(--fg-secondary);
+}
+
 /* ══ Forma bo'limlari (mahsulot formasi) ═════════════════════════════════
    Mahsulotda endi 20 dan ortiq maydon bor. Ularni bitta uzun ro'yxatda
    ko'rsatish — do'kon egasini har safar keraksiz maydonlar orasidan

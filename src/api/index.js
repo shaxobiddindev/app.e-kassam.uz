@@ -469,6 +469,25 @@ export const productApi = {
                   if (opts.archived) p.set("archived", "true");
                   return request(`/products?${p}`);
                 },
+  /**
+   * OFLAYN KATALOG (kassa keshi).
+   *
+   * ⚠ `getAll` DAN BOSHQA YO'L: javob ixcham (kassa ekraniga kerak
+   * bo'lgani) va QOLDIQSIZ. 12 mingta tovarli do'konda `getAll`
+   * ~10 MB bo'lardi va har tovarga qoldiq hisoblanardi.
+   *
+   * ⚠ `since` — qisman sinxronizatsiya. Javobdagi `syncedAt` ni
+   * keyingi safar shu yerga qaytariladi; sana SERVERNIKI, chunki
+   * kassa qurilmasining soati qochgan bo'lishi mumkin.
+   */
+  offlineCatalog: (since, shopId) => {
+                  const p = new URLSearchParams();
+                  if (since) p.set("since", since);
+                  if (shopId) p.set("shopId", shopId);
+                  const qs = p.toString();
+                  return request(`/products/offline${qs ? `?${qs}` : ""}`);
+                },
+
   /** Kassa ro'yxati — kategoriya va «tez tovarlar» filtri bilan. */
   search:       (q = "", page = 0, size = 30, shopId, opts = {}) => {
                   const p = new URLSearchParams({ q, page, size });
