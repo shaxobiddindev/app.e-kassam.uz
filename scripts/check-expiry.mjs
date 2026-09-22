@@ -82,9 +82,22 @@ const day = (offset) => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 };
 
+/* ⚠ FIKSTURA MUDDATI — 15-YANVAR, `day(30)` EMAS.
+
+   Ilgari `day(30)` turardi va sinov BIR KUN ishlab, ertasiga yiqildi:
+   2026-09-21 da u 2026-10-21 berardi, 2026-09-22 da esa 2026-10-22 —
+   ya'ni sinov yozadigan `22-10-26` bilan AYNAN BIR XIL. Oyna esa
+   o'zgarmagan sanani haqli ravishda rad etadi va «Saqlash» o'chiq
+   qoladi. Sinov buni ilovaning nosozligi deb ko'rsatardi.
+
+   ⚠ HAR QANDAY `day(N)` shu tuzoqni saqlaydi: u kalendar bilan
+   suriladi va yiliga bir marta yozilgan sanaga tushadi. Shuning uchun
+   KUNI boshqa: sinov 22-, 31- va 01-kunlarni yozadi, fikstura esa
+   15-kun. Yil ahamiyatsiz — to'qnashuv MUMKIN EMAS. */
 const BATCH = {
   inventoryId: 501, productId: 1, productName: "Sut 1L", unit: "DONA",
-  quantity: 10, costPrice: 6000, expiryDate: day(30),
+  quantity: 10, costPrice: 6000,
+  expiryDate: `${new Date().getFullYear() + 1}-01-15`,
   expired: false, status: "ACTIVE", archivedAt: null, createdAt: new Date().toISOString(),
 };
 
@@ -179,6 +192,44 @@ function sameColor(a, b) {
   return rgb(a) === rgb(b);
 }
 
+/* ⚠ QAT'IY KUTISH EMAS, SHARTNI KUTISH. Birinchi variantda
+   `wait(100)` va `wait(400)` turardi: lokalda 13/13 o'tdi, CI da esa
+   uchta tekshiruv yiqildi. Sekinroq mashinada React qayta chizishga
+   ulgurmaydi va «Saqlash» hali O'CHIQ turganda bosiladi — bosish hech
+   narsa qilmaydi, so'rov ketmaydi, sinov esa «so'rov yo'q» deb
+   ilovani ayblaydi. Qat'iy kutish har doim kimningdir mashinasida
+   qisqa bo'lib chiqadi. */
+const until = async (fn, what, ms = 8000) => {
+  const till = Date.now() + ms;
+  while (Date.now() < till) {
+    if (await fn()) return true;
+    await wait(50);
+  }
+  throw new Error("kutib bo'lmadi: " + what);
+};
+
+/** Sababni yozadi va «Saqlash» YOQILGUNCHA kutadi. */
+async function fillReason(page, text) {
+  await page.type('.modal-body input[type="text"].form-input', text);
+  try {
+    await until(
+      () => page.$eval(".modal-footer .btn-primary", (b) => !b.disabled).catch(() => false),
+      "«Saqlash» yoqilishi",
+    );
+  } catch (e) {
+    /* ⚠ YIQILGANDA OYNANING HOLATI YOZILADI. Usiz sinov faqat «kutib
+       bo'lmadi» derdi va sabab har safar qo'lda qidirilardi. */
+    const dump = await page.evaluate(() => ({
+      inputs: [...document.querySelectorAll(".modal-body input")]
+        .map((el) => ({ type: el.getAttribute("type"), cls: el.className, val: el.value })),
+      btn: (() => { const b = document.querySelector(".modal-footer .btn-primary");
+                    return b ? { disabled: b.disabled, txt: b.textContent.trim() } : "YO'Q"; })(),
+    })).catch(() => null);
+    console.log("     oyna holati:", JSON.stringify(dump));
+    throw e;
+  }
+}
+
 const shown = (page) => page.$eval(dateInput, (el) => el.value);
 const errText = (page) => page.$eval(".ek-date__err", (el) => el.textContent.trim()).catch(() => null);
 const saveDisabled = (page) =>
@@ -229,10 +280,9 @@ console.log("\n══ C. Serverga ISO sana ketadi ══");
   await openModal(page);
   await type(page, "221026");
 
-  await page.type('.modal-body input[type="text"].form-input', "yorliqda 2026 yozilgan");
-  await wait(100);
+  await fillReason(page, "yorliqda 2026 yozilgan");
   await page.click(".modal-footer .btn-primary");
-  await wait(400);
+  await until(() => sent !== null, "so'rov yuborilishi");
 
   is(sent?.expiryDate === "2026-10-22", "tanada `2026-10-22`",
      sent ? JSON.stringify(sent) : "so'rov yo'q");
@@ -286,12 +336,15 @@ console.log("\n══ E. 428 kelganda bajik so'raladi ══");
   const page = await open();
   await openModal(page);
   await type(page, "221026");
-  await page.type('.modal-body input[type="text"].form-input', "sinov");
-  await wait(100);
+  await fillReason(page, "sinov");
   await page.click(".modal-footer .btn-primary");
-  await wait(500);
 
-  const body = await page.evaluate(() => document.body.innerText);
+  /* 428 kelgach bajik oynasi ochiladi. Uni ham SHART bo'yicha kutamiz. */
+  let body = "";
+  await until(async () => {
+    body = await page.evaluate(() => document.body.innerText);
+    return /[Bb]ajik/.test(body);
+  }, "bajik oynasi").catch(() => {});
   is(/[Bb]ajik/.test(body), "bajik oynasi ochildi — qorovul ulangan");
   await page.close();
   need428 = false;
