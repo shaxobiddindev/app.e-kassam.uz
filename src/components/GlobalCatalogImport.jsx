@@ -168,7 +168,7 @@ export default function GlobalCatalogImport({ onClose, onDone, toast }) {
             </div>
           )}
         </div>
-        <div className="ek-note" style={{ marginTop: 12 }}>
+        <div className="ek-note ek-note--info" style={{ marginTop: 12 }}>
           <i className="fa-solid fa-tag" aria-hidden="true" /> {t("gcat.priceNote")}
         </div>
       </Modal>
@@ -194,7 +194,7 @@ export default function GlobalCatalogImport({ onClose, onDone, toast }) {
         </>
       }
     >
-      <div className="ek-note" style={{ marginBottom: 12 }}>
+      <div className="ek-note ek-note--info" style={{ marginBottom: 12 }}>
         <i className="fa-solid fa-circle-info" aria-hidden="true" /> {t("gcat.hint")}
       </div>
 

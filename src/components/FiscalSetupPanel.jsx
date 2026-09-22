@@ -275,7 +275,7 @@ export default function FiscalSetupPanel({ profile, toast, onSaved }) {
 
       <div style={{ padding: "0 14px 14px" }}>
         {draft && (
-          <div className="ek-note" style={{ display: "block", marginBottom: 12 }}>
+          <div className="ek-note ek-note--info" style={{ display: "block", marginBottom: 12 }}>
             <div className="form-row">
               <label>
                 {t("fiscalSetup.regName")}

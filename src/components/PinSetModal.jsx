@@ -82,7 +82,7 @@ export default function PinSetModal({ onClose, onSaved, toast }) {
         {stage2 ? t("pin.repeat") : t("pin.myPinHint")}
       </p>
 
-      {error && <div className="ek-note ek-note--warn pin-error">{error}</div>}
+      {error && <div className="ek-note ek-note--warning pin-error">{error}</div>}
 
       <PinPad length={length} value={value} disabled={busy} onChange={onChange} />
     </Modal>

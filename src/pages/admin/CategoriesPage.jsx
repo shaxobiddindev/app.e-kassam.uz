@@ -447,7 +447,7 @@ export default function CategoriesPage({ toast }) {
           </FormGroup>
 
           {/* ⚠ Ogohlantirish MATN bilan — rang yolg'iz signal emas. */}
-          <div className="ek-note ek-note--warn" style={{ marginTop: 12 }}>
+          <div className="ek-note ek-note--warning" style={{ marginTop: 12 }}>
             <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />
             <div>{t("cat.mergeReportWarn")}</div>
           </div>
@@ -465,7 +465,7 @@ export default function CategoriesPage({ toast }) {
           maxWidth={860}
         >
           {archived && (
-            <div className="ek-note" style={{ marginBottom: 12 }}>
+            <div className="ek-note ek-note--info" style={{ marginBottom: 12 }}>
               <i className="fa-solid fa-circle-info" aria-hidden="true" />
               <div>{t("cat.archivedHint")}</div>
             </div>

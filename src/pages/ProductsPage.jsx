@@ -968,7 +968,7 @@ export default function ProductsPage({ toast }) {
           ulanish kunida to'ldirishga urinish — bir haftalik ish; ro'yxat
           hoziroq ko'rinib tursa, egasi uni asta-sekin to'ldiradi. */}
       {FISCAL_UI && fiscal && fiscal.totalProducts > 0 && (
-        <div className={`ek-note ${fiscal.incompleteProducts ? "ek-note--warn" : ""}`} style={{ marginBottom: 14 }}>
+        <div className={`ek-note ${fiscal.incompleteProducts ? "ek-note--warning" : "ek-note--info"}`} style={{ marginBottom: 14 }}>
           <i className={`fa-solid ${fiscal.incompleteProducts ? "fa-triangle-exclamation" : "fa-circle-check"}`} />
           <div>
             <div>
@@ -1008,7 +1008,7 @@ export default function ProductsPage({ toast }) {
         )}
 
         {belowOnly && (
-          <div className="ek-note ek-note--warn prod-below-note">
+          <div className="ek-note ek-note--warning prod-below-note">
             <i className="fa-solid fa-arrow-trend-down" aria-hidden="true" />
             <div>{t("products.belowFilter")}</div>
             <button type="button" className="btn btn-outline btn-sm"
@@ -1455,7 +1455,7 @@ export default function ProductsPage({ toast }) {
                 (r) => (r.barcode || "").trim() === (form.barcode || "").trim());
               if (exact) {
                 return (
-                  <div className="ek-note" style={{ marginBottom: 12 }}>
+                  <div className="ek-note ek-note--info" style={{ marginBottom: 12 }}>
                     <i className="fa-solid fa-cloud-arrow-down" aria-hidden="true" />
                     <div style={{ minWidth: 0, flex: 1 }}>
                       <div style={{ fontWeight: 700 }}>{t("gcat.exactTitle")}</div>
@@ -1476,7 +1476,7 @@ export default function ProductsPage({ toast }) {
                 );
               }
               return (
-                <div className="ek-note ek-note--warn" style={{ marginBottom: 12 }}>
+                <div className="ek-note ek-note--warning" style={{ marginBottom: 12 }}>
                   <i className="fa-solid fa-clone" aria-hidden="true" />
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontWeight: 700 }}>{t("gcat.similarTitle")}</div>
@@ -1593,7 +1593,7 @@ export default function ProductsPage({ toast }) {
               </FormGroup>
             </div>
             {priceWarning && (
-              <div className="ek-note ek-note--warn" style={{ marginTop: 4 }}>
+              <div className="ek-note ek-note--warning" style={{ marginTop: 4 }}>
                 <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />
                 <div>{priceWarning}</div>
               </div>

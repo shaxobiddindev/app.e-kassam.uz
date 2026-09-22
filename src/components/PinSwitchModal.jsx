@@ -91,7 +91,7 @@ export default function PinSwitchModal({ onClose, onSwitched, toast }) {
            }>
       <p className="ek-muted pin-hint">{t("pin.switchHint")}</p>
 
-      {error && <div className="ek-note ek-note--warn pin-error">{error}</div>}
+      {error && <div className="ek-note ek-note--warning pin-error">{error}</div>}
 
       <PinPad length={length} value={pin} disabled={busy}
               onChange={(v) => { setError(""); setPin(v); }} />

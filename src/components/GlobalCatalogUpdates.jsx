@@ -95,7 +95,7 @@ export default function GlobalCatalogUpdates({ onClose, onDone, toast }) {
                <i className="fa-solid fa-check" aria-hidden="true" /> {t("common.close")}
              </button>
            }>
-      <div className="ek-note" style={{ marginBottom: 12 }}>
+      <div className="ek-note ek-note--info" style={{ marginBottom: 12 }}>
         <i className="fa-solid fa-circle-info" aria-hidden="true" /> {t("gcat.updHint")}
       </div>
 

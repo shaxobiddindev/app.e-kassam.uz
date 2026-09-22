@@ -262,7 +262,22 @@ td.num, th.num { text-align: right; font-family: var(--font-mono); font-variant-
 /* ── Ogohlantirish/ma'lumot bloki ───────────────────────────────────────
    Ilgari har sahifada inline `#fffbeb` / `#fcd34d` / `#92400e` yozilardi.
    Ular qorong'i rejimda o'qib bo'lmas darajada och sariq bo'lib chiqardi
-   (CLAUDE.md #1: kodda rang yozilmaydi). */
+   (CLAUDE.md #1: kodda rang yozilmaydi).
+
+   ⚠ BU YAGONA TA'RIF (2026-09-22). Kassa ilovasining `styles.css` ida
+   ikkinchisi turardi — ko'k asos va `--warn` nomli variant bilan — va u
+   KEYIN yuklanib g'olib chiqardi. Oqibati: oddiy `.ek-note` kassada
+   ko'k, superadmin panelida kulrang chizilardi; `--warning` kassada,
+   `--warn` esa adminda O'LIK edi. Mos qoida topilmagan klass hech
+   qayerda xato bermaydi — element asosiy uslubda qolaveradi, xolos.
+   Batafsil: `docs/09-CHETLANISHLAR.md` §10ŭ.
+
+   ⚠ ASOS NEYTRAL, KO'K EMAS. Rang — signal (CLAUDE.md #6), shuning
+   uchun u ATAYLAB tanlanishi kerak: `--info` yozilmasa, blok
+   «ma'lumot» deb da'vo qilmaydi. Ilgari kassada asosning o'zi ko'k
+   edi va har qanday izoh brend rangida chiqardi.
+
+   Lug'at: `--info` (ko'k) · `--warning` (sariq) · `--danger` (qizil). */
 .ek-note {
   display: flex;
   align-items: flex-start;

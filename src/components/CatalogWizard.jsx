@@ -143,7 +143,7 @@ export default function CatalogWizard({ onClose, onDone, toast }) {
         </>
       }
     >
-      <div className="ek-note" style={{ marginBottom: 12 }}>
+      <div className="ek-note ek-note--info" style={{ marginBottom: 12 }}>
         <i className="fa-solid fa-circle-info" aria-hidden="true" /> {t("catalog.priceNote")}
       </div>
 

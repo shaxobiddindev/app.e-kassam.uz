@@ -1232,15 +1232,26 @@ select.form-input { cursor: pointer; }
    (qoida 6): son yonida «arxivda» yozuvi turadi. Rangi
    `--fg-secondary` — `--fg-tertiary` oq fonda 2.65:1 va o`qish
    uchun yaramaydi (qoida 6b). */
-.ek-note         { display: flex; gap: 9px; align-items: flex-start; padding: 10px 12px; border-radius: 9px;
-                   background: var(--bg-brand-subtle); border: 1px solid var(--border-brand);
-                   color: var(--fg-brand); font-size: 12px; font-weight: 600; line-height: 1.45; }
-.ek-note--warn   { background: var(--bg-warning-subtle); border-color: var(--border-warning); color: var(--fg-warning); }
-/* ⚠ «Xavfli» variant (V85) — fiskal navbat muddati yaqin bo'lganda.
-   Ogohlantirishdan RANG bilan ajraladi: sariq «ko'rib qo'ying»,
-   qizil esa «bugun hal qiling». Ikkalasi bir xil ko'rinsa,
-   ikkinchisi ham e'tibordan qolardi. */
-.ek-note--danger { background: var(--bg-danger-subtle); border-color: var(--border-danger); color: var(--fg-danger); }
+/* ⚠ `.ek-note` BU YERDA QAYTA ANIQLANMAYDI (2026-09-22). Ilgari
+   aniqlanardi va bu jimgina nosozlik manbai edi:
+
+     umumiy `styles/ek-components.css`  — neytral asos, variant `--warning`
+     shu fayl (KEYIN yuklanadi, g'olib)  — ko'k asos,    variant `--warn`
+
+   Ya'ni oddiy `.ek-note` kassada KO'K, superadmin panelida esa KULRANG
+   chizilardi; `--warning` kassada, `--warn` esa adminda O'LIK edi.
+   Yozilgan klassga mos qoida topilmasa, hech qayerda xato chiqmaydi —
+   element shunchaki asosiy uslubda qoladi. Aynan shu tarzda yangi oyna
+   «e'tibor bering» o'rniga «ma'lumot uchun» bo'lib chizildi va buni
+   sinov emas, SKRINSHOT ko'rsatdi (§10ŭ).
+
+   Endi ta'rif BITTA — `packages/ui/ek-components.css` da, lug'ati:
+   `--info` (ko'k) · `--warning` (sariq) · `--danger` (qizil). Asos
+   NEYTRAL: rang aniq aytilishi kerak, o'z-o'zidan kelmasligi.
+
+   ⚠ Shu sababli bu ilovadagi oddiy `.ek-note` lar `--info` ga
+   o'tkazildi — ular bugungacha ko'k chizilardi va shunday qolishi
+   kerak edi. */
 
 /* ══ OFLAYN KATALOG OGOHLANTIRISHI ══════════════════════════════════════
    Kassa tovarlarni KESHDAN ko'rsatayotganini aytadi. Eng muhimi —

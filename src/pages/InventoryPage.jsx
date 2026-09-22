@@ -1382,14 +1382,14 @@ export default function InventoryPage({ toast }) {
               qattiq amber rang turardi (fon, ramka, matn) va ular
               temaga MOSLASHMASDI: qorong'i rejimda butun panel qora
               bo'lib, shu blok yorqin sariq bo'lib yonardi — panelning
-              yagona moslashmagan elementi. `ek-note--warn` esa
+              yagona moslashmagan elementi. `ek-note--warning` esa
               tokenlardan quriladi va ikkala temada ham to'g'ri chiqadi.
 
               ⚠ Ikonka ham qoladi: rang yolg'iz signal bo'lmaydi
               (CLAUDE.md №6) — rangni ajratmaydigan odam uchun matn va
               belgi qoladi. */}
           {modal.expiredAll && (
-            <div className="ek-note ek-note--warn" style={{ marginBottom: 14 }}>
+            <div className="ek-note ek-note--warning" style={{ marginBottom: 14 }}>
               <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />
               <div>{t("inv.expiredWarn")}</div>
             </div>
@@ -1422,7 +1422,7 @@ export default function InventoryPage({ toast }) {
           {modal.markingGroup ? (
             <div className="form-group">
               <label className="form-label">{`${t("marking.receiveTitle")} *`}</label>
-              <div className="ek-note ek-note--warn" style={{ marginBottom: 10 }}>
+              <div className="ek-note ek-note--warning" style={{ marginBottom: 10 }}>
                 <i className="fa-solid fa-barcode" aria-hidden="true" />
                 <div>{t("marking.required")}</div>
               </div>
@@ -1563,7 +1563,7 @@ export default function InventoryPage({ toast }) {
           }
         >
           {advice.belowCost && (
-            <div className="ek-note ek-note--warn" style={{ marginBottom: 12 }}>
+            <div className="ek-note ek-note--warning" style={{ marginBottom: 12 }}>
               <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />
               <div>{t("inv.adviceBelowCost")}</div>
             </div>
@@ -1576,7 +1576,7 @@ export default function InventoryPage({ toast }) {
               Bitta umumiy xabar bu farqni yo'qotardi va do'kon egasi
               qaysi narxni tuzatishni bilmasdi. */}
           {advice.belowWholesale && (
-            <div className="ek-note ek-note--warn" style={{ marginBottom: 12 }}>
+            <div className="ek-note ek-note--warning" style={{ marginBottom: 12 }}>
               <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />
               <div>{t("inv.adviceBelowWholesale")}</div>
             </div>

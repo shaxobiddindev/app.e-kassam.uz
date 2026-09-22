@@ -111,15 +111,8 @@ export default function BatchExpiryModal({ batch, onClose, onSaved, toast }) {
           amal (tovar javondan ertaroq chiqadi) va uni ham qizil qilish
           ogohlantirishning ma'nosini yo'qotardi: har safar chiqadigan
           ogohlantirish o'qilmay qoladi. */}
-      {/* ⚠ `ek-note--warn`, `--warning` EMAS. Ilovada `.ek-note` IKKI marta
-          aniqlangan: umumiy `styles/ek-components.css` da (neytral asos +
-          `--warning`) va ilovaning `styles.css` ida (ko'k asos + `--warn`).
-          Ikkinchisi KEYIN yuklanadi va g'olib chiqadi, ya'ni `--warning`
-          yozilsa ogohlantirish KO'K bo'lib chiziladi — «e'tibor bering»
-          o'rniga «ma'lumot uchun». Xato hech qayerda bildirmaydi:
-          klass bor, qoida yo'q. Skrinshotdan topildi. */}
       {(direction === "extended" || direction === "cleared") && (
-        <div className="ek-note ek-note--warn" style={{ marginTop: 14 }}>
+        <div className="ek-note ek-note--warning" style={{ marginTop: 14 }}>
           <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />
           <span>{t(direction === "cleared" ? "batch.expiryClearWarn" : "batch.expiryExtendWarn")}</span>
         </div>

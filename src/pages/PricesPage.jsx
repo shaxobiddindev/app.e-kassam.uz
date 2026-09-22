@@ -197,7 +197,7 @@ export default function PricesPage({ toast }) {
               «hammasiga −20%» deb qo'yib, bir necha tovar o'zgarmaganini
               faqat oy oxirida bilib qolardi. */}
           {preview.blockedCount > 0 && (
-            <div className="ek-note ek-note--warn" style={{ margin: "0 16px 12px" }}>
+            <div className="ek-note ek-note--warning" style={{ margin: "0 16px 12px" }}>
               <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />
               <div>{t("price.blockedCount").replace("{n}", preview.blockedCount)}</div>
             </div>

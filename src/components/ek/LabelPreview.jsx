@@ -90,7 +90,7 @@ export default function LabelPreview({ template, product, ctx = {}, onCalibrated
       {/* ⚠ KALIBRLANMAGANLIGI AYTILADI. Rang yolg'iz signal emas —
           matn bilan. */}
       {!calibrated && (
-        <div className="ek-note ek-note--warn">
+        <div className="ek-note ek-note--warning">
           <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />
           <div>{t("lbl.notCalibrated")}</div>
         </div>

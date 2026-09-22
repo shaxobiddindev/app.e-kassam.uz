@@ -95,7 +95,7 @@ export default function FiscalPanel({ toast }) {
       </div>
 
       <div style={{ padding: 16 }}>
-        <div className={`ek-note ${problem ? "ek-note--warn" : ""}`}>
+        <div className={`ek-note ${problem ? "ek-note--warning" : "ek-note--info"}`}>
           <i className={`fa-solid ${status.enabled ? "fa-circle-check" : "fa-triangle-exclamation"}`} />
           <div>
             <div>
@@ -115,7 +115,7 @@ export default function FiscalPanel({ toast }) {
             Shu sababli yosh sonlardan YUQORIDA va rangli turadi. */}
         {status.queueAlert && status.queueAlert !== "NONE" && (
           <div className={`ek-note ${status.queueAlert === "CRITICAL"
-                            ? "ek-note--danger" : "ek-note--warn"}`}
+                            ? "ek-note--danger" : "ek-note--warning"}`}
                style={{ marginTop: 12 }}>
             <i className="fa-solid fa-clock" />
             <div>
