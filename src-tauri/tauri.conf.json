@@ -31,8 +31,8 @@
         "default-src": "'self'",
         "connect-src": "'self' https://api.e-kassam.uz http://localhost:8080 ipc: http://ipc.localhost",
         "img-src": "'self' data: blob: https://api.e-kassam.uz http://localhost:8080 http://localhost:8099",
-        "style-src": "'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com",
-        "font-src": "'self' data: https://cdnjs.cloudflare.com https://fonts.gstatic.com",
+        "style-src": "'self' 'unsafe-inline'",
+        "font-src": "'self' data:",
         "script-src": "'self'"
       }
     }

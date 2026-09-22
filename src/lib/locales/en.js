@@ -2401,6 +2401,7 @@ export default {
   "kbd.customer": "Pick a customer",
   "kbd.newCust": "Add a customer",
   "kbd.discount": "Discount amount",
+  "kbd.fullscreen": "Fullscreen — on and off",
   "kbd.help": "Open this list",
   /* ── Clothing attributes (V57) ────────────────────────────────────── */
   "clothing.target": "For whom",

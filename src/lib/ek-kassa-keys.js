@@ -106,6 +106,13 @@ export const KASSA_KEYS = [
   { id: "discount",  combo: "Alt+C",    scope: "pay",  label: "kbd.discount" },
 
   /* ── Umumiy ──────────────────────────────────────────────────────── */
+  /* ⚠ F11 NI `KassaPage` EMAS, `Layout` BAJARADI: to'liq ekran holati
+     o'sha yerda yashaydi (yon menyu va sarlavha bilan birga). Jadvalda
+     esa turishi SHART — yordam oynasi va tugma yonidagi belgi shu
+     ro'yxatdan chiziladi, ya'ni jadvalda bo'lmagan yorliq kassirga
+     ko'rinmasdi. `run` ro'yxatida `fullscreen` yo'q va bu xato emas:
+     mos kelmagan `id` `KassaPage` da jimgina o'tkazib yuboriladi. */
+  { id: "fullscreen", combo: "F11",     scope: "any",  label: "kbd.fullscreen" },
   { id: "help",      combo: "?",        scope: "any",  label: "kbd.help" },
 ];
 

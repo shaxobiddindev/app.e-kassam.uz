@@ -2516,6 +2516,7 @@ export default {
   "kbd.customer": "Mijozni tanlash",
   "kbd.newCust": "Yangi mijoz qo'shish",
   "kbd.discount": "Chegirma summasi",
+  "kbd.fullscreen": "To'liq ekran — yoqish va o'chirish",
   "kbd.help": "Shu ro'yxatni ochish",
   /* ── Kiyim atributlari (V57) ──────────────────────────────────────── */
   "clothing.target": "Kimga",

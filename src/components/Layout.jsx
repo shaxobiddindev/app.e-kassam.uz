@@ -4,6 +4,8 @@ import { LOGO_URL, LOGO_DARK_URL, MARK_URL, initials } from "../utils";
 import { roleLabel } from "../lib/ek-labels";
 import { hasRole, topRole, roleSet } from "../lib/ek-roles";
 import { isMobileApp } from "../lib/ek-desktop";
+import { setFullscreen, onFullscreenLeft } from "../lib/ek-fullscreen";
+import { KEY_BY_ID, matches as keyMatches, keyLabel } from "../lib/ek-kassa-keys";
 import { useT } from "../lib/ek-i18n";
 import { weekdayDate } from "../lib/ek-format";
 import { useSuspiciousCount } from "../hooks/useSuspiciousCount";
@@ -361,10 +363,49 @@ export default function Layout({ user, isAdmin, lowStockItems, lowStockCount, on
   };
 
   const isKassaPage = location.pathname === "/sale";
-  const toggleKassaFullscreen = () => setKassaFullscreen(v => !v);
+
+  /* ══ TO'LIQ EKRAN ══════════════════════════════════════════════════
+     Rejim ikki qatlamdan iborat: ilovaning o'z yon menyusi va sarlavhasi
+     yashiriladi (CSS), ekranning o'zi esa haqiqatan to'liq ekranga
+     o'tadi (`ek-fullscreen.js`). Ilgari FAQAT birinchisi bor edi va
+     kassir tepada brauzerning manzil qatorini ko'rib turardi.
+
+     ⚠ HAQIQIY to'liq ekran SHU YERDA so'raladi, `useEffect` da EMAS.
+     Brauzer `requestFullscreen()` ni faqat foydalanuvchi harakatining
+     ichida bajaradi; effekt esa keyinroq va alohida chaqiriladi —
+     u yerdan so'ralgani JIMGINA rad etilardi. */
+  const applyFullscreen = (on) => { setKassaFullscreen(on); setFullscreen(on); };
+  const toggleKassaFullscreen = () => applyFullscreen(!kassaFullscreen);
 
   // Boshqa sahifaga o'tganda fullscreen dan chiqish
   if (!isKassaPage && kassaFullscreen) setKassaFullscreen(false);
+
+  /* Yuqoridagi qator holatni render paytida tushiradi (sahifa bir lahza
+     ham menyusiz chizilmasin uchun), ekranni esa shu effekt qaytaradi.
+     Chiqishga foydalanuvchi harakati talab qilinmaydi — faqat kirishga. */
+  useEffect(() => { if (!kassaFullscreen) setFullscreen(false); }, [kassaFullscreen]);
+
+  /* ⚠ F11 FAQAT KASSA SAHIFASIDA tortib olinadi. Boshqa sahifalarda
+     rejim yo'q va tugmani brauzerdan olishning ma'nosi ham yo'q —
+     hisobot ko'rayotgan egasi F11 ni bosganda odatdagi natijani kutadi.
+     Yorliqning o'zi `ek-kassa-keys.js` jadvalidan: yordam oynasi ham
+     shu jadvaldan chiziladi, ya'ni ikkalasi hech qachon ajralmaydi. */
+  useEffect(() => {
+    if (!isKassaPage) return;
+    const onKey = (e) => {
+      if (!keyMatches(e, KEY_BY_ID.fullscreen.combo)) return;
+      e.preventDefault();
+      applyFullscreen(!kassaFullscreen);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isKassaPage, kassaFullscreen]);
+
+  /* Brauzer to'liq ekrandan O'ZI chiqarsa (Esc yoki brauzer tugmasi) —
+     yon menyuni qaytaramiz. Aks holda ekran oddiy holatga qaytgan-u,
+     ilova hamon «to'liq ekran» deb o'ylab turardi va kassir menyusiz
+     qolardi. */
+  useEffect(() => onFullscreenLeft(() => setKassaFullscreen(false)), []);
 
   /* Sarlavha ham, tab qatori ham YAGONA `NAV` ro'yxatidan chiqadi —
      ilgari buning uchun alohida `PAGE_TITLES` jadvali bor edi va u
@@ -405,7 +446,8 @@ export default function Layout({ user, isAdmin, lowStockItems, lowStockCount, on
             </button>
           )}
           {isKassaPage && (
-            <button className="btn btn-sm kassa-fs-topbar-btn" onClick={toggleKassaFullscreen} title={t("layout.fullscreen")}>
+            <button className="btn btn-sm kassa-fs-topbar-btn" onClick={toggleKassaFullscreen}
+                    title={`${t("layout.fullscreen")} (${keyLabel("fullscreen")})`}>
               <i className="fa-solid fa-expand" aria-hidden="true" /> {t("layout.fullscreen")}
             </button>
           )}
@@ -447,7 +489,9 @@ export default function Layout({ user, isAdmin, lowStockItems, lowStockCount, on
 
       {/* Kassa fullscreen exit button */}
       {kassaFullscreen && (
-        <button className="kassa-fs-exit" onClick={toggleKassaFullscreen} title={t("layout.fullscreenExit")} aria-label={t("layout.fullscreenExit")}>
+        <button className="kassa-fs-exit" onClick={toggleKassaFullscreen}
+                title={`${t("layout.fullscreenExit")} (${keyLabel("fullscreen")})`}
+                aria-label={t("layout.fullscreenExit")}>
           <i className="fa-solid fa-compress" />
         </button>
       )}
