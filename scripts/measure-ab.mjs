@@ -74,12 +74,23 @@ async function once() {
   return m;
 }
 
-DIR = A; await once();   // isitish
+/* ⚠ QAYTA URINISH. Puppeteer ba'zan navigatsiyani «LifecycleWatcher
+   disposed» bilan uzadi — bu o'lchanayotgan sahifaga aloqasi yo'q,
+   brauzerning o'z tebranishi. Usiz butun yurish (o'n raund, to'rt
+   daqiqa) bitta uzilishdan bekor bo'lardi. */
+async function onceSafe() {
+  for (let t = 0; t < 3; t++) {
+    try { return await once(); }
+    catch (e) { if (t === 2) throw e; console.log(`     (qayta urinish: ${String(e.message).slice(0, 50)})`); }
+  }
+}
+
+DIR = A; await onceSafe();   // isitish
 
 const res = { A: [], B: [] };
 for (let i = 0; i < ROUNDS; i++) {
-  DIR = A; const a = await once();
-  DIR = B; const b = await once();
+  DIR = A; const a = await onceSafe();
+  DIR = B; const b = await onceSafe();
   res.A.push(a); res.B.push(b);
   console.log(`  ${i + 1}.  A  LCP ${(a.lcp / 1000).toFixed(2)}s  FCP ${(a.fcp / 1000).toFixed(2)}s` +
               `   │   B  LCP ${(b.lcp / 1000).toFixed(2)}s  FCP ${(b.fcp / 1000).toFixed(2)}s`);
