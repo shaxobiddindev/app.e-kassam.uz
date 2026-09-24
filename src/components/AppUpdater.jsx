@@ -23,7 +23,19 @@ import { isDesktop } from "../lib/ek-desktop";
        bezovtalik tufayli odamlar yangilanishni butunlay o'chirib qo'yadi).
 
    ⚠ Brauzerda bu komponent HECH NARSA qilmaydi: `checkUpdate()` darhol
-   `null` qaytaradi. Veb versiyani Netlify o'zi yangilaydi.
+   `null` qaytaradi.
+
+   ⚠ ILGARI SHU YERDA «veb versiyani Netlify o'zi yangilaydi» deb
+   yozilgan edi va bu YARIM HAQIQAT bo'lib chiqdi (2026-09-24 shikoyati).
+   Netlify yangi fayllarni beradi, lekin OCHIQ TURGAN sahifa eski
+   `assets/...js` nomlarini so'rashda davom etadi — kassa monobloki esa
+   kunlab yopilmaydi. Yangi reliz eski fayllarni o'chiradi va kassir
+   «Savdo» ga o'tganda «Failed to fetch dynamically imported module»
+   oladi.
+
+   Veb tomondagi haqiqiy yechim shu komponentda emas: `lib/ek-lazy.js`
+   eskirgan chunkni sezib, sahifani BIR MARTA yangilaydi. Sabab va
+   ketma-ketlik o'sha faylda batafsil yozilgan.
    ══════════════════════════════════════════════════════════════════════════ */
 
 /** Ishga tushgach birinchi tekshiruvgacha. Kassa ochilishini sekinlashtirmaydi. */

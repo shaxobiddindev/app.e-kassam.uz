@@ -23,6 +23,7 @@ import MobileApp from "./mobile/MobileApp";
 import { hasRole, roleSet } from "./lib/ek-roles";
 import ErrorBoundary, { RouteErrorBoundary } from "./components/ek/ErrorBoundary";
 import { P } from "./lib/ek-pages";
+import { lazySafe } from "./lib/ek-lazy";
 import { Progress } from "./components/ek/Loading";
 import { BadgeProvider } from "./context/BadgeProvider";
 import { KeyboardProvider } from "./context/KeyboardProvider";
@@ -30,13 +31,13 @@ import { KeyboardProvider } from "./context/KeyboardProvider";
    hisobotlar) bu ekranlarni HECH QACHON chizmaydi va aksincha — lekin
    ular bitta kirish to'plamida turgani uchun kassir har ochilishda
    mijoz kabinetini ham yuklab olardi. Do'kondagi internet esa sekin. */
-const CustomerPortal = lazy(() => import("./portal/CustomerPortal"));
+const CustomerPortal = lazySafe(() => import("./portal/CustomerPortal"), "CustomerPortal");
 /* Mijoz ilovasi (V37) — telefon ilovasida kirish ekrani endi shu */
-const CustomerLogin = lazy(() => import("./customer/CustomerLogin"));
-const CustomerApp = lazy(() => import("./customer/CustomerApp"));
+const CustomerLogin = lazySafe(() => import("./customer/CustomerLogin"), "CustomerLogin");
+const CustomerApp = lazySafe(() => import("./customer/CustomerApp"), "CustomerApp");
 /* Mijoz ilovasi BRAUZERDA (V40) — Telegram OIDC dan qaytish ham shu yerda */
-const CustomerWeb = lazy(() => import("./customer/CustomerWeb"));
-const DisplayPage = lazy(() => import("./pages/DisplayPage"));
+const CustomerWeb = lazySafe(() => import("./customer/CustomerWeb"), "CustomerWeb");
+const DisplayPage = lazySafe(() => import("./pages/DisplayPage"), "DisplayPage");
 import { getAppToken } from "./customer/customerApi";
 
 // ⚠ Tilni URL dan olish MODUL TANASIDA, `replaceState` dan OLDIN bo'lishi

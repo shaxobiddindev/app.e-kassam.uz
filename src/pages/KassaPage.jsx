@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspense } from "react";
+import { lazySafe } from "../lib/ek-lazy";
 import { t } from "../lib/ek-i18n";
 import { productApi, customerApi, saleApi, securityApi, shopApi, mediaApi, fiscalApi, loyaltyApi, reportApi } from "../api";
 import { useBadge } from "../context/BadgeProvider";
@@ -41,7 +42,7 @@ import { printReceipt, openDrawer, printDebtReceipt, printerHealth } from "../li
 import { getSettings } from "../lib/ek-hw-settings";
 
 /* Jamg'arma kvitansiyasi (V66) — kassada kamdan-kam ochiladi, alohida bo'lakda. */
-const PaymentReceipt = lazy(() => import("../portal/PaymentReceipt"));
+const PaymentReceipt = lazySafe(() => import("../portal/PaymentReceipt"), "PaymentReceipt");
 import FacetFilter from "../components/ek/FacetFilter";
 import { KASSA_KEYS, keyLabel, resolve as resolveKey } from "../lib/ek-kassa-keys";
 import { settle, payType as payTypeOf, restFor, savingsMax } from "../lib/ek-payment";

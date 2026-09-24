@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, Suspense, lazy } from "react";
+import { lazySafe } from "../lib/ek-lazy";
 import { t } from "../lib/ek-i18n";
 import { customerApi } from "../api";
 import { BranchSelector } from "../components";
@@ -19,7 +20,7 @@ import { asArray } from "../lib/ek-array";
 /* ⚠ SEKIN YUKLANADI: to'lov cheki kunda bir necha marta ochiladi,
    mijozlar sahifasi esa doim. Chekni asosiy bo'lakka qo'shish uni
    hech qachon ochmaydigan kassirga ham yuklatardi. */
-const PaymentReceipt = lazy(() => import("../portal/PaymentReceipt"));
+const PaymentReceipt = lazySafe(() => import("../portal/PaymentReceipt"), "PaymentReceipt");
 import DebtPayModal from "../components/DebtPayModal";
 import StatementModal from "../components/StatementModal";
 import ReversePaymentModal from "../components/ReversePaymentModal";

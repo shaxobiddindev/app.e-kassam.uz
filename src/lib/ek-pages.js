@@ -1,30 +1,7 @@
-import { lazy } from "react";
-
-/* ══════════════════════════════════════════════════════════════════════════
-   MARSHRUTLARNI BO'LISH (2026-08-27)
-
-   ⚠ MUAMMO. Ilova BITTA yaxlit to'plam edi — 793 KB xom, 234 KB gzip.
-   Kassir kassa ekranini ochish uchun hisobotlar, mijozlar, sozlamalar va
-   superadmin sahifalarini ham yuklab olardi. Do'kondagi sekin internetda
-   bu birinchi ochilishni cho'zib yuborardi.
-
-   ⚠ ENDI HAR SAHIFA ALOHIDA CHUNK, LEKIN OFLAYN BUZILMAYDI. Bu ilova
-   oflaynda ishlashi kerak (sotuv navbati IndexedDB da) va service worker
-   `cache-first` strategiyasida ishlaydi:
-
-       bir marta yuklangan chunk → keshda, oflaynda ochiladi
-       hech qachon yuklanmagani → keshda YO'Q, oflaynda OCHILMAYDI
-
-   Ya'ni yolg'iz bo'lish yangi teshik ochardi: kassir tarmoqsiz qolganda
-   «Hisobotlar» ga o'tolmasdi. Shu sababli ilova bo'shashi bilan qolgan
-   chunklar FONDA oldindan yuklanadi — birinchi ochilish yengil qoladi,
-   tarmoq uzilganda esa hammasi allaqachon keshda bo'ladi.
-
-   ⚠ IMPORT YO'LI BITTA JOYDA. Lazy chaqiruv ham, oldindan yuklash ham
-   AYNAN shu funksiyalarni ishlatadi. Ikki joyda yozilganda Vite ularni
-   ikkita alohida chunk deb hisoblashi va oldindan yuklash boshqa faylni
-   tortishi mumkin edi — kesh to'lardi-yu, foyda bermasdi.
-   ══════════════════════════════════════════════════════════════════════════ */
+/* ⚠ `lazySafe` ALOHIDA MODULDA: sahifalar (`KassaPage`) ham uni
+   ishlatadi va shu fayldan import qilsalar aylanma bog'lanish
+   hosil bo'lardi (`ek-pages` → sahifa → `ek-pages`). */
+import { lazySafe } from "./ek-lazy.js";
 
 const LOADERS = {
   Dashboard:    () => import("../pages/DashboardPage"),
@@ -55,7 +32,7 @@ const LOADERS = {
 
 /** `<P.Kassa toast={toast} />` — marshrutlarda shu ko'rinishda ishlatiladi. */
 export const P = Object.fromEntries(
-  Object.entries(LOADERS).map(([name, load]) => [name, lazy(load)])
+  Object.entries(LOADERS).map(([name, load]) => [name, lazySafe(load, name)])
 );
 
 /**
