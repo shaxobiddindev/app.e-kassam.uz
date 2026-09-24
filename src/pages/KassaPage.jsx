@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspense } from "react";
 import { lazySafe } from "../lib/ek-lazy";
+import { charge, gross, roundingOf } from "../lib/ek-money";
 import { t } from "../lib/ek-i18n";
 import { productApi, customerApi, saleApi, securityApi, shopApi, mediaApi, fiscalApi, loyaltyApi, reportApi } from "../api";
 import { useBadge } from "../context/BadgeProvider";
@@ -727,6 +728,11 @@ export default function KassaPage({ toast, refreshLowStock }) {
    * (oflayn uchun allaqachon shunday edi).
    */
   const doSearch = useCallback(async (q, { silent = false } = {}) => {
+    /* Raqamsiz `*` — kod rejimi boshlangan, lekin qidiriladigan kod hali
+       yo'q. Server uni rad etadi; sabab `handleSearchChange` izohida.
+       Bu yerda ham, chunki kategoriya almashganda ham `doSearch(search)`
+       chaqiriladi va maydonda aynan `*` turgan bo'lishi mumkin. */
+    if (q === "*") { setProducts([]); return; }
     if (!silent) setSearching(true);
     try {
       const res = await productApi.search(q, 0, 60, branchId,
@@ -742,7 +748,18 @@ export default function KassaPage({ toast, refreshLowStock }) {
          ekranga chiqarish shovqin. */
       setSearchNote(list.length === 0 ? (res?.message || "") : "");
       setProducts(list);
-    } catch (_) {
+    } catch (err) {
+      /* ⚠ SERVER SO'ROVNI RAD ETDI (4xx) — BU OFLAYN EMAS (2026-09-24).
+         Ilgari HAR QANDAY xato oflayn zaxiraga olib borardi va kassa
+         internet ishlab turgan paytda «faqat kesh» holatiga tushardi.
+         Jonli serverda 3 kunda 81 marta shunday bo'ldi: kassir `*` ni
+         terib to'xtardi, yolg'iz `*` ketardi va server uni rad etardi.
+         Tarmoq ishlayapti — to'g'ri javob serverning o'z sababi. */
+      if (!silent && err?.status >= 400 && err?.status < 500) {
+        setProducts([]);
+        setSearchNote(err.message || "");
+        return;
+      }
       /* ⚠ OFLAYN ZAXIRA. Ilgari bu yerda faqat izoh turardi: «katalog
          eskicha qoladi». Amalda esa u XOTIRADAGI ro'yxat edi va
          sahifa yangilanishi bilan yo'qolardi — internetsiz qayta
@@ -891,6 +908,12 @@ export default function KassaPage({ toast, refreshLowStock }) {
       setSearchNote("");
       setProducts([]);
       clearTimeout(debounceRef.current);
+      /* ⚠ RAQAMSIZ `*` YUBORILMAYDI (2026-09-24). Kassir yulduzchani
+         terib, raqamni 180 ms dan kechroq yozsa, so'rov yolg'iz `*` bilan
+         ketardi — server uni rad etadi (kod kamida bitta raqam) va
+         jonli serverda 3 kunda 81 marta shunday bo'ldi. Hali qidiriladigan
+         narsa yo'q: ro'yxat bo'sh turadi, raqam yozilishi bilan so'rov ketadi. */
+      if (code === "*") return;
       debounceRef.current = setTimeout(() => doSearch(code), 180);
       return;
     }
@@ -1646,7 +1669,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
         action: "CART_ITEM_REMOVE",
         targetType: "PRODUCT",
         targetId: item.id,
-        note: `${item.name} x${item.qty} = ${money(item.salePrice * item.qty)}`,
+        note: `${item.name} x${item.qty} = ${money(gross(item.salePrice, item.qty))}`,
       }));
     } catch (err) {
       if (!err?.cancelled) toast.error(err.message);
@@ -1706,7 +1729,11 @@ export default function KassaPage({ toast, refreshLowStock }) {
   };
   /* ⚠ «Oraliq jami» — chegirmalardan OLDINGI summa (server ham shunday
      hisoblaydi): chek chegirmasi foizini aynan shundan olish kerak. */
-  const subtotal = cart.reduce((sum, i) => sum + Math.floor(i.salePrice * i.qty), 0);
+  /* ⚠ `charge()` ORQALI, `Math.floor(narx * miqdor)` EMAS (2026-09-24).
+     JavaScript'da 135 000 × 2.002 = 270269.99999999994 va pastga
+     qirqilganda bir so'm yo'qolardi: kassa 593 645, server 593 646
+     hisoblab, bitta chek 24 marta rad etildi (`ek-money.js` izohi). */
+  const subtotal = cart.reduce((sum, i) => sum + charge(i.salePrice, i.qty), 0);
   /* ══ ⚠ YAXLITLASHDA MIJOZGA BERIB YUBORILGAN SUMMA (V80) ═══════════
      Tortiladigan tovarda pul o'zi kasr bo'ladi: 6.667 kg × 7 500 =
      50 002.5 so'm. Tiyin muomalada yo'q va do'kon shu chekni UMUMAN
@@ -1717,8 +1744,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
      — `Money.charge`), yarim so'm esa mijozda qoladi. Farq chekda
      alohida qator bo'lib chiqadi va hisobotda jamlanadi: yashirilgan
      yaxlitlash — o'g'irlikning eng sekin turi. */
-  const rounding = cart.reduce(
-    (sum, i) => sum + (i.salePrice * i.qty - Math.floor(i.salePrice * i.qty)), 0);
+  const rounding = cart.reduce((sum, i) => sum + roundingOf(i.salePrice, i.qty), 0);
   /* Qator chegirmalari jami — to'lov oynasida alohida ko'rsatiladi. */
   const lineDiscounts = cart.reduce((sum, i) => sum + (Number(i.discount) || 0), 0);
   /* ⚠ QATOR CHEGIRMALARIDAN KEYINGI summa (V48) — chek chegirmasi
@@ -2196,7 +2222,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
       shop: shopName,
       items: cart.map((i) => ({
         name: i.name, qty: i.qty, unit: i.unit,
-        price: i.salePrice, sum: i.salePrice * i.qty - (Number(i.discount) || 0),
+        price: i.salePrice, sum: gross(i.salePrice, i.qty) - (Number(i.discount) || 0),
       })),
       total, discount: discountNum + lineDiscounts,
       customer: customer ? { name: customer.fullName || customer.name, bonus: tier?.bonusBalance } : null,

@@ -129,5 +129,97 @@ console.log("\n\u2500\u2500 7. \u26a0 Optimizator ham BUTUN so'm beradi \u2500\u
     : bad("\u26a0 kasr chegirma qaytdi — server uni rad etardi", bads.slice(0, 3).join(" | "));
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   SUZUVCHI NUQTA BIR SO'MNI YEYARDI (2026-09-24)
+
+   Jonli serverda bitta chek 24 marta rad etildi: «593645 ≠ 593646».
+   Qoida (pastga yaxlitlash) ikki tomonda ham to'g'ri edi, lekin kassa
+   ko'paytmani suzuvchi nuqtada olardi: 135 000 × 2.002 = 270269.99999999994
+   va `Math.floor` uni 270 269 qilardi. Server `BigDecimal` da 270 270.
+
+   ⚠ YUQORIDAGI SINOVLAR BUNI USHLAMAGAN: ular kasr qismi BOR qatorlarni
+   tekshiradi (50 002.5). Xato esa aniq BUTUN chiqishi kerak bo'lgan
+   ko'paytmada bo'ladi — ikkilik kasrda u butundan sal KAM bo'lib qoladi.
+   ══════════════════════════════════════════════════════════════════════════ */
+const { charge, gross, roundingOf } = await import("../src/lib/ek-money.js");
+
+console.log("\n── 8. ⚠ Jonli chek: 593 645 ≠ 593 646 ──");
+{
+  const cart = [
+    { salePrice: 64000, qty: 2.734 },   // SATO Shokolod
+    { salePrice: 53000, qty: 2.8 },     // Bisraro Shokolod
+    { salePrice: 135000, qty: 2.002 },  // Twix — shu qator bir so'mni yo'qotardi
+  ];
+  eq(135000 * 2.002 < 270270, true, "tuzoq hamon joyida: JS da 135 000 × 2.002 < 270 270");
+  eq(charge(135000, 2.002), 270270, "⚠ 135 000 × 2.002 = 270 270, 270 269 emas");
+  eq(cart.reduce((s, l) => s + charge(l.salePrice, l.qty), 0), 593646,
+     "⚠ chek jami server bilan bir xil — 593 646");
+  eq(cart.reduce((s, l) => s + lineNet(l), 0), 593646,
+     "`lineNet` ham 593 646 — chegirma taqsimoti shu bazadan");
+  eq(gross(135000, 2.002), 270270, "`gross` shovqinsiz — chekda 270 270.00");
+  eq(roundingOf(135000, 2.002), 0, "yaxlitlash qatori — 0, sun'iy 0.00000000006 emas");
+}
+
+console.log("\n── 9. Yaxlitlash qoidasi o'zgarmadi ──");
+{
+  eq(charge(7500, 6.667), 50002, "6.667 kg × 7 500 — hamon 50 002 (mijoz foydasiga)");
+  eq(roundingOf(7500, 6.667), 0.5, "yarim so'm mijozda — 0.5");
+  eq(gross(7500, 6.667), 50002.5, "aniq qiymat — 50 002.5");
+  eq(charge(7500, -6.667), -50003, "manfiy miqdor ham PASTGA — serverdagi FLOOR kabi");
+  eq(charge(null, 2), 0, "narx yo'q — 0, NaN emas");
+}
+
+console.log("\n── 10. ⚠ Tasodifiy 20 000 qator: `charge` mustaqil aniq hisob bilan teng ──");
+{
+  /* Mustaqil «hakam»: narx va miqdor MATNDAN butun songa aylantiriladi —
+     `ek-money` ichidagi usuldan boshqa yo'l bilan. Ikkalasi bir xil
+     natija bermasa, xato qaysi birida ekanini shu yerda ko'ramiz. */
+  const exactFloor = (price, qty) => {
+    const [pi, pf = ""] = price.toFixed(2).split(".");
+    const [qi, qf = ""] = qty.toFixed(3).split(".");
+    const p = BigInt(pi + pf.padEnd(2, "0"));    // tiyin
+    const q = BigInt(qi + qf.padEnd(3, "0"));    // gramm
+    return Number((p * q) / 100000n);            // musbat — qirqish = pastga
+  };
+  const mism = [];
+  for (let k = 0; k < 20000; k++) {
+    const price = Math.round(Math.random() * 500000 * 100) / 100;   // 2 kasr
+    const qty = Math.round(Math.random() * 50 * 1000) / 1000;       // 3 kasr
+    if (charge(price, qty) !== exactFloor(price, qty)) mism.push(`${price} × ${qty}`);
+  }
+  mism.length === 0
+    ? ok("20 000 ta qatorda farq yo'q")
+    : bad(`⚠ ${mism.length} ta qatorda farq`, mism.slice(0, 3).join(" | "));
+}
+
+console.log("\n── 11. ⚠ `narx × miqdor` faqat `ek-money.js` da ──");
+{
+  /* Manba kodni tekshiramiz: kimdir yangi joyda yana `salePrice * qty`
+     yozsa, xato qaytadi va bu sinov uni ushlaydi. Aynan shunday yetti
+     joy topilgan edi — ekran, chek, mijoz displeyi, chegirma. */
+  const fs = await import("node:fs");
+  const path = await import("node:path");
+  const { fileURLToPath } = await import("node:url");
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "src");
+  const walk = (d, out = []) => {
+    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+      const p = path.join(d, e.name);
+      if (e.isDirectory()) walk(p, out);
+      else if (/\.(js|jsx)$/.test(e.name)) out.push(p);
+    }
+    return out;
+  };
+  const RE = /(salePrice|\bprice)\s*\*\s*(Number\()?\s*[a-zA-Z_.]*(qty|quantity)/;
+  const found = walk(root)
+    .filter((f) => !f.endsWith(path.join("lib", "ek-money.js")))
+    .flatMap((f) => fs.readFileSync(f, "utf8").split("\n")
+      .map((line, i) => ({ f, i, line }))
+      .filter(({ line }) => RE.test(line) && !/^\s*(\*|\/\/|\/\*)/.test(line)))
+    .map(({ f, i }) => `${path.relative(root, f)}:${i + 1}`);
+  found.length === 0
+    ? ok("manbada `narx * miqdor` yo'q — hammasi `charge`/`gross` orqali")
+    : bad("⚠ `ek-money` dan tashqarida narx × miqdor", found.join(", "));
+}
+
 console.log(`\n  ${pass} o'tdi, ${fail} yiqildi`);
 process.exit(fail ? 1 : 0);

@@ -75,6 +75,8 @@ const browser = await puppeteer.launch({
 });
 
 const pageErrors = [];
+/** Soxta serverga kelgan har bir qidiruv so'zi — kod rejimi sinovi uchun. */
+const searches = [];
 let bad = 0;
 const ok = (m) => console.log("  ✅ " + m);
 const no = (m, got) => { bad++; console.log(`  ❌ ${m}  →  ${got}`); };
@@ -103,8 +105,21 @@ page.on("request", (r) => {
     body = { success: true, data: PROFILE };
   } else if (/\/products\/search$/.test(url.pathname)) {
     const q = (url.searchParams.get("q") || "").trim().toLowerCase();
-    body = { success: true,
-             data: q ? PRODUCTS.filter((p) => p.name.includes(q)) : PRODUCTS };
+    searches.push(q);
+    /* ⚠ KOD REJIMI — serverdagi qoidaning o'zi (`CODE_QUERY =
+       ^\*\d{1,12}$`). `*999` ni ATAYLAB rad etamiz: server so'rovni
+       rad etganda kassa buni oflayn deb o'ylamasligini tekshirish uchun. */
+    if (q.startsWith("*")) {
+      if (!/^\*\d{1,12}$/.test(q) || q === "*999") {
+        return r.respond({ status: 400, contentType: "application/json", headers: CORS,
+          body: JSON.stringify({ success: false,
+            message: "Kod faqat raqamdan iborat bo'lishi kerak: *425" }) });
+      }
+      body = { success: true, data: [] };
+    } else {
+      body = { success: true,
+               data: q ? PRODUCTS.filter((p) => p.name.includes(q)) : PRODUCTS };
+    }
   }
   return r.respond({ status: 200, contentType: "application/json",
                      headers: CORS, body: JSON.stringify(body) });
@@ -246,7 +261,41 @@ console.log("\n── 5. Chek yopilgach qidiruv tozalanadi ──");
   else ok("sotuv yakunida qidiruv tozalanadi va katalog to'liq o'qiladi");
 }
 
-console.log("\n── 6. Sahifa xatolari ──");
+/* ══ 6. KOD REJIMI: YOLG'IZ `*` KASSANI OFLAYN QILMAYDI ══════════════════
+
+   ⚠ JONLI XATO (2026-09-24): 3 kunda 81 marta. Kassir `*` ni terib
+   to'xtasa, 180 ms dan keyin yolg'iz `*` ketardi, server uni rad etardi,
+   kassa esa HAR QANDAY xatoni tarmoq uzilishi deb bilib, «faqat kesh»
+   holatiga o'tib ketardi — internet ishlab turgan paytda.
+
+   Ikki qavat tekshiriladi:
+   · yolg'iz `*` umuman yuborilmaydi;
+   · server so'rovni rad etsa (4xx) — bu OFLAYN EMAS: banner chiqmaydi,
+     serverning o'z sababi ko'rsatiladi. */
+console.log("\n── 6. Kod rejimi: yolg'iz `*` kassani oflayn qilmaydi ──");
+{
+  const offline = () => page.evaluate(() => !!document.querySelector(".kassa-offline-note"));
+
+  await typeQ("*");
+  await new Promise((r) => setTimeout(r, 800));   // 180 ms kechikishdan ancha ko'p
+  if (searches.includes("*")) no("yolg'iz `*` serverga yuborilmasligi kerak", `so'rovlar: ${searches.slice(-4).join(" | ")}`);
+  else ok("yolg'iz `*` serverga yuborilmadi");
+  if (await offline()) no("`*` terilgach kassa «faqat kesh» holatiga tushmasligi kerak");
+  else ok("kassa oflayn holatga tushmadi");
+
+  /* Server so'rovni RAD ETADI (`*999`) — tarmoq esa ishlab turibdi. */
+  await typeQ("*999");
+  const s6 = await until((x) => searches.includes("*999"), 4000);
+  await new Promise((r) => setTimeout(r, 500));
+  if (!searches.includes("*999")) no("`*999` so'rovi yuborilishi kerak edi", s6.q);
+  if (await offline()) no("⚠ server rad etgani OFLAYN deb talqin qilindi — banner chiqdi");
+  else ok("server rad etgani oflayn deb talqin qilinmadi");
+  const note = await page.evaluate(() => document.body.innerText.includes("Kod faqat raqamdan"));
+  if (!note) no("serverning sababi kassirga ko'rsatilishi kerak");
+  else ok("serverning o'z sababi ko'rsatildi");
+}
+
+console.log("\n── 7. Sahifa xatolari ──");
 if (pageErrors.length) no("konsol toza bo'lishi kerak", pageErrors.slice(0, 3).join(" | "));
 else ok("konsol toza");
 

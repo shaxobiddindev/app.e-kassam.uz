@@ -31,6 +31,8 @@ import { money, moneyFine, quantity } from "../utils";
 import { paymentLabel, unitLabel } from "./ek-labels";
 import { code128Svg, saleCode } from "./ek-barcode";
 import { spreadDiscount } from "./ek-discount";
+/* Qator summasi `ek-money` orqali — ekrandagi jami va server bilan bir raqam. */
+import { gross } from "./ek-money";
 /* Brauzer cheki uchun QR (V34). ESC/POS printerda QR ni apparatning O'ZI
    chizadi (`Receipt.qr`), brauzerda esa SVG kerak. */
 import { shortDate } from "./ek-format";
@@ -184,7 +186,7 @@ export function buildReceipt({ saleId, serverSaleId, cart = [], total = 0, subto
        kasr bo'ladi (50 002.50) va pastdagi «Yaxlitlash» qatori bilan
        birga chek o'zi-o'ziga to'g'ri keladi. Butun sonda hech narsa
        o'zgarmaydi. */
-    r.row(`  ${qtyText} x ${money(i.salePrice)}`, moneyFine(i.salePrice * i.qty));
+    r.row(`  ${qtyText} x ${money(i.salePrice)}`, moneyFine(gross(i.salePrice, i.qty)));
 
     /* Qator chegirmasi = kassir tushirgan narx + chek chegirmasidan
        tushgan ulush. Chegirmasiz qatorda satr umuman chiqmaydi —
@@ -1018,7 +1020,7 @@ function printInBrowser({ saleId, serverSaleId, cart = [], total = 0, subtotal, 
   const rows = cart.map((i, idx) => {
     const qtyText = `${quantity(i.qty, i.unitDecimals)}${i.unit ? " " + unitLabel(i.unit) : ""}`;
     const lineDisc = (Number(i.discount) || 0) + (shares[idx] || 0);
-    return `<div class="row"><span>${esc(i.name)} × ${esc(qtyText)}</span><span>${esc(money(i.salePrice * i.qty))}</span></div>`
+    return `<div class="row"><span>${esc(i.name)} × ${esc(qtyText)}</span><span>${esc(money(gross(i.salePrice, i.qty)))}</span></div>`
       + (lineDisc > 0
           ? `<div class="row sub"><span>${esc(t("kassa.discount"))}</span><span>-${esc(money(lineDisc))}</span></div>`
           : "");

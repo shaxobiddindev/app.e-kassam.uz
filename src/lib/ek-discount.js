@@ -12,6 +12,13 @@
    eng kam seziladi).
    ══════════════════════════════════════════════════════════════════════════ */
 
+/* ⚠ Narx × miqdor FAQAT `ek-money.js` orqali (2026-09-24). Ilgari bu
+   yerda `Math.floor(narx * miqdor)` turardi va JavaScript'da
+   135 000 × 2.002 = 270269.99999999994 bo'lgani uchun qator 270 269
+   bo'lib qolardi, server esa 270 270 talab qilardi — chegirmani
+   taqsimlash ham shu noto'g'ri bazadan hisoblanardi. */
+import { charge, gross } from "./ek-money.js";
+
 /**
  * Qatorning ANIQ jamisi — yaxlitlanmagan.
  *
@@ -19,8 +26,7 @@
  * Chekda AYNAN shu son ko'rinadi, ostida esa «Yaxlitlash» qatori —
  * shundagina chek o'zi-o'ziga to'g'ri keladi.
  */
-export const lineGross = (l) =>
-  (Number(l.salePrice) || 0) * (Number(l.qty) || 0);
+export const lineGross = (l) => gross(l.salePrice, l.qty);
 
 /**
  * Qatorning MIJOZ TO'LAYDIGAN jamisi — butun so'm.
@@ -35,7 +41,7 @@ export const lineGross = (l) =>
  * egasining qarori va u chekda «Yaxlitlash» qatori bo'lib ko'rinadi.
  */
 export const lineNet = (l) =>
-  Math.max(0, Math.floor(lineGross(l)) - (Number(l.discount) || 0));
+  Math.max(0, charge(l.salePrice, l.qty) - (Number(l.discount) || 0));
 
 /**
  * @param lines  `{ salePrice, qty, discount? }` ro'yxati
@@ -461,7 +467,7 @@ const EPS = 0.005;
 function measure(l) {
   const price = Number(l.salePrice) || 0;
   const qty = Number(l.qty) || 0;
-  const paid = r2(Math.max(0, price * qty - (Number(l.discount) || 0)));
+  const paid = r2(Math.max(0, gross(price, qty) - (Number(l.discount) || 0)));
   const room = lineRoom(l);
   return { price, qty, paid, room, unit: qty > 0 ? paid / qty : 0 };
 }
