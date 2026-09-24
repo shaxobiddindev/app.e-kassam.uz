@@ -291,7 +291,12 @@ export default function PickupPage({ toast }) {
                   {o.status === "PENDING" && (
                     <button className="btn btn-primary btn-sm"
                             onClick={() => { setOpen(o); setNote(""); }}>
-                      <i className="fa-solid fa-hand-holding-box" /> {t("pickup.issue")}
+                      {/* ⚠ `fa-hand-holding`, `fa-hand-holding-box` EMAS:
+                          ikkinchisi Font Awesome'ning PULLIK to'plamida va
+                          bepul faylda uning kod nuqtasi yo'q. Ya'ni bu
+                          tugmada ikonka UMUMAN chizilmasdi — xato yo'q,
+                          bo'sh joy bor. `check-icons.mjs` shuni qo'riqlaydi. */}
+                      <i className="fa-solid fa-hand-holding" /> {t("pickup.issue")}
                     </button>
                   )}
                 </div>
