@@ -100,6 +100,11 @@ const note = (name, file) => {
  * qolardi — ya'ni qo'riqchi jimgina yarim ishlab qolardi.
  */
 const stripComments = (s) => s
+  /* ⚠ HTML IZOHI HAM — va buni qo'riqchining o'zi ko'rsatdi: `index.html`
+     dagi izoh `fa-caret-${...}` ni eslatib turardi va tekshiruv uni
+     ISHLATILGAN nom deb hisoblardi. Zarari shu bilan tugamaydi: izohda
+     eslatilgan PULLIK nom qo'riqchini bekordan-bekorga yiqitardi. */
+  .replace(/<!--[\s\S]*?-->/g, " ")
   .replace(/\/\*[\s\S]*?\*\//g, " ")
   .split("\n").map((l) => (/^\s*\/\//.test(l) ? "" : l)).join("\n");
 

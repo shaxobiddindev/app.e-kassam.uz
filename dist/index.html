@@ -13,9 +13,16 @@
          ichida `@import` bilan cdnjs dan kelardi — eng sekin shakl:
          brauzer avval bizning uslubni yuklab, o'qib, KEYIN begona
          domenga borardi. Bu yerda esa HTML o'qilishida topiladi.
-         ⚠ TO'LIQ to'plam, qisqartirilmagan: ilovada 271 ta ikonka
-         bor va ikkitasi DINAMIK yasaladi (`fa-caret-${...}`) —
-         qisqartirishda o'tkazib yuborilgani jimgina yo'qolardi. -->
+         ⚠ TO'LIQ to'plam, qisqartirilmagan: ekranda 244 ta ikonka
+         nomi ishlatiladi va qisqartirishda o'tkazib yuborilgani
+         JIMGINA yo'qolardi — element joyida turadi, ichida glif yo'q.
+         Bitta nom DINAMIK yasaladi (`fa-chevron-${open ? "up" : "down"}`), shuning uchun
+         qisqartirish yanada xavfliroq: o'tkazib yuborilgani hech
+         qayerda ko'rinmasdi.
+         ⚠ Nomlarning O'ZI esa qo'riqlanadi: `scripts/check-icons.mjs`
+         har bir `fa-*` nomini shu fayldagi kod nuqtalari bilan
+         solishtiradi (`npm test`). Ikkita PULLIK nom aynan shunday
+         topilgan edi — ular hech qanday belgi bermay turgan. -->
     <link rel="stylesheet" href="/fa/all.css" />
     <title>e-Kassam — Do'kon Panel</title>
     <!-- Tema birinchi bo'yoqdan OLDIN qo'llanadi, aks holda qorong'i rejimda
