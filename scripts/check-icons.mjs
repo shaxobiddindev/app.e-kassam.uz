@@ -36,19 +36,6 @@ import path from "node:path";
 const ROOT = path.resolve(import.meta.dirname, "..");
 const CSS = path.join(ROOT, "public/fa/all.css");
 
-/* Uslub, o'lcham va animatsiya klasslari — ikonka emas, kod nuqtasi yo'q. */
-const NOT_ICON = new Set([
-  "fa-solid", "fa-regular", "fa-brands", "fa-light", "fa-thin", "fa-duotone",
-  "fa-sharp", "fa-classic", "fa-fw", "fa-lg", "fa-sm", "fa-xs", "fa-xl", "fa-2xs",
-  "fa-2x", "fa-3x", "fa-4x", "fa-5x", "fa-6x", "fa-7x", "fa-8x", "fa-9x", "fa-10x",
-  "fa-spin", "fa-pulse", "fa-border", "fa-pull-left", "fa-pull-right",
-  "fa-stack", "fa-stack-1x", "fa-stack-2x", "fa-inverse", "fa-flip", "fa-beat",
-  "fa-fade", "fa-shake", "fa-bounce", "fa-beat-fade", "fa-spin-reverse",
-  "fa-spin-pulse", "fa-rotate-90", "fa-rotate-180", "fa-rotate-270",
-  "fa-rotate-by", "fa-flip-horizontal", "fa-flip-vertical", "fa-flip-both",
-  "fa-ul", "fa-li", "fa-layers",
-]);
-
 if (!fs.existsSync(CSS)) {
   console.error(`\n  ❌ ${path.relative(ROOT, CSS)} topilmadi.`);
   console.error("  Ikonkalar o'z domenimizdan keladi; fayl yo'q bo'lsa ular");
@@ -57,10 +44,25 @@ if (!fs.existsSync(CSS)) {
 }
 
 /* `.fa-bars,.fa-navicon{--fa:"\f0c9"}` — FA 6.7 shakli. */
+const cssText = fs.readFileSync(CSS, "utf8");
 const known = new Set();
-for (const m of fs.readFileSync(CSS, "utf8")
-    .matchAll(/((?:\.fa-[a-z0-9-]+,?)+)\{--fa:"\\[0-9a-f]+"\}/g)) {
+for (const m of cssText.matchAll(/((?:\.fa-[a-z0-9-]+,?)+)\{--fa:"\\[0-9a-f]+"\}/g)) {
   for (const n of m[1].matchAll(/\.fa-([a-z0-9-]+)/g)) known.add("fa-" + n[1]);
+}
+
+/* ── Uslub klasslari — ikonka emas ─────────────────────────────────────
+   ⚠ QO'LDA YOZILMAYDI (2026-09-24). Ilgari shu yerda qo'lda ro'yxat
+   turardi va u TO'LIQ EMAS edi: `fa-1x`, `fa-2xl` yo'q edi. Ular
+   ishlatilsa tekshiruv ularni ikonka deb o'ylab, «PRO to'plamda» degan
+   YOLG'ON ayblov bilan yiqilardi. Ro'yxat to'rt nusxada ham turgan va
+   nusxalar bir-biridan ajralib ketgan edi.
+
+   Qoida oddiy va CSS ning o'zidan: `.fa-*` selektori bor, `--fa`
+   qiymati yo'q → uslub klassi. */
+const NOT_ICON = new Set(["fa-solid", "fa-regular", "fa-brands", "fa-classic"]);
+for (const m of cssText.matchAll(/\.fa-([a-z0-9-]+)\b/g)) {
+  const n = "fa-" + m[1];
+  if (!known.has(n)) NOT_ICON.add(n);
 }
 
 const walk = (d, o = []) => {
@@ -123,7 +125,10 @@ for (const f of files) {
   }
 
   /* ── Oddiy nomlar ──────────────────────────────────────────────────── */
-  for (const m of src.matchAll(/\bfa-[a-z0-9-]*/g)) {
+  /* ⚠ `(?<!-)`: `--fa-style`, `--fa-display` kabi Font Awesome'ning
+     RASMIY sozlash o'zgaruvchilari ham `fa-` bilan boshlanadi. Ikonka
+     deb o'qilsa tekshiruv yolg'on ayblov bilan yiqilardi. */
+  for (const m of src.matchAll(/(?<!-)\bfa-[a-z0-9-]*/g)) {
     const n = m[0];
     /* Chizig'i bilan tugagan bo'lak — yuqoridagi dinamik nomning
        prefiksi, o'zi ikonka emas. */
