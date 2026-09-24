@@ -937,7 +937,14 @@ export default function KassaPage({ toast, refreshLowStock }) {
        kassir kerakli tovar birinchi turgan bo'lsa ham yozishda davom
        etishga majbur edi. Endi reyting bor va birinchi qator aynan
        eng mos tovar. */
-    if (products.length > 0) pickProduct(products[0]);
+    /* ⚠ ENTER YO'LIDA MAYDON TOZALANADI, bosish yo'lida esa YO'Q
+       (`pickProduct` izohi). Sabab pul bilan bog'liq: Enter bosilgach
+       maydon matni qolsa, odati bo'yicha Enter ni ikki marta bosgan
+       kassir IKKI DONA qo'shib qo'yardi va buni sezmasligi mumkin.
+       Ilgari ikkinchi Enter hech narsa qilmasdi (maydon bo'sh edi) va
+       shu holat saqlanadi. Bosishda esa bunday xavf yo'q: kassir aniq
+       bir qatorni ko'rsatadi. */
+    if (products.length > 0) pickProduct(products[0], { clearSearch: true });
   };
 
   /* ══ SAVATNI SAQLASH ═══════════════════════════════════════
@@ -1414,14 +1421,23 @@ export default function KassaPage({ toast, refreshLowStock }) {
   /**
    * Katakcha bosildi. Bo'linadigan tovarda avval miqdor so'raladi:
    * 0.350 kg ni "+" tugmasi bilan kiritishning iloji yo'q.
+   *
+   * ⚠ QIDIRUV TOZALANMAYDI (2026-09-24). Ilgari har qo'shishdan keyin
+   * maydon bo'shab, ro'yxat to'liq katalogga qaytardi — ya'ni bitta
+   * qidiruvdan FAQAT BITTA tovar qo'shib bo'lardi. «Coca» deb yozib
+   * ikki dona olmoqchi bo'lgan kassir so'zni qaytadan yozardi, uch
+   * xil ichimlik olmoqchi bo'lgani esa uch marta. Kassir nimaga
+   * qarab turganini ilova o'zicha almashtirmasligi kerak.
+   *
+   * `clearSearch` — faqat Enter yo'lida `true`: pastdagi izohga qara.
    */
-  const pickProduct = (product) => {
+  const pickProduct = (product, { clearSearch = false } = {}) => {
     if (product.salePrice == null) { toast.error(`${product.name} — ${t("kassa.noPriceWarn")}`); return; }
     // Markirovkali tovarda miqdorni kassir yozmaydi — u har donaning
     // yorlig'ini skanerlaydi va miqdor shundan kelib chiqadi.
     if (product.markingGroup) { setMarkModal({ product }); return; }
     if (needsQty(product)) { setQtyModal({ product, initial: null }); return; }
-    addToCart(product, 1);
+    addToCart(product, 1, { clearSearch });
   };
 
   /** Skanerlangan yorliqlar savatga qo'shiladi (miqdor = kodlar soni). */
@@ -1441,10 +1457,24 @@ export default function KassaPage({ toast, refreshLowStock }) {
       }
       return [...prev, { ...product, qty: codes.length, markingCodes: codes, _added: Date.now() }];
     });
-    resetSearch();
   };
 
-  const addToCart = (product, amount = 1) => {
+  /**
+   * `clearSearch` — qidiruv maydonini bo'shatib, ro'yxatni to'liq
+   * katalogga qaytarish.
+   *
+   * ⚠ BOSHLANG'ICH QIYMAT `false` VA BU ATAYLAB. Ilgari tozalash
+   * shartsiz, har qo'shishdan keyin bajarilardi va bitta qidiruvdan
+   * faqat bitta tovar qo'shib bo'lardi (`pickProduct` izohi).
+   *
+   * ⚠ SKANER YO'LIGA HECH NARSA QO'SHILMAYDI. Skaner kodi maydonga
+   * UMUMAN tushmaydi — `useScanner` uni hujjat darajasida tutadi va
+   * o'tib ketgan bir-ikki belgini o'zi tozalaydi. Qo'lda yozilgan kod
+   * esa `onSearchEnter` da `addByBarcode` dan OLDIN tozalanadi. Ya'ni
+   * bu yerdagi tozalash skaner uchun hech qachon kerak bo'lmagan: u
+   * faqat bosish yo'lini buzib turardi.
+   */
+  const addToCart = (product, amount = 1, { clearSearch = false } = {}) => {
     if (product.expired) { toast.error(`${product.name} — muddati o'tgan, sotib bo'lmaydi!`); return; }
     if (product.salePrice == null) { toast.error(`${product.name} — ${t("kassa.noPriceWarn")}`); return; }
     // Qoldiq FAQAT ombor yuritiladigan tovarda tekshiriladi: xizmatda
@@ -1471,7 +1501,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
       }
       return [...prev, { ...product, qty: roundQty(product, amount), _added: Date.now() }];
     });
-    resetSearch();
+    if (clearSearch) resetSearch();
   };
 
   /* ══ SAVATGA OPTOM NARX (V97) ═══════════════════════════════════════
@@ -2559,11 +2589,19 @@ export default function KassaPage({ toast, refreshLowStock }) {
     setFinish({ phase: "done", total: money(snapshot.total), receiptNo,
                 note: snapshot.toSavings > 0 ? t("savings.finishNote", { n: money(snapshot.toSavings) }) : null });
     if (refreshLowStock) refreshLowStock();
-    /* ⚠ Katakchalar ham QAYTA O'QILADI. Ilgari faqat yon paneldagi «kam
+    /* ⚠ QIDIRUV SHU YERDA TOZALANADI — savatga qo'shishda esa YO'Q.
+       Farqning sababi: qo'shish o'rtada bo'ladi (kassir o'sha ro'yxatga
+       qarab turibdi), chek yopilishi esa TUGASH — keyingi mijoz keladi
+       va unga katalog oldingi mijozning so'rovi bo'yicha filtrlangan
+       holda ko'rinmasligi kerak. Ilgari tozalash `addToCart` ichida
+       edi va shu yerda alohida kerak emasdi (§10Ū). */
+    resetSearch();
+    /* ⚠ Katakchalar ham QAYTA O'QILADI — `resetSearch()` keshdan
+       chizadi va serverga bormaydi. Ilgari faqat yon paneldagi «kam
        qolgan» belgisi yangilanardi, mahsulot katakchalari esa oxirgi
        qidiruvdan qolgan eski qoldiqni ko'rsatib turaverardi — kassir
        sahifani qo'lda yangilamaguncha son o'zgarmasdi. */
-    doSearch(search);
+    doSearch("");
 
     closeSoldCart();
     /* ⚠ BU YERDA V58 GACHA `setCashGiven`, `setCashAmount`,
