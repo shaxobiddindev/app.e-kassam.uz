@@ -79,11 +79,43 @@ const isLang = (f) => /^(ru|en)-[A-Za-z0-9_-]+\.js$/.test(f);
 const langBytes = files.filter(isLang).reduce((n, f) => n + gz(f), 0);
 
 const kb = (n) => Math.round(n / 1024);
+
+/* ⚠ IKONKA USLUBI — `/assets/` DAN TASHQARIDA (2026-09-24).
+
+   `index.html` `/fa/all.css` ni `<head>` da so'raydi, ya'ni u chizishni
+   bloklaydi va kassir uni ham kutadi. Lekin yuqoridagi o'lchovlar faqat
+   `dist/assets/` ni ko'radi — shuning uchun bu fayl (21 KB gzip, Font
+   Awesome'ning to'liq ro'yxati) HECH QAYERDA sanalmasdi. Byudjet
+   «kirish 179 KB» deb turardi, haqiqatda esa ~200 KB edi.
+
+   ⚠ KIRISH GA QO'SHILMADI, alohida qator bo'ldi: KIRISH ning tarixi
+   (`size-budget.json` dagi yozuvlar) JS+CSS to'plami bo'yicha va uni
+   bir kunda 21 KB ga sakratish o'sha tarixni o'qib bo'lmaydigan qilardi.
+
+   ⚠ QISQARTIRISH KO'RIB CHIQILDI VA RAD ETILDI. Landingda xuddi shu
+   fayl ishlatilgan nomlarga qisqartirilgan (73 KB → 9 KB). Ilovada bu
+   XAVFLI: kategoriya ikonkasi BAZADAN keladi. Backend shablonlaridagi
+   35 nomning 14 tasi frontend kodida umuman uchramaydi (`fa-book`,
+   `fa-child`, `fa-socks`, …) — kodni skanerlab qisqartirilsa, shablondan
+   yaratilgan do'konlarning kategoriya ikonkalari JIMGINA yo'qolardi.
+   Amaliy narxi kichik: service worker bu faylni keshlaydi, ya'ni 21 KB
+   faqat birinchi ochilishda to'lanadi.
+
+   Qator shu uchun kerak: kimdir to'liq ro'yxatni kattaroq to'plamga
+   (masalan Pro) almashtirsa yoki ikkinchi nusxani ulasa — ko'rinsin. */
+const faCss = path.join(ROOT, "dist", "fa", "all.css");
+if (!fs.existsSync(faCss)) {
+  console.error("  ❌ dist/fa/all.css yo'q — ikonkalar umuman chizilmaydi.");
+  process.exit(1);
+}
+const iconCss = gzipSync(fs.readFileSync(faCss)).length;
+
 const results = [
   ["KIRISH   (gzip)", kb(entry),                    budget.entryKb],
   ["JAMI KOD (gzip)", kb(sum(".js") - langBytes),   budget.jsKb],
   ["TILLAR   (gzip)", kb(langBytes),                budget.langKb],
   ["CSS      (gzip)", kb(sum(".css")),              budget.cssKb],
+  ["IKONKA   (gzip)", kb(iconCss),                  budget.iconCssKb],
 ];
 
 let failed = false;

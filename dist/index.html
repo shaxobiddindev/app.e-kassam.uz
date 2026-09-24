@@ -19,6 +19,14 @@
          Bitta nom DINAMIK yasaladi (`fa-chevron-${open ? "up" : "down"}`), shuning uchun
          qisqartirish yanada xavfliroq: o'tkazib yuborilgani hech
          qayerda ko'rinmasdi.
+         ⚠ QISQARTIRMANG — ENG KUCHLI SABAB BAZADA (2026-09-24 da
+         o'lchandi). Kategoriya ikonkasi SERVERDAN keladi: backend
+         shablonlaridagi 35 nomning 14 tasi (`fa-book`, `fa-child`,
+         `fa-socks`, …) bu ilova kodida umuman uchramaydi. Kodni
+         skanerlab qisqartirilsa, shablondan yaratilgan do'konlarning
+         kategoriya ikonkalari JIMGINA yo'qolardi. Landingda qisqartirish
+         xavfsiz — u yerda bazadan ikonka kelmaydi. Narx kichik: service
+         worker faylni keshlaydi, 21 KB faqat birinchi ochilishda.
          ⚠ Nomlarning O'ZI esa qo'riqlanadi: `scripts/check-icons.mjs`
          har bir `fa-*` nomini shu fayldagi kod nuqtalari bilan
          solishtiradi (`npm test`). Ikkita PULLIK nom aynan shunday
