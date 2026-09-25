@@ -6653,12 +6653,18 @@ button.stk__c:hover { background: var(--bg-hover); }
    o'qiladigan matnga berilmaydi (CLAUDE.md 6b). O'rin raqami kichik bo'lsa
    ham O'QILADI — do'konchi «uchinchi qator» deb aytadi.
    ══════════════════════════════════════════════════════════════════════════ */
-.ek-rowno {
-  white-space: nowrap;
-  /* Ikkala son ham o'z ustunida turadi — qatorlar orasida sakramasin. */
-  display: flex; align-items: baseline; gap: 8px;
-}
+.ek-rowno { white-space: nowrap; }
+/* Ikkala son ham o'z ustunida turadi — qatorlar orasida sakramasin.
+
+   ⚠ `display: flex` KATAKNING O'ZIGA BERILMAYDI (2026-09-25 gacha shunday
+   edi). Flex bo'lgan `<td>` jadval katagi bo'lmay qoladi va qator
+   balandligiga cho'zilmaydi: katak 44px da qolar, qator esa avatar
+   bilan 59px — «№» ostidagi chiziq qator chizig'idan 15px yuqorida
+   turardi, raqam esa qatorning o'rtasida emas, tepasida. Oxirgi qatorda
+   chiziq bo'lmagani uchun ikki-uch qatorli sinovda ko'rinmasdi.
+   Ustun endi `inline-block` + `min-width` bilan ushlanadi. */
 .ek-rowno__seq {
+  display: inline-block; margin-right: 8px;
   min-width: 2ch; text-align: right;
   font-size: 11px; font-weight: 600;
   color: var(--fg-secondary);
@@ -6692,3 +6698,6 @@ button.stk__c:hover { background: var(--bg-hover); }
 @media (min-width: 560px) {
   .sup-form__row { grid-template-columns: 1fr 1fr; }
 }
+
+/* Mijozning Telegram username'i — ism ostida (V139). */
+.cust-tg { margin-top: 2px; font-size: var(--fs-sm); color: var(--fg-secondary); }

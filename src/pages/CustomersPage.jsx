@@ -661,7 +661,16 @@ export default function CustomersPage({ toast }) {
                       <td>
                         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                           <Avatar name={c.fullName} size={30} />
-                          <span className="fw-700">{c.fullName}</span>
+                          <div>
+                            <span className="fw-700">{c.fullName}</span>
+                            {/* Telegram username — shaxsdan (V139): kassada
+                                mijozni shu bilan ham topish mumkin. */}
+                            {c.telegramUsername && (
+                              <div className="cust-tg">
+                                <i className="fa-brands fa-telegram" aria-hidden="true" /> @{c.telegramUsername}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </td>
                       <td className="mono" style={{ fontSize: 13 }}>{maskPhone(c.phone)}</td>
@@ -835,8 +844,9 @@ export default function CustomersPage({ toast }) {
                                   pul qo'shish uchun ochiladi, mijozni
                                   tahrirlash uchun emas. */}
                               {view === "all" && (
-                                <button className="btn-icon" onClick={() => openEdit(c)}>
-                                  <i className="fa-solid fa-pen" />
+                                <button className="btn-icon" onClick={() => openEdit(c)}
+                                        title={t("cust.edit")} aria-label={t("cust.edit")}>
+                                  <i className="fa-solid fa-pen" aria-hidden="true" />
                                 </button>
                               )}
                               {/* ⚠ JAMG'ARMA TUGMASI DOIM BOR (V63),

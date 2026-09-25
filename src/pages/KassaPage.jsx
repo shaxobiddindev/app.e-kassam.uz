@@ -60,6 +60,7 @@ import { isDesktop } from "../lib/ek-desktop";
 import { NumField } from "../components/ek/EkFields";
 import { useFitHeight, fitStyle } from "../hooks/useFitHeight";
 import { typeQtyKey, isBurst, QTY_TYPE_MS, APPLY_DELAY_MS } from "../lib/ek-qty-type";
+import { customerOption } from "../lib/ek-customer-option";
 
 /* ══════════════════════════════════════════════════════════════════════════
    Kassir paneli — 06-APP-KASSIR.md
@@ -3919,16 +3920,9 @@ export default function KassaPage({ toast, refreshLowStock }) {
                   onChange={(v) => setCustomer(customers.find((c) => String(c.id) === v) || null)}
                   options={[
                     { value: "", label: t("kassa.noCustomer"), icon: "fa-user-slash" },
-                    ...customers.map((c) => ({
-                      value: String(c.id),
-                      label: c.fullName,
-                      /* ⚠ Telefon YORLIQQA QO'SHILMAYDI, o'z ustunida
-                         turadi: ismlar uzunligi turlicha bo'lgani uchun
-                         raqamlar har qatorda boshqa joydan boshlanar va
-                         ro'yxatni ko'z bilan kuzatib o'qib bo'lmasdi. */
-                      hint: c.phone,
-                      icon: "fa-user",
-                    })),
+                    /* Ism, telefon (bo'laklab ham) va @username bo'yicha
+                       qidiriladi — `lib/ek-customer-option.js`. */
+                    ...customers.map(customerOption),
                   ]}
                 />
                 <button type="button" className="btn-icon cart-cust__btn"

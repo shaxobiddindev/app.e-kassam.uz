@@ -7,6 +7,7 @@ import { enteredTotal, enteredParts } from "../lib/ek-payment";
 import { Spinner } from "./ek/Loading";
 import Overlay from "./ek/Overlay";
 import Select from "./ek/Select";
+import { customerOption } from "../lib/ek-customer-option";
 
 /* ══════════════════════════════════════════════════════════════════════════
    QARZ TO'LOVI — KASSA OYNASI KO'RINISHIDA (V47)
@@ -172,12 +173,7 @@ export default function DebtPayModal({
                       value={customer?.id ? String(customer.id) : ""}
                       onChange={(v) => onCustomerChange?.(
                         customers.find((c) => String(c.id) === v) || null)}
-                      options={customers.map((c) => ({
-                        value: String(c.id),
-                        label: c.fullName,
-                        hint: c.phone,
-                        icon: "fa-user",
-                      }))}
+                      options={customers.map(customerOption)}
                     />
                     {onNewCustomer && (
                       <button type="button" className="btn-icon cart-cust__btn"

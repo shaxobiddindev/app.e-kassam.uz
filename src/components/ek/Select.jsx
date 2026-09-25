@@ -1,5 +1,6 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { rankItems } from "../../lib/ek-search";
+import { OPTION_SEARCH } from "../../lib/ek-customer-option";
 
 /* ==========================================================================
    e-Kassam — SELECT
@@ -91,7 +92,9 @@ export default function Select({
      ustiga kelish ham) butun ro'yxatni qaytadan saralardi. */
   const shown = useMemo(
     () => (showSearch && query
-      ? rankItems(options, query, { texts: (o) => [o.label, o.hint] })
+      /* `keywords` va `digits` — ixtiyoriy (V139): mijozni telefon va
+         @username bo'yicha topish uchun (`lib/ek-customer-option.js`). */
+      ? rankItems(options, query, OPTION_SEARCH)
       : options),
     [options, query, showSearch],
   );
