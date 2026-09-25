@@ -88,7 +88,7 @@ export const NAV = [
   { id: "manage", key: "nav.group.manage", icon: "fa-users-gear", children: [
     { id: "shop-users",    path: "/shop-users",    key: "nav.staff",         icon: "fa-users-gear",        roles: ["ADMIN", "SHOP_ADMIN", "OWNER"] },
     { id: "branches",      path: "/branches",      key: "nav.branches",      icon: "fa-store",             roles: ["OWNER"] },
-    /* Breezz (V139) — tasdiq faqat egasida, shuning uchun band ham faqat unda. */
+    /* Breezz (V140) — tasdiq faqat egasida, shuning uchun band ham faqat unda. */
     { id: "breezz",        path: "/breezz",        key: "nav.breezz",        icon: "fa-plug",              roles: ["OWNER"] },
     { id: "loyalty",       path: "/loyalty",       key: "nav.loyalty",       icon: "fa-award",             roles: ["ADMIN", "SHOP_ADMIN", "OWNER"], feature: "LOYALTY" },
     { id: "announcements", path: "/announcements", key: "nav.announcements", icon: "fa-bullhorn",          roles: ["ADMIN", "SHOP_ADMIN", "OWNER"], feature: "ANNOUNCEMENTS" },

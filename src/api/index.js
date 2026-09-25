@@ -1008,7 +1008,7 @@ export const shopQrApi = {
   setPoster:  (value) => request(`/shop-qr/poster?value=${value ? "true" : "false"}`, { method: "POST" }),
 };
 
-/* ── Breezz ulanishi (V139) — «Boshqaruv → Breezz» ──────────────────────
+/* ── Breezz ulanishi (V140) — «Boshqaruv → Breezz» ──────────────────────
    ⚠ Faqat EGASI (server ham shuni qo'yadi). Breezz'ning o'zi bu yo'llarga
    kirmaydi — u `/integrations/breezz/**` ga kalit bilan keladi. Har amal
    oynaning yangi holatini qaytaradi. */

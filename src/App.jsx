@@ -453,7 +453,7 @@ export default function App() {
             <Route path="/expenses" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><P.Expenses toast={toast} /></ProtectedRoute>} />
             <Route path="/shop-users" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><P.ShopUsers toast={toast} /></ProtectedRoute>} />
             <Route path="/branches" element={<ProtectedRoute user={user} roles={["OWNER"]}><P.Shops toast={toast} /></ProtectedRoute>} />
-            {/* Breezz ulanishi (V139) — faqat egasi: tasdiq egalikning isboti. */}
+            {/* Breezz ulanishi (V140) — faqat egasi: tasdiq egalikning isboti. */}
             <Route path="/breezz" element={<ProtectedRoute user={user} roles={["OWNER"]}><P.Breezz toast={toast} /></ProtectedRoute>} />
             {/* Sodiqlik jadvali — chegirma, ya'ni pulga tegadigan sozlama. */}
             <Route path="/loyalty" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><P.Loyalty toast={toast} /></ProtectedRoute>} />

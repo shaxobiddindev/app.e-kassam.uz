@@ -9,7 +9,7 @@ import { dateTime } from "../../lib/ek-format";
 import { asArray } from "../../lib/ek-array";
 
 /* ══════════════════════════════════════════════════════════════════════════
-   BREEZZ ULANISHI — «Boshqaruv → Breezz» (V139, E2′)
+   BREEZZ ULANISHI — «Boshqaruv → Breezz» (V140, E2′)
 
    Breezz — yetkazish ilovasi. U filial tovarlarini, narxi va qoldig'ini
    o'zida ko'rsatadi. Egasining qarori (umumiy hujjat §12): filialni

@@ -4,7 +4,7 @@ import { breezzApi } from "../api";
 import { roleSet } from "../lib/ek-roles";
 
 /* ══════════════════════════════════════════════════════════════════════════
-   Kutayotgan Breezz ulash so'rovlari soni (V139) — menyudagi belgi
+   Kutayotgan Breezz ulash so'rovlari soni (V140) — menyudagi belgi
 
    ⚠ NEGA KERAK. So'rovni Breezz admini yuboradi, egasi esa «Breezz»
    oynasini o'zi ochmaguncha bilmaydi — 7 kundan keyin so'rov jimgina

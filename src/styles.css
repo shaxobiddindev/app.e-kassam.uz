@@ -6693,7 +6693,7 @@ button.stk__c:hover { background: var(--bg-hover); }
   .sup-form__row { grid-template-columns: 1fr 1fr; }
 }
 
-/* ══ Breezz ulanishi (V139) — «Boshqaruv → Breezz» ═══════════════════════
+/* ══ Breezz ulanishi (V140) — «Boshqaruv → Breezz» ═══════════════════════
    Faqat tokenlar. Holat rang bilan EMAS, matn va ikonka bilan ham
    beriladi — yashil fon faqat qo'shimcha ishora (6-qoida). */
 .breezz-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }

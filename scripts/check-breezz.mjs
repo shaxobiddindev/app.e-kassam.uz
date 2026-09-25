@@ -1,5 +1,5 @@
 /* ══════════════════════════════════════════════════════════════════════════
-   BREEZZ ULANISHI — EGASI OYNASI (V139, E2′)
+   BREEZZ ULANISHI — EGASI OYNASI (V140, E2′)
 
    ═══ NIMA TEKSHIRILADI ═══════════════════════════════════════════════════
    Egasi Breezz'ga do'konning butun katalogini shu oyna orqali ochadi.
@@ -105,7 +105,7 @@ async function open(role, calls, pageErrors) {
   return page;
 }
 
-console.log("\n══ BREEZZ ULANISHI — EGASI OYNASI (V139) ══");
+console.log("\n══ BREEZZ ULANISHI — EGASI OYNASI (V140) ══");
 
 /* ── EGASI ─────────────────────────────────────────────────────────── */
 const calls = [];

@@ -214,7 +214,7 @@ export default function AuditPage({ toast }) {
                           <i className="fa-solid fa-headset" aria-hidden="true" /> {t("audit.actorSupport")}
                         </span>
                       ) : r.actorType === "INTEGRATION" ? (
-                        /* Breezz (V139): odam ham, tizim ishi ham emas — tashqi
+                        /* Breezz (V140): odam ham, tizim ishi ham emas — tashqi
                            platforma. «breezz» degan login xodimdek ko'rinmasin. */
                         <span className="badge badge-blue" title={r.actorUsername}>
                           <i className="fa-solid fa-plug" aria-hidden="true" /> {t("audit.actorIntegration")}
