@@ -75,6 +75,12 @@ export const AUDIT_ACTIONS = [
   /* ── Do'kon sozlamalari ── */
   "SHOP_SETTING_CHANGE", "ANNOUNCEMENT_CHANGE",
 
+  /* ── Breezz integratsiyasi (V139) — filial raqami bilan yoziladi:
+     egasi «katalogimni kim, qachon ochdi?» degan savolga shu yerdan
+     javob topadi. ── */
+  "BREEZZ_LINK_REQUEST", "BREEZZ_LINK_CANCEL", "BREEZZ_LINK_APPROVE", "BREEZZ_LINK_REJECT",
+  "BREEZZ_LINK_REVOKE", "BREEZZ_KEY_ISSUE",
+
   /* ── Admin yozgan, lekin DO'KONGA tegishli (yuqoridagi izoh) ── */
   "SHOP_CREATE", "SHOP_UPDATE", "SHOP_STATUS_CHANGE", "SHOP_DELETE",
   "PAYMENT_REGISTER", "SUBSCRIPTION_EXPIRED", "SHOP_DIRECTIONS_CHANGE",

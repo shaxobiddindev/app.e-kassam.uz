@@ -72,7 +72,7 @@ const browser = await puppeteer.launch({
 const ROUTES = [
   "/", "/sale", "/products", "/categories", "/inventory", "/stock-take",
   "/supply", "/transfers", "/pickup", "/prices", "/customers", "/sales",
-  "/reports", "/expenses", "/shop-users", "/branches", "/loyalty",
+  "/reports", "/expenses", "/shop-users", "/branches", "/breezz", "/loyalty",
   "/announcements", "/settings", "/security", "/audit",
   /* ⚠ Yorliqlar sahifasi bu ro'yxatda YO'Q EDI (F5 da qo'shildi):
      u butunlay yangi kod — renderer, ko'rish oynasi, chop etish

@@ -9,6 +9,7 @@ import { KEY_BY_ID, matches as keyMatches, keyLabel } from "../lib/ek-kassa-keys
 import { useT } from "../lib/ek-i18n";
 import { weekdayDate } from "../lib/ek-format";
 import { useSuspiciousCount } from "../hooks/useSuspiciousCount";
+import { useBreezzPending } from "../hooks/useBreezzPending";
 import { useShopFeatures } from "../hooks/useShopFeatures";
 
 
@@ -87,6 +88,8 @@ export const NAV = [
   { id: "manage", key: "nav.group.manage", icon: "fa-users-gear", children: [
     { id: "shop-users",    path: "/shop-users",    key: "nav.staff",         icon: "fa-users-gear",        roles: ["ADMIN", "SHOP_ADMIN", "OWNER"] },
     { id: "branches",      path: "/branches",      key: "nav.branches",      icon: "fa-store",             roles: ["OWNER"] },
+    /* Breezz (V139) — tasdiq faqat egasida, shuning uchun band ham faqat unda. */
+    { id: "breezz",        path: "/breezz",        key: "nav.breezz",        icon: "fa-plug",              roles: ["OWNER"] },
     { id: "loyalty",       path: "/loyalty",       key: "nav.loyalty",       icon: "fa-award",             roles: ["ADMIN", "SHOP_ADMIN", "OWNER"], feature: "LOYALTY" },
     { id: "announcements", path: "/announcements", key: "nav.announcements", icon: "fa-bullhorn",          roles: ["ADMIN", "SHOP_ADMIN", "OWNER"], feature: "ANNOUNCEMENTS" },
     { id: "security",      path: "/security",      key: "nav.security",      icon: "fa-shield-halved",     roles: ["SHOP_ADMIN", "OWNER"] },
@@ -159,9 +162,13 @@ function findPlace(pathname) {
    Guruh bandida ham, uning ichidagi tab'da ham AYNI raqam chiqadi: usiz
    egasi menyudagi qizil sonni ko'rib guruhga kirardi-yu, keyin tab'lar
    orasidan qay birida ekanini qidirishga majbur bo'lardi. */
-const badgeFor = (id, { lowStock, suspicious }) => {
+const badgeFor = (id, { lowStock, suspicious, breezz = 0 }) => {
   if (id === "warehouse" || id === "inventory") return lowStock;
-  if (id === "manage" || id === "security") return suspicious;
+  /* «Boshqaruv» guruhi — ikkala sababning yig'indisi: egasi guruhga
+     kirgach qaysi tab'da ekanini tab'dagi sondan ko'radi. */
+  if (id === "manage") return suspicious + breezz;
+  if (id === "security") return suspicious;
+  if (id === "breezz") return breezz;
   return 0;
 };
 
@@ -222,7 +229,7 @@ function LowStockBadge({ items, count, onGoInventory }) {
   );
 }
 
-function Sidebar({ user, open, onClose, isCollapsed, onToggleCollapse, lowStockCount, suspiciousCount, onSwitchUser }) {
+function Sidebar({ user, open, onClose, isCollapsed, onToggleCollapse, lowStockCount, suspiciousCount, breezzCount, onSwitchUser }) {
   const { t } = useT();
   /* Do'konda qaysi bo'limlar borligi (V49). Ro'yxat kelmaguncha
      `has()` hamma narsaga `true` qaytaradi — menyu bo'sh ko'rinmaydi. */
@@ -279,7 +286,7 @@ function Sidebar({ user, open, onClose, isCollapsed, onToggleCollapse, lowStockC
              o'chib qolardi. Guruh o'z bolalaridan BIRORTASIDA turgan
              bo'lsa yonib turishi kerak. */
           const active = kids.some((c) => c.path === pathname);
-          const badge = badgeFor(item.id, { lowStock: lowStockCount, suspicious: suspiciousCount });
+          const badge = badgeFor(item.id, { lowStock: lowStockCount, suspicious: suspiciousCount, breezz: breezzCount });
 
           return (
             <NavLink key={item.id} to={to} title={isCollapsed ? t(item.key) : ""} onClick={() => onClose()}
@@ -353,6 +360,7 @@ export default function Layout({ user, isAdmin, lowStockItems, lowStockCount, on
      ikkinchi marta chaqirilsa server IKKI BAROBAR ko'p so'rov olardi
      (har 2 daqiqada va har sahifa almashganda). */
   const { count: suspiciousCount } = useSuspiciousCount(user);
+  const breezzCount = useBreezzPending(user);
   
   const toggleCollapse = () => {
     setIsCollapsed(p => {
@@ -431,6 +439,7 @@ export default function Layout({ user, isAdmin, lowStockItems, lowStockCount, on
         onToggleCollapse={toggleCollapse} 
         lowStockCount={lowStockCount}
         suspiciousCount={suspiciousCount}
+        breezzCount={breezzCount}
         onSwitchUser={onSwitchUser}
       />
       <main className="main-content">
@@ -469,7 +478,7 @@ export default function Layout({ user, isAdmin, lowStockItems, lowStockCount, on
         {tabs.length > 1 && (
           <div className="pg-tabs" role="tablist">
             {tabs.map((c) => {
-              const badge = badgeFor(c.id, { lowStock: lowStockCount, suspicious: suspiciousCount });
+              const badge = badgeFor(c.id, { lowStock: lowStockCount, suspicious: suspiciousCount, breezz: breezzCount });
               return (
                 <NavLink key={c.id} to={c.path} role="tab"
                          aria-selected={c.path === child.path}

@@ -25,6 +25,7 @@ const LOADERS = {
   CustomReport: () => import("../pages/admin/CustomReportPage"),
   ShopUsers:    () => import("../pages/admin/ShopUsersPage"),
   Shops:        () => import("../pages/admin/ShopsPage"),
+  Breezz:       () => import("../pages/admin/BreezzPage"),
   Settings:     () => import("../pages/SettingsPage"),
   Security:     () => import("../pages/SecurityPage"),
   Audit:        () => import("../pages/AuditPage"),
