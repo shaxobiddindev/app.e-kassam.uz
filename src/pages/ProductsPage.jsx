@@ -9,6 +9,7 @@ import GlobalCatalogUpdates from "../components/GlobalCatalogUpdates";
 import { Empty, Field, SearchBar, FormGroup } from "../components/ui";
 import { useConfirm } from "../context/ConfirmProvider";
 import { useAuth } from "../hooks/useAuth";
+import { useBreezzLinked } from "../hooks/useBreezzLinked";
 import { useBadge } from "../context/BadgeProvider";
 import { money, quantity as fmtQty, fmtDateTime } from "../utils";
 import Select from "../components/ek/Select";
@@ -70,6 +71,13 @@ const SEASONS = ["ALL_SEASON", "SUMMER", "WINTER", "DEMI"];
 
 export default function ProductsPage({ toast }) {
   const { user } = useAuth();
+  /* «Breezz'da pauza» (umumiy hujjat §17): tugma faqat ulangan filialda,
+     OWNER va SHOP_ADMIN ga. Holat qatorning o'zida yangilanadi
+     (`breezzOverride`) — butun ro'yxat qayta yuklansa, ko'z ro'yxatdagi
+     joyini yo'qotardi. */
+  const breezzLinked = useBreezzLinked(user);
+  const [breezzOverride, setBreezzOverride] = useState({});
+  const [breezzBusy, setBreezzBusy] = useState(null);
   const { guard } = useBadge();
   const confirm = useConfirm();
   /* Arxivdagi tovar bilan to'qnashuv — ikkita yo'l taklif qilinadi (B). */
@@ -605,6 +613,20 @@ export default function ProductsPage({ toast }) {
       loadData();
     } catch (err) {
       toast.error(err.message);
+    }
+  };
+
+  const toggleBreezzPause = async (product, paused) => {
+    setBreezzBusy(product.id);
+    try {
+      const res = await productApi.setBreezzPause(product.id, !paused);
+      const now = Boolean(res?.data?.breezzPaused);
+      setBreezzOverride((m) => ({ ...m, [product.id]: now }));
+      toast.success(t(now ? "breezz.pausedToast" : "breezz.resumedToast"));
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setBreezzBusy(null);
     }
   };
 
@@ -1178,6 +1200,13 @@ export default function ProductsPage({ toast }) {
                         ) : (
                           <span className="badge badge-green">{t("common.active")}</span>
                         )}
+                        {/* Breezz'da pauza do'kondagi holatga TEGMAYDI — shuning
+                            uchun alohida belgi; rang yolg'iz emas: ikonka va matn. */}
+                        {(breezzOverride[p.id] ?? p.breezzPaused) && (
+                          <span className="badge badge-breezz">
+                            <i className="fa-solid fa-circle-pause" aria-hidden="true" /> {t("breezz.pausedBadge")}
+                          </span>
+                        )}
                       </td>
                       </>
                       )}
@@ -1206,6 +1235,11 @@ export default function ProductsPage({ toast }) {
                             )
                           ) : (
                           <>
+                          {breezzLinked && (
+                            <BreezzPauseButton paused={Boolean(breezzOverride[p.id] ?? p.breezzPaused)}
+                                               busy={breezzBusy === p.id}
+                                               onClick={() => toggleBreezzPause(p, Boolean(breezzOverride[p.id] ?? p.breezzPaused))} />
+                          )}
                           {/* Yorliq — endi brauzerda ham: A4 varaqqa
                               chiqadi (V108). */}
                           <button className="btn-icon" onClick={() => openLabels([p])}
@@ -1826,5 +1860,18 @@ export default function ProductsPage({ toast }) {
         </Modal>
       )}
     </div>
+  );
+}
+
+/* «Breezz'da pauza» tugmasi. Holati `aria-pressed` bilan: ekran o'quvchi
+   «bosilgan» deb aytadi, ko'rgan odam esa ikonkadan va qatordagi
+   «Breezz: pauza» belgisidan biladi — rang yolg'iz signal emas. */
+function BreezzPauseButton({ paused, busy, onClick }) {
+  const label = t(paused ? "breezz.resume" : "breezz.pause");
+  return (
+    <button className="btn-icon" onClick={onClick} disabled={busy}
+            aria-label={label} title={label} aria-pressed={paused}>
+      <i className={`fa-solid ${paused ? "fa-circle-play" : "fa-circle-pause"}`} aria-hidden="true" />
+    </button>
   );
 }

@@ -6724,3 +6724,9 @@ button.stk__c:hover { background: var(--bg-hover); }
 .breezz-req { display: flex; flex-direction: column; gap: 4px; padding: 12px; border: 1.5px solid var(--border-subtle); border-radius: var(--r-md); }
 .breezz-req__actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
 .breezz-warn { font-size: var(--fs-sm); color: var(--fg-warning); }
+
+/* «Breezz: pauza» belgisi (V141, umumiy hujjat §17). ⚠ `badge-blue` EMAS:
+   u eski `--blue-d` o'zgaruvchisida va qorong'i temada 1.27:1 edi (axe,
+   2026-09-27). Neytral — sotuv holati (yashil, sariq, qizil) bilan adashmasin. */
+.badge-breezz { margin-left: 6px; background: var(--bg-sunken); color: var(--fg-primary);
+                border: 1px solid var(--border-subtle); }

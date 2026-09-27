@@ -80,6 +80,8 @@ export const AUDIT_ACTIONS = [
      javob topadi. ── */
   "BREEZZ_LINK_REQUEST", "BREEZZ_LINK_CANCEL", "BREEZZ_LINK_APPROVE", "BREEZZ_LINK_REJECT",
   "BREEZZ_LINK_REVOKE", "BREEZZ_KEY_ISSUE",
+  /* V141: «Breezz'da pauza» (§17) — kim qaysi tovarni Breezz'dan olib qo'ydi. */
+  "PRODUCT_BREEZZ_PAUSE",
 
   /* ── Admin yozgan, lekin DO'KONGA tegishli (yuqoridagi izoh) ── */
   "SHOP_CREATE", "SHOP_UPDATE", "SHOP_STATUS_CHANGE", "SHOP_DELETE",

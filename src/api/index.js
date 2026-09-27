@@ -562,6 +562,8 @@ export const productApi = {
     request(`/products/code-conflicts/${id}`, { method: "DELETE" }),
   deletePreview: (id)      => request(`/products/${id}/delete-preview`),
   toggleActive: (id)       => request(`/products/${id}/toggle-active`, { method: "PATCH" }),
+  /* «Breezz'da pauza» (umumiy hujjat §17) — faqat OWNER va SHOP_ADMIN. */
+  setBreezzPause: (id, paused) => request(`/products/${id}/breezz-pause`, { method: "PATCH", body: JSON.stringify({ paused }) }),
   fiscalReadiness: ()      => request("/products/fiscal-readiness"),
 
   // ⚠ Kategoriya endi TANADA yuboriladi (`?name=` emas): nomdan tashqari
@@ -1013,6 +1015,9 @@ export const shopQrApi = {
    kirmaydi — u `/integrations/breezz/**` ga kalit bilan keladi. Har amal
    oynaning yangi holatini qaytaradi. */
 export const breezzApi = {
+  /* ⚠ Faqat shu yo'l do'kon adminiga ham ochiq: «Breezz'da pauza» tugmasi
+     filial ulanganini bilishi kerak (§17.4). Ulanish tafsiloti — egasiga. */
+  status:       ()                  => request("/shop/breezz/status"),
   state:        ()                  => request("/shop/breezz"),
   pendingCount: ()                  => request("/shop/breezz/pending-count"),
   approve:      (requestId)         => request(`/shop/breezz/requests/${requestId}/approve`, { method: "POST" }),
