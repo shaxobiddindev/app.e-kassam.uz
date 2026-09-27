@@ -6701,3 +6701,26 @@ button.stk__c:hover { background: var(--bg-hover); }
 
 /* Mijozning Telegram username'i — ism ostida (V139). */
 .cust-tg { margin-top: 2px; font-size: var(--fs-sm); color: var(--fg-secondary); }
+
+/* ══ Breezz ulanishi (V140) — «Boshqaruv → Breezz» ═══════════════════════
+   Faqat tokenlar. Holat rang bilan EMAS, matn va ikonka bilan ham
+   beriladi — yashil fon faqat qo'shimcha ishora (6-qoida). */
+.breezz-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.breezz-lead { margin: 6px 0 0; max-width: 680px; color: var(--fg-secondary); font-size: var(--fs-sm); }
+.breezz-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr)); }
+.breezz-card { display: flex; flex-direction: column; gap: 14px; padding: 18px; }
+.breezz-card__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.breezz-card__title { margin: 0; font-size: var(--fs-lg); color: var(--fg-primary); }
+.breezz-label { display: block; margin: 0 0 4px; font-size: var(--fs-sm); font-weight: 600; color: var(--fg-secondary); }
+.breezz-ref { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.breezz-ref__value { font-size: 20px; letter-spacing: .08em; color: var(--fg-primary); }
+.breezz-hint { margin: 0; font-size: var(--fs-sm); color: var(--fg-secondary); }
+.breezz-meta { font-size: var(--fs-sm); color: var(--fg-secondary); }
+.breezz-status { display: flex; flex-direction: column; gap: 4px; padding: 12px; border-radius: var(--r-md); background: var(--bg-sunken); }
+.breezz-status.is-linked { background: var(--bg-success-subtle); }
+.breezz-status__line { color: var(--fg-primary); }
+.breezz-status .btn { align-self: flex-start; margin-top: 8px; }
+.breezz-pending { display: flex; flex-direction: column; gap: 10px; }
+.breezz-req { display: flex; flex-direction: column; gap: 4px; padding: 12px; border: 1.5px solid var(--border-subtle); border-radius: var(--r-md); }
+.breezz-req__actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.breezz-warn { font-size: var(--fs-sm); color: var(--fg-warning); }

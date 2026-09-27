@@ -113,7 +113,8 @@ export default function AuditPage({ toast }) {
     { key: "sum",   label: t("audit.summary"),  type: "text",
       get: (r) => `${r.summary || ""} ${r.details || ""} ${r.oldValue || ""} ${r.newValue || ""}` },
     { key: "actor", label: t("audit.actor"),    type: "text",
-      get: (r) => (r.actorType === "ADMIN" ? t("audit.actorSupport") : r.actorUsername) },
+      get: (r) => (r.actorType === "ADMIN" ? t("audit.actorSupport")
+        : r.actorType === "INTEGRATION" ? t("audit.actorIntegration") : r.actorUsername) },
     /* ⚠ TERMINAL — ALOHIDA FILTR (V106): «shu kassada nima bo'ldi?»
        degan savol tekshiruvning o'zagi va IP unga javob bermaydi —
        bitta do'kondagi hamma terminal bitta routerdan chiqadi.
@@ -211,6 +212,12 @@ export default function AuditPage({ toast }) {
                       {r.actorType === "ADMIN" ? (
                         <span className="badge badge-orange" title={r.actorUsername}>
                           <i className="fa-solid fa-headset" aria-hidden="true" /> {t("audit.actorSupport")}
+                        </span>
+                      ) : r.actorType === "INTEGRATION" ? (
+                        /* Breezz (V140): odam ham, tizim ishi ham emas — tashqi
+                           platforma. «breezz» degan login xodimdek ko'rinmasin. */
+                        <span className="badge badge-blue" title={r.actorUsername}>
+                          <i className="fa-solid fa-plug" aria-hidden="true" /> {t("audit.actorIntegration")}
                         </span>
                       ) : r.actorType === "SYSTEM" ? (
                         <span className="badge badge-blue">
