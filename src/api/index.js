@@ -606,6 +606,10 @@ export const catalogApi = {
   template:   (key)   => request(`/catalog/templates/${key}`),
   apply:      (data)  => request("/catalog/apply", { method: "POST", body: JSON.stringify(data) }),
   global:     (barcode) => request(`/catalog/global/${encodeURIComponent(barcode)}`),
+  /* Katalog sahifasidagi skaner uchun KENG taklif (2026-10-01): tasdiqlanmagan
+     va boshqa do'konlarning tovari ham — faqat tavsif, narxsiz. Kassa buni
+     ishlatmaydi: u `/products/scan` dagi qat'iy qoidada qoladi. */
+  suggest:    (barcode) => request(`/catalog/suggest/${encodeURIComponent(barcode)}`),
   globalSearch: (q, page = 0, size = 30) =>
                   request(`/catalog/global?q=${encodeURIComponent(q)}&page=${page}&size=${size}`),
 

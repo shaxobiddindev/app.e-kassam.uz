@@ -6730,3 +6730,39 @@ button.stk__c:hover { background: var(--bg-hover); }
    2026-09-27). Neytral — sotuv holati (yashil, sariq, qizil) bilan adashmasin. */
 .badge-breezz { margin-left: 6px; background: var(--bg-sunken); color: var(--fg-primary);
                 border: 1px solid var(--border-subtle); }
+
+/* ══ SKANER OYNASI (2026-10-01) — Katalog va Ombor ═══════════════════════
+   Amal tugmalari ≥ 48px (3-qoida — oyna qo'lda skaner bilan, tik turib
+   ishlatiladi); ikonka va matn birga — rang yolg'iz signal emas (6-qoida).
+   Faqat semantik tokenlar. */
+.scan-sum { display: grid; gap: 8px; margin: 0 0 16px; }
+.scan-sum__row { display: flex; justify-content: space-between; gap: 12px; }
+.scan-sum__label { color: var(--fg-secondary); }
+.scan-sum__note { color: var(--fg-secondary); font-size: var(--fs-sm); }
+.scan-sum__badges { display: flex; flex-wrap: wrap; gap: 6px; }
+.scan-acts { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 160px), 1fr)); gap: 8px; }
+.scan-act { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 10px 14px;
+            border: 1px solid var(--border-subtle); border-radius: var(--r-md);
+            background: var(--bg-surface); color: var(--fg-primary);
+            font: inherit; text-align: left; cursor: pointer; }
+.scan-act:hover:not(:disabled) { background: var(--bg-sunken); }
+.scan-act:focus-visible { outline: none; border-color: var(--border-brand); box-shadow: var(--focus-ring); }
+.scan-act:disabled { cursor: progress; }
+.scan-act--danger { color: var(--fg-danger); border-color: var(--border-danger); }
+.scan-text { margin: 0 0 8px; color: var(--fg-primary); }
+.scan-sug { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 12px; }
+.scan-sug__img { display: flex; align-items: center; justify-content: center; flex: none;
+                 width: 64px; height: 64px; border-radius: var(--r-md); object-fit: cover;
+                 background: var(--bg-sunken); color: var(--fg-secondary); }
+.scan-sug__name { font-weight: 700; color: var(--fg-primary); }
+.scan-sug__meta { margin: 2px 0 8px; font-size: var(--fs-sm); color: var(--fg-secondary); }
+.scan-flag { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px;
+             border: 1px solid; border-radius: var(--r-sm); font-size: var(--fs-sm); }
+.scan-flag--ok { background: var(--bg-success-subtle); color: var(--fg-success); border-color: var(--border-success); }
+/* ⚠ `--fg-warning` EMAS: u ikonka uchun — 12–13px matnda oq-sariq fonda
+   kontrast yetmasdi (axe, 2026-10-01). Matn uchun `-strong`. */
+.scan-flag--warn { background: var(--bg-warning-subtle); color: var(--fg-warning-strong); border-color: var(--border-warning); }
+.scan-note { display: flex; gap: 8px; align-items: flex-start; margin: 0; font-size: var(--fs-sm); color: var(--fg-secondary); }
+.scan-copy-note { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 12px; padding: 10px 12px;
+                  border-radius: var(--r-md); background: var(--bg-sunken); color: var(--fg-primary); }
+.scan-copy-note--warn { background: var(--bg-warning-subtle); color: var(--fg-warning-strong); }

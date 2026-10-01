@@ -22,7 +22,7 @@ import {
 import { isWeighUnit } from "../lib/ek-scale";
 import { productCode } from "../lib/ek-code";
 import { NumField, BarcodeField } from "../components/ek/EkFields";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
 import { checkPrices, marginPercent, markupPercent, VIOLATION } from "../lib/ek-prices";
 import { isCodeQuery, normalizeCodeQuery } from "../lib/ek-code-search";
@@ -31,6 +31,11 @@ import { useDebounced } from "../hooks/useDebounced";
 import InfiniteList from "../components/ek/InfiniteList";
 import { asArray } from "../lib/ek-array";
 import { hasRole } from "../lib/ek-roles";
+import { useScanner } from "../hooks/useScanner";
+import { useLayerCount } from "../hooks/useLayerCount";
+import { layerCount } from "../lib/modal-stack";
+import ScanResultModal from "../components/ScanResultModal";
+import { scanOutcome, copyFields } from "../lib/ek-scan-result";
 import { barcodeSuspicious } from "../lib/ek-barcode-check";
 import { isStoreCode, prettyStoreCode, storeCodeShort } from "../lib/ek-store-code";
 
@@ -78,6 +83,14 @@ export default function ProductsPage({ toast }) {
   const breezzLinked = useBreezzLinked(user);
   const [breezzOverride, setBreezzOverride] = useState({});
   const [breezzBusy, setBreezzBusy] = useState(null);
+  /* ══ SKANER (2026-10-01) ═══════════════════════════════════════════════
+     Egasining talabi: skanerlangan tovar topilsin va u bilan nima qilish
+     mumkin bo'lsa — bitta oynada. Bu do'konda yo'q bo'lsa, boshqa
+     do'konlardan ko'chirish taklif qilinadi: narxsiz, faqat tavsif
+     (`lib/ek-scan-result.js`). */
+  const navigate = useNavigate();
+  const [scan, setScan] = useState(null);
+  const [copyNote, setCopyNote] = useState(null);
   const { guard } = useBadge();
   const confirm = useConfirm();
   /* Arxivdagi tovar bilan to'qnashuv — ikkita yo'l taklif qilinadi (B). */
@@ -366,7 +379,7 @@ export default function ProductsPage({ toast }) {
     }
   };
 
-  const closeModal = () => setModal(null);
+  const closeModal = () => { setModal(null); setCopyNote(null); };
 
   // ── Rasm ───────────────────────────────────────────────────
   const pickImage = async (file) => {
@@ -628,6 +641,115 @@ export default function ProductsPage({ toast }) {
     } finally {
       setBreezzBusy(null);
     }
+  };
+
+  const handleScan = async (code) => {
+    /* ⚠ Boshqa oyna ochiq bo'lsa kod O'SHANIKI (forma barkod maydoni, xodim
+       kodi so'rovi…) — sahifa uni tutib olmasin. */
+    if (layerCount() > 0) return;
+    try {
+      const res = await productApi.scan(code, branchId || undefined);
+      const data = res?.data;
+      /* Keng taklif faqat «hech qayerda yo'q» bo'lganda: tasdiqlangan
+         katalog yozuvini `/products/scan` o'zi `GLOBAL` qilib beradi. */
+      const suggestion = !branchId && (!data?.source || data.source === "NONE")
+        ? await catalogApi.suggest(code).then((r) => r?.data || null).catch(() => null)
+        : null;
+      setScan(scanOutcome(code, data, suggestion, { allowCopy: !branchId }));
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
+  /* Oyna ochiq bo'lsa skaner BUTUNLAY o'chiq — kod o'sha oynadagi maydonga
+     tushishi kerak (`hooks/useLayerCount.js`). */
+  const openLayers = useLayerCount();
+  useScanner(handleScan, { enabled: openLayers === 0 });
+
+  const toggleActiveScanned = async (p) => {
+    try {
+      const res = await guard(() => productApi.toggleActive(p.id));
+      const next = res?.data || { ...p, active: !p.active };
+      setScan((s) => (s?.kind === "found" ? { ...s, product: next } : s));
+      loadData();
+    } catch (err) {
+      if (!err?.cancelled) toast.error(err.message);
+    }
+  };
+
+  /* Topilgan tovar bilan qilinadigan hamma ish — ro'yxatdagi amallar va
+     ularning ustiga sotuvdan olish va omborga o'tish. */
+  const canOpenStock = hasRole(user?.role, ["SHOP_ADMIN", "STOREKEEPER"]);
+  const scanActions = (p) => {
+    const paused = Boolean(breezzOverride[p.id] ?? p.breezzPaused);
+    const then = (fn) => () => { setScan(null); fn(); };
+    return [
+      { key: "edit", icon: "fa-pen", label: t("common.edit"), onClick: then(() => openEdit(p)) },
+      { key: "label", icon: "fa-tag", label: t("label.print"), onClick: then(() => openLabels([p])) },
+      canOpenStock && !branchId
+        && { key: "stock", icon: "fa-warehouse", label: t("scan.openStock"), onClick: then(() => navigate(`/inventory/${p.id}`)) },
+      { key: "active", icon: p.active ? "fa-eye-slash" : "fa-eye",
+        label: t(p.active ? "scan.toggleOff" : "scan.toggleOn"), onClick: () => toggleActiveScanned(p) },
+      breezzLinked && !branchId
+        && { key: "breezz", icon: paused ? "fa-circle-play" : "fa-circle-pause",
+             label: t(paused ? "breezz.resume" : "breezz.pause"), busy: breezzBusy === p.id,
+             onClick: () => toggleBreezzPause(p, paused) },
+      { key: "delete", icon: "fa-trash", label: t("common.delete"), danger: true, onClick: then(() => handleDelete(p)) },
+    ].filter(Boolean);
+  };
+
+  const productExtra = (p) => {
+    const paused = Boolean(breezzOverride[p.id] ?? p.breezzPaused);
+    return (
+      <div className="scan-sum">
+        {p.salePrice != null && (
+          <div className="scan-sum__row">
+            <span className="scan-sum__label">{t("products.salePrice")}</span>
+            <span className="ek-num">{money(p.salePrice)}</span>
+          </div>
+        )}
+        {p.stockQuantity != null && (
+          <div className="scan-sum__row">
+            <span className="scan-sum__label">{t("inv.stock")}</span>
+            <span className="ek-num">{fmtQty(p.stockQuantity, p.unitDecimals)} {unitLabel(p.unit)}</span>
+          </div>
+        )}
+        <div className="scan-sum__badges">
+          {!p.active ? (
+            <span className="badge badge-red">{t("products.inactive")}</span>
+          ) : p.stockQuantity != null && Number(p.stockQuantity) <= 0 ? (
+            <span className="badge badge-amber">{t("products.outOfStock")}</span>
+          ) : (
+            <span className="badge badge-green">{t("common.active")}</span>
+          )}
+          {paused && (
+            <span className="badge badge-breezz">
+              <i className="fa-solid fa-circle-pause" aria-hidden="true" /> {t("breezz.pausedBadge")}
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  /* Ko'chirish — forma orqali: egasi nomni ko'radi va tuzatadi, narxni
+     o'zi yozadi. Darhol saqlanmaydi (egasining tanlovi, 2026-10-01). */
+  const copyScanned = (s, code, verified) => {
+    setScan(null);
+    setForm({ ...EMPTY_FORM, ...copyFields(s, code) });
+    setCatLocked(false);
+    setCopyNote({ verified });
+    setModal("add");
+  };
+  const createScanned = (code) => {
+    setScan(null);
+    setForm({ ...EMPTY_FORM, barcode: code });
+    setCatLocked(false);
+    setCopyNote(null);
+    setModal("add");
+  };
+  const restoreScanned = (a) => {
+    setScan(null);
+    handleRestore({ id: a.productId, name: a.name });
   };
 
   /* ── Qidiruv ────────────────────────────────────────────────
@@ -1361,6 +1483,13 @@ export default function ProductsPage({ toast }) {
                          onClose={() => setLabelItems(null)} />
       )}
 
+      {/* ── Skanerlangan tovar (2026-10-01) ── */}
+      <ScanResultModal outcome={scan} onClose={() => setScan(null)}
+                       actions={scan?.kind === "found" ? scanActions(scan.product) : []}
+                       extra={scan?.kind === "found" ? productExtra(scan.product) : null}
+                       onCopy={copyScanned} onCreate={branchId ? null : createScanned}
+                       onRestore={canRestore && !branchId ? restoreScanned : null} />
+
       {/* ── Mahsulot formasi ── */}
       {modal && (
         <Modal
@@ -1377,6 +1506,14 @@ export default function ProductsPage({ toast }) {
             </>
           }
         >
+          {/* Skanerdan ko'chirilgan tovar (2026-10-01): narx va do'kon
+              ma'lumoti O'TMAGAN — egasi buni ko'rib turishi kerak. */}
+          {modal === "add" && copyNote && (
+            <div className={`scan-copy-note${copyNote.verified ? "" : " scan-copy-note--warn"}`} role="note">
+              <i className={`fa-solid ${copyNote.verified ? "fa-circle-info" : "fa-triangle-exclamation"}`} aria-hidden="true" />
+              <span>{t(copyNote.verified ? "scan.copyNote" : "scan.copyNoteUnverified")}</span>
+            </div>
+          )}
           {/* ═══ Asosiy ═══ */}
           <div className="form-section">
             <div className="form-section__title"><i className="fa-solid fa-circle-info" /> {t("products.section.main")}</div>

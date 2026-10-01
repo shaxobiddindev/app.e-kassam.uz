@@ -11,6 +11,13 @@ import VariantMatrixModal from "../components/VariantMatrixModal";
 import BatchExpiryModal from "../components/BatchExpiryModal";
 import Select from "../components/ek/Select";
 import { useAuth } from "../hooks/useAuth";
+import { useScanner } from "../hooks/useScanner";
+import { useLayerCount } from "../hooks/useLayerCount";
+import { layerCount } from "../lib/modal-stack";
+import ScanResultModal from "../components/ScanResultModal";
+import { scanOutcome } from "../lib/ek-scan-result";
+import { readPage } from "../lib/ek-page";
+import { hasRole } from "../lib/ek-roles";
 import { useDebounced } from "../hooks/useDebounced";
 import { useInfinite } from "../hooks/useInfinite";
 import InfiniteList from "../components/ek/InfiniteList";
@@ -246,11 +253,16 @@ export default function InventoryPage({ toast }) {
   const [filterOpen, setFilterOpen]   = useState(false);
   /* Ochilgan model guruhi — `null` bo'lsa jadval yopiq. */
   const [matrixGroup, setMatrixGroup] = useState(null);
+  /* ══ SKANER (2026-10-01) — egasining talabi: Omborda ham skanerlangan
+     tovar topilsin va u bilan qilinadigan ish bitta oynada bo'lsin.
+     ⚠ Faqat do'kondagi tovar — boshqa do'kondan ko'chirish Omborda YO'Q. */
+  const [scanned, setScanned] = useState(null);
+  const [scanRow, setScanRow] = useState(null);
 
   const pausedRef = useRef(false);
   useEffect(() => {
-    pausedRef.current = modal !== null || correct !== null || markScan;
-  }, [modal, correct, markScan]);
+    pausedRef.current = modal !== null || correct !== null || markScan || scanned !== null;
+  }, [modal, correct, markScan, scanned]);
 
   /* Jonli yangilanish. Qoldiq shu sahifada emas, KASSADA o'zgaradi —
      boshqa kassir sotgani ham, ikkinchi terminaldagi kirim ham bu yerda
@@ -652,6 +664,54 @@ export default function InventoryPage({ toast }) {
     setQty(String(batch.quantity ?? ""));
     setReason("");
     setWoReason("");
+  };
+
+  const handleScan = async (code) => {
+    /* ⚠ Boshqa oyna ochiq bo'lsa kod O'SHANIKI (kirim oynasidagi
+       markirovka, xodim kodi so'rovi…) — sahifa uni tutib olmasin. */
+    if (layerCount() > 0) return;
+    try {
+      const res = await productApi.scan(code, branchId || undefined);
+      const outcome = scanOutcome(code, res?.data, null, { allowCopy: false });
+      let row = null;
+      if (outcome.kind === "found") {
+        /* Qoldiq va partiyalar — ro'yxatdagi bilan BIR shaklda
+           (`summarize`), ya'ni «Kirim» va «To'g'irlash» o'zgarishsiz ishlaydi. */
+        const page = await inventoryApi.getPage(0, 1, { ids: [outcome.product.id], shopId: branchId });
+        const raw = readPage(page?.data).rows[0];
+        row = raw ? summarize(raw) : null;
+      }
+      setScanRow(row);
+      setScanned(outcome);
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
+  /* Oyna ochiq bo'lsa skaner BUTUNLAY o'chiq — kod o'sha oynadagi maydonga
+     tushishi kerak (`hooks/useLayerCount.js`). */
+  const openLayers = useLayerCount();
+  useScanner(handleScan, { enabled: openLayers === 0 });
+
+  const closeScan = () => { setScanned(null); setScanRow(null); };
+
+  /* Topilgan tovar bilan Omborda qilinadigan ish — qatordagi amallar va
+     partiyalar sahifasi. Boshqa filial ko'rilayotganda amal yo'q (qator
+     bilan bir xil qoida). */
+  const canBatches = hasRole(user?.role, ["SHOP_ADMIN", "STOREKEEPER"]);
+  const scanActions = (g) => {
+    if (!g || branchId) return [];
+    const multi = g.batches.length > 1;
+    const single = g.batches[0] || null;
+    const then = (fn) => () => { closeScan(); fn(); };
+    return [
+      { key: "receive", icon: "fa-plus", label: t("inv.receive"), onClick: then(() => openModal(g)) },
+      !multi && single?.inventoryId != null
+        && { key: "correct", icon: "fa-sliders", label: t("inv.correctAction"), onClick: then(() => openCorrect(single)) },
+      canBatches
+        && { key: "batches", icon: "fa-layer-group", label: t("scan.batches"), onClick: then(() => navigate(`/inventory/${g.productId}`)) },
+      g.variantGroupId
+        && { key: "matrix", icon: "fa-table-cells", label: t("clothing.matrix"), onClick: then(() => setMatrixGroup(g.variantGroupId)) },
+    ].filter(Boolean);
   };
 
   // Mahsulot bir marta muddat bilan kiritilgan bo'lsa — MUDDATLI: keyingi
@@ -1782,6 +1842,29 @@ export default function InventoryPage({ toast }) {
       {/* ⚠ Saqlangandan keyin RO'YXAT yangilanadi: partiya `EXPIRED` ga
           o'tgan bo'lishi mumkin va eski qatorni ekranda qoldirish
           omborchiga «o'zgarmadi» degan yolg'on javob berardi. */}
+      {/* ── Skanerlangan tovar (2026-10-01) ── */}
+      <ScanResultModal outcome={scanned} onClose={closeScan}
+                       actions={scanned?.kind === "found" ? scanActions(scanRow) : []}
+                       extra={scanned?.kind === "found" && scanRow ? (
+                         <div className="scan-sum">
+                           <div className="scan-sum__row">
+                             <span className="scan-sum__label">{t("inv.stock")}</span>
+                             <span className="ek-num">{fmtQty(scanRow.sellable, unitDecimals(scanRow.unit))} {unitLabel(scanRow.unit)}</span>
+                           </div>
+                           {scanRow.nearest && (
+                             <div className="scan-sum__row">
+                               <span className="scan-sum__label">{t("inv.expiry")}</span>
+                               <span className="ek-num">{shortDate(scanRow.nearest)}</span>
+                             </div>
+                           )}
+                           <div className="scan-sum__row">
+                             <span className="scan-sum__label">{t("scan.batchCount")}</span>
+                             <span className="ek-num">{scanRow.batches.length}</span>
+                           </div>
+                           <div className="scan-sum__badges">{stateBadges(flagsOf(scanRow, nearDays), scanRow)}</div>
+                         </div>
+                       ) : null} />
+
       {expiryEdit && (
         <BatchExpiryModal
           batch={expiryEdit}
