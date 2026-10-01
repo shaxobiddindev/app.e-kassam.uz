@@ -1,4 +1,5 @@
 import Overlay from "./ek/Overlay";
+import { t } from "../lib/ek-i18n";
 
 /**
  * ══ ORQA FONGA BOSISH OYNANI YOPMAYDI (V72) ═══════════════════════════
@@ -35,8 +36,12 @@ export default function Modal({ title, onClose, children, footer, maxWidth = 460
               bo'sh funksiya edi) — ishlamaydigan tugma foydalanuvchini
               «osilib qoldimi?» deb o'ylatadi. */}
           {dismissible && (
-            <button className="btn-icon" onClick={onClose}>
-              <i className="fa-solid fa-xmark" />
+            /* ⚠ Nomi bor (2026-10-01): ilgari ikonkadan boshqa narsa yo'q edi —
+               ekran o'quvchi uni shunchaki «tugma» deb o'qirdi (axe:
+               button-name, critical). Hamma oyna shu komponentdan. */
+            <button className="btn-icon" onClick={onClose}
+                    aria-label={t("common.close")} title={t("common.close")}>
+              <i className="fa-solid fa-xmark" aria-hidden="true" />
             </button>
           )}
         </div>
