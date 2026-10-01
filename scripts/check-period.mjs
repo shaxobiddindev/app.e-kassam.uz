@@ -112,10 +112,16 @@ console.log("\n§4 ⚠ DAVR ALMASHTIRILSA QAYTA SO'RALADI");
 /* Tanlagich chizilib, so'rovni yangilamasa — do'kon egasi tugmani
    bosar, ro'yxat esa o'zgarmasdi. */
 const before = asked.length;
-await page.evaluate(() => {
-  const b = [...document.querySelectorAll(".sales-head .rpt-seg")][0]; // «Bugun»
+/* ⚠ OYNING 1-KUNI «BUGUN» EMAS, «KECHA». O'sha kuni «joriy oy» ham
+   bugundan boshlanadi — ikkala davr aynan bir xil, yangi so'rov ketmaydi va
+   sinov sababsiz yiqilardi (2026-10-01 da shunday bo'ldi). «Kecha» esa
+   1-kuni o'tgan oyning oxirgi kuni — oy boshidan farq qiladi. Qolgan
+   kunlarda «Bugun» — u har doim oy boshidan farq qiladi. */
+const pick = new Date().getDate() === 1 ? 1 : 0;   // 0 «Bugun», 1 «Kecha»
+await page.evaluate((i) => {
+  const b = [...document.querySelectorAll(".sales-head .rpt-seg")][i];
   b?.click();
-});
+}, pick);
 await page.waitForFunction((n) => window.__x || true, {}, before).catch(() => {});
 await new Promise((r) => setTimeout(r, 900));
 if (asked.length <= before) {
