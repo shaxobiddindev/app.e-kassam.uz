@@ -26,7 +26,7 @@ import { useScanner } from "../hooks/useScanner";
 /** QR ichidagi matnning boshi — mahsulot shtrixidan ajratish uchun. */
 const BADGE_PREFIX = "EKB-";
 
-const BadgeCtx = createContext({ guard: (fn) => fn() });
+const BadgeCtx = createContext({ guard: (fn) => fn(), asking: false });
 
 export const useBadge = () => useContext(BadgeCtx);
 
@@ -60,6 +60,10 @@ export function BadgeProvider({ children, toast }) {
     // Mahsulot shtrixi tasodifan tushib qolmasin — prefiks bo'yicha
     // ajratamiz va noto'g'ri kodni serverga umuman yubormaymiz.
     if (!token.startsWith(BADGE_PREFIX)) {
+      /* ⚠ Maydon BO'SHATILADI (2026-10-01). Sekin skaner (tezligi bo'yicha
+         tutilmaydigan) kodni shu maydonga yozadi: noto'g'ri kod qolsa,
+         keyingi skanerlash uning DAVOMIGA tushardi va bajik ham o'tmasdi. */
+      setManual("");
       toast?.error(t("badge.notABadge"));
       return;
     }
@@ -98,8 +102,11 @@ export function BadgeProvider({ children, toast }) {
   // ekranidagi tovar skanerlash bilan to'qnashardi.
   useScanner((code) => submit(code), { enabled: !!ask });
 
+  /* `asking` — bajik oynasi ochiq. Kassa skaneri shu payt o'chadi:
+     ikkala tinglovchi bitta kodni oladi va bajik so'ralib turganda
+     skanerlangan tovar SAVATGA tushib qolardi. */
   return (
-    <BadgeCtx.Provider value={{ guard }}>
+    <BadgeCtx.Provider value={{ guard, asking: ask !== null }}>
       {children}
       {ask && (
         <Modal

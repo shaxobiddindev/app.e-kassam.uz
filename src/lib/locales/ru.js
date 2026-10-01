@@ -1899,6 +1899,7 @@ export default {
   "scan.openStock": "Открыть на складе",
   "scan.batches": "Партии",
   "scan.batchCount": "Количество партий",
+  "scan.codeNotFound": "Товар с кодом «{code}» не найден",
   "breezz.pausedToast": "Приостановлено в Breezz. В магазине продаётся",
   "breezz.resumedToast": "Снова в продаже в Breezz",
   "branch.loadFailed": "Не удалось загрузить филиалы",

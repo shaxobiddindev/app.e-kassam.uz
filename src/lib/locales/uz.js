@@ -1991,6 +1991,7 @@ export default {
   "scan.openStock": "Omborda ko'rish",
   "scan.batches": "Partiyalar",
   "scan.batchCount": "Partiyalar soni",
+  "scan.codeNotFound": "«{code}» kodli tovar topilmadi",
   "breezz.pausedToast": "Breezz'da to'xtatildi. Do'konda sotilaveradi",
   "breezz.resumedToast": "Breezz'da yana sotuvda",
   "branch.loadFailed": "Filiallar yuklanmadi",

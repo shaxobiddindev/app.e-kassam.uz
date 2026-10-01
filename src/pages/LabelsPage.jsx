@@ -15,11 +15,13 @@ import LabelGallery from "../components/ek/LabelGallery";
 import { printHtml } from "../lib/ek-receipt-pdf";
 import Modal from "../components/Modal";
 import { useConfirm } from "../context/ConfirmProvider";
-import { productCode } from "../lib/ek-code";
-import { rankItems } from "../lib/ek-search";
+import { productCode, findByCode } from "../lib/ek-code";
+import { rankItems, looksLikeCode } from "../lib/ek-search";
 import { money } from "../lib/ek-format";
 import { blocking, validateOutput } from "../lib/ek-label-validate";
 import { templateName } from "../lib/ek-label-name";
+import { useScanner } from "../hooks/useScanner";
+import { useLayerCount } from "../hooks/useLayerCount";
 
 /* ══════════════════════════════════════════════════════════════════════════
    YORLIQLAR — KO'RISH VA NAVBAT (F3 + F5)
@@ -280,6 +282,44 @@ export default function LabelsPage({ toast }) {
     }));
   }, [products, search]);
 
+  /* ══ SKANER VA ENTER (2026-10-01) ══════════════════════════════════════
+     Ilgari skanerlangan kod faqat qidiruv maydoniga yozilardi: ro'yxat
+     bitta tovarga torayardi, lekin uni yana QO'LDA tanlash kerak edi,
+     keyingi skanerlash esa eski kodning DAVOMIGA yozilib hech narsa
+     topmasdi. Endi aniq kod (barkod yoki tovar kodi) tovarni DARHOL
+     tanlaydi va maydon bo'shaydi. */
+  const pickByCode = async (raw) => {
+    const code = String(raw ?? "").trim();
+    if (!code) return;
+    setSearch("");
+    let p = findByCode(products, code);
+    // Qadoq va tarozi barkodi ro'yxatda yo'q — ularni server hal qiladi.
+    if (!p && looksLikeCode(code)) {
+      try {
+        const r = await productApi.scan(code);
+        const id = r?.data?.product?.id;
+        p = products.find((x) => x.id === id) || null;
+      } catch (_) { p = null; }
+    }
+    if (p) setProductId(p.id);
+    else toast.error(t("scan.codeNotFound", { code }));
+  };
+
+  /* Matn bilan Enter — kassadagidek ENG MOS (birinchi) tovar. */
+  const onSearchEnter = (e) => {
+    if (e.key !== "Enter") return;
+    const v = e.currentTarget.value.trim();
+    if (!v) return;
+    e.preventDefault();
+    if (looksLikeCode(v) || v.startsWith("*")) { pickByCode(v); return; }
+    if (!options.length) { e.currentTarget.select(); return; }
+    setProductId(options[0].value);
+    setSearch("");
+  };
+
+  const openLayers = useLayerCount();
+  useScanner(pickByCode, { enabled: tab === "preview" && openLayers === 0 });
+
   return (
     <div>
       <div className="page-header" style={{ marginBottom: 18 }}>
@@ -459,7 +499,7 @@ export default function LabelsPage({ toast }) {
           <div className="lbl-layout">
             <div className="lbl-side">
               <label className="form-label">{t("lbl.product")}</label>
-              <SearchBar value={search} onChange={setSearch}
+              <SearchBar value={search} onChange={setSearch} onKeyDown={onSearchEnter}
                          placeholder={t("products.search")} />
               <div style={{ marginTop: 6 }}>
                 <Select

@@ -5,14 +5,16 @@ import { asArray } from "../../lib/ek-array";
 import { Empty, SearchBar } from "../ui";
 import Select from "./Select";
 import Modal from "../Modal";
-import { productCode } from "../../lib/ek-code";
-import { rankItems } from "../../lib/ek-search";
+import { productCode, findByCode } from "../../lib/ek-code";
+import { rankItems, looksLikeCode } from "../../lib/ek-search";
 import { money } from "../../lib/ek-format";
 import { templateName } from "../../lib/ek-label-name";
 import { printHtml } from "../../lib/ek-receipt-pdf";
 import { printPriceLabels } from "../../lib/ek-hardware";
 import { isDesktop } from "../../lib/ek-desktop";
 import { buildPrintDoc, pendingItems, sheetFor, PAGES } from "../../lib/ek-label-print";
+import { useScanner } from "../../hooks/useScanner";
+import { useLayerCount } from "../../hooks/useLayerCount";
 
 /* ══════════════════════════════════════════════════════════════════════════
    CHOP ETISH NAVBATI (F5)
@@ -137,10 +139,11 @@ export default function LabelQueue({
 
   const save = (body) => wrap(() => labelApi.saveJob(job.id, body));
 
-  const add = () => {
+  /* `id` — skaner yoki Enter'dan (pastda): tanlagichni kutmasdan. */
+  const add = (id = pick) => {
     const body = {
       source,
-      productIds: source === "PRODUCTS" ? (pick ? [pick] : []) : null,
+      productIds: source === "PRODUCTS" ? (id ? [id] : []) : null,
       categoryId: source === "CATEGORY" ? categoryId : null,
       quantityRule: rule,
       manualQuantity: rule === "MANUAL" ? Math.max(1, Number(manualQty) || 1) : null,
@@ -231,6 +234,48 @@ export default function LabelQueue({
     }));
   }, [products, search]);
 
+  /* ══ SKANER VA ENTER (2026-10-01) ══════════════════════════════════════
+     Javondagi tovarlarni ketma-ket skanerlab navbatga qo'shish: aniq kod
+     tovarni DARHOL navbatga qo'shadi, tanlagich va tugmani kutmaydi.
+     Ilgari kod qidiruv maydoniga yozilib, keyingisi uning DAVOMIGA
+     tushardi. Nom bilan Enter esa faqat TANLAYDI — nom noaniq, qo'shishni
+     odam tasdiqlaydi. */
+  const addByCode = async (raw) => {
+    const code = String(raw ?? "").trim();
+    if (!code) return;
+    setSearch("");
+    let p = findByCode(products, code);
+    // Qadoq va tarozi barkodi ro'yxatda yo'q — ularni server hal qiladi.
+    if (!p && looksLikeCode(code)) {
+      try {
+        const r = await productApi.scan(code);
+        const id = r?.data?.product?.id;
+        p = products.find((x) => x.id === id) || null;
+      } catch (_) { p = null; }
+    }
+    if (!p) { toast?.error(t("scan.codeNotFound", { code })); return; }
+    setPick(p.id);
+    add(p.id);
+  };
+
+  const onSearchEnter = (e) => {
+    if (e.key !== "Enter") return;
+    const v = e.currentTarget.value.trim();
+    if (!v) return;
+    e.preventDefault();
+    if (looksLikeCode(v) || v.startsWith("*")) { addByCode(v); return; }
+    if (!options.length) { e.currentTarget.select(); return; }
+    setPick(options[0].value);
+    setSearch("");
+  };
+
+  /* ⚠ `compact` — chop etish oynasi ichida (tovarlar sahifasi, kod
+     to'qnashuvi): u yerda qo'shish bo'limi umuman chizilmaydi. */
+  const openLayers = useLayerCount();
+  useScanner(addByCode, {
+    enabled: !!job && !compact && source === "PRODUCTS" && openLayers === 0,
+  });
+
   if (!job) return <Empty icon="fa-list-check" text={t("lbl.noJob")} />;
 
   const lines = job.lines || [];
@@ -306,7 +351,7 @@ export default function LabelQueue({
 
           {source === "PRODUCTS" && (
             <div style={{ marginTop: 8 }}>
-              <SearchBar value={search} onChange={setSearch}
+              <SearchBar value={search} onChange={setSearch} onKeyDown={onSearchEnter}
                          placeholder={t("products.search")} />
               <div style={{ marginTop: 6 }}>
                 <Select block variant="field" ariaLabel={t("lbl.product")}
@@ -327,7 +372,7 @@ export default function LabelQueue({
 
           <button type="button" className="btn btn-outline btn-sm"
                   style={{ marginTop: 10 }} disabled={busy}
-                  onClick={add}>
+                  onClick={() => add()}>
             <i className="fa-solid fa-plus" /> {t("lbl.addToQueue")}
           </button>
         </div>

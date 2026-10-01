@@ -120,6 +120,10 @@ page.on("request", (r) => {
       body = { success: true,
                data: q ? PRODUCTS.filter((p) => p.name.includes(q)) : PRODUCTS };
     }
+  } else if (/\/products\/scan$/.test(url.pathname)) {
+    const p = PRODUCTS.find((x) => x.barcode === url.searchParams.get("code"));
+    body = { success: true,
+             data: p ? { source: "PRODUCT", product: p, quantity: 1 } : { source: "NONE" } };
   }
   return r.respond({ status: 200, contentType: "application/json",
                      headers: CORS, body: JSON.stringify(body) });
@@ -254,6 +258,46 @@ s = await until(() => false, 600);
 if (s.items.filter((i) => i.startsWith("pechene")).join() !== "pechene×1")
   no("bo'sh maydonda Enter yana qo'shmasligi kerak", s.items.join());
 else ok("bo'sh maydonda Enter jim");
+
+/* ══ 4b. SKANER FOKUSDAGI QIDIRUVGA HECH NARSA QOLDIRMAYDI (2026-10-01) ══
+
+   ⚠ Do'kon shikoyati: «qidiruvda 45 → 4545». `useScanner` maydonga tushib
+   ulgurgan ikki belgini Enter'da tozalashi kerak edi, lekin `reset()`
+   tozalashdan OLDIN chaqirilib, uni hook yaratilgan kundan beri o'chirib
+   qo'ygan edi: har skanerlash qidiruvda barkodning boshini qoldirardi va
+   keyingisi uning DAVOMIGA tushardi.
+
+   ⚠ Skaner tezligi — 5 ms. Oldidan belgisiz Shift: Puppeteer'ning birinchi
+   tugmasi sekin keladi (~70 ms) va skaner uni odam deb hisoblab, kodning
+   birinchi belgisini maydonga qoldirardi — ayb kodda emas, sinovda. */
+console.log("\n── 4b. Skaner fokusdagi qidiruvga hech narsa qoldirmaydi ──");
+{
+  const scan = async (code) => {
+    await page.keyboard.press("Shift");
+    await new Promise((r) => setTimeout(r, 150));
+    await page.keyboard.type(code, { delay: 5 });
+    await page.keyboard.press("Enter");
+  };
+
+  await typeQ("");
+  await scan("1000000000031");
+  await until((x) => x.items.includes("suv×3"));
+  await scan("1000000000031");
+  s = await until((x) => x.items.includes("suv×4"));
+  if (!s.items.includes("suv×4")) no("ikki skaner savatga ikki dona qo'shishi kerak", s.items.join());
+  else ok("ikki skaner — ikki dona");
+  if (s.q !== "") no("skanerdan keyin bo'sh qidiruvda hech narsa qolmasligi kerak", JSON.stringify(s.q));
+  else ok("qidiruv bo'sh qoldi — barkod boshi to'planmadi");
+
+  /* Yozilgan so'rov ustiga skaner — so'rov o'zgarmaydi. */
+  await typeQ("kef");
+  await until((x) => x.q === "kef");
+  await scan("1000000000031");
+  s = await until((x) => x.items.includes("suv×5"));
+  if (!s.items.includes("suv×5")) no("yozilgan so'rov ustidagi skaner ham qo'shishi kerak", s.items.join());
+  if (s.q !== "kef") no("yozilgan so'rov skanerdan keyin o'zgarmasligi kerak", JSON.stringify(s.q));
+  else ok("yozilgan so'rov joyida qoldi");
+}
 
 /* ══ 5. CHEK YOPILGACH QIDIRUV TOZALANADI ═══════════════════════════════
 

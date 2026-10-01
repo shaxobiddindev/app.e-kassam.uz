@@ -169,7 +169,7 @@ function nextOfflineNo() {
 
 // ─── KassaPage ───────────────────────────────────────────────
 export default function KassaPage({ toast, refreshLowStock }) {
-  const { guard } = useBadge();
+  const { guard, asking: badgeAsking } = useBadge();
   const [products, setProducts]     = useState([]);
   const [customers, setCustomers]   = useState([]);
   /* Qaytim jamg'armaga yo'naltirilsinmi (V63). ⚠ Har chekda QAYTADAN
@@ -993,7 +993,12 @@ export default function KassaPage({ toast, refreshLowStock }) {
        Ilgari ikkinchi Enter hech narsa qilmasdi (maydon bo'sh edi) va
        shu holat saqlanadi. Bosishda esa bunday xavf yo'q: kassir aniq
        bir qatorni ko'rsatadi. */
-    if (products.length > 0) pickProduct(products[0], { clearSearch: true });
+    if (products.length > 0) { pickProduct(products[0], { clearSearch: true }); return; }
+    /* Hech narsa topilmadi — so'rov baribir «ishlatilgan» (2026-10-01):
+       matn belgilanadi va keyingi yozish uni almashtiradi. Ilgari u
+       eskisining DAVOMIGA tushardi («45» → «454545»). */
+    searchSpent.current = true;
+    e.currentTarget.select();
   };
 
   /* ══ SAVATNI SAQLASH ═══════════════════════════════════════
@@ -1396,7 +1401,12 @@ export default function KassaPage({ toast, refreshLowStock }) {
   /* Rasm nisbatini saqlash — o'lchov `useTileMetrics` izohida. */
   useTileMetrics(gridRef, view === "tiles", [products.length, view]);
 
-  useScanner(addByBarcode, { enabled: !showPayModal && !finish && !qtyModal && !markModal });
+  /* Bajik oynasi ochiq bo'lsa ham o'chiq (2026-10-01): oyna o'z skaneri
+     bilan bajikni kutadi, bu tinglovchi esa o'sha kodni tovar deb savatga
+     qo'shishga urinardi. */
+  useScanner(addByBarcode, {
+    enabled: !showPayModal && !finish && !qtyModal && !markModal && !badgeAsking,
+  });
 
   /* ── Savat ────────────────────────────────────────────────── */
 
@@ -1489,8 +1499,18 @@ export default function KassaPage({ toast, refreshLowStock }) {
     if (product.salePrice == null) { toast.error(`${product.name} — ${t("kassa.noPriceWarn")}`); return; }
     // Markirovkali tovarda miqdorni kassir yozmaydi — u har donaning
     // yorlig'ini skanerlaydi va miqdor shundan kelib chiqadi.
-    if (product.markingGroup) { setMarkModal({ product }); return; }
-    if (needsQty(product)) { setQtyModal({ product, initial: null }); return; }
+    if (product.markingGroup || needsQty(product)) {
+      /* ⚠ Oyna ochiladi va `addToCart` HOZIR chaqirilmaydi — qidiruv
+         maydonining holati shu yerda hal qilinadi (2026-10-01). Ilgari bu
+         ikki turdagi tovarda Enter yo'lining tozalashi bajarilmas, bosish
+         yo'lida esa matn «ishlatilgan» deb belgilanmasdi: oyna yopilgach
+         keyingi yozish eski so'rovning DAVOMIGA tushardi. */
+      if (clearSearch) resetSearch();
+      else if (searchRef.current?.value) searchSpent.current = true;
+      if (product.markingGroup) setMarkModal({ product });
+      else setQtyModal({ product, initial: null });
+      return;
+    }
     addToCart(product, 1, { clearSearch });
   };
 

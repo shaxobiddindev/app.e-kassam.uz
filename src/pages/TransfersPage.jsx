@@ -26,6 +26,10 @@ import { NoTh, NoTd, NO_COL } from "../components/ek/RowNo";
 import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
 import { asArray } from "../lib/ek-array";
+import { useScanner } from "../hooks/useScanner";
+import { useLayerCount } from "../hooks/useLayerCount";
+import { looksLikeCode } from "../lib/ek-search";
+import { findByCode } from "../lib/ek-code";
 
 const TONE_COLOR = { success: "green", danger: "red", warning: "yellow", info: "blue", neutral: "gray" };
 
@@ -124,6 +128,49 @@ export default function TransfersPage({ toast }) {
       });
     }
   };
+
+  /* ══ SKANER VA ENTER (2026-10-01) ══════════════════════════════════════
+     Ilgari skanerlangan kod qidiruv maydoniga yozilib, tovarni ro'yxatdan
+     QO'LDA bosish kerak edi; kod topilmasa u maydonda qolar va keyingi
+     skanerlash uning DAVOMIGA yozilardi. Endi kod hujjat darajasida
+     tutiladi (Katalog va Ombordagidek), tovar darhol qatorga tushadi,
+     maydon esa so'rovdan OLDIN bo'shaydi. */
+  const scanLine = async (raw) => {
+    const code = String(raw ?? "").trim();
+    if (!code) return;
+    setSearch("");
+    setFound([]);
+    try {
+      const r = await productApi.scan(code);
+      const p = r?.data?.product;
+      if (p) addLine(p);
+      else toast?.error(t("scan.codeNotFound", { code }));
+    } catch (err) {
+      toast?.error(err.message);
+    }
+  };
+
+  /* Qo'lda yozib Enter: raqamli kod — skaner yo'li; matn — kodi aynan mos
+     yoki yagona natija bo'lsa, o'sha tovar.
+     ⚠ EKRANDAGI `found` ISHLATILMAYDI: har harf alohida so'rov va javoblar
+     tartibsiz keladi — Enter paytida ro'yxat oldingi harfniki bo'lishi
+     mumkin. Shuning uchun so'rov qaytadan yuboriladi. */
+  const enterSearch = async () => {
+    const q = search.trim();
+    if (!q) return;
+    if (looksLikeCode(q)) { scanLine(q); return; }
+    try {
+      const r = await productApi.search(q, 0, 12);
+      const list = asArray(r.data);
+      const p = findByCode(list, q) || (list.length === 1 ? list[0] : null);
+      if (p) addLine(p);
+    } catch (_) { /* ro'yxat ekranda — tanlash qo'lda */ }
+  };
+
+  /* Faqat yangi hujjat oynasi YOLG'IZ ochiq bo'lsa: markirovka oynasi
+     (`scan`) yorliqlarni o'z skaneri bilan yig'adi. */
+  const openLayers = useLayerCount();
+  useScanner(scanLine, { enabled: !!form && openLayers === 1 });
 
   const setLine = (i, value) =>
     setForm((f) => ({ ...f, lines: f.lines.map((l, j) => (j === i ? { ...l, quantity: value } : l)) }));
@@ -441,7 +488,8 @@ export default function TransfersPage({ toast }) {
                 qo'shadi: yulduzchadan keyin raqamdan boshqasi tushib qoladi va
                 rejim ko'rinib turadi — boshqa sahifalar bilan bir xil bo'lsin. */}
             <SearchBar code codeLabel={t("kassa.codeMode")}
-              value={search} onChange={runSearch} placeholder={t("products.search")} />
+              value={search} onChange={runSearch} placeholder={t("products.search")}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); enterSearch(); } }} />
             {found.length > 0 && (
               <div className="card" style={{ marginTop: 6, maxHeight: 220, overflowY: "auto" }}>
                 {found.map((p) => (

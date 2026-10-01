@@ -26,6 +26,8 @@ import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
 import { NoTh, NoTd, NO_COL } from "../components/ek/RowNo";
 import { returnReasonOptions, supplierReturnReason } from "../lib/ek-labels";
 import { asArray } from "../lib/ek-array";
+import { useScanner } from "../hooks/useScanner";
+import { useLayerCount } from "../hooks/useLayerCount";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -126,17 +128,23 @@ export default function SupplyPage({ toast }) {
     });
   };
 
-  /* Barkod → tovar. `scan` qadoq va tarozi barkodini ham hal qiladi. */
-  const addLine = async () => {
-    const code = form.code.trim();
+  /* Barkod → tovar. `scan` qadoq va tarozi barkodini ham hal qiladi.
+     `raw` — sahifa skaneridan (pastdagi `useScanner`); Enter'da — maydon.
+
+     ⚠ MAYDON SO'ROVDAN OLDIN BO'SHAYDI (2026-10-01). Ilgari u faqat tovar
+     topilganda tozalanardi: topilmagan kod maydonda qolib, keyingi
+     skanerlash uning DAVOMIGA yozilardi va endi hech narsa topilmasdi.
+     Topilmagan kod xabarda ko'rsatiladi — u izsiz yo'qolmaydi. */
+  const addLine = async (raw) => {
+    const code = (typeof raw === "string" ? raw : form.code).trim();
     if (!code) return;
+    setForm((f) => f && ({ ...f, code: "" }));
     try {
       const r = await productApi.scan(code);
       const p = r?.data?.product;
-      if (!p) { toast?.error(t("common.notFound")); return; }
-      setForm((f) => ({
+      if (!p) { toast?.error(t("scan.codeNotFound", { code })); return; }
+      setForm((f) => f && ({
         ...f,
-        code: "",
         lines: [...f.lines, {
           productId: p.id, productName: p.name,
           /* Miqdor maydoni birlikni bilishi kerak: DONA tovarga 0.5
@@ -240,16 +248,17 @@ export default function SupplyPage({ toast }) {
     });
   };
 
-  const addRetLine = async () => {
-    const code = retForm.code.trim();
+  /* Kirimdagi `addLine` bilan bir xil: maydon so'rovdan OLDIN bo'shaydi. */
+  const addRetLine = async (raw) => {
+    const code = (typeof raw === "string" ? raw : retForm.code).trim();
     if (!code) return;
+    setRetForm((f) => f && ({ ...f, code: "" }));
     try {
       const r = await productApi.scan(code);
       const p = r?.data?.product;
-      if (!p) { toast?.error(t("common.notFound")); return; }
-      setRetForm((f) => ({
+      if (!p) { toast?.error(t("scan.codeNotFound", { code })); return; }
+      setRetForm((f) => f && ({
         ...f,
-        code: "",
         lines: [...f.lines, {
           productId: p.id, productName: p.name, unit: p.unit, quantity: "1",
         }],
@@ -258,6 +267,22 @@ export default function SupplyPage({ toast }) {
       toast?.error(err.message);
     }
   };
+
+  /* ══ SKANER — FOKUS QAYERDA BO'LISHIDAN QAT'I NAZAR (2026-10-01) ═══════
+     Egasining talabi: skaner hamma bo'limda Katalog va Ombordagidek
+     ishlasin. Ilgari kod FAQAT «skanerlang» maydoni fokusda bo'lsa
+     qo'shilardi: omborchi qatorning miqdori yoki tannarxini yozib turib
+     keyingi tovarni skanerlasa, barkod O'SHA maydonga yozilardi. Endi kod
+     hujjat darajasida tutiladi va qator qaysi maydon fokusda bo'lsa ham
+     qo'shiladi; qo'lda yozib Enter bosish avvalgidek ishlaydi.
+
+     ⚠ Faqat hujjat oynasi YOLG'IZ ochiq bo'lsa (`openLayers === 1`):
+     ustidan boshqa oyna ochilsa, kod o'sha oynaning maydoniga tegishli. */
+  const openLayers = useLayerCount();
+  useScanner((code) => {
+    if (form) addLine(code);
+    else if (retForm) addRetLine(code);
+  }, { enabled: !!(form || retForm) && openLayers === 1 });
 
   const setRetLine = (i, value) =>
     setRetForm((f) => ({ ...f, lines: f.lines.map((l, j) => (j === i ? { ...l, quantity: value } : l)) }));

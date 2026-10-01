@@ -22,3 +22,26 @@ export function productCode(p) {
   return v == null || v === "" ? null : String(v);
 }
 
+/**
+ * SKANERLANGAN YOKI YOZILGAN KOD → ro'yxatdagi tovar (2026-10-01).
+ *
+ * Yorliqlar va ko'chirish sahifalari kodni shu bilan taniydi: barkod yoki
+ * tovar kodi AYNAN mos kelishi shart — qisman moslik qidiruvning ishi.
+ *
+ * ⚠ `*` — kassadagi «kod rejimi»: avval tovar kodi qaraladi, keyin barkod.
+ * Yulduzchasiz — aksincha. Ikki tovarning biridagi barkod boshqasining
+ * kodiga teng bo'lib qolsa ham, odam nimani nazarda tutgani ustun turadi.
+ */
+export function findByCode(list, raw) {
+  const s = String(raw ?? "").trim();
+  const starred = s.startsWith("*");
+  const code = starred ? s.slice(1).trim() : s;
+  if (!code) return null;
+  const items = Array.isArray(list) ? list : [];
+  const byBarcode = (p) => p?.barcode != null && String(p.barcode) === code;
+  const byOwn = (p) => productCode(p) === code;
+  return items.find(starred ? byOwn : byBarcode)
+      || items.find(starred ? byBarcode : byOwn)
+      || null;
+}
+

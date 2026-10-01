@@ -24,6 +24,8 @@ import { useLoading } from "../lib/use-loading";
 import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
 import { NoTh, NoTd, NO_COL } from "../components/ek/RowNo";
 import { asArray } from "../lib/ek-array";
+import { useScanner } from "../hooks/useScanner";
+import { useLayerCount } from "../hooks/useLayerCount";
 
 /* ⚠ SANA+VAQT — `lib/ek-format.js` dan (V70). Uchta sahifada
    uchta bir xil mahalliy nusxa bor edi va ular `uz-UZ` ni
@@ -65,7 +67,11 @@ export default function StockTakePage({ toast }) {
 
   useEffect(() => { load(); }, [load]);
   // Skaner maydoni doim fokusda: omborchining qo'li skanerda, sichqonchada emas.
-  useEffect(() => { if (session) codeRef.current?.focus(); }, [session, countFor]);
+  /* ⚠ Miqdor oynasi ochiq bo'lsa — YO'Q (2026-10-01). Effekt `countFor` ga
+     bog'langan va u oyna ochilganda ham, har harfda ham yangilanadi:
+     fokus oynadagi miqdor maydonidan orqadagi barkod maydoniga o'tib
+     ketar va sanalgan son o'sha yerga yozilardi. */
+  useEffect(() => { if (session && !countFor) codeRef.current?.focus(); }, [session, countFor]);
 
   const doOpen = async () => {
     setBusyAct(true);
@@ -89,12 +95,23 @@ export default function StockTakePage({ toast }) {
     try {
       const r = await productApi.scan(value);
       const p = r?.data?.product;
-      if (!p) { toast?.error(t("common.notFound")); return; }
+      if (!p) { toast?.error(t("scan.codeNotFound", { code: value })); return; }
       setCountFor({ product: p, quantity: "" });
     } catch (err) {
       toast?.error(err.message);
     }
   };
+
+  /* ══ SKANER — FOKUS QAYERDA BO'LISHIDAN QAT'I NAZAR (2026-10-01) ═══════
+     Ilgari kod faqat fokusdagi maydonga tushardi. Miqdor oynasi ochiq
+     turganda keyingi tovar skanerlansa, barkod miqdor maydoniga (yoki
+     orqadagi barkod maydoniga) yozilardi. Endi kod hujjat darajasida
+     tutiladi: oyna ochiq bo'lsa ham u yangi tovarni ochadi — saqlanmagan
+     son tashlab ketiladi, chunki u hali hech qayerga yozilmagan.
+
+     ⚠ Boshqa oyna ochiq bo'lsa (yopish tasdig'i, bajik, filtr) — o'chiq. */
+  const openLayers = useLayerCount();
+  useScanner((c) => submitCode(c), { enabled: !!session && openLayers === (countFor ? 1 : 0) });
 
   const submitCount = async () => {
     setBusyAct(true);

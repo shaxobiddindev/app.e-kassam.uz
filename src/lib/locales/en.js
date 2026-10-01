@@ -1899,6 +1899,7 @@ export default {
   "scan.openStock": "Open in stock",
   "scan.batches": "Batches",
   "scan.batchCount": "Batch count",
+  "scan.codeNotFound": "No product with the code «{code}»",
   "breezz.pausedToast": "Paused on Breezz. Still sold in store",
   "breezz.resumedToast": "Back on sale on Breezz",
   "branch.loadFailed": "Could not load branches",
