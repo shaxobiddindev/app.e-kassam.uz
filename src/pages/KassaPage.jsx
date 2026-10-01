@@ -19,6 +19,7 @@ import LinePriceModal from "../components/LinePriceModal";
 import MarkingScanModal from "../components/MarkingScanModal";
 import { Empty, ClearButton } from "../components/ui";
 import { useKeyboard } from "../context/KeyboardProvider";
+import { freshQuery } from "../lib/ek-fresh-query";
 import { clear as clearField } from "../lib/ek-keys";
 import { isTouch } from "../lib/ek-touch";
 import { FinishOverlay, SkeletonTiles, Spinner } from "../components/ek/Loading";
@@ -547,6 +548,21 @@ export default function KassaPage({ toast, refreshLowStock }) {
   const [markModal, setMarkModal]   = useState(null);   // { product } — DataMatrix
 
   const searchRef   = useRef(null);
+  /* ══ QIDIRUV «ISHLATILGAN» (2026-10-01) ═══════════════════════════════
+     Do'kon shikoyati: «topilgan mahsulot qo'shilgandan keyin ikkinchi
+     kiritish eskisining DAVOMIDAN yozilyapti: 45 → 45 4545».
+
+     Matn qo'shilgandan keyin ATAYLAB qoladi (§10Ū — o'sha tovarni yana
+     bosish uchun), lekin keyingi YOZISH yangi qidiruv bo'lishi kerak.
+     Davomiga yozish xavfli ham edi: har bosqich («454», «4545»…) boshqa
+     tovarni topib qolishi mumkin.
+
+     Shuning uchun matn qoladi, lekin «ishlatilgan» deb belgilanadi:
+     maydonga qaytganda u BELGILANADI (yozilgan narsa uni almashtiradi),
+     belgi yo'qolsa ham — oxiriga qo'shilgan matn eskisini almashtiradi
+     (`lib/ek-fresh-query.js`). */
+  const searchSpent = useRef(false);
+  const keepSelect  = useRef(false);
   const debounceRef = useRef(null);
   const undoRef     = useRef(null);
   const lastSale    = useRef(null);   // Ctrl+P uchun
@@ -860,6 +876,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
    * keyin esa ro'yxat serverdan qayta o'qiladi.
    */
   const resetSearch = useCallback(() => {
+    searchSpent.current = false;
     setSearch("");
     clearTimeout(debounceRef.current);
     if (baseProducts.current) setProducts(baseProducts.current);
@@ -931,6 +948,13 @@ export default function KassaPage({ toast, refreshLowStock }) {
 
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => doSearch(val), 180);
+  };
+
+  /** Ishlatilgan so'rovdan keyingi birinchi yozish — yangi so'rov (izoh: `searchSpent`). */
+  const takeQuery = (next) => {
+    if (!searchSpent.current) return next;
+    searchSpent.current = false;
+    return freshQuery(search, next);
   };
 
   /**
@@ -1099,7 +1123,12 @@ export default function KassaPage({ toast, refreshLowStock }) {
      bajaradi. Fokus FAQAT odam so'raganda beriladi (Ctrl+B yoki «/»)
      yoki modal yopilganda — avto-fokus olib tashlangan. */
   const focusSearch = useCallback(() => {
-    searchRef.current?.focus();
+    const el = searchRef.current;
+    if (!el) return;
+    el.focus();
+    /* «Ishlatilgan» matn belgilanadi — yozilgan narsa uni almashtiradi
+       (ekran klaviaturasi ham tanlovni almashtiradi: `ek-keys.insert`). */
+    if (searchSpent.current) el.select();
   }, []);
 
   /* ⚠ AVTO-FOKUS OLIB TASHLANDI (foydalanuvchi qarori: «unga skaner
@@ -1527,6 +1556,10 @@ export default function KassaPage({ toast, refreshLowStock }) {
       return [...prev, { ...product, qty: roundQty(product, amount), _added: Date.now() }];
     });
     if (clearSearch) resetSearch();
+    /* ⚠ Matn qoladi (§10Ū), lekin endi u «ishlatilgan» — keyingi yozish
+       yangi qidiruv. DOM dan o'qiladi: ba'zi chaqiruvchilar eski yopilishdagi
+       `search` ni ko'radi. */
+    else if (searchRef.current?.value) searchSpent.current = true;
   };
 
   /* ══ SAVATGA OPTOM NARX (V97) ═══════════════════════════════════════
@@ -2824,7 +2857,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
       };
 
       const run = {
-        search:    () => searchRef.current?.focus(),
+        search:    () => focusSearch(),
         newCart:   addCart,
         nextCart,
         closeCart: () => dropCart(activeId),
@@ -3165,8 +3198,18 @@ export default function KassaPage({ toast, refreshLowStock }) {
                   placeholder={t("kassa.searchOrScan")}
                   value={search}
                   inputMode={search.startsWith("*") ? "numeric" : undefined}
-                  onChange={(e) => handleSearchChange(e.target.value)}
+                  onChange={(e) => handleSearchChange(takeQuery(e.target.value))}
                   onKeyDown={onSearchEnter}
+                  onFocus={(e) => {
+                    if (!searchSpent.current) return;
+                    e.currentTarget.select();
+                    keepSelect.current = true;
+                  }}
+                  /* Bosish karetkani qo'yib, fokusdagi tanlovni olib
+                     tashlardi — birinchi qo'yib yuborishda to'siladi. */
+                  onMouseUp={(e) => {
+                    if (keepSelect.current) { keepSelect.current = false; e.preventDefault(); }
+                  }}
                 />
                 {/* ⚠ REJIM KO'RINIB TURSIN. Kassir yulduzcha qo'yganini
                     sezmay qolishi mumkin va o'shanda «nega hech narsa

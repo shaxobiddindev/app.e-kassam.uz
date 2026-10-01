@@ -205,6 +205,26 @@ else ok("ikkinchi dona qo'shildi — qidiruv qayta yozilmadi");
 if (s.q !== "suv") no("qidiruv matni hamon joyida bo'lishi kerak", JSON.stringify(s.q));
 else ok("qidiruv matni hamon joyida");
 
+console.log("\n── 2b. Bosishdan keyin YOZISH — yangi qidiruv (2026-10-01) ──");
+/* Do'kon shikoyati: «topilgan tovar qo'shilgandan keyin ikkinchi kiritish
+   eskisining DAVOMIDAN yozilyapti: 45 → 45 4545». Matn joyida qoladi
+   (§1–2), lekin endi u «ishlatilgan»: maydon bosilsa BELGILANADI va
+   yozilgan narsa uni almashtiradi.
+
+   ⚠ `typeQ` EMAS — u maydonni qo'lda belgilab, aynan shu nosozlikni
+   yashirib kelgan. Bu yerda kassir qiladigan narsa: bosadi va yozadi. */
+await page.click(".search-bar input");
+const sel = await page.evaluate(() => {
+  const el = document.querySelector(".search-bar input");
+  return [el.selectionStart, el.selectionEnd, el.value.length];
+});
+if (sel[2] > 0 && sel[0] === 0 && sel[1] === sel[2]) ok("bosilganda eski matn belgilandi");
+else no("ishlatilgan matn bosilganda belgilanishi kerak", JSON.stringify(sel));
+await page.type(".search-bar input", "kef", { delay: 80 });
+s = await until((x) => x.q === "kef");
+if (s.q !== "kef") no("yangi matn eskisining DAVOMIGA yozilmasligi kerak", JSON.stringify(s.q));
+else ok("yozilgan matn eski qidiruvni almashtirdi");
+
 console.log("\n── 3. Bir qidiruvdan boshqa tovar ──");
 
 await typeQ("kefir");
