@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { breezzApi } from "../api";
 import { canBreezzPause, canBreezzPauseRole } from "../lib/ek-breezz";
+import { BREEZZ_UI } from "../config";
 
 /* ══════════════════════════════════════════════════════════════════════════
    «Filial Breezz'ga ulanganmi?» — «Breezz'da pauza» tugmasi uchun (§17.4)
@@ -18,7 +19,8 @@ import { canBreezzPause, canBreezzPauseRole } from "../lib/ek-breezz";
    noto'g'ri ko'rsatardi.
    ══════════════════════════════════════════════════════════════════════════ */
 export function useBreezzLinked(user) {
-  const allowed = canBreezzPauseRole(user?.role);
+  // ⏸ Bo'lim yashirin (`BREEZZ_UI`) — so'rov yo'q, tugma ham yo'q.
+  const allowed = BREEZZ_UI && canBreezzPauseRole(user?.role);
   const [linked, setLinked] = useState(false);
 
   useEffect(() => {

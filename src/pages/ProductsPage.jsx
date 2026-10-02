@@ -15,7 +15,7 @@ import { money, quantity as fmtQty, fmtDateTime } from "../utils";
 import Select from "../components/ek/Select";
 import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
-import { FISCAL_UI } from "../config";
+import { FISCAL_UI, BREEZZ_UI } from "../config";
 import {
   UNIT, PRODUCT_TYPE, MARKING_GROUP, options, unitLabel, unitDecimals,
 } from "../lib/ek-labels";
@@ -702,7 +702,7 @@ export default function ProductsPage({ toast }) {
      ularning ustiga sotuvdan olish va omborga o'tish. */
   const canOpenStock = hasRole(user?.role, ["SHOP_ADMIN", "STOREKEEPER"]);
   const scanActions = (p) => {
-    const paused = Boolean(breezzOverride[p.id] ?? p.breezzPaused);
+    const paused = BREEZZ_UI && Boolean(breezzOverride[p.id] ?? p.breezzPaused);
     const then = (fn) => () => { setScan(null); fn(); };
     return [
       { key: "edit", icon: "fa-pen", label: t("common.edit"), onClick: then(() => openEdit(p)) },
@@ -720,7 +720,7 @@ export default function ProductsPage({ toast }) {
   };
 
   const productExtra = (p) => {
-    const paused = Boolean(breezzOverride[p.id] ?? p.breezzPaused);
+    const paused = BREEZZ_UI && Boolean(breezzOverride[p.id] ?? p.breezzPaused);
     return (
       <div className="scan-sum">
         {p.salePrice != null && (
@@ -1346,7 +1346,7 @@ export default function ProductsPage({ toast }) {
                         )}
                         {/* Breezz'da pauza do'kondagi holatga TEGMAYDI — shuning
                             uchun alohida belgi; rang yolg'iz emas: ikonka va matn. */}
-                        {(breezzOverride[p.id] ?? p.breezzPaused) && (
+                        {BREEZZ_UI && (breezzOverride[p.id] ?? p.breezzPaused) && (
                           <span className="badge badge-breezz">
                             <i className="fa-solid fa-circle-pause" aria-hidden="true" /> {t("breezz.pausedBadge")}
                           </span>

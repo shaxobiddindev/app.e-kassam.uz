@@ -116,3 +116,21 @@ export const cleanPhone = (val) => {
    Yoqish uchun: shu qiymatni `true` qiling.
    ══════════════════════════════════════════════════════════════════════════ */
 export const FISCAL_UI = false;
+
+/* ══════════════════════════════════════════════════════════════════════════
+   BREEZZ BO'LIMI — VAQTINCHA YASHIRIN (2026-10-02)
+
+   Egasining qarori: Breezz bilan integratsiya vaqtincha to'xtatilgan va
+   bo'lim yashirilsin («vaqtincha yashir»). U bo'sh edi, lekin HAR do'kon
+   egasining «Boshqaruv» menyusida turardi va chalg'itardi.
+
+   ⚠ KOD O'CHIRILMAYDI — `FISCAL_UI` bilan bir xil sabab: ikki tomondagi
+   kod serverda tayyor turibdi va integratsiya qayta yoqilganda shu bayroq
+   bilan qaytadi. O'chiq bo'lsa bo'lim menyuda ham, buyruq oynasida ham
+   (Ctrl+K) yo'q, manzili ochilmaydi, serverga Breezz so'rovi ketmaydi
+   (kutayotgan so'rovlar soni, «filial ulanganmi») va tovarda pauza belgisi
+   chizilmaydi. `scripts/check-breezz.mjs` ikkala holatni ham qo'riqlaydi.
+
+   Yoqish uchun: shu qiymatni `true` qiling (umumiy hujjat §0, 2026-10-02).
+   ══════════════════════════════════════════════════════════════════════════ */
+export const BREEZZ_UI = false;

@@ -2,7 +2,7 @@ import "./styles.css";
 /* BUILD_ID: EMERGENCY_FIX_V3_0116 */
 import { useState, useEffect, Suspense, lazy } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { LOGIN_URL } from "./config";
+import { LOGIN_URL, BREEZZ_UI } from "./config";
 import { initLang, withLang, useT } from "./lib/ek-i18n";
 import { t } from "./lib/ek-i18n";
 import * as cartStore from "./lib/ek-cart-store";
@@ -453,8 +453,11 @@ export default function App() {
             <Route path="/expenses" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><P.Expenses toast={toast} /></ProtectedRoute>} />
             <Route path="/shop-users" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><P.ShopUsers toast={toast} /></ProtectedRoute>} />
             <Route path="/branches" element={<ProtectedRoute user={user} roles={["OWNER"]}><P.Shops toast={toast} /></ProtectedRoute>} />
-            {/* Breezz ulanishi (V140) — faqat egasi: tasdiq egalikning isboti. */}
-            <Route path="/breezz" element={<ProtectedRoute user={user} roles={["OWNER"]}><P.Breezz toast={toast} /></ProtectedRoute>} />
+            {/* Breezz ulanishi (V140) — faqat egasi: tasdiq egalikning isboti.
+                ⏸ Vaqtincha yashirin (`BREEZZ_UI`, config.js). */}
+            {BREEZZ_UI && (
+              <Route path="/breezz" element={<ProtectedRoute user={user} roles={["OWNER"]}><P.Breezz toast={toast} /></ProtectedRoute>} />
+            )}
             {/* Sodiqlik jadvali — chegirma, ya'ni pulga tegadigan sozlama. */}
             <Route path="/loyalty" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><P.Loyalty toast={toast} /></ProtectedRoute>} />
             {/* Aksiyalar (V39) — do'konning MIJOZLARGA ketadigan gapi;

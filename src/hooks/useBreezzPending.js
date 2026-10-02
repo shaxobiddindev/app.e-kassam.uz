@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { breezzApi } from "../api";
 import { roleSet } from "../lib/ek-roles";
+import { BREEZZ_UI } from "../config";
 
 /* ══════════════════════════════════════════════════════════════════════════
    Kutayotgan Breezz ulash so'rovlari soni (V140) — menyudagi belgi
@@ -16,7 +17,9 @@ import { roleSet } from "../lib/ek-roles";
    ══════════════════════════════════════════════════════════════════════════ */
 export function useBreezzPending(user) {
   const [count, setCount] = useState(0);
-  const isOwner = roleSet(user?.role).has("OWNER");
+  /* ⏸ Bo'lim yashirin bo'lsa (`BREEZZ_UI`) son ham so'ralmaydi: menyuda
+     ko'rsatadigan joyi yo'q, har 2 daqiqadagi so'rov esa bekorga ketardi. */
+  const isOwner = BREEZZ_UI && roleSet(user?.role).has("OWNER");
   const location = useLocation();
 
   useEffect(() => {

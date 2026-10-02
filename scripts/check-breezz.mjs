@@ -107,6 +107,38 @@ async function open(role, calls, pageErrors) {
 
 console.log("\n══ BREEZZ ULANISHI — EGASI OYNASI (V140) ══");
 
+/* ══ ⏸ BO'LIM VAQTINCHA YASHIRIN (`BREEZZ_UI`, 2026-10-02) ══════════════
+   Egasi integratsiyani vaqtincha to'xtatdi va bo'limni yashirishni so'radi.
+   Bayroq o'chiq bo'lsa qo'riqchi TESKARISINI tekshiradi: egasiga ham bo'lim
+   yo'q (menyuda ham, manzilda ham), serverga Breezz so'rovi ketmaydi —
+   kutayotgan son ham, tovarlar sahifasidagi «filial ulanganmi» ham.
+   Bayroq yoqilganda pastdagi to'liq sinov o'z-o'zidan qaytadi. */
+const cfg = fs.readFileSync(path.join(ROOT, "src", "config.js"), "utf8");
+if (/export const BREEZZ_UI\s*=\s*false/.test(cfg)) {
+  console.log("\n§0 ⏸ `BREEZZ_UI` o'chiq — bo'lim yashirin bo'lishi kerak");
+  const hidCalls = [];
+  const hidErrors = [];
+  const hid = await open("OWNER", hidCalls, hidErrors);
+  await new Promise((r) => setTimeout(r, 800));
+  const view = await hid.evaluate(() => ({
+    cards: document.querySelectorAll(".breezz-card").length,
+    nav: [...document.querySelectorAll("a")].some((a) => a.getAttribute("href") === "/breezz"),
+  }));
+  view.cards === 0 ? ok("egasiga ham oyna chizilmadi — manzil ochilmaydi") : no("oyna yashirin bo'lishi kerak", view.cards);
+  !view.nav ? ok("menyuda «Breezz» yo'q") : no("menyuda bo'lmasligi kerak", "bor");
+  await hid.goto(`http://127.0.0.1:${PORT}/products`, { waitUntil: "networkidle2", timeout: 30_000 });
+  await new Promise((r) => setTimeout(r, 800));
+  hidCalls.length === 0
+    ? ok("serverga Breezz so'rovi ketmadi (son ham, «filial ulanganmi» ham)")
+    : no("so'rov ketmasligi kerak", hidCalls.join(", "));
+  hidErrors.length === 0 ? ok("JS xatosi yo'q") : no("sahifada xato", hidErrors.join(" | "));
+  await hid.close();
+  await browser.close();
+  server.close();
+  console.log(bad === 0 ? "\n✅ Breezz bo'limi yashirin: hammasi joyida\n" : `\n❌ ${bad} ta muammo\n`);
+  process.exit(bad ? 1 : 0);
+}
+
 /* ── EGASI ─────────────────────────────────────────────────────────── */
 const calls = [];
 const errors = [];

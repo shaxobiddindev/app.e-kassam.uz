@@ -10,6 +10,7 @@ import { useT } from "../lib/ek-i18n";
 import { weekdayDate } from "../lib/ek-format";
 import { useSuspiciousCount } from "../hooks/useSuspiciousCount";
 import { useBreezzPending } from "../hooks/useBreezzPending";
+import { BREEZZ_UI } from "../config";
 import { useShopFeatures } from "../hooks/useShopFeatures";
 
 
@@ -88,8 +89,11 @@ export const NAV = [
   { id: "manage", key: "nav.group.manage", icon: "fa-users-gear", children: [
     { id: "shop-users",    path: "/shop-users",    key: "nav.staff",         icon: "fa-users-gear",        roles: ["ADMIN", "SHOP_ADMIN", "OWNER"] },
     { id: "branches",      path: "/branches",      key: "nav.branches",      icon: "fa-store",             roles: ["OWNER"] },
-    /* Breezz (V140) — tasdiq faqat egasida, shuning uchun band ham faqat unda. */
-    { id: "breezz",        path: "/breezz",        key: "nav.breezz",        icon: "fa-plug",              roles: ["OWNER"] },
+    /* Breezz (V140) — tasdiq faqat egasida, shuning uchun band ham faqat unda.
+       ⏸ Vaqtincha yashirin (`BREEZZ_UI`, config.js). */
+    ...(BREEZZ_UI
+      ? [{ id: "breezz",   path: "/breezz",        key: "nav.breezz",        icon: "fa-plug",              roles: ["OWNER"] }]
+      : []),
     { id: "loyalty",       path: "/loyalty",       key: "nav.loyalty",       icon: "fa-award",             roles: ["ADMIN", "SHOP_ADMIN", "OWNER"], feature: "LOYALTY" },
     { id: "announcements", path: "/announcements", key: "nav.announcements", icon: "fa-bullhorn",          roles: ["ADMIN", "SHOP_ADMIN", "OWNER"], feature: "ANNOUNCEMENTS" },
     { id: "security",      path: "/security",      key: "nav.security",      icon: "fa-shield-halved",     roles: ["SHOP_ADMIN", "OWNER"] },
