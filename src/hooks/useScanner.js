@@ -78,11 +78,25 @@ function restore(el, snap) {
   }
 }
 
-export function useScanner(onScan, { enabled = true } = {}) {
+/**
+ * @param onScan  to'liq kod bilan chaqiriladi
+ * @param enabled tinglash yoqilganmi
+ * @param only    ixtiyoriy: faqat shu maydonda boshlangan kod tutiladi —
+ *                `(el) => boolean`. Qolgan maydonlarga skaner umuman tegmaydi.
+ *
+ * ⚠ `only` MATN KO'P YOZILADIGAN OYNALAR UCHUN (tovar formasi, 2026-10-02).
+ * Skaner tezlikni uchinchi belgidan biladi va shundan keyingilarini to'sadi.
+ * Juda tez yozadigan odamning ketma-ket uchta tez tugmasi ham shunday
+ * ko'rinadi va uchinchi harf yo'qolardi. Nom va tavsif maydonida bu xavfga
+ * hojat yo'q — u yerda skaner kutilmaydi.
+ */
+export function useScanner(onScan, { enabled = true, only = null } = {}) {
   // `onScan` har render'da yangi funksiya bo'ladi; uni ref'da saqlaymiz,
   // aks holda hodisa tinglovchisi har safar qayta ulanardi.
   const handler = useRef(onScan);
   handler.current = onScan;
+  const filter = useRef(only);
+  filter.current = only;
 
   useEffect(() => {
     if (!enabled) return;
@@ -91,8 +105,9 @@ export function useScanner(onScan, { enabled = true } = {}) {
     let last = 0;
     let target = null;   // belgilar qaysi maydonga tushayotgani
     let before = null;   // o'sha maydonning ketma-ketlik BOSHIDAGI holati
+    let skip = false;    // ketma-ketlik `only` dan o'tmagan maydonda boshlangan
 
-    const reset = () => { buf = ""; target = null; before = null; };
+    const reset = () => { buf = ""; target = null; before = null; skip = false; };
 
     const onKeyDown = (e) => {
       if (!getSettings().scanner) return;
@@ -142,7 +157,11 @@ export function useScanner(onScan, { enabled = true } = {}) {
         buf = "";
         target = e.target;
         before = snapshot(e.target);
+        skip = !!filter.current && !filter.current(e.target);
       }
+      /* Tutilmaydigan maydon: `buf` bo'sh qoladi — Enter'da kod qisqa deb
+         o'tkazib yuboriladi va maydonning o'z Enter'i ishlaydi. */
+      if (skip) return;
       buf += e.key;
 
       /* Skaner ekani aniqlangach belgilar maydonga o'tkazilmaydi.

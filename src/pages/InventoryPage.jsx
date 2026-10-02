@@ -692,6 +692,36 @@ export default function InventoryPage({ toast }) {
   const openLayers = useLayerCount();
   useScanner(handleScan, { enabled: openLayers === 0 });
 
+  /* ══ KIRIM VA TO'G'IRLASH OYNASIDA SKANER (2026-10-02) ══════════════════
+     Bu oynalar ochiq bo'lsa sahifa skaneri o'chiq va kod fokusdagi maydonga
+     oddiy yozuv bo'lib tushardi: miqdor yoki tannarx barkod raqamiga
+     aylanardi, «sabab» maydonida esa skanerning Enter'i kirimni (yoki
+     to'g'irlashni) shu buzuq qiymat bilan YUBORIB yuborardi. Endi kod
+     tutiladi va hech qaysi maydonga tushmaydi:
+       · kirimda o'sha tovar — miqdorga qo'shiladi (donalab sanash; qadoq
+         barkodida — qadoqdagi son);
+       · boshqa tovar — oyna tegilmaydi, faqat aytiladi: yozilgan miqdor,
+         narx va muddat jimgina yo'qolmasin;
+       · to'g'irlashda — hech narsa: u yerda son sanalmaydi, yoziladi.
+     ⚠ Markirovka oynasi ustida ochiq bo'lsa (`openLayers` 2) — o'chiq:
+     yorliqlarni o'sha oyna o'zi yig'adi. */
+  const scanInModal = async (code) => {
+    if (correct || !modal) { toast.info(t("inv.scanBusy")); return; }
+    if (modal.markingGroup) { toast.info(t("marking.required")); return; }
+    try {
+      const res = await productApi.scan(code, branchId || undefined);
+      const r = res?.data || {};
+      const p = ["PRODUCT", "PACK", "WEIGHT"].includes(r.source) ? r.product : null;
+      if (!p) { toast.error(t("scan.codeNotFound", { code })); return; }
+      if (p.id !== modal.productId) { toast.info(t("inv.scanOtherProduct", { name: p.name })); return; }
+      const add = Number(r.quantity) || 1;
+      setQty((q) => String(Math.round((Number(q || 0) + add) * 1000) / 1000));
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
+  useScanner(scanInModal, { enabled: (!!modal || !!correct) && openLayers === 1 });
+
   const closeScan = () => { setScanned(null); setScanRow(null); };
 
   /* Topilgan tovar bilan Omborda qilinadigan ish — qatordagi amallar va

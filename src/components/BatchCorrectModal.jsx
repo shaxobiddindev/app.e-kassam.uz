@@ -10,6 +10,8 @@ import { shortDate } from "../lib/ek-format";
 import { quantity as fmtQty } from "../utils";
 import { unitLabel, unitDecimals, writeOffOptions,
          MANUAL_WRITE_OFF_EXCLUDE } from "../lib/ek-labels";
+import { useScanner } from "../hooks/useScanner";
+import { useLayerCount } from "../hooks/useLayerCount";
 
 /* ══════════════════════════════════════════════════════════════════════════
    PARTIYA QOLDIG'INI TO'G'IRLASH — UMUMIY OYNA (V60)
@@ -48,6 +50,12 @@ export default function BatchCorrectModal({ batch, onClose, onSaved, toast }) {
   const [saving, setSaving] = useState(false);
 
   const isDecrease = qty !== "" && Number(qty) < Number(batch.quantity ?? 0);
+
+  /* Skaner kodi miqdor yoki sabab maydoniga tushmasin (2026-10-02): «sabab»
+     dagi Enter to'g'irlashni barkod raqami bilan yuborib yuborardi. Ustida
+     bajik oynasi ochilsa (`openLayers` 2) — o'chiq, kod bajikka tegishli. */
+  const openLayers = useLayerCount();
+  useScanner(() => toast?.info(t("inv.scanBusy")), { enabled: openLayers === 1 });
 
   const submit = async () => {
     if (qty === "" || !reason.trim()) return;

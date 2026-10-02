@@ -665,6 +665,28 @@ export default function ProductsPage({ toast }) {
   const openLayers = useLayerCount();
   useScanner(handleScan, { enabled: openLayers === 0 });
 
+  /* ══ TOVAR FORMASIDA SKANER — kod barkodni ALMASHTIRADI (2026-10-02) ════
+     Forma ochiq bo'lsa sahifa skaneri o'chiq va kod fokusdagi maydonga
+     oddiy yozuv bo'lib tushardi. Barkod maydoni to'la bo'lsa yangi kod
+     eskisining DAVOMIGA yozilib, niqob uni 14 raqamda kesardi: maydonda
+     ikki kodning qorishmasi qolar va u shu holicha saqlanib ketishi
+     mumkin edi. Endi barkod maydonida (asosiy yoki qadoq) boshlangan kod
+     tutiladi va o'sha maydonni almashtiradi.
+
+     ⚠ Faqat barkod maydonlarida (`only`): nom va tavsifda skaner
+     kutilmaydi, tez yozuvchiga esa xalaqit berardi (`useScanner` izohi). */
+  const scanIntoForm = (raw) => {
+    const code = String(raw).trim();
+    if (!/^\d{1,14}$/.test(code)) { toast.error(t("products.scanNotBarcode", { code })); return; }
+    const el = document.activeElement;
+    if (el?.dataset?.scan === "pack") setPackBarcode(Number(el.dataset.idx), "barcode", code);
+    else setForm((f) => ({ ...f, barcode: code }));
+  };
+  useScanner(scanIntoForm, {
+    enabled: !!modal && openLayers === 1,
+    only: (el) => !!el?.dataset?.scan,
+  });
+
   const toggleActiveScanned = async (p) => {
     try {
       const res = await guard(() => productApi.toggleActive(p.id));
@@ -1544,7 +1566,8 @@ export default function ProductsPage({ toast }) {
 
             <div className="grid-2">
               <FormGroup label={t("products.barcode")}>
-                <Field className="form-input ek-num" kind="barcode" value={form.barcode} onChange={setField("barcode")} placeholder="4780001111111" />
+                <Field className="form-input ek-num" kind="barcode" value={form.barcode} onChange={setField("barcode")} placeholder="4780001111111"
+                       data-scan="main" />
                 {/* ══ NAZORAT RAQAMI — OGOHLANTIRISH, TO'SIQ EMAS ══════
                     Shtrix-kodning oxirgi raqami qolganlaridan
                     hisoblanadi. Bitta raqamni noto'g'ri tergan odamning
@@ -1905,6 +1928,7 @@ export default function ProductsPage({ toast }) {
               {form.barcodes.map((b, idx) => (
                 <div key={idx} style={{ display: "flex", gap: 8, marginBottom: 8 }}>
                   <BarcodeField className="form-input ek-num" style={{ flex: 2 }} placeholder="4780001111128"
+                         data-scan="pack" data-idx={idx}
                          value={b.barcode} onChange={(e) => setPackBarcode(idx, "barcode", e.target.value)} />
                   {/* ⚠ Bu MIQDOR emas, SANOQ: «quti ichida nechta dona».
                       Kasr bo'lishi mumkin emas, tovarning birligidan ham
