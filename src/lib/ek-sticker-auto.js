@@ -115,13 +115,57 @@ export function stickerMedias(medias = []) {
   return medias.filter((m) => String(m.mediaType) === "RULON" && String(m.sensor) !== "UZLUKSIZ");
 }
 
+/* ── Dizaynlar (V142) ───────────────────────────────────────────────────
+   ⚠ BITTA DIZAYN — HAMMA O'LCHAMDA. Egasining talabi: «shablonlarni juda
+   ko'paytir va ular mavjud hamma o'lchamda bo'lsin». Bazada har dizayn har
+   rulon o'lchami uchun alohida qator (`stk_<dizayn>_<eni>x<bo'yi>`), ularni
+   `scripts/gen-sticker-templates.mjs` hisoblaydi. Front esa dizaynni KOD
+   orqali taniydi: do'konchi rulonni almashtirsa, o'sha ko'rinish yangi
+   o'lchamda o'zi tanlanadi.
+
+   Tartib — galereyadagi tartib: eng ko'p ishlatiladiganlari tepada. */
+export const DESIGN_ORDER = [
+  "standard", "big_price", "price_top", "name_big", "barcode_price", "barcode_only",
+  "code_first", "side", "framed", "shop", "bilingual", "brand", "expiry", "clothing",
+];
+
+/** V131 dagi birinchi oltita stiker — o'z dizayniga (yangilari ularning o'rnini to'ldiradi). */
+const LEGACY = {
+  sticker_standard: "standard", sticker_small: "barcode_price", sticker_expiry: "expiry",
+  sticker_barcode_only: "barcode_only", sticker_code_first: "code_first", sticker_clothing: "clothing",
+};
+
+/** Shablonning dizayni yoki null (do'konning o'z shabloni). */
+export function designOf(tpl) {
+  const code = String(tpl?.code || "");
+  if (LEGACY[code]) return LEGACY[code];
+  const m = code.match(/^stk_([a-z_]+)_\d+x\d+$/);
+  return m ? m[1] : null;
+}
+
+const designRank = (tpl) => {
+  const i = DESIGN_ORDER.indexOf(designOf(tpl));
+  return i < 0 ? -1 : i;   // do'konning o'zinikilari — eng tepada
+};
+
+const sameSize = (tpl, media) => Number(tpl.widthMm) === Number(media?.labelWidthMm)
+  && Number(tpl.heightMm) === Number(media?.labelHeightMm);
+
+/**
+ * Shu qog'oz o'lchamidagi stiker dizaynlari — galereya uchun, tartib bilan.
+ * Qog'oz noma'lum bo'lsa — hammasi.
+ */
+export function designsFor(templates = [], media = null) {
+  const list = templates.filter((x) => x.kind === "STICKER" && (!media || sameSize(x, media)));
+  return list.sort((a, b) => designRank(a) - designRank(b));
+}
+
 /**
  * Qog'ozga mos dizayn.
  *
- * Tartib: (1) do'konchi o'zi tanlagan va qog'ozga sig'adigani;
- * (2) aynan o'lchamdagi — do'konning o'zinikilari tizimnikidan oldin;
- * (3) sig'adiganlarning eng kattasi (qog'ozni to'ldiradi);
- * (4) hech biri sig'masa — eng kichigi.
+ * Tartib: (1) do'konchi tanlagan dizayn — AYNAN SHU O'LCHAMDAGISI (rulon
+ * almashsa ko'rinish saqlanadi); (2) aynan o'lchamdagi: do'konning o'zinikisi,
+ * bo'lmasa «Standart»; (3) sig'adiganlarning eng kattasi; (4) eng kichigi.
  *
  * ⚠ «ENG KATTA SIG'ADIGANI», birinchisi emas: 58×40 rulonga 30×20 dizayn
  * ham sig'adi, lekin u stikerning burchagida mitti bo'lib chiqardi.
@@ -132,12 +176,23 @@ export function pickTemplate(templates = [], media = null, preferId = null) {
   const W = Number(media?.labelWidthMm) || Infinity;
   const H = Number(media?.labelHeightMm) || Infinity;
   const fits = (x) => Number(x.widthMm) <= W + 0.001 && Number(x.heightMm) <= H + 0.001;
+  const exactOf = (x) => Number(x.widthMm) === W && Number(x.heightMm) === H;
 
   const preferred = list.find((x) => x.id === preferId);
-  if (preferred && fits(preferred)) return preferred;
+  if (preferred) {
+    if (exactOf(preferred) || !media) return preferred;
+    const d = designOf(preferred);
+    const same = d && list.find((x) => exactOf(x) && designOf(x) === d);
+    if (same) return same;
+    if (fits(preferred) && !list.some(exactOf)) return preferred;
+  }
 
-  const exact = list.filter((x) => Number(x.widthMm) === W && Number(x.heightMm) === H);
-  if (exact.length) return exact.find((x) => !x.system) || exact[0];
+  const exact = list.filter(exactOf);
+  if (exact.length) {
+    return exact.find((x) => !x.system)
+      || exact.find((x) => designOf(x) === "standard")
+      || [...exact].sort((a, b) => designRank(a) - designRank(b))[0];
+  }
 
   const area = (x) => Number(x.widthMm) * Number(x.heightMm);
   const fitting = list.filter(fits).sort((a, b) => area(b) - area(a));

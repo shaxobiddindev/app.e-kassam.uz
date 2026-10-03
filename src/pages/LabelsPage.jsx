@@ -106,6 +106,10 @@ function LabelsAdvanced({ toast, onSimple }) {
   const [mediaList, setMediaList] = useState([]); // barcha qog'oz profillari
   const [printer, setPrinter] = useState(null);  // joriy tur uchun tanlangan printer
   const [zoomed, setZoomed] = useState(null); // katta ko'rish oynasi
+  /* ⚠ GALEREYA STANDART BO'YICHA QOG'OZ O'LCHAMIDA (V142): stikerlar 127
+     ta bo'ldi va hammasi bitta ro'yxatda turganda keraklisini topib
+     bo'lmasdi. «Hamma o'lchamlar» — bir bosishda. */
+  const [allSizes, setAllSizes] = useState(false);
   const [editing, setEditing]     = useState(null); // null | {template|null}
   const [saving, setSaving]       = useState(false);
   const [kind, setKind]           = useState("SHELF");
@@ -229,6 +233,10 @@ function LabelsAdvanced({ toast, onSimple }) {
   };
 
   const template = templates.find((x) => x.id === templateId) || null;
+  const sizedTemplates = useMemo(() => (media ? templates.filter((x) =>
+    Number(x.widthMm) === Number(media.labelWidthMm)
+    && Number(x.heightMm) === Number(media.labelHeightMm)) : []), [templates, media]);
+  const galleryTemplates = !allSizes && sizedTemplates.length ? sizedTemplates : templates;
 
   /* ⚠ TANLANGAN DIZAYN DO'KONNING QOG'OZIGA CHIQADIMI (G7).
      O'lchandi: tayyor profillar bilan 112 qog'oz+printer
@@ -654,9 +662,16 @@ function LabelsAdvanced({ toast, onSimple }) {
               <span className="card-title">
                 <i className="fa-solid fa-images text-blue" /> {t("lbl.gallery")}
               </span>
+              {sizedTemplates.length > 0 && sizedTemplates.length < templates.length && (
+                <button type="button" className="btn btn-outline btn-sm"
+                        aria-pressed={allSizes} onClick={() => setAllSizes((v) => !v)}>
+                  <i className="fa-solid fa-ruler-combined" />{" "}
+                  {allSizes ? t("lbl.onlyMySize") : t("lbl.allSizes", { n: templates.length })}
+                </button>
+              )}
             </div>
             <LabelGallery
-              templates={templates} product={shown} media={media}
+              templates={galleryTemplates} product={shown} media={media}
               selectedId={templateId}
               onPick={(tpl) => setTemplateId(tpl.id)}
               onOpen={(tpl) => { setTemplateId(tpl.id); setZoomed(tpl); }}

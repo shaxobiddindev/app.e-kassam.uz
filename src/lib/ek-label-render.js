@@ -131,7 +131,15 @@ export function layoutLabel(template, product, ctx = {}) {
         quietRightModules: cfg.quietRightModules ?? 7,
         heightMm: f.h, labelKind: template.kind,
       }) : null;
-      items.push({ ...box, kind: "barcode", value: val, field: f,
+      /* ⚠ MARKAZGA TEKISLASH (V142, `align: "center"`). Barkod tabiiy
+         enida chiziladi va maydon chap chetidan boshlanardi: EAN-8 (do'kon
+         kodi) EAN-13 ga mo'ljallangan joyda chapga taqalib, o'ngda bo'sh
+         qolardi. Siljish JOYLASHUVDA hisoblanadi — SVG ham, TSPL/ZPL ham
+         aynan shu `x` ni oladi. Eski shablonlarda `align` yo'q — ular
+         o'zgarmaydi. */
+      const shift = f.align === "center" && m && m.widthMm < box.w
+        ? (box.w - m.widthMm) / 2 : 0;
+      items.push({ ...box, x: box.x + shift, kind: "barcode", value: val, field: f,
                    cfg, metrics: m, dpi: template.dpi,
                    showText: cfg.showText !== false });
       continue;
@@ -177,7 +185,9 @@ export function renderLabel(template, product, ctx = {}) {
       continue;
     }
     if (it.kind === "barcode") {
-      parts.push(drawBarcode(it.field, it.value, template, spec, warnings));
+      /* `x` joylashuvdan (markazlash), en esa maydonniki — sig'ish tekshiruvi
+         maydon bo'yicha. */
+      parts.push(drawBarcode({ ...it.field, x: it.x }, it.value, template, spec, warnings));
       continue;
     }
     if (it.kind === "hole") {

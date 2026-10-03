@@ -19,7 +19,7 @@ import { drawsBarcode, withPreviewBarcode } from "../../lib/ek-label-codes";
 import { prettyStoreCode, storeCodeOf } from "../../lib/ek-store-code";
 import { templateName } from "../../lib/ek-label-name";
 import {
-  lastTemplateId, pickTemplate, printerErrorKey, rememberTemplate, setupDone,
+  designsFor, lastTemplateId, pickTemplate, printerErrorKey, rememberTemplate, setupDone,
 } from "../../lib/ek-sticker-auto";
 import { routeOf, sendLabels, withCodes } from "../../lib/ek-label-send";
 import { useLabelOutput } from "../../hooks/useLabelOutput";
@@ -260,6 +260,11 @@ export default function StickerSimple({ toast, productIds = null, compact = fals
     } catch (err) { toast?.error(err.message); }
   };
 
+  /* ⚠ GALEREYADA FAQAT SHU RULON O'LCHAMI (V142): 127 ta stikerdan
+     do'konchiga kerakligi — o'z rulonidagi 14 ta ko'rinish. Qolganlari
+     boshqa rulonniki va baribir sig'maydi yoki mitti chiqadi. */
+  const designs = useMemo(() => designsFor(templates, media), [templates, media]);
+
   const previewProduct = byId[selected] || byId[lines[lines.length - 1]?.productId] || null;
   const previewSvg = useMemo(() => {
     if (!template || !previewProduct) return "";
@@ -479,7 +484,7 @@ export default function StickerSimple({ toast, productIds = null, compact = fals
               <div className="stk-design">
                 <span>{t("stk.design")}: <b>{templateName(template)}</b></span>
                 <button type="button" className="btn btn-outline btn-sm" onClick={() => setDesignOpen(true)}>
-                  <i className="fa-solid fa-palette" /> {t("stk.changeDesign")}
+                  <i className="fa-solid fa-palette" /> {t("stk.changeDesign", { n: designs.length })}
                 </button>
               </div>
             )}
@@ -589,7 +594,8 @@ export default function StickerSimple({ toast, productIds = null, compact = fals
         <Modal title={t("stk.designTitle")} onClose={() => setDesignOpen(false)} maxWidth={860}>
           <p className="stk-hint" style={{ marginTop: 0 }}>{t("stk.designHint")}</p>
           <LabelGallery
-            templates={templates} product={previewProduct ? withPreviewBarcode(previewProduct) : null}
+            templates={designs.length ? designs : templates}
+            product={previewProduct ? withPreviewBarcode(previewProduct) : null}
             media={media} selectedId={template?.id}
             onPick={(tpl) => { rememberTemplate(tpl.id); setChosenId(tpl.id); setDesignOpen(false); }}
             onOpen={(tpl) => { rememberTemplate(tpl.id); setChosenId(tpl.id); setDesignOpen(false); }}

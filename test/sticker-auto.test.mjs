@@ -11,7 +11,7 @@
    ══════════════════════════════════════════════════════════════════════════ */
 const {
   printerKind, sortPrinters, autoPrinter, profileFor, mediaFor, stickerMedias,
-  pickTemplate, setupDone, printerErrorKey, MAIN_SIZES,
+  pickTemplate, setupDone, printerErrorKey, MAIN_SIZES, designOf, designsFor, DESIGN_ORDER,
 } = await import("../src/lib/ek-sticker-auto.js");
 
 let pass = 0, fail = 0;
@@ -95,7 +95,6 @@ console.log("\n── Qog'oz va dizayn ──");
   eq(pickTemplate(T, M[1])?.id, 15, "aynan o'lchamda do'konning o'zinikisi tizimnikidan oldin");
   eq(pickTemplate(T, { labelWidthMm: 50, labelHeightMm: 35 })?.id, 11,
     "⚠ aniq mos yo'q — sig'adiganlarning ENG KATTASI (mitti emas)");
-  eq(pickTemplate(T, M[0], 10)?.id, 10, "do'konchi tanlagani sig'sa — o'sha");
   eq(pickTemplate(T, M[1], 13)?.id, 15, "do'konchi tanlagani sig'masa — mosi");
   eq(pickTemplate(T, { labelWidthMm: 20, labelHeightMm: 10 })?.id, 10, "hech biri sig'masa — eng kichigi");
   is(pickTemplate(T, M[0])?.kind === "STICKER", "javon yorlig'i stiker sifatida tanlanmaydi");
@@ -116,6 +115,33 @@ console.log("\n── Xato odam tilida ──");
   eq(printerErrorKey("StartDocPrinter muvaffaqiyatsiz"), "stk.errPrinter", "StartDocPrinter");
   eq(printerErrorKey("Printerga ulanib bo'lmadi (1.2.3.4:9100)"), "stk.errNetwork", "tarmoq");
   eq(printerErrorKey("Tovarda kod yo'q"), null, "boshqa xato — o'z matni bilan");
+}
+
+
+console.log("\n── Dizayn hamma o'lchamda (V142) ──");
+{
+  const D = (code, w, h, extra = {}) => ({ id: code, code, kind: "STICKER", widthMm: w, heightMm: h, system: true, ...extra });
+  const T = [
+    D("stk_big_price_58x40", 58, 40), D("stk_standard_58x40", 58, 40), D("stk_side_58x40", 58, 40),
+    D("sticker_standard", 40, 30), D("stk_big_price_40x30", 40, 30), D("stk_side_40x30", 40, 30),
+    D("sticker_small", 30, 20), D("stk_big_price_30x20", 30, 20),
+    { id: 99, code: null, kind: "STICKER", widthMm: 40, heightMm: 30, system: false },
+  ];
+  const R58 = { labelWidthMm: 58, labelHeightMm: 40 }, R40 = { labelWidthMm: 40, labelHeightMm: 30 };
+  eq(designOf(T[0]), "big_price", "kod → dizayn");
+  eq(designOf(T[3]), "standard", "eski sticker_standard → standart");
+  eq(designOf(T[6]), "barcode_price", "eski sticker_small → barkod va narx");
+  eq(designOf(T[8]), null, "do'konning o'z shabloni — dizaynsiz");
+  eq(pickTemplate(T, R58)?.code, "stk_standard_58x40",
+    "⚠ tanlov yo'q — «Standart», alifbo bo'yicha birinchisi («Barkod…») emas");
+  eq(pickTemplate(T, R58, "stk_big_price_40x30")?.code, "stk_big_price_58x40",
+    "⚠ rulon almashdi — o'sha KO'RINISH yangi o'lchamda");
+  eq(pickTemplate(T, R40, "stk_side_58x40")?.code, "stk_side_40x30", "kattadan kichikka ham");
+  eq(pickTemplate(T, R40)?.id, 99, "aynan o'lchamda do'konning o'zinikisi birinchi");
+  const g = designsFor(T, R58).map((x) => designOf(x));
+  eq(g.join(","), "standard,big_price,side", "galereya: faqat shu o'lcham, DESIGN_ORDER tartibida");
+  eq(designsFor(T, R40)[0].id, 99, "galereyada do'konning o'zinikisi tepada");
+  eq(DESIGN_ORDER.length, 14, "14 dizayn");
 }
 
 console.log(`\n  ${pass} o'tdi, ${fail} yiqildi\n`);
