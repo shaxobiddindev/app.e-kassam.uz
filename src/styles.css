@@ -6582,6 +6582,22 @@ button.stk__c:hover { background: var(--bg-hover); }
    bu ekranda ko'pincha bir qo'lda skaner, ikkinchisida sichqoncha.
    ⚠ RANG YOLG'IZ SIGNAL EMAS: tanlangan kartochkada belgi ham bor,
    ogohlantirishda ikonka va matn. */
+/* Tur tanlovi — oddiy rejim tepasida ikki katta kartochka. */
+.stk-kinds         { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;
+                     margin-bottom: 16px; }
+@media (max-width: 560px) { .stk-kinds { grid-template-columns: 1fr; } }
+.stk-kind          { position: relative; display: flex; align-items: center; gap: 14px; text-align: start;
+                     min-height: 72px; padding: 12px 44px 12px 16px; border-radius: 14px; cursor: pointer;
+                     background: var(--bg-surface); color: var(--fg-primary);
+                     border: 1.5px solid var(--border-subtle); }
+.stk-kind:hover    { border-color: var(--border-brand); }
+.stk-kind.is-on    { border-color: var(--border-brand); background: var(--bg-brand-subtle);
+                     box-shadow: 0 0 0 1px var(--border-brand) inset; }
+.stk-kind__icon    { font-size: 24px; color: var(--fg-brand); width: 28px; text-align: center; }
+.stk-kind__text    { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.stk-kind__name    { font-size: 16px; font-weight: 800; }
+.stk-kind__hint    { font-size: 13px; color: var(--fg-secondary); }
+.stk-size__paper--a4 { width: 42px; height: 59px; }
 .stk-card          { padding: 16px; }
 .stk-grid          { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px;
                      align-items: start; }

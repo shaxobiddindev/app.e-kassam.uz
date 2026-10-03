@@ -55,13 +55,22 @@ import { useLayerCount } from "../../hooks/useLayerCount";
    ══════════════════════════════════════════════════════════════════════════ */
 
 const shopCtx = () => ({ shopName: localStorage.getItem("ek_shopName") || "" });
+
+/* ⚠ JAVON YORLIG'I — O'SHA EKRAN, BOSHQA SO'ZLAR (2026-10-04). Oqim bir xil
+   (skanerla → son → chop et), farqi so'zlarda: «stiker» narx yorlig'iga
+   to'g'ri kelmaydi. Faqat farq qiladigan matnlar `shf.*` da. */
+const SHELF_TEXT = new Set(["title", "introTitle", "introText", "step2", "preview", "totalB",
+  "totalNone", "printed", "docTitle", "addNever", "addedNever", "askTitle", "designTitle",
+  "staleBanner"]);
 const sizeText = (r) => (r ? `${Number(r.labelWidthMm)} × ${Number(r.labelHeightMm)}` : "");
 
 export default function StickerSimple({ toast, productIds = null, compact = false,
-                                        onPrinted, onAdvanced }) {
+                                        onPrinted, onAdvanced, kind = "STICKER",
+                                        showHeader = true }) {
   const desktop = isDesktop();
+  const tk = (key, vars) => t((kind === "SHELF" && SHELF_TEXT.has(key) ? "shf." : "stk.") + key, vars);
   const { outputs, loaded } = useLabelOutput();
-  const out = outputs.STICKER || {};
+  const out = outputs[kind] || {};
   const media = out.media || null;
   const printer = out.printer || null;
   const queue = (getSettings().labelPrinterName || "").trim();
@@ -99,8 +108,9 @@ export default function StickerSimple({ toast, productIds = null, compact = fals
   const jobRef = useRef(null);
   const creating = useRef(null);
 
-  const template = useMemo(() => pickTemplate(templates, media, chosenId),
-    [templates, media, chosenId]);
+  const template = useMemo(() => pickTemplate(templates, media, chosenId, kind),
+    [templates, media, chosenId, kind]);
+  const sheet = String(media?.mediaType) === "VARAQ";
 
   const byId = useMemo(() => {
     const m = {};
@@ -119,9 +129,10 @@ export default function StickerSimple({ toast, productIds = null, compact = fals
     setBooting(true);
     try {
       const [tRes, pRes, cRes] = await Promise.all([
-        labelApi.templates("STICKER"), productApi.getAll(), productApi.getCategories(),
+        labelApi.templates(kind), productApi.getAll(), productApi.getCategories(),
       ]);
-      setTemplates(asArray(tRes.data));
+      const tpls = asArray(tRes.data);
+      setTemplates(tpls);
       setProducts(asArray(pRes.data));
       setCategories(asArray(cRes.data));
 
@@ -137,8 +148,14 @@ export default function StickerSimple({ toast, productIds = null, compact = fals
            Yarim chiqarilganiga qo'shilgan tovar chiqarilgan qatorga
            qo'shilib, chop etilmay qolishi mumkin edi (server soni
            qo'shadi, belgini tozalamaydi). */
+        /* ⚠ HAR TURNING O'Z RO'YXATI: navbat shabloni bo'yicha ajratiladi.
+           Aks holda stikerga qo'shilgan tovarlar narx yorlig'i ro'yxatida
+           ham chiqib, javonga stiker o'lchamida chop etilardi. Shablonsiz
+           navbat (tovarlar sahifasidan) — stikerniki. */
+        const ids = new Set(tpls.map((x) => x.id));
+        const mine = (j) => (j.templateId == null ? kind === "STICKER" : ids.has(j.templateId));
         const jobs = asArray((await labelApi.jobs()).data);
-        putJob(jobs.find((j) => j.status === "DRAFT") || null);
+        putJob(jobs.find((j) => j.status === "DRAFT" && mine(j)) || null);
       }
     } catch (err) { toast?.error(err.message); }
     finally { setBooting(false); }
@@ -225,7 +242,7 @@ export default function StickerSimple({ toast, productIds = null, compact = fals
   };
   const clearAll = async () => {
     if (!job) return;
-    const ok = await confirm({ title: t("stk.clearConfirm"), type: "danger" });
+    const ok = await confirm({ title: tk("clearConfirm"), type: "danger" });
     if (!ok) return;
     try { await labelApi.dropJob(job.id); } catch { /* bo'lmasa ham ro'yxat yangidan */ }
     putJob(null);
@@ -237,10 +254,13 @@ export default function StickerSimple({ toast, productIds = null, compact = fals
   const route = ready ? routeOf(media, printer) : null;
 
   const issues = useMemo(() => {
-    if (!template || !media) return [];
+    /* ⚠ A4 DA TEKSHIRILMAYDI: varaq profilidagi 50×30 — katak namunasi,
+       to'r esa dizayndan hisoblanadi. Tekshirilganda «dizayn 70 mm, qog'oz
+       50 mm» deb chop etish to'silardi (navbatdagi qoida ham shunday). */
+    if (!template || !media || sheet) return [];
     const p = route === "bytes" ? printer : printer && { ...printer, lang: "DRAYVER" };
     return blocking(validateOutput(media, p, template));
-  }, [template, media, printer, route]);
+  }, [template, media, printer, route, sheet]);
 
   /* ⚠ KOD BERIB BO'LMAYDIGAN TOVAR — CHOP ETISHDAN OLDIN aytiladi.
      Maxsus kodi yo'q tovarga server barkod yasay olmaydi; ilgari bu faqat
@@ -262,8 +282,20 @@ export default function StickerSimple({ toast, productIds = null, compact = fals
 
   /* ⚠ GALEREYADA FAQAT SHU RULON O'LCHAMI (V142): 127 ta stikerdan
      do'konchiga kerakligi — o'z rulonidagi 14 ta ko'rinish. Qolganlari
-     boshqa rulonniki va baribir sig'maydi yoki mitti chiqadi. */
-  const designs = useMemo(() => designsFor(templates, media), [templates, media]);
+     boshqa rulonniki va baribir sig'maydi yoki mitti chiqadi.
+     ⚠ A4 VARAQDA O'LCHAM ERKIN: har yorliq sig'adi, shuning uchun galereya
+     ustida o'lcham tugmalari (`gallerySize`), boshlang'ichi — joriy dizayn. */
+  const [gallerySize, setGallerySize] = useState(null);
+  const sizeKey = (x) => `${Number(x.widthMm)}x${Number(x.heightMm)}`;
+  const sheetSizes = useMemo(() => (sheet ? [...new Map(templates.map((x) =>
+    [sizeKey(x), Number(x.widthMm) * Number(x.heightMm)])).entries()]
+    .sort((a, b) => a[1] - b[1]).map(([k]) => k) : []), [sheet, templates]);
+  const activeSize = gallerySize || (template ? sizeKey(template) : sheetSizes[0]);
+  const designs = useMemo(() => {
+    if (!sheet) return designsFor(templates, media, kind);
+    const [w, h] = String(activeSize || "").split("x").map(Number);
+    return designsFor(templates, { labelWidthMm: w, labelHeightMm: h }, kind);
+  }, [templates, media, kind, sheet, activeSize]);
 
   const previewProduct = byId[selected] || byId[lines[lines.length - 1]?.productId] || null;
   const previewSvg = useMemo(() => {
@@ -280,7 +312,7 @@ export default function StickerSimple({ toast, productIds = null, compact = fals
   const markDone = async (items) => {
     const ids = items.map((x) => x.lineId).filter(Boolean);
     if (ids.length) await labelApi.markPrinted(job.id, ids);
-    toast?.success(t("stk.printed", { n: items.reduce((s, x) => s + (x.quantity || 1), 0) }));
+    toast?.success(tk("printed", { n: items.reduce((s, x) => s + (x.quantity || 1), 0) }));
     putJob(null);
     setSelected(null);
     if (!compact) refreshStale();
@@ -301,7 +333,7 @@ export default function StickerSimple({ toast, productIds = null, compact = fals
       setProducts((ps) => ps.map((p) => (fresh.get(p.id) && !p.barcode ? { ...p, barcode: fresh.get(p.id) } : p)));
 
       const mode = await sendLabels({ template, items: ready2, media, printer,
-        title: t("stk.docTitle", { n: total }), ctx: shopCtx() });
+        title: tk("docTitle", { n: total }), ctx: shopCtx() });
       /* ⚠ BAYT YO'LIDA YETIB BORGANI ANIQ — so'ralmaydi. Brauzer oynasi
          esa «chiqdimi» ni bilmaydi: bekor qilinganda ham qaytadi. */
       if (mode === "bytes") await markDone(ready2);
@@ -312,9 +344,9 @@ export default function StickerSimple({ toast, productIds = null, compact = fals
 
   /* ══ CHIZISH ════════════════════════════════════════════════════════ */
 
-  const header = !compact && (
+  const header = !compact && showHeader && (
     <div className="page-header" style={{ marginBottom: 14 }}>
-      <h2 className="page-title">{t("stk.title")}</h2>
+      <h2 className="page-title">{tk("title")}</h2>
     </div>
   );
 
@@ -330,11 +362,11 @@ export default function StickerSimple({ toast, productIds = null, compact = fals
           <div className="stk-intro">
             <i className="fa-solid fa-tags" aria-hidden="true" />
             <div>
-              <div className="stk-intro__title">{t("stk.introTitle")}</div>
-              <div className="stk-hint">{t("stk.introText")}</div>
+              <div className="stk-intro__title">{tk("introTitle")}</div>
+              <div className="stk-hint">{tk("introText")}</div>
             </div>
           </div>
-          <StickerSetup toast={toast} onDone={() => setInSetup(false)} />
+          <StickerSetup toast={toast} kind={kind} onDone={() => setInSetup(false)} />
         </div>
         {!compact && onAdvanced && <AdvancedLink onAdvanced={onAdvanced} />}
       </div>
@@ -348,11 +380,11 @@ export default function StickerSimple({ toast, productIds = null, compact = fals
       {!compact && stale > 0 && (
         <div className="stk-banner">
           <i className="fa-solid fa-tag" aria-hidden="true" />
-          <span>{t("stk.staleBanner", { n: stale })}</span>
+          <span>{tk("staleBanner", { n: stale })}</span>
           <button type="button" className="btn btn-primary btn-sm"
                   onClick={() => addBody({ source: "PRICE_CHANGED", quantityRule: "ONE" },
-                    t("stk.addedStale"))}>
-            <i className="fa-solid fa-plus" /> {t("stk.addThem")}
+                    tk("addedStale"))}>
+            <i className="fa-solid fa-plus" /> {tk("addThem")}
           </button>
         </div>
       )}
@@ -361,16 +393,16 @@ export default function StickerSimple({ toast, productIds = null, compact = fals
         <div className="card stk-card stk-main">
           {/* ── 1. Qo'shish ─────────────────────────────────────────── */}
           <label className="stk-q stk-q--sm" htmlFor="stk-scan">
-            <span className="stk-num" aria-hidden="true">1</span> {t("stk.step1")}
+            <span className="stk-num" aria-hidden="true">1</span> {tk("step1")}
           </label>
           <div className="stk-scan">
             <i className="fa-solid fa-barcode stk-scan__icon" aria-hidden="true" />
             <input id="stk-scan" ref={inputRef} className="form-input stk-scan__input"
                    autoComplete="off" value={search} onChange={(e) => setSearch(e.target.value)}
-                   onKeyDown={onKey} placeholder={t("stk.scanPlaceholder")} />
+                   onKeyDown={onKey} placeholder={tk("scanPlaceholder")} />
           </div>
           {results.length > 0 && (
-            <ul className="stk-results" aria-label={t("stk.results")}>
+            <ul className="stk-results" aria-label={tk("results")}>
               {results.map((p) => (
                 <li key={p.id}>
                   <button type="button" className="stk-result" onClick={() => addProduct(p.id)}>
@@ -388,19 +420,22 @@ export default function StickerSimple({ toast, productIds = null, compact = fals
           {!compact && (
             <div className="stk-quick">
               <button type="button" className="stk-chip"
-                      onClick={() => addBody({ source: "NEVER_PRINTED" }, t("stk.addedNever"))}>
-                <i className="fa-solid fa-wand-magic-sparkles" aria-hidden="true" /> {t("stk.addNever")}
+                      onClick={() => addBody({ source: "NEVER_PRINTED" }, tk("addedNever"))}>
+                <i className="fa-solid fa-wand-magic-sparkles" aria-hidden="true" /> {tk("addNever")}
               </button>
               {categories.length > 0 && (
                 <button type="button" className="stk-chip" onClick={() => setCatOpen(true)}>
-                  <i className="fa-solid fa-layer-group" aria-hidden="true" /> {t("stk.addCategory")}
+                  <i className="fa-solid fa-layer-group" aria-hidden="true" /> {tk("addCategory")}
                 </button>
               )}
             </div>
           )}
 
-          <div className="stk-rule" role="group" aria-label={t("stk.ruleTitle")}>
-            <span className="stk-rule__label">{t("stk.ruleTitle")}</span>
+          {/* ⚠ JAVON YORLIG'IDA SON QOIDASI YO'Q: javonga har tovardan bitta
+              yorliq qo'yiladi, «qoldiq soniga teng» u yerda ma'nosiz. */}
+          {kind === "STICKER" && (
+          <div className="stk-rule" role="group" aria-label={tk("ruleTitle")}>
+            <span className="stk-rule__label">{tk("ruleTitle")}</span>
             {[["ONE", "stk.ruleOne"], ["STOCK", "stk.ruleStock"]].map(([v, key]) => (
               <button key={v} type="button" className={`cat-tab ${rule === v ? "active" : ""}`}
                       aria-pressed={rule === v} onClick={() => setRule(v)}>
@@ -408,21 +443,22 @@ export default function StickerSimple({ toast, productIds = null, compact = fals
               </button>
             ))}
           </div>
+          )}
 
           {/* ── 2. Ro'yxat ──────────────────────────────────────────── */}
           <div className="stk-listhead">
             <span className="stk-q stk-q--sm">
-              <span className="stk-num" aria-hidden="true">2</span> {t("stk.step2")}
+              <span className="stk-num" aria-hidden="true">2</span> {tk("step2")}
             </span>
             {lines.length > 0 && (
               <button type="button" className="btn btn-outline btn-sm" onClick={clearAll}>
-                <i className="fa-solid fa-broom" /> {t("stk.clear")}
+                <i className="fa-solid fa-broom" /> {tk("clear")}
               </button>
             )}
           </div>
 
           {lines.length === 0 ? (
-            <Empty icon="fa-barcode" text={t("stk.empty")} />
+            <Empty icon="fa-barcode" text={tk("empty")} />
           ) : (
             <ul className="stk-lines">
               {lines.map((l) => {
@@ -435,26 +471,30 @@ export default function StickerSimple({ toast, productIds = null, compact = fals
                             aria-pressed={on}>
                       <span className="stk-line__name">{p.name || l.productName}</span>
                       <span className="stk-line__meta">
-                        {p.barcode ? (
+                        {/* ⚠ JAVON YORLIG'IDA BARKOD YO'Q (G1) — qatorda kassada
+                            teriladigan kod ko'rsatiladi, «barkod beriladi» emas. */}
+                        {kind === "SHELF" ? (
+                          <span className="ek-num">{productCode(p) || l.code ? `*${productCode(p) || l.code}` : "—"}</span>
+                        ) : p.barcode ? (
                           <span className="ek-num"><i className="fa-solid fa-barcode" aria-hidden="true" /> {p.barcode}</span>
                         ) : future ? (
                           <span className="stk-line__new">
                             <i className="fa-solid fa-wand-magic-sparkles" aria-hidden="true" />{" "}
-                            {t("stk.codeNew")} <span className="ek-num">{prettyStoreCode(future)}</span>
+                            {tk("codeNew")} <span className="ek-num">{prettyStoreCode(future)}</span>
                           </span>
                         ) : (
                           <span className="stk-line__bad">
-                            <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" /> {t("stk.codeNone")}
+                            <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" /> {tk("codeNone")}
                           </span>
                         )}
                         <span className="ek-num">{money(p.salePrice ?? l.salePrice, { withUnit: true })}</span>
                       </span>
                     </button>
                     <div className="qty-ctrl">
-                      <button type="button" className="qty-btn" aria-label={t("stk.less")}
+                      <button type="button" className="qty-btn" aria-label={tk("less")}
                               disabled={l.quantity <= 1} onClick={() => setQty(l, l.quantity - 1)}>−</button>
-                      <span className="qty-num ek-num" aria-label={t("stk.count")}>{l.quantity}</span>
-                      <button type="button" className="qty-btn" aria-label={t("stk.more")}
+                      <span className="qty-num ek-num" aria-label={tk("count")}>{l.quantity}</span>
+                      <button type="button" className="qty-btn" aria-label={tk("more")}
                               onClick={() => setQty(l, l.quantity + 1)}>+</button>
                     </div>
                     <button type="button" className="btn-icon danger" aria-label={t("common.delete")}
@@ -471,20 +511,20 @@ export default function StickerSimple({ toast, productIds = null, compact = fals
         {/* ── O'ng: ko'rinish va printer ───────────────────────────── */}
         <div className="stk-side">
           <div className="card stk-card">
-            <div className="stk-q stk-q--sm">{t("stk.preview")}</div>
+            <div className="stk-q stk-q--sm">{tk("preview")}</div>
             <div className="stk-preview">
               {previewSvg ? (
                 /* eslint-disable-next-line react/no-danger */
                 <div className="stk-preview__paper" dangerouslySetInnerHTML={{ __html: previewSvg }} />
               ) : (
-                <div className="stk-hint">{t("stk.previewEmpty")}</div>
+                <div className="stk-hint">{tk("previewEmpty")}</div>
               )}
             </div>
             {template && (
               <div className="stk-design">
-                <span>{t("stk.design")}: <b>{templateName(template)}</b></span>
+                <span>{tk("design")}: <b>{templateName(template)}</b></span>
                 <button type="button" className="btn btn-outline btn-sm" onClick={() => setDesignOpen(true)}>
-                  <i className="fa-solid fa-palette" /> {t("stk.changeDesign", { n: designs.length })}
+                  <i className="fa-solid fa-palette" /> {tk("changeDesign", { n: designs.length })}
                 </button>
               </div>
             )}
@@ -493,14 +533,14 @@ export default function StickerSimple({ toast, productIds = null, compact = fals
           <div className="card stk-card stk-status">
             <i className={`fa-solid ${route === "bytes" ? "fa-bolt" : "fa-print"}`} aria-hidden="true" />
             <div className="stk-status__text">
-              <div className="stk-status__name">{desktop ? queue : t("stk.printerInDialog")}</div>
+              <div className="stk-status__name">{desktop && !sheet ? queue : tk("printerInDialog")}</div>
               <div className="stk-hint">
-                <span className="ek-num">{sizeText(roll)}</span> {t("stk.mm")} ·{" "}
-                {route === "bytes" ? t("stk.routeDirect") : t("stk.routeDialog")}
+                {sheet ? t("shf.a4") : <><span className="ek-num">{sizeText(roll)}</span> {tk("mm")}</>} ·{" "}
+                {route === "bytes" ? tk("routeDirect") : tk("routeDialog")}
               </div>
             </div>
             <button type="button" className="btn btn-outline btn-sm" onClick={() => setSetupOpen(true)}>
-              <i className="fa-solid fa-gear" /> {t("stk.settings")}
+              <i className="fa-solid fa-gear" /> {tk("settings")}
             </button>
           </div>
         </div>
@@ -516,16 +556,16 @@ export default function StickerSimple({ toast, productIds = null, compact = fals
               {error.detail && <div className="stk-alert__detail">{error.detail}</div>}
             </div>
             <button type="button" className="btn btn-outline btn-sm" onClick={() => setSetupOpen(true)}>
-              <i className="fa-solid fa-gear" /> {t("stk.settings")}
+              <i className="fa-solid fa-gear" /> {tk("settings")}
             </button>
           </div>
         )}
         {noCode.length > 0 && (
           <div className="stk-alert" role="alert">
             <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />
-            <div>{t("stk.noCodeWarn", { n: noCode.length })}</div>
+            <div>{tk("noCodeWarn", { n: noCode.length })}</div>
             <button type="button" className="btn btn-outline btn-sm" onClick={dropNoCode}>
-              <i className="fa-solid fa-xmark" /> {t("stk.removeThem")}
+              <i className="fa-solid fa-xmark" /> {tk("removeThem")}
             </button>
           </div>
         )}
@@ -538,14 +578,14 @@ export default function StickerSimple({ toast, productIds = null, compact = fals
         <div className="stk-bar__row">
           <div className="stk-bar__total">
             {total > 0
-              ? <>{t("stk.totalA")} <b className="ek-num">{total}</b> {t("stk.totalB")}</>
-              : t("stk.totalNone")}
+              ? <>{tk("totalA")} <b className="ek-num">{total}</b> {tk("totalB")}</>
+              : tk("totalNone")}
           </div>
           <button type="button" className="btn btn-green stk-big"
                   disabled={busy || !total || !template || issues.length > 0 || noCode.length > 0}
                   onClick={print}>
             {busy ? <Spinner small /> : <i className="fa-solid fa-print" />}{" "}
-            {t("stk.print")}
+            {tk("print")}
           </button>
         </div>
       </div>
@@ -553,35 +593,35 @@ export default function StickerSimple({ toast, productIds = null, compact = fals
       {!compact && onAdvanced && <AdvancedLink onAdvanced={onAdvanced} />}
 
       {ask && (
-        <Modal title={t("stk.askTitle")} onClose={() => setAsk(null)} maxWidth={440}>
-          <p className="stk-hint" style={{ marginTop: 0 }}>{t("stk.askHint")}</p>
+        <Modal title={tk("askTitle")} onClose={() => setAsk(null)} maxWidth={440}>
+          <p className="stk-hint" style={{ marginTop: 0 }}>{tk("askHint")}</p>
           <div className="stk-ask__btns">
             <button type="button" className="btn btn-green stk-big"
                     onClick={async () => { const it = ask.items; setAsk(null); try { await markDone(it); } catch (e) { toast?.error(e.message); } }}>
-              <i className="fa-solid fa-circle-check" /> {t("stk.askYes")}
+              <i className="fa-solid fa-circle-check" /> {tk("askYes")}
             </button>
             <button type="button" className="btn btn-outline stk-big"
-                    onClick={() => { setAsk(null); setError({ text: t("stk.askNoHint") }); }}>
-              <i className="fa-solid fa-xmark" /> {t("stk.askNo")}
+                    onClick={() => { setAsk(null); setError({ text: tk("askNoHint") }); }}>
+              <i className="fa-solid fa-xmark" /> {tk("askNo")}
             </button>
           </div>
         </Modal>
       )}
 
       {setupOpen && (
-        <Modal title={t("stk.setupTitle")} onClose={() => setSetupOpen(false)} maxWidth={720}>
-          <StickerSetup toast={toast} onDone={() => setSetupOpen(false)} />
+        <Modal title={tk("setupTitle")} onClose={() => setSetupOpen(false)} maxWidth={720}>
+          <StickerSetup toast={toast} kind={kind} onDone={() => setSetupOpen(false)} />
         </Modal>
       )}
 
       {catOpen && (
-        <Modal title={t("stk.addCategory")} onClose={() => setCatOpen(false)} maxWidth={520}>
-          <p className="stk-hint" style={{ marginTop: 0 }}>{t("stk.catHint")}</p>
+        <Modal title={tk("addCategory")} onClose={() => setCatOpen(false)} maxWidth={520}>
+          <p className="stk-hint" style={{ marginTop: 0 }}>{tk("catHint")}</p>
           <div className="stk-choices">
             {categories.map((c) => (
               <button key={c.id} type="button" className="stk-choice"
                       onClick={() => { setCatOpen(false);
-                        addBody({ source: "CATEGORY", categoryId: c.id }, t("stk.addedCategory")); }}>
+                        addBody({ source: "CATEGORY", categoryId: c.id }, tk("addedCategory")); }}>
                 <i className="fa-solid fa-layer-group" aria-hidden="true" />
                 <span className="stk-choice__name">{c.name}</span>
               </button>
@@ -591,12 +631,25 @@ export default function StickerSimple({ toast, productIds = null, compact = fals
       )}
 
       {designOpen && (
-        <Modal title={t("stk.designTitle")} onClose={() => setDesignOpen(false)} maxWidth={860}>
-          <p className="stk-hint" style={{ marginTop: 0 }}>{t("stk.designHint")}</p>
+        <Modal title={tk("designTitle")} onClose={() => setDesignOpen(false)} maxWidth={860}>
+          <p className="stk-hint" style={{ marginTop: 0 }}>
+            {sheet ? t("shf.designHintSheet") : tk("designHint")}
+          </p>
+          {sheet && sheetSizes.length > 1 && (
+            <div className="cat-tabs lbl-sizes" role="group" aria-label={t("lbl.sizeFilter")}
+                 style={{ padding: "0 0 10px" }}>
+              {sheetSizes.map((k) => (
+                <button key={k} type="button" className={`cat-tab ek-num ${activeSize === k ? "active" : ""}`}
+                        aria-pressed={activeSize === k} onClick={() => setGallerySize(k)}>
+                  {k.replace("x", "×")}
+                </button>
+              ))}
+            </div>
+          )}
           <LabelGallery
             templates={designs.length ? designs : templates}
             product={previewProduct ? withPreviewBarcode(previewProduct) : null}
-            media={media} selectedId={template?.id}
+            media={sheet ? null : media} selectedId={template?.id}
             onPick={(tpl) => { rememberTemplate(tpl.id); setChosenId(tpl.id); setDesignOpen(false); }}
             onOpen={(tpl) => { rememberTemplate(tpl.id); setChosenId(tpl.id); setDesignOpen(false); }}
           />

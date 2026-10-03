@@ -80,7 +80,62 @@ export default function LabelsPage({ toast }) {
   };
   return mode === "advanced"
     ? <LabelsAdvanced toast={toast} onSimple={() => go("simple")} />
-    : <StickerSimple toast={toast} onAdvanced={() => go("advanced")} />;
+    : <SimpleLabels toast={toast} onAdvanced={() => go("advanced")} />;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ODDIY REJIM: STIKER YOKI NARX YORLIG'I (2026-10-04)
+
+   Egasi: «javon yorliqlarini ham oddiy rejimga qo'sh». Tepada ikkita katta
+   tugma — nimaligi va qayerga yopishishi so'z bilan yozilgan, chunki
+   «SHELF/STICKER» yoki «javon yozlig'i» do'konchiga hech narsa demaydi.
+
+   ⚠ HAR TUR — O'Z EKRANI (`key={kind}`): o'z sozlamasi (stiker rulonda,
+   narx yorlig'i A4 da bo'lishi mumkin), o'z ro'yxati va o'z dizayni. Bitta
+   ekranda almashtirilsa, stikerga qo'shilgan tovarlar narx yorlig'i bo'lib
+   chiqib ketardi.
+
+   ⚠ `?tab=stale` (bosh sahifadagi «narxi o'zgargan» belgisi) — narx
+   yorlig'ini ochadi: eskirgan narx javondagi yorliqda turadi.
+   ══════════════════════════════════════════════════════════════════════════ */
+const KIND_KEY = "ek_simple_kind";
+const readKind = () => {
+  if (new URLSearchParams(window.location.search).get("tab") === "stale") return "SHELF";
+  try { return localStorage.getItem(KIND_KEY) === "SHELF" ? "SHELF" : "STICKER"; }
+  catch { return "STICKER"; }
+};
+const KIND_CARDS = [
+  ["STICKER", "fa-barcode", "stk.kindSticker", "stk.kindStickerHint"],
+  ["SHELF", "fa-tag", "stk.kindShelf", "stk.kindShelfHint"],
+];
+
+function SimpleLabels({ toast, onAdvanced }) {
+  const [kind, setKind] = useState(readKind);
+  const pick = (k) => {
+    try { localStorage.setItem(KIND_KEY, k); } catch { /* yopiq xotira */ }
+    setKind(k);
+  };
+  return (
+    <div>
+      <div className="page-header" style={{ marginBottom: 12 }}>
+        <h2 className="page-title">{t("stk.pageTitle")}</h2>
+      </div>
+      <div className="stk-kinds" role="radiogroup" aria-label={t("stk.kindTitle")}>
+        {KIND_CARDS.map(([k, icon, name, hint]) => (
+          <button key={k} type="button" role="radio" aria-checked={kind === k}
+                  className={`stk-kind ${kind === k ? "is-on" : ""}`} onClick={() => pick(k)}>
+            <i className={`fa-solid ${icon} stk-kind__icon`} aria-hidden="true" />
+            <span className="stk-kind__text">
+              <span className="stk-kind__name">{t(name)}</span>
+              <span className="stk-kind__hint">{t(hint)}</span>
+            </span>
+            {kind === k && <i className="fa-solid fa-circle-check stk-choice__on" aria-hidden="true" />}
+          </button>
+        ))}
+      </div>
+      <StickerSimple key={kind} kind={kind} toast={toast} onAdvanced={onAdvanced} showHeader={false} />
+    </div>
+  );
 }
 
 function LabelsAdvanced({ toast, onSimple }) {

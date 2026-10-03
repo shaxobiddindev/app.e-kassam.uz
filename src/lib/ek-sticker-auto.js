@@ -179,9 +179,19 @@ export function designsFor(templates = [], media = null, kind = "STICKER") {
  * ⚠ «ENG KATTA SIG'ADIGANI», birinchisi emas: 58×40 rulonga 30×20 dizayn
  * ham sig'adi, lekin u stikerning burchagida mitti bo'lib chiqardi.
  */
-export function pickTemplate(templates = [], media = null, preferId = null) {
-  const list = templates.filter((x) => x.kind === "STICKER");
+export function pickTemplate(templates = [], media = null, preferId = null, kind = "STICKER") {
+  const list = templates.filter((x) => x.kind === kind);
   if (!list.length) return null;
+  /* ⚠ VARAQ (A4) — O'LCHAM YO'Q: varaqqa har qanday yorliq sig'adi va to'r
+     dizayndan hisoblanadi. Varaq profilidagi «50×30» — katak namunasi, cheklov
+     emas; unga qarab tanlansa, javon yorlig'i doim 50×30 bo'lib qolardi. */
+  if (!media || String(media.mediaType) === "VARAQ") {
+    const base = kind === "SHELF" ? "classic" : "standard";
+    return list.find((x) => x.id === preferId)
+      || list.find((x) => x.isDefault)
+      || list.find((x) => designOf(x) === base && x.system)
+      || list[0];
+  }
   const W = Number(media?.labelWidthMm) || Infinity;
   const H = Number(media?.labelHeightMm) || Infinity;
   const fits = (x) => Number(x.widthMm) <= W + 0.001 && Number(x.heightMm) <= H + 0.001;
@@ -217,7 +227,16 @@ export function pickTemplate(templates = [], media = null, preferId = null) {
  */
 export function setupDone(out, { desktop = false, queue = "" } = {}) {
   if (!out?.media) return false;
+  /* A4 varaq oddiy printerdan, chop etish oynasi orqali — navbat kerak emas. */
+  if (String(out.media.mediaType) === "VARAQ") return true;
   return desktop ? Boolean(queue) : true;
+}
+
+/** A4 yopishqoq/oddiy varaq profili (javon yorlig'i uchun). */
+export function sheetMedia(medias = []) {
+  return medias.find((m) => m.code === "sheet_a4")
+    || medias.find((m) => String(m.mediaType) === "VARAQ" && Number(m.pageWidthMm) === 210)
+    || null;
 }
 
 /**

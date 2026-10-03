@@ -12,6 +12,7 @@
 const {
   printerKind, sortPrinters, autoPrinter, profileFor, mediaFor, stickerMedias,
   pickTemplate, setupDone, printerErrorKey, MAIN_SIZES, designOf, designsFor, DESIGN_ORDER,
+  sheetMedia,
 } = await import("../src/lib/ek-sticker-auto.js");
 
 let pass = 0, fail = 0;
@@ -142,6 +143,27 @@ console.log("\n── Dizayn hamma o'lchamda (V142) ──");
   eq(g.join(","), "standard,big_price,side", "galereya: faqat shu o'lcham, DESIGN_ORDER tartibida");
   eq(designsFor(T, R40)[0].id, 99, "galereyada do'konning o'zinikisi tepada");
   eq(DESIGN_ORDER.length, 14, "14 dizayn");
+}
+
+
+console.log("\n── Narx yorlig'i oddiy rejimda ──");
+{
+  const S = (code, w, h, extra = {}) => ({ id: code, code, kind: "SHELF", widthMm: w, heightMm: h, system: true, ...extra });
+  const T = [S("shf_big_price_58x40", 58, 40), S("shf_classic_58x40", 58, 40),
+    S("shelf_classic", 70, 37, { isDefault: true }), S("shf_classic_148x105", 148, 105),
+    { id: "stk", code: "stk_standard_58x40", kind: "STICKER", widthMm: 58, heightMm: 40, system: true }];
+  const A4 = { id: 9, code: "sheet_a4", mediaType: "VARAQ", labelWidthMm: 50, labelHeightMm: 30, pageWidthMm: 210, pageHeightMm: 297 };
+  eq(pickTemplate(T, { mediaType: "RULON", labelWidthMm: 58, labelHeightMm: 40 }, null, "SHELF")?.code,
+    "shf_classic_58x40", "rulonda — «Klassik» o'sha o'lchamda");
+  eq(pickTemplate(T, A4, null, "SHELF")?.code, "shelf_classic",
+    "⚠ A4 da varaq katagiga (50×30) qarab emas — standart javon dizayni");
+  eq(pickTemplate(T, A4, "shf_classic_148x105", "SHELF")?.code, "shf_classic_148x105",
+    "A4 da do'konchi tanlagan o'lcham saqlanadi");
+  eq(pickTemplate(T, { mediaType: "RULON", labelWidthMm: 58, labelHeightMm: 40 }, null, "STICKER")?.code,
+    "stk_standard_58x40", "stiker tanlovi javon shablonini olmaydi");
+  eq(setupDone({ media: A4 }, { desktop: true, queue: "" }), true,
+    "⚠ A4 — navbatsiz ham tayyor (oddiy printer chop etish oynasida tanlanadi)");
+  eq(sheetMedia([{ id: 1, mediaType: "RULON" }, A4])?.id, 9, "A4 varaq profili topiladi");
 }
 
 console.log(`\n  ${pass} o'tdi, ${fail} yiqildi\n`);
