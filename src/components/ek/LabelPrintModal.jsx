@@ -4,7 +4,7 @@ import { labelApi, productApi } from "../../api";
 import { asArray } from "../../lib/ek-array";
 import Modal from "../Modal";
 import { SkeletonList } from "./Loading";
-import LabelQueue from "./LabelQueue";
+import LabelQueue, { lastTemplateId } from "./LabelQueue";
 
 /* ══════════════════════════════════════════════════════════════════════════
    TEZ CHOP ETISH (F5)
@@ -29,16 +29,21 @@ export default function LabelPrintModal({ productIds = [], onClose, toast }) {
   const boot = useCallback(async () => {
     setLoading(true);
     try {
+      /* ⚠ HAMMA TUR: ilgari faqat «SHELF» so'ralardi va bu oynadan
+         stiker umuman chiqarib bo'lmasdi. Boshlang'ich dizayn —
+         shu kompyuterda oxirgi tanlangani. */
       const [tRes, pRes] = await Promise.all([
-        labelApi.templates("SHELF"),
+        labelApi.templates(),
         productApi.getAll(),
       ]);
       const tpl = asArray(tRes.data);
       setTemplates(tpl);
       setProducts(asArray(pRes.data));
 
+      const last = lastTemplateId();
       const created = await labelApi.newJob({
-        templateId: tpl.find((x) => x.isDefault)?.id ?? tpl[0]?.id ?? null,
+        templateId: (tpl.some((x) => x.id === last) ? last : null)
+          ?? tpl.find((x) => x.isDefault)?.id ?? tpl[0]?.id ?? null,
         startPosition: 1,
       });
       const added = await labelApi.addToJob(created.data.id, {

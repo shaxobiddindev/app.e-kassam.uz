@@ -61,6 +61,20 @@ function tsplFont(sizePt, dpi) {
   return { font: best[0], mul };
 }
 
+/**
+ * Barkod CHIZIQLARINING balandligi.
+ *
+ * ⚠ RAQAMLAR MAYDON ICHIDA. SVG yo'lida (`barcodeSvgMm`) chiziqlar
+ * `h − 2,6 mm`, raqamlar esa qolgan joyda — ya'ni hammasi maydonga
+ * sig'adi. TSPL `BARCODE` va ZPL `^BE`/`^BC` esa balandlikni FAQAT
+ * chiziqlarga beradi va raqamlarni ularning OSTIGA qo'shadi. Butun `h`
+ * yuborilganda raqamlar maydondan 2,6 mm pastga tushib, «Standart
+ * 40×30» da narx ustiga chiqardi (2026-10-03, rulon yo'li ulanganda
+ * topildi — ungacha bu kod faqat sinov yorlig'ida ishlardi).
+ */
+const barsHeightMm = (it) =>
+  (it.showText ? Math.max(Number(it.h) - 2.6, 1) : Number(it.h));
+
 /** EAN-13 / EAN-8 / Code 128 → TSPL barkod turi. */
 const tsplBarcodeType = (kind) =>
   kind === "EAN13" ? "EAN13" : kind === "EAN8" ? "EAN8" : "128";
@@ -73,28 +87,7 @@ const tsplBarcodeType = (kind) =>
  */
 export function toTSPL(layout, { dpi = 203, media = {}, printer = {}, copies = 1 } = {}) {
   const D = (mm) => mmToDots(mm, dpi);
-  const out = [];
-
-  out.push(`SIZE ${num(layout.widthMm)} mm,${num(layout.heightMm)} mm`);
-
-  /* ⚠ SENSOR TURI BUYRUQNI O'ZGARTIRADI:
-       ORALIQ      → GAP (yorliqlar orasidagi bo'shliq),
-       QORA_BELGI  → BLINE (orqadagi qora chiziq),
-       UZLUKSIZ    → GAP 0,0 va balandlik SIZE da aytilgan bo'lishi
-                     shart — printer uni o'zi bila olmaydi. */
-  const sensor = String(media.sensor || "ORALIQ").toUpperCase();
-  if (sensor === "QORA_BELGI") out.push(`BLINE ${num(media.gapYMm ?? 3)} mm,0 mm`);
-  else if (sensor === "UZLUKSIZ") out.push("GAP 0 mm,0 mm");
-  else out.push(`GAP ${num(media.gapYMm ?? 2)} mm,0 mm`);
-
-  out.push("DIRECTION 1");
-  if (printer.density != null) out.push(`DENSITY ${clampInt(printer.density, 1, 15)}`);
-  if (printer.speed != null) out.push(`SPEED ${clampInt(printer.speed, 1, 12)}`);
-
-  /* Siljish tuzatishi: «yozuv 2 mm pastga surilgan». */
-  const ox = D(printer.offsetXMm || 0), oy = D(printer.offsetYMm || 0);
-  out.push(`REFERENCE ${ox},${oy}`);
-  out.push("CLS");
+  const out = tsplHead(layout.widthMm, layout.heightMm, { dpi, media, printer });
 
   for (const it of layout.items) {
     if (it.kind === "border") {
@@ -115,11 +108,9 @@ export function toTSPL(layout, { dpi = 203, media = {}, printer = {}, copies = 1
       out.push(`TEXT ${x},${D(it.y)},"${font}",0,${mul},${mul},${align},"${q(it.text)}"`);
       continue;
     }
-    if (it.kind === "barcode" && it.value && it.metrics) {
-      const type = tsplBarcodeType(it.metrics.kind);
-      const narrow = Number(it.cfg?.moduleDots ?? 2);
-      out.push(`BARCODE ${D(it.x)},${D(it.y)},"${type}",${D(it.h)},`
-        + `${it.showText ? 1 : 0},0,${narrow},${narrow * 2},"${q(it.value)}"`);
+    if (it.kind === "barcode") {
+      const line = tsplBarcode(it, D);
+      if (line) out.push(line);
       continue;
     }
     /* ⚠ QR va teshik bayt yo'lida CHIZILMAYDI: QR uchun
@@ -130,6 +121,127 @@ export function toTSPL(layout, { dpi = 203, media = {}, printer = {}, copies = 1
 
   out.push(`PRINT ${Math.max(1, Number(copies) || 1)},1`);
   return out.join("\r\n") + "\r\n";
+}
+
+/** Barkod qatori yoki `null` (qiymat yo'q / chizib bo'lmaydi). */
+function tsplBarcode(it, D) {
+  if (!it.value || !it.metrics) return null;
+  const type = tsplBarcodeType(it.metrics.kind);
+  const narrow = Number(it.cfg?.moduleDots ?? 2);
+  return `BARCODE ${D(it.x)},${D(it.y)},"${type}",${D(barsHeightMm(it))},`
+    + `${it.showText ? 1 : 0},0,${narrow},${narrow * 2},"${q(it.value)}"`;
+}
+
+/**
+ * TSPL — MATN RASM BO'LIB, BARKOD PRINTER BUYRUG'I BILAN (2026-10-03).
+ *
+ * ⚠ NEGA RASM. TSPL ning ichki shriftlari faqat ASCII ni biladi:
+ * «Сахар 1кг» yoki «Oʻrik» printerda `????` yoki tushunarsiz belgi
+ * bo'lib chiqardi — O'zbekistondagi do'konlarda tovar nomlarining
+ * ko'pi aynan shunday. Ustiga-ustak shrift o'lchami diskret (yuqoridagi
+ * `tsplFont`) va «katta so'm, kichik tiyin» narx uslubi umuman yo'q edi:
+ * qog'ozdagi yorliq ko'rish oynasidagidan boshqacha chiqardi.
+ *
+ * Rasm AYNAN ko'rish oynasini chizgan renderer'dan olinadi, shuning
+ * uchun qog'oz ekrandagidek bo'ladi.
+ *
+ * ⚠ BARKOD RASMGA KIRMAYDI — sababi `renderLabel` dagi `ctx.omit`
+ * izohida: rasterlangan chiziqlar nuqta to'riga tushmaydi.
+ *
+ * ⚠ TSPL `BITMAP` da 1 — OQ, 0 — QORA (ZPL `^GF` ning teskarisi).
+ * `packMono` shuni hisobga oladi. ⚠ Haqiqiy qog'ozda hali sinalmagan:
+ * yorliq teskari (qora fonda) chiqsa, xato aynan shu bayroqda.
+ *
+ * @param p.widthMm, p.heightMm  qog'oz katagi (rulon qatori)
+ * @param p.bitmap  {widthDots, heightDots, data} — `packMono` natijasi
+ * @param p.barcodes `layoutLabel` barkod elementlari, mm da, siljitilgan
+ * @returns {Uint8Array}
+ */
+export function toTSPLRaster({ widthMm, heightMm, bitmap, barcodes = [],
+                               dpi = 203, media = {}, printer = {}, copies = 1 }) {
+  const D = (mm) => mmToDots(mm, dpi);
+  const head = tsplHead(widthMm, heightMm, { dpi, media, printer });
+  const enc = new TextEncoder();
+  const parts = [enc.encode(head.join("\r\n") + "\r\n")];
+
+  if (bitmap && bitmap.data?.length) {
+    const wb = Math.ceil(bitmap.widthDots / 8);
+    parts.push(enc.encode(`BITMAP 0,0,${wb},${bitmap.heightDots},0,`));
+    parts.push(bitmap.data);
+    parts.push(enc.encode("\r\n"));
+  }
+
+  const tail = [];
+  for (const it of barcodes) {
+    const line = tsplBarcode(it, D);
+    if (line) tail.push(line);
+  }
+  tail.push(`PRINT ${Math.max(1, Number(copies) || 1)},1`);
+  parts.push(enc.encode(tail.join("\r\n") + "\r\n"));
+  return concatBytes(parts);
+}
+
+/**
+ * RGBA piksellarni TSPL `BITMAP` qatorlariga o'giradi.
+ *
+ * ⚠ CHEGARA 128 VA ALFA HISOBGA OLINADI: shaffof piksel oq qog'oz
+ * deb sanaladi. Canvas oldindan oq bilan to'ldiriladi, lekin chegara
+ * bu yerda ham himoyalangan — aks holda shaffof joy qora bo'lib,
+ * butun yorliq qora to'rtburchak bo'lib chiqardi.
+ *
+ * @returns {{widthDots, heightDots, data: Uint8Array}}
+ */
+export function packMono(rgba, widthDots, heightDots) {
+  const wb = Math.ceil(widthDots / 8);
+  /* ⚠ 0xFF bilan to'ldiriladi: TSPL da 1 — oq. Qator oxiridagi
+     ortiqcha bitlar ham oq bo'lishi shart, aks holda o'ng chekkada
+     ingichka qora chiziq chiqadi. */
+  const data = new Uint8Array(wb * heightDots).fill(0xff);
+  for (let y = 0; y < heightDots; y++) {
+    for (let x = 0; x < widthDots; x++) {
+      const i = (y * widthDots + x) * 4;
+      const a = rgba[i + 3] / 255;
+      const lum = (rgba[i] * 299 + rgba[i + 1] * 587 + rgba[i + 2] * 114) / 1000;
+      const seen = lum * a + 255 * (1 - a);
+      if (seen < 128) data[y * wb + (x >> 3)] &= ~(0x80 >> (x & 7));
+    }
+  }
+  return { widthDots, heightDots, data };
+}
+
+function concatBytes(parts) {
+  const out = new Uint8Array(parts.reduce((s, p) => s + p.length, 0));
+  let o = 0;
+  for (const p of parts) { out.set(p, o); o += p.length; }
+  return out;
+}
+
+/** SIZE, datchik, zichlik, siljish — `toTSPL` va `toTSPLRaster` uchun bitta. */
+function tsplHead(widthMm, heightMm, { dpi = 203, media = {}, printer = {} } = {}) {
+  const D = (mm) => mmToDots(mm, dpi);
+  const out = [];
+
+  out.push(`SIZE ${num(widthMm)} mm,${num(heightMm)} mm`);
+
+  /* ⚠ SENSOR TURI BUYRUQNI O'ZGARTIRADI:
+       ORALIQ      → GAP (yorliqlar orasidagi bo'shliq),
+       QORA_BELGI  → BLINE (orqadagi qora chiziq),
+       UZLUKSIZ    → GAP 0,0 va balandlik SIZE da aytilgan bo'lishi
+                     shart — printer uni o'zi bila olmaydi. */
+  const sensor = String(media.sensor || "ORALIQ").toUpperCase();
+  if (sensor === "QORA_BELGI") out.push(`BLINE ${num(media.gapYMm ?? 3)} mm,0 mm`);
+  else if (sensor === "UZLUKSIZ") out.push("GAP 0 mm,0 mm");
+  else out.push(`GAP ${num(media.gapYMm ?? 2)} mm,0 mm`);
+
+  out.push("DIRECTION 1");
+  if (printer.density != null) out.push(`DENSITY ${clampInt(printer.density, 1, 15)}`);
+  if (printer.speed != null) out.push(`SPEED ${clampInt(printer.speed, 1, 12)}`);
+
+  /* Siljish tuzatishi: «yozuv 2 mm pastga surilgan». */
+  const ox = D(printer.offsetXMm || 0), oy = D(printer.offsetYMm || 0);
+  out.push(`REFERENCE ${ox},${oy}`);
+  out.push("CLS");
+  return out;
 }
 
 /**
@@ -168,7 +280,7 @@ export function toZPL(layout, { dpi = 203, media = {}, printer = {}, copies = 1 
     }
     if (it.kind === "barcode" && it.value && it.metrics) {
       const narrow = Number(it.cfg?.moduleDots ?? 2);
-      const bh = D(it.h);
+      const bh = D(barsHeightMm(it));
       out.push(`^FO${D(it.x)},${D(it.y)}^BY${narrow}`);
       out.push(it.metrics.kind === "EAN13" || it.metrics.kind === "EAN8"
         ? `^BEN,${bh},${it.showText ? "Y" : "N"},N^FD${zplEscape(it.value)}^FS`

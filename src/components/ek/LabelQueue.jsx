@@ -10,11 +10,18 @@ import { rankItems, looksLikeCode } from "../../lib/ek-search";
 import { money } from "../../lib/ek-format";
 import { templateName } from "../../lib/ek-label-name";
 import { printHtml } from "../../lib/ek-receipt-pdf";
-import { printPriceLabels } from "../../lib/ek-hardware";
+import { printPriceLabels, printRawLabel } from "../../lib/ek-hardware";
+import { getSettings } from "../../lib/ek-hw-settings";
 import { isDesktop } from "../../lib/ek-desktop";
-import { buildPrintDoc, pendingItems, sheetFor, PAGES } from "../../lib/ek-label-print";
+import {
+  buildPrintDoc, buildRollBytes, buildRollDoc, outputMode, pageOf, pendingItems,
+  rollFor, sheetFor,
+} from "../../lib/ek-label-print";
+import { rasterizeSvg } from "../../lib/ek-label-raster";
+import { blocking, validateOutput } from "../../lib/ek-label-validate";
 import { useScanner } from "../../hooks/useScanner";
 import { useLayerCount } from "../../hooks/useLayerCount";
+import { useLabelOutput } from "../../hooks/useLabelOutput";
 
 /* ══════════════════════════════════════════════════════════════════════════
    CHOP ETISH NAVBATI (F5)
@@ -57,6 +64,20 @@ function shopCtx() {
   return { shopName: localStorage.getItem("ek_shopName") || "" };
 }
 
+/* ⚠ OXIRGI TANLANGAN DIZAYN ESLAB QOLINADI (shu kompyuterda): tovarlar
+   sahifasidan tez chop etishda har safar javon yorlig'i chiqib, stiker
+   chiqaradigan do'kon uni har gal qayta tanlashi kerak edi. */
+const LAST_TPL = "ek_lbl_last_tpl";
+export const lastTemplateId = () => {
+  try { return Number(localStorage.getItem(LAST_TPL)) || null; } catch { return null; }
+};
+const rememberTemplate = (id) => {
+  try { localStorage.setItem(LAST_TPL, String(id)); } catch { /* to'la yoki yopiq */ }
+};
+
+/** «58×40» — qog'oz yoki dizayn o'lchami. */
+const sizeText = (w, h) => `${Number(w)}×${Number(h)}`;
+
 const RULES = [
   { value: "ONE",    labelKey: "lbl.ruleOne" },
   { value: "STOCK",  labelKey: "lbl.ruleStock" },
@@ -74,15 +95,32 @@ export default function LabelQueue({
   const [categoryId, setCategoryId] = useState(null);
   const [search, setSearch]   = useState("");
   const [finish, setFinish]   = useState(null); // chop etilgandan keyingi savol
-  const [via, setVia]         = useState("sheet"); // sheet | tape
+  const [via, setVia]         = useState("label"); // label | tape
 
   const templateId = job?.templateId ?? null;
   const template = templates.find((x) => x.id === templateId) || null;
 
   useEffect(() => {
-    if (!templateId && templates.length && job?.id) save({ templateId: templates[0].id });
+    if (!templateId && templates.length && job?.id) {
+      const last = lastTemplateId();
+      save({ templateId: templates.some((x) => x.id === last) ? last : templates[0].id });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [templateId, templates.length, job?.id]);
+
+  /* ══ QAYERGA CHIQADI (2026-10-03) ═══════════════════════════════════
+     ⚠ ILGARI BU YERDA `PAGES.A4` QATTIQ YOZILGAN EDI va sehrgarda
+     tanlangan rulon ham, printer ham o'qilmasdi. Endi dizayn TURI
+     (javon/stiker) bo'yicha do'konning o'z tanlovi olinadi. */
+  const { outputs } = useLabelOutput();
+  const out = outputs[template?.kind] || {};
+  const media = out.media || null;
+  const lprinter = out.printer || null;
+  const tapeOn = isDesktop();
+  const queue = (getSettings().labelPrinterName || "").trim();
+  const mode = outputMode(media, lprinter, { desktop: tapeOn, queue });
+  const page = useMemo(() => (mode === "sheet" ? pageOf(media) : null), [mode, media]);
+  const roll = useMemo(() => (template ? rollFor(template, media) : null), [template, media]);
 
   const byId = useMemo(() => {
     const m = {};
@@ -91,10 +129,13 @@ export default function LabelQueue({
   }, [products]);
 
   const pending = useMemo(() => pendingItems(job, byId), [job, byId]);
-  const sheet   = useMemo(() => (template ? sheetFor(template, PAGES.A4) : null), [template]);
+  const sheet   = useMemo(() => (template && page ? sheetFor(template, page) : null),
+    [template, page]);
 
   const pendingLabels = pending.reduce((s, x) => s + x.quantity, 0);
-  const startPosition = Math.max(1, Number(job?.startPosition) || 1);
+  /* ⚠ BOSHLANISH O'RNI FAQAT VARAQDA: rulonda «yarim ishlatilgan
+     varaq» yo'q va u yerda bo'sh yorliq chiqarish shunchaki isrof. */
+  const startPosition = mode === "sheet" ? Math.max(1, Number(job?.startPosition) || 1) : 1;
   const pageCount = sheet
     ? Math.ceil((pendingLabels + startPosition - 1) / sheet.perPage) : 0;
 
@@ -103,11 +144,23 @@ export default function LabelQueue({
   const preview = useMemo(() => {
     if (!template || !pending.length) return null;
     try {
-      return buildPrintDoc(template, pending, { startPosition, ctx: shopCtx() });
+      return mode === "sheet"
+        ? buildPrintDoc(template, pending, { startPosition, ctx: shopCtx(), page })
+        : buildRollDoc(template, pending, media, { ctx: shopCtx(), printer: lprinter });
     } catch {
       return null;
     }
-  }, [template, pending, startPosition]);
+  }, [template, pending, startPosition, mode, page, media, lprinter]);
+
+  /* ⚠ QOG'OZGA FIZIK SIG'MASLIK — chop etishdan OLDIN (G7 qoidalari).
+     Varaqda tekshirilmaydi: u yerda to'r dizayndan hisoblanadi.
+     Drayver yo'lida dpi qoidasi o'tkazib yuboriladi — u faqat bayt
+     yo'liga tegishli (`validateOutput`, 5-qoida). */
+  const outIssues = useMemo(() => {
+    if (mode === "sheet" || !template) return [];
+    const p = mode === "bytes" ? lprinter : lprinter && { ...lprinter, lang: "DRAYVER" };
+    return blocking(validateOutput(media, p, template));
+  }, [mode, media, lprinter, template]);
 
   const warnings = useMemo(() => {
     const seen = new Map();
@@ -120,15 +173,30 @@ export default function LabelQueue({
   /* ── Bloklash SABABI ────────────────────────────────────────────
      ⚠ Hira tugma sababini aytishi shart: aks holda do'konchi nima
      qilishni bilmay, xuddi shu tugmani qayta-qayta bosadi. */
-  const tapeOn = isDesktop();
   const blocked =
     !pending.length      ? t("lbl.blockEmpty")
     : via === "tape"     ? (tapeOn ? null : t("lbl.blockTape"))
     : !template          ? t("lbl.blockNoTemplate")
-    : !sheet             ? t("lbl.blockTooBig", { w: Number(template.widthMm),
-                                                  h: Number(template.heightMm) })
-    : startPosition > (sheet?.perPage || 1) ? t("lbl.blockStart", { n: sheet.perPage })
+    : mode === "sheet"   ? (
+        !sheet ? t("lbl.blockTooBig", { w: Number(template.widthMm),
+                                        h: Number(template.heightMm) })
+        : startPosition > (sheet?.perPage || 1) ? t("lbl.blockStart", { n: sheet.perPage })
+        : null)
+    : outIssues.length   ? outIssues[0].text
     : null;
+
+  /* ⚠ YO'L EKRANDA AYTILADI: chop etish oynasi ochiladimi yoki
+     yorliq to'g'ridan-to'g'ri printerdan chiqadimi — do'konchi
+     tugmani bosishdan oldin bilsin. Ilgari bu yerda hech narsa
+     yozilmasdi va A4 oynasi kutilmaganda ochilardi. */
+  const size = roll ? sizeText(roll.labelWidthMm, roll.labelHeightMm) : "";
+  const route =
+    mode === "sheet" ? t("lbl.routeSheet", { page: page?.label || "A4" })
+    : mode === "bytes" ? t("lbl.routeBytes", { size, queue })
+    : !media ? t("lbl.routeNoMedia", { size })
+    : t("lbl.routeDriver", { size });
+  const needQueue = mode === "driver" && tapeOn && !queue
+    && ["TSPL", "ZPL"].includes(String(lprinter?.lang || "").toUpperCase());
 
   const wrap = async (fn) => {
     setBusy(true);
@@ -198,13 +266,23 @@ export default function LabelQueue({
           barcode: it.product?.barcode,
           shortCode: productCode(it.product),
         })), { copies: 1, shopName: shopCtx().shopName });
+      } else if (mode === "bytes") {
+        /* ⚠ OYNA OCHILMAYDI: baytlar sehrgarda tanlangan Windows
+           navbatiga to'g'ridan-to'g'ri ketadi. Brauzer masshtabi,
+           «sahifaga moslash», A4 — bularning hech biri bu yo'lda yo'q. */
+        const bytes = await buildRollBytes(template, ready, media, lprinter,
+          { ctx: shopCtx(), raster: rasterizeSvg });
+        await printRawLabel(bytes);
       } else {
-        const doc = buildPrintDoc(template, ready, { startPosition, ctx: shopCtx() });
+        const doc = mode === "sheet"
+          ? buildPrintDoc(template, ready, { startPosition, ctx: shopCtx(), page })
+          : buildRollDoc(template, ready, media, { ctx: shopCtx(), printer: lprinter });
         /* ⚠ HUJJAT NOMI = SAQLANGAN PDF NING NOMI. Brauzerning chop
            etish oynasida «PDF ga saqlash» tanlansa, fayl aynan shu
            nom bilan tushadi. «Yorliqlar.pdf» degan o'nta fayl bir
            papkada yotsa, ularni ajratib bo'lmasdi. */
-        await printHtml(doc.html, docTitle(job), doc.css, "width=980,height=800");
+        await printHtml(doc.html, docTitle(job), doc.css, "width=980,height=800",
+          mode === "sheet" ? page : doc.page);
       }
       setFinish({ items: ready });
     } catch (err) {
@@ -285,9 +363,12 @@ export default function LabelQueue({
 
       {/* ── Qayerga chiqadi ────────────────────────────────────── */}
       <div className="cat-tabs" role="group">
-        <button type="button" className={`cat-tab ${via === "sheet" ? "active" : ""}`}
-                aria-pressed={via === "sheet"} onClick={() => setVia("sheet")}>
-          <i className="fa-solid fa-file-lines" /> {t("lbl.viaSheet")}
+        {/* ⚠ NOMI TANLOVGA QARAB: ilgari bu tugma doim «Varaqqa (A4)»
+            edi va rulon sozlagan do'konchi boshqa yo'l yo'q deb o'ylardi. */}
+        <button type="button" className={`cat-tab ${via === "label" ? "active" : ""}`}
+                aria-pressed={via === "label"} onClick={() => setVia("label")}>
+          <i className={`fa-solid ${mode === "sheet" ? "fa-file-lines" : "fa-tags"}`} />
+          {" "}{mode === "sheet" ? t("lbl.viaSheet") : t("lbl.viaLabel", { size })}
         </button>
         {/* ⚠ O'CHIQ TUGMA YASHIRILMAYDI, SABABI AYTILADI: ilgari u
             umuman ko'rinmasdi va brauzerdagi do'kon «bu imkoniyat
@@ -301,26 +382,46 @@ export default function LabelQueue({
       </div>
       {!tapeOn && <div className="form-hint">{t("lbl.blockTape")}</div>}
 
+      {via === "label" && (
+        <div className="form-hint">
+          <i className={`fa-solid ${mode === "bytes" ? "fa-bolt" : "fa-circle-info"}`}
+             aria-hidden="true" /> {route}
+        </div>
+      )}
+      {via === "label" && needQueue && (
+        <div className="form-hint form-hint--warn">
+          <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />
+          {" "}{t("lbl.routeNoQueue")}
+        </div>
+      )}
+
       {/* ── Shablon va boshlanish o'rni ─────────────────────────── */}
-      {via === "sheet" && (
+      {via === "label" && (
       <div className="lbl-row">
         <div style={{ flex: "1 1 220px" }}>
           <label className="form-label" htmlFor="lq-tpl">{t("lbl.template")}</label>
+          {/* ⚠ TUR HINTDA: ro'yxatda javon va stiker dizaynlari birga,
+              ilgari esa faqat javonnikilar edi — stiker umuman
+              tanlanmasdi. */}
           <Select id="lq-tpl" block variant="field" ariaLabel={t("lbl.template")}
-                  value={templateId} onChange={(v) => save({ templateId: v })}
+                  value={templateId}
+                  onChange={(v) => { rememberTemplate(v); save({ templateId: v }); }}
                   options={templates.map((x) => ({
                     value: x.id, label: templateName(x),
-                    hint: `${Number(x.widthMm)}×${Number(x.heightMm)}`,
+                    hint: `${x.kind === "STICKER" ? t("lbl.kindSticker") : t("lbl.kindShelf")}`
+                      + ` · ${sizeText(x.widthMm, x.heightMm)}`,
                   }))} />
         </div>
         {/* ⚠ YARIM ISHLATILGAN VARAQ TASHLANMASIN: birinchi N katak
             ataylab bo'sh qoldiriladi. */}
+        {mode === "sheet" && (
         <div style={{ flex: "0 0 150px" }}>
           <label className="form-label" htmlFor="lq-start">{t("lbl.startPos")}</label>
           <input id="lq-start" className="input" type="number" min={1}
                  max={sheet?.perPage || 1} value={startPosition}
                  onChange={(e) => save({ startPosition: Math.max(1, Number(e.target.value) || 1) })} />
         </div>
+        )}
       </div>
       )}
 
@@ -428,7 +529,7 @@ export default function LabelQueue({
       {/* ── Hisob va ogohlantirishlar ───────────────────────────── */}
       <div className="lbl-summary">
         <div>
-          {via === "tape"
+          {via === "tape" || mode !== "sheet"
             ? t("lbl.summaryTape", { n: pendingLabels })
             : t("lbl.summary", { n: pendingLabels, p: pageCount })}
           {job.totalLabels > pendingLabels && (
@@ -437,7 +538,7 @@ export default function LabelQueue({
             </span>
           )}
         </div>
-        {via === "sheet" && warnings.map((w) => (
+        {via === "label" && warnings.map((w) => (
           <div key={w.text} className="form-hint form-hint--warn">
             <i className="fa-solid fa-triangle-exclamation" /> {w.text}
           </div>
@@ -459,7 +560,11 @@ export default function LabelQueue({
           uchun yagona yo'l aytib qo'yish va o'lchab tekshirish.
           Sinov varag'i tugmasi sahifa sarlavhasida: u navbat
           bo'lmaganda ham kerak bo'ladi. */}
-      <div className="form-hint">{t("lbl.calWhy")}</div>
+      {/* ⚠ BAYT YO'LIDA VA LENTADA BU MASLAHAT YOLG'ON: u yerda brauzer
+          masshtabi umuman yo'q. */}
+      {via === "label" && mode !== "bytes" && (
+        <div className="form-hint">{t("lbl.calWhy")}</div>
+      )}
 
       {/* ── Chop etilgandan keyingi savol ───────────────────────── */}
       {finish && (

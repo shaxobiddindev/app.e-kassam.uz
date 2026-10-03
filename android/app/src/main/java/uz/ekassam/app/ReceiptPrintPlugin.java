@@ -49,6 +49,17 @@ public class ReceiptPrintPlugin extends Plugin {
     public void print(PluginCall call) {
         final String html = call.getString("html");
         final String name = call.getString("name", "Chek");
+        /* ⚠ O'LCHAM JS DAN KELADI (yorliq, A4 varaq). Ilgari HAR hujjat
+           58 mm tasmaga berilardi va A4 yorliq varag'i tasmaga siqilib,
+           o'qib bo'lmas darajada mayda chiqardi. Berilmasa — eski
+           xatti-harakat: chek tasmasi. */
+        final Double wMm = call.getDouble("widthMm");
+        final Double hMm = call.getDouble("heightMm");
+        final PrintAttributes.MediaSize media = (wMm != null && hMm != null && wMm > 0 && hMm > 0)
+                ? new PrintAttributes.MediaSize("EK_" + Math.round(wMm) + "x" + Math.round(hMm),
+                        Math.round(wMm) + "×" + Math.round(hMm) + " mm",
+                        (int) Math.round(wMm / 25.4 * 1000), (int) Math.round(hMm / 25.4 * 1000))
+                : TAPE_58;
         if (html == null || html.isEmpty()) {
             call.reject("html bo'sh");
             return;
@@ -70,7 +81,7 @@ public class ReceiptPrintPlugin extends Plugin {
                             PrintManager pm = (PrintManager) act.getSystemService(Context.PRINT_SERVICE);
                             PrintDocumentAdapter adapter = view.createPrintDocumentAdapter(name);
                             PrintAttributes attrs = new PrintAttributes.Builder()
-                                    .setMediaSize(TAPE_58)
+                                    .setMediaSize(media)
                                     .setMinMargins(PrintAttributes.Margins.NO_MARGINS)
                                     .build();
                             /* ⚠ Tasma o'lchamini tizim qo'llab-quvvatlamasa, u

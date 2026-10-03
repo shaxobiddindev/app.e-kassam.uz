@@ -155,9 +155,17 @@ export function renderLabel(template, product, ctx = {}) {
   const { widthMm: W, heightMm: H, items, warnings } = layoutLabel(template, product, ctx);
   const parts = [];
 
+  /* ⚠ `ctx.omit` — BAYT YO'LI UCHUN. TSPL da matn rasm bo'lib boradi,
+     barkod esa printerning O'Z buyrug'i bilan: rasmga aylangan barkod
+     chiziqlari nuqta to'riga tushmay, birida 2, boshqasida 3 nuqta
+     bo'lib chiqadi va skaner o'qimaydi. Shuning uchun rasm barkodsiz
+     chiziladi — qolgan hamma narsa AYNAN shu renderer'dan. */
+  const omit = ctx.omit || [];
+
   /* ⚠ CHIZISH JOYLASHUVDAN KEYIN: yuqoridagi ro'yxat qayerda
      ekanini aytadi, bu yer esa qanday ko'rinishini. */
   for (const it of items) {
+    if (omit.includes(it.kind)) continue;
     if (it.kind === "background") {
       parts.push(`<rect x="0" y="0" width="${r(it.w)}" height="${r(it.h)}" fill="${it.fill}"/>`);
       continue;

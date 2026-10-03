@@ -129,9 +129,15 @@ function buildHtml(tapeHtml, title, css = PRINT_CSS) {
  * Mijoz hisoboti ham shu yo'ldan o'tadi — faqat uslubi boshqa (A4,
  * chek esa 58 mm). Ikkinchi nusxa yozilsa, bu ikki nozik joydan biri
  * unda bir kuni tushib qolardi.
+ *
+ * @param page {widthMm, heightMm} — qog'oz o'lchami. ⚠ FAQAT ANDROID
+ *   UCHUN KERAK: u yerda o'lchamni `@page` emas, plagin beradi va u
+ *   berilmasa har hujjat 58 mm chek tasmasiga tushardi — yorliq varag'i
+ *   tasmaga siqilib, o'qib bo'lmas darajada mayda chiqardi.
+ *   Brauzer va desktop o'lchamni `css` dagi `@page` dan oladi.
  * ══════════════════════════════════════════════════════════════════════
  */
-export async function printHtml(bodyHtml, title, css, win = "width=420,height=720") {
+export async function printHtml(bodyHtml, title, css, win = "width=420,height=720", page = null) {
   const name = title || "Hujjat";
   const html = buildHtml(bodyHtml, name, css);
 
@@ -140,7 +146,8 @@ export async function printHtml(bodyHtml, title, css, win = "width=420,height=72
     /* Plagin yo'q (eski APK yoki brauzerdagi `ek_forceMobile` sinovi) —
        oddiy brauzer yo'liga tushamiz, u yerda ishlasa ishlaydi. */
     if (plugin) {
-      await plugin.print({ html, name });
+      await plugin.print(page ? { html, name, widthMm: page.widthMm, heightMm: page.heightMm }
+                              : { html, name });
       return;
     }
   }

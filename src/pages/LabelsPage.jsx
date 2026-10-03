@@ -9,7 +9,7 @@ import { useLoading } from "../lib/use-loading";
 import LabelPreview from "../components/ek/LabelPreview";
 import LabelTemplateEditor from "../components/ek/LabelTemplateEditor";
 import LabelQueue from "../components/ek/LabelQueue";
-import { calibrationDoc } from "../lib/ek-label-calibrate";
+import { calibrationDoc, rollCalibrationDoc } from "../lib/ek-label-calibrate";
 import LabelSetupWizard from "../components/ek/LabelSetupWizard";
 import LabelGallery from "../components/ek/LabelGallery";
 import { printHtml } from "../lib/ek-receipt-pdf";
@@ -60,6 +60,10 @@ export default function LabelsPage({ toast }) {
     return want === "queue" || want === "stale" ? want : "preview";
   });
   const [jobs, setJobs]           = useState([]);
+  /* ⚠ NAVBATGA HAMMA DIZAYN — javon ham, stiker ham. Ilgari navbat
+     «Ko'rish» bo'limida tanlangan tur ro'yxatini olardi (boshida
+     javon) va stiker dizayni u yerda umuman ko'rinmasdi. */
+  const [allTemplates, setAllTemplates] = useState([]);
   const [jobId, setJobId]         = useState(null);
   const [job, setJob]             = useState(null);
   const [categories, setCategories] = useState([]);
@@ -136,6 +140,7 @@ export default function LabelsPage({ toast }) {
      shablonga bog'liq emas. */
   const loadJobs = useCallback(async () => {
     try {
+      labelApi.templates().then((r) => setAllTemplates(asArray(r.data))).catch(() => {});
       const list = asArray((await labelApi.jobs()).data);
       setJobs(list);
       setJobId((cur) => (list.some((x) => x.id === cur) ? cur : list[0]?.id ?? null));
@@ -259,6 +264,18 @@ export default function LabelsPage({ toast }) {
    */
   const calibrate = async () => {
     try {
+      /* ⚠ RULONDA — BITTA YORLIQ O'LCHAMIDAGI SINOV. A4 varaqni yorliq
+         printeri bitta 58×40 ga kichraytirib tiqardi va chizg'ich
+         o'lchab bo'lmas darajada mayda chiqardi. */
+      if (media && String(media.mediaType) !== "VARAQ") {
+        const roll = rollCalibrationDoc({
+          widthMm: Number(media.labelWidthMm),
+          heightMm: Number(media.labelHeightMm) || Number(template?.heightMm) || 40,
+          labels: { title: t("lbl.calRollTitle"), hint: t("lbl.calRollHint") },
+        });
+        await printHtml(roll.html, t("lbl.calTitle"), roll.css, "width=980,height=800", roll.page);
+        return;
+      }
       const doc = calibrationDoc({
         dpi: Number(template?.dpi) || 203,
         labels: {
@@ -268,7 +285,8 @@ export default function LabelsPage({ toast }) {
           dpi: t("lbl.calDpi"),
         },
       });
-      await printHtml(doc.html, t("lbl.calTitle"), doc.css, "width=980,height=800");
+      await printHtml(doc.html, t("lbl.calTitle"), doc.css, "width=980,height=800",
+        { widthMm: 210, heightMm: 297 });
     } catch (err) { toast.error(err.message); }
   };
 
@@ -455,7 +473,8 @@ export default function LabelsPage({ toast }) {
 
           {job ? (
             <LabelQueue
-              job={job} templates={templates} products={products}
+              job={job} templates={allTemplates.length ? allTemplates : templates}
+              products={products}
               categories={categories} toast={toast}
               onChange={(next) => {
                 if (!next) { loadJobs(); return; }

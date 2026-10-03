@@ -161,6 +161,50 @@ export function calibrationDoc({ dpi = 203, page = PAGES.A4, labels = {} } = {})
   return { html, css, rows };
 }
 
+/**
+ * RULON UCHUN SINOV YORLIG'I (2026-10-03).
+ *
+ * ⚠ A4 VARAQ RULONGA YARAMAYDI: yorliq printeri uni bitta 58×40
+ * yorliqqa kichraytirib tiqardi va chizg'ich o'lchab bo'lmas darajada
+ * mayda chiqardi. Shuning uchun sahifa — aynan bitta yorliq: chekkasida
+ * ramka (qirqilgan tomon darhol ko'rinadi) va o'lchanadigan chiziq.
+ *
+ * ⚠ CHIZIQ BUTUN 10 MM GA YAXLITLANADI: «37 mm» ni chizg'ichda
+ * tekshirish noqulay, «30 mm» ni esa bir qarashda.
+ */
+export function rollCalibrationDoc({ widthMm, heightMm, labels = {} } = {}) {
+  const W = Number(widthMm) || 58, H = Number(heightMm) || 40;
+  const len = Math.max(10, Math.floor((W - 6) / 10) * 10);
+  const x0 = (W - len) / 2;
+  const fs = Math.max(2.2, Math.min(3.4, H / 12));
+  const parts = [
+    `<rect x="0.5" y="0.5" width="${r(W - 1)}" height="${r(H - 1)}" fill="none"
+       stroke="#000" stroke-width="0.3"/>`,
+    `<text x="${r(W / 2)}" y="${r(fs + 2.5)}" text-anchor="middle" font-size="${r(fs)}"
+       font-weight="700" font-family="sans-serif" fill="#000">${esc(labels.title
+         || "Sinov yorlig'i")} · ${r(W)}×${r(H)} mm</text>`,
+    ruler(x0, H / 2, len),
+    `<text x="${r(W / 2)}" y="${r(H / 2 + 4 + fs)}" text-anchor="middle" font-size="${r(fs)}"
+       font-weight="700" font-family="sans-serif" fill="#000">${len} mm</text>`,
+  ];
+  if (labels.hint) {
+    parts.push(`<text x="${r(W / 2)}" y="${r(H - 2.5)}" text-anchor="middle"
+      font-size="${r(Math.max(2, fs * 0.75))}" font-family="sans-serif"
+      fill="#000">${esc(labels.hint)}</text>`);
+  }
+
+  const html = `<div class="lp-page"><svg xmlns="http://www.w3.org/2000/svg"`
+    + ` width="${r(W)}mm" height="${r(H)}mm" viewBox="0 0 ${r(W)} ${r(H)}">`
+    + `${parts.join("")}</svg></div>`;
+  const css = `
+    @page { size: ${r(W)}mm ${r(H)}mm; margin: 0 }
+    html, body { margin: 0; padding: 0; background: #fff }
+    .lp-page { width: ${r(W)}mm; height: ${r(H)}mm; overflow: hidden }
+    svg { display: block }
+  `;
+  return { html, css, lengthMm: len, page: { widthMm: W, heightMm: H } };
+}
+
 function esc(s) {
   return String(s ?? "").replace(/[&<>"]/g, (c) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));

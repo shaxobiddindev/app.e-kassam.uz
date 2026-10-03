@@ -8,10 +8,21 @@ import { SkeletonList } from "./Loading";
 import { isDesktop } from "../../lib/ek-desktop";
 import { listPrinters, printRawLabel } from "../../lib/ek-hardware";
 import { getSettings, saveSettings } from "../../lib/ek-hw-settings";
-import { calibrationCommand, supportsBytes, toBytes } from "../../lib/ek-label-bytes";
+import { calibrationCommand, supportsBytes } from "../../lib/ek-label-bytes";
 import { blocking, validateOutput } from "../../lib/ek-label-validate";
-import { layoutLabel } from "../../lib/ek-label-render";
+import { buildRollBytes, buildRollDoc } from "../../lib/ek-label-print";
+import { rasterizeSvg } from "../../lib/ek-label-raster";
+import { printHtml } from "../../lib/ek-receipt-pdf";
 import { templateName } from "../../lib/ek-label-name";
+import { announceLabelOutput } from "../../hooks/useLabelOutput";
+
+/* ⚠ YORLIQ PRINTERLARI RO'YXAT BOSHIDA. Windows'da odatda 5–10 ta
+   navbat turadi (PDF, Fax, OneNote, chek printeri) va yorliq printeri
+   ular orasida ko'milib qolardi. Tartib — taxmin, tanlov emas:
+   hech narsa avtomatik tanlanmaydi. */
+const LABELISH = /xprinter|xp-|tsc|ttp|te2|zebra|zd|gk4|godex|rongta|hprt|gprinter|label|yorliq|этикет/i;
+const byLabelFirst = (list) => [...list].sort((a, b) =>
+  Number(LABELISH.test(b)) - Number(LABELISH.test(a)));
 
 /* ══════════════════════════════════════════════════════════════════════════
    PRINTERNI SOZLASH SEHRGARI (G4)
@@ -37,7 +48,25 @@ import { templateName } from "../../lib/ek-label-name";
 
 const STEPS = ["printer", "media", "calibrate", "test", "density"];
 
-export default function LabelSetupWizard({ kind, template, product, onClose, toast, onSaved }) {
+export default function LabelSetupWizard({ kind: kindProp, template: templateProp, product,
+                                           onClose, toast, onSaved }) {
+  /* ══ QAYSI YORLIQ SOZLANADI (2026-10-03) ═══════════════════════════
+     ⚠ ILGARI TUR SAHIFADAN KELARDI VA KO'RINMASDI. «Yorliqlar»
+     bo'limi boshida javonda turadi, ya'ni stikerni sozlamoqchi bo'lgan
+     odam bilmasdan JAVON sozlamasini o'zgartirardi. Ustiga-ustak 300
+     dpi javon dizayni Xprinter (203 dpi) bilan saqlashni to'sardi va
+     do'konchi «printerim mos emas» deb o'ylardi. Endi tur shu yerda
+     tanlanadi va ko'rinib turadi. */
+  const [kind, setKind] = useState(kindProp);
+  const [template, setTemplate] = useState(templateProp);
+  useEffect(() => {
+    if (templateProp && templateProp.kind === kind) { setTemplate(templateProp); return; }
+    let live = true;
+    labelApi.defaultFor(kind)
+      .then((r) => { if (live) setTemplate(r?.data || null); })
+      .catch(() => { if (live) setTemplate(null); });
+    return () => { live = false; };
+  }, [kind, templateProp]);
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -82,10 +111,15 @@ export default function LabelSetupWizard({ kind, template, product, onClose, toa
 
   /* ⚠ JIMGINA YIQILADI: navbat ro'yxatini olish desktopga xos va u
      bo'lmasa sehrgarning qolgan qadamlari baribir ishlashi kerak. */
-  useEffect(() => {
+  const [queuesLoaded, setQueuesLoaded] = useState(false);
+  const loadQueues = useCallback(() => {
     if (!isDesktop()) return;
-    listPrinters().then((list) => setQueues(list || [])).catch(() => setQueues([]));
+    listPrinters()
+      .then((list) => setQueues(byLabelFirst(list || [])))
+      .catch(() => setQueues([]))
+      .finally(() => setQueuesLoaded(true));
   }, []);
+  useEffect(() => { loadQueues(); }, [loadQueues]);
 
   const printer = printers.find((p) => p.id === printerId) || null;
   const media = medias.find((m) => m.id === mediaId) || null;
@@ -130,17 +164,32 @@ export default function LabelSetupWizard({ kind, template, product, onClose, toa
     finally { setBusy(false); }
   };
 
+  /**
+   * ⚠ SINOV AYNAN CHOP ETISH YO'LIDAN O'TADI (`buildRollBytes` /
+   * `buildRollDoc`) — navbatdagi «Chop etish» bilan bir xil kod.
+   * Ilgari sinov o'z yo'lidan borardi: sinov yorlig'i to'g'ri chiqib,
+   * haqiqiy chop etish esa A4 varaq ochardi.
+   *
+   * ⚠ BRAUZERDA HAM ISHLAYDI: u yerda chop etish oynasi ochiladi va
+   * sahifa aynan bitta yorliq o'lchamida — do'konchi printer va
+   * masshtabni o'sha yerda tekshiradi.
+   */
   const testLabel = async () => {
     if (!template || !product) return;
     setBusy(true);
     try {
-      const layout = layoutLabel(template, product, {});
-      const text = toBytes(printer?.lang, layout, {
-        dpi: Number(printer?.dpi) || 203,
-        media, printer: { ...printer, density, offsetXMm: offsetX, offsetYMm: offsetY },
-      });
-      if (!text) throw new Error(t("lbl.langNoBytes"));
-      await printRawLabel(text);
+      const tuned = printer
+        ? { ...printer, density, offsetXMm: Number(offsetX) || 0, offsetYMm: Number(offsetY) || 0 }
+        : null;
+      const items = [{ product, quantity: 1 }];
+      if (desktop && bytes && queue) {
+        const data = await buildRollBytes(template, items, media, tuned, { raster: rasterizeSvg });
+        await printRawLabel(data);
+      } else {
+        const doc = buildRollDoc(template, items, media, { printer: tuned });
+        if (!doc) throw new Error(t("lbl.blockNoTemplate"));
+        await printHtml(doc.html, t("lbl.testLabel"), doc.css, "width=600,height=600", doc.page);
+      }
     } catch (err) { toast?.error(err.message); }
     finally { setBusy(false); }
   };
@@ -172,6 +221,7 @@ export default function LabelSetupWizard({ kind, template, product, onClose, toa
         calibrated: desktop && bytes,
       });
       toast?.success(t("common.saved"));
+      announceLabelOutput();
       onSaved?.();
       onClose?.();
     } catch (err) { toast?.error(err.message); }
@@ -204,14 +254,39 @@ export default function LabelSetupWizard({ kind, template, product, onClose, toa
         {isDesktop() && bytes && (
           <div style={{ marginTop: 12 }}>
             <label className="form-label" htmlFor="lw-queue">{t("lbl.queueLabel")}</label>
-            <Select id="lw-queue" block variant="field" ariaLabel={t("lbl.queueLabel")}
-                    value={queue}
-                    onChange={(v) => { setQueue(v); saveSettings({ labelPrinterName: v }); }}
-                    options={queues.map((n) => ({ value: n, label: n }))} />
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <div style={{ flex: 1 }}>
+                <Select id="lw-queue" block variant="field" ariaLabel={t("lbl.queueLabel")}
+                        value={queue}
+                        onChange={(v) => { setQueue(v); saveSettings({ labelPrinterName: v }); }}
+                        options={queues.map((n) => ({ value: n, label: n }))} />
+              </div>
+              {/* ⚠ YANGILASH: printer sehrgar ochiq turganda ulanadi —
+                  oynani yopib qayta ochishni so'rash ortiqcha. */}
+              <button type="button" className="btn-icon" onClick={loadQueues}
+                      aria-label={t("lbl.queueRefresh")} title={t("lbl.queueRefresh")}>
+                <i className="fa-solid fa-rotate" />
+              </button>
+            </div>
             <div className="form-hint">{t("lbl.queueWhy")}</div>
-            {!queue && (
+            {/* ⚠ BO'SH RO'YXAT SABABSIZ QOLMAYDI: ilgari Windows printer
+                ko'rmasa ham ro'yxat jimgina bo'sh turardi. */}
+            {queuesLoaded && queues.length === 0 && (
+              <div className="form-hint form-hint--warn">{t("lbl.queueEmptyList")}</div>
+            )}
+            {!queue && queues.length > 0 && (
               <div className="form-hint form-hint--warn">{t("lbl.queueNeeded")}</div>
             )}
+          </div>
+        )}
+        {/* ⚠ BRAUZERDA PRINTER RO'YXATI YO'Q VA BO'LMAYDI: brauzer
+            sahifaga kompyuterdagi printerlarni ko'rsatmaydi. Ilgari bu
+            yerda hech narsa yozilmasdi va do'konchi «printerim
+            ko'rinmayapti» deb qolardi. Printer chop etish oynasida
+            tanlanadi — buni aniq aytamiz. */}
+        {!isDesktop() && (
+          <div className="form-hint" style={{ marginTop: 12 }}>
+            <i className="fa-solid fa-circle-info" aria-hidden="true" /> {t("lbl.webPrinterHint")}
           </div>
         )}
       </div>
@@ -250,11 +325,13 @@ export default function LabelSetupWizard({ kind, template, product, onClose, toa
         <p className="set-card__hint" style={{ marginTop: 0 }}>
           {template ? templateName(template) : ""}
         </p>
-        <button type="button" className="btn btn-primary" disabled={busy || !!blockReason}
+        <button type="button" className="btn btn-primary" disabled={busy || !template || !product}
                 onClick={testLabel}>
           <i className="fa-solid fa-print" /> {t("lbl.testLabel")}
         </button>
-        {blockReason && <div className="form-hint form-hint--warn">{blockReason}</div>}
+        <div className="form-hint">
+          {desktop && bytes && queue ? t("lbl.testViaBytes", { queue }) : t("lbl.testViaDriver")}
+        </div>
       </div>
     );
 
@@ -310,6 +387,16 @@ export default function LabelSetupWizard({ kind, template, product, onClose, toa
              </>
            )}>
       <p className="set-card__hint" style={{ marginTop: 0 }}>{t("lbl.setupWhy")}</p>
+
+      <div className="cat-tabs" role="group" aria-label={t("lbl.setupKind")}
+           style={{ marginBottom: 12 }}>
+        {[["SHELF", "lbl.kindShelf"], ["STICKER", "lbl.kindSticker"]].map(([v, key]) => (
+          <button key={v} type="button" className={`cat-tab ${kind === v ? "active" : ""}`}
+                  aria-pressed={kind === v} disabled={busy} onClick={() => setKind(v)}>
+            <i className={`fa-solid ${v === "STICKER" ? "fa-barcode" : "fa-tag"}`} /> {t(key)}
+          </button>
+        ))}
+      </div>
 
       {/* ⚠ CHIQMAYDIGAN JUFTLIK — HAR QADAMDA KO'RINADI, oxirida
           emas: do'konchi to'rtta qadamni bosib o'tib, keyin

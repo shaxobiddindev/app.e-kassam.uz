@@ -641,10 +641,12 @@ export async function printRawLabel(text) {
      printeriga varaqlab chiqardi. */
   if (!name) throw new Error(t("hw.errNoLabelPrinter"));
 
-  await invoke("print_raw", {
-    printer: name,
-    data: new TextEncoder().encode(String(text)),
-  });
+  /* ⚠ BAYTLAR HAM QABUL QILINADI: TSPL rasmi (`BITMAP`) ikkilik
+     ma'lumot va uni satrga aylantirib bo'lmaydi — UTF-8 128 dan
+     katta har baytni ikki baytga yoyib, rasmni buzardi. Tauri
+     `Vec<u8>` ni oddiy massiv sifatida kutadi. */
+  const bytes = text instanceof Uint8Array ? text : new TextEncoder().encode(String(text));
+  await invoke("print_raw", { printer: name, data: Array.from(bytes) });
 }
 
 /**
