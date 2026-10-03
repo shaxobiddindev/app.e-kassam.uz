@@ -22,6 +22,7 @@ import { blocking, validateOutput } from "../../lib/ek-label-validate";
 import { useScanner } from "../../hooks/useScanner";
 import { useLayerCount } from "../../hooks/useLayerCount";
 import { useLabelOutput } from "../../hooks/useLabelOutput";
+import { ensureBarcodes, withPreviewBarcode } from "../../lib/ek-label-codes";
 
 /* ══════════════════════════════════════════════════════════════════════════
    CHOP ETISH NAVBATI (F5)
@@ -143,10 +144,14 @@ export default function LabelQueue({
      bilish — 40 ta yorliqni qayta chiqarish demak. */
   const preview = useMemo(() => {
     if (!template || !pending.length) return null;
+    /* ⚠ OLDINDAN TEKSHIRUV CHIQADIGAN KOD BILAN: barkodsiz tovarga chop
+       etishda do'kon kodi beriladi, shuning uchun «barkod yo'q» degan
+       ogohlantirish yolg'on bo'lardi; kodning o'zi esa sig'ishi kerak. */
+    const items = pending.map((it) => ({ ...it, product: withPreviewBarcode(it.product) }));
     try {
       return mode === "sheet"
-        ? buildPrintDoc(template, pending, { startPosition, ctx: shopCtx(), page })
-        : buildRollDoc(template, pending, media, { ctx: shopCtx(), printer: lprinter });
+        ? buildPrintDoc(template, items, { startPosition, ctx: shopCtx(), page })
+        : buildRollDoc(template, items, media, { ctx: shopCtx(), printer: lprinter });
     } catch {
       return null;
     }
@@ -227,25 +232,17 @@ export default function LabelQueue({
    * kassada skanerlanganda «topilmadi» chiqadi — ya'ni javondagi
    * qog'ozning skanerlanadigan qismi ishlamaydi.
    */
+  /* ⚠ KOD BERILMAGAN TOVAR — CHOP ETISH TO'XTAYDI (2026-10-03).
+     Ilgari xato yutilardi va stiker jimgina barkodsiz chiqardi: u
+     kassada skanerlanmaydi va buni faqat javonda bilish mumkin edi.
+     Egasining talabi — stikerda barkod BO'LISHI SHART. */
   const withBarcodes = async (items) => {
-    const spec = typeof template.spec === "string"
-      ? JSON.parse(template.spec) : (template.spec || {});
-    const drawsBarcode = (spec.fields || [])
-      .some((f) => f.key === "barcode" && f.visible !== false);
-    if (!drawsBarcode) return items;
-
-    const out = [];
-    for (const it of items) {
-      if (it.product?.barcode || !it.product?.id) { out.push(it); continue; }
-      try {
-        const fresh = await productApi.generateCode(it.product.id);
-        out.push({ ...it, product: { ...it.product, barcode: fresh?.data?.barcode || null } });
-      } catch {
-        /* ⚠ Bitta tovarga kod berilmasa qolganlari to'xtamaydi:
-           o'sha yorliqda barkod o'rni bo'sh qoladi, odam o'qiydigan
-           raqam esa baribir turadi. */
-        out.push(it);
-      }
+    const { items: out, failed } = await ensureBarcodes(items, template,
+      (id) => productApi.generateCode(id));
+    if (failed.length) {
+      const list = failed.slice(0, 5)
+        .map((f) => `${f.product.name}${f.message ? ` (${f.message})` : ""}`).join("; ");
+      throw new Error(t("lbl.codeFailed", { n: failed.length, list }));
     }
     return out;
   };

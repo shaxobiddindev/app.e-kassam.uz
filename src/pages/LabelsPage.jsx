@@ -20,6 +20,8 @@ import { rankItems, looksLikeCode } from "../lib/ek-search";
 import { money } from "../lib/ek-format";
 import { blocking, validateOutput } from "../lib/ek-label-validate";
 import { templateName } from "../lib/ek-label-name";
+import { drawsBarcode, withPreviewBarcode } from "../lib/ek-label-codes";
+import { prettyStoreCode } from "../lib/ek-store-code";
 import { useScanner } from "../hooks/useScanner";
 import { useLayerCount } from "../hooks/useLayerCount";
 
@@ -205,6 +207,11 @@ export default function LabelsPage({ toast }) {
     () => blocking(validateOutput(media, printer, template)),
     [media, printer, template]);
   const product  = products.find((p) => p.id === productId) || null;
+  /* ⚠ KO'RISH OYNASIDA CHIQADIGAN BARKOD (2026-10-03): barkodsiz tovarga
+     chop etishda do'kon kodi beriladi. Oyna uni ko'rsatmasa, do'konchi
+     stiker barkodsiz chiqadi deb o'ylardi. Sehrgarga esa ASL tovar
+     beriladi — sinov yorlig'i kodni serverdan oladi. */
+  const shown = useMemo(() => withPreviewBarcode(product), [product]);
 
   /* ⚠ ENG UZUN NOM — sig'maslik aynan shunda chiqadi. */
   const longest = useMemo(() => {
@@ -580,8 +587,17 @@ export default function LabelsPage({ toast }) {
             )}
 
             <div className="lbl-main">
+              {product && drawsBarcode(template) && !product.barcode && (
+                <div className={`form-hint${shown?.barcodePending ? "" : " form-hint--warn"}`}>
+                  <i className={`fa-solid ${shown?.barcodePending ? "fa-barcode" : "fa-triangle-exclamation"}`}
+                     aria-hidden="true" />
+                  {" "}{shown?.barcodePending
+                    ? t("lbl.codeWillIssue", { code: prettyStoreCode(shown.barcode) })
+                    : t("lbl.codeMissing")}
+                </div>
+              )}
               {product ? (
-                <LabelPreview template={template} product={product} />
+                <LabelPreview template={template} product={shown} />
               ) : (
                 <Empty icon="fa-box-open" text={t("lbl.noProducts")} />
               )}
@@ -606,7 +622,7 @@ export default function LabelsPage({ toast }) {
               </span>
             </div>
             <LabelGallery
-              templates={templates} product={product} media={media}
+              templates={templates} product={shown} media={media}
               selectedId={templateId}
               onPick={(tpl) => setTemplateId(tpl.id)}
               onOpen={(tpl) => { setTemplateId(tpl.id); setZoomed(tpl); }}
@@ -619,7 +635,7 @@ export default function LabelsPage({ toast }) {
       {/* Katta ko'rish oynasi — haqiqiy o'lchamda, ekran kalibrlash bilan. */}
       {zoomed && product && (
         <Modal title={templateName(zoomed)} onClose={() => setZoomed(null)} maxWidth={860}>
-          <LabelPreview template={zoomed} product={product} />
+          <LabelPreview template={zoomed} product={shown} />
           <div style={{ marginTop: 12 }}>
             <button type="button" className="btn btn-primary"
                     onClick={() => { setTemplateId(zoomed.id); setZoomed(null); }}>
@@ -645,7 +661,7 @@ export default function LabelsPage({ toast }) {
           <LabelTemplateEditor
             template={editing.template}
             media={media} mediaList={mediaList}
-            product={product}
+            product={shown}
             saving={saving}
             onSave={save}
             onCancel={() => setEditing(null)}

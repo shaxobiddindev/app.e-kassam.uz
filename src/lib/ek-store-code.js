@@ -27,6 +27,38 @@ function checkDigit(body) {
   return String((10 - (sum % 10)) % 10);
 }
 
+/**
+ * Maxsus koddan (`search_code`) chiqadigan barkod — `StoreCode.ofCode`
+ * bilan AYNAN bir xil qoida: 6 xonagacha → `2` + 6 xona + nazorat
+ * (EAN-8), 10 xonagacha → `02` + 10 xona + nazorat (EAN-13).
+ *
+ * ⚠ FAQAT KO'RISH OYNASI UCHUN (2026-10-03). Barkodsiz tovarning stikeri
+ * oynada barkodsiz chizilar va «tovarda barkod yo'q» deb yozilardi —
+ * do'konchi stiker shunday chiqadi deb o'ylardi, holbuki chop etishda
+ * server kod beradi. Kod maxsus koddan QAT'IY formula bilan yasalgani
+ * uchun oyna endi aynan chiqadigan barkodni ko'rsatadi.
+ *
+ * ⚠ CHOP ETISHDA BU ISHLATILMAYDI: u yerda kod serverdan olinadi
+ * (`generate-code`), chunki server uni `product_barcodes` ga YOZADI.
+ * Mahalliy yasalgan kod hech qayerda saqlanmasdi va kassada skaner
+ * «topilmadi» derdi. Band kodni ham faqat server biladi.
+ *
+ * @returns {string|null} kod raqamlardan iborat bo'lmasa yoki sig'masa — null
+ */
+export function storeCodeOf(searchCode) {
+  const s = String(searchCode ?? "").trim().replace(/^\*/, "");
+  if (!s || !/^\d+$/.test(s)) return null;
+  if (s.length <= 6) {
+    const body = PREFIX + s.padStart(6, "0");
+    return body + checkDigit(body);
+  }
+  if (s.length <= 10) {
+    const body = "02" + s.padStart(10, "0");
+    return body + checkDigit(body);
+  }
+  return null;
+}
+
 /** Shu kod do'konning o'z kodimi. */
 export function isStoreCode(code) {
   const s = String(code ?? "").trim();

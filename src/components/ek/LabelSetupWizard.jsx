@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "../../lib/ek-i18n";
-import { labelApi } from "../../api";
+import { labelApi, productApi } from "../../api";
 import { asArray } from "../../lib/ek-array";
 import Modal from "../Modal";
 import Select from "./Select";
@@ -15,6 +15,7 @@ import { rasterizeSvg } from "../../lib/ek-label-raster";
 import { printHtml } from "../../lib/ek-receipt-pdf";
 import { templateName } from "../../lib/ek-label-name";
 import { announceLabelOutput } from "../../hooks/useLabelOutput";
+import { ensureBarcodes } from "../../lib/ek-label-codes";
 
 /* ⚠ YORLIQ PRINTERLARI RO'YXAT BOSHIDA. Windows'da odatda 5–10 ta
    navbat turadi (PDF, Fax, OneNote, chek printeri) va yorliq printeri
@@ -181,7 +182,16 @@ export default function LabelSetupWizard({ kind: kindProp, template: templatePro
       const tuned = printer
         ? { ...printer, density, offsetXMm: Number(offsetX) || 0, offsetYMm: Number(offsetY) || 0 }
         : null;
-      const items = [{ product, quantity: 1 }];
+      /* ⚠ SINOVDA HAM HAQIQIY KOD: barkodsiz tovarning sinov stikeri
+         barkodsiz chiqsa, «skaner o'qiydimi?» degan savolga javob
+         bo'lmasdi. Kod chop etishdagidek serverdan olinadi. */
+      const { items, failed } = await ensureBarcodes([{ product, quantity: 1 }], template,
+        (id) => productApi.generateCode(id));
+      if (failed.length) {
+        throw new Error(t("lbl.codeFailed", {
+          n: 1, list: `${product.name}${failed[0].message ? ` (${failed[0].message})` : ""}`,
+        }));
+      }
       if (desktop && bytes && queue) {
         const data = await buildRollBytes(template, items, media, tuned, { raster: rasterizeSvg });
         await printRawLabel(data);

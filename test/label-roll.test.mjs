@@ -201,5 +201,76 @@ console.log("\n── Sinov yorlig'i ──");
   eq(c.lengthMm, 50, "o'lchanadigan chiziq butun 10 mm ga yaxlit (58 → 50)");
 }
 
+
+/* ══════════════════════════════════════════════════════════════════
+   7. STIKERDA BARKOD — HAR DOIM (egasining talabi)
+   Barkodi yo'q tovarga do'kon kodi; kod berilmasa — chop etish to'xtaydi.
+   ══════════════════════════════════════════════════════════════════ */
+console.log("\n── Stikerda barkod ──");
+{
+  const { storeCodeOf } = await import("../src/lib/ek-store-code.js");
+  const { ensureBarcodes, withPreviewBarcode, drawsBarcode } =
+    await import("../src/lib/ek-label-codes.js");
+  const { validateTemplate } = await import("../src/lib/ek-label-validate.js");
+
+  /* Qiymatlar `StoreCodeFromSearchCodeTest.java` dan — server bilan bir xil. */
+  eq(storeCodeOf("1"), "20000011", "maxsus kod 1 → 20000011 (server bilan bir xil)");
+  eq(storeCodeOf("142"), "20001421", "142 → 20001421");
+  eq(storeCodeOf("101"), "20001018", "101 → 20001018");
+  eq(storeCodeOf("999999"), "29999996", "999999 → 29999996");
+  eq(storeCodeOf("001"), storeCodeOf("1"), "oldingi nollar bir xil kod beradi");
+  eq(storeCodeOf("*142"), "20001421", "«*142» yozuvi ham");
+  const long = storeCodeOf("1234567");
+  is(long?.length === 13 && long.startsWith("02"), "7 xonali kod → 02… EAN-13", long);
+  eq(storeCodeOf("abc"), null, "raqam bo'lmasa — null");
+  eq(storeCodeOf("12345678901"), null, "sig'maydigan kod — null (jim qisqartirilmaydi)");
+
+  const sticker = tpl(40, 30);
+  const shelf = { ...tpl(70, 37), kind: "SHELF",
+    spec: JSON.stringify({ fields: [{ key: "price", x: 1, y: 1, w: 60, h: 10, visible: true }] }) };
+  is(drawsBarcode(sticker) && !drawsBarcode(shelf), "barkod maydoni aniqlanadi");
+
+  const shown = withPreviewBarcode({ id: 5, name: "Parda", searchCode: "142" });
+  eq(shown.barcode, "20001421", "ko'rish oynasida chiqadigan kod ko'rinadi");
+  eq(shown.barcodePending, true, "«chop etishda beriladi» belgisi");
+  eq(withPreviewBarcode({ id: 6, barcode: "4780000000007" }).barcodePending, undefined,
+    "barkodi bor tovarga tegilmaydi");
+
+  const calls = [];
+  const gen = async (id) => {
+    calls.push(id);
+    if (id === 9) throw new Error("Tovarda kod yo'q");
+    return { data: { barcode: storeCodeOf(String(id)) } };
+  };
+  const res = await ensureBarcodes([
+    { product: { id: 1, name: "Choy", barcode: "4780000000007" }, quantity: 2 },
+    { product: { id: 142, name: "Parda" }, quantity: 3 },
+    { product: { id: 142, name: "Parda" }, quantity: 1 },
+    { product: { id: 9, name: "Kabel" }, quantity: 1 },
+  ], sticker, gen);
+  eq(calls.filter((x) => x === 142).length, 1, "bitta tovarga bitta so'rov");
+  is(!calls.includes(1), "barkodi bor tovarga kod so'ralmaydi");
+  eq(res.items[1].product.barcode, "20001421", "barkodsiz tovarga serverdagi kod");
+  eq(res.failed.length, 1, "⚠ kod berilmagan tovar yutilmaydi");
+  eq(res.failed[0].message, "Tovarda kod yo'q", "sababi saqlanadi");
+
+  const before = calls.length;
+  const none = await ensureBarcodes([{ product: { id: 142 } }], shelf, gen);
+  is(calls.length === before && none.failed.length === 0, "barkodsiz dizaynda kod so'ralmaydi");
+
+  const ean8 = new TextDecoder("latin1").decode(await buildRollBytes(sticker,
+    [{ product: prod(142, { barcode: "20001421" }), quantity: 1 }], ROLL_58x40, XPRINTER,
+    { raster: async (svg, w, h) => packMono(new Uint8ClampedArray(w * h * 4).fill(255), w, h) }));
+  is(/"EAN8",[^\r]*"20001421"/.test(ean8), "do'kon kodi printerga EAN-8 bo'lib boradi");
+
+  const noBc = { ...sticker, spec: JSON.stringify({ fields: [
+    { key: "price", x: 1, y: 1, w: 38, h: 10, size: 12, visible: true },
+    { key: "barcode", x: 1, y: 12, w: 38, h: 14, visible: false }] }) };
+  is(validateTemplate(noBc).some((e) => e.level === "error" && e.field === "barcode"),
+    "⚠ barkodsiz STIKER dizayni saqlanmaydi");
+  is(!validateTemplate(shelf).some((e) => e.field === "barcode"),
+    "javon yorlig'ida barkod talab qilinmaydi (G1)");
+}
+
 console.log(`\n  ${pass} o'tdi, ${fail} yiqildi\n`);
 if (fail) process.exit(1);

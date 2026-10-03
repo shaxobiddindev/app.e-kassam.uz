@@ -130,6 +130,15 @@ export function validateTemplate(tpl) {
 
   /* ⚠ BARKOD — ENG JIMGINA BUZILADIGAN JOY. */
   const bc = fields.find((f) => f.key === "barcode" && f.visible !== false);
+
+  /* ⚠ STIKERDA BARKOD SHART (egasining talabi, 2026-10-03). Stiker
+     tovarning O'ZIGA yopishtiriladi va kassada aynan u skanerlanadi;
+     barkodsiz stiker kassirni kodni qo'lda terishga majbur qiladi.
+     Javon yorlig'ida esa barkod ataylab o'chiq (G1) — u yerda qoida yo'q. */
+  if (!bc && tpl.kind === "STICKER") {
+    out.push(err("barcode", "Stikerda barkod bo'lishi shart — «Barkod» maydonini yoqing: "
+      + "barkodsiz stiker kassada skanerlanmaydi"));
+  }
   if (bc) {
     const cfg = spec.barcode || {};
     const dots = Number(cfg.moduleDots ?? 2);
