@@ -6508,6 +6508,9 @@ button.stk__c:hover { background: var(--bg-hover); }
    ⚠ KARTOCHKALAR BIR XIL O'LCHAMDA, rasm esa ichida markazda: 30×20
    va 148×105 yorliqlar yonma-yon turganda to'r buzilmasin. Rasmning
    o'zi haqiqiy nisbatini saqlaydi — u renderer chizgan SVG. */
+/* O'lcham tugmalari galereya ustida — o'raladi, aylantirilmaydi: 13 ta
+   o'lchamni gorizontal aylantirishda oxirgilari ko'rinmay qolardi. */
+.lbl-sizes        { flex-wrap: wrap; padding: 12px 14px 0; }
 .lbl-gallery      { display: grid; gap: 12px; padding: 14px;
                     grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); }
 .lbl-card         { position: relative; display: flex; flex-direction: column;

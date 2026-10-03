@@ -2101,8 +2101,9 @@ export default {
   "lbl.chosen": "Tanlangan",
   "lbl.fitMismatch": "Bu dizayn {tw}×{th} uchun, sizning qog'ozingiz {mw}×{mh}",
   "lbl.gallery": "Dizaynlar",
-  "lbl.onlyMySize": "Faqat mening o'lchamim",
-  "lbl.allSizes": "Hamma o'lchamlar ({n})",
+  "lbl.myRoll": "rulonim",
+  "lbl.sizeFilter": "O'lcham",
+  "lbl.allSizes": "Hammasi ({n})",
   "lbl.pickThis": "Shu dizaynni tanlash",
   "lbl.offlineList": "Ro'yxat oxirgi saqlangan holatdan olindi — internet yo'q",
 

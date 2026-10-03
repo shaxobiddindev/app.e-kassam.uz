@@ -129,22 +129,31 @@ export const DESIGN_ORDER = [
   "code_first", "side", "framed", "shop", "bilingual", "brand", "expiry", "clothing",
 ];
 
-/** V131 dagi birinchi oltita stiker — o'z dizayniga (yangilari ularning o'rnini to'ldiradi). */
+/** Javon yorlig'i dizaynlari (V143) — xuddi shu usul, kod `shf_<dizayn>_<eni>x<bo'yi>`. */
+export const SHELF_DESIGN_ORDER = [
+  "classic", "big_price", "minimal", "code_big", "promo", "weighed", "shop", "bilingual", "detailed",
+];
+
+/** V131 dagi shablonlar — o'z dizayniga (yangilari ularning o'rnini to'ldiradi). */
 const LEGACY = {
   sticker_standard: "standard", sticker_small: "barcode_price", sticker_expiry: "expiry",
   sticker_barcode_only: "barcode_only", sticker_code_first: "code_first", sticker_clothing: "clothing",
+  shelf_classic: "classic", shelf_big_price: "big_price", shelf_promo: "promo",
+  shelf_weighed: "weighed", shelf_minimal: "minimal", shelf_detailed: "detailed",
+  shelf_bilingual: "bilingual", shelf_a5: "promo",
 };
 
 /** Shablonning dizayni yoki null (do'konning o'z shabloni). */
 export function designOf(tpl) {
   const code = String(tpl?.code || "");
   if (LEGACY[code]) return LEGACY[code];
-  const m = code.match(/^stk_([a-z_]+)_\d+x\d+$/);
+  const m = code.match(/^(?:stk|shf)_([a-z_]+)_\d+x\d+$/);
   return m ? m[1] : null;
 }
 
 const designRank = (tpl) => {
-  const i = DESIGN_ORDER.indexOf(designOf(tpl));
+  const order = tpl?.kind === "SHELF" ? SHELF_DESIGN_ORDER : DESIGN_ORDER;
+  const i = order.indexOf(designOf(tpl));
   return i < 0 ? -1 : i;   // do'konning o'zinikilari — eng tepada
 };
 
@@ -155,8 +164,8 @@ const sameSize = (tpl, media) => Number(tpl.widthMm) === Number(media?.labelWidt
  * Shu qog'oz o'lchamidagi stiker dizaynlari — galereya uchun, tartib bilan.
  * Qog'oz noma'lum bo'lsa — hammasi.
  */
-export function designsFor(templates = [], media = null) {
-  const list = templates.filter((x) => x.kind === "STICKER" && (!media || sameSize(x, media)));
+export function designsFor(templates = [], media = null, kind = "STICKER") {
+  const list = templates.filter((x) => x.kind === kind && (!media || sameSize(x, media)));
   return list.sort((a, b) => designRank(a) - designRank(b));
 }
 

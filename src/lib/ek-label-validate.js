@@ -350,7 +350,14 @@ export function validateOutput(media, printer, tpl) {
      yoki brauzer o'zi qiladi. A4 lazer 300 dpi bo'lgani uchun
      203 dpi shablonni rad etish 15/15 tizim shablonini A4 da
      ishlamas qilib qo'yardi — ya'ni ishlayotgan narsani buzardi. */
-  if (printer && BYTE_LANGS.includes(String(printer.lang || "").toUpperCase())
+  /* ⚠ FAQAT BARKOD CHIZADIGAN SHABLONDA (2026-10-03). Qoidaning butun sababi
+     — barkod moduli nuqtada. Javon yorlig'ida barkod yo'q (G1), lekin 300 dpi
+     javon dizayni Xprinter (203) bilan baribir rad etilardi: do'konchi narx
+     yorlig'ini rulonga umuman chiqara olmasdi, ekranda esa «dpi» degan
+     tushunarsiz so'z turardi. */
+  const tplSpec = typeof tpl.spec === "string" ? (() => { try { return JSON.parse(tpl.spec); } catch { return {}; } })() : (tpl.spec || {});
+  const drawsBc = (tplSpec.fields || []).some((f) => f.key === "barcode" && f.visible !== false);
+  if (drawsBc && printer && BYTE_LANGS.includes(String(printer.lang || "").toUpperCase())
       && Number(tpl.dpi) !== Number(printer.dpi)) {
     const tMm = mm3(2 * 25.4 / Number(tpl.dpi));
     const pMm = mm3(2 * 25.4 / Number(printer.dpi));

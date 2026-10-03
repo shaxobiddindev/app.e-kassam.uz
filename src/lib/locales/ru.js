@@ -2007,8 +2007,9 @@ export default {
   "lbl.chosen": "Выбран",
   "lbl.fitMismatch": "Этот дизайн для {tw}×{th}, ваша бумага {mw}×{mh}",
   "lbl.gallery": "Дизайны",
-  "lbl.onlyMySize": "Только мой размер",
-  "lbl.allSizes": "Все размеры ({n})",
+  "lbl.myRoll": "мой рулон",
+  "lbl.sizeFilter": "Размер",
+  "lbl.allSizes": "Все ({n})",
   "lbl.pickThis": "Выбрать этот дизайн",
   "lbl.offlineList": "Список из последнего сохранения — нет интернета",
 

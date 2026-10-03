@@ -2007,8 +2007,9 @@ export default {
   "lbl.chosen": "Selected",
   "lbl.fitMismatch": "This design is for {tw}×{th}, your media is {mw}×{mh}",
   "lbl.gallery": "Designs",
-  "lbl.onlyMySize": "Only my size",
-  "lbl.allSizes": "All sizes ({n})",
+  "lbl.myRoll": "my roll",
+  "lbl.sizeFilter": "Size",
+  "lbl.allSizes": "All ({n})",
   "lbl.pickThis": "Use this design",
   "lbl.offlineList": "List taken from the last save — no connection",
 

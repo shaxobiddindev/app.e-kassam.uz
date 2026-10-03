@@ -22,6 +22,7 @@ import { money } from "../lib/ek-format";
 import { blocking, validateOutput } from "../lib/ek-label-validate";
 import { templateName } from "../lib/ek-label-name";
 import { drawsBarcode, withPreviewBarcode } from "../lib/ek-label-codes";
+import { designsFor } from "../lib/ek-sticker-auto";
 import { prettyStoreCode } from "../lib/ek-store-code";
 import { useScanner } from "../hooks/useScanner";
 import { useLayerCount } from "../hooks/useLayerCount";
@@ -106,13 +107,17 @@ function LabelsAdvanced({ toast, onSimple }) {
   const [mediaList, setMediaList] = useState([]); // barcha qog'oz profillari
   const [printer, setPrinter] = useState(null);  // joriy tur uchun tanlangan printer
   const [zoomed, setZoomed] = useState(null); // katta ko'rish oynasi
-  /* ⚠ GALEREYA STANDART BO'YICHA QOG'OZ O'LCHAMIDA (V142): stikerlar 127
+  /* ⚠ GALEREYA O'LCHAM BO'YICHA (V142/V143): stiker 127, javon yorlig'i 118
      ta bo'ldi va hammasi bitta ro'yxatda turganda keraklisini topib
-     bo'lmasdi. «Hamma o'lchamlar» — bir bosishda. */
-  const [allSizes, setAllSizes] = useState(false);
+     bo'lmasdi. `null` — avtomatik: rulon o'lchami, bo'lmasa tanlangan
+     dizaynniki. A4 varaqda har o'lcham sig'adi — shuning uchun tugmalar. */
+  const [gallerySize, setGallerySize] = useState(null);
   const [editing, setEditing]     = useState(null); // null | {template|null}
   const [saving, setSaving]       = useState(false);
   const [kind, setKind]           = useState("SHELF");
+  /* Tur almashsa o'lcham tanlovi qaytadan avtomatik (javon va stiker
+     o'lchamlari boshqa). */
+  useEffect(() => { setGallerySize(null); }, [kind]);
   const [templates, setTemplates] = useState([]);
   const [templateId, setTemplateId] = useState(null);
   const [products, setProducts]   = useState([]);
@@ -233,10 +238,17 @@ function LabelsAdvanced({ toast, onSimple }) {
   };
 
   const template = templates.find((x) => x.id === templateId) || null;
-  const sizedTemplates = useMemo(() => (media ? templates.filter((x) =>
-    Number(x.widthMm) === Number(media.labelWidthMm)
-    && Number(x.heightMm) === Number(media.labelHeightMm)) : []), [templates, media]);
-  const galleryTemplates = !allSizes && sizedTemplates.length ? sizedTemplates : templates;
+  const sizeKey = (w, h) => `${Number(w)}x${Number(h)}`;
+  const sizes = useMemo(() => [...new Map(templates.map((x) =>
+    [sizeKey(x.widthMm, x.heightMm), Number(x.widthMm) * Number(x.heightMm)])).entries()]
+    .sort((a, b) => a[1] - b[1]).map(([k]) => k), [templates]);
+  const rollKey = media && String(media.mediaType) !== "VARAQ"
+    ? sizeKey(media.labelWidthMm, media.labelHeightMm) : null;
+  const activeSize = gallerySize
+    ?? (rollKey && sizes.includes(rollKey) ? rollKey
+      : template ? sizeKey(template.widthMm, template.heightMm) : "all");
+  const galleryTemplates = activeSize === "all" ? templates
+    : designsFor(templates.filter((x) => sizeKey(x.widthMm, x.heightMm) === activeSize), null, kind);
 
   /* ⚠ TANLANGAN DIZAYN DO'KONNING QOG'OZIGA CHIQADIMI (G7).
      O'lchandi: tayyor profillar bilan 112 qog'oz+printer
@@ -662,14 +674,22 @@ function LabelsAdvanced({ toast, onSimple }) {
               <span className="card-title">
                 <i className="fa-solid fa-images text-blue" /> {t("lbl.gallery")}
               </span>
-              {sizedTemplates.length > 0 && sizedTemplates.length < templates.length && (
-                <button type="button" className="btn btn-outline btn-sm"
-                        aria-pressed={allSizes} onClick={() => setAllSizes((v) => !v)}>
-                  <i className="fa-solid fa-ruler-combined" />{" "}
-                  {allSizes ? t("lbl.onlyMySize") : t("lbl.allSizes", { n: templates.length })}
-                </button>
-              )}
+
             </div>
+            {sizes.length > 1 && (
+              <div className="cat-tabs lbl-sizes" role="group" aria-label={t("lbl.sizeFilter")}>
+                {sizes.map((k) => (
+                  <button key={k} type="button" className={`cat-tab ek-num ${activeSize === k ? "active" : ""}`}
+                          aria-pressed={activeSize === k} onClick={() => setGallerySize(k)}>
+                    {k.replace("x", "×")}{k === rollKey ? ` · ${t("lbl.myRoll")}` : ""}
+                  </button>
+                ))}
+                <button type="button" className={`cat-tab ${activeSize === "all" ? "active" : ""}`}
+                        aria-pressed={activeSize === "all"} onClick={() => setGallerySize("all")}>
+                  {t("lbl.allSizes", { n: templates.length })}
+                </button>
+              </div>
+            )}
             <LabelGallery
               templates={galleryTemplates} product={shown} media={media}
               selectedId={templateId}

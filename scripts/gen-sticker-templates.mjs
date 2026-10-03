@@ -43,12 +43,12 @@ export const SIZES = [[58, 40], [58, 30], [60, 40], [50, 30], [40, 30], [40, 25]
 const TAKEN = new Set(["standard@40x30", "barcode_price@30x20", "expiry@58x40",
   "barcode_only@40x30", "code_first@40x30"]);
 
-const PT = 0.352778;
+export const PT = 0.352778;
 const DPI = 203;
-const r1 = (n) => Math.round(n * 10) / 10;
-const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+export const r1 = (n) => Math.round(n * 10) / 10;
+export const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 /** Bir qator matn balandligi — `validateTemplate` dagi formula (1,2) + zaxira. */
-const textH = (size, lines = 1) => r1(lines * size * PT * 1.25 + 0.4);
+export const textH = (size, lines = 1) => r1(lines * size * PT * 1.25 + 0.4);
 /** EAN-13 tinch zonasi bilan (mm). */
 const eanWidth = (dots) => (95 + 9 + 7) * dots * 25.4 / DPI;
 
@@ -339,7 +339,7 @@ export function build() {
   return { out, bad };
 }
 
-const sql = (s) => `'${String(s).replace(/'/g, "''")}'`;
+export const sql = (s) => `'${String(s).replace(/'/g, "''")}'`;
 
 if (process.argv[1] && process.argv[1].endsWith("gen-sticker-templates.mjs")) {
   const { out, bad } = build();
