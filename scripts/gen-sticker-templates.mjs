@@ -32,7 +32,7 @@
 import fs from "node:fs";
 import { validateTemplate } from "../src/lib/ek-label-validate.js";
 import { renderLabel } from "../src/lib/ek-label-render.js";
-import { barcodeMetrics } from "../src/lib/ek-label-barcode.js";
+import { barcodeMetrics, eanMinMm } from "../src/lib/ek-label-barcode.js";
 import { DESIGN_ORDER } from "../src/lib/ek-sticker-auto.js";
 
 /* Rulon o'lchamlari — `label_media_profiles` (V135) dagi stiker rulonlari. */
@@ -70,7 +70,8 @@ export const DESIGNS = {
   },
   big_price: {
     name: ["Narx yirik", "Крупная цена", "Big price"],
-    rows: (k) => [text("nameShort", fs8(k), { drop: 2, weight: 600 }), price(fs22(k)), BARCODE],
+    /* `min: 13` — narx yirikligicha qoladi, sig'masa nom ketadi (dizaynning ma'nosi). */
+    rows: (k) => [text("nameShort", fs8(k), { drop: 2, weight: 600 }), price(fs22(k), { min: 13 }), BARCODE],
   },
   price_top: {
     name: ["Narx tepada", "Цена сверху", "Price on top"],
@@ -90,13 +91,19 @@ export const DESIGNS = {
   },
   code_first: {
     name: ["Kod yirik", "Крупный код", "Big code"],
-    rows: (k) => [text("code", fs18(k), { weight: 900, prefix: "*" }), BARCODE,
+    rows: (k) => [text("code", fs18(k), { weight: 900, prefix: "*", min: 12 }), BARCODE,
       price(fs10(k), { drop: 1 })],
   },
   side: {
     name: ["Yonma-yon", "Рядом", "Side by side"],
     side: true,
     rows: (k) => [text("nameShort", fs9(k), { drop: 2 }), BARCODE, price(fs15(k))],
+    /* ⚠ YONMA-YON SIG'MASA (eni < ~51 mm) — «Standart» ning nusxasi emas:
+       narx chapda, kod o'ngda bir qatorda. Ilgari bu o'lchamlarda ikki
+       dizayn bir xil chiqardi (V144). */
+    fallback: (k) => [pair(price(fs12(k), { align: "left" }),
+      text("code", fs10(k), { weight: 900, align: "right", prefix: "*" }), fs12(k)),
+      BARCODE, text("nameShort", fs8(k), { drop: 2 })],
   },
   framed: {
     name: ["Ramkali", "В рамке", "Framed"],
@@ -105,31 +112,34 @@ export const DESIGNS = {
   },
   shop: {
     name: ["Do'kon nomi bilan", "С названием магазина", "With shop name"],
-    rows: (k) => [text("shopName", fs7(k), { weight: 800, drop: 3 }),
-      text("nameShort", fs8(k), { weight: 600, drop: 2 }), BARCODE, price(fs14(k))],
+    /* ⚠ Do'kon nomi — dizaynning ma'nosi: joy yetmasa avval tovar nomi ketadi. */
+    rows: (k) => [text("shopName", fs7(k), { weight: 800, drop: 1 }),
+      text("nameShort", fs8(k), { weight: 600, drop: 3 }), BARCODE, price(fs14(k))],
   },
   bilingual: {
     name: ["Ikki tilli", "Двуязычный", "Bilingual"],
+    /* ⚠ JOY YETMASA AVVAL NARX KETADI (V144): ikki tilli dizaynning ma'nosi —
+       ikki nom; ilgari kichik stikerda ruscha nom ketib, «Standart» qolardi. */
     rows: (k) => [text("nameShort", fs8(k), { drop: 3 }), text("nameRu", fs8(k), { drop: 2, weight: 600 }),
-      BARCODE, price(fs14(k))],
+      BARCODE, price(fs14(k), { drop: 4 })],
   },
   brand: {
     name: ["Brend va davlat", "Бренд и страна", "Brand and country"],
     rows: (k) => [pair(text("brand", fs7(k), { align: "left" }), text("country", fs7(k), { align: "right" }),
-      fs7(k), { drop: 3 }), text("nameShort", fs8(k), { drop: 2 }), BARCODE, price(fs14(k))],
+      fs7(k), { drop: 2 }), text("nameShort", fs8(k), { drop: 3 }), BARCODE, price(fs14(k))],
   },
   expiry: {
     name: ["Muddatli", "Со сроком", "With expiry"],
-    rows: (k) => [text("nameShort", fs8(k), { drop: 2 }),
+    rows: (k) => [text("nameShort", fs8(k), { drop: 3 }),
       pair(text("producedAt", fs7(k), { align: "left", weight: 600 }),
-        text("expiry", fs7(k), { align: "right" }), fs7(k), { drop: 3 }),
+        text("expiry", fs7(k), { align: "right" }), fs7(k), { drop: 2 }),
       BARCODE, price(fs13(k))],
   },
   clothing: {
     name: ["Kiyim", "Одежда", "Clothing"],
     hole: true,
-    rows: (k) => [text("nameShort", fs8(k), { drop: 2 }),
-      pair(text("size", fs12(k), { weight: 900 }), text("color", fs8(k)), fs12(k), { drop: 3 }),
+    rows: (k) => [text("nameShort", fs8(k), { drop: 3 }),
+      pair(text("size", fs12(k), { weight: 900 }), text("color", fs8(k)), fs12(k), { drop: 2 }),
       BARCODE, price(fs14(k))],
   },
 };
@@ -158,11 +168,19 @@ export function layout(designKey, W, H) {
   /* ⚠ BALAND YORLIQDA (100×150) KOEFFITSIYENT KATTAROQ: eni bo'yicha
      hisoblanganda shrift kichik qolib, yorliqning uchdan ikkisi bo'sh edi. */
   const k = clamp(Math.min(W / 58, H / 40) * (H > 100 ? 1.25 : 1), 0.7, 2.4);
-  const pad = W <= 32 || H <= 22 ? 1 : W <= 42 ? 1.5 : 2;
+  /* ⚠ KICHIK STIKER (bo'yi ≤ 25 mm): barkod 10 mm (`eanMinMm`), chekka va
+     qatorlar orasi zichroq — aks holda 30×20 da 14 dizaynning hammasi
+     «barkod + raqam» bo'lib qolardi (egasi, 2026-10-04). */
+  const small = H <= 25;
+  const bcMin = eanMinMm("STICKER", H);
+  const pad = small ? 0.8 : W <= 32 || H <= 22 ? 1 : W <= 42 ? 1.5 : 2;
   const inner = d.border ? pad + 0.6 : pad;
   const fields = [];
   const iw = W - 2 * inner;
-  let rows = d.rows(k).map((row) => fitPrice(row, iw));
+  const sideFits = d.side && W - 2 - eanWidth(2) - 1 - inner >= 18;
+  const half = r1((iw - 1) / 2);
+  let rows = (d.side && !sideFits && d.fallback ? d.fallback(k) : d.rows(k))
+    .map((row) => (row.type === "pair" ? { ...row, left: fitPrice(row.left, half) } : fitPrice(row, iw)));
 
   /* Teshik (kiyim yorlig'i) — faqat baland yorliqda, yuqori markazda. */
   let top = inner;
@@ -177,7 +195,7 @@ export function layout(designKey, W, H) {
      osonroq, lekin 41,6 mm talab qiladi — sig'sagina. Barkod yon chekkaga
      1 mm gacha boradi: tinch zona barkodning o'z ichida. */
   const bcSlot = W - 2;
-  const side = d.side && W - 2 - eanWidth(2) - 1 - inner >= 18;
+  const side = sideFits;
   const dots = (side ? (W >= 90 ? 3 : 2) : (bcSlot >= eanWidth(3) + 0.2 ? 3 : 2));
 
   if (side) {
@@ -197,28 +215,45 @@ export function layout(designKey, W, H) {
     return spec(fields, dots, d.border, H);
   }
 
-  /* ── Ustma-ust (stack). Barkodga kamida 12 mm qolmaguncha tashlanadi. ── */
+  /* ── Ustma-ust (stack) ──
+     ⚠ AVVAL KICHRAYTIRISH, KEYIN TASHLASH (V144). Ilgari qator darhol
+     tashlanardi va 30×20 da hamma dizayn «barkod + narx» bo'lib qolardi.
+     Endi har qator o'z chegarasigacha (`min`, odatda 6 pt; narx 7 pt)
+     kichrayadi; shunda ham sig'masa — bitta qator ketadi va qolganlari ASL
+     o'lchamidan qayta hisoblanadi (aks holda bo'shagan joyda ham mayda
+     qolardi). Kichik stikerda qator balandligi zichroq (1,2 × shrift). */
   const ih = H - top - inner;
-  const gap = 0.6;
-  const fixed = (list) => list.reduce((s, x) => s + rowH(x), 0) + gap * (list.length - 1);
-  while (ih - fixed(rows) < 12) {
-    const victim = rows.filter((x) => x.drop).sort((a, b) => b.drop - a.drop)[0];
-    if (!victim) break;
-    rows = rows.filter((x) => x !== victim);
-  }
-  /* Tashlaydigan qator qolmadi — eng katta shrift bir punktdan kichrayadi
-     (narx 30×20 da 15 pt bo'lib, barkodga 10 mm qoldirardi). */
-  while (ih - fixed(rows) < 12) {
-    const big = rows.filter((x) => x.type !== "barcode" && x.size > 7)
-      .sort((a, b) => b.size - a.size)[0];
-    if (!big) break;
-    rows = rows.map((x) => (x === big ? { ...x, size: x.size - 1 } : x));
+  const gap = small ? 0.3 : 0.6;
+  const sizeOfRow = (x) => (x.type === "pair" ? Math.max(x.left.size, x.right.size) : x.size);
+  const tH = (size) => (small ? r1(size * PT * 1.2 + 0.15) : textH(size));
+  const rH = (x) => (x.type === "barcode" ? 0 : tH(sizeOfRow(x)));
+  const floorOf = (x) => x.min ?? (x.key === "price" ? 7 : 6);
+  const fixed = (list) => list.reduce((s, x) => s + rH(x), 0) + gap * (list.length - 1);
+  const shrink = (x) => (x.type === "pair"
+    ? { ...x, left: { ...x.left, size: Math.max(floorOf(x.left), x.left.size - 1) },
+      right: { ...x.right, size: Math.max(floorOf(x.right), x.right.size - 1) } }
+    : { ...x, size: x.size - 1 });
+  const canShrink = (x) => x.type !== "barcode" && (x.type === "pair"
+    ? x.left.size > floorOf(x.left) || x.right.size > floorOf(x.right)
+    : x.size > floorOf(x));
+  let base = rows;
+  for (;;) {
+    let cur = base;
+    while (ih - fixed(cur) < bcMin) {
+      const big = cur.filter(canShrink).sort((a, b) => sizeOfRow(b) - sizeOfRow(a))[0];
+      if (!big) break;
+      cur = cur.map((x) => (x === big ? shrink(x) : x));
+    }
+    if (ih - fixed(cur) >= bcMin) { rows = cur; break; }
+    const victim = base.filter((x) => x.drop).sort((a, b) => b.drop - a.drop)[0];
+    if (!victim) { rows = cur; break; }
+    base = base.filter((x) => x !== victim);
   }
   const room = ih - fixed(rows);
-  if (room < 12) throw new Error(`${designKey} ${W}x${H}: barkodga ${r1(room)} mm qoldi`);
+  if (room < bcMin) throw new Error(`${designKey} ${W}x${H}: barkodga ${r1(room)} mm qoldi`);
   /* Barkod eni modul bilan cheklangan (2–3 nuqta), balandligi esa yo'q:
      katta yorliqda baland barkod uzoqdan ham, qiyshiq ham o'qiladi. */
-  const bh = r1(Math.min(room, clamp(H * 0.45, 12, W >= 90 ? 48 : 32)));
+  const bh = r1(Math.min(room, clamp(H * 0.45, bcMin, W >= 90 ? 48 : 32)));
   /* Ortiqcha joy qatorlar orasiga teng bo'linadi — stiker «tepaga
      yopishib», pastda bo'sh qolmasin. */
   const spare = room - bh;
@@ -231,9 +266,8 @@ export function layout(designKey, W, H) {
       y += bh + g;
       continue;
     }
-    const h = rowH(row);
+    const h = rH(row);
     if (row.type === "pair") {
-      const half = r1((iw - 1) / 2);
       fields.push(textField({ ...row.left, size: row.left.size }, inner, y, half, h));
       fields.push(textField({ ...row.right, size: row.right.size }, r1(inner + half + 1), y, half, h));
     } else {
@@ -291,10 +325,12 @@ function check(tpl) {
   const bc = spec.fields.find((f) => f.key === "barcode");
   if (!bc) errs.push("barkod yo'q");
   else {
-    if (bc.h + 0.001 < 12) errs.push(`barkod ${bc.h} mm < 12`);
+    const need = eanMinMm("STICKER", tpl.heightMm);
+    if (bc.h + 0.001 < need) errs.push(`barkod ${bc.h} mm < ${need}`);
     if (bc.w + 0.001 < eanWidth(spec.barcode.moduleDots)) errs.push(`barkod eni ${bc.w} mm yetmaydi`);
     const m = barcodeMetrics("4780000000007", { dpi: DPI, moduleDots: spec.barcode.moduleDots,
-      quietLeftModules: 9, quietRightModules: 7, heightMm: bc.h, labelKind: "STICKER" });
+      quietLeftModules: 9, quietRightModules: 7, heightMm: bc.h, labelKind: "STICKER",
+      labelHeightMm: tpl.heightMm });
     if (!m?.ok) errs.push("barkod metrikasi ok emas");
   }
   for (const f of spec.fields) {
@@ -341,7 +377,7 @@ export function build() {
 
 export const sql = (s) => `'${String(s).replace(/'/g, "''")}'`;
 
-if (process.argv[1] && process.argv[1].endsWith("gen-sticker-templates.mjs")) {
+if (process.argv[1] && process.argv[1].endsWith("gen-sticker-templates.mjs") && process.argv[2] !== "--update") {
   const { out, bad } = build();
   if (bad.length) {
     console.error(`❌ ${bad.length} ta shablon tekshiruvdan o'tmadi:\n  ${bad.join("\n  ")}`);
@@ -397,4 +433,58 @@ ${Object.entries({ sticker_standard: "standard", sticker_small: "barcode_price",
   } else {
     process.stdout.write(body);
   }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   V144 — O'ZGARGAN JOYLASHUVLAR (2026-10-04)
+
+   ⚠ V142 SERVERDA QO'LLANGAN va qayta yozilmaydi (Flyway checksum). Joylashuv
+   qoidasi o'zgarganda (kichik stikerda barkod 10 mm, «avval kichraytir»)
+   generator V142 dagi spec bilan solishtiradi va FAQAT farq qilganlarini
+   UPDATE qiladi. Kod va nomlar o'zgarmaydi.
+
+   node scripts/gen-sticker-templates.mjs --update <V142.sql> <V144.sql>
+   ══════════════════════════════════════════════════════════════════════ */
+export function specsIn(sqlText) {
+  const map = new Map();
+  for (const m of sqlText.matchAll(/\('(stk_[a-z_]+_\d+x\d+)',[^\n]*?'(\{[^\n]*\})'\)/g)) {
+    map.set(m[1], m[2].replace(/''/g, "'"));
+  }
+  for (const m of sqlText.matchAll(/SET spec = '(\{[^\n]*\})'::jsonb[^\n]*\n\s*WHERE is_system AND code = '(stk_[a-z_]+_\d+x\d+)'/g)) {
+    map.set(m[2], m[1].replace(/''/g, "'"));
+  }
+  return map;
+}
+
+if (process.argv[2] === "--update") {
+  const { out, bad } = build();
+  if (bad.length) {
+    console.error(`❌ ${bad.length} ta shablon tekshiruvdan o'tmadi:\n  ${bad.join("\n  ")}`);
+    process.exit(1);
+  }
+  const old = specsIn(fs.readFileSync(process.argv[3], "utf8"));
+  const changed = out.filter((t) => old.get(t.code) !== t.spec);
+  const body = `-- ══════════════════════════════════════════════════════════════════════════
+-- STIKER DIZAYNLARI — KICHIK O'LCHAMDA HAM HAR XIL (2026-10-04)
+-- ══════════════════════════════════════════════════════════════════════════
+--
+-- Egasi 30×20 da tekshirdi: «bularning birortasi yo'q, asosan faqat shtrix
+-- kod va raqami». Sabab: barkod har doim ≥ 12 mm edi va 20 mm stikerda
+-- generator nom, sana, do'kon nomi kabi qatorlarni TASHLAB yuborardi —
+-- 14 dizaynning deyarli hammasi «barkod + narx» bo'lib qolardi.
+--
+-- O'zgargan qoida (frontend: scripts/gen-sticker-templates.mjs):
+--   · bo'yi ≤ 25 mm stikerda barkod ≥ 10 mm (chiziqlar ~7,4 mm + raqamlar);
+--   · avval shrift kichrayadi (6 pt / narx 7 pt gacha), keyin qator ketadi;
+--   · har dizaynning asosiy elementi (do'kon nomi, brend, sana, o'lcham)
+--     eng oxirida ketadi; «Yonma-yon» sig'magan joyda o'z ko'rinishiga ega.
+--
+-- ${changed.length} ta shablonning joylashuvi yangilanadi. Kod va nomlar o'zgarmaydi.
+-- ⚠ BU FAYL QO'LDA TAHRIRLANMAYDI.
+-- ══════════════════════════════════════════════════════════════════════════
+
+${changed.map((t) => `UPDATE label_templates SET spec = ${sql(t.spec)}::jsonb, version = version + 1, updated_at = now()\n WHERE is_system AND code = ${sql(t.code)};`).join("\n")}
+`;
+  fs.writeFileSync(process.argv[4], body);
+  console.log(`✅ ${changed.length} ta o'zgargan shablon → ${process.argv[4]}`);
 }

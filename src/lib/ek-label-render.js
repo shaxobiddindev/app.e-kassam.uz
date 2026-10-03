@@ -129,7 +129,7 @@ export function layoutLabel(template, product, ctx = {}) {
         dpi: template.dpi, moduleDots: cfg.moduleDots ?? 2,
         quietLeftModules: cfg.quietLeftModules ?? 9,
         quietRightModules: cfg.quietRightModules ?? 7,
-        heightMm: f.h, labelKind: template.kind,
+        heightMm: f.h, labelKind: template.kind, labelHeightMm: Number(template.heightMm),
       }) : null;
       /* ⚠ MARKAZGA TEKISLASH (V142, `align: "center"`). Barkod tabiiy
          enida chiziladi va maydon chap chetidan boshlanardi: EAN-8 (do'kon
@@ -221,6 +221,7 @@ function drawBarcode(f, value, template, spec, warnings) {
        kartoni uchun bir xil emas — birinchisi qo'ldagi skaner bilan
        5–10 sm dan o'qiladi. */
     labelKind: template.kind,
+    labelHeightMm: Number(template.heightMm),
   };
   const m = barcodeMetrics(value, opts);
   if (!m) {

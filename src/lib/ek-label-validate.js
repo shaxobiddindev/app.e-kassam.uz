@@ -152,7 +152,7 @@ export function validateTemplate(tpl) {
         quietLeftModules: cfg.quietLeftModules ?? 9,
         quietRightModules: cfg.quietRightModules ?? 7,
         heightMm: Number(bc.h),
-        labelKind: tpl.kind,
+        labelKind: tpl.kind, labelHeightMm: Number(tpl.heightMm),
       });
       if (m && m.widthMm > Number(bc.w) + 0.001) {
         out.push(err("barcode", `EAN-13 uchun ${mm1(m.widthMm)} mm kerak, `
@@ -391,7 +391,7 @@ export function validateOutput(media, printer, tpl) {
       dpi: Number(printer?.dpi ?? tpl.dpi), moduleDots: Number(cfg.moduleDots ?? 2),
       quietLeftModules: cfg.quietLeftModules ?? 9,
       quietRightModules: cfg.quietRightModules ?? 7,
-      heightMm: Number(bc.h), labelKind: tpl.kind,
+      heightMm: Number(bc.h), labelKind: tpl.kind, labelHeightMm: Number(tpl.heightMm),
     });
     const pad = Number(spec.padding) || 0;
     if (m && m.widthMm + 2 * pad > w + 0.001) {

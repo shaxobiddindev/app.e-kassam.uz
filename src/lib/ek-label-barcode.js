@@ -96,8 +96,23 @@ export const EAN_MIN_MM_DEFAULT = 18;
 /** Code 128 da qat'iy standart yo'q; 8 mm dan pastda skaner ishonchsiz. */
 export const CODE128_MIN_MM = 8;
 
-export const eanMinMm = (labelKind) =>
-  EAN_MIN_MM[String(labelKind || "").toUpperCase()] ?? EAN_MIN_MM_DEFAULT;
+/**
+ * ⚠ KICHIK STIKER — 10 MM (2026-10-04). 30×20 va 40×25 da 12 mm barkoddan
+ * keyin 6–8 mm qoladi va 14 dizaynning deyarli hammasi «barkod + raqam» bo'lib
+ * qolardi: egasi «bularning birortasi yo'q, faqat shtrix kod va raqami» dedi.
+ * 10 mm (chiziqlar ~7,4 mm + raqamlar) qo'l skaneriga yetadi — u bitta chiziq
+ * bo'yicha o'qiydi, balandlik faqat nishonga olishni osonlashtiradi. Chegara
+ * FAQAT balandligi ≤ 25 mm STIKERGA: kattasida joy bor va 12 mm qoladi.
+ */
+export const SMALL_STICKER_MAX_H = 25;
+export const SMALL_STICKER_MIN_MM = 10;
+
+export const eanMinMm = (labelKind, labelHeightMm = null) => {
+  const kind = String(labelKind || "").toUpperCase();
+  if (kind === "STICKER" && Number(labelHeightMm) > 0
+      && Number(labelHeightMm) <= SMALL_STICKER_MAX_H) return SMALL_STICKER_MIN_MM;
+  return EAN_MIN_MM[kind] ?? EAN_MIN_MM_DEFAULT;
+};
 
 /**
  * Qaysi turda chiziladi.
@@ -135,7 +150,7 @@ function modulesOf(value, kind) {
  */
 export function barcodeMetrics(value, {
   dpi = 203, moduleDots = 2, quietLeftModules = 9, quietRightModules = 7,
-  heightMm = 10, labelKind = null,
+  heightMm = 10, labelKind = null, labelHeightMm = null,
 } = {}) {
   const kind = barcodeKind(value);
   if (!kind) return null;
@@ -146,7 +161,7 @@ export function barcodeMetrics(value, {
   const total = modules.length + quietLeftModules + quietRightModules;
   const widthMm = total * moduleMm;
 
-  const minHeightMm = kind === "CODE128" ? CODE128_MIN_MM : eanMinMm(labelKind);
+  const minHeightMm = kind === "CODE128" ? CODE128_MIN_MM : eanMinMm(labelKind, labelHeightMm);
 
   return {
     kind, modules, moduleMm, widthMm, minHeightMm,
