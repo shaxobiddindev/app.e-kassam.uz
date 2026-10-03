@@ -6573,6 +6573,204 @@ button.stk__c:hover { background: var(--bg-hover); }
 .lbl-warn--bad { background: var(--bg-danger-subtle);
                  color: var(--fg-danger); border: 1px solid var(--fg-danger); }
 
+/* ─── Stiker chiqarish — oddiy ekran (2026-10-03) ─────────────────────
+   Egasining talabi: «juda sodda, hamma ham texnikani tushunmaydi».
+   ⚠ HAMMA BOSILADIGAN NARSA ≥ 44 PX (CLAUDE.md #3), asosiy amallar 56 px:
+   bu ekranda ko'pincha bir qo'lda skaner, ikkinchisida sichqoncha.
+   ⚠ RANG YOLG'IZ SIGNAL EMAS: tanlangan kartochkada belgi ham bor,
+   ogohlantirishda ikonka va matn. */
+.stk-card          { padding: 16px; }
+.stk-grid          { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px;
+                     align-items: start; }
+.stk-grid--compact { grid-template-columns: minmax(0, 1fr) 280px; }
+@media (max-width: 960px) { .stk-grid, .stk-grid--compact { grid-template-columns: 1fr; } }
+.stk-main          { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.stk-side          { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.stk .btn-sm,
+.stk-setup .btn-sm,
+.stk .btn-icon     { min-height: var(--hit-md); min-width: var(--hit-md); }
+.stk-big           { min-height: var(--hit-pos); padding-inline: 26px; font-size: 16px; }
+
+.stk-q             { margin: 0; font-size: 18px; font-weight: 800; color: var(--fg-primary);
+                     display: flex; align-items: center; gap: 8px; }
+.stk-q--sm         { font-size: 15px; }
+.stk-hint          { margin: 4px 0 0; color: var(--fg-secondary); font-size: 13.5px; line-height: 1.45; }
+.stk-num           { display: inline-flex; align-items: center; justify-content: center;
+                     width: 26px; height: 26px; border-radius: 50%; flex: 0 0 auto;
+                     background: var(--bg-brand); color: var(--fg-on-brand);
+                     font-size: 13px; font-weight: 800; }
+
+/* Skaner maydoni — sahifaning eng katta elementi. */
+.stk-scan          { position: relative; }
+.stk-scan__icon    { position: absolute; inset-inline-start: 16px; top: 50%;
+                     transform: translateY(-50%); color: var(--fg-secondary); font-size: 20px; }
+.stk-scan__input   { width: 100%; min-height: var(--hit-pos); padding-inline-start: 48px;
+                     font-size: 17px; }
+.stk-results       { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column;
+                     border: 1px solid var(--border-subtle); border-radius: 10px; overflow: hidden; }
+.stk-result        { display: flex; align-items: center; gap: 10px; width: 100%;
+                     min-height: var(--hit-md); padding: 10px 14px; text-align: start;
+                     background: var(--bg-surface); border: 0; cursor: pointer; color: var(--fg-primary);
+                     border-bottom: 1px solid var(--border-subtle); }
+.stk-results li:last-child .stk-result { border-bottom: 0; }
+.stk-result:hover  { background: var(--bg-brand-subtle); }
+.stk-result__name  { flex: 1 1 auto; font-weight: 700; min-width: 0; }
+.stk-result__meta  { color: var(--fg-secondary); font-size: 13px; }
+
+.stk-quick         { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.stk-chip          { display: inline-flex; align-items: center; gap: 8px; min-height: var(--hit-md);
+                     padding: 8px 14px; border-radius: 999px; cursor: pointer; font-weight: 700;
+                     background: var(--bg-surface); color: var(--fg-primary);
+                     border: 1.5px solid var(--border-subtle); }
+.stk-chip:hover    { border-color: var(--border-brand); color: var(--fg-brand); }
+.stk-rule          { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.stk-rule__label   { color: var(--fg-secondary); font-weight: 700; }
+
+.stk-listhead      { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+                     margin-top: 6px; padding-top: 12px; border-top: 1px solid var(--border-subtle); }
+.stk-lines         { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.stk-line          { display: flex; align-items: center; gap: 10px; padding: 8px 10px;
+                     border: 1.5px solid var(--border-subtle); border-radius: 12px;
+                     background: var(--bg-surface); }
+.stk-line.is-on    { border-color: var(--border-brand); background: var(--bg-brand-subtle); }
+.stk-line__main    { flex: 1 1 auto; min-width: 0; min-height: var(--hit-md); display: flex;
+                     flex-direction: column; justify-content: center; gap: 3px; text-align: start;
+                     background: none; border: 0; padding: 0; cursor: pointer; color: var(--fg-primary); }
+.stk-line__name    { font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stk-line__meta    { display: flex; gap: 12px; flex-wrap: wrap; color: var(--fg-secondary); font-size: 13px; }
+.stk-line__new     { color: var(--fg-brand); font-weight: 700; }
+.stk-line__bad     { color: var(--fg-danger); font-weight: 700; }
+.stk .qty-btn      { width: var(--hit-md); height: var(--hit-md); }
+/* ⚠ TELEFONDA QATOR IKKI QAVAT: nom va kod tepada to'liq, son va o'chirish
+   pastda. Bir qatorga tiqilganda nom «Сахар нес…» bo'lib qolardi. */
+@media (max-width: 560px) {
+  .stk-line          { flex-wrap: wrap; }
+  .stk-line__main    { flex-basis: 100%; }
+  .stk-line .qty-ctrl{ margin-inline-start: auto; }
+}
+
+/* Ko'rinish — yorliq HAR DOIM oq qog'ozda (`.lbl-preview__paper` izohi). */
+.stk-preview       { display: flex; justify-content: center; align-items: center; min-height: 150px;
+                     margin-top: 10px; padding: 16px; border-radius: 10px;
+                     background: var(--bg-sunken); border: 1px solid var(--border-subtle); }
+.stk-preview__paper{ background: #fff; box-shadow: 0 1px 6px rgba(0,0,0,.18); width: 100%; max-width: 260px; }
+.stk-preview__paper svg { display: block; width: 100%; height: auto; }
+.stk-design        { display: flex; align-items: center; justify-content: space-between; gap: 8px;
+                     flex-wrap: wrap; margin-top: 10px; color: var(--fg-secondary); font-size: 13.5px; }
+.stk-design b      { color: var(--fg-primary); }
+.stk-status        { display: flex; align-items: center; gap: 12px; }
+.stk-status > i    { font-size: 20px; color: var(--fg-brand); }
+.stk-status__text  { flex: 1 1 auto; min-width: 0; }
+.stk-status__name  { font-weight: 800; color: var(--fg-primary); overflow-wrap: anywhere; }
+
+.stk-bar           { position: sticky; bottom: 0; z-index: 2; margin-top: 16px; padding: 12px 16px;
+                     display: flex; flex-direction: column; gap: 10px; border-radius: 14px;
+                     background: var(--bg-surface); border: 1px solid var(--border-subtle);
+                     box-shadow: 0 -4px 18px rgba(0,0,0,.08); }
+.stk-bar__row      { display: flex; align-items: center; justify-content: space-between; gap: 12px;
+                     flex-wrap: wrap; }
+.stk-bar__total    { font-size: 16px; color: var(--fg-primary); }
+.stk-bar__total b  { font-size: 22px; }
+
+.stk-alert         { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px;
+                     border-radius: 10px; background: var(--bg-danger-subtle); color: var(--fg-danger);
+                     border: 1px solid var(--border-danger); font-weight: 600; }
+.stk-alert > div   { flex: 1 1 auto; }
+.stk-alert__detail { margin-top: 4px; font-size: 12px; font-weight: 400; color: var(--fg-secondary);
+                     overflow-wrap: anywhere; }
+.stk-banner        { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px;
+                     padding: 12px 16px; border-radius: 12px; font-weight: 700;
+                     background: var(--bg-warning-subtle); color: var(--fg-primary);
+                     border: 1px solid var(--border-subtle); }
+.stk-banner > i    { color: var(--fg-warning); font-size: 18px; }
+.stk-banner > span { flex: 1 1 240px; }
+.stk-adv           { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
+.stk-intro         { display: flex; gap: 14px; align-items: center; margin-bottom: 16px; padding-bottom: 14px;
+                     border-bottom: 1px solid var(--border-subtle); }
+.stk-intro > i     { font-size: 28px; color: var(--fg-brand); }
+.stk-intro__title  { font-size: 18px; font-weight: 800; color: var(--fg-primary); }
+.stk-ask__btns     { display: flex; flex-direction: column; gap: 10px; }
+
+/* ── Sozlash ── */
+.stk-setup         { display: flex; flex-direction: column; gap: 14px; }
+.stk-setup section { display: flex; flex-direction: column; gap: 12px; }
+.stk-steps         { list-style: none; margin: 0; padding: 0; display: flex; gap: 8px; flex-wrap: wrap; }
+.stk-step          { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px;
+                     border-radius: 999px; color: var(--fg-secondary); font-weight: 700;
+                     border: 1.5px solid var(--border-subtle); }
+.stk-step__num     { display: inline-flex; align-items: center; justify-content: center;
+                     width: 26px; height: 26px; border-radius: 50%; font-size: 13px;
+                     background: var(--bg-sunken); color: var(--fg-secondary); }
+.stk-step.is-on    { border-color: var(--border-brand); color: var(--fg-brand); }
+.stk-step.is-on .stk-step__num   { background: var(--bg-brand); color: var(--fg-on-brand); }
+.stk-step.is-done .stk-step__num { background: var(--bg-success-subtle); color: var(--fg-success); }
+
+.stk-choices       { display: flex; flex-direction: column; gap: 8px; }
+.stk-choices--wrap { flex-direction: row; flex-wrap: wrap; }
+.stk-choice        { position: relative; display: flex; align-items: center; gap: 12px;
+                     min-height: var(--hit-pos); padding: 10px 44px 10px 16px; text-align: start;
+                     border-radius: 12px; cursor: pointer; font-size: 15px;
+                     background: var(--bg-surface); color: var(--fg-primary);
+                     border: 1.5px solid var(--border-subtle); }
+.stk-choice:hover  { border-color: var(--border-brand); }
+.stk-choice.is-on  { border-color: var(--border-brand); background: var(--bg-brand-subtle);
+                     box-shadow: 0 0 0 1px var(--border-brand) inset; }
+.stk-choice > i:first-child { font-size: 18px; color: var(--fg-secondary); }
+.stk-choice__name  { flex: 1 1 auto; font-weight: 700; overflow-wrap: anywhere; }
+.stk-choice__on    { position: absolute; inset-inline-end: 14px; top: 50%; transform: translateY(-50%);
+                     color: var(--fg-brand); font-size: 20px; }
+.stk-tag           { padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 800;
+                     background: var(--bg-success-subtle); color: var(--fg-success); }
+.stk-tag--muted    { background: var(--bg-sunken); color: var(--fg-secondary); }
+
+.stk-sizes         { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.stk-size          { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px;
+                     padding: 16px 12px 14px; border-radius: 14px; cursor: pointer;
+                     background: var(--bg-surface); color: var(--fg-primary);
+                     border: 1.5px solid var(--border-subtle); }
+.stk-size:hover    { border-color: var(--border-brand); }
+.stk-size.is-on    { border-color: var(--border-brand); background: var(--bg-brand-subtle);
+                     box-shadow: 0 0 0 1px var(--border-brand) inset; }
+.stk-size__art     { display: flex; align-items: center; justify-content: center; height: 72px; }
+.stk-size__paper   { display: block; background: #fff; border: 1.5px dashed var(--fg-secondary);
+                     border-radius: 4px; }
+.stk-size__num     { font-size: 22px; font-weight: 900; }
+.stk-size__unit    { color: var(--fg-secondary); font-size: 13px; font-weight: 700; }
+.stk-size .stk-choice__on { top: 14px; transform: none; }
+.stk-more          { align-self: flex-start; }
+.stk-actions       { display: flex; gap: 10px; flex-wrap: wrap; justify-content: space-between;
+                     margin-top: 4px; }
+.stk-next          { margin-inline-start: auto; min-height: var(--hit-pos); padding-inline: 24px; font-size: 15px; }
+
+.stk-note          { padding: 12px 14px; border-radius: 10px; font-weight: 600;
+                     background: var(--bg-success-subtle); color: var(--fg-success);
+                     border: 1px solid var(--border-success); }
+.stk-ask           { display: flex; flex-direction: column; gap: 12px; padding: 16px; border-radius: 12px;
+                     background: var(--bg-sunken); border: 1px solid var(--border-subtle); }
+.stk-fixes         { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; }
+.stk-fix           { display: flex; align-items: center; gap: 10px; min-height: var(--hit-pos);
+                     padding: 10px 14px; text-align: start; border-radius: 10px; cursor: pointer;
+                     font-weight: 700; background: var(--bg-surface); color: var(--fg-primary);
+                     border: 1.5px solid var(--border-subtle); }
+.stk-fix:hover     { border-color: var(--border-brand); color: var(--fg-brand); }
+.stk-fix:disabled  { opacity: .55; cursor: not-allowed; }
+.stk-fix > i       { width: 22px; text-align: center; font-size: 17px; color: var(--fg-secondary); }
+/* «Qora fonda chiqdi» ning rasmi — so'zdan tezroq tanib olinadi.
+   ⚠ Qasddan qora/oq: bu qog'ozdagi ko'rinishning surati, tema rangi emas. */
+.stk-fix__art      { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto;
+                     min-width: 34px; height: 22px; border-radius: 4px; font-size: 10px; font-weight: 900; }
+.stk-fix__art--inv { background: #000; color: #fff; }
+.stk-pad           { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.stk-pad__grid     { display: grid; grid-template-columns: repeat(3, var(--hit-pos)); gap: 6px; }
+.stk-pad__grid .btn{ min-height: var(--hit-pos); padding: 0; }
+.stk-pad__mid      { display: flex; align-items: center; justify-content: center; color: var(--fg-secondary); }
+.stk-howto         { padding: 12px 14px; border-radius: 10px; background: var(--bg-surface);
+                     border: 1px solid var(--border-subtle); }
+.stk-howto ol      { margin: 8px 0; padding-inline-start: 20px; display: flex; flex-direction: column; gap: 6px; }
+@media (prefers-reduced-motion: reduce) {
+  .stk-choice, .stk-size, .stk-fix, .stk-chip { transition: none; }
+}
+
 /* ─── Shablon tahrirlagich (F4) ───────────────────────────────────── */
 .lbl-editor         { display: grid; grid-template-columns: 1fr 320px; gap: 16px; }
 @media (max-width: 900px) { .lbl-editor { grid-template-columns: 1fr; } }

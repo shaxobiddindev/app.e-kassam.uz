@@ -17,6 +17,10 @@ import { asArray } from "../lib/ek-array";
    ══════════════════════════════════════════════════════════════════════════ */
 export function useLabelOutput() {
   const [outputs, setOutputs] = useState({});
+  /* ⚠ «YUKLANDI» ALOHIDA: bo'sh `{}` ikki ma'noli — hali so'ralmagan yoki
+     do'kon sozlamagan. Oddiy ekran ikkinchisida sozlashni ochadi va
+     birinchisida buni qilsa, har kirishda sozlash bir lahza miltillardi. */
+  const [loaded, setLoaded] = useState(false);
 
   const reload = useCallback(async () => {
     try {
@@ -33,6 +37,7 @@ export function useLabelOutput() {
       }
       setOutputs(next);
     } catch { setOutputs({}); }
+    finally { setLoaded(true); }
   }, []);
 
   useEffect(() => { reload(); }, [reload]);
@@ -44,7 +49,7 @@ export function useLabelOutput() {
     return () => window.removeEventListener("ek:label-output", on);
   }, [reload]);
 
-  return { outputs, reload };
+  return { outputs, reload, loaded };
 }
 
 /** Sehrgar saqlagandan keyin chaqiriladi. */

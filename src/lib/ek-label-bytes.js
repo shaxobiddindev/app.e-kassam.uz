@@ -191,19 +191,23 @@ export function toTSPLRaster({ widthMm, heightMm, bitmap, barcodes = [],
  *
  * @returns {{widthDots, heightDots, data: Uint8Array}}
  */
-export function packMono(rgba, widthDots, heightDots) {
+export function packMono(rgba, widthDots, heightDots, { invert = false } = {}) {
   const wb = Math.ceil(widthDots / 8);
   /* ⚠ 0xFF bilan to'ldiriladi: TSPL da 1 — oq. Qator oxiridagi
      ortiqcha bitlar ham oq bo'lishi shart, aks holda o'ng chekkada
      ingichka qora chiziq chiqadi. */
-  const data = new Uint8Array(wb * heightDots).fill(0xff);
+  /* ⚠ TESKARI REJIMDA FON HAM TESKARI (0x00): printer 1 ni qora deb
+     o'qisa, 0xFF fon butun stikerni qora qilardi. */
+  const data = new Uint8Array(wb * heightDots).fill(invert ? 0x00 : 0xff);
   for (let y = 0; y < heightDots; y++) {
     for (let x = 0; x < widthDots; x++) {
       const i = (y * widthDots + x) * 4;
       const a = rgba[i + 3] / 255;
       const lum = (rgba[i] * 299 + rgba[i + 1] * 587 + rgba[i + 2] * 114) / 1000;
       const seen = lum * a + 255 * (1 - a);
-      if (seen < 128) data[y * wb + (x >> 3)] &= ~(0x80 >> (x & 7));
+      if (seen >= 128) continue;
+      if (invert) data[y * wb + (x >> 3)] |= 0x80 >> (x & 7);
+      else data[y * wb + (x >> 3)] &= ~(0x80 >> (x & 7));
     }
   }
   return { widthDots, heightDots, data };

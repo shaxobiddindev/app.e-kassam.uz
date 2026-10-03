@@ -9,20 +9,19 @@ import { productCode, findByCode } from "../../lib/ek-code";
 import { rankItems, looksLikeCode } from "../../lib/ek-search";
 import { money } from "../../lib/ek-format";
 import { templateName } from "../../lib/ek-label-name";
-import { printHtml } from "../../lib/ek-receipt-pdf";
-import { printPriceLabels, printRawLabel } from "../../lib/ek-hardware";
+import { printPriceLabels } from "../../lib/ek-hardware";
 import { getSettings } from "../../lib/ek-hw-settings";
 import { isDesktop } from "../../lib/ek-desktop";
 import {
-  buildPrintDoc, buildRollBytes, buildRollDoc, outputMode, pageOf, pendingItems,
-  rollFor, sheetFor,
+  buildPrintDoc, buildRollDoc, outputMode, pageOf, pendingItems, rollFor, sheetFor,
 } from "../../lib/ek-label-print";
-import { rasterizeSvg } from "../../lib/ek-label-raster";
+import { sendLabels, withCodes } from "../../lib/ek-label-send";
 import { blocking, validateOutput } from "../../lib/ek-label-validate";
 import { useScanner } from "../../hooks/useScanner";
 import { useLayerCount } from "../../hooks/useLayerCount";
 import { useLabelOutput } from "../../hooks/useLabelOutput";
-import { ensureBarcodes, withPreviewBarcode } from "../../lib/ek-label-codes";
+import { lastTemplateId, rememberTemplate } from "../../lib/ek-sticker-auto";
+import { withPreviewBarcode } from "../../lib/ek-label-codes";
 
 /* ══════════════════════════════════════════════════════════════════════════
    CHOP ETISH NAVBATI (F5)
@@ -68,13 +67,7 @@ function shopCtx() {
 /* ⚠ OXIRGI TANLANGAN DIZAYN ESLAB QOLINADI (shu kompyuterda): tovarlar
    sahifasidan tez chop etishda har safar javon yorlig'i chiqib, stiker
    chiqaradigan do'kon uni har gal qayta tanlashi kerak edi. */
-const LAST_TPL = "ek_lbl_last_tpl";
-export const lastTemplateId = () => {
-  try { return Number(localStorage.getItem(LAST_TPL)) || null; } catch { return null; }
-};
-const rememberTemplate = (id) => {
-  try { localStorage.setItem(LAST_TPL, String(id)); } catch { /* to'la yoki yopiq */ }
-};
+export { lastTemplateId, rememberTemplate } from "../../lib/ek-sticker-auto";
 
 /** «58×40» — qog'oz yoki dizayn o'lchami. */
 const sizeText = (w, h) => `${Number(w)}×${Number(h)}`;
@@ -232,26 +225,13 @@ export default function LabelQueue({
    * kassada skanerlanganda «topilmadi» chiqadi — ya'ni javondagi
    * qog'ozning skanerlanadigan qismi ishlamaydi.
    */
-  /* ⚠ KOD BERILMAGAN TOVAR — CHOP ETISH TO'XTAYDI (2026-10-03).
-     Ilgari xato yutilardi va stiker jimgina barkodsiz chiqardi: u
-     kassada skanerlanmaydi va buni faqat javonda bilish mumkin edi.
-     Egasining talabi — stikerda barkod BO'LISHI SHART. */
-  const withBarcodes = async (items) => {
-    const { items: out, failed } = await ensureBarcodes(items, template,
-      (id) => productApi.generateCode(id));
-    if (failed.length) {
-      const list = failed.slice(0, 5)
-        .map((f) => `${f.product.name}${f.message ? ` (${f.message})` : ""}`).join("; ");
-      throw new Error(t("lbl.codeFailed", { n: failed.length, list }));
-    }
-    return out;
-  };
-
   const print = async () => {
     if (blocked) return;
     setBusy(true);
     try {
-      const ready = await withBarcodes(pending);
+      /* ⚠ KOD BERILMAGAN TOVAR — CHOP ETISH TO'XTAYDI (`withCodes`):
+         stikerda barkod shart, jimgina barkodsiz chiqarilmaydi. */
+      const ready = await withCodes(pending, template);
       if (via === "tape") {
         /* ⚠ LENTA — CHIZUVCHI EMAS, TASHUVCHI. Chek printeri SVG
            qabul qilmaydi: u ESC/POS baytlari bilan ishlaydi va
@@ -263,23 +243,11 @@ export default function LabelQueue({
           barcode: it.product?.barcode,
           shortCode: productCode(it.product),
         })), { copies: 1, shopName: shopCtx().shopName });
-      } else if (mode === "bytes") {
-        /* ⚠ OYNA OCHILMAYDI: baytlar sehrgarda tanlangan Windows
-           navbatiga to'g'ridan-to'g'ri ketadi. Brauzer masshtabi,
-           «sahifaga moslash», A4 — bularning hech biri bu yo'lda yo'q. */
-        const bytes = await buildRollBytes(template, ready, media, lprinter,
-          { ctx: shopCtx(), raster: rasterizeSvg });
-        await printRawLabel(bytes);
       } else {
-        const doc = mode === "sheet"
-          ? buildPrintDoc(template, ready, { startPosition, ctx: shopCtx(), page })
-          : buildRollDoc(template, ready, media, { ctx: shopCtx(), printer: lprinter });
-        /* ⚠ HUJJAT NOMI = SAQLANGAN PDF NING NOMI. Brauzerning chop
-           etish oynasida «PDF ga saqlash» tanlansa, fayl aynan shu
-           nom bilan tushadi. «Yorliqlar.pdf» degan o'nta fayl bir
-           papkada yotsa, ularni ajratib bo'lmasdi. */
-        await printHtml(doc.html, docTitle(job), doc.css, "width=980,height=800",
-          mode === "sheet" ? page : doc.page);
+        /* Yo'l (bayt / drayver / varaq) `sendLabels` da — oddiy ekran
+           va sinov stikeri bilan BITTA kod. */
+        await sendLabels({ template, items: ready, media, printer: lprinter,
+          title: docTitle(job), ctx: shopCtx(), startPosition });
       }
       setFinish({ items: ready });
     } catch (err) {

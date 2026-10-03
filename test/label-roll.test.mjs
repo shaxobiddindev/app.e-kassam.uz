@@ -189,6 +189,12 @@ console.log("\n── packMono ──");
   eq(m.data.length, 2, "10 nuqta — 2 bayt");
   eq(m.data[0], 0x7f, "⚠ qora = 0, oq = 1 (TSPL); shaffof — oq");
   eq(m.data[1], 0xff, "⚠ qator oxiridagi ortiqcha bitlar oq — o'ngda qora chiziq yo'q");
+
+  /* «Qora fonda chiqdi» tugmasi: printer 1 ni QORA deb o'qisa — hammasi teskari,
+     fon va qator oxiri ham (aks holda butun stiker qora bo'lardi). */
+  const inv = packMono(px, w, h, { invert: true });
+  eq(inv.data[0], 0x80, "teskari: qora piksel = 1, qolgani 0");
+  eq(inv.data[1], 0x00, "⚠ teskari: qator oxiri ham oq (0)");
 }
 
 /* ══════════════════════════════════════════════════════════════════

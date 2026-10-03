@@ -19,7 +19,7 @@ import { packMono } from "./ek-label-bytes.js";
  * @param widthDots, heightDots  printer nuqtasida
  * @returns {Promise<{widthDots, heightDots, data: Uint8Array}>}
  */
-export async function rasterizeSvg(svg, widthDots, heightDots) {
+export async function rasterizeSvg(svg, widthDots, heightDots, { invert = false } = {}) {
   /* ⚠ O'LCHAM NUQTADA QAYTA YOZILADI: renderer `width="58mm"` beradi,
      brauzer esa uni 96 dpi deb 219 px qiladi. Printer 203 dpi da —
      58 mm = 464 nuqta. viewBox mm da qoladi, ya'ni chizma o'zgarmaydi,
@@ -44,5 +44,5 @@ export async function rasterizeSvg(svg, widthDots, heightDots) {
   ctx.fillRect(0, 0, widthDots, heightDots);
   ctx.drawImage(img, 0, 0, widthDots, heightDots);
   const { data } = ctx.getImageData(0, 0, widthDots, heightDots);
-  return packMono(data, widthDots, heightDots);
+  return packMono(data, widthDots, heightDots, { invert });
 }

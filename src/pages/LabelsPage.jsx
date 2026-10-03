@@ -12,6 +12,7 @@ import LabelQueue from "../components/ek/LabelQueue";
 import { calibrationDoc, rollCalibrationDoc } from "../lib/ek-label-calibrate";
 import LabelSetupWizard from "../components/ek/LabelSetupWizard";
 import LabelGallery from "../components/ek/LabelGallery";
+import StickerSimple from "../components/ek/StickerSimple";
 import { printHtml } from "../lib/ek-receipt-pdf";
 import Modal from "../components/Modal";
 import { useConfirm } from "../context/ConfirmProvider";
@@ -51,7 +52,37 @@ const readCache = (kind) => {
   catch { return []; }
 };
 
+/* ══════════════════════════════════════════════════════════════════════════
+   ODDIY VA KENGAYTIRILGAN REJIM (2026-10-03)
+
+   ⚠ STANDART — ODDIY: egasi «bu bo'lim juda murakkab, nima qilayotganimni
+   bilmayapman» dedi. Do'konchilarning ko'piga faqat stiker kerak: skanerla
+   va chop et (`StickerSimple`). Dizayn tahrirlagich, javon yorlig'i, A4
+   varaq, navbatlar — kengaytirilgan rejimda, yo'qolmadi.
+
+   ⚠ TANLOV SHU KOMPYUTERDA ESLAB QOLINADI: kengaytirilganda ishlaydigan
+   omborchi har kirishda qayta o'tmasin. `?tab=queue` havolasi (bosh
+   sahifadan) to'g'ridan-to'g'ri kengaytirilganni ochadi.
+   ══════════════════════════════════════════════════════════════════════════ */
+const MODE_KEY = "ek_lbl_mode";
+const readMode = () => {
+  if (new URLSearchParams(window.location.search).get("tab") === "queue") return "advanced";
+  try { return localStorage.getItem(MODE_KEY) === "advanced" ? "advanced" : "simple"; }
+  catch { return "simple"; }
+};
+
 export default function LabelsPage({ toast }) {
+  const [mode, setMode] = useState(readMode);
+  const go = (m) => {
+    try { localStorage.setItem(MODE_KEY, m); } catch { /* yopiq xotira */ }
+    setMode(m);
+  };
+  return mode === "advanced"
+    ? <LabelsAdvanced toast={toast} onSimple={() => go("simple")} />
+    : <StickerSimple toast={toast} onAdvanced={() => go("advanced")} />;
+}
+
+function LabelsAdvanced({ toast, onSimple }) {
   const confirm = useConfirm();
   /* ⚠ MANZILDAN O'QILADI: bosh sahifadagi belgi «/labels?tab=stale»
      ga olib keladi va o'sha bo'lim DARHOL ochilishi kerak. Belgini
@@ -348,6 +379,9 @@ export default function LabelsPage({ toast }) {
   return (
     <div>
       <div className="page-header" style={{ marginBottom: 18 }}>
+        <button type="button" className="btn btn-outline btn-sm" onClick={onSimple}>
+          <i className="fa-solid fa-arrow-left" /> {t("stk.backSimple")}
+        </button>
         <h2 className="page-title">{t("lbl.title")}</h2>
         <div className="cat-tabs" role="group">
           <button type="button" className={`cat-tab ${tab === "preview" ? "active" : ""}`}

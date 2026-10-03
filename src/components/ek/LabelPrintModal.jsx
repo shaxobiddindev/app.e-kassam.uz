@@ -1,74 +1,23 @@
-import { useCallback, useEffect, useState } from "react";
 import { t } from "../../lib/ek-i18n";
-import { labelApi, productApi } from "../../api";
-import { asArray } from "../../lib/ek-array";
 import Modal from "../Modal";
-import { SkeletonList } from "./Loading";
-import LabelQueue, { lastTemplateId } from "./LabelQueue";
+import StickerSimple from "./StickerSimple";
 
 /* ══════════════════════════════════════════════════════════════════════════
-   TEZ CHOP ETISH (F5)
+   TEZ CHOP ETISH — TOVARLAR SAHIFASIDAN (F5 → 2026-10-03)
 
-   ⚠ IKKINCHI YO'L EMAS, O'SHA YO'LNING QISQA KIRISHI. Tovarlar
-   sahifasidan «yorliq» bosilganda ham AYNAN chop etish navbati
-   ochiladi: o'sha joylashtiruvchi, o'sha chizuvchi, o'sha
-   «chiqarildi» yozuvi. Ilgari bu ikkita alohida oyna edi va ular
-   boshqa-boshqa ishlardi — javondagi yorliq qaysi biridan
-   chiqqaniga qarab boshqacha ko'rinardi.
+   ⚠ O'SHA ODDIY EKRAN, OYNA ICHIDA. Ilgari bu yerda navbat komponenti
+   (manba, son qoidasi, shablon, yo'l, «qaysi tovargacha chiqdi?») ochilardi
+   va do'konchi nima qilishni bilmasdi. Endi «Stiker chiqarish» ekranining
+   o'zi: tanlangan tovarlar ro'yxatda, sonini o'zgartirish va bitta tugma.
+   Printer sozlanmagan bo'lsa — sozlash shu yerda ochiladi.
 
-   ⚠ NAVBAT HAQIQIY: bu oyna yopilib qolsa ham ish yo'qolmaydi,
-   «Yorliqlar» bo'limida o'sha navbat turaveradi.
+   ⚠ RO'YXAT HAQIQIY NAVBATDA saqlanadi: oyna yopilib qolsa ham ish
+   yo'qolmaydi va «chiqarildi» belgisi yoziladi.
    ══════════════════════════════════════════════════════════════════════════ */
 export default function LabelPrintModal({ productIds = [], onClose, toast }) {
-  const [job, setJob]     = useState(null);
-  const [templates, setTemplates] = useState([]);
-  const [products, setProducts]   = useState([]);
-  const [loading, setLoading]     = useState(true);
-  const [error, setError]         = useState(null);
-
-  const boot = useCallback(async () => {
-    setLoading(true);
-    try {
-      /* ⚠ HAMMA TUR: ilgari faqat «SHELF» so'ralardi va bu oynadan
-         stiker umuman chiqarib bo'lmasdi. Boshlang'ich dizayn —
-         shu kompyuterda oxirgi tanlangani. */
-      const [tRes, pRes] = await Promise.all([
-        labelApi.templates(),
-        productApi.getAll(),
-      ]);
-      const tpl = asArray(tRes.data);
-      setTemplates(tpl);
-      setProducts(asArray(pRes.data));
-
-      const last = lastTemplateId();
-      const created = await labelApi.newJob({
-        templateId: (tpl.some((x) => x.id === last) ? last : null)
-          ?? tpl.find((x) => x.isDefault)?.id ?? tpl[0]?.id ?? null,
-        startPosition: 1,
-      });
-      const added = await labelApi.addToJob(created.data.id, {
-        source: "PRODUCTS", productIds, quantityRule: "ONE",
-      });
-      setJob(added.data);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }, [productIds]);
-
-  useEffect(() => { boot(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
   return (
-    <Modal title={t("lbl.printTitle")} onClose={onClose} maxWidth={860}>
-      {loading ? <SkeletonList rows={3} avatar={false} />
-        : error ? <div className="form-hint form-hint--warn">{error}</div>
-        : (
-          <LabelQueue
-            job={job} templates={templates} products={products}
-            toast={toast} compact onChange={setJob}
-          />
-        )}
+    <Modal title={t("lbl.printTitle")} onClose={onClose} maxWidth={980}>
+      <StickerSimple toast={toast} productIds={productIds} compact onPrinted={onClose} />
     </Modal>
   );
 }

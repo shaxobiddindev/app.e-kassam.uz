@@ -36,6 +36,12 @@ export const DEFAULTS = {
      kompyuterda ma'lum, shuning uchun u mahalliy sozlamada
      saqlanadi. */
   labelPrinterName: "",
+  /* ⚠ YORLIQ RASMINI TESKARI QILISH (2026-10-03). TSPL `BITMAP` da 1 —
+     oq deb hujjatlangan, lekin ba'zi klon printerlar teskari o'qiydi va
+     stiker qora fonda chiqadi. Do'konchi buni sinov stikerida «qora
+     fonda chiqdi» tugmasi bilan bir marta aytadi — sozlama shu yerda,
+     chunki u PRINTERNING xossasi, do'konniki emas. */
+  labelInvert: false,
   host:        "",         // tcp: IP
   port:        9100,
   width:       80,         // 80 | 58 (mm)

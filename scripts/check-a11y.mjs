@@ -40,7 +40,7 @@ const CHROME = process.env.CHROME_PATH
 /* Tekshiriladigan ekranlar. Kirish talab qilinmaydigan holat — SPA
    token yo'q bo'lsa kirish ekranini chizadi; shuning uchun `localStorage`
    ga soxta sessiya qo'yiladi va API javoblari bo'sh qaytariladi. */
-const ROUTES = ["/", "/sale", "/products", "/reports", "/settings"];
+const ROUTES = ["/", "/sale", "/products", "/labels", "/reports", "/settings"];
 
 const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css",
                ".svg": "image/svg+xml", ".png": "image/png", ".webp": "image/webp",
