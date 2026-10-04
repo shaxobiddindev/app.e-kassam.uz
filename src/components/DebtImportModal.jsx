@@ -199,7 +199,7 @@ export default function DebtImportModal({ onClose, onDone, toast }) {
     try {
       const payload = filled.map((r) => ({ ...toPayload(r, defaultDate), askConfirm }));
       const res = await customerApi.addManualDebtBatch(payload);
-      const errors = res?.data?.errors || [];
+      const errors = asArray(res?.data?.errors);
       if (errors.length) {
         setServerErr(Object.fromEntries(errors.map((e) => [filled[e.index]?.id, e.message])));
         toast?.error(res?.message || t("dimp.fixRows", { n: errors.length }));
