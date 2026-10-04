@@ -1163,6 +1163,7 @@ export default {
 
   "cust.title": "Customers",
   "cust.add": "Add customer",
+  "cust.phoneIncomplete": "The phone number is incomplete",
   "cust.new": "New customer",
   "cust.edit": "Edit customer",
   "cust.added": "Customer added",

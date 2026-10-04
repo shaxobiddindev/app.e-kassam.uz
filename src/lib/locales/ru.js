@@ -1163,6 +1163,7 @@ export default {
 
   "cust.title": "Клиенты",
   "cust.add": "Добавить клиента",
+  "cust.phoneIncomplete": "Номер телефона неполный",
   "cust.new": "Новый клиент",
   "cust.edit": "Изменить клиента",
   "cust.added": "Клиент добавлен",

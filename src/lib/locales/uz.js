@@ -1218,6 +1218,7 @@ export default {
   /* ── Mijozlar (kassir) ─────────────────────────────────────────────── */
   "cust.title": "Mijozlar",
   "cust.add": "Mijoz qo'shish",
+  "cust.phoneIncomplete": "Telefon raqami to'liq emas",
   "cust.new": "Yangi mijoz",
   "cust.edit": "Mijozni tahrirlash",
   "cust.added": "Mijoz qo'shildi",

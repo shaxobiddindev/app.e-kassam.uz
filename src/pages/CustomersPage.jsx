@@ -280,13 +280,11 @@ export default function CustomersPage({ toast }) {
 
   const closeModal = () => setModal(null);
 
-  /* ⚠ TELEFON — QACHON MAJBURIY (2026-10-04). Yangi mijozda — ha. Daftardan
-     TELEFONSIZ ko'chirilgan mijozni tahrirlashda — yo'q: egasi «tahrirlashda
-     ham telefon ixtiyoriy bo'lsin» dedi (ilgari ismni tuzatish uchun ham
-     telefon so'ralardi). Telefoni BOR mijozda u o'chirilmaydi, faqat
-     almashtiriladi — ilova, Telegram va karta shu raqamga bog'langan
-     (server ham shuni tekshiradi). */
-  const phoneRequired = modal === "add" || !!modal?.customer?.phone;
+  /* ⚠ TELEFON IXTIYORIY (2026-10-04, egasi: avval tahrirlashda, keyin yangi
+     mijozda ham). Yagona istisno: telefoni BOR mijozda u o'chirilmaydi, faqat
+     almashtiriladi — ilova, Telegram va karta shu raqamga bog'langan (server
+     ham shuni tekshiradi). */
+  const phoneRequired = modal?.type === "edit" && !!modal.customer?.phone;
 
   const handleSave = async () => {
     const phone = String(form.phone || "").trim();
@@ -295,7 +293,7 @@ export default function CustomersPage({ toast }) {
       return;
     }
     if (phone && !isPhone(phone)) {
-      toast.error(t("dimp.errPhone"));
+      toast.error(t("cust.phoneIncomplete"));
       return;
     }
     setSaving(true);
@@ -960,7 +958,7 @@ export default function CustomersPage({ toast }) {
               autoFocus
             />
           </FormGroup>
-          <FormGroup label={phoneRequired ? `${t("common.phone")} *` : `${t("common.phone")} (${t("dimp.optional")})`}>
+          <FormGroup label={phoneRequired ? `${t("common.phone")} *` : `${t("common.phone")} (${t("common.optional")})`}>
             <PhoneField
               className="form-input mono ek-num"
               value={form.phone || ""}

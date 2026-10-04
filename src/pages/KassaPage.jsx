@@ -39,6 +39,7 @@ import { sfx } from "../lib/ek-sound";
 import { useLoading } from "../lib/use-loading";
 import Modal from "../components/Modal";
 import { PhoneField } from "../components/ek/EkFields";
+import { isPhone } from "../lib/ek-input";
 import Select from "../components/ek/Select";
 import { printReceipt, openDrawer, printDebtReceipt, printerHealth } from "../lib/ek-hardware";
 import { getSettings } from "../lib/ek-hw-settings";
@@ -1196,10 +1197,15 @@ export default function KassaPage({ toast, refreshLowStock }) {
    */
   const saveNewCustomer = async () => {
     const name = (newCust?.fullName || "").trim();
-    if (!name || !newCust?.phone) return;
+    /* ⚠ Telefon IXTIYORIY (2026-10-04, egasining so'zi): nasiyaga kelgan
+       odam raqamini aytmasa ham kassa to'xtamasin. Yozilgan bo'lsa — to'liq
+       bo'lsin: chala raqam saqlansa, eslatma va ilova bog'lanishi jim ishlamasdi. */
+    const phone = String(newCust?.phone || "").trim();
+    if (!name) return;
+    if (phone && !isPhone(phone)) { toast.error(t("cust.phoneIncomplete")); return; }
     setSavingCust(true);
     try {
-      const r = await customerApi.create({ fullName: name, phone: newCust.phone });
+      const r = await customerApi.create({ fullName: name, phone: phone || null });
       const c = r?.data;
       if (c?.id) {
         setCustomers((prev) => [c, ...prev]);
@@ -3845,7 +3851,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
                 {t("common.cancel")}
               </button>
               <button className="btn btn-primary btn-sm" onClick={saveNewCustomer}
-                      disabled={savingCust || !newCust.fullName.trim() || !newCust.phone}>
+                      disabled={savingCust || !newCust.fullName.trim()}>
                 <i className="fa-solid fa-check" aria-hidden="true" /> {t("common.save")}
               </button>
             </>
@@ -3855,7 +3861,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
           <input className="form-input" autoFocus value={newCust.fullName}
                  onChange={(e) => setNewCust({ ...newCust, fullName: e.target.value })}
                  placeholder="Abdullayev Ali" />
-          <label className="form-label" style={{ marginTop: 10 }}>{t("common.phone")} *</label>
+          <label className="form-label" style={{ marginTop: 10 }}>{t("common.phone")} ({t("common.optional")})</label>
           <PhoneField className="form-input mono ek-num" value={newCust.phone}
                       onChange={(e) => setNewCust({ ...newCust, phone: e.target.value })} />
         </Modal>
