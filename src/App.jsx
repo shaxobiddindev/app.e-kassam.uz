@@ -24,6 +24,7 @@ import { hasRole, roleSet } from "./lib/ek-roles";
 import ErrorBoundary, { RouteErrorBoundary } from "./components/ek/ErrorBoundary";
 import { P } from "./lib/ek-pages";
 import { lazySafe } from "./lib/ek-lazy";
+import { clearSession } from "./lib/ek-session";
 import { Progress } from "./components/ek/Loading";
 import { BadgeProvider } from "./context/BadgeProvider";
 import { KeyboardProvider } from "./context/KeyboardProvider";
@@ -129,21 +130,16 @@ if (!IS_PORTAL && !IS_APP_WEB && (!localToken || localType !== "user")) {
   // boshqa tilda ko'radi. `ek_forceMobile` ham (dev-bayroq): usiz mobil
   // UI'ni brauzerda chiqib-kirib sinab bo'lmaydi — clear() uni o'chirib,
   // sahifa auth'ga qochib ketardi.
-  const _lang = localStorage.getItem("ek_lang");
-  const _fm   = localStorage.getItem("ek_forceMobile");
-  /* ⚠⚠ MIJOZ SESSIYASI ham omon qolishi SHART (V37 dan beri buzuq edi):
+  /* ⚠ KOMPYUTER SOZLAMALARI (printer, tarozi, ekran, stiker) ham omon
+     qoladi — `ek-session.js`. Ilgari bu yerda faqat til saqlanardi va
+     tokensiz har ochilish (sessiya tugagach) printer nomini ham o'chirardi.
+     ⚠⚠ MIJOZ SESSIYASI ham omon qolishi SHART (V37 dan beri buzuq edi):
      mijoz qurilmasida xodim tokeni HECH QACHON bo'lmaydi, ya'ni bu shox
      har ochilishda ishlaydi va `clear()` mijozning kalitini o'chirib
      yuborardi — odam ilovani har safar qaytadan ochganda Telegramdan
      qayta kirishga majbur bo'lardi. Karta tanlovi ham shu yerda: u
      shunchaki qulaylik sozlamasi. */
-  const _app  = localStorage.getItem("ek_app_token");
-  const _card = localStorage.getItem("ek_app_card_shop");
-  localStorage.clear();
-  if (_lang) localStorage.setItem("ek_lang", _lang);
-  if (_fm)   localStorage.setItem("ek_forceMobile", _fm);
-  if (_app)  localStorage.setItem("ek_app_token", _app);
-  if (_card) localStorage.setItem("ek_app_card_shop", _card);
+  clearSession(["ek_app_token", "ek_app_card_shop"]);
 
   // ⚠ DESKTOP'DA YO'NALTIRISH YO'Q. `.exe` ichida `auth.e-kassam.uz` ga
   // o'tish oynani bo'sh sahifaga aylantirardi va kassir uchun ilova

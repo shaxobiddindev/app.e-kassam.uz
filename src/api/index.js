@@ -2,6 +2,7 @@ import { API_BASE, LOGIN_URL, getDeviceId } from "../config";
 import { getLang, withLang, t } from "../lib/ek-i18n";
 import { isNativeShell } from "../lib/ek-desktop";
 import { rememberShopHead } from "../lib/ek-shop-print";
+import { clearSession } from "../lib/ek-session";
 
 /**
  * Sessiya tiklab bo'lmadi — foydalanuvchini kirish ekraniga qaytaramiz.
@@ -12,9 +13,10 @@ import { rememberShopHead } from "../lib/ek-shop-print";
  * ekranini shu oynada chizadi.
  */
 function forceLogout(reason) {
-  const lang = localStorage.getItem("ek_lang");
-  localStorage.clear();
-  if (lang) localStorage.setItem("ek_lang", lang);
+  /* ⚠ `clear()` EMAS: u printer, tarozi va stiker sozlamalarini ham
+     o'chirardi — yangilanishdan keyin har safar qayta sozlash kerak edi
+     (egasining shikoyati, `ek-session.js`). Til ham shu yerda saqlanadi. */
+  clearSession();
 
   const flag = reason === "taken-over" ? "session_taken_over=1" : "logged_out=1";
 

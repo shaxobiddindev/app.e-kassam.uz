@@ -8,7 +8,8 @@ import { SkeletonList, Spinner } from "./Loading";
 import LabelGallery from "./LabelGallery";
 import StickerSetup from "./StickerSetup";
 import { isDesktop } from "../../lib/ek-desktop";
-import { getSettings } from "../../lib/ek-hw-settings";
+import { getSettings, saveSettings } from "../../lib/ek-hw-settings";
+import { listPrinters } from "../../lib/ek-hardware";
 import { money } from "../../lib/ek-format";
 import { productCode, findByCode } from "../../lib/ek-code";
 import { rankItems, looksLikeCode } from "../../lib/ek-search";
@@ -19,7 +20,7 @@ import { drawsBarcode, withPreviewBarcode } from "../../lib/ek-label-codes";
 import { prettyStoreCode, storeCodeOf } from "../../lib/ek-store-code";
 import { templateName } from "../../lib/ek-label-name";
 import {
-  designsFor, lastTemplateId, pickTemplate, printerErrorKey, rememberTemplate, setupDone,
+  autoPrinter, designsFor, lastTemplateId, pickTemplate, printerErrorKey, rememberTemplate, setupDone,
 } from "../../lib/ek-sticker-auto";
 import { routeOf, sendLabels, withCodes } from "../../lib/ek-label-send";
 import { useLabelOutput } from "../../hooks/useLabelOutput";
@@ -73,7 +74,31 @@ export default function StickerSimple({ toast, productIds = null, compact = fals
   const out = outputs[kind] || {};
   const media = out.media || null;
   const printer = out.printer || null;
-  const queue = (getSettings().labelPrinterName || "").trim();
+  /* `healedQueue` — shu ekranda o'zi topilgan nom: saqlangach qayta chizish uchun. */
+  const [healedQueue, setHealedQueue] = useState("");
+  const queue = (getSettings().labelPrinterName || healedQueue || "").trim();
+
+  /* ⚠ PRINTER NOMI YO'QOLSA — O'ZI TOPADI (2026-10-04). Egasi: «har safar
+     ilova yangilanganda stiker chiqarishni qayta sozlash kerak bo'lyapti».
+     Qog'oz va printer turi SERVERDA, Windows printerining nomi esa shu
+     kompyuterda (`ek_hw`). Nom yo'qolsa (sessiya tozalanishi —
+     `ek-session.js`, yoki boshqa kompyuter) server sozlamasi joyida bo'lsa
+     ham ekran BUTUN sozlashni qaytadan ochardi. Endi kompyuterda BITTA
+     stiker printeri bo'lsa — jimgina qayta yoziladi; ikkita bo'lsa yoki
+     birortasi bo'lmasa — odam tanlaydi (taxmin qilinmaydi, `autoPrinter`). */
+  const needsQueue = loaded && desktop && !!media && String(media.mediaType) !== "VARAQ" && !queue;
+  const [healed, setHealed] = useState(false);
+  useEffect(() => {
+    if (!needsQueue || healed) return;
+    let alive = true;
+    listPrinters().then((names) => {
+      if (!alive) return;
+      const pick = autoPrinter(names || [], getSettings().printerName || "");
+      if (pick) { saveSettings({ labelPrinterName: pick }); setHealedQueue(pick); }
+      setHealed(true);
+    });
+    return () => { alive = false; };
+  }, [needsQueue, healed]);
   const ready = setupDone(out, { desktop, queue });
 
   const [booting, setBooting] = useState(true);
@@ -100,7 +125,10 @@ export default function StickerSimple({ toast, productIds = null, compact = fals
      qadami ko'rinmasdan sozlash yopilib qolardi. Shuning uchun «sozlash
      boshlandi» alohida eslab qolinadi va faqat `onDone` da tugaydi. */
   const [inSetup, setInSetup] = useState(false);
-  useEffect(() => { if (loaded && !ready) setInSetup(true); }, [loaded, ready]);
+  /* Printer nomi qidirilayotganda sozlash OCHILMAYDI — topilsa, umuman kerak emas. */
+  useEffect(() => {
+    if (loaded && !ready && (!needsQueue || healed)) setInSetup(true);
+  }, [loaded, ready, needsQueue, healed]);
 
   /* ⚠ NAVBAT BITTA MARTA YARATILADI: tez ketma-ket skanerlashda ikki so'rov
      bir vaqtda «navbat yo'q» deb ikkita navbat ochardi va tovarlar ikkiga
@@ -350,7 +378,10 @@ export default function StickerSimple({ toast, productIds = null, compact = fals
     </div>
   );
 
-  if (!loaded || booting) {
+  /* ⚠ Printer nomi qidirilayotganda ham skelet: aks holda sozlash bir lahza
+     ko'rinib, printer topilgach yo'qolardi — «yana sozlash kerakmi?» degan
+     tuyg'u aynan shundan. */
+  if (!loaded || booting || (needsQueue && !healed)) {
     return <div>{header}<div className="card"><SkeletonList rows={4} avatar={false} /></div></div>;
   }
 
