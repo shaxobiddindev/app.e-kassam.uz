@@ -86,19 +86,30 @@ export default function StickerSimple({ toast, productIds = null, compact = fals
      ham ekran BUTUN sozlashni qaytadan ochardi. Endi kompyuterda BITTA
      stiker printeri bo'lsa — jimgina qayta yoziladi; ikkita bo'lsa yoki
      birortasi bo'lmasa — odam tanlaydi (taxmin qilinmaydi, `autoPrinter`). */
-  const needsQueue = loaded && desktop && !!media && String(media.mediaType) !== "VARAQ" && !queue;
+  const rollMedia = loaded && desktop && !!media && String(media.mediaType) !== "VARAQ";
+  const needsQueue = rollMedia && !queue;
   const [healed, setHealed] = useState(false);
+  /* ⚠ SAQLANGAN PRINTER KOMPYUTERDA YO'Q BO'LSA HAM (2026-10-04): printer
+     qayta o'rnatilsa Windows uni «Xprinter XP-365B (Copy 1)» deb nomlaydi
+     va eski nomga yuborilgan stiker «printer ochilmadi» bilan qaytardi.
+     Endi har ochilishda nom tekshiriladi; topilmasa — yagona stiker
+     printeriga o'zi o'tadi. Printer o'chiq bo'lsa (ro'yxatda hech narsa
+     yo'q) eski nom tegilmaydi. */
   useEffect(() => {
-    if (!needsQueue || healed) return;
+    if (!rollMedia || healed) return undefined;
     let alive = true;
     listPrinters().then((names) => {
       if (!alive) return;
-      const pick = autoPrinter(names || [], getSettings().printerName || "");
-      if (pick) { saveSettings({ labelPrinterName: pick }); setHealedQueue(pick); }
+      const list = names || [];
+      const cur = (getSettings().labelPrinterName || "").trim();
+      if (!cur || !list.includes(cur)) {
+        const pick = autoPrinter(list, getSettings().printerName || "");
+        if (pick && pick !== cur) { saveSettings({ labelPrinterName: pick }); setHealedQueue(pick); }
+      }
       setHealed(true);
     });
     return () => { alive = false; };
-  }, [needsQueue, healed]);
+  }, [rollMedia, healed]);
   const ready = setupDone(out, { desktop, queue });
 
   const [booting, setBooting] = useState(true);

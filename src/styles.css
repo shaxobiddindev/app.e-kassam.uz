@@ -6855,6 +6855,23 @@ button.stk__c:hover { background: var(--bg-hover); }
                      margin-top: 4px; }
 .stk-next          { margin-inline-start: auto; min-height: var(--hit-pos); padding-inline: 24px; font-size: 15px; }
 
+/* ── Avtomatik sozlash (2026-10-04): printer holati va «Qo'lda sozlash» ──
+   Holat matn + ikonka bilan (rang yolg'iz signal emas). */
+.stk-pstat         { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-height: var(--hit-pos);
+                     padding: 10px 14px; border-radius: 12px; font-weight: 700;
+                     background: var(--bg-sunken); color: var(--fg-primary); border: 1px solid var(--border-subtle); }
+.stk-pstat > i     { font-size: 18px; }
+.stk-pstat__t      { flex: 1 1 200px; }
+.stk-pstat--found  { background: var(--bg-success-subtle); border-color: var(--border-success); }
+.stk-pstat--found > i { color: var(--fg-success); }
+.stk-pstat--none   { background: var(--bg-warning-subtle); border-color: var(--border-warning); }
+.stk-pstat--none > i { color: var(--fg-warning-strong); }
+.stk-pstat .btn    { min-height: var(--hit-min); }
+.stk-manual        { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; align-self: flex-start;
+                     min-height: var(--hit-min); padding: 6px 2px; border: 0; background: none; cursor: pointer;
+                     font: inherit; font-weight: 700; color: var(--fg-brand); }
+.stk-manual:hover  { text-decoration: underline; }
+.stk-manual__h     { font-weight: 500; color: var(--fg-secondary); }
 .stk-note          { padding: 12px 14px; border-radius: 10px; font-weight: 600;
                      background: var(--bg-success-subtle); color: var(--fg-success);
                      border: 1px solid var(--border-success); }

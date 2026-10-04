@@ -16,7 +16,7 @@
 import { productApi } from "../api";
 import { t } from "./ek-i18n";
 import { isDesktop } from "./ek-desktop";
-import { getSettings } from "./ek-hw-settings";
+import { getSettings, saveSettings } from "./ek-hw-settings";
 import { printHtml } from "./ek-receipt-pdf";
 import { printRawLabel } from "./ek-hardware";
 import { buildPrintDoc, buildRollBytes, buildRollDoc, outputMode, pageOf } from "./ek-label-print";
@@ -59,6 +59,7 @@ export async function sendLabels({ template, items, media, printer, title = "",
                                    ctx = {}, startPosition = 1 }) {
   const mode = routeOf(media, printer);
   if (mode === "bytes") {
+    await measureOnce(media, printer);
     const invert = Boolean(getSettings().labelInvert);
     const bytes = await buildRollBytes(template, items, media, printer, {
       ctx, raster: (svg, w, h) => rasterizeSvg(svg, w, h, { invert }),
@@ -82,9 +83,26 @@ export async function sendLabels({ template, items, media, printer, title = "",
  * Printer bir-ikki bo'sh stiker o'tkazib, oraliqni eslab qoladi.
  * @returns {Promise<boolean>} buyruq yuborildimi (tili ma'lum bo'lmasa — yo'q)
  */
-export async function calibrate(printer) {
+export async function calibrate(printer, media = null) {
   const cmd = calibrationCommand(printer?.lang);
   if (!cmd || !isDesktop()) return false;
   await printRawLabel(cmd);
+  if (media) saveSettings({ labelMeasuredFor: measureKey(media) });
   return true;
+}
+
+const measureKey = (media) =>
+  `${(getSettings().labelPrinterName || "").trim()}|${media?.id ?? ""}`;
+
+/**
+ * ⚠ QOG'OZ BIR MARTA O'ZI O'LCHANADI (2026-10-04). Egasi: «printer
+ * ulangandan keyin hammasi avtomatik bo'lsin». Ilgari o'lchash faqat
+ * sozlashdagi sinov stikerida edi — sinov majburiy edi va undan
+ * o'tkazib yuborilsa, yangi rulonda yozuv ikki stiker o'rtasiga tushardi.
+ * Endi shu printer + shu qog'oz uchun BIRINCHI chop etishdan oldin o'zi
+ * o'lchaydi; printer yoki o'lcham almashsa — yana bir marta.
+ */
+async function measureOnce(media, printer) {
+  if (getSettings().labelMeasuredFor === measureKey(media)) return;
+  try { await calibrate(printer, media); } catch { /* o'lchash chiqmasa ham chop etish davom etadi */ }
 }

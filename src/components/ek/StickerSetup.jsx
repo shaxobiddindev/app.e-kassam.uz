@@ -35,6 +35,17 @@ import { calibrate, routeOf, sendLabels } from "../../lib/ek-label-send";
    «qora fonda chiqdi», «surilib ketdi», «juda och». Har biri o'zi
    tuzatadi va yana bitta sinov chiqaradi. «Zichlikni 8 dan 11 ga
    ko'taring» degan gapni hech kim tushunmasdi.
+   ⚠ AVTOMATIK REJIM — ASOSIY (2026-10-04). Egasi: «printer ulangandan keyin
+   avtomatik sozlansin, user hech nima qilishi shart bo'lmasin, faqat qog'oz
+   o'lchami kabi oddiy narsani tanlasin; qo'lda sozlash xohlovchilar uchun
+   qolsin». Uch qadamli oqimda har safar biror qadam «kamchilik» berardi:
+   printer ro'yxatidan tanlash, «Keyingi», majburiy sinov stikeri va
+   «to'g'ri chiqdimi?». Endi:
+     · printer o'zi topiladi; ulanmagan bo'lsa — har 3 soniyada qidiriladi
+       va ulangan zahoti o'zi tanlanadi;
+     · yagona savol — qog'oz o'lchami, bosilishi bilan saqlanadi va tayyor;
+     · qog'ozni o'lchash birinchi chop etishda o'zi (`ek-label-send.js`).
+   Eski uch qadam («Qo'lda sozlash») — sinov stikeri, zichlik, siljish uchun.
    ══════════════════════════════════════════════════════════════════════════ */
 
 /** Sinov uchun namuna — haqiqiy tovarga kod berib yubormaslik uchun soxta. */
@@ -76,6 +87,9 @@ export default function StickerSetup({ toast, onDone, kind = "STICKER" }) {
   const [error, setError] = useState(null);
   const [fix, setFix] = useState(null);          // null | "shift" | "nothing" | "driver"
   const [measured, setMeasured] = useState(false); // printer qog'ozni o'lchadimi
+  const [mode, setMode] = useState("auto");        // "auto" | "manual"
+  const [pending, setPending] = useState(null);    // printer kutilayotgan o'lcham (id)
+  const [showList, setShowList] = useState(false); // printerni qo'lda tanlash ro'yxati
 
   const boot = useCallback(async () => {
     setLoading(true);
@@ -99,9 +113,9 @@ export default function StickerSetup({ toast, onDone, kind = "STICKER" }) {
   useEffect(() => { boot(); }, [boot]);
 
   const receiptName = getSettings().printerName || "";
-  const loadQueues = useCallback(() => {
+  const loadQueues = useCallback((silent = false) => {
     if (!desktop) return;
-    setQueuesLoaded(false);
+    if (!silent) setQueuesLoaded(false);
     listPrinters()
       .then((list) => {
         const names = list || [];
@@ -114,6 +128,15 @@ export default function StickerSetup({ toast, onDone, kind = "STICKER" }) {
       .finally(() => setQueuesLoaded(true));
   }, [desktop, receiptName]);
   useEffect(() => { loadQueues(); }, [loadQueues]);
+
+  /* ⚠ PRINTER ULANISHINI KUTISH: printer topilmaguncha har 3 soniyada jim
+     qidiriladi — do'konchi USB ni ulaydi va ekran o'zi «topildi» deydi,
+     hech qanday tugma bosmasdan. */
+  useEffect(() => {
+    if (!desktop || mode !== "auto" || queue) return undefined;
+    const id = setInterval(() => loadQueues(true), 3000);
+    return () => clearInterval(id);
+  }, [desktop, mode, queue, loadQueues]);
 
   const sorted = useMemo(() => sortPrinters(queues, receiptName), [queues, receiptName]);
   const rolls = useMemo(() => stickerMedias(medias), [medias]);
@@ -133,6 +156,40 @@ export default function StickerSetup({ toast, onDone, kind = "STICKER" }) {
     const key = printerErrorKey(err?.message);
     return key ? { text: t(key), detail: err.message } : { text: err?.message || "" };
   };
+
+  /* ── Avtomatik rejim: o'lcham bosildi — saqlanadi va tayyor ────────── */
+  const saveAuto = async (m) => {
+    const isSheet = String(m.mediaType) === "VARAQ";
+    setMediaId(m.id);
+    /* Printer hali ulanmagan — o'lcham eslab qolinadi, printer topilishi
+       bilan pastdagi effekt o'zi saqlaydi. */
+    if (desktop && !isSheet && !queue) { setPending(m.id); return; }
+    setBusy(true); setError(null);
+    try {
+      let prof = isSheet ? profileFor("", profiles)
+        : desktop ? profileFor(queue, profiles)
+        : current?.printer || profileFor("xprinter", profiles);
+      /* Do'konchi avval qo'lda zichlik/siljishni tuzatgan bo'lsa (o'z nusxasi),
+         o'sha tildagi printerda nusxa qoladi — qayta sozlash uni o'chirmasin. */
+      if (!isSheet && current?.printer && !current.printer.system && prof
+          && current.printer.lang === prof.lang) prof = current.printer;
+      await labelApi.saveOutput(kind, {
+        mediaProfileId: m.id, printerProfileId: prof?.id ?? null, calibrated: false,
+      });
+      if (desktop && !isSheet) saveSettings({ labelPrinterName: queue });
+      announceLabelOutput();
+      setPending(null);
+      toast?.success(desktop && !isSheet ? tk("autoDone", { name: queue }) : tk("autoDoneWeb"));
+      onDone?.();
+    } catch (err) { setError(friendly(err)); }
+    finally { setBusy(false); }
+  };
+
+  useEffect(() => {
+    if (!pending || !queue || busy) return;
+    const m = medias.find((x) => x.id === pending);
+    if (m) saveAuto(m);
+  }, [pending, queue]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ── 2-qadamdan keyin: hammasi avtomatik saqlanadi ─────────────────── */
   const save = async () => {
@@ -175,7 +232,7 @@ export default function StickerSetup({ toast, onDone, kind = "STICKER" }) {
     setBusy(true); setError(null);
     try {
       if ((measure || !measured) && routeOf(media, p) === "bytes") {
-        await calibrate(p);
+        await calibrate(p, media);
         setMeasured(true);
       }
       const tpl = pickTemplate(templates, media, lastTemplateId(), kind);
@@ -271,10 +328,168 @@ export default function StickerSetup({ toast, onDone, kind = "STICKER" }) {
 
   if (loading) return <SkeletonList rows={3} avatar={false} />;
 
+  /* O'lcham tugmalari — ikkala rejimda bir xil; farqi bosilganda nima bo'lishida. */
+  function sizeGrid(onPick) {
+    return (
+      <>
+        <div className="stk-sizes" role="radiogroup" aria-label={tk("qSize")}>
+          {a4 && (
+            /* ⚠ A4 — FAQAT JAVON YORLIG'IDA: stikerda A4 so'ralmagan (egasi:
+               «menga A4 umuman kerak emas»), narx yorlig'ini esa ko'p do'kon
+               oddiy printerda varaqqa chiqarib, qaychi bilan kesadi. */
+            <button type="button" role="radio" aria-checked={a4.id === mediaId}
+                    className={`stk-size ${a4.id === mediaId ? "is-on" : ""}`} onClick={() => onPick(a4)}>
+              <span className="stk-size__art" aria-hidden="true">
+                <span className="stk-size__paper stk-size__paper--a4" />
+              </span>
+              <span className="stk-size__num">{t("shf.a4")}</span>
+              <span className="stk-size__unit">{t("shf.a4Hint")}</span>
+              {a4.id === mediaId && <i className="fa-solid fa-circle-check stk-choice__on" aria-hidden="true" />}
+            </button>
+          )}
+          {main.map((m) => {
+            const on = m.id === mediaId;
+            const w = Number(m.labelWidthMm), h = Number(m.labelHeightMm);
+            return (
+              <button key={m.id} type="button" role="radio" aria-checked={on}
+                      className={`stk-size ${on ? "is-on" : ""}`} onClick={() => onPick(m)}>
+                {/* ⚠ RASM HAQIQIY NISBATDA: 58×40 va 30×20 ni raqamsiz ham
+                    ajratib bo'lsin — qo'ldagi rulon bilan solishtiriladi. */}
+                <span className="stk-size__art" aria-hidden="true">
+                  <span className="stk-size__paper" style={{ width: w * 1.6, height: h * 1.6 }} />
+                </span>
+                <span className="stk-size__num ek-num">{w} × {h}</span>
+                <span className="stk-size__unit">{tk("mm")}</span>
+                {on && <i className="fa-solid fa-circle-check stk-choice__on" aria-hidden="true" />}
+              </button>
+            );
+          })}
+        </div>
+        <button type="button" className="btn btn-outline btn-sm stk-more"
+                aria-expanded={more} onClick={() => setMore((v) => !v)}>
+          <i className={`fa-solid ${more ? "fa-chevron-up" : "fa-chevron-down"}`} /> {tk("otherSize")}
+        </button>
+        {more && (
+          <div className="stk-choices stk-choices--wrap" role="radiogroup" aria-label={tk("otherSize")}>
+            {others.map((m) => {
+              const on = m.id === mediaId;
+              return (
+                <button key={m.id} type="button" role="radio" aria-checked={on}
+                        className={`stk-choice ${on ? "is-on" : ""}`} onClick={() => onPick(m)}>
+                  <span className="stk-choice__name ek-num">{sizeOf(m)} {tk("mm")}</span>
+                  {Number(m.across) > 1 && (
+                    <span className="stk-tag stk-tag--muted">{tk("across", { n: Number(m.across) })}</span>
+                  )}
+                  {on && <i className="fa-solid fa-circle-check stk-choice__on" aria-hidden="true" />}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </>
+    );
+  }
+
+  const labelPrinters = sorted.filter((p) => p.label);
+  const choosePrinter = (name) => { setQueue(name); setShowList(false); };
+  const printerList = (list) => (
+    <div className="stk-choices" role="radiogroup" aria-label={tk("qPrinter")}>
+      {list.map((p) => {
+        const on = p.name === queue;
+        return (
+          <button key={p.name} type="button" role="radio" aria-checked={on}
+                  className={`stk-choice ${on ? "is-on" : ""}`} onClick={() => choosePrinter(p.name)}>
+            <i className={`fa-solid ${p.label ? "fa-tags" : p.kind === "receipt" ? "fa-receipt" : "fa-print"}`}
+               aria-hidden="true" />
+            <span className="stk-choice__name">{p.name}</span>
+            {p.label && <span className="stk-tag">{tk("tagLabel")}</span>}
+            {p.kind === "receipt" && <span className="stk-tag stk-tag--muted">{tk("tagReceipt")}</span>}
+            {on && <i className="fa-solid fa-circle-check stk-choice__on" aria-hidden="true" />}
+          </button>
+        );
+      })}
+    </div>
+  );
+
+  /* ══ AVTOMATIK REJIM ══════════════════════════════════════════════════ */
+  if (mode === "auto") {
+    const needPrinter = desktop && (kind === "STICKER" || (media && !sheet));
+    const pState = !queuesLoaded ? "search" : queue ? "found"
+      : labelPrinters.length > 1 ? "many" : "none";
+    return (
+      <div className="stk-setup stk-auto">
+        {error && (
+          <div className="stk-alert" role="alert">
+            <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />
+            <div>
+              <div>{error.text}</div>
+              {error.detail && <div className="stk-alert__detail">{error.detail}</div>}
+            </div>
+          </div>
+        )}
+
+        {needPrinter && (
+          <div className={`stk-pstat stk-pstat--${pState}`} role="status" aria-live="polite">
+            {pState === "search" && <><Spinner small /> <span>{tk("pSearching")}</span></>}
+            {pState === "found" && (
+              <>
+                <i className="fa-solid fa-circle-check" aria-hidden="true" />
+                <span className="stk-pstat__t">{tk("pFound", { name: queue })}</span>
+                <button type="button" className="btn btn-outline btn-sm" onClick={() => setShowList((v) => !v)}>
+                  {tk("pOther")}
+                </button>
+              </>
+            )}
+            {pState === "many" && (
+              <>
+                <i className="fa-solid fa-tags" aria-hidden="true" />
+                <span className="stk-pstat__t">{tk("pMany")}</span>
+              </>
+            )}
+            {pState === "none" && (
+              <>
+                <i className="fa-solid fa-plug-circle-xmark" aria-hidden="true" />
+                <span className="stk-pstat__t">{tk("pWaiting")}</span>
+                <Spinner small />
+              </>
+            )}
+          </div>
+        )}
+        {needPrinter && pState === "many" && printerList(labelPrinters)}
+        {needPrinter && pState === "none" && sorted.length > 0 && (
+          <button type="button" className="btn btn-outline btn-sm stk-more" aria-expanded={showList}
+                  onClick={() => setShowList((v) => !v)}>
+            <i className={`fa-solid ${showList ? "fa-chevron-up" : "fa-chevron-down"}`} aria-hidden="true" /> {tk("pList")}
+          </button>
+        )}
+        {needPrinter && showList && printerList(sorted)}
+
+        <h3 className="stk-q">{tk("qSize")}</h3>
+        <p className="stk-hint">{tk("autoSize")}</p>
+        {sizeGrid(saveAuto)}
+
+        {pending && !queue && (
+          <div className="stk-note" role="status">
+            <i className="fa-solid fa-hourglass-half" aria-hidden="true" /> {tk("waitSize")}
+          </div>
+        )}
+        {busy && <div className="stk-note" role="status"><Spinner small /> {t("common.saving")}</div>}
+
+        <button type="button" className="stk-manual" onClick={() => setMode("manual")}>
+          <i className="fa-solid fa-sliders" aria-hidden="true" /> {tk("manual")}
+          <span className="stk-manual__h">{tk("manualHint")}</span>
+        </button>
+      </div>
+    );
+  }
+
   const idx = steps.indexOf(step);
 
   return (
     <div className="stk-setup">
+      <button type="button" className="stk-manual stk-manual--back" onClick={() => setMode("auto")}>
+        <i className="fa-solid fa-arrow-left" aria-hidden="true" /> {tk("autoBack")}
+      </button>
       {/* ⚠ QADAMLAR KO'RINIB TURADI: qayerdaligini va nechta qolganini bilsin. */}
       <ol className="stk-steps">
         {steps.map((s, i) => (
@@ -353,60 +568,7 @@ export default function StickerSetup({ toast, onDone, kind = "STICKER" }) {
               <i className="fa-solid fa-circle-info" aria-hidden="true" /> {tk("webNote")}
             </p>
           )}
-          <div className="stk-sizes" role="radiogroup" aria-label={tk("qSize")}>
-            {a4 && (
-              /* ⚠ A4 — FAQAT JAVON YORLIG'IDA: stikerda A4 so'ralmagan (egasi:
-                 «menga A4 umuman kerak emas»), narx yorlig'ini esa ko'p do'kon
-                 oddiy printerda varaqqa chiqarib, qaychi bilan kesadi. */
-              <button type="button" role="radio" aria-checked={a4.id === mediaId}
-                      className={`stk-size ${a4.id === mediaId ? "is-on" : ""}`} onClick={() => setMediaId(a4.id)}>
-                <span className="stk-size__art" aria-hidden="true">
-                  <span className="stk-size__paper stk-size__paper--a4" />
-                </span>
-                <span className="stk-size__num">{t("shf.a4")}</span>
-                <span className="stk-size__unit">{t("shf.a4Hint")}</span>
-                {a4.id === mediaId && <i className="fa-solid fa-circle-check stk-choice__on" aria-hidden="true" />}
-              </button>
-            )}
-            {main.map((m) => {
-              const on = m.id === mediaId;
-              const w = Number(m.labelWidthMm), h = Number(m.labelHeightMm);
-              return (
-                <button key={m.id} type="button" role="radio" aria-checked={on}
-                        className={`stk-size ${on ? "is-on" : ""}`} onClick={() => setMediaId(m.id)}>
-                  {/* ⚠ RASM HAQIQIY NISBATDA: 58×40 va 30×20 ni raqamsiz ham
-                      ajratib bo'lsin — qo'ldagi rulon bilan solishtiriladi. */}
-                  <span className="stk-size__art" aria-hidden="true">
-                    <span className="stk-size__paper" style={{ width: w * 1.6, height: h * 1.6 }} />
-                  </span>
-                  <span className="stk-size__num ek-num">{w} × {h}</span>
-                  <span className="stk-size__unit">{tk("mm")}</span>
-                  {on && <i className="fa-solid fa-circle-check stk-choice__on" aria-hidden="true" />}
-                </button>
-              );
-            })}
-          </div>
-          <button type="button" className="btn btn-outline btn-sm stk-more"
-                  aria-expanded={more} onClick={() => setMore((v) => !v)}>
-            <i className={`fa-solid ${more ? "fa-chevron-up" : "fa-chevron-down"}`} /> {tk("otherSize")}
-          </button>
-          {more && (
-            <div className="stk-choices stk-choices--wrap" role="radiogroup" aria-label={tk("otherSize")}>
-              {others.map((m) => {
-                const on = m.id === mediaId;
-                return (
-                  <button key={m.id} type="button" role="radio" aria-checked={on}
-                          className={`stk-choice ${on ? "is-on" : ""}`} onClick={() => setMediaId(m.id)}>
-                    <span className="stk-choice__name ek-num">{sizeOf(m)} {tk("mm")}</span>
-                    {Number(m.across) > 1 && (
-                      <span className="stk-tag stk-tag--muted">{tk("across", { n: Number(m.across) })}</span>
-                    )}
-                    {on && <i className="fa-solid fa-circle-check stk-choice__on" aria-hidden="true" />}
-                  </button>
-                );
-              })}
-            </div>
-          )}
+          {sizeGrid((m) => setMediaId(m.id))}
           <div className="stk-actions">
             {steps.indexOf("size") > 0 && (
               <button type="button" className="btn btn-outline" onClick={goBack}>
