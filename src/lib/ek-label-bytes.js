@@ -72,8 +72,11 @@ function tsplFont(sizePt, dpi) {
  * 40×30» da narx ustiga chiqardi (2026-10-03, rulon yo'li ulanganda
  * topildi — ungacha bu kod faqat sinov yorlig'ida ishlardi).
  */
-const barsHeightMm = (it) =>
-  (it.showText ? Math.max(Number(it.h) - 2.6, 1) : Number(it.h));
+const barsHeightMm = (it) => {
+  /* Burilgan barkodda chiziqlar balandligi — qutining ENI (`ek-label-render`). */
+  const h = it.rot ? Number(it.w) : Number(it.h);
+  return it.showText ? Math.max(h - 2.6, 1) : h;
+};
 
 /** EAN-13 / EAN-8 / Code 128 → TSPL barkod turi. */
 const tsplBarcodeType = (kind) =>
@@ -105,6 +108,11 @@ export function toTSPL(layout, { dpi = 203, media = {}, printer = {}, copies = 1
               : it.align === "right" ? D(it.x + it.w)
               : D(it.x);
       const align = it.align === "center" ? 2 : it.align === "right" ? 3 : 1;
+      if (it.rot) {
+        /* 270°: tayanch nuqta qutining PASTKI chap burchagi, matn yuqoriga yoziladi. */
+        out.push(`TEXT ${D(it.x)},${D(it.y + it.h)},"${font}",270,${mul},${mul},1,"${q(it.text)}"`);
+        continue;
+      }
       out.push(`TEXT ${x},${D(it.y)},"${font}",0,${mul},${mul},${align},"${q(it.text)}"`);
       continue;
     }
@@ -128,6 +136,14 @@ function tsplBarcode(it, D) {
   if (!it.value || !it.metrics) return null;
   const type = tsplBarcodeType(it.metrics.kind);
   const narrow = Number(it.cfg?.moduleDots ?? 2);
+  if (it.rot) {
+    /* ⚠ 270°: TSPL tayanch nuqta atrofida buradi — barkod undan YUQORIGA
+       va O'NGGA ketadi. Shuning uchun nuqta qutining pastki chap burchagi
+       (markazlash `shift` ga ko'tarilgan): raqamlar chiziqlarning o'ngida,
+       egasining tarozi stikeridagidek. */
+    return `BARCODE ${D(it.x)},${D(it.y + it.h - (it.shift || 0))},"${type}",${D(barsHeightMm(it))},`
+      + `${it.showText ? 1 : 0},270,${narrow},${narrow * 2},"${q(it.value)}"`;
+  }
   return `BARCODE ${D(it.x)},${D(it.y)},"${type}",${D(barsHeightMm(it))},`
     + `${it.showText ? 1 : 0},0,${narrow},${narrow * 2},"${q(it.value)}"`;
 }
@@ -278,6 +294,12 @@ export function toZPL(layout, { dpi = 203, media = {}, printer = {}, copies = 1 
     if (it.kind === "text") {
       const h = Math.max(6, Math.round(Number(it.sizePt) * dpi / 72));
       const just = it.align === "center" ? "C" : it.align === "right" ? "R" : "L";
+      if (it.rot) {
+        /* `B` — pastdan yuqoriga; maydon bloki eni burilgan yo'nalishda (qutining bo'yi). */
+        out.push(`^FO${D(it.x)},${D(it.y)}^A0B,${h},${Math.round(h * 0.6)}`
+          + `^FB${D(it.h)},1,0,L,0^FD${zplEscape(it.text)}^FS`);
+        continue;
+      }
       out.push(`^FO${D(it.x)},${D(it.y)}^A0N,${h},${Math.round(h * 0.6)}`
         + `^FB${D(it.w)},1,0,${just},0^FD${zplEscape(it.text)}^FS`);
       continue;
@@ -285,10 +307,13 @@ export function toZPL(layout, { dpi = 203, media = {}, printer = {}, copies = 1 
     if (it.kind === "barcode" && it.value && it.metrics) {
       const narrow = Number(it.cfg?.moduleDots ?? 2);
       const bh = D(barsHeightMm(it));
-      out.push(`^FO${D(it.x)},${D(it.y)}^BY${narrow}`);
+      /* 270° (`B`): ^FO — burilgan barkodning YUQORI chap burchagi. */
+      const o = it.rot ? "B" : "N";
+      const top = it.rot ? it.y + it.h - (it.shift || 0) - Number(it.metrics.widthMm || 0) : it.y;
+      out.push(`^FO${D(it.x)},${D(Math.max(0, top))}^BY${narrow}`);
       out.push(it.metrics.kind === "EAN13" || it.metrics.kind === "EAN8"
-        ? `^BEN,${bh},${it.showText ? "Y" : "N"},N^FD${zplEscape(it.value)}^FS`
-        : `^BCN,${bh},${it.showText ? "Y" : "N"},N,N^FD${zplEscape(it.value)}^FS`);
+        ? `^BE${o},${bh},${it.showText ? "Y" : "N"},N^FD${zplEscape(it.value)}^FS`
+        : `^BC${o},${bh},${it.showText ? "Y" : "N"},N,N^FD${zplEscape(it.value)}^FS`);
       continue;
     }
   }

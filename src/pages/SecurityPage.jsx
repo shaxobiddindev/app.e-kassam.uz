@@ -20,6 +20,7 @@ import { useBadge } from "../context/BadgeProvider";
 import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
 import { roleSet } from "../lib/ek-roles";
+import { shopPlan } from "../lib/ek-labels";
 import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
 import { printBadge } from "../lib/ek-hardware";
 import { printHtml } from "../lib/ek-receipt-pdf";
@@ -443,22 +444,23 @@ export default function SecurityPage({ toast }) {
               {/* ══ OBUNA ══ */}
               {tab === "billing" && isOwner && billing && (
                 <div style={{ padding: 18, display: "grid", gap: 14 }}>
-                  <BillingRow label={t("bill.plan")} value={billing.plan || "—"} strong />
+                  {/* ⚠ Tarif xom enum emas (CLAUDE.md), muddatsiz obuna «Cheksiz» (V145):
+                      ilgari bu yerda «PREMIUM» va bo'sh «—» turardi. */}
+                  <BillingRow label={t("bill.plan")} value={billing.plan ? shopPlan(billing.plan).label : "—"} strong />
                   <BillingRow label={t("bill.expires")}
-                              value={billing.planExpiresAt ? fmt(billing.planExpiresAt) : "—"} />
+                              value={billing.planExpiresAt ? fmt(billing.planExpiresAt) : t("bill.unlimited")} />
                   <BillingRow label={t("bill.daysLeft")}
-                              value={billing.daysLeft == null ? "—" : `${billing.daysLeft}`}
+                              value={billing.planExpiresAt ? `${billing.daysLeft ?? "—"}` : t("bill.unlimited")}
                               danger={billing.expiringSoon} />
                   <BillingRow label={t("bill.staff")}
                               value={`${billing.staffUsed} / ${billing.staffLimit < 0 ? "∞" : billing.staffLimit}`} />
                   <BillingRow label={t("bill.branches")}
                               value={`${billing.branchesUsed} / ${billing.branchesLimit < 0 ? "∞" : billing.branchesLimit}`} />
                   {billing.expiringSoon && (
-                    <div style={{
-                      background: "#fef3c7", border: "1px solid #f59e0b", borderRadius: 10,
-                      padding: "10px 14px", fontSize: 13, color: "#92400e", lineHeight: 1.5,
-                    }}>
-                      ⚠️ {t("bill.warn")}
+                    /* Tokenlar bilan (qoida №1) — qattiq ranglar qorong'i rejimda o'qilmasdi. */
+                    <div className="ek-note ek-note--warning">
+                      <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />
+                      <span>{t("bill.warn")}</span>
                     </div>
                   )}
                   <p className="text-muted" style={{ fontSize: 12.5, lineHeight: 1.6 }}>

@@ -73,7 +73,25 @@ const VALUE = {
   discountBadge: () => null,
   qr:         (p, ctx) => ctx.qrUrl,
   punchHole:  () => null,
+  /* ── Tarozi yorlig'i (2026-10-04) — `ek-weight-label.js` `weighedProduct` beradi ── */
+  weight:     (p) => p.weightText,
+  total:      (p) => p.total,
+  plu:        (p) => p.pluText ?? p.plu,
+  /* «15 000 so'm» — narx matn qatorida (yirik narx uslubisiz). */
+  kgPrice:    (p) => (p.salePrice == null ? null : `${groupDigits(Math.round(Number(p.salePrice)))} so'm`),
+  printedAt:  (p, ctx) => ctx.printedAt,
+  /* Qotirilgan yozuv («Jami to'lov:», «so'm») — matni shablonda (`f.text`). */
+  text:       (p, ctx, f) => f.text,
 };
+
+/* ⚠ BURILISH — FAQAT 270° (pastdan yuqoriga o'qiladi), egasining tarozi
+   stikerida barkod va vaqt shunday turadi. Maydon qutisi (x, y, w, h)
+   yorliqdagi JOY; ichidagi narsa eni `h`, bo'yi `w` bo'lgan qutiga
+   chiziladi va burab qo'yiladi. Lokal o'q: u (pastdan yuqoriga), v (chapdan
+   o'ngga) — ya'ni barkod raqamlari chiziqlarning O'NG tomonida. */
+const ROT = 270;
+const rotGroup = (it, inner) =>
+  `<g transform="translate(${r(it.x)},${r(it.y + it.h)}) rotate(-90)">${inner}</g>`;
 
 /**
  * Yorliqni chizadi.
@@ -119,18 +137,26 @@ export function layoutLabel(template, product, ctx = {}) {
 
   for (const f of spec.fields || []) {
     if (f.visible === false) continue;
-    const val = (VALUE[f.key] || (() => null))(product, ctx);
+    const val = (VALUE[f.key] || (() => null))(product, ctx, f);
     const box = { key: f.key, x: Number(f.x), y: Number(f.y),
                   w: Number(f.w), h: Number(f.h) };
 
     if (f.key === "barcode") {
       const cfg = spec.barcode || {};
+      const rot = Number(f.rot) === ROT;
+      /* Burilganda chiziqlar balandligi — qutining ENI, uzunligi — bo'yi. */
       const m = val ? barcodeMetrics(val, {
         dpi: template.dpi, moduleDots: cfg.moduleDots ?? 2,
         quietLeftModules: cfg.quietLeftModules ?? 9,
         quietRightModules: cfg.quietRightModules ?? 7,
-        heightMm: f.h, labelKind: template.kind, labelHeightMm: Number(template.heightMm),
+        heightMm: rot ? f.w : f.h, labelKind: template.kind, labelHeightMm: Number(template.heightMm),
       }) : null;
+      if (rot) {
+        const shift = f.align === "center" && m && m.widthMm < box.h ? (box.h - m.widthMm) / 2 : 0;
+        items.push({ ...box, kind: "barcode", rot: ROT, shift, value: val, field: f,
+                     cfg, metrics: m, dpi: template.dpi, showText: cfg.showText !== false });
+        continue;
+      }
       /* ⚠ MARKAZGA TEKISLASH (V142, `align: "center"`). Barkod tabiiy
          enida chiziladi va maydon chap chetidan boshlanardi: EAN-8 (do'kon
          kodi) EAN-13 ga mo'ljallangan joyda chapga taqalib, o'ngda bo'sh
@@ -151,7 +177,8 @@ export function layoutLabel(template, product, ctx = {}) {
     items.push({ ...box, kind: "text", value: val, field: f,
                  text: f.prefix ? f.prefix + String(val) : String(val),
                  sizePt: Number(f.size || 8), weight: Number(f.weight || 400),
-                 align: f.align || "left", style: f.style || null });
+                 align: f.align || "left", style: f.style || null,
+                 ...(Number(f.rot) === ROT ? { rot: ROT } : {}) });
   }
 
   return { widthMm: W, heightMm: H, items, warnings };
@@ -187,6 +214,11 @@ export function renderLabel(template, product, ctx = {}) {
     if (it.kind === "barcode") {
       /* `x` joylashuvdan (markazlash), en esa maydonniki — sig'ish tekshiruvi
          maydon bo'yicha. */
+      if (it.rot === ROT) {
+        const local = { ...it.field, x: it.shift, y: 0, w: it.h, h: it.w };
+        parts.push(rotGroup(it, drawBarcode(local, it.value, template, spec, warnings)));
+        continue;
+      }
       parts.push(drawBarcode({ ...it.field, x: it.x }, it.value, template, spec, warnings));
       continue;
     }
@@ -197,6 +229,10 @@ export function renderLabel(template, product, ctx = {}) {
       continue;
     }
     if (it.kind === "qr") { parts.push(qrPlaceholder(it.field || it, it.value)); continue; }
+    if (it.rot === ROT) {
+      parts.push(rotGroup(it, drawText({ ...it.field, x: 0, y: 0, w: it.h, h: it.w }, it.value, warnings)));
+      continue;
+    }
     parts.push(drawText(it.field, it.value, warnings));
   }
 

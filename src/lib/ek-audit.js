@@ -87,6 +87,9 @@ export const AUDIT_ACTIONS = [
   "SHOP_CREATE", "SHOP_UPDATE", "SHOP_STATUS_CHANGE", "SHOP_DELETE",
   "PAYMENT_REGISTER", "SUBSCRIPTION_EXPIRED", "SHOP_DIRECTIONS_CHANGE",
   "SHOP_FEATURE_CHANGE",
+  /* V145: admin obunani o'zgartirdi (bepul muddat, cheksiz, sana, tarif, bekor
+     qilish) yoki to'lovni bekor qildi — egasi o'z obunasida nima bo'lganini ko'rsin. */
+  "SUBSCRIPTION_CHANGE", "PAYMENT_CANCEL",
 ];
 
 /**

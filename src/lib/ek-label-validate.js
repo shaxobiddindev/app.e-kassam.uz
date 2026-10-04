@@ -121,7 +121,9 @@ export function validateTemplate(tpl) {
     /* Shrift balandligi × qatorlar ≤ maydon balandligi. */
     if (f.size && f.lines) {
       const need = Number(f.size) * 0.352778 * 1.2 * Number(f.lines);
-      if (need > Number(f.h) + 0.001) {
+      /* Burilgan (270°) matnda qator balandligi qutining ENIGA tushadi. */
+      const room = Number(f.rot) === 270 ? Number(f.w) : Number(f.h);
+      if (need > room + 0.001) {
         out.push(warn(tag, `${tag}: ${f.lines} qator ${Number(f.size)} pt bilan `
           + `${mm1(need)} mm joy oladi, maydon esa ${mm1(f.h)} mm`));
       }
@@ -142,6 +144,11 @@ export function validateTemplate(tpl) {
   if (bc) {
     const cfg = spec.barcode || {};
     const dots = Number(cfg.moduleDots ?? 2);
+    /* ⚠ BURILGAN BARKOD (270°, tarozi yorlig'i): uzunligi qutining BO'YIDA,
+       chiziqlar balandligi — ENIDA. Aks holda tik barkod «sig'maydi» deyilardi. */
+    const rot = Number(bc.rot) === 270;
+    const lenMm = rot ? Number(bc.h) : Number(bc.w);
+    const tallMm = rot ? Number(bc.w) : Number(bc.h);
     if (![2, 3].includes(dots)) {
       out.push(err("barcode", `Modul ${dots} nuqta — 2 yoki 3 bo'lishi kerak: `
         + "oraliq qiymatda printer chiziqlarni turlicha yaxlitlaydi va skaner o'qimaydi"));
@@ -151,19 +158,19 @@ export function validateTemplate(tpl) {
         dpi: Number(tpl.dpi), moduleDots: dots,
         quietLeftModules: cfg.quietLeftModules ?? 9,
         quietRightModules: cfg.quietRightModules ?? 7,
-        heightMm: Number(bc.h),
+        heightMm: tallMm,
         labelKind: tpl.kind, labelHeightMm: Number(tpl.heightMm),
       });
-      if (m && m.widthMm > Number(bc.w) + 0.001) {
+      if (m && m.widthMm > lenMm + 0.001) {
         out.push(err("barcode", `EAN-13 uchun ${mm1(m.widthMm)} mm kerak, `
-          + `joy ${mm1(bc.w)} mm — ${mm1(m.widthMm - bc.w)} mm yetmayapti`));
+          + `joy ${mm1(lenMm)} mm — ${mm1(m.widthMm - lenMm)} mm yetmayapti`));
       }
       if (m && !m.ok) {
         /* ⚠ CHEGARA YORLIQ TURIGA QARAB (`EAN_MIN_MM`): javon
            yorlig'ida 12 mm, noma'lum turda 18 mm. Bitta son bo'lganda
            bu ogohlantirish 15 ta tizim shablonining 14 tasida har
            doim yonardi. */
-        out.push(warn("barcode", `Barkod balandligi ${mm1(bc.h)} mm — `
+        out.push(warn("barcode", `Barkod balandligi ${mm1(tallMm)} mm — `
           + `tavsiya etilgani ${m.minHeightMm} mm; pastroqda skaner ishonchsiz`));
       }
     }

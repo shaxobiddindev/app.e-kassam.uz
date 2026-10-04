@@ -6677,7 +6677,7 @@ button.stk__c:hover { background: var(--bg-hover); }
    ⚠ RANG YOLG'IZ SIGNAL EMAS: tanlangan kartochkada belgi ham bor,
    ogohlantirishda ikonka va matn. */
 /* Tur tanlovi — oddiy rejim tepasida ikki katta kartochka. */
-.stk-kinds         { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;
+.stk-kinds         { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px;
                      margin-bottom: 16px; }
 @media (max-width: 560px) { .stk-kinds { grid-template-columns: 1fr; } }
 .stk-kind          { position: relative; display: flex; align-items: center; gap: 14px; text-align: start;
@@ -6872,6 +6872,40 @@ button.stk__c:hover { background: var(--bg-hover); }
                      font: inherit; font-weight: 700; color: var(--fg-brand); }
 .stk-manual:hover  { text-decoration: underline; }
 .stk-manual__h     { font-weight: 500; color: var(--fg-secondary); }
+/* ── Tarozi yorlig'i (2026-10-04) — `ScaleLabel` ──────────────────────────
+   Og'irlik — ekrandagi eng katta narsa: kassir tarozining o'z ekrani bilan
+   bir qarashda solishtiradi. Barqarorlik matn + ikonka bilan. */
+.wl-main           { display: flex; flex-direction: column; gap: 12px; }
+.wl-product        { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 14px;
+                     border-radius: 12px; background: var(--bg-brand-subtle); border: 1px solid var(--border-brand); }
+.wl-product__text  { flex: 1 1 200px; min-width: 0; }
+.wl-product__name  { font-size: 17px; font-weight: 800; color: var(--fg-primary); }
+.wl-product .btn   { min-height: var(--hit-min); }
+.wl-weight         { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; padding: 14px 16px;
+                     border-radius: 14px; background: var(--bg-sunken); border: 1.5px solid var(--border-subtle); }
+.wl-weight.is-live[data-stable="1"] { border-color: var(--border-success); background: var(--bg-success-subtle); }
+.wl-weight__kg     { font-size: 44px; font-weight: 900; line-height: 1; color: var(--fg-primary); }
+.wl-weight__unit   { font-size: 20px; font-weight: 800; color: var(--fg-secondary); }
+.wl-weight__input  { max-width: 220px; min-height: var(--hit-pos); font-size: 28px; font-weight: 800; }
+.wl-weight__state  { margin-inline-start: auto; display: inline-flex; align-items: center; gap: 6px;
+                     font-weight: 700; color: var(--fg-secondary); }
+.wl-weight[data-stable="1"] .wl-weight__state { color: var(--fg-success); }
+.wl-src            { margin-top: -6px; }
+.wl-total          { display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+                     padding: 10px 2px; border-top: 1px solid var(--border-subtle); }
+.wl-total__l       { font-weight: 700; color: var(--fg-secondary); }
+.wl-total__v       { font-size: 30px; font-weight: 900; color: var(--fg-primary); }
+.wl-go             { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.wl-copies         { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 700;
+                     color: var(--fg-secondary); }
+.wl-copies .form-input { width: 90px; min-height: var(--hit-pos); }
+.wl-print          { flex: 1 1 220px; min-height: var(--hit-pos); font-size: 17px; font-weight: 800; }
+.wl-auto           { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+.wl-auto input     { width: 20px; height: 20px; margin-top: 2px; }
+.wl-auto__h        { display: block; }
+.wl-designs        { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.wl-designs .stk-chip { min-height: var(--hit-min); }
+.wl-designs .stk-chip.is-on { background: var(--bg-brand); color: var(--fg-on-brand); border-color: var(--bg-brand); }
 .stk-note          { padding: 12px 14px; border-radius: 10px; font-weight: 600;
                      background: var(--bg-success-subtle); color: var(--fg-success);
                      border: 1px solid var(--border-success); }

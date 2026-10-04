@@ -134,6 +134,19 @@ export const SHELF_DESIGN_ORDER = [
   "classic", "big_price", "minimal", "code_big", "promo", "weighed", "shop", "bilingual", "detailed",
 ];
 
+/**
+ * Tarozi yorlig'i dizaynlari (V146) — kod `scl_<dizayn>_<eni>x<bo'yi>`, turi STICKER
+ * (o'sha printer va o'sha rulon). ⚠ Oddiy stiker galereyasida CHIQMAYDI: og'irliksiz
+ * tovarda bu dizayn yarim bo'sh chiqardi va «do'konning o'z shabloni» sifatida eng
+ * tepada turardi.
+ */
+export const SCALE_DESIGN_ORDER = ["side", "bottom", "big_total"];
+export const isScaleTpl = (tpl) => /^scl_/.test(String(tpl?.code || ""));
+/** Ekran turi: "SCALE" — STICKER ichidan faqat tarozi dizaynlari; boshqalarida ular yo'q. */
+const ofKind = (x, kind) => (kind === "SCALE"
+  ? x.kind === "STICKER" && isScaleTpl(x)
+  : x.kind === kind && !isScaleTpl(x));
+
 /** V131 dagi shablonlar — o'z dizayniga (yangilari ularning o'rnini to'ldiradi). */
 const LEGACY = {
   sticker_standard: "standard", sticker_small: "barcode_price", sticker_expiry: "expiry",
@@ -147,12 +160,12 @@ const LEGACY = {
 export function designOf(tpl) {
   const code = String(tpl?.code || "");
   if (LEGACY[code]) return LEGACY[code];
-  const m = code.match(/^(?:stk|shf)_([a-z_]+)_\d+x\d+$/);
+  const m = code.match(/^(?:stk|shf|scl)_([a-z_]+)_\d+x\d+$/);
   return m ? m[1] : null;
 }
 
 const designRank = (tpl) => {
-  const order = tpl?.kind === "SHELF" ? SHELF_DESIGN_ORDER : DESIGN_ORDER;
+  const order = isScaleTpl(tpl) ? SCALE_DESIGN_ORDER : tpl?.kind === "SHELF" ? SHELF_DESIGN_ORDER : DESIGN_ORDER;
   const i = order.indexOf(designOf(tpl));
   return i < 0 ? -1 : i;   // do'konning o'zinikilari — eng tepada
 };
@@ -165,7 +178,7 @@ const sameSize = (tpl, media) => Number(tpl.widthMm) === Number(media?.labelWidt
  * Qog'oz noma'lum bo'lsa — hammasi.
  */
 export function designsFor(templates = [], media = null, kind = "STICKER") {
-  const list = templates.filter((x) => x.kind === kind && (!media || sameSize(x, media)));
+  const list = templates.filter((x) => ofKind(x, kind) && (!media || sameSize(x, media)));
   return list.sort((a, b) => designRank(a) - designRank(b));
 }
 
@@ -180,13 +193,13 @@ export function designsFor(templates = [], media = null, kind = "STICKER") {
  * ham sig'adi, lekin u stikerning burchagida mitti bo'lib chiqardi.
  */
 export function pickTemplate(templates = [], media = null, preferId = null, kind = "STICKER") {
-  const list = templates.filter((x) => x.kind === kind);
+  const list = templates.filter((x) => ofKind(x, kind));
   if (!list.length) return null;
   /* ⚠ VARAQ (A4) — O'LCHAM YO'Q: varaqqa har qanday yorliq sig'adi va to'r
      dizayndan hisoblanadi. Varaq profilidagi «50×30» — katak namunasi, cheklov
      emas; unga qarab tanlansa, javon yorlig'i doim 50×30 bo'lib qolardi. */
   if (!media || String(media.mediaType) === "VARAQ") {
-    const base = kind === "SHELF" ? "classic" : "standard";
+    const base = kind === "SHELF" ? "classic" : kind === "SCALE" ? "side" : "standard";
     return list.find((x) => x.id === preferId)
       || list.find((x) => x.isDefault)
       || list.find((x) => designOf(x) === base && x.system)

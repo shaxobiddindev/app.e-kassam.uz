@@ -13,6 +13,7 @@ import { calibrationDoc, rollCalibrationDoc } from "../lib/ek-label-calibrate";
 import LabelSetupWizard from "../components/ek/LabelSetupWizard";
 import LabelGallery from "../components/ek/LabelGallery";
 import StickerSimple from "../components/ek/StickerSimple";
+import ScaleLabel from "../components/ek/ScaleLabel";
 import { printHtml } from "../lib/ek-receipt-pdf";
 import Modal from "../components/Modal";
 import { useConfirm } from "../context/ConfirmProvider";
@@ -101,12 +102,17 @@ export default function LabelsPage({ toast }) {
 const KIND_KEY = "ek_simple_kind";
 const readKind = () => {
   if (new URLSearchParams(window.location.search).get("tab") === "stale") return "SHELF";
-  try { return localStorage.getItem(KIND_KEY) === "SHELF" ? "SHELF" : "STICKER"; }
+  try {
+    const k = localStorage.getItem(KIND_KEY);
+    return k === "SHELF" || k === "SCALE" ? k : "STICKER";
+  }
   catch { return "STICKER"; }
 };
 const KIND_CARDS = [
   ["STICKER", "fa-barcode", "stk.kindSticker", "stk.kindStickerHint"],
   ["SHELF", "fa-tag", "stk.kindShelf", "stk.kindShelfHint"],
+  /* Tarozi yorlig'i (2026-10-04) — tortib chiqarish, egasining tarozi stikeri namunasida. */
+  ["SCALE", "fa-scale-balanced", "stk.kindScale", "stk.kindScaleHint"],
 ];
 
 function SimpleLabels({ toast, onAdvanced }) {
@@ -133,7 +139,9 @@ function SimpleLabels({ toast, onAdvanced }) {
           </button>
         ))}
       </div>
-      <StickerSimple key={kind} kind={kind} toast={toast} onAdvanced={onAdvanced} showHeader={false} />
+      {kind === "SCALE"
+        ? <ScaleLabel key={kind} toast={toast} onAdvanced={onAdvanced} />
+        : <StickerSimple key={kind} kind={kind} toast={toast} onAdvanced={onAdvanced} showHeader={false} />}
     </div>
   );
 }
