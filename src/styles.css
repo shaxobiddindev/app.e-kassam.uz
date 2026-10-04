@@ -1471,6 +1471,80 @@ select.form-input { cursor: pointer; }
 .debt-quick { display: flex; gap: 8px; margin-top: 10px; }
 .debt-quick .btn { flex: 1; }
 
+/* ── Daftardan ko'chirish (2026-10-04) — `DebtImportModal` ──────────────
+   Jadval: № | Ism | Telefon | Summa | Sana | Izoh | ✕. Tor ekranda har
+   qator kartochkaga aylanadi (sarlavha yashiriladi, maydonlar ustma-ust).
+   ⚠ Bolalar TARTIBI bilan joylanadi (`nth-child`): telefon maydoni o'z
+   o'ramida (`.ek-phone`) keladi va unga sinf berib bo'lmaydi. */
+.dimp-hint { margin: 0 0 12px; font-size: 13px; color: var(--fg-secondary); }
+.dimp-note {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 8px 12px; margin-bottom: 12px; border-radius: var(--r-md);
+  background: var(--bg-brand-subtle); color: var(--fg-primary); font-size: 13px;
+}
+.dimp-note > span { flex: 1; min-width: 160px; }
+.dimp-paste {
+  display: block; width: 100%; min-height: 56px; padding: 16px 14px; resize: none;
+  border: 1.5px dashed var(--border-strong); border-radius: var(--r-lg);
+  background: var(--bg-sunken); color: var(--fg-primary);
+  font: inherit; font-size: 13px; text-align: center;
+}
+.dimp-paste::placeholder { color: var(--fg-secondary); }
+.dimp-paste:focus { outline: none; border-color: var(--border-brand); box-shadow: var(--ring-brand); }
+.dimp-dates { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 12px 0; font-size: 13px; }
+.dimp-dates__l { color: var(--fg-secondary); font-weight: 600; }
+.dimp-dates__v { color: var(--fg-secondary); }
+.dimp-dates .seg { flex-wrap: wrap; }
+.dimp-dates .seg__b { min-height: 44px; }
+.dimp-grid { display: flex; flex-direction: column; gap: 6px; }
+.dimp-row {
+  display: grid; gap: 6px; align-items: center;
+  grid-template-columns: 28px minmax(150px, 2fr) 204px minmax(110px, 1fr) 118px minmax(110px, 1.3fr) 44px;
+}
+.dimp-row .form-input { min-height: 44px; padding: 9px 10px; }
+.dimp-row--head {
+  font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .4px;
+  color: var(--fg-secondary);
+}
+.dimp-row--head i { font-style: normal; font-weight: 600; text-transform: none; letter-spacing: 0; }
+.dimp-n { text-align: right; font-size: 12px; color: var(--fg-secondary); }
+.dimp-row--new .form-input { border-style: dashed; background: var(--bg-surface); }
+.dimp-x { width: 44px; height: 44px; }
+.dimp-msg {
+  grid-column: 2 / -1; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin: 0 0 4px; font-size: 12px;
+}
+.dimp-msg > span { flex: 1 1 200px; }
+.dimp-msg--err { color: var(--fg-danger); }
+.dimp-msg--warn { color: var(--fg-warning-strong); }
+.dimp-msg--info { color: var(--fg-secondary); }
+.dimp-keys { margin: 8px 0 12px; font-size: 12px; color: var(--fg-secondary); }
+.dimp-confirm { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; font-size: 13px; }
+.dimp-confirm input { width: 18px; height: 18px; margin-top: 2px; }
+.dimp-confirm__h { display: block; font-size: 12px; color: var(--fg-secondary); }
+.dimp-sum {
+  display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-right: auto;
+  font-size: 13px; color: var(--fg-secondary);
+}
+.dimp-sum b { color: var(--fg-primary); }
+.modal-footer:has(.dimp-sum) { flex-wrap: wrap; align-items: center; }
+@media (max-width: 760px) {
+  .dimp-row--head { display: none; }
+  .dimp-row {
+    grid-template-columns: 28px 1fr 1fr 44px;
+    grid-template-areas: "n name name x" ". phone phone phone" ". amount date date" ". note note note" ". msg msg msg";
+    padding-bottom: 8px; border-bottom: 1px solid var(--border-subtle);
+  }
+  .dimp-row > :nth-child(1) { grid-area: n; align-self: center; }
+  .dimp-row > :nth-child(2) { grid-area: name; }
+  .dimp-row > :nth-child(3) { grid-area: phone; }
+  .dimp-row > :nth-child(4) { grid-area: amount; }
+  .dimp-row > :nth-child(5) { grid-area: date; }
+  .dimp-row > :nth-child(6) { grid-area: note; }
+  .dimp-row > :nth-child(7) { grid-area: x; }
+  .dimp-row > :nth-child(8) { grid-area: msg; }
+}
+
 /* Kassadagi mijoz qatori (V47): tanlagich + qo'shish + ro'yxat.
    ⚠ Tugmalar tanlagich BILAN BIR QATORDA: alohida qatorga tushsa,
    savat ustunidan yana 40 piksel yeb qo'yardi. */

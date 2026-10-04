@@ -1122,6 +1122,11 @@ export const customerApi = {
      kiritish do'konchini yarim yo'lda tashlab ketardi. */
   addManualDebt: (data) => request("/customers/debtors/manual",
                                    { method: "POST", body: JSON.stringify(data) }),
+  /* DAFTARDAN KO'CHIRISH (2026-10-04): ko'p qator, HAMMASI YOKI HECH NARSA.
+     ⚠ Xato qatorlar 400 emas, `data.errors` da qaytadi (raqami bilan) —
+     umumiy 400 do'konchaga 60 qatordan qaysi biri xato ekanini aytmasdi. */
+  addManualDebtBatch: (rows) => request("/customers/debtors/manual/batch",
+                                        { method: "POST", body: JSON.stringify({ rows }) }),
   /** `value` bo'sh bo'lsa do'kon standartiga qaytadi. */
   /* Qarz eslatmalarini DARHOL yuborish (V44) — haftalik oyna baribir
      amal qiladi, ya'ni qayta bosish mijozga xabar yog'dirmaydi. */

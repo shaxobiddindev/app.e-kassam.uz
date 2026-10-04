@@ -24,7 +24,7 @@ const PaymentReceipt = lazySafe(() => import("../portal/PaymentReceipt"), "Payme
 import DebtPayModal from "../components/DebtPayModal";
 import StatementModal from "../components/StatementModal";
 import ReversePaymentModal from "../components/ReversePaymentModal";
-import ManualDebtModal from "../components/ManualDebtModal";
+import DebtImportModal from "../components/DebtImportModal";
 import SavingsModal from "../components/SavingsModal";
 import { printDebtReceipt } from "../lib/ek-hardware";
 import { saleApi } from "../api";
@@ -521,29 +521,18 @@ export default function CustomersPage({ toast }) {
   const filtered = view === "debtors" ? colFlt.apply(customers) : customers;
 
   const [reminding, setReminding] = useState(false);
-  /* QO'LDA QARZDOR (V48) — daftardan ko'chirish. Serverda ham FAQAT
+  /* DAFTARDAN KO'CHIRISH (V48 → 2026-10-04 jadval). Serverda ham FAQAT
      rahbarga ochiq: pul harakatisiz qarz tug'dirish `adjust` bilan bir
      xil xavf. Tugmani kassirga ko'rsatib, keyin 403 berish esa
      tushunarsiz bo'lardi. */
   const [manualDebt, setManualDebt] = useState(false);
-  const [savingDebt, setSavingDebt] = useState(false);
 
-  const saveManualDebt = async (payload) => {
-    setSavingDebt(true);
-    try {
-      const r = await customerApi.addManualDebt(payload);
-      toast.success(r?.message || t("common.saved"));
-      setManualDebt(false);
-      /* Ro'yxat DARHOL yangilanadi: do'koncha endigina kiritgan
-         qarzdorni ko'rmasa, «yozildimi?» degan savol qolardi.
-         Tugma faqat qarzdorlar ro'yxatida turadi, ya'ni `loadData`
-         aynan shu ro'yxatni qayta o'qiydi. */
-      await loadData();
-    } catch (err) {
-      toast.error(err.message);
-    } finally {
-      setSavingDebt(false);
-    }
+  /* Ko'chirilgach QARZDORLAR ro'yxati ochiladi va yangilanadi: do'koncha
+     endigina kiritgan qarzlarni ko'rmasa, «yozildimi?» degan savol qolardi. */
+  const onDebtsMoved = () => {
+    setManualDebt(false);
+    if (view !== "debtors") setView("debtors");
+    else loadData();
   };
   /**
    * Qarz eslatmalarini darhol yuborish (V44).
@@ -614,9 +603,9 @@ export default function CustomersPage({ toast }) {
           {/* Qarzdorlar ro'yxatida asosiy amal — MIJOZ emas, QARZ
               qo'shish: do'koncha bu ro'yxatga aynan daftarini
               ko'chirish uchun kiradi. */}
-          {view === "debtors" && isManager && (
+          {view !== "savings" && isManager && (
             <button className="btn btn-outline btn-sm" onClick={() => setManualDebt(true)}>
-              <i className="fa-solid fa-file-pen" /> {t("credit.manualAdd")}
+              <i className="fa-solid fa-file-import" aria-hidden="true" /> {t("dimp.open")}
             </button>
           )}
           <button className="btn btn-primary btn-sm" onClick={openAdd}>
@@ -957,13 +946,9 @@ export default function CustomersPage({ toast }) {
         </Modal>
       )}
 
-      {/* ── QO'LDA QARZDOR (V48) ── */}
+      {/* ── DAFTARDAN KO'CHIRISH (2026-10-04) ── */}
       {manualDebt && (
-        <ManualDebtModal
-          onClose={() => setManualDebt(false)}
-          onSave={saveManualDebt}
-          saving={savingDebt}
-        />
+        <DebtImportModal onClose={() => setManualDebt(false)} onDone={onDebtsMoved} toast={toast} />
       )}
 
       {/* ── QARZ OYNASI (V47): jurnal + KASSA KO'RINISHIDAGI to'lov ────
