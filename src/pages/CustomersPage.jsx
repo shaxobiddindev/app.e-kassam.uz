@@ -31,6 +31,7 @@ import { saleApi } from "../api";
 import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
 import { PhoneField } from "../components/ek/EkFields";
+import { isPhone } from "../lib/ek-input";
 
 /* Yangi mijozda telefon BO'SH boshlanadi. Ilgari bu yerda `"998"` turardi
    va maydon «(99) 8» bilan to'ldirilgan holda ochilardi: odam uni
@@ -279,14 +280,27 @@ export default function CustomersPage({ toast }) {
 
   const closeModal = () => setModal(null);
 
+  /* ⚠ TELEFON — QACHON MAJBURIY (2026-10-04). Yangi mijozda — ha. Daftardan
+     TELEFONSIZ ko'chirilgan mijozni tahrirlashda — yo'q: egasi «tahrirlashda
+     ham telefon ixtiyoriy bo'lsin» dedi (ilgari ismni tuzatish uchun ham
+     telefon so'ralardi). Telefoni BOR mijozda u o'chirilmaydi, faqat
+     almashtiriladi — ilova, Telegram va karta shu raqamga bog'langan
+     (server ham shuni tekshiradi). */
+  const phoneRequired = modal === "add" || !!modal?.customer?.phone;
+
   const handleSave = async () => {
-    if (!form.fullName || !form.phone) {
+    const phone = String(form.phone || "").trim();
+    if (!form.fullName?.trim() || (phoneRequired && !phone)) {
       toast.error(t("products.requiredFields"));
+      return;
+    }
+    if (phone && !isPhone(phone)) {
+      toast.error(t("dimp.errPhone"));
       return;
     }
     setSaving(true);
     try {
-      const profile = form;
+      const profile = { fullName: form.fullName.trim(), phone: phone || null };
       let customerId;
       if (modal === "add") {
         const r = await customerApi.create(profile);
@@ -564,17 +578,17 @@ export default function CustomersPage({ toast }) {
         <BranchSelector selectedId={branchId} onSelect={setBranchId} />
       </div>
       <div className="card">
-        <div className="card-header">
-          <SearchBar
-            value={search}
-            onChange={setSearch}
-            placeholder={t("cust.search")}
-            style={{ width: 280 }}
-          />
-          <DataFilter cols={COLS} flt={colFlt} />
+        {/* ⚠ IKKI QATOR (2026-10-04, egasi: «juda xunuk»). Ilgari ro'yxat
+            tugmalari, qidiruv va amallar BITTA qatorda edi; «Daftardan
+            ko'chirish» qo'shilgach tugmalar (`.cat-tabs` — `flex: 1` va
+            `overflow-x: auto`) 1280 px dan torroqda siqilib, ostida
+            aylantirish chizig'i chiqdi va «Mijoz jamg'armasi» yashirindi.
+            Endi ro'yxatlar — o'z qatorida (ular sahifaning BO'LIMLARI),
+            pastda qidiruv va amallar; tor ekranda amallar o'raladi. */}
+        <div className="card-header cust-head">
           {/* Qarzdorlar — alohida RO'YXAT, filtr emas: u serverdan qarz
               bo'yicha saralangan holda va qarz yoshi bilan keladi. */}
-          <div className="cat-tabs" role="tablist" aria-label={t("credit.debtors")}>
+          <div className="cust-views" role="tablist" aria-label={t("credit.debtors")}>
             {[["all", t("common.all")],
               ["debtors", t("credit.debtors")],
               /* ⚠ Jamg'arma qarzning TESKARISI: qarzda do'kon mijozdan
@@ -589,28 +603,36 @@ export default function CustomersPage({ toast }) {
               </button>
             ))}
           </div>
-          {/* Eslatma tugmasi FAQAT muddati o'tgan qarz bo'lganda (V44).
-              Yuboradigan narsa yo'q joyda turgan tugma bosiladi-yu,
-              «0 ta yuborildi» deydi — bu foydali emas, chalg'ituvchi.
-              Kunlik ish har kuni 10:30 da o'zi yuboradi; bu tugma
-              sozlamani endigina yoqqan egaga «ishlayaptimi?» degan
-              javobni beradi. Haftalik oyna bu yerda ham amal qiladi. */}
-          {hasOverdue && (
-            <button className="btn btn-outline btn-sm" onClick={remindDebtors} disabled={reminding}>
-              <i className="fa-solid fa-bell" /> {t("credit.remindNow")}
-            </button>
-          )}
-          {/* Qarzdorlar ro'yxatida asosiy amal — MIJOZ emas, QARZ
-              qo'shish: do'koncha bu ro'yxatga aynan daftarini
-              ko'chirish uchun kiradi. */}
-          {view !== "savings" && isManager && (
-            <button className="btn btn-outline btn-sm" onClick={() => setManualDebt(true)}>
-              <i className="fa-solid fa-file-import" aria-hidden="true" /> {t("dimp.open")}
-            </button>
-          )}
-          <button className="btn btn-primary btn-sm" onClick={openAdd}>
-            <i className="fa-solid fa-plus" /> Mijoz qo'shish
-          </button>
+          <div className="cust-tools">
+            <SearchBar
+              value={search}
+              onChange={setSearch}
+              placeholder={t("cust.search")}
+              style={{ width: 280, maxWidth: "100%" }}
+            />
+            <DataFilter cols={COLS} flt={colFlt} />
+            <div className="cust-actions">
+              {/* Eslatma tugmasi FAQAT muddati o'tgan qarz bo'lganda (V44).
+                  Yuboradigan narsa yo'q joyda turgan tugma bosiladi-yu,
+                  «0 ta yuborildi» deydi — bu foydali emas, chalg'ituvchi.
+                  Kunlik ish har kuni 10:30 da o'zi yuboradi; bu tugma
+                  sozlamani endigina yoqqan egaga «ishlayaptimi?» degan
+                  javobni beradi. Haftalik oyna bu yerda ham amal qiladi. */}
+              {hasOverdue && (
+                <button className="btn btn-outline btn-sm" onClick={remindDebtors} disabled={reminding}>
+                  <i className="fa-solid fa-bell" /> {t("credit.remindNow")}
+                </button>
+              )}
+              {view !== "savings" && isManager && (
+                <button className="btn btn-outline btn-sm" onClick={() => setManualDebt(true)}>
+                  <i className="fa-solid fa-file-import" aria-hidden="true" /> {t("dimp.open")}
+                </button>
+              )}
+              <button className="btn btn-primary btn-sm" onClick={openAdd}>
+                <i className="fa-solid fa-plus" aria-hidden="true" /> {t("cust.add")}
+              </button>
+            </div>
+          </div>
         </div>
 
         <div className="table-wrap">
@@ -662,7 +684,9 @@ export default function CustomersPage({ toast }) {
                           </div>
                         </div>
                       </td>
-                      <td className="mono" style={{ fontSize: 13 }}>{maskPhone(c.phone)}</td>
+                      {/* ⚠ Telefonsiz mijoz (daftardan, 2026-10-04): `maskPhone` kiritish
+                          niqobi va bo'sh qiymatga «+998» qaytaradi — raqam bordek ko'rinardi. */}
+                      <td className="mono" style={{ fontSize: 13 }}>{c.phone ? maskPhone(c.phone) : "—"}</td>
                       {view === "debtors" ? (
                         <>
                           <td className="mono" style={{ fontSize: 13 }}>
@@ -936,10 +960,10 @@ export default function CustomersPage({ toast }) {
               autoFocus
             />
           </FormGroup>
-          <FormGroup label={`${t("common.phone")} *`}>
+          <FormGroup label={phoneRequired ? `${t("common.phone")} *` : `${t("common.phone")} (${t("dimp.optional")})`}>
             <PhoneField
               className="form-input mono ek-num"
-              value={form.phone}
+              value={form.phone || ""}
               onChange={(e) => setForm(prev => ({ ...prev, phone: e.target.value }))}
             />
           </FormGroup>

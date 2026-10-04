@@ -115,7 +115,7 @@ export default function ShopsPage({ toast }) {
                   <tr key={b.id}>
                     <td><span className="fw-700">{b.name}</span></td>
                     <td><Badge color="blue">{b.code}</Badge></td>
-                    <td>{maskPhone(b.phone) || "—"}</td>
+                    <td>{b.phone ? maskPhone(b.phone) : "—"}</td>
                     <td>{b.address || "—"}</td>
                     <td>
                       <Badge color={b.status === "ACTIVE" ? "green" : "red"}>

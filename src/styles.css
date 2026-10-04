@@ -1471,6 +1471,26 @@ select.form-input { cursor: pointer; }
 .debt-quick { display: flex; gap: 8px; margin-top: 10px; }
 .debt-quick .btn { flex: 1; }
 
+/* ── Mijozlar sahifasi sarlavhasi (2026-10-04) ──────────────────────────
+   Yuqorida ro'yxatlar (Hammasi · Qarzdorlar · Jamg'arma), pastda qidiruv
+   va amallar. ⚠ Ro'yxatlar `.cat-tabs` EMAS: u katalog uchun yozilgan
+   (`flex: 1` + yonga aylantirish) va bu yerda tugmalarni siqib yashirardi.
+   Uchta tugma hech qachon aylantirishni talab qilmaydi — o'raladi. */
+.cust-head { flex-direction: column; align-items: stretch; gap: 12px; }
+.cust-views { display: flex; gap: 6px; flex-wrap: wrap; }
+.cust-tools { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.cust-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-left: auto; }
+@media (max-width: 640px) {
+  /* Uchala ro'yxat BITTA qatorda, teng ustunlarda: ikki qatorga o'ralsa
+     «Mijoz jamg'armasi» yolg'iz pastda qolib, alohida bo'limdek ko'rinardi. */
+  .cust-views { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .cust-views .cat-tab { padding: 6px 8px; white-space: normal; line-height: 1.2; text-align: center; justify-content: center; }
+  /* ⚠ `width: 280` qidiruvda inline turadi — shuning uchun `!important`. */
+  .cust-tools > :first-child { flex: 1 1 0; min-width: 0; width: auto !important; }
+  .cust-actions { margin-left: 0; width: 100%; }
+  .cust-actions > .btn { flex: 1 1 auto; justify-content: center; }
+}
+
 /* ── Daftardan ko'chirish (2026-10-04) — `DebtImportModal` ──────────────
    Jadval: № | Ism | Telefon | Summa | Sana | Izoh | ✕. Tor ekranda har
    qator kartochkaga aylanadi (sarlavha yashiriladi, maydonlar ustma-ust).
