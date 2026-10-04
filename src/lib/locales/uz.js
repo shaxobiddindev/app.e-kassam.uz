@@ -415,7 +415,7 @@ export default {
   "bill.daysLeft": "Qolgan kunlar",
   "bill.staff": "Xodimlar",
   "bill.branches": "Filiallar",
-  "bill.warn": "Obuna muddati tugayapti. Muddat tugagach 3 kundan keyin do'kon to'xtatiladi — to'lov uchun e-Kassam bilan bog'laning.",
+  "bill.warn": "Obuna muddati tugayapti. Muddat tugagach 3 kundan keyin do'kon to'xtatiladi. To'lov uchun e-Kassam bilan bog'laning.",
   "bill.unlimited": "Cheksiz",
   "bill.howToPay": "To'lov hozircha e-Kassam jamoasi orqali qayd etiladi. Aloqa: e-kassam.uz saytidagi raqamlar.",
   "nav.settings": "Sozlamalar",
