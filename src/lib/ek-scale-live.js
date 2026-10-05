@@ -1,4 +1,5 @@
-import { available, known, open, portId, POLL } from "./ek-serial.js";
+import { available, isNative, known, open, portId, POLL } from "./ek-serial.js";
+import { persistDevice } from "./ek-device-store.js";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    TAROZI ULANISHI — BUTUN ILOVA UCHUN BITTA (V111, V112)
@@ -53,6 +54,8 @@ export const readCfg = () => {
 };
 export const writeCfg = (v) => {
   try { localStorage.setItem(LS, JSON.stringify(v)); } catch (_) { /* shaxsiy oyna */ }
+  /* Desktop'da nusxa ilova faylida ham — WebView xotirasi yo'qolsa ham tiklanadi. */
+  persistDevice();
 };
 
 /* Joriy holat — obunachilar shuni oladi. */
@@ -142,7 +145,8 @@ export async function start(port, opts = {}) {
       emit();
     });
     state = { ...state, on: true };
-    writeCfg({ ...readCfg(), baudRate, poll: key, id: portId(port), enabled: true });
+    writeCfg({ ...readCfg(), baudRate, poll: key, id: portId(port), name: port?.name || "",
+               enabled: true, off: false });
     emit();
   })();
   try { await starting; } finally { starting = null; }
@@ -163,7 +167,8 @@ async function close(keep) {
      uni yangi tovarniki deb o'ylab, noto'g'ri miqdorni chekka
      tushirardi. */
   state = { on: false, kg: null, stable: false, bytes: state.bytes };
-  if (!keep) writeCfg({ ...readCfg(), enabled: false });
+  /* `off` — do'kon O'ZI uzdi: avtomatik topish ham uni qayta ulamasin. */
+  if (!keep) writeCfg({ ...readCfg(), enabled: false, off: true });
   emit();
 }
 
@@ -190,7 +195,82 @@ export async function forget() {
   await close(false);
   const port = pickPort(await known(), readCfg().id);
   try { await port?.forget?.(); } catch (_) { /* eski Chrome bilmaydi */ }
-  writeCfg({ ...readCfg(), enabled: false, id: "" });
+  /* Unutildi — yangi tarozi ulansa, avtomatik topish uni o'zi tanlasin. */
+  writeCfg({ ...readCfg(), enabled: false, id: "", off: false });
+}
+
+/* ══ AVTOMATIK TOPISH — DESKTOP (2026-10-05) ════════════════════════════════
+   Egasi: «avto sozlaydigan qil, xuddi stikernikidek». Desktop'da port ro'yxati
+   ruxsatsiz ko'rinadi, demak tarozini ilova O'ZI topa oladi: USB adapterlar
+   birma-bir ochiladi, keng tarqalgan tezlik va so'rovlar sinaladi va og'irlik
+   ramkasi kelgan birinchi juftlik saqlanadi. Bo'sh tarozi ham «0.000 kg»
+   yuboradi — topish uchun ustiga narsa qo'yish shart emas.
+
+   ⚠ FAQAT USB-SERIAL ADAPTERLAR (CH340, FTDI, Prolific, CP210x) o'zi sinaladi.
+   Boshqa COM portga ham ENQ yoki «W» yuborilsa, u ketma-ket chek printeri
+   bo'lib chiqishi va qog'ozga axlat bosishi mumkin edi. Ichki COM portni
+   (RS-232) do'kon «Avtomatik topish» tugmasi bilan o'zi sinatadi. */
+const ADAPTERS = new Set([0x1A86, 0x0403, 0x067B, 0x10C4]);
+const isAdapter = (p) => p?.kind === "usb" && (ADAPTERS.has(p.vid)
+  || /ch34|serial|uart|usb.?to|cp210|ftdi|prolific|scale|tarozi|весы/i.test(`${p.product || ""} ${p.manufacturer || ""}`));
+
+/** Sinash tartibi: avval eslab qolingan juftlik, keyin eng ko'p uchraydiganlari. */
+function combos() {
+  const cfg = readCfg();
+  const base = [[9600, "ENQ_DC1"], [9600, "NONE"], [9600, "ENQ"], [9600, "W"], [9600, "S"],
+    [4800, "ENQ_DC1"], [4800, "NONE"], [19200, "NONE"], [2400, "NONE"], [9600, "P"]];
+  const saved = cfg.baudRate && cfg.poll ? [[Number(cfg.baudRate), cfg.poll]] : [];
+  const seen = new Set();
+  return [...saved, ...base].filter(([b, k]) => {
+    const key = `${b}/${k}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+/** Bitta port + tezlik + so'rov: og'irlik ramkasi kelsa `true`. */
+async function probe(port, baudRate, pollKey, ms = 1500) {
+  let got = false;
+  let stopProbe = null;
+  try {
+    stopProbe = await open(port, {
+      baudRate, poll: POLL[pollKey]?.bytes || [], after: POLL[pollKey]?.after || [], pollMs: 300,
+    }, (st) => { if (st?.kg != null) got = true; });
+    const until = Date.now() + ms;
+    while (!got && Date.now() < until) await new Promise((r) => setTimeout(r, 100));
+  } catch (_) { /* port band yoki yo'q */ }
+  try { await stopProbe?.(); } catch (_) { /* allaqachon yopiq */ }
+  return got;
+}
+
+let detecting = null;
+let detectSig = "";
+
+/**
+ * Tarozini o'zi topadi va ulaydi. Topilsa `{ name, baudRate, poll }`, aks holda `null`.
+ *
+ * @param all  `true` — barcha COM portlar (do'kon tugmani bosdi); aks holda faqat USB adapterlar
+ * @param onStep  `(text) => void` — panelda «COM3 · 9600 · ENQ» ko'rsatish uchun
+ */
+export function autoDetect({ all = false, onStep } = {}) {
+  if (detecting) return detecting;
+  detecting = (async () => {
+    if (!isNative()) return null;
+    if (stopFn) await close(true);
+    const ports = (await known()).filter((p) => (all ? p.kind !== "bluetooth" : isAdapter(p)));
+    for (const port of ports) {
+      for (const [baudRate, poll] of combos()) {
+        onStep?.(`${port.name} · ${baudRate} · ${POLL[poll]?.label || poll}`);
+        if (await probe(port, baudRate, poll)) {
+          await start(port, { baudRate, poll });
+          return { name: port.name, baudRate, poll };
+        }
+      }
+    }
+    return null;
+  })();
+  return detecting.finally(() => { detecting = null; });
 }
 
 /**
@@ -204,7 +284,19 @@ export async function forget() {
  */
 async function tick() {
   const cfg = readCfg();
-  if (!cfg.enabled) return;
+  if (!cfg.enabled) {
+    /* Desktop: tarozi hali tanishtirilmagan (yoki sozlama yo'qolgan) va do'kon
+       uni o'zi uzmagan — USB adapterlar ro'yxati o'zgarganda bir marta sinaladi.
+       Ro'yxat o'sha bo'lsa takrorlanmaydi: har 3 soniyada port ochib-yopish
+       boshqa qurilmalarga xalaqit berardi. */
+    if (!isNative() || cfg.off || detecting || starting) return;
+    const ports = (await known()).filter(isAdapter);
+    const sig = ports.map((p) => `${p.name}:${p.vid}:${p.pid}`).sort().join("|");
+    if (!sig || sig === detectSig) return;
+    detectSig = sig;
+    await autoDetect();
+    return;
+  }
 
   if (stopFn) {
     const polling = (POLL[cfg.poll]?.bytes || []).length > 0;
@@ -237,13 +329,14 @@ export function autoConnect() {
   if (watching || !available()) return;
   watching = true;
 
-  /* Qurilma qaytib ulandi — kutib o'tirmaymiz. */
-  navigator.serial.addEventListener?.("connect", () => {
+  /* Qurilma qaytib ulandi — kutib o'tirmaymiz. (Desktop'da `navigator.serial`
+     bo'lmasligi mumkin — u yerda qorovul ro'yxat o'zgarishini o'zi sezadi.) */
+  navigator.serial?.addEventListener?.("connect", () => {
     fails = 0; retryAt = 0;
     resume();
   });
   /* Sug'urib olindi — holat darhol tozalanadi, «avtomatik» qoladi. */
-  navigator.serial.addEventListener?.("disconnect", () => {
+  navigator.serial?.addEventListener?.("disconnect", () => {
     if (stopFn) close(true);
   });
 

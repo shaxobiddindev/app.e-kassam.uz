@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { t } from "../lib/ek-i18n";
 import Select from "./ek/Select";
-import { available, known, pick, hexDump, POLL } from "../lib/ek-serial";
-import { subscribe, start, stop, forget, pickPort, readCfg } from "../lib/ek-scale-live";
+import { available, isNative, known, pick, hexDump, POLL } from "../lib/ek-serial";
+import { subscribe, start, stop, forget, pickPort, readCfg, autoDetect } from "../lib/ek-scale-live";
 import { quantity as fmtQty } from "../utils";
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -60,6 +60,13 @@ export default function ScaleLive({ toast }) {
      panel «o'zi ulanadi» deb aytadi va do'kon har safar shu yerga
      kirib o'tirmaydi. */
   const [paired, setPaired] = useState(Boolean(cfg.enabled || cfg.id));
+  /* ⚠ DESKTOP — TAROZI O'ZI TOPILADI (2026-10-05). Port tanlash oynasi yo'q:
+     «Avtomatik topish» USB/COM portlarni birma-bir sinaydi va qaysi birida,
+     qaysi tezlikda og'irlik kelganini o'zi saqlaydi. Qo'lda tanlash — ro'yxatdan. */
+  const native = isNative();
+  const [searching, setSearching] = useState(false);
+  const [step, setStep] = useState("");
+  const [ports, setPorts] = useState(null);
 
   /* ⚠ ULANISH PANELGA TEGISHLI EMAS (V111). Ilgari port shu
      komponentning ichida ochilardi va do'kon boshqa bo'limga o'tib
@@ -86,7 +93,21 @@ export default function ScaleLive({ toast }) {
    *
    * @param force  `true` — oyna majburan ochiladi (tarozi almashtirilgan)
    */
+  const detect = async () => {
+    setSearching(true); setStep(""); setPorts(null);
+    try {
+      const r = await autoDetect({ all: true, onStep: setStep });
+      if (r) toast?.success(t("scale.found", { name: r.name }));
+      else toast?.error(t("scale.notFound"));
+    } finally { setSearching(false); setStep(""); }
+  };
+
   const connect = async (force) => {
+    if (native) {
+      if (!force) { await detect(); return; }
+      setPorts(await known());
+      return;
+    }
     try {
       const port = (!force && pickPort(await known(), readCfg().id)) || await pick();
       await start(port, { baudRate: Number(baud), poll });
@@ -99,6 +120,13 @@ export default function ScaleLive({ toast }) {
   };
 
   const disconnect = () => stop();
+
+  /* Desktop: ro'yxatdan tanlangan port — joriy tezlik va so'rov bilan. */
+  const connectTo = async (port) => {
+    setPorts(null);
+    try { await start(port, { baudRate: Number(baud), poll }); }
+    catch (err) { toast?.error(String(err?.message || err)); }
+  };
 
   /* Brauzer ruxsati ham qaytariladi — boshqa tarozi ulanganda kerak. */
   const forgetPort = async () => {
@@ -140,11 +168,18 @@ export default function ScaleLive({ toast }) {
         {/* ⚠ «O'ZI ULANADI» DEB AYTILADI (V112). Do'kon buni BILMASA,
             har smenada shu sahifaga kirib ulash odat bo'lib qolardi —
             aynan shundan shikoyat qilingan edi. */}
-        {paired && (
-          <p style={{ fontSize: 12.5, lineHeight: 1.6, marginTop: -6,
+        {searching ? (
+          <p role="status" style={{ fontSize: 12.5, lineHeight: 1.6, marginTop: -6, color: "var(--fg-secondary)" }}>
+            <i className="fa-solid fa-magnifying-glass" aria-hidden="true" />{" "}
+            {t("scale.searching")} <span className="ek-num">{step}</span>
+          </p>
+        ) : (paired || native) && (
+          <p role="status" style={{ fontSize: 12.5, lineHeight: 1.6, marginTop: -6,
                       color: on ? "var(--fg-success)" : "var(--fg-warning)" }}>
             <i className={`fa-solid ${on ? "fa-circle-check" : "fa-rotate"}`} aria-hidden="true" />{" "}
-            {on ? t("scale.auto") : t("scale.autoWait")}
+            {on
+              ? (native && readCfg().name ? t("scale.autoOn", { name: readCfg().name }) : t("scale.auto"))
+              : (native ? t("scale.autoNative") : t("scale.autoWait"))}
           </p>
         )}
 
@@ -167,14 +202,15 @@ export default function ScaleLive({ toast }) {
               <i className="fa-solid fa-plug-circle-xmark" aria-hidden="true" /> {t("scale.liveStop")}
             </button>
           ) : (
-            <button className="btn btn-primary" onClick={() => connect(false)}>
-              <i className="fa-solid fa-plug" aria-hidden="true" /> {t("scale.liveConnect")}
+            <button className="btn btn-primary" onClick={() => connect(false)} disabled={searching}>
+              <i className={`fa-solid ${native ? "fa-wand-magic-sparkles" : "fa-plug"}`} aria-hidden="true" />{" "}
+              {native ? t("scale.autoFind") : t("scale.liveConnect")}
             </button>
           )}
           {/* ⚠ TANLASH OYNASI ALOHIDA TUGMADA. Asosiy tugma eslab
               qolingan portni ochadi; oyna esa faqat tarozi
               almashtirilganda kerak bo'ladi. */}
-          <button className="btn btn-outline" onClick={() => connect(true)}>
+          <button className="btn btn-outline" onClick={() => connect(true)} disabled={searching}>
             {t("scale.liveAgain")}
           </button>
           {paired && (
@@ -183,6 +219,20 @@ export default function ScaleLive({ toast }) {
             </button>
           )}
         </div>
+
+        {ports && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 14 }}>
+            {ports.length === 0 && <p className="text-muted" style={{ fontSize: 13 }}>{t("scale.noPorts")}</p>}
+            {ports.map((p) => (
+              <button key={p.name} type="button" className="btn btn-outline"
+                      style={{ justifyContent: "flex-start", minHeight: 44 }} onClick={() => connectTo(p)}>
+                <i className={`fa-solid ${p.kind === "usb" ? "fa-plug" : "fa-ethernet"}`} aria-hidden="true" />{" "}
+                <span className="ek-num">{p.name}</span>
+                <span className="text-muted" style={{ fontSize: 12 }}>{p.product || p.manufacturer || ""}</span>
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* ⚠ O'QILGAN OG'IRLIK — kassir uni tarozining EKRANI bilan
             solishtiradi. Ikkalasi bir xil bo'lsa format to'g'ri. */}

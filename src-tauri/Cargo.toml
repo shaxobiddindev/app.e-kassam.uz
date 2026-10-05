@@ -21,6 +21,11 @@ serde_json = "1"
 tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
 
+# Tarozi COM porti (2026-10-05). `default-features = false`: standart
+# xususiyat Linux'da libudev talab qiladi; ilova faqat Windows'da yig'iladi
+# va u yerda port ro'yxati USB sotuvchi/mahsulot raqami bilan ham keladi.
+serialport = { version = "4", default-features = false }
+
 # Chek printeri Windows drayveri orqali boshqariladi (winspool).
 # `features` ATAYLAB tor: `windows` krateyi juda katta va kerak bo'lmagan
 # modullar qurilish vaqtini bir necha daqiqaga uzaytiradi.

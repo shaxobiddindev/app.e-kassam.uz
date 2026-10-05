@@ -7,6 +7,7 @@ import { initLang, loadLocale } from "./lib/ek-i18n";
 import { isDesktop } from "./lib/ek-desktop";
 import { initStatusBar } from "./lib/ek-statusbar";
 import { autoConnect as scaleAutoConnect } from "./lib/ek-scale-live";
+import { restoreDevice } from "./lib/ek-device-store";
 
 // Tema — index.html dagi inline skript birinchi bo'yoqni to'g'ri qiladi,
 // bu yerda tizim sozlamasi o'zgarishini kuzatish yoqiladi.
@@ -23,8 +24,13 @@ initStatusBar();
    boshlamaydi.
 
    ⚠ Tarozisi YO'Q do'konda hech narsa qilinmaydi: modul do'kon
-   o'zi yoqib qo'ygan bo'lsagina portni qidiradi. */
-scaleAutoConnect();
+   o'zi yoqib qo'ygan bo'lsagina portni qidiradi.
+
+   ⚠ AVVAL FAYLDAN TIKLASH (2026-10-05): desktop'da printer va tarozi sozlamasi
+   ilova faylida ham saqlanadi (`ek-device-store.js`). WebView xotirasi
+   yo'qolgan bo'lsa, tarozi «tanishtirilmagan» deb qolmasin — sozlama avval
+   qaytariladi, keyin ulanadi. Brauzerda bu darhol tugaydi. */
+restoreDevice().finally(() => scaleAutoConnect());
 
 // Til — URL dagi `?lang=` (ilovalararo yo'naltirishdan) localStorage ga
 // ko'chiriladi va <html lang> qo'yiladi. Faqat INTERFEYSGA ta'sir qiladi.

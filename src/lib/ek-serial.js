@@ -1,4 +1,5 @@
 import { feed } from "./ek-scale.js";
+import { isDesktop, invoke } from "./ek-desktop.js";
 
 /* ══════════════════════════════════════════════════════════════════════════
    TAROZI PORTI (V111) — Web Serial
@@ -29,9 +30,21 @@ import { feed } from "./ek-scale.js";
    sahifa qayta yuklanganda port QAYTA SO'RALMAYDI).
    ══════════════════════════════════════════════════════════════════════════ */
 
-/** Brauzerda Web Serial bormi. */
+/* ══ DESKTOP — PORTNI ILOVANING O'ZI OCHADI (2026-10-05) ══════════════════
+   Egasi: «asosan desktop ilovada ishlatamiz — avto sozlaydigan va esdan
+   chiqarmaydigan qil». WebView2 ichida Web Serial ishonchsiz (tanlash
+   oynasi va ruxsat brauzer profilida), shuning uchun desktop'da port Rust
+   tomonida (`src-tauri/src/scale.rs`) oddiy COM port sifatida ochiladi.
+   Port «obyekti» — `{ native: true, name: "COM3", vid, pid, … }`; qolgan
+   mantiq (so'rov, ACK, oqimni o'qish) ikkala yo'lda BIR XIL. */
+const native = () => isDesktop();
+
+/** Port o'qish mumkinmi: desktop ilova yoki Web Serial'li brauzer. */
 export const available = () =>
-  typeof navigator !== "undefined" && "serial" in navigator;
+  native() || (typeof navigator !== "undefined" && "serial" in navigator);
+
+/** Desktop yo'li — port tanlash oynasi yo'q, ilova o'zi topadi. */
+export const isNative = native;
 
 /**
  * Ilgari ruxsat berilgan portlar.
@@ -41,12 +54,18 @@ export const available = () =>
  * kerak.
  */
 export async function known() {
+  if (native()) {
+    try { return asPorts(await invoke("serial_ports")); } catch (_) { return []; }
+  }
   if (!available()) return [];
   try { return await navigator.serial.getPorts(); } catch (_) { return []; }
 }
 
+const asPorts = (list) => (Array.isArray(list) ? list : []).map((p) => ({ native: true, ...p }));
+
 /** Foydalanuvchi portni tanlaydi — FAQAT tugma bosilishidan. */
 export async function pick() {
+  if (native()) throw new Error("native-pick");
   if (!available()) throw new Error("no-serial");
   return navigator.serial.requestPort();
 }
@@ -64,6 +83,7 @@ export async function pick() {
  * @returns `stop()` — o'qishni to'xtatib, portni yopadi
  */
 export async function open(port, opts = {}, onData = () => {}) {
+  if (port?.native) return openNative(port, opts, onData);
   await port.open({
     baudRate: opts.baudRate ?? 9600,
     dataBits: opts.dataBits ?? 8,
@@ -195,6 +215,11 @@ export async function open(port, opts = {}, onData = () => {}) {
  * bo'sh satr qaytadi va tanlov boshqa yo'l bilan qilinadi.
  */
 export function portId(port) {
+  if (port?.native) {
+    /* USB adapterda sotuvchi:mahsulot — Web Serial bilan BIR XIL shakl, ya'ni
+       brauzerda saqlangan tarozi desktop'da ham taniladi. Ichki COM da — nomi. */
+    return port.vid != null ? `${port.vid}:${port.pid ?? "?"}` : `com:${port.name}`;
+  }
   try {
     const i = port?.getInfo?.() || {};
     if (i.usbVendorId == null && i.usbProductId == null) return "";
@@ -270,4 +295,56 @@ export function hexDump(bytes, width = 16) {
     lines.push(`${hex.padEnd(width * 3 - 1)}  ${txt}`);
   }
   return lines.join("\n");
+}
+
+/**
+ * Desktop porti — `open` ning jufti. Baytlar Rust buferidan ~120 ms da olinadi.
+ *
+ * ⚠ So'rovlar ustma-ust tushmaydi (`busy`): sekin kompyuterda oldingi `serial_read`
+ * tugamay turib keyingisi chaqirilsa, baytlar tartibi buzilib, ramka chalkashardi.
+ */
+async function openNative(port, opts, onData) {
+  await invoke("serial_open", { name: port.name, baud: Number(opts.baudRate ?? 9600) });
+  let stopped = false;
+  let busy = false;
+  let state = null;
+  const ask = (bytes) => (bytes?.length
+    ? invoke("serial_write", { data: Array.from(bytes) }).catch(() => {}) : null);
+
+  const end = () => {
+    if (stopped) return;
+    stopped = true;
+    clearInterval(reader);
+    if (timer) clearInterval(timer);
+    try { opts.onEnd?.(); } catch (_) { /* chaqiruvchi xatosi */ }
+  };
+
+  const reader = setInterval(async () => {
+    if (stopped || busy) return;
+    busy = true;
+    try {
+      const bytes = await invoke("serial_read");
+      if (bytes?.length) {
+        const value = Uint8Array.from(bytes);
+        state = feed(state, latin1(value));
+        if (opts.after?.length && value.includes(0x06)) ask(opts.after);
+        onData(state, value);
+      }
+    } catch (_) {
+      end();           // kabel sug'urildi yoki port yo'qoldi
+    } finally { busy = false; }
+  }, 120);
+
+  let timer = null;
+  if (opts.poll?.length) {
+    ask(opts.poll);
+    timer = setInterval(() => ask(opts.poll), Math.max(200, opts.pollMs ?? 500));
+  }
+
+  return async function stop() {
+    stopped = true;
+    clearInterval(reader);
+    if (timer) clearInterval(timer);
+    try { await invoke("serial_close"); } catch (_) { /* allaqachon yopiq */ }
+  };
 }

@@ -29,6 +29,8 @@ const EZPL = /godex|\bg5\d\d|\bez[- ]?\d/i;
 /**
  * @returns {"tspl"|"zpl"|"ezpl"|"receipt"|"virtual"|"other"}
  */
+import { persistDevice } from "./ek-device-store.js";
+
 export function printerKind(name) {
   const s = String(name || "");
   if (VIRTUAL.test(s)) return "virtual";
@@ -281,4 +283,5 @@ export const lastTemplateId = () => {
 };
 export const rememberTemplate = (id) => {
   try { localStorage.setItem(LAST_TPL, String(id)); } catch { /* to'la yoki yopiq */ }
+  persistDevice();
 };

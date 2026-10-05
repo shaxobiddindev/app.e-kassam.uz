@@ -4,6 +4,9 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod printer;
+mod scale;
+
+use tauri::Manager;
 
 /// Oynani to'liq ekranga o'tkazadi yoki qaytaradi (F11 ning vazifasi).
 ///
@@ -18,6 +21,40 @@ mod printer;
 #[tauri::command]
 fn set_fullscreen(window: tauri::Window, on: bool) -> Result<(), String> {
     window.set_fullscreen(on).map_err(|e| e.to_string())
+}
+
+/// QURILMA SOZLAMALARI FAYLI (2026-10-05) — printer va tarozi sozlamasi.
+///
+/// ⚠ NEGA FAYL HAM. Sozlamalar veb tomonida `localStorage` da turadi va u
+/// WebView ma'lumoti bilan birga o'chishi mumkin (sessiya tozalanishi,
+/// profil buzilishi). Egasi: «ma'lumotni esdan chiqarmaydigan qil». Shuning
+/// uchun nusxasi ilovaning o'z papkasida (`%APPDATA%/uz.ekassam.pos/device.json`)
+/// saqlanadi va ishga tushganda yo'qolgani shundan tiklanadi.
+/// Faylda faqat qurilma sozlamalari — token yoki shaxsiy ma'lumot YO'Q.
+fn device_file(app: &tauri::AppHandle) -> Result<std::path::PathBuf, String> {
+    let dir = app.path().app_config_dir().map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    Ok(dir.join("device.json"))
+}
+
+#[tauri::command]
+fn device_store_get(app: tauri::AppHandle) -> Result<String, String> {
+    let p = device_file(&app)?;
+    Ok(std::fs::read_to_string(p).unwrap_or_default())
+}
+
+#[tauri::command]
+fn device_store_set(app: tauri::AppHandle, json: String) -> Result<(), String> {
+    // 64 KB dan katta bo'lsa — bu qurilma sozlamasi emas, xato; yozilmaydi.
+    if json.len() > 65_536 {
+        return Err("juda katta".into());
+    }
+    let p = device_file(&app)?;
+    // Avval vaqtinchalik faylga, keyin almashtirish: yozish o'rtasida chiroq
+    // o'chsa, yarim fayl qolib, hamma sozlama yo'qolmasin.
+    let tmp = p.with_extension("json.tmp");
+    std::fs::write(&tmp, json).map_err(|e| e.to_string())?;
+    std::fs::rename(&tmp, &p).map_err(|e| e.to_string())
 }
 
 fn main() {
@@ -41,6 +78,14 @@ fn main() {
             printer::print_raw,
             printer::print_tcp,
             set_fullscreen,
+            scale::serial_ports,
+            scale::serial_open,
+            scale::serial_read,
+            scale::serial_write,
+            scale::serial_close,
+            scale::serial_current,
+            device_store_get,
+            device_store_set,
         ])
         .run(tauri::generate_context!())
         .expect("e-Kassam ishga tushmadi");

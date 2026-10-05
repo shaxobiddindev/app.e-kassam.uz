@@ -19,6 +19,8 @@
    ishlayveradi va bir vaqtning o'zida ikki manba paydo bo'lmaydi.
    ══════════════════════════════════════════════════════════════════════════ */
 
+import { persistDevice } from "./ek-device-store.js";
+
 const KEY = "ek_hw";
 
 export const DEFAULTS = {
@@ -80,6 +82,9 @@ export function getSettings() {
 export function saveSettings(patch) {
   const next = { ...getSettings(), ...patch };
   localStorage.setItem(KEY, JSON.stringify(next));
+  /* Desktop'da nusxa ilova faylida ham (`ek-device-store.js`): WebView
+     xotirasi yo'qolsa ham printer sozlamasi tiklanadi. */
+  persistDevice();
   /* Sozlama o'zgarishi ochiq ekranlarga yetib borsin (Sozlamalar va
      Kassa bir vaqtda ochiq bo'lishi mumkin). */
   window.dispatchEvent(new CustomEvent("ek:hw", { detail: next }));
