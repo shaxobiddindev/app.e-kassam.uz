@@ -5098,6 +5098,10 @@ body.osk-open .mark-modal {
   --ek-chart-3: #7c3aed;
   --ek-chart-4: #dc2626;
   --ek-chart-5: #d97706;
+  /* 6–8: halqa palitrasi (ilgari JS'da qattiq hex edi — qorong'i rejim ta'sir qilmasdi). */
+  --ek-chart-6: #0284c7;
+  --ek-chart-7: #0d9488;
+  --ek-chart-8: #db2777;
 }
 :root[data-theme="dark"] {
   --ek-chart-1: #38bdf8;
@@ -5105,6 +5109,9 @@ body.osk-open .mark-modal {
   --ek-chart-3: #c084fc;
   --ek-chart-4: #f87171;
   --ek-chart-5: #fbbf24;
+  --ek-chart-6: #7dd3fc;
+  --ek-chart-7: #2dd4bf;
+  --ek-chart-8: #f472b6;
 }
 
 /* ── Boshqaruv qatori ──────────────────────────────────────────────── */
@@ -5302,7 +5309,7 @@ body.osk-open .mark-modal {
 }
 .shl__dot { width: 10px; height: 10px; border-radius: 3px; }
 .shl__name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.shl__sub { font-size: 11px; color: var(--fg-tertiary); font-weight: 600; }
+.shl__sub { font-size: 11.5px; color: var(--fg-secondary); font-weight: 600; }
 .shl__val { font-weight: 700; }
 .shl__pct { font-size: 12px; color: var(--fg-secondary); min-width: 46px; text-align: end; }
 /* Chiziq — butun qator ostida: ulushni son bilan birga KO'Z bilan ham
@@ -5320,8 +5327,92 @@ body.osk-open .mark-modal {
 }
 .topl__row:last-child { border-bottom: 0; }
 .topl__name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.topl__sub { font-size: 11px; color: var(--fg-tertiary); }
+.topl__sub { font-size: 11.5px; color: var(--fg-secondary); }
 .topl__val { font-weight: 800; }
+
+/* ══ HISOBOT SODDALASHTIRISH + MAHSULOT HISOBOTI (2026-10-05) ═════════════
+   Egasi: «oddiy user ham oson tushunsin». Har bo'lim oddiy SAVOL bilan
+   ochiladi (`.rpt-lead`), jadval qatori bosiladi (`.tr-link`) — tovarning
+   to'liq hisobotiga olib boradi. */
+.rpt-more .ek-select__value[data-placeholder] { color: var(--fg-secondary); }
+.rpt-lead { margin: 2px 0 14px; }
+.rpt-lead__q { margin: 0; font-size: 20px; font-weight: 800; color: var(--fg-primary); line-height: 1.3; }
+.rpt-lead__a { margin: 4px 0 0; font-size: 14px; line-height: 1.55; color: var(--fg-secondary); }
+.rpt-sub {
+  margin: 22px 0 10px; font-size: 15px; font-weight: 800; color: var(--fg-primary);
+}
+
+/* Bosiladigan jadval qatori — sichqoncha ham, klaviatura ham. */
+.tr-link { cursor: pointer; }
+.tr-link:hover td { background: var(--bg-hover); }
+.tr-link:focus-visible { outline: 2px solid var(--border-brand); outline-offset: -2px; }
+.tr-link__go { font-size: 10px; color: var(--fg-secondary); margin-inline-start: 4px; }
+
+/* TOP ro'yxat qatori tugma bo'lganda — oddiy qatordek ko'rinsin. */
+.topl__row--link {
+  width: 100%; border: 0; border-bottom: 1px solid var(--border-subtle);
+  background: none; cursor: pointer; text-align: start; color: inherit; font: inherit;
+  min-height: var(--hit-md); border-radius: 8px;
+}
+.topl__row--link:hover { background: var(--bg-hover); }
+.topl__row--link:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+/* ── Tovar qidiruvi ────────────────────────────────────────────────── */
+.rpt-find { position: relative; max-width: 640px; }
+.rpt-find__box {
+  display: flex; align-items: center; gap: 10px;
+  min-height: var(--hit-lg); padding: 0 14px;
+  border: 1.5px solid var(--border); border-radius: 12px; background: var(--bg-surface);
+}
+.rpt-find__box:focus-within { border-color: var(--bg-brand); }
+.rpt-find__box > i { color: var(--fg-secondary); }
+.rpt-find__input {
+  flex: 1; min-width: 0; border: 0; outline: 0; background: none;
+  font: 600 15px/1.4 var(--font); color: var(--fg-primary);
+}
+.rpt-find__list {
+  margin-top: 6px; border: 1px solid var(--border); border-radius: 12px;
+  background: var(--bg-surface); overflow: hidden;
+}
+.rpt-find__row {
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  min-height: var(--hit-lg); padding: 8px 14px;
+  border: 0; border-bottom: 1px solid var(--border-subtle); background: none;
+  cursor: pointer; text-align: start; font: inherit; color: var(--fg-primary);
+}
+.rpt-find__row:last-child { border-bottom: 0; }
+.rpt-find__row:hover, .rpt-find__row:focus-visible { background: var(--bg-hover); outline: 0; }
+.rpt-find__name { flex: 1; min-width: 0; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rpt-find__code { font-size: 12px; color: var(--fg-secondary); }
+.rpt-find__price { font-weight: 800; }
+.rpt-find__empty { padding: 14px; color: var(--fg-secondary); font-size: 14px; }
+
+/* ── Mahsulot hisoboti ─────────────────────────────────────────────── */
+.prep-head {
+  display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.prep-head__back { min-height: var(--hit-md); }
+.prep-head__main { flex: 1 1 320px; min-width: 0; }
+.prep-head__name { margin: 0 0 6px; font-size: 22px; font-weight: 800; line-height: 1.25; color: var(--fg-primary); }
+.prep-head__meta { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.prep-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 10px; border-radius: 999px;
+  background: var(--bg-sunken); color: var(--fg-secondary);
+  font-size: 12.5px; font-weight: 600;
+}
+.prep-chip b { color: var(--fg-primary); }
+.prep-dl {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 9px 16px; margin: 0;
+  font-size: 13.5px;
+}
+.prep-dl dt { color: var(--fg-secondary); font-weight: 600; }
+.prep-dl dd { margin: 0; font-weight: 800; text-align: end; color: var(--fg-primary); }
+.prep-foot {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 10px 16px; font-size: 13px;
+}
 .rank {
   display: inline-flex; align-items: center; justify-content: center;
   width: 20px; height: 20px; border-radius: 6px;

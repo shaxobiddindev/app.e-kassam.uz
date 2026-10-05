@@ -444,7 +444,13 @@ export default function App() {
             <Route path="/customers" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"]}><P.Customers toast={toast} /></ProtectedRoute>} />
             <Route path="/sales" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"]}><P.Sales toast={toast} /></ProtectedRoute>} />
             <Route path="/reports" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><P.Reports toast={toast} /></ProtectedRoute>} />
-            <Route path="/custom-report" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><P.CustomReport toast={toast} /></ProtectedRoute>} />
+            {/* MAHSULOT HISOBOTI (2026-10-05). `:id` siz — qidiruv. */}
+            <Route path="/reports/product" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><P.ProductReport toast={toast} /></ProtectedRoute>} />
+            <Route path="/reports/product/:id" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><P.ProductReport toast={toast} /></ProtectedRoute>} />
+            {/* ⚠ «Maxsus hisobot» olib tashlandi — u «Umumiy» dagi «O'z oralig'i»
+                davrining takrori edi (4 raqam, to'lovlar, top tovarlar — hammasi
+                hisobotda bor). Eski xatcho'plar o'lik sahifaga tushmasin. */}
+            <Route path="/custom-report" element={<Navigate to="/reports" replace />} />
             {/* Xarajat — do'kon pulining qayerga ketgani; kassirga yopiq. */}
             <Route path="/expenses" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><P.Expenses toast={toast} /></ProtectedRoute>} />
             <Route path="/shop-users" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><P.ShopUsers toast={toast} /></ProtectedRoute>} />

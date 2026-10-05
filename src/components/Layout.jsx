@@ -73,7 +73,10 @@ export const NAV = [
   { id: "reports", key: "nav.reports", icon: "fa-chart-bar", children: [
     { id: "reports-main",  path: "/reports",       key: "nav.overview",     icon: "fa-chart-bar",       roles: ["ADMIN", "SHOP_ADMIN", "OWNER"], feature: "REPORTS" },
     { id: "expenses",      path: "/expenses",      key: "nav.expenses",     icon: "fa-money-bill-wave", roles: ["ADMIN", "SHOP_ADMIN", "OWNER"], feature: "EXPENSES" },
-    { id: "custom-report", path: "/custom-report", key: "nav.customReport", icon: "fa-calendar-days",   roles: ["ADMIN", "SHOP_ADMIN", "OWNER"], feature: "REPORTS" },
+    /* Mahsulot hisoboti (2026-10-05) — «Maxsus hisobot» o'rnida. U sahifa
+       «Umumiy» dagi «O'z oralig'i» davrining to'liq takrori edi; endi
+       `/custom-report` shu yerga yo'naltiriladi (App.jsx). */
+    { id: "product-report", path: "/reports/product", key: "nav.productReport", icon: "fa-magnifying-glass-chart", roles: ["ADMIN", "SHOP_ADMIN", "OWNER"], feature: "REPORTS" },
   ]},
 
   /* BOSHQARUV — DO'KONNI boshqarish, egasi va do'kon admini uchun.

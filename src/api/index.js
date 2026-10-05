@@ -336,6 +336,17 @@ export const reportApi = {
     if (shopId) q.set("shopId", shopId);
     return request(`/reports/analytics?${q}`);
   },
+  /**
+   * MAHSULOT HISOBOTI (2026-10-05) — bitta tovar: kim, qachon, qancha
+   * sotdi, qoldiq, kunlik sur'at, kirim-chiqim, narx tarixi. BITTA javob
+   * (umumiy tahlil bilan bir xil sabab: ekran bir daqiqaning surati).
+   */
+  product: (id, from, to, bucket, shopId) => {
+    const q = new URLSearchParams({ from, to });
+    if (bucket) q.set("bucket", bucket);
+    if (shopId) q.set("shopId", shopId);
+    return request(`/reports/product/${id}?${q}`);
+  },
 
   /* ⚠ KASSA UCHUN: birga sotiladigan juftliklar (V79). Ochilishda BIR
      MARTA olinadi va keyin xotiradan qidiriladi — kassirning oldida
