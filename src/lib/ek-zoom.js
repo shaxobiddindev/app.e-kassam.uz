@@ -24,7 +24,7 @@ import { persistDevice } from "./ek-device-store.js";
 export const ZOOM_KEY = "ek_zoom";
 
 /** Qadamlar — brauzerdagiga yaqin; 100% doim ro'yxatda. */
-export const STEPS = [0.67, 0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2];
+export const STEPS = [0.5, 0.67, 0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2];
 
 let current = 1;
 

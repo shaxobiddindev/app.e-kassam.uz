@@ -49,7 +49,7 @@ const ev = (o) => {
 
 console.log("\n── Qadamlar ──");
 is(z.nextStep(1, +1) === 1.1 && z.nextStep(1, -1) === 0.9, "100% dan: 110% va 90%");
-is(z.nextStep(2, +1) === 2 && z.nextStep(0.67, -1) === 0.67, "chekkada to'xtaydi (67%…200%)");
+is(z.nextStep(2, +1) === 2 && z.nextStep(0.67, -1) === 0.5 && z.nextStep(0.5, -1) === 0.5, "kichraytirish 50% gacha, kattalashtirish 200% gacha");
 is(z.nextStep(1.13, +1) === 1.25 && z.nextStep(1.13, -1) === 1.1, "qadamdan tashqari qiymatdan eng yaqin qadamga");
 
 console.log("\n── Tugmalar (har xil klaviatura tartibi) ──");
