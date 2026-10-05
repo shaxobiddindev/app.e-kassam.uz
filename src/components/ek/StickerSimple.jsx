@@ -578,6 +578,10 @@ export default function StickerSimple({ toast, productIds = null, compact = fals
               <div className="stk-status__name">{desktop && !sheet ? queue : tk("printerInDialog")}</div>
               <div className="stk-hint">
                 {sheet ? t("shf.a4") : <><span className="ek-num">{sizeText(roll)}</span> {tk("mm")}</>} ·{" "}
+                {/* ⚠ «Bir qatorda 2 ta» KO'RINIB TURADI (2026-10-05): rulon bir ustunli
+                    bo'lsa-yu, profil ikki qatorli bo'lsa, har ikkinchi stiker chiqmaydi —
+                    do'konchi buni shu yozuvdan biladi va sozlashda bir marta o'zgartiradi. */}
+                {!sheet && roll?.across > 1 && <>{tk("acrossN", { n: roll.across })} · </>}
                 {route === "bytes" ? tk("routeDirect") : tk("routeDialog")}
               </div>
             </div>

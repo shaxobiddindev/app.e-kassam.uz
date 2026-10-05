@@ -157,9 +157,10 @@ console.log("\n── TSPL ──");
   is(!/\bTEXT /.test(text), "⚠ ichki shrift ishlatilmaydi — kirill nom «????» bo'lmasin");
   is(/BARCODE 80,\d+,"EAN13"/.test(text), "barkod buyrug'i siljigan joyda (9+1 mm = 80 nuqta)");
   /* Maydon 14 mm, raqamlar printerda chiziq OSTIGA qo'shiladi:
-     chiziqlar 14 − 2,6 = 11,4 mm = 91 nuqta. Butun 112 nuqta yuborilsa
-     raqamlar narx ustiga chiqardi. */
-  is(/"EAN13",91,1,/.test(text), "⚠ barkod raqamlari maydon ichida (chiziq 91 nuqta)",
+     chiziqlar 14 − 3,4 = 10,6 mm = 85 nuqta. Butun 112 nuqta yuborilsa
+     raqamlar narx ustiga chiqardi; 2,6 mm (91 nuqta) da esa printer shriftidagi
+     raqamlar pastki chetda kesilardi (2026-10-05, egasi). */
+  is(/"EAN13",85,1,/.test(text), "⚠ barkod raqamlari maydon ichida (chiziq 85 nuqta)",
     (text.match(/BARCODE [^\r]*/) || [""])[0]);
   is(/PRINT 5,1/.test(text), "⚠ 5 nusxa — bitta PRINT 5");
   eq((text.match(/PRINT /g) || []).length, 2, "ikki guruh — ikki PRINT");

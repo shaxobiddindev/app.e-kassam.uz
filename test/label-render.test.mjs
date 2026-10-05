@@ -124,7 +124,15 @@ console.log("\n── Narx: butun yirik, tiyin kichik ──");
   ok(/<tspan[^>]*dy="-/.test(svg), "⚠ tiyin qismi YUQORIDA (dy manfiy)");
   ok(svg.includes("</tspan>"), "tiyin alohida tspan da");
   const whole = renderLabel(TPL, { ...P, salePrice: 24500 }).svg;
-  ok(!whole.includes("<tspan"), "butun summada tiyin qismi umuman chizilmaydi");
+  ok(!/<tspan[^>]*dy="-/.test(whole), "butun summada tiyin qismi umuman chizilmaydi");
+  /* «so'm» (2026-10-05): narx ekani bilinsin — sig'sa narx yonida, sig'masa yo'q. */
+  ok(/<tspan[^>]*> so'm<\/tspan>/.test(whole), "narx yonida «so'm» (joy bor)");
+  const narrow = { ...TPL, spec: JSON.stringify({ ...JSON.parse(typeof TPL.spec === "string" ? TPL.spec : JSON.stringify(TPL.spec)),
+    fields: [{ key: "price", x: 1, y: 1, w: 14, h: 6, size: 14, weight: 900, align: "center", style: "major-minor" }] }) };
+  const tight = renderLabel(narrow, { ...P, salePrice: 1250000 }).svg;
+  ok(!tight.includes("so'm"), "tor joyda «so'm» tashlanadi — narx muhimroq");
+  const fs = Number((tight.match(/font-size="([\d.]+)"/) || [])[1]);
+  ok(fs > 0 && fs < 14 * 0.352778, "sig'magan narx maydonga kichrayadi (toshmaydi)", String(fs));
   /* Minglar ajratgichi — `ek-format` bilan BIR XIL manba. */
   ok(/24 500/.test(whole), "⚠ minglar ajratgichi `ek-format` dagi bilan bir xil");
 }

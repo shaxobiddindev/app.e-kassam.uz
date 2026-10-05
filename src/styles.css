@@ -5334,6 +5334,13 @@ body.osk-open .mark-modal {
    Egasi: «oddiy user ham oson tushunsin». Har bo'lim oddiy SAVOL bilan
    ochiladi (`.rpt-lead`), jadval qatori bosiladi (`.tr-link`) — tovarning
    to'liq hisobotiga olib boradi. */
+/* Rulonda yonma-yon nechta (2026-10-05) — o'lcham tugmasi ostida, faqat varianti bo'lsa. */
+.stk-across { margin: 14px 0 4px; }
+.stk-across__q { font-size: 14px; font-weight: 700; color: var(--fg-primary); margin-bottom: 8px; }
+.stk-across__art { display: inline-flex; gap: 3px; margin-inline-end: 8px; color: var(--fg-secondary); }
+.stk-across__art i { width: 14px; height: 10px; border: 1.5px solid currentColor; border-radius: 2px; }
+.stk-across__opt.is-on .stk-across__art { color: var(--fg-brand); }
+
 .rpt-more .ek-select__value[data-placeholder] { color: var(--fg-secondary); }
 .rpt-lead { margin: 2px 0 14px; }
 .rpt-lead__q { margin: 0; font-size: 20px; font-weight: 800; color: var(--fg-primary); line-height: 1.3; }

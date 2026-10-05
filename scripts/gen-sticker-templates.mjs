@@ -42,6 +42,15 @@ export const SIZES = [[58, 40], [58, 30], [60, 40], [50, 30], [40, 30], [40, 25]
 /* V131 dagi eski stikerlar shu katakni egallaydi — yangisi yasalmaydi. */
 const TAKEN = new Set(["standard@40x30", "barcode_price@30x20", "expiry@58x40",
   "barcode_only@40x30", "code_first@40x30"]);
+/* ⚠ ESKI STIKERLAR HAM YANGI QOIDADA (V147, 2026-10-05). Ilgari ularning
+   joylashuvi «ishlab turibdi» deb tegilmasdi — natijada 30×20 dagi «Barkod
+   va narx» (eng ko'p ishlatiladigan kichik stiker) 11 pt narx bilan qolib,
+   bo'sh joydan foydalanmasdi. Kod va nom o'zgarmaydi, faqat joylashuv. */
+export const LEGACY_CELLS = {
+  "standard@40x30": "sticker_standard", "barcode_price@30x20": "sticker_small",
+  "expiry@58x40": "sticker_expiry", "barcode_only@40x30": "sticker_barcode_only",
+  "code_first@40x30": "sticker_code_first",
+};
 
 export const PT = 0.352778;
 const DPI = 203;
@@ -162,6 +171,60 @@ const fitPrice = (row, w) => {
   return { ...row, size: Math.min(row.size, max) };
 };
 
+/* ══ BO'SH JOY — NARX VA KODGA (2026-10-05) ════════════════════════════
+   Egasi: «qog'oz o'lchamidan maksimal samarali foydalanish kerak, narx va
+   *kod kattaroq ko'rinsin agar bo'sh joy bo'lsa».
+
+   ⚠ ILGARI ORTIQCHA JOY QATORLAR ORASIGA BO'LINARDI: 58×40 da 9 pt nom,
+   18 mm barkod va 15 pt narx o'rtasida 2–3 mm bo'shliqlar qolardi, narx
+   esa kichikligicha turardi. Xaridor stikerdan birinchi navbatda narxni,
+   kassir esa *kodni qidiradi — bo'sh joy aynan ularga berilishi kerak.
+
+   Tartib: narx va kod navbatma-navbat 1 pt dan o'sadi, toki (1) barkodga
+   `bhTarget` dan kam joy qolmaguncha, (2) eniga sig'guncha, (3) asl
+   o'lchamining 1,8 baravarigacha. En: to'liq qatorda narx 9 belgiga
+   («1 250 000» yoki «125 000 so'm»), yarim qatorda (`pair`) 7 belgiga,
+   kod 5 belgiga («*1427»). Uzunrog'i rendererda o'zi kichrayadi
+   (`overflow: shrink`, narxda — `drawPrice`), ya'ni toshmaydi.
+   Barkod `bhTarget` gacha qisqarishi mumkin: H × 0,4, lekin kichik stikerda
+   10 mm, kattasida 12 mm dan past emas — skaner uchun yetarli. */
+const CODE_CHARS = 5;
+const capFor = (row, w, narrow = false) => {
+  const byWidth = row.key === "price" ? Math.floor(w / ((narrow ? 7 : 9) * PT * 0.6))
+    : Math.floor(w / (CODE_CHARS * PT * 0.6));
+  return Math.min(byWidth, Math.round((row.base ?? row.size) * 1.8));
+};
+const bumpOne = (row, w, narrow = false) => {
+  const cap = capFor(row, w, narrow);
+  return row.size + 1 > cap ? row : { ...row, base: row.base ?? row.size, size: row.size + 1 };
+};
+/** Qatorda shu kalitli matn bo'lsa — 1 pt kattaroq nusxasi, aks holda o'zi. */
+const bumpRow = (row, key, w, half) => {
+  if (row.type === "pair") {
+    const left = row.left.key === key ? bumpOne(row.left, half, true) : row.left;
+    const right = row.right.key === key ? bumpOne(row.right, half, true) : row.right;
+    return left === row.left && right === row.right ? row
+      : { ...row, left, right, size: Math.max(left.size, right.size) };
+  }
+  return row.key === key ? bumpOne(row, w) : row;
+};
+function growKeyRows(rows, ok, w, half) {
+  let cur = rows;
+  for (let guard = 0; guard < 100; guard++) {
+    let moved = false;
+    for (const key of ["price", "code"]) {
+      const i = cur.findIndex((x) => bumpRow(x, key, w, half) !== x);
+      if (i < 0) continue;
+      const next = cur.map((x, j) => (j === i ? bumpRow(x, key, w, half) : x));
+      if (!ok(next)) continue;
+      cur = next;
+      moved = true;
+    }
+    if (!moved) break;
+  }
+  return cur;
+}
+
 /** Bitta dizaynni bitta o'lchamga joylaydi → spec. */
 export function layout(designKey, W, H) {
   const d = DESIGNS[designKey];
@@ -204,8 +267,10 @@ export function layout(designKey, W, H) {
     fields.push({ key: "barcode", x: 1, y: r1((H - bh) / 2), w: bw, h: bh, visible: true,
       align: "center" });
     const rx = r1(1 + bw + 1), rw = r1(W - rx - inner);
-    const texts = rows.filter((x) => x.type !== "barcode").map((row) => fitPrice(row, rw));
-    const total = texts.reduce((s, x) => s + rowH(x), 0) + 0.8 * (texts.length - 1);
+    const totalOf = (list) => list.reduce((s, x) => s + rowH(x), 0) + 0.8 * (list.length - 1);
+    const texts = growKeyRows(rows.filter((x) => x.type !== "barcode").map((row) => fitPrice(row, rw)),
+      (list) => totalOf(list) <= H - 2 * inner, rw, rw);
+    const total = totalOf(texts);
     let y = Math.max(inner, (H - total) / 2);
     for (const row of texts) {
       const h = rowH(row);
@@ -249,6 +314,8 @@ export function layout(designKey, W, H) {
     if (!victim) { rows = cur; break; }
     base = base.filter((x) => x !== victim);
   }
+  const bhTarget = r1(clamp(H * 0.4, bcMin, W >= 90 ? 40 : 18));
+  rows = growKeyRows(rows, (list) => ih - fixed(list) >= bhTarget, iw, half);
   const room = ih - fixed(rows);
   if (room < bcMin) throw new Error(`${designKey} ${W}x${H}: barkodga ${r1(room)} mm qoldi`);
   /* Barkod eni modul bilan cheklangan (2–3 nuqta), balandligi esa yo'q:
@@ -361,9 +428,18 @@ export function build() {
 
   const out = [];
   const bad = [];
+  const legacy = [];
   for (const key of DESIGN_ORDER) {
     for (const [W, H] of SIZES) {
-      if (TAKEN.has(`${key}@${W}x${H}`)) continue;
+      if (TAKEN.has(`${key}@${W}x${H}`)) {
+        const code = LEGACY_CELLS[`${key}@${W}x${H}`];
+        const tpl = { code, kind: "STICKER", widthMm: W, heightMm: H, dpi: DPI, thermal: true,
+          name: DESIGNS[key].name, spec: JSON.stringify(layout(key, W, H)) };
+        const errs = check(tpl);
+        if (errs.length) bad.push(`${code}:\n    ${errs.join("\n    ")}`);
+        legacy.push(tpl);
+        continue;
+      }
       const s = layout(key, W, H);
       const tpl = { code: `stk_${key}_${W}x${H}`, kind: "STICKER", widthMm: W, heightMm: H,
         dpi: DPI, thermal: true, name: DESIGNS[key].name, spec: JSON.stringify(s) };
@@ -372,12 +448,12 @@ export function build() {
       out.push(tpl);
     }
   }
-  return { out, bad };
+  return { out, bad, legacy };
 }
 
 export const sql = (s) => `'${String(s).replace(/'/g, "''")}'`;
 
-if (process.argv[1] && process.argv[1].endsWith("gen-sticker-templates.mjs") && process.argv[2] !== "--update") {
+if (process.argv[1] && process.argv[1].endsWith("gen-sticker-templates.mjs") && !String(process.argv[2] || "").startsWith("--")) {
   const { out, bad } = build();
   if (bad.length) {
     console.error(`❌ ${bad.length} ta shablon tekshiruvdan o'tmadi:\n  ${bad.join("\n  ")}`);
@@ -487,4 +563,66 @@ ${changed.map((t) => `UPDATE label_templates SET spec = ${sql(t.spec)}::jsonb, v
 `;
   fs.writeFileSync(process.argv[4], body);
   console.log(`✅ ${changed.length} ta o'zgargan shablon → ${process.argv[4]}`);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   V147 — NARX VA KOD KATTAROQ, 30×20 BIR QATORLI RULON (2026-10-05)
+
+   node scripts/gen-sticker-templates.mjs --v147 <V142.sql> <V144.sql> <V147.sql>
+   ══════════════════════════════════════════════════════════════════════ */
+if (process.argv[2] === "--v147") {
+  const { out, bad, legacy } = build();
+  if (bad.length) {
+    console.error(`❌ ${bad.length} ta shablon tekshiruvdan o'tmadi:\n  ${bad.join("\n  ")}`);
+    process.exit(1);
+  }
+  const old = specsIn(fs.readFileSync(process.argv[3], "utf8"));
+  for (const [k, v] of specsIn(fs.readFileSync(process.argv[4], "utf8"))) old.set(k, v);
+  const changed = out.filter((t) => old.get(t.code) !== t.spec);
+  const upd = (t) => `UPDATE label_templates SET spec = ${sql(t.spec)}::jsonb, version = version + 1, updated_at = now()\n WHERE is_system AND code = ${sql(t.code)};`;
+  const body = `-- ══════════════════════════════════════════════════════════════════════════
+-- STIKER: NARX VA KOD KATTAROQ, 30×20 BIR QATORLI RULON (2026-10-05)
+-- ══════════════════════════════════════════════════════════════════════════
+--
+-- Egasi: «4 ta kiritilsa 2 ta stiker chiqyapti», «ba'zi yozuvlar tagidan
+-- kesilgan», «qog'ozdan maksimal foydalanish kerak, narx va *kod kattaroq
+-- ko'rinsin, narx yonida so'm bo'lsin».
+--
+-- 1. ⚠ 30×20 BIR QATORLI RULON YO'Q EDI. V135 da 30×20 faqat «2 qatorda» va
+--    «3 qatorda» bor edi, sozlashdagi katta «30 × 20» tugmasi esa jimgina
+--    «2 qatorda» ni tanlardi. Bir ustunli rulonda har qator 62 mm chizilib,
+--    o'ng stiker qog'ozdan tashqariga tushardi: 4 ta → 2 ta. Endi bir qatorli
+--    profil bor va «2 qatorda» tanlagan do'konlar bir qatorliga o'tkaziladi —
+--    haqiqatan ikki qatorli rulon ishlatayotgan do'kon sozlashda «Bir qatorda:
+--    2» ni bir marta tanlaydi (bunda stiker yo'qolmaydi, faqat o'ng ustun bo'sh
+--    qoladi — teskarisidan ancha yengil).
+-- 2. Shablonlar: bo'sh joy endi narx va *kodga beriladi (generatorda
+--    \`growKeyRows\`). ${changed.length} ta yangi va ${legacy.length} ta eski (V131) stiker.
+--    «so'm» narx yonida — rendererda, sig'sagina.
+--
+-- ⚠ BU FAYL QO'LDA TAHRIRLANMAYDI: frontend repodagi
+--   scripts/gen-sticker-templates.mjs --v147
+-- ══════════════════════════════════════════════════════════════════════════
+
+INSERT INTO label_media_profiles
+    (code, name, name_ru, name_en, media_type, label_width_mm, label_height_mm,
+     across, gap_x_mm, gap_y_mm, liner_width_mm, page_width_mm, page_height_mm,
+     sensor, is_system, created_at)
+VALUES
+    ('roll_30x20', 'Rulon 30×20', 'Рулон 30×20', 'Roll 30×20',
+     'RULON', 30, 20, 1, 0, 2, 32, NULL, NULL, 'ORALIQ', true, now())
+ON CONFLICT (code) WHERE is_system DO NOTHING;
+
+UPDATE label_output_settings
+   SET media_profile_id = (SELECT id FROM label_media_profiles WHERE is_system AND code = 'roll_30x20'),
+       updated_at = now()
+ WHERE media_profile_id = (SELECT id FROM label_media_profiles WHERE is_system AND code = 'roll_30x20_2');
+
+${changed.map(upd).join("\n")}
+
+-- ── Eski (V131) stikerlar — kod va nom o'zgarmaydi ──────────────────────────
+${legacy.map(upd).join("\n")}
+`;
+  fs.writeFileSync(process.argv[5], body);
+  console.log(`✅ ${changed.length} + ${legacy.length} ta shablon → ${process.argv[5]}`);
 }

@@ -142,8 +142,20 @@ export default function StickerSetup({ toast, onDone, kind = "STICKER" }) {
   const rolls = useMemo(() => stickerMedias(medias), [medias]);
   const main = useMemo(() => MAIN_SIZES.map(([w, h]) => mediaFor(w, h, rolls)).filter(Boolean),
     [rolls]);
-  const others = useMemo(() => rolls.filter((m) => !main.some((x) => x.id === m.id)), [rolls, main]);
+  /* ⚠ YONMA-YON NECHTA — ALOHIDA SAVOL (2026-10-05). Egasi: «4 ta kiritilsa
+     2 ta stiker chiqyapti». Sabab: 30×20 ning bir qatorli profili yo'q edi
+     va katta «30 × 20» tugmasi jimgina «2 qatorda» ni tanlardi — bir ustunli
+     rulonda har ikkinchi stiker qog'ozdan tashqariga chizilardi. Endi bir xil
+     o'lchamning varianti (1 / 2 / 3 qatorda) o'lcham tugmasi ostida alohida
+     tanlanadi va «boshqa o'lcham» ro'yxatida takrorlanmaydi. */
+  const sameSize = (a, b) => Boolean(a && b) && Number(a.labelWidthMm) === Number(b.labelWidthMm)
+    && Number(a.labelHeightMm) === Number(b.labelHeightMm);
+  const others = useMemo(() => rolls.filter((m) => !main.some((x) => sameSize(x, m))), [rolls, main]);
   const media = medias.find((m) => m.id === mediaId) || null;
+  const acrossOf = (m) => Math.max(1, Number(m?.across) || 1);
+  const variants = useMemo(() => (media && String(media.mediaType) !== "VARAQ"
+    ? rolls.filter((m) => sameSize(m, media)).sort((a, b) => acrossOf(a) - acrossOf(b)) : []),
+  [rolls, media]);
   const route = media ? routeOf(media, printer) : null;
   const a4 = useMemo(() => (kind === "SHELF" ? sheetMedia(medias) : null), [kind, medias]);
   const sheet = String(media?.mediaType) === "VARAQ";
@@ -348,7 +360,8 @@ export default function StickerSetup({ toast, onDone, kind = "STICKER" }) {
             </button>
           )}
           {main.map((m) => {
-            const on = m.id === mediaId;
+            /* Tanlangan profil shu o'lchamning boshqa varianti (2 qatorda) bo'lsa ham yonadi. */
+            const on = m.id === mediaId || sameSize(m, media);
             const w = Number(m.labelWidthMm), h = Number(m.labelHeightMm);
             return (
               <button key={m.id} type="button" role="radio" aria-checked={on}
@@ -365,6 +378,28 @@ export default function StickerSetup({ toast, onDone, kind = "STICKER" }) {
             );
           })}
         </div>
+        {variants.length > 1 && (
+          <div className="stk-across">
+            <div className="stk-across__q">{tk("qAcross")}</div>
+            <div className="stk-choices" role="radiogroup" aria-label={tk("qAcross")}>
+              {variants.map((m) => {
+                const on = m.id === mediaId;
+                const n = acrossOf(m);
+                return (
+                  <button key={m.id} type="button" role="radio" aria-checked={on}
+                          className={`stk-choice stk-across__opt ${on ? "is-on" : ""}`} onClick={() => onPick(m)}>
+                    {/* Rasm: rulonda yonma-yon nechta stiker — qo'ldagi rulon bilan solishtiriladi. */}
+                    <span className="stk-across__art" aria-hidden="true">
+                      {Array.from({ length: n }, (_, i) => <i key={i} />)}
+                    </span>
+                    <span className="stk-choice__name">{tk(n === 1 ? "across1" : "acrossN", { n })}</span>
+                    {on && <i className="fa-solid fa-circle-check stk-choice__on" aria-hidden="true" />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
         <button type="button" className="btn btn-outline btn-sm stk-more"
                 aria-expanded={more} onClick={() => setMore((v) => !v)}>
           <i className={`fa-solid ${more ? "fa-chevron-up" : "fa-chevron-down"}`} /> {tk("otherSize")}

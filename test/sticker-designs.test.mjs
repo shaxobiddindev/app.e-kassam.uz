@@ -40,12 +40,13 @@ is(JSON.stringify(layout("standard", 58, 40)) === JSON.stringify(layout("standar
    V142 (yaratish) ustiga V144 (o'zgargan joylashuvlar). */
 const dir = new URL("../../../e-kassam/src/main/resources/db/migration/", import.meta.url);
 const v142 = new URL("V142__sticker_designs.sql", dir), v144 = new URL("V144__sticker_designs_small.sql", dir);
-if (fs.existsSync(v142) && fs.existsSync(v144)) {
+const v147 = new URL("V147__sticker_price_code_bigger.sql", dir);
+if (fs.existsSync(v142) && fs.existsSync(v144) && fs.existsSync(v147)) {
   const latest = specsIn(fs.readFileSync(v142, "utf8"));
-  for (const [k, v] of specsIn(fs.readFileSync(v144, "utf8"))) latest.set(k, v);
+  for (const f of [v144, v147]) for (const [k, v] of specsIn(fs.readFileSync(f, "utf8"))) latest.set(k, v);
   const missing = out.filter((t) => latest.get(t.code) !== t.spec);
   is(latest.size === out.length && missing.length === 0,
-    "V142 + V144 migratsiyalari generator natijasi bilan bir xil",
+    "V142 + V144 + V147 migratsiyalari generator natijasi bilan bir xil",
     missing.slice(0, 3).map((t) => t.code).join(", "));
 } else {
   console.log("  ⏭  backend repo yonida emas — migratsiya solishtirilmadi");
@@ -63,5 +64,14 @@ is(new Set(small).size === small.length, "30×20 da har dizayn o'z maydonlari bi
 const std = out.find((t) => t.code === "stk_standard_30x20");
 is(std && JSON.parse(std.spec).fields.some((f) => f.key === "nameShort"), "30×20 «Standart» da nom bor");
 
+/* ⚠ BO'SH JOY NARX VA KODGA (V147, 2026-10-05): egasi «narx va *kod kattaroq
+   ko'rinsin». 58×40 «Standart» da narx asl 15 pt dan katta, eski 30×20 stiker ham
+   yangi qoidada. */
+const priceOf = (code, list = out) => JSON.parse(list.find((t) => t.code === code)?.spec || "{}")
+  .fields?.find((f) => f.key === "price")?.size || 0;
+is(priceOf("stk_standard_58x40") >= 20, "58×40 «Standart» da narx yirik (≥ 20 pt)", String(priceOf("stk_standard_58x40")));
+const { legacy } = build();
+is(legacy.length === 5 && priceOf("sticker_small", legacy) >= 13,
+   "eski 30×20 «Barkod va narx» ham kattalashdi (≥ 13 pt)", String(priceOf("sticker_small", legacy)));
 console.log(`\n  ${pass} o'tdi, ${fail} yiqildi\n`);
 if (fail) process.exit(1);

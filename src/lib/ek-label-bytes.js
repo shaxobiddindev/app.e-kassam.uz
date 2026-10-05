@@ -72,10 +72,18 @@ function tsplFont(sizePt, dpi) {
  * 40×30» da narx ustiga chiqardi (2026-10-03, rulon yo'li ulanganda
  * topildi — ungacha bu kod faqat sinov yorlig'ida ishlardi).
  */
+/* ⚠ 3,4 MM, 2,6 EMAS (2026-10-05). Egasi: «ba'zi yozuvlar tagidan kesilgan
+   holatda chiqyapti». 2,6 mm SVG dagi raqamlar o'lchami edi, printer esa
+   raqamlarni O'Z shrifti bilan chizadi: Xprinter/TSC da EAN raqamlari
+   ~22 nuqta + chiziqdan ~4 nuqta oraliq ≈ 3,2 mm (203 dpi). Barkod pastki
+   qatorda turgan dizaynlarda (30×20 da chekka atigi 0,8 mm) raqamlarning
+   pastki qismi yorliq chetidan chiqib, kesilardi. Chiziqlar 0,8 mm qisqaradi —
+   10 mm li kichik stikerda ham 6,6 mm qoladi, qo'l skaneriga yetadi. */
+const PRINTER_DIGITS_MM = 3.4;
 const barsHeightMm = (it) => {
   /* Burilgan barkodda chiziqlar balandligi — qutining ENI (`ek-label-render`). */
   const h = it.rot ? Number(it.w) : Number(it.h);
-  return it.showText ? Math.max(h - 2.6, 1) : h;
+  return it.showText ? Math.max(h - PRINTER_DIGITS_MM, 1) : h;
 };
 
 /** EAN-13 / EAN-8 / Code 128 → TSPL barkod turi. */

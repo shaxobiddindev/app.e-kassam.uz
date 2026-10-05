@@ -337,8 +337,30 @@ function drawPrice(f, value, size, weight, anchor, tx) {
   const minor = minorNum > 0 ? String(minorNum).padStart(2, "0") : null;
   const sign = n < 0 ? "-" : "";
 
+  /* ⚠ NARX HAM MAYDONGA SIG'SIN (2026-10-05). Oddiy matnda `overflow: shrink`
+     bor edi, narxda esa yo'q: shablon «1 250 000» ga hisoblangan, lekin
+     10 mln li narx yoki qo'lda kattalashtirilgan shrift maydondan chiqib,
+     qo'shni stikerga yoki chetga tushardi. Endi sig'maganda kichrayadi. */
+  const fullW = textWidthMm(sign + major, size, weight)
+    + (minor ? textWidthMm(minor, size * 0.45, weight) : 0);
+  if (Number(f.w) > 0 && fullW > Number(f.w)) size = Math.max(4, size * (Number(f.w) / fullW));
   const majorMm = size * PT_TO_MM;
   const baseline = f.y + Math.min(f.h, majorMm * 1.0);
+  /* ⚠ «SO'M» — FAQAT SIG'SA (2026-10-05). Egasi: «narx yonidan so'm qo'shilsin,
+     narxligi bilinishi uchun». Stikerda narx barkod raqamlari va *kod bilan
+     yonma-yon turadi va yalang'och «12 500» ularning qaysi biri narx ekanini
+     aytmaydi. Lekin «1 250 000» tor stikerga zo'rg'a sig'adi — u yerda «so'm»
+     qo'shilsa narx maydondan toshardi; shuning uchun eni baholanadi va
+     sig'magandagina tashlanadi (narx «so'm» dan muhimroq).
+     ⚠ Faqat `price` maydoni: tarozi yorlig'ida «so'm» alohida maydon
+     (`gen-scale-templates.mjs`), u yerda ikki marta chiqardi. */
+  /* Kichik narxda «so'm» nisbatan kattaroq: 30×20 dagi 11 pt narxning 0,42 si
+     ~1,6 mm — termoprinterda o'qilmaydi. ~2,4 mm dan kichik bo'lmasin (narxning yarmigacha). */
+  const somMm = Math.max(majorMm * 0.42, Math.min(majorMm * 0.6, 2.4));
+  const minorW = minor ? textWidthMm(minor, size * 0.45, weight) : 0;
+  const som = f.key === "price" && f.currency !== false
+    && textWidthMm(sign + major, size, weight) + minorW
+       + textWidthMm(" so'm", somMm / PT_TO_MM, 700) <= Number(f.w) + 0.001;
   let out = `<text x="${r(tx)}" y="${r(baseline)}" text-anchor="${anchor}"`
     + ` font-family="sans-serif" font-size="${r(majorMm)}" font-weight="${weight}"`
     + ` fill="#000">${esc(sign + major)}`;
@@ -346,6 +368,12 @@ function drawPrice(f, value, size, weight, anchor, tx) {
     /* `baseline-shift` o'rniga `dy` — u hamma brauzerda bir xil. */
     out += `<tspan font-size="${r(majorMm * 0.45)}" dy="${r(-majorMm * 0.42)}">`
         + `${esc(minor)}</tspan>`;
+  }
+  if (som) {
+    /* Asosiy qatorda (tiyindan keyin pastga qaytib), kichik va yarim qalin:
+       ko'z avval raqamni oladi, «so'm» faqat uning nima ekanini aytadi. */
+    out += `<tspan font-size="${r(somMm)}" font-weight="700"${minor ? ` dy="${r(majorMm * 0.42)}"` : ""}>`
+        + ` so'm</tspan>`;
   }
   return out + "</text>";
 }

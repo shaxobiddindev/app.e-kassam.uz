@@ -166,5 +166,23 @@ console.log("\n── Narx yorlig'i oddiy rejimda ──");
   eq(sheetMedia([{ id: 1, mediaType: "RULON" }, A4])?.id, 9, "A4 varaq profili topiladi");
 }
 
+/* ⚠ «4 TA KIRITILSA 2 TA CHIQYAPTI» (egasi, 2026-10-05). 30×20 ning bir
+   qatorli profili yo'q edi va katta tugma «2 qatorda» ni olardi: bir ustunli
+   rulonda har qator 62 mm chizilib, o'ng stiker qog'ozdan tashqariga tushardi.
+   V147 bir qatorli profil qo'shdi — u bor bo'lsa, AYNAN u tanlanadi. */
+{
+  const { rollRows } = await import("../src/lib/ek-label-print.js");
+  const R = [
+    { id: 21, mediaType: "RULON", labelWidthMm: 30, labelHeightMm: 20, across: 2, sensor: "ORALIQ" },
+    { id: 22, mediaType: "RULON", labelWidthMm: 30, labelHeightMm: 20, across: 3, sensor: "ORALIQ" },
+    { id: 23, mediaType: "RULON", labelWidthMm: 30, labelHeightMm: 20, across: 1, sensor: "ORALIQ" },
+  ];
+  eq(mediaFor(30, 20, R)?.id, 23, "⚠ 30×20 → bir qatorli rulon (2 qatorlisi emas)");
+  const rows = rollRows([{ product: { id: 1 }, quantity: 4 }], 1);
+  eq(rows.reduce((s, r) => s + r.copies * r.cells.length, 0), 4, "⚠ 4 ta kiritildi — bir qatorli rulonda 4 ta chiqadi");
+  const two = rollRows([{ product: { id: 1 }, quantity: 4 }], 2);
+  eq(two.reduce((s, r) => s + r.copies * r.cells.length, 0), 4, "2 qatorli rulonda ham jami 4 ta (2 qator × 2)");
+}
+
 console.log(`\n  ${pass} o'tdi, ${fail} yiqildi\n`);
 if (fail) process.exit(1);
