@@ -22,6 +22,8 @@
  * ⚠ NEGA SLAYDER, «dpi kiriting» EMAS: monitorining dpi sini bilgan
  * do'konchi yo'q. Kartani qo'yish esa hamma bajara oladigan ish.
  */
+import { zoomLevel } from "./ek-zoom.js";
+
 const KEY = "ek.screen.pxPerMm";
 
 /** Kalibrlanmagan ekran uchun taxmin: 96 dpi → 96/25,4 px/mm. */
@@ -40,9 +42,13 @@ export const CARD_WIDTH_MM = 85.6;
 export function pxPerMm() {
   try {
     const v = Number(localStorage.getItem(KEY));
-    if (Number.isFinite(v) && v > 1 && v < 40) return v;
+    /* ⚠ MASSHTAB (2026-10-05). Saqlangan qiymat 100% masshtabdagi px/mm.
+       Desktop'da Ctrl + bilan 125% qilinsa, bitta CSS piksel ekranda 1,25
+       barobar katta — bo'linmasa «haqiqiy o'lcham» stikeri ham 25% katta
+       chiqardi. Brauzerda `zoomLevel()` doim 1. */
+    if (Number.isFinite(v) && v > 1 && v < 40) return v / zoomLevel();
   } catch { /* shaxsiy rejim yoki bloklangan xotira — standart bilan davom etamiz */ }
-  return DEFAULT_PX_PER_MM;
+  return DEFAULT_PX_PER_MM / zoomLevel();
 }
 
 /** Kalibrlangan bo'lsa `true` — ko'rish oynasi buni aytib turadi. */
@@ -55,7 +61,8 @@ export function isCalibrated() {
 
 /** Karta kengligi piksellarda → px/mm. */
 export function saveFromCardWidth(px) {
-  const v = Number(px) / CARD_WIDTH_MM;
+  // Joriy masshtabda o'lchangan — 100% ga keltirib saqlanadi (yuqoridagi izoh).
+  const v = (Number(px) / CARD_WIDTH_MM) * zoomLevel();
   if (!Number.isFinite(v) || v <= 1 || v >= 40) return false;
   try { localStorage.setItem(KEY, String(v)); return true; } catch { return false; }
 }

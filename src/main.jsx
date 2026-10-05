@@ -8,6 +8,7 @@ import { isDesktop } from "./lib/ek-desktop";
 import { initStatusBar } from "./lib/ek-statusbar";
 import { autoConnect as scaleAutoConnect } from "./lib/ek-scale-live";
 import { restoreDevice } from "./lib/ek-device-store";
+import { initZoom } from "./lib/ek-zoom";
 
 // Tema — index.html dagi inline skript birinchi bo'yoqni to'g'ri qiladi,
 // bu yerda tizim sozlamasi o'zgarishini kuzatish yoqiladi.
@@ -30,7 +31,12 @@ initStatusBar();
    ilova faylida ham saqlanadi (`ek-device-store.js`). WebView xotirasi
    yo'qolgan bo'lsa, tarozi «tanishtirilmagan» deb qolmasin — sozlama avval
    qaytariladi, keyin ulanadi. Brauzerda bu darhol tugaydi. */
-restoreDevice().finally(() => scaleAutoConnect());
+restoreDevice().finally(() => {
+  scaleAutoConnect();
+  /* Desktop masshtabi (Ctrl +/−, Ctrl + g'ildirak) — saqlangani fayldan
+     tiklangandan keyin qo'llanadi. Brauzerda hech narsa qilmaydi. */
+  initZoom();
+});
 
 // Til — URL dagi `?lang=` (ilovalararo yo'naltirishdan) localStorage ga
 // ko'chiriladi va <html lang> qo'yiladi. Faqat INTERFEYSGA ta'sir qiladi.

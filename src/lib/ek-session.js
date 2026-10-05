@@ -29,6 +29,7 @@ export const DEVICE_KEYS = [
   "ek_scale_port",      // tarozi porti (ek-scale-live)
   "ek.screen.pxPerMm",  // ekran kalibrovkasi (ek-screen-calibration)
   "ek_theme",           // yorug'/qorong'i
+  "ek_zoom",            // desktop sahifa masshtabi (ek-zoom)
   "ek_touchMode",       // sensorli rejim
   "ek_lang",            // til — brauzerga tegishli
   "ek_forceMobile",     // ishlab chiqish bayrog'i

@@ -23,6 +23,21 @@ fn set_fullscreen(window: tauri::Window, on: bool) -> Result<(), String> {
     window.set_fullscreen(on).map_err(|e| e.to_string())
 }
 
+/// Sahifa masshtabi (Ctrl + / Ctrl − / Ctrl + g'ildirak) — 2026-10-05.
+///
+/// ⚠ NEGA O'Z BUYRUG'IMIZ, `zoomHotkeysEnabled` EMAS. WebView2 ning o'z
+/// masshtabi qadamni o'zi tanlaydi, ekranda hech narsa ko'rsatmaydi va
+/// ilova yopilganda unutiladi — kassir har tongda qayta kattalashtirardi.
+/// Bu yerda veb tomon qadamni boshqaradi va qiymatni qurilma sozlamasi
+/// sifatida saqlaydi (`ek-zoom.js`).
+#[tauri::command]
+fn set_zoom(window: tauri::WebviewWindow, scale: f64) -> Result<(), String> {
+    if !(0.5..=3.0).contains(&scale) {
+        return Err("masshtab chegaradan tashqarida".into());
+    }
+    window.set_zoom(scale).map_err(|e| e.to_string())
+}
+
 /// QURILMA SOZLAMALARI FAYLI (2026-10-05) — printer va tarozi sozlamasi.
 ///
 /// ⚠ NEGA FAYL HAM. Sozlamalar veb tomonida `localStorage` da turadi va u
@@ -78,6 +93,7 @@ fn main() {
             printer::print_raw,
             printer::print_tcp,
             set_fullscreen,
+            set_zoom,
             scale::serial_ports,
             scale::serial_open,
             scale::serial_read,
