@@ -40,13 +40,14 @@ is(JSON.stringify(layout("standard", 58, 40)) === JSON.stringify(layout("standar
    V142 (yaratish) ustiga V144 (o'zgargan joylashuvlar). */
 const dir = new URL("../../../e-kassam/src/main/resources/db/migration/", import.meta.url);
 const v142 = new URL("V142__sticker_designs.sql", dir), v144 = new URL("V144__sticker_designs_small.sql", dir);
-const v147 = new URL("V147__sticker_price_code_bigger.sql", dir);
-if (fs.existsSync(v142) && fs.existsSync(v144) && fs.existsSync(v147)) {
+const later = ["V147__sticker_price_code_bigger.sql", "V148__sticker_long_names.sql"].map((n) => new URL(n, dir));
+if (fs.existsSync(v142) && fs.existsSync(v144) && later.every((f) => fs.existsSync(f))) {
   const latest = specsIn(fs.readFileSync(v142, "utf8"));
-  for (const f of [v144, v147]) for (const [k, v] of specsIn(fs.readFileSync(f, "utf8"))) latest.set(k, v);
-  const missing = out.filter((t) => latest.get(t.code) !== t.spec);
-  is(latest.size === out.length && missing.length === 0,
-    "V142 + V144 + V147 migratsiyalari generator natijasi bilan bir xil",
+  for (const f of [v144, ...later]) for (const [k, v] of specsIn(fs.readFileSync(f, "utf8"))) latest.set(k, v);
+  const { legacy: leg } = build();
+  const missing = [...out, ...leg].filter((t) => latest.get(t.code) !== t.spec);
+  is(missing.length === 0,
+    "V142 + V144 + V147 + V148 migratsiyalari generator natijasi bilan bir xil (eski V131 ham)",
     missing.slice(0, 3).map((t) => t.code).join(", "));
 } else {
   console.log("  ⏭  backend repo yonida emas — migratsiya solishtirilmadi");

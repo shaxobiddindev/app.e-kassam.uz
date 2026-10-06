@@ -24,7 +24,7 @@ const TPL = {
     barcode: { moduleDots: 2, quietLeftModules: 9, quietRightModules: 7, showText: true },
     fields: [
       { key: "name",    x: 2, y: 2,  w: 66, h: 8,  size: 10, weight: 700, overflow: "shrink", visible: true },
-      { key: "price",   x: 2, y: 11, w: 42, h: 14, size: 26, weight: 900, style: "major-minor", visible: true },
+      { key: "price",   x: 2, y: 11, w: 50, h: 14, size: 26, weight: 900, style: "major-minor", visible: true },
       { key: "barcode", x: 2, y: 26, w: 66, h: 9,  visible: true },
     ],
   },
@@ -112,10 +112,12 @@ console.log("\n── Ogohlantirishlar: jimgina buzilmasin ──");
   ok(!!w && /mm toshdi/.test(w.text), "⚠ sig'magan barkod: necha mm toshgani aytiladi");
   ok(!tight.svg.includes("<rect x=\"12"), "sig'magan barkod chizilmaydi");
 
-  /* Uzun nom — kichrayadi, lekin o'qib bo'lmas darajada emas. */
-  const long = renderLabel(TPL, { ...P, name: "A".repeat(120) });
-  ok(long.warnings.some((x) => x.code === "TEXT_TINY"),
-     "⚠ juda kichrayadigan shrift ogohlantiriladi");
+  /* Uzun nom — kichrayadi, lekin o'qib bo'lmas darajada emas: 5 pt da ham
+     sig'masa «…» bilan kesiladi va bu ogohlantiriladi (2026-10-06 gacha 4 pt
+     gacha kichrayib, chetdan toshardi — TEXT_TINY). */
+  const long = renderLabel(TPL, { ...P, name: "A".repeat(400) });
+  ok(long.warnings.some((x) => x.code === "TEXT_CLIPPED") && long.svg.includes("…"),
+     "⚠ sig'magan nom «…» bilan kesiladi va ogohlantiriladi");
 }
 
 console.log("\n── Narx: butun yirik, tiyin kichik ──");
@@ -173,6 +175,21 @@ console.log("\n── EAN minimal balandligi ──");
   /* Code 128 chegarasi tegilmadi. */
   eq(barcodeMetrics("ABC-123", { heightMm: 8, labelKind: "SHELF" }).minHeightMm, 8,
      "Code 128 chegarasi o'zgarmadi");
+}
+
+console.log("\n── Uzun nom (2026-10-06) ──");
+{
+  const { fitLines, MIN_TEXT_PT } = await import("../src/lib/ek-label-render.js");
+  const name = "Shampun Head&Shoulders mentolli 400 ml";
+  const two = fitLines(name, 9, 700, 54, 5.9);
+  ok(two.lines.length === 2 && !two.clipped, "⚠ uzun nom ikki qatorga bo'lindi (kesilmadi)", JSON.stringify(two));
+  ok(two.lines.every((l) => l.split(" ").length > 1), "qatorlar teng — yolg'iz «ml» qolmaydi", JSON.stringify(two.lines));
+  ok(two.sizePt >= 7, "ikki qatorda shrift o'qiladigan (≥ 7 pt)", String(two.sizePt));
+  const tiny = fitLines(name, 6, 700, 28.4, 2.7);
+  ok(tiny.sizePt >= MIN_TEXT_PT && tiny.clipped && tiny.lines[0].endsWith("…"),
+     "⚠ joy yetmasa 5 pt dan kichraymaydi — oxiri «…» (chetdan chiqmaydi)", JSON.stringify(tiny));
+  const short = fitLines("Pista", 9, 700, 54, 5.9);
+  ok(short.lines.length === 1 && short.sizePt === 9, "qisqa nom — bir qatorda, asl o'lchamda");
 }
 
 console.log(`\n${fail === 0 ? "✅" : "❌"}  ${pass} o'tdi, ${fail} yiqildi\n`);

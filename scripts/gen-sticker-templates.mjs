@@ -159,7 +159,21 @@ const fs7 = fsN(7, 5, 14), fs8 = fsN(8, 6, 16), fs9 = fsN(9, 6, 18), fs10 = fsN(
 const fs11 = fsN(11, 7, 22), fs12 = fsN(12, 8, 24), fs13 = fsN(13, 8, 26), fs14 = fsN(14, 8, 28);
 const fs15 = fsN(15, 9, 30), fs18 = fsN(18, 10, 36), fs22 = fsN(22, 11, 44);
 
-const rowH = (row) => (row.type === "barcode" ? 0 : textH(row.size));
+/* ══ NOM — IKKI QATORLIK JOY (2026-10-06) ═══════════════════════════════
+   Egasi: «uzun nomlar sig'mayapti». Nom maydoni bir qatorlik edi va uzun
+   nom 4 pt gacha kichrayardi (qog'ozda nuqtalar) yoki chetdan kesilardi.
+   Endi nom maydoni IKKI qator sig'adigan balandlikda (asl shriftning 80% i,
+   5 pt dan kichik emas); qisqa nom bitta qatorda, maydon o'rtasida turadi,
+   uzuni rendererda ikki qatorga bo'linadi (`fitLines`). Narx va kod bundan
+   keyin qolgan joyni oladi (`growKeyRows`). */
+const NAME_KEYS = new Set(["nameShort", "name", "nameRu"]);
+/* ⚠ Ikki qatorlik joy SIG'SAGINA: kichik stikerda (30×20) u boshqa qatorni
+   (do'kon nomi, ruscha nom) siqib chiqarardi — `layout` ikkala variantni
+   hisoblab, maydoni ko'pini oladi. */
+let TWO_LINE = true;
+const nameH = (size) => (TWO_LINE ? r1(2 * Math.max(5, size * 0.8) * PT * 1.12 + 0.2) : textH(size));
+const isName = (row) => row.type !== "pair" && row.type !== "barcode" && NAME_KEYS.has(row.key);
+const rowH = (row) => (row.type === "barcode" ? 0 : isName(row) ? nameH(row.size) : textH(row.size));
 
 /**
  * Narx kengligi: «1 250 000» (9 belgi) qatorga sig'sin. Renderer narxning
@@ -225,8 +239,17 @@ function growKeyRows(rows, ok, w, half) {
   return cur;
 }
 
-/** Bitta dizaynni bitta o'lchamga joylaydi → spec. */
+/** Bitta dizaynni bitta o'lchamga joylaydi → spec (nom ikki qatorli, sig'masa — bir qatorli). */
 export function layout(designKey, W, H) {
+  TWO_LINE = true;
+  const two = layoutOnce(designKey, W, H);
+  TWO_LINE = false;
+  const one = layoutOnce(designKey, W, H);
+  TWO_LINE = true;
+  return two.fields.length >= one.fields.length ? two : one;
+}
+
+function layoutOnce(designKey, W, H) {
   const d = DESIGNS[designKey];
   /* ⚠ BALAND YORLIQDA (100×150) KOEFFITSIYENT KATTAROQ: eni bo'yicha
      hisoblanganda shrift kichik qolib, yorliqning uchdan ikkisi bo'sh edi. */
@@ -291,7 +314,7 @@ export function layout(designKey, W, H) {
   const gap = small ? 0.3 : 0.6;
   const sizeOfRow = (x) => (x.type === "pair" ? Math.max(x.left.size, x.right.size) : x.size);
   const tH = (size) => (small ? r1(size * PT * 1.2 + 0.15) : textH(size));
-  const rH = (x) => (x.type === "barcode" ? 0 : tH(sizeOfRow(x)));
+  const rH = (x) => (x.type === "barcode" ? 0 : isName(x) ? nameH(x.size) : tH(sizeOfRow(x)));
   const floorOf = (x) => x.min ?? (x.key === "price" ? 7 : 6);
   const fixed = (list) => list.reduce((s, x) => s + rH(x), 0) + gap * (list.length - 1);
   const shrink = (x) => (x.type === "pair"
@@ -386,8 +409,10 @@ function check(tpl) {
       errs.push(`render(${p.id}) ${w.code}: ${w.text}`);
     }
   }
+  /* Juda uzun nom (50 belgi) — «…» bilan qisqarishiga ruxsat (2026-10-06):
+     u chetdan chiqmaydi, toza kesiladi. Oddiy nomlar (SAMPLES) esa kesilmasligi shart. */
   for (const w of renderLabel(tpl, LONG, {}).warnings) {
-    if (w.code !== "TEXT_TINY") errs.push(`render(long) ${w.code}: ${w.text}`);
+    if (w.code !== "TEXT_TINY" && w.code !== "TEXT_CLIPPED") errs.push(`render(long) ${w.code}: ${w.text}`);
   }
   const bc = spec.fields.find((f) => f.key === "barcode");
   if (!bc) errs.push("barkod yo'q");
@@ -526,10 +551,44 @@ export function specsIn(sqlText) {
   for (const m of sqlText.matchAll(/\('(stk_[a-z_]+_\d+x\d+)',[^\n]*?'(\{[^\n]*\})'\)/g)) {
     map.set(m[1], m[2].replace(/''/g, "'"));
   }
-  for (const m of sqlText.matchAll(/SET spec = '(\{[^\n]*\})'::jsonb[^\n]*\n\s*WHERE is_system AND code = '(stk_[a-z_]+_\d+x\d+)'/g)) {
+  /* `sticker_*` — V131 dagi eski stikerlar (V147 dan beri ular ham generatordan). */
+  for (const m of sqlText.matchAll(/SET spec = '(\{[^\n]*\})'::jsonb[^\n]*\n\s*WHERE is_system AND code = '((?:stk_[a-z_]+_\d+x\d+)|(?:sticker_[a-z_]+))'/g)) {
     map.set(m[2], m[1].replace(/''/g, "'"));
   }
   return map;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   KEYINGI MIGRATSIYA — UMUMIY (2026-10-06)
+
+   ⚠ Har qoida o'zgarishi uchun yangi `--vNNN` rejimi yozish o'rniga: oldingi
+   migratsiyalarni ketma-ket o'qiydi (oxirgisi ustun) va FAQAT farq qilgan
+   shablonlarni (yangi va eski V131) UPDATE qiladi. Sarlavha — `--note` matni.
+
+   node scripts/gen-sticker-templates.mjs --next <chiqish.sql> "<sarlavha>" <V142.sql> <V144.sql> <V147.sql> …
+   ══════════════════════════════════════════════════════════════════════ */
+if (process.argv[2] === "--next") {
+  const { out, bad, legacy } = build();
+  if (bad.length) {
+    console.error(`❌ ${bad.length} ta shablon tekshiruvdan o'tmadi:\n  ${bad.join("\n  ")}`);
+    process.exit(1);
+  }
+  const [, , , target, note, ...bases] = process.argv;
+  const old = new Map();
+  for (const f of bases) for (const [k, v] of specsIn(fs.readFileSync(f, "utf8"))) old.set(k, v);
+  const changed = [...out, ...legacy].filter((t) => old.get(t.code) !== t.spec);
+  const body = `-- ══════════════════════════════════════════════════════════════════════════
+${String(note).split("\n").map((l) => `-- ${l}`.trimEnd()).join("\n")}
+--
+-- ${changed.length} ta shablonning joylashuvi yangilanadi. Kod va nomlar o'zgarmaydi.
+-- ⚠ BU FAYL QO'LDA TAHRIRLANMAYDI: frontend repodagi
+--   scripts/gen-sticker-templates.mjs --next
+-- ══════════════════════════════════════════════════════════════════════════
+
+${changed.map((t) => `UPDATE label_templates SET spec = ${sql(t.spec)}::jsonb, version = version + 1, updated_at = now()\n WHERE is_system AND code = ${sql(t.code)};`).join("\n")}
+`;
+  fs.writeFileSync(target, body);
+  console.log(`✅ ${changed.length} ta o'zgargan shablon → ${target}`);
 }
 
 if (process.argv[2] === "--update") {

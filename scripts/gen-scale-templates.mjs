@@ -203,7 +203,7 @@ function check(tpl) {
     for (const w of renderLabel(tpl, p, CTX).warnings) errs.push(`render(${p.id}) ${w.code}: ${w.text}`);
   }
   for (const w of renderLabel(tpl, LONG, CTX).warnings) {
-    if (w.code !== "TEXT_TINY") errs.push(`render(long) ${w.code}: ${w.text}`);
+    if (w.code !== "TEXT_TINY" && w.code !== "TEXT_CLIPPED") errs.push(`render(long) ${w.code}: ${w.text}`);
   }
   for (const f of s.fields) {
     if (f.x < 0 || f.y < 0 || f.x + f.w > tpl.widthMm + 0.001 || f.y + f.h > tpl.heightMm + 0.001) {

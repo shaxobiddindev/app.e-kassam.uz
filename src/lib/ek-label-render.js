@@ -41,12 +41,30 @@ const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) =>
  * etish baho bilan ishlasa — ikkalasi boshqa javob berardi va
  * yuqoridagi butun qoida buzilardi.
  *
- * 0,52 — sans-serif shriftlar uchun o'rtacha belgi kengligi
- * (shrift o'lchamiga nisbatan). Aniq emas, lekin BIR XIL.
+ * ⚠ BELGI BO'YICHA (2026-10-06), bitta o'rtacha son EMAS. Ilgari har
+ * belgi 0,52 (qalinda 0,56) em deb olinardi: «Shampun Head&Shoulders…»
+ * kabi bosh harf va «m», «w» ko'p nomda haqiqiy en 15–20% katta chiqib,
+ * «Nom yirik» stikerida nom ikki chetidan kesilardi (egasi: «uzun nomlar
+ * sig'mayapti»). Endi Arial/Helvetica jadvaliga yaqin guruhlar: tor
+ * (i, l, t, bo'shliq), keng (m, w, Ш, Ж), bosh harf, raqam. Hali ham
+ * BAHO va DETERMINISTIK — DOM kerak emas.
  */
 const PT_TO_MM = 0.352778;
-const textWidthMm = (text, sizePt, weight = 400) =>
-  String(text ?? "").length * sizePt * PT_TO_MM * (weight >= 700 ? 0.56 : 0.52);
+const NARROW_RE = /[iljtfI.,:;'!|ʻʼ`()[\] ]/;
+const WIDE_RE = /[mwMWШЩЖЮФЫшщжюфы@%&]/;
+const charEm = (c) => {
+  if (NARROW_RE.test(c)) return 0.28;
+  if (c === "r" || c === "-" || c === "\"") return 0.34;
+  if (WIDE_RE.test(c)) return 0.86;
+  if (c >= "0" && c <= "9") return 0.556;
+  if (c !== c.toLowerCase()) return 0.68;
+  return 0.54;
+};
+const textWidthMm = (text, sizePt, weight = 400) => {
+  let em = 0;
+  for (const c of String(text ?? "")) em += charEm(c);
+  return em * sizePt * PT_TO_MM * (weight >= 800 ? 1.13 : weight >= 700 ? 1.08 : 1);
+};
 
 /* ── Maydon qiymatlari ────────────────────────────────────────────────
    ⚠ Bitta joyda: yangi maydon qo'shish uchun shu jadvalga bitta qator
@@ -297,6 +315,15 @@ function drawText(f, value, warnings) {
   let shown = text;
   let useSize = size;
 
+  /* ⚠ SIG'MAGAN NOM — AVVAL IKKI QATOR, KEYIN «…» (2026-10-06). Egasi:
+     «uzun nomlar sig'mayapti». Ilgari `shrink` faqat shriftni kichraytirardi
+     (4 pt gacha — qog'ozda nuqtalar) va shunda ham sig'masa matn chetdan
+     chiqib kesilardi. Endi `fitLines`: maydon balandligi ko'targancha qator,
+     shrift 5 pt dan past emas, sig'masa oxiri «…». */
+  if (f.overflow === "shrink") {
+    return drawLines(f, text, size, weight, anchor, tx, warnings);
+  }
+
   if (wMm > f.w + 0.001) {
     if (f.overflow === "clip") {
       const keep = Math.max(1, Math.floor(text.length * (f.w / wMm)) - 1);
@@ -320,6 +347,86 @@ function drawText(f, value, warnings) {
     + ` font-weight="${weight}"${f.strike ? ' text-decoration="line-through"' : ""}`
     + ` fill="#000">${esc(shown)}</text>`;
   return out;
+}
+
+/** Qator balandligi (shrift o'lchamiga nisbatan) va eng kichik o'qiladigan shrift. */
+const LINE_H = 1.12;
+export const MIN_TEXT_PT = 5;
+
+/** So'zlarni berilgan enga qatorlarga bo'ladi; juda uzun so'z harfma-harf bo'linadi. */
+function wrapWords(text, sizePt, weight, w) {
+  const lines = [];
+  let cur = "";
+  for (const word of String(text).split(/\s+/).filter(Boolean)) {
+    const next = cur ? `${cur} ${word}` : word;
+    if (textWidthMm(next, sizePt, weight) <= w) { cur = next; continue; }
+    if (cur) lines.push(cur);
+    cur = word;
+    /* Bitta so'zning o'zi sig'masa («Head&Shoulders-Mentol») — bo'lib yuboriladi. */
+    while (textWidthMm(cur, sizePt, weight) > w && cur.length > 1) {
+      let k = cur.length - 1;
+      while (k > 1 && textWidthMm(cur.slice(0, k), sizePt, weight) > w) k--;
+      lines.push(cur.slice(0, k));
+      cur = cur.slice(k);
+    }
+  }
+  if (cur) lines.push(cur);
+  /* ⚠ TENG BO'LISH: ochko'z usul «Shampun Head&Shoulders mentolli 400 / ml»
+     kabi yolg'iz so'z qoldirardi. Ikki qatorda bo'linish nuqtasi ikkala
+     qatorning eng uzuni eng qisqa bo'ladigan joyda olinadi. */
+  if (lines.length === 2) {
+    const words = String(text).split(/\s+/).filter(Boolean);
+    let best = null;
+    for (let i = 1; i < words.length; i++) {
+      const a = words.slice(0, i).join(" "), b = words.slice(i).join(" ");
+      const wa = textWidthMm(a, sizePt, weight), wb = textWidthMm(b, sizePt, weight);
+      if (wa > w || wb > w) continue;
+      const m = Math.max(wa, wb);
+      if (!best || m < best.m) best = { m, a, b };
+    }
+    if (best) return [best.a, best.b];
+  }
+  return lines;
+}
+
+/**
+ * Matnni maydonga joylaydi: {sizePt, lines, clipped}.
+ *
+ * Tartib: asl shriftdan 0,25 pt qadam bilan pastga; har o'lchamda maydon
+ * balandligiga nechta qator sig'sa (ko'pi bilan 3), shuncha qatorga bo'lib
+ * ko'riladi. Birinchi sig'gan o'lcham olinadi — ya'ni nom bir qatorga
+ * biroz kichrayib sig'sa, ikki qatorga bo'linmaydi (yirikroq qoladi).
+ * 5 pt da ham sig'masa — oxirgi qator «…» bilan kesiladi.
+ */
+export function fitLines(text, sizePt, weight, w, h) {
+  const linesAt = (s) => Math.max(1, Math.min(3, Math.floor((h + 0.15) / (s * PT_TO_MM * LINE_H))));
+  for (let s = sizePt; s >= MIN_TEXT_PT - 1e-9; s -= 0.25) {
+    const lines = wrapWords(text, s, weight, w);
+    if (lines.length <= linesAt(s)) return { sizePt: s, lines, clipped: false };
+  }
+  const s = MIN_TEXT_PT;
+  const max = linesAt(s);
+  const lines = wrapWords(text, s, weight, w).slice(0, max);
+  let last = lines[max - 1] || "";
+  while (last.length > 1 && textWidthMm(`${last}…`, s, weight) > w) last = last.slice(0, -1);
+  lines[max - 1] = `${last.replace(/\s+$/, "")}…`;
+  return { sizePt: s, lines, clipped: true };
+}
+
+function drawLines(f, text, size, weight, anchor, tx, warnings) {
+  const { sizePt, lines, clipped } = fitLines(text, size, weight, Number(f.w), Number(f.h));
+  if (clipped) warnings.push({ field: f.key, code: "TEXT_CLIPPED", text: "matn kesildi" });
+  const em = sizePt * PT_TO_MM;
+  const lh = em * LINE_H;
+  /* Qatorlar bloki maydon o'rtasida (bo'yiga): bitta qator bo'lsa ham
+     nom ikki qatorlik joyning yuqorisiga yopishib qolmaydi. */
+  const top = f.y + Math.max(0, (Number(f.h) - lh * lines.length) / 2);
+  const first = top + Math.min(lh, em * 1.0);
+  const spans = lines.map((ln, i) =>
+    `<tspan x="${r(tx)}"${i ? ` dy="${r(lh)}"` : ""}>${esc(ln)}</tspan>`).join("");
+  return `<text x="${r(tx)}" y="${r(first)}" text-anchor="${anchor}"`
+    + ` font-family="sans-serif" font-size="${r(em)}" font-weight="${weight}"`
+    + `${f.strike ? ' text-decoration="line-through"' : ""} fill="#000">${spans}</text>`;
 }
 
 /**
