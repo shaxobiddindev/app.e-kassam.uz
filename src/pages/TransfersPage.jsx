@@ -18,8 +18,8 @@ import { Modal } from "../components";
 import MarkingScanModal from "../components/MarkingScanModal";
 import { Empty, Field, FormGroup, SearchBar } from "../components/ui";
 import Select from "../components/ek/Select";
-import { money, shortDate, dateTime } from "../lib/ek-format";
-import { TRANSFER_STATUS, transferStatus, unitLabel,
+import { money, shortDate, dateTime, quantity } from "../lib/ek-format";
+import { TRANSFER_STATUS, transferStatus, unitLabel, unitDecimals,
          writeOffOptions, TRANSFER_SHORTAGE_EXCLUDE } from "../lib/ek-labels";
 import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
 import { NoTh, NoTd, NO_COL } from "../components/ek/RowNo";
@@ -600,7 +600,7 @@ export default function TransfersPage({ toast }) {
                           <div className="text-muted" style={{ fontSize: 12 }}>{unitLabel(l.unit)}</div>
                         </td>
                         <td className="mono" style={{ fontSize: 13 }}>{shortDate(l.expiryDate)}</td>
-                        <td className="mono">{l.quantity}</td>
+                        <td className="mono">{quantity(l.quantity, unitDecimals(l.unit))}</td>
                         <td>
                           {/* Markirovkada miqdor qo'lda yozilmaydi: qabul
                               qiluvchi yetib kelgan yorliqlarni skanerlaydi
@@ -709,8 +709,8 @@ export default function TransfersPage({ toast }) {
                   <tr key={l.id}>
                     <td className="fw-700">{l.productName}</td>
                     <td className="mono" style={{ fontSize: 13 }}>{shortDate(l.expiryDate)}</td>
-                    <td className="mono">{l.quantity}</td>
-                    <td className="mono">{l.receivedQuantity ?? "—"}</td>
+                    <td className="mono">{quantity(l.quantity, unitDecimals(l.unit))} {unitLabel(l.unit)}</td>
+                    <td className="mono">{l.receivedQuantity == null ? "—" : quantity(l.receivedQuantity, unitDecimals(l.unit))}</td>
                     <td className="text-muted">
                       {l.writeOffReason && (
                         <span className="badge badge-yellow" style={{ marginRight: 6 }}>

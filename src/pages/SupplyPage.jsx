@@ -18,13 +18,13 @@ import { Empty, Field, FormGroup } from "../components/ui";
 import Select from "../components/ek/Select";
 import MixedPay from "../components/ek/MixedPay";
 import { enteredTotal, enteredParts } from "../lib/ek-payment";
-import { money } from "../lib/ek-format";
+import { money, quantity } from "../lib/ek-format";
 import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
 import { NumField, DateField } from "../components/ek/EkFields";
 import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
 import { NoTh, NoTd, NO_COL } from "../components/ek/RowNo";
-import { returnReasonOptions, supplierReturnReason } from "../lib/ek-labels";
+import { returnReasonOptions, supplierReturnReason, unitDecimals, unitLabel } from "../lib/ek-labels";
 import { asArray } from "../lib/ek-array";
 import { useScanner } from "../hooks/useScanner";
 import { useLayerCount } from "../hooks/useLayerCount";
@@ -908,7 +908,7 @@ export default function SupplyPage({ toast }) {
                 {retView.lines?.map((l) => (
                   <tr key={l.id}>
                     <td className="fw-700" style={{ fontSize: 13 }}>{l.productName}</td>
-                    <td className="ek-num">{l.quantity}</td>
+                    <td className="ek-num">{quantity(l.quantity, unitDecimals(l.unit))} {unitLabel(l.unit)}</td>
                     <td className="ek-num">{money(l.costPrice)}</td>
                     <td className="ek-num fw-700">{money(l.lineTotal)}</td>
                   </tr>
@@ -1140,7 +1140,7 @@ export default function SupplyPage({ toast }) {
                 {view.lines?.map((l) => (
                   <tr key={l.id}>
                     <td className="fw-700" style={{ fontSize: 13 }}>{l.productName}</td>
-                    <td className="mono">{l.quantity}</td>
+                    <td className="mono">{quantity(l.quantity, unitDecimals(l.unit))} {unitLabel(l.unit)}</td>
                     <td className="mono">{money(l.costPrice)}</td>
                     <td className="mono fw-700">{money(l.lineTotal)}</td>
                   </tr>
