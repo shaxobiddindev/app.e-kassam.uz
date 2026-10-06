@@ -10,7 +10,7 @@
    Do'kon aynan shunday holatga tushdi — baytlar kelayotgan bo'lsa-da,
    og'irlik maydonida tire turgan edi. Shuning uchun bu yerda YO'LNING
    HAMMASI tekshiriladi: soxta port haqiqiy tarozining baytlarini
-   beradi va panelda 0.488 kg chiqishi kutiladi.
+   beradi va panelda 0,488 kg chiqishi kutiladi (vergul, 3 xona — 2026-10-06).
 
    ⚠ Baytlar O'YLAB TOPILMAGAN — do'konning M-ER 328AC sidan olingan:
 
@@ -164,7 +164,7 @@ const view = await page.evaluate(() => {
 
 console.log("\n§3 ⚠ OG'IRLIK EKRANDA");
 /* Do'kon aynan shu joyda «—» ko'rgan edi. */
-view.weight === "0.488"
+view.weight === "0,488"
   ? ok(`og'irlik chizildi: ${view.weight} kg`)
   : no("0.488 kg chizilishi kerak", view.weight ?? "tire");
 
@@ -199,7 +199,7 @@ const autoView = await auto.evaluate(() => {
   const m = txt.match(/([\d.,]+)\s*kg/i);
   return { weight: m ? m[1] : null, says: /o'zi ishga tushadi/i.test(txt) };
 });
-autoView.weight === "0.488"
+autoView.weight === "0,488"
   ? ok(`ulanish oynasisiz og'irlik chizildi: ${autoView.weight} kg`)
   : no("tugmasiz ham 0.488 kg chizilishi kerak", autoView.weight ?? "tire");
 autoView.says ? ok("panel «o'zi ishga tushadi» deb aytdi")

@@ -28,7 +28,7 @@ import { qrModuleSize } from "./ek-qr-size";
    bo'lmaydi, ya'ni qoida sinovsiz qolardi. */
 import { isFiscalReceipt } from "./ek-receipt-type";
 import { money, moneyFine, quantity } from "../utils";
-import { paymentLabel, unitLabel } from "./ek-labels";
+import { paymentLabel, unitLabel, unitDecimals } from "./ek-labels";
 import { code128Svg, saleCode } from "./ek-barcode";
 import { spreadDiscount } from "./ek-discount";
 /* Qator summasi `ek-money` orqali — ekrandagi jami va server bilan bir raqam. */
@@ -895,7 +895,7 @@ export function buildPickupSlip(order, { shopName, width } = {}) {
        ⚠ `row` EMAS, `line`: qo'sh shriftda satrga ikki baravar kam
        belgi sig'adi va `row` ning bo'shliq hisobi buzilib, o'ng ustun
        qatorning tashqarisiga chiqib ketardi. */
-    r.double().line(`  ${quantity(i.quantity)} ${unitLabel(i.unit)}`).double(false);
+    r.double().line(`  ${quantity(i.quantity, unitDecimals(i.unit))} ${unitLabel(i.unit)}`).double(false);
   }
 
   r.rule();
@@ -922,7 +922,7 @@ function printPickupInBrowser(order, { shopName } = {}) {
 
   const rows = (order.items || []).map((i) =>
     `<div class="it"><div class="nm">${esc(i.productName)}</div>
-     <div class="qt">${esc(quantity(i.quantity))} ${esc(unitLabel(i.unit))}</div></div>`).join("");
+     <div class="qt">${esc(quantity(i.quantity, unitDecimals(i.unit)))} ${esc(unitLabel(i.unit))}</div></div>`).join("");
 
   win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
     <title>${esc(t("pickup.slipTitle"))} ${esc(order.saleCode || "")}</title>

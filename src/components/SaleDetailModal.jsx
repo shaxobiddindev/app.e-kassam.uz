@@ -2,8 +2,8 @@ import Modal from "./Modal";
 import { Badge } from "./ui";
 import { t } from "../lib/ek-i18n";
 import { money } from "../config";
-import { saleStatus, paymentEntry } from "../lib/ek-labels";
-import { shortDate } from "../lib/ek-format";
+import { saleStatus, paymentEntry, unitDecimals, unitLabel } from "../lib/ek-labels";
+import { shortDate, quantity } from "../lib/ek-format";
 import { Spinner } from "./ek/Loading";
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -122,7 +122,7 @@ export default function SaleDetailModal({ sale, onClose, onReprint, printing = f
                       </div>
                     )}
                   </td>
-                  <td><Badge color="blue">{item.quantity}</Badge></td>
+                  <td><Badge color="blue">{quantity(item.quantity, unitDecimals(item.unit))}{item.unit ? ` ${unitLabel(item.unit)}` : ""}</Badge></td>
                   <td className="mono">{money(item.price)}</td>
                   {hasDiscount && (
                     <td className="mono" style={{ color: disc > 0 ? "var(--red)" : "var(--text3)" }}>

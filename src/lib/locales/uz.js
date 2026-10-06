@@ -2708,6 +2708,7 @@ export default {
   "kassa.quantityFor": "{name} — {unit}",
   "kassa.packAdded": "{label}: {qty} {unit} qo'shildi",
   "kassa.weightScanned": "Tarozi barkodi: {qty} {unit}",
+  "kassa.weightAdded": "{name} — {qty} {unit} qo'shildi",
   "kassa.pickVariant": "Variantni tanlang",
   "kassa.outOfStock": "Qolmagan",
   "kassa.noPriceWarn": "Narx qo'yilmagan — sotib bo'lmaydi",

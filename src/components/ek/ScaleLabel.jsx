@@ -141,10 +141,28 @@ export default function ScaleLabel({ toast, onAdvanced }) {
     return key ? { text: t(key), detail: err.message } : { text: err?.message || "" };
   };
 
+  /* ⚠ PLU YO'Q — O'ZI BERILADI (2026-10-06). Egasi: «tarozili mahsulotlarga
+     ham kodli stiker chiqarib bo'lsin». Og'irlik barkodi tovarni PLU orqali
+     topadi; ilgari PLU'siz tovarda «PLU kod yo'q» deb to'xtardi va do'konchi
+     mahsulot kartasini ochib, PLU nima ekanini o'rganishi kerak edi. Endi
+     server *kodni (band bo'lsa birinchi bo'sh raqamni) PLU qiladi —
+     `POST /products/{id}/plu/auto`. Huquqi yo'q xodimda eski xabar qoladi. */
+  const withPlu = async (p) => {
+    if (String(p?.plu ?? "").trim()) return p;
+    const fresh = (await productApi.autoPlu(p.id))?.data;
+    if (!fresh?.plu) return p;
+    const next = { ...p, plu: fresh.plu };
+    setProducts((list) => list.map((x) => (x.id === p.id ? { ...x, plu: fresh.plu } : x)));
+    setProduct((cur) => (cur?.id === p.id ? next : cur));
+    return next;
+  };
+
   const print = async (atKg = kg) => {
     if (!product || busy) return;
     setError(null);
-    const r = weighedProduct(product, atKg, scale);
+    let item = product;
+    try { item = await withPlu(product); } catch { /* huquq yo'q — pastda «PLU yo'q» */ }
+    const r = weighedProduct(item, atKg, scale);
     if (r.error) { setError({ text: t(r.error) }); return; }
     if (!template) { setError({ text: t("wl.noTemplate") }); return; }
     setBusy(true);
@@ -194,7 +212,7 @@ export default function ScaleLabel({ toast, onAdvanced }) {
     );
   }
 
-  const total = product ? totalOf(product.salePrice, kg) : 0;
+  const total = product ? totalOf(product.salePrice, kg, product.unit) : 0;
   const route = media ? routeOf(media, printer) : null;
 
   return (
@@ -251,7 +269,7 @@ export default function ScaleLabel({ toast, onAdvanced }) {
           <div className={`wl-weight${fromScale ? " is-live" : ""}`} data-stable={stable ? "1" : "0"}>
             {fromScale ? (
               <>
-                <span className="wl-weight__kg ek-num">{(Number(live?.kg) || 0).toFixed(3)}</span>
+                <span className="wl-weight__kg ek-num">{(Number(live?.kg) || 0).toFixed(3).replace(".", ",")}</span>
                 <span className="wl-weight__unit">{t("wl.kg")}</span>
                 <span className="wl-weight__state" role="status">
                   <i className={`fa-solid ${stable ? "fa-circle-check" : "fa-wave-square"}`} aria-hidden="true" />

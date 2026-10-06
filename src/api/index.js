@@ -551,6 +551,8 @@ export const productApi = {
    * marta berilmasligi kerak.
    */
   generateCode: (id) => request(`/products/${id}/generate-code`, { method: "POST" }),
+  /** Tarozili tovarga PLU — yo'q bo'lsa server o'zi beradi (*kodi yoki birinchi bo'sh raqam). */
+  autoPlu:      (id) => request(`/products/${id}/plu/auto`, { method: "POST" }),
   /** Yorliq chop etilgani belgilanadi — kodni yangilash qoidasi shunga tayanadi (A2). */
   labelsPrinted: (ids) => request("/products/labels/printed", {
     method: "POST", body: JSON.stringify({ ids }),

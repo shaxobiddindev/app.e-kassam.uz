@@ -1261,13 +1261,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
       }
 
       if (r.source === "WEIGHT") {
-        // Tarozi formati do'konga qarab farq qiladi, shuning uchun
-        // o'qilgan og'irlik JIMGINA qabul qilinmaydi — kassir tasdiqlaydi.
-        setQtyModal({ product: r.product, initial: Number(r.quantity) });
-        toast.info(t("kassa.weightScanned", {
-          qty: fmtQty(r.quantity, r.product.unitDecimals),
-          unit: unitLabel(r.product.unit),
-        }));
+        addWeighed(r.product, r.quantity);
         return;
       }
 
@@ -1345,19 +1339,11 @@ export default function KassaPage({ toast, refreshLowStock }) {
       try {
         const r = await catalog.lookup(code);
 
-        /* ⚠ TAROZI — JIMGINA SAVATGA TUSHMAYDI. Do'kon formati
-           tarozining haqiqiy formatiga mos kelmasa, nazorat raqami
-           baribir to'g'ri chiqadi va PLU noto'g'ri o'qiladi. Shuning
-           uchun miqdor ekranda ko'rsatiladi va kassir tasdiqlaydi —
-           onlayn yo'ldagi bilan bir xil. */
+        /* Tarozi barkodi — onlayn yo'ldagi bilan bir xil (`addWeighed`). */
         if (r.source === "WEIGHT") {
           setCacheOnly(true);
           catalog.info().then(setCacheInfo).catch(() => {});
-          setQtyModal({ product: r.product, initial: Number(r.quantity) });
-          toast.info(t("kassa.weightScanned", {
-            qty: fmtQty(r.quantity, r.product.unitDecimals),
-            unit: unitLabel(r.product.unit),
-          }));
+          addWeighed(r.product, r.quantity);
           return;
         }
 
@@ -1554,20 +1540,21 @@ export default function KassaPage({ toast, refreshLowStock }) {
    * bu yerdagi tozalash skaner uchun hech qachon kerak bo'lmagan: u
    * faqat bosish yo'lini buzib turardi.
    */
+  /** Savatga qo'shadi. `true` — qo'shildi, `false` — rad etildi (sababi toast'da). */
   const addToCart = (product, amount = 1, { clearSearch = false } = {}) => {
-    if (product.expired) { toast.error(`${product.name} — muddati o'tgan, sotib bo'lmaydi!`); return; }
-    if (product.salePrice == null) { toast.error(`${product.name} — ${t("kassa.noPriceWarn")}`); return; }
+    if (product.expired) { toast.error(`${product.name} — muddati o'tgan, sotib bo'lmaydi!`); return false; }
+    if (product.salePrice == null) { toast.error(`${product.name} — ${t("kassa.noPriceWarn")}`); return false; }
     // Qoldiq FAQAT ombor yuritiladigan tovarda tekshiriladi: xizmatda
     // `stockQuantity` umuman bo'lmaydi va u har doim sotiladi.
     if (product.stockQuantity != null && Number(product.stockQuantity) <= 0) {
-      toast.error(`${product.name} — omborda qolmagan!`); return;
+      toast.error(`${product.name} — omborda qolmagan!`); return false;
     }
     /* Boshqa savatlar hammasini olib bo'lgan bo'lsa ham shu yerda
        to'xtaydi — quyidagi `stockError` sababini aytadi. */
     /* Savatdagi miqdor bilan QO'SHIB tekshiriladi — bittalab bosib
        qoldiqdan oshirib yuborishning yo'li yopiladi. */
     const shortage = stockError(product, roundQty(product, inCart(product.id) + amount));
-    if (shortage) { toast.error(shortage); return; }
+    if (shortage) { toast.error(shortage); return false; }
     setCart((prev) => {
       const exists = prev.find((i) => i.id === product.id);
       // Bir xil tovar ikkinchi marta → miqdor oshadi, yangi satr yaratilmaydi
@@ -1586,6 +1573,29 @@ export default function KassaPage({ toast, refreshLowStock }) {
        yangi qidiruv. DOM dan o'qiladi: ba'zi chaqiruvchilar eski yopilishdagi
        `search` ni ko'radi. */
     else if (searchRef.current?.value) searchSpent.current = true;
+    return true;
+  };
+
+  /* ══ TAROZI STIKERI — TO'G'RIDAN-TO'G'RI SAVATGA (2026-10-06) ══════════
+     Egasi: «og'irligini oldindan tortib, shtrix kodli stiker chiqarib
+     yopishtirsin — kassada skanerlab sotsin». Ilgari og'irlik barkodi miqdor
+     oynasini ochardi va kassir har paketni qo'lda tasdiqlardi: navbatda 10 ta
+     paket — 10 ta oyna. Supermarketda bunday stiker shunchaki skanerlanadi.
+
+     ⚠ Nega endi xavfsiz: (1) barkod nazorat raqami, prefiks va PLU bo'yicha
+     tekshirilgan — format mos kelmasa PLU odatda TOPILMAYDI, boshqa tovar
+     emas; (2) ekranda tovar nomi va og'irligi chiqadi («Pista — 0,350 kg»),
+     qator bosilsa miqdor tuzatiladi; (3) qoldiq va narx tekshiruvlari
+     `addToCart` da odatdagidek. Markirovkali tovar — eski yo'l (DataMatrix). */
+  const addWeighed = (product, qty) => {
+    if (product?.markingGroup) { setMarkModal({ product }); return; }
+    const amount = Number(qty);
+    if (!addToCart(product, amount, { clearSearch: true })) return;
+    toast.success(t("kassa.weightAdded", {
+      name: product.name,
+      qty: fmtQty(amount, product.unitDecimals),
+      unit: unitLabel(product.unit),
+    }));
   };
 
   /* ══ SAVATGA OPTOM NARX (V97) ═══════════════════════════════════════

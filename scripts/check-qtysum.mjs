@@ -151,8 +151,9 @@ await waitFor(page, () => document.querySelectorAll(".qty-modal__mode-btn")[1]
   ?.getAttribute("aria-pressed") === "true");
 await type(page, "50000");
 let txt = await totalText(page);
-/* 50 000 / 85 000 = 0.588 kg; chek 49 980 so'm — aytilgan puldan OSHMAYDI. */
-txt.includes("0.588") && /49\D?980/.test(txt)
+/* 50 000 / 85 000 = 0,588 kg; chek 49 980 so'm — aytilgan puldan OSHMAYDI.
+   Og'irlik verguldan keyin 3 xona bilan ko'rsatiladi (egasi, 2026-10-06). */
+txt.includes("0,588") && /49\D?980/.test(txt)
   ? ok(`ekranda: ${txt}`)
   : no("miqdor yoki summa noto'g'ri", txt);
 
@@ -161,7 +162,7 @@ console.log("\n§3 Tasdiqlash");
 await page.click(".pay-modal-footer .btn-green");
 await waitFor(page, () => !document.querySelector(".qty-modal"));
 let q = await cartQty(page);
-q === "0.588" ? ok("savatda 0.588 kg (summa emas, miqdor)") : no("savatga boshqa son tushdi", q);
+q === "0,588" ? ok("savatda 0,588 kg (summa emas, miqdor)") : no("savatga boshqa son tushdi", q);
 
 /* ── §4 Rejim almashsa qiymat O'GIRILADI ──────────────────────────── */
 console.log("\n§4 Almashtirish");

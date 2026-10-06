@@ -40,8 +40,19 @@ function ean13Check(body12) {
   return (10 - (sum % 10)) % 10;
 }
 
-/** Jami summa — so'mgacha yaxlitlanadi. */
-export const totalOf = (price, kg) => Math.round((Number(price) || 0) * (Number(kg) || 0));
+/** Gramm bilan sotiladigan birlik — narx 1 gramm uchun. */
+const isGram = (unit) => ["G", "GRAM"].includes(String(unit ?? "").toUpperCase());
+
+/**
+ * Jami summa — so'mgacha yaxlitlanadi.
+ *
+ * ⚠ GRAMM (2026-10-06): narx BIRLIK uchun — kg li tovarda 1 kg, grammli
+ * tovarda 1 gramm uchun. Ilgari har doim `narx × kg` olinardi va grammli
+ * tovarda yorliqdagi jami 1000 baravar kam chiqardi (barkodning o'zi to'g'ri
+ * edi — kassa miqdorni grammga o'giradi).
+ */
+export const totalOf = (price, kg, unit) =>
+  Math.round((Number(price) || 0) * (Number(kg) || 0) * (isGram(unit) ? 1000 : 1));
 
 /**
  * Og'irlikli EAN-13. Xato bo'lsa `{ error }` — kalit lug'atda (`wl.err.*`).
@@ -68,8 +79,14 @@ export function weightBarcode(scale, plu, kg, total = 0) {
   return { code: body + ean13Check(body) };
 }
 
-/** «0,255 kg» emas, «0.255 kg» — tarozi yorliqlarida nuqta odatiy. */
-export const weightText = (kg) => `${(Number(kg) || 0).toFixed(3)} kg`;
+/**
+ * «0,255 kg» — verguldan keyin DOIM 3 xona (2026-10-06).
+ *
+ * ⚠ Ilgari nuqta edi («tarozi yorliqlarida nuqta odatiy»). Egasi: «tarozili
+ * mahsulotlarda og'irlik verguldan keyin 3 xona ko'rsatilsin» — kassa, chek
+ * va yorliq bir xil yozsin (`ek-format.quantity` ham shunday).
+ */
+export const weightText = (kg) => `${(Number(kg) || 0).toFixed(3).replace(".", ",")} kg`;
 
 /** Yorliq vaqti: «2026-09-30 13:25» (mahalliy). */
 export function stamp(d = new Date()) {
@@ -82,7 +99,7 @@ export function stamp(d = new Date()) {
  * maydonlar (`weight`, `total`, `plu`). Asl tovar o'zgarmaydi.
  */
 export function weighedProduct(product, kg, scale) {
-  const total = totalOf(product?.salePrice, kg);
+  const total = totalOf(product?.salePrice, kg, product?.unit);
   const bc = weightBarcode(scale, product?.plu, kg, total);
   if (bc.error) return { error: bc.error };
   return {

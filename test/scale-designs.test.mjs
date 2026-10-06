@@ -49,7 +49,7 @@ console.log("\n── Tik barkod (suratdagidek) ──");
   const { svg, warnings } = renderLabel(side, p, { printedAt: "2026-09-30 13:25" });
   is(warnings.length === 0, "ogohlantirishsiz chiziladi", JSON.stringify(warnings));
   is(svg.includes("rotate(-90)"), "SVG da barkod va vaqt buriladi");
-  is(svg.replace(/[\s  ]/g, " ").includes("3 825") && svg.includes("0.255 kg") && svg.includes("2026-09-30 13:25"), "jami, og'irlik va vaqt yorliqda");
+  is(svg.replace(/[\s  ]/g, " ").includes("3 825") && svg.includes("0,255 kg") && svg.includes("2026-09-30 13:25"), "jami, og'irlik va vaqt yorliqda");
   const L = layoutLabel(side, p, {});
   const tspl = toTSPL(L, { dpi: 203 });
   is(/BARCODE \d+,\d+,"EAN13",\d+,1,270,2,4,"2700001002550"/.test(tspl), "TSPL: barkod 270° burilib, og'irlikli kod bilan",

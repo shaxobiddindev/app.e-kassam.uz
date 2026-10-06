@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { t } from "../lib/ek-i18n";
 import { pickupApi, shopApi } from "../api";
 import { money, quantity as fmtQty } from "../utils";
-import { unitLabel } from "../lib/ek-labels";
+import { unitLabel, unitDecimals } from "../lib/ek-labels";
 import { Empty, SearchBar, Badge } from "../components/ui";
 import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
@@ -268,7 +268,7 @@ export default function PickupPage({ toast }) {
                       {/* ⚠ Miqdor kattaroq: omborchi aynan shu raqamga
                           qarab tovar sanaydi. */}
                       <span className="pickup-card__qty mono">
-                        {fmtQty(i.quantity)} {unitLabel(i.unit)}
+                        {fmtQty(i.quantity, unitDecimals(i.unit))} {unitLabel(i.unit)}
                       </span>
                     </li>
                   ))}
@@ -349,7 +349,7 @@ export default function PickupPage({ toast }) {
             {(open.items || []).map((i, k) => (
               <li key={k}>
                 <span className="pickup-card__name">{i.productName}</span>
-                <span className="pickup-card__qty mono">{fmtQty(i.quantity)} {unitLabel(i.unit)}</span>
+                <span className="pickup-card__qty mono">{fmtQty(i.quantity, unitDecimals(i.unit))} {unitLabel(i.unit)}</span>
               </li>
             ))}
           </ul>

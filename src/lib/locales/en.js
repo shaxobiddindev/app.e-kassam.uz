@@ -2611,6 +2611,7 @@ export default {
   "kassa.quantityFor": "{name} — {unit}",
   "kassa.packAdded": "{label}: added {qty} {unit}",
   "kassa.weightScanned": "Scale barcode: {qty} {unit}",
+  "kassa.weightAdded": "{name}: {qty} {unit} added",
   "kassa.pickVariant": "Choose a variant",
   "kassa.outOfStock": "Out of stock",
   "kassa.noPriceWarn": "No price set — cannot be sold",

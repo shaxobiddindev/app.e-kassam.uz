@@ -87,22 +87,34 @@ export function qty(n) {
 }
 
 /**
- * O'lchov birligiga bog'langan miqdor: `3` (dona) · `0.35` (kg) · `12.5` (m).
+ * O'lchov birligiga bog'langan miqdor: `3` (dona) · `0,350` (kg) · `12,50` (m).
  *
  * `decimals` backend javobidan keladi (`ProductResponse.unitDecimals`) —
  * front o'zining birlik jadvalini yuritmaydi, aks holda ikki tomonda ikkita
- * haqiqat manbai paydo bo'lardi. Ortiqcha nollar kesiladi (kassir "0.350"
- * emas "0.35" ko'rgani ma'qul), lekin avval `toFixed` qilinadi — aks holda
- * "0.05" xato yaxlitlanib "0.5" bo'lib ketishi mumkin edi.
+ * haqiqat manbai paydo bo'lardi.
+ *
+ * ⚠ VERGUL VA TO'LIQ XONALAR (2026-10-06). Ilgari nuqta va ortiqcha nollar
+ * kesilardi («0.35»). Egasi: «tarozili mahsulotlarda og'irlik verguldan keyin
+ * 3 xona ko'rsatilsin» — kassir «0,350» ni tarozi ekrani va stikerdagi bilan
+ * bir xil ko'radi, «0.35» esa «35 gramm» yoki «350 gramm» deb ikkilanishga
+ * sabab bo'lardi. Birlik aniq bo'lsa xonalar SONI birlikdan (kg — 3, m — 2),
+ * butun birlikda (dona) o'zgarishsiz. Avval `toFixed` — aks holda «0,05»
+ * xato yaxlitlanib «0,5» bo'lishi mumkin edi.
+ *
+ * Birlik NOMA'LUM bo'lsa (`decimals` berilmagan) — 3 xonagacha, ortiqcha
+ * nollarsiz (dona tovar «2,000» bo'lib qolmasin), lekin baribir vergul bilan.
  */
-export function quantity(n, decimals = 3) {
+export function quantity(n, decimals) {
   const num = Number(n);
   if (!Number.isFinite(num)) return "0";
+  if (decimals === undefined) {
+    const fixed = num.toFixed(3);
+    return fixed.replace(/0+$/, "").replace(/\.$/, "").replace(".", ",");
+  }
   if (!decimals) return groupDigits(num);
-  const fixed = num.toFixed(decimals);
-  return fixed.includes(".")
-    ? fixed.replace(/0+$/, "").replace(/\.$/, "")
-    : fixed;
+  const [whole, frac] = Math.abs(num).toFixed(decimals).split(".");
+  const sign = num < 0 && Number(`${whole}.${frac}`) !== 0 ? "-" : "";
+  return `${sign}${groupDigits(Number(whole))}${frac ? `,${frac}` : ""}`;
 }
 
 /** Foiz, 1 xona: 21.4% */

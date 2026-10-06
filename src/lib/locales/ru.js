@@ -2611,6 +2611,7 @@ export default {
   "kassa.quantityFor": "{name} — {unit}",
   "kassa.packAdded": "{label}: добавлено {qty} {unit}",
   "kassa.weightScanned": "Весовой штрихкод: {qty} {unit}",
+  "kassa.weightAdded": "{name} — {qty} {unit} добавлено",
   "kassa.pickVariant": "Выберите вариант",
   "kassa.outOfStock": "Нет в наличии",
   "kassa.noPriceWarn": "Цена не задана — продать нельзя",
