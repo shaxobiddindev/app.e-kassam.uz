@@ -512,7 +512,6 @@ export default {
   "layout.lowStockBadge": "{n} товаров заканчивается",
   "layout.lowStockTitle": "Предупреждение склада",
   "layout.lowStockGo": "Перейти на склад",
-  "layout.pieces": "шт",
   "layout.superadmin": "СУПЕРАДМИН",
 
   "settings.title": "Настройки",

@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { LOGO_URL, LOGO_DARK_URL, MARK_URL, initials } from "../utils";
-import { roleLabel } from "../lib/ek-labels";
+import { roleLabel, unitDecimals, unitLabel } from "../lib/ek-labels";
 import { hasRole, topRole, roleSet } from "../lib/ek-roles";
 import { isMobileApp } from "../lib/ek-desktop";
 import { setFullscreen, onFullscreenLeft } from "../lib/ek-fullscreen";
 import { KEY_BY_ID, matches as keyMatches, keyLabel } from "../lib/ek-kassa-keys";
 import { useT } from "../lib/ek-i18n";
-import { weekdayDate } from "../lib/ek-format";
+import { weekdayDate, quantity } from "../lib/ek-format";
 import { useSuspiciousCount } from "../hooks/useSuspiciousCount";
 import { useBreezzPending } from "../hooks/useBreezzPending";
 import { BREEZZ_UI } from "../config";
@@ -222,7 +222,7 @@ function LowStockBadge({ items, count, onGoInventory }) {
               {items.map((item) => (
                 <div key={item.productId} style={{ display: "flex", justifyContent: "space-between", gap: 12, padding: "10px 16px", borderBottom: "1px solid var(--border-subtle)" }}>
                   <span style={{ fontWeight: 600, fontSize: 13 }}>{item.productName}</span>
-                  <span className="ek-num" style={{ fontWeight: 700, color: "var(--fg-warning)" }}>{item.quantity} {t("layout.pieces")}</span>
+                  <span className="ek-num" style={{ fontWeight: 700, color: "var(--fg-warning)" }}>{quantity(item.quantity, unitDecimals(item.unit))} {unitLabel(item.unit)}</span>
                 </div>
               ))}
             </div>

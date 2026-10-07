@@ -525,7 +525,6 @@ export default {
   "layout.lowStockBadge": "{n} mahsulot kam",
   "layout.lowStockTitle": "Ombor ogohlantirishi",
   "layout.lowStockGo": "Omborga o'tish",
-  "layout.pieces": "dona",
   "layout.superadmin": "SUPERADMIN",
 
   /* ── Sozlamalar sahifasi ────────────────────────────────────────────── */

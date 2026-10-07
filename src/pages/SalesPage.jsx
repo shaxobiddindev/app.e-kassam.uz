@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "../lib/ek-i18n";
 import { saleApi, shopApi } from "../api";
 import { money, fmtMoney } from "../utils";
+import { quantity } from "../lib/ek-format";
 import { BranchSelector, Modal } from "../components";
 import { Empty, SearchBar, Badge, Field } from "../components/ui";
 import { useConfirm } from "../context/ConfirmProvider";
@@ -9,7 +10,7 @@ import { useBadge } from "../context/BadgeProvider";
 import { useAuth } from "../hooks/useAuth";
 import { PAYMENT_TYPE, SALE_STATUS, paymentEntry, saleStatus,
          dispositionOptions, writeOffOptions,
-         RETURN_WRITE_OFF_EXCLUDE } from "../lib/ek-labels";
+         RETURN_WRITE_OFF_EXCLUDE, unitDecimals } from "../lib/ek-labels";
 import { asArray } from "../lib/ek-array";
 import { PERIODS, periodRange, isoInstant } from "../lib/ek-period";
 // ⚠ `Spinner` HAM shu yerdan. U chek chiqarish va bekor qilish tugmalarida
@@ -599,7 +600,7 @@ export default function SalesPage({ toast }) {
         /* Chekdagi tovarlar — bitta katakda. Alohida varaq qilish
            mumkin edi, lekin egasi odatda «shu chekda nima bor edi»
            deb qaraydi, tovar bo'yicha tahlil esa Hisobotlarda. */
-        (s.items || []).map((i) => `${i.productName} × ${i.quantity}`).join("; "),
+        (s.items || []).map((i) => `${i.productName} × ${quantity(i.quantity, unitDecimals(i.unit))}`).join("; "),
       ];
     });
     downloadXlsx(`sotuvlar-${new Date().toISOString().slice(0, 10)}`, [{
@@ -971,7 +972,7 @@ export default function SalesPage({ toast }) {
                           </div>
                         )}
                       </td>
-                      <td><Badge color={left > 0 ? "blue" : "gray"}>{left}</Badge></td>
+                      <td><Badge color={left > 0 ? "blue" : "gray"}>{quantity(left, unitDecimals(it.unit))}</Badge></td>
                       <td style={{ width: 150 }}>
                         <Field
                           kind="qty" unit={it.unit} max={left}

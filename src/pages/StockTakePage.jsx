@@ -17,6 +17,7 @@ import { inventoryApi, productApi } from "../api";
 import { Modal } from "../components";
 import { Empty, Field } from "../components/ui";
 import { money, quantity as qtyFmt, dateTime } from "../lib/ek-format";
+import { unitDecimals } from "../lib/ek-labels";
 import { useConfirm } from "../context/ConfirmProvider";
 import { useBadge } from "../context/BadgeProvider";
 import { SkeletonTable, Spinner } from "../components/ek/Loading";
@@ -278,12 +279,12 @@ export default function StockTakePage({ toast }) {
                         <div className="fw-700">{l.productName}</div>
                         <div className="text-muted mono" style={{ fontSize: 12 }}>{l.barcode}</div>
                       </td>
-                      <td className="mono fw-700">{qtyFmt(l.countedQuantity)}</td>
-                      {reveal && <td className="mono">{qtyFmt(l.expectedQuantity)}</td>}
+                      <td className="mono fw-700">{qtyFmt(l.countedQuantity, unitDecimals(l.unit))}</td>
+                      {reveal && <td className="mono">{qtyFmt(l.expectedQuantity, unitDecimals(l.unit))}</td>}
                       {reveal && (
                         <td className="mono fw-800"
                             style={Number(l.difference) !== 0 ? { color: "var(--fg-danger)" } : undefined}>
-                          {Number(l.difference) > 0 ? "+" : ""}{qtyFmt(l.difference)}
+                          {Number(l.difference) > 0 ? "+" : ""}{qtyFmt(l.difference, unitDecimals(l.unit))}
                         </td>
                       )}
                       <td className="text-muted" style={{ fontSize: 12 }}>{l.countedBy}</td>

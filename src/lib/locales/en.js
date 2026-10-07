@@ -512,7 +512,6 @@ export default {
   "layout.lowStockBadge": "{n} products running low",
   "layout.lowStockTitle": "Inventory warning",
   "layout.lowStockGo": "Go to inventory",
-  "layout.pieces": "pcs",
   "layout.superadmin": "SUPERADMIN",
 
   "settings.title": "Settings",

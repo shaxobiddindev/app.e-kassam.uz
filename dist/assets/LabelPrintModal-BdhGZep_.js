@@ -1,0 +1,1 @@
+import{j as r,M as a,t as o}from"./index-BL6en6nm.js";import{O as l}from"./StickerSimple-BB_kJNlO.js";function p({productIds:i=[],onClose:t,toast:e}){return r.jsx(a,{title:o("lbl.printTitle"),onClose:t,maxWidth:980,children:r.jsx(l,{toast:e,productIds:i,compact:!0,onPrinted:t})})}export{p as L};
