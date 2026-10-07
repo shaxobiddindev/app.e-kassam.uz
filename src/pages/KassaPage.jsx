@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspense } fro
 import { lazySafe } from "../lib/ek-lazy";
 import { charge, gross, roundingOf } from "../lib/ek-money";
 import { t } from "../lib/ek-i18n";
-import { productApi, customerApi, saleApi, securityApi, shopApi, mediaApi, fiscalApi, loyaltyApi, reportApi } from "../api";
+import { productApi, customerApi, saleApi, securityApi, shopApi, mediaApi, fiscalApi, loyaltyApi, reportApi, modifierApi } from "../api";
 import { useBadge } from "../context/BadgeProvider";
 import { useConfirm } from "../context/ConfirmProvider";
 import { useAuth } from "../hooks/useAuth";
@@ -17,6 +17,9 @@ import DebtPayModal from "../components/DebtPayModal";
 import QuantityModal from "../components/QuantityModal";
 import LinePriceModal from "../components/LinePriceModal";
 import MarkingScanModal from "../components/MarkingScanModal";
+import ModifierModal from "../components/ModifierModal";
+import { keyOf, groupsFor, lineFor, modsText } from "../lib/ek-modifiers";
+import { useShopFeatures } from "../hooks/useShopFeatures";
 import { Empty, ClearButton } from "../components/ui";
 import { useKeyboard } from "../context/KeyboardProvider";
 import { freshQuery } from "../lib/ek-fresh-query";
@@ -547,6 +550,25 @@ export default function KassaPage({ toast, refreshLowStock }) {
   /* Qator narxini tushirish (V48) — `null` bo'lsa oyna yopiq. */
   const [priceModal, setPriceModal] = useState(null);
   const [markModal, setMarkModal]   = useState(null);   // { product } — DataMatrix
+  const [modModal, setModModal]     = useState(null);   // { product, groups } — taom qo'shimchalari
+
+  /* ══ TAOM QO'SHIMCHALARI (R2, V149) ═══════════════════════════════════
+     Guruhlar bir marta olinadi; internet bo'lmasa — oflayn katalogdagi
+     nusxa (u har sinxronda to'liq yangilanadi). ⚠ Modul yopiq do'konda
+     so'rov UMUMAN yuborilmaydi: server 403 qaytaradi va har kassa
+     ochilishi jurnalda «taqiqlangan so'rov» bo'lib qolardi. */
+  const { has: hasFeature, ready: featuresReady } = useShopFeatures();
+  const [modGroups, setModGroups] = useState([]);
+  useEffect(() => {
+    if (!featuresReady || !hasFeature("MODIFIERS")) return undefined;
+    let alive = true;
+    modifierApi.list()
+      .then((r) => { if (alive) setModGroups(asArray(r?.data)); })
+      .catch(() => catalog.modifierGroups()
+        .then((g) => { if (alive) setModGroups(asArray(g)); })
+        .catch(() => {}));
+    return () => { alive = false; };
+  }, [featuresReady]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   const searchRef   = useRef(null);
   /* ══ QIDIRUV «ISHLATILGAN» (2026-10-01) ═══════════════════════════════
@@ -1424,7 +1446,10 @@ export default function KassaPage({ toast, refreshLowStock }) {
   const needsQty = (product) => isDivisible(product) || isWeighUnit(product?.unit);
 
   /** Savatda shu tovardan ALLAQACHON nechta bor. */
-  const inCart = (id) => cart.find((i) => i.id === id)?.qty ?? 0;
+  /* ⚠ YIG'INDI, birinchi qator emas: qo'shimchali taom bir nechta qatorda
+     turishi mumkin («Burger + pishloq», «Burger») — qoldiq hammasiga bitta. */
+  const sumOf = (items, id) => items.reduce((s, i) => (i.id === id ? s + Number(i.qty || 0) : s), 0);
+  const inCart = (id) => sumOf(cart, id);
 
   /**
    * BOSHQA ochiq savatlarda turgan miqdor.
@@ -1440,7 +1465,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
    * qoladi — bu yerdagi hisob faqat SHU EKRANdagi savatlarni biladi.
    */
   const parked = (id) => carts.reduce(
-    (sum, c) => (c.id === active.id ? sum : sum + (c.items.find((i) => i.id === id)?.qty ?? 0)), 0);
+    (sum, c) => (c.id === active.id ? sum : sum + sumOf(c.items, id)), 0);
 
   /** Boshqa savatlar hisobga olingan, sotish mumkin bo'lgan qoldiq. */
   const freeStock = (product) => (product?.stockQuantity == null
@@ -1496,6 +1521,16 @@ export default function KassaPage({ toast, refreshLowStock }) {
    */
   const pickProduct = (product, { clearSearch = false } = {}) => {
     if (product.salePrice == null) { toast.error(`${product.name} — ${t("kassa.noPriceWarn")}`); return; }
+    /* ══ TAOM QO'SHIMCHALARI (R2, V149) — avval tanlov, keyin savat.
+       Skaner yo'li bu yerdan o'tmaydi va bu to'g'ri: shtrix-kodli
+       ichimlikka qo'shimcha so'ralmaydi. */
+    const mg = product._key ? [] : groupsFor(modGroups, product.id);
+    if (mg.length) {
+      if (clearSearch) resetSearch();
+      else if (searchRef.current?.value) searchSpent.current = true;
+      setModModal({ product, groups: mg });
+      return;
+    }
     // Markirovkali tovarda miqdorni kassir yozmaydi — u har donaning
     // yorlig'ini skanerlaydi va miqdor shundan kelib chiqadi.
     if (product.markingGroup || needsQty(product)) {
@@ -1563,13 +1598,16 @@ export default function KassaPage({ toast, refreshLowStock }) {
     const shortage = stockError(product, roundQty(product, inCart(product.id) + amount));
     if (shortage) { toast.error(shortage); return false; }
     setCart((prev) => {
-      const exists = prev.find((i) => i.id === product.id);
+      /* Qator KALIT bilan topiladi (`ek-modifiers`): qo'shimchasiz
+         qatorda kalit = tovar ID, ya'ni oddiy do'konda hech narsa
+         o'zgarmagan. */
+      const exists = prev.find((i) => keyOf(i) === keyOf(product));
       // Bir xil tovar ikkinchi marta → miqdor oshadi, yangi satr yaratilmaydi
       if (exists) {
         const next = roundQty(product, exists.qty + amount);
         // Narxi tushirilgan qatorga yana bir dona qo'shilsa, chegirma
         // ham o'sha DONA narxida qoladi — quyidagi izohga qarang.
-        return prev.map((i) => (i.id === product.id
+        return prev.map((i) => (keyOf(i) === keyOf(product)
           ? { ...i, qty: next, ...rescaleDiscount(i, next), _pulse: Date.now() }
           : i));
       }
@@ -1603,6 +1641,16 @@ export default function KassaPage({ toast, refreshLowStock }) {
       qty: fmtQty(amount, product.unitDecimals),
       unit: unitLabel(product.unit),
     }));
+  };
+
+  /** Qo'shimchalar tanlandi — qator shu tanlov bilan (yoki miqdor oynasiga). */
+  const applyModifiers = (mods) => {
+    const { product } = modModal;
+    setModModal(null);
+    const line = lineFor(product, mods);
+    if (needsQty(line)) { setQtyModal({ product: line, initial: null }); return; }
+    addToCart(line, 1);
+    focusSearch();
   };
 
   /* ══ SAVATGA OPTOM NARX (V97) ═══════════════════════════════════════
@@ -1671,8 +1719,9 @@ export default function KassaPage({ toast, refreshLowStock }) {
     return { discount: Math.min(scaled, i.salePrice * nextQty) };
   };
 
+  /** `id` — qator KALITI (`keyOf`), oddiy qatorda tovar ID si bilan bir xil. */
   const updateQty = (id, delta) => {
-    const item = cart.find((i) => i.id === id);
+    const item = cart.find((i) => keyOf(i) === id);
     if (!item) return;
 
     /* Markirovkali tovarda miqdorni "+" bilan oshirib bo'lmaydi: har dona
@@ -1682,7 +1731,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
       if (delta > 0) { setMarkModal({ product: item }); return; }
       const rest = (item.markingCodes || []).slice(0, -1);
       if (rest.length === 0) { removeFromCart(id); return; }
-      setCart((prev) => prev.map((i) => (i.id === id
+      setCart((prev) => prev.map((i) => (keyOf(i) === id
         ? { ...i, markingCodes: rest, qty: rest.length, ...rescaleDiscount(i, rest.length) } : i)));
       return;
     }
@@ -1695,7 +1744,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
     if (next <= 0) { removeFromCart(id); return; }
     const shortage = stockError(item, next);
     if (shortage) { toast.error(shortage); return; }
-    setCart((prev) => prev.map((i) => (i.id === id ? { ...i, qty: next, ...rescaleDiscount(i, next) } : i)));
+    setCart((prev) => prev.map((i) => (keyOf(i) === id ? { ...i, qty: next, ...rescaleDiscount(i, next) } : i)));
   };
 
   /**
@@ -1720,9 +1769,9 @@ export default function KassaPage({ toast, refreshLowStock }) {
        500 yozib yuborsa ham savat qabul qilardi. */
     const shortage = stockError(product, roundQty(product, value));
     if (shortage) { toast.error(shortage); return; }
-    const exists = cart.find((i) => i.id === product.id);
+    const exists = cart.find((i) => keyOf(i) === keyOf(product));
     if (exists) {
-      setCart((prev) => prev.map((i) => (i.id === product.id
+      setCart((prev) => prev.map((i) => (keyOf(i) === keyOf(product)
         ? { ...i, qty: roundQty(product, value), ...rescaleDiscount(i, roundQty(product, value)), _pulse: Date.now() } : i)));
       return;
     }
@@ -1737,7 +1786,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
      Nusxa `setCart` yangilagichidan TASHQARIDA olinadi: React yangilagichni
      ikki marta chaqirishi mumkin, yon ta'sir esa bir marta bo'lishi kerak. */
   const removeFromCart = async (id) => {
-    const index = cart.findIndex((i) => i.id === id);
+    const index = cart.findIndex((i) => keyOf(i) === id);
     if (index < 0) return;
     const item = cart[index];
 
@@ -1753,7 +1802,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
       return;   // tasdiqsiz o'chirilmaydi
     }
 
-    setCart((prev) => prev.filter((i) => i.id !== id));
+    setCart((prev) => prev.filter((i) => keyOf(i) !== id));
 
     clearTimeout(undoRef.current);
     setUndo({ item, index });
@@ -2196,7 +2245,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
     if (next <= 0) return;
     const shortage = stockError(item, next);
     if (shortage) { toast.error(shortage); return; }
-    setCart((prev) => prev.map((i) => (i.id === item.id
+    setCart((prev) => prev.map((i) => (keyOf(i) === keyOf(item)
       ? { ...i, qty: next, ...rescaleDiscount(i, next) } : i)));
   };
   const endQtyTyping = () => {
@@ -2210,7 +2259,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
     qtyTypeRef.current = r.session;
     clearTimeout(qtyTimerRef.current);
     if (r.session) {
-      setQtyTyping({ id: line.id, text: r.session.text, seq: now });
+      setQtyTyping({ id: keyOf(line), text: r.session.text, seq: now });
       /* Oyna tugadi — ko'rsatkich o'chadi; keyingi raqam yangidan. */
       qtyTimerRef.current = setTimeout(() => {
         qtyTypeRef.current = null;
@@ -2298,7 +2347,8 @@ export default function KassaPage({ toast, refreshLowStock }) {
       mode: showPayModal ? "pay" : cart.length ? "cart" : "idle",
       shop: shopName,
       items: cart.map((i) => ({
-        name: i.name, qty: i.qty, unit: i.unit,
+        /* Qo'shimchalar nomga qo'shiladi — mijoz «nega 36 000?» deb so'ramasin. */
+        name: i.modifiers?.length ? `${i.name} (+ ${modsText(i)})` : i.name, qty: i.qty, unit: i.unit,
         price: i.salePrice, sum: gross(i.salePrice, i.qty) - (Number(i.discount) || 0),
       })),
       total, discount: discountNum + lineDiscounts,
@@ -2509,6 +2559,8 @@ export default function KassaPage({ toast, refreshLowStock }) {
       customerId: customer?.id || null,
       items: cart.map((i) => ({
         productId: i.id,
+        /* Taom qo'shimchalari (V149) — faqat ID; narxni server topadi. */
+        ...(i.modifiers?.length ? { modifierIds: i.modifiers.map((m) => m.id) } : {}),
         quantity: i.qty,
         /* Qator chegirmasi — kassir narxni tushirgan bo'lsa (`LinePriceModal`).
            Serverda ham aynan SUMMA saqlanadi: foiz saqlansa, keyin narx
@@ -2865,7 +2917,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
          esa TEZLIK ajratadi (`isBurst`). */
       if (scope === "cart" && !typing && !e.ctrlKey && !e.altKey && !e.metaKey
           && !e.defaultPrevented && (/^[0-9]$/.test(e.key) || e.key === "Backspace")) {
-        const line = cart.find((i) => i.id === pickedId);
+        const line = cart.find((i) => keyOf(i) === pickedId);
         if (line && !line.markingGroup) {
           const now = Date.now();
           const burst = isBurst(lastKeyAtRef.current, now);
@@ -2883,13 +2935,13 @@ export default function KassaPage({ toast, refreshLowStock }) {
 
       /* Tanlangan qator; tanlanmagan bo'lsa — OXIRGISI (endigina
          qo'shilgan tovar, kassir aynan uni tuzatadi). */
-      const picked = cart.find((i) => i.id === pickedId) || cart[cart.length - 1] || null;
+      const picked = cart.find((i) => keyOf(i) === pickedId) || cart[cart.length - 1] || null;
       const moveLine = (d) => {
         if (!cart.length) return;
-        const at = cart.findIndex((i) => i.id === picked?.id);
+        const at = cart.findIndex((i) => keyOf(i) === keyOf(picked));
         const nextAt = at < 0 ? (d > 0 ? 0 : cart.length - 1)
                               : Math.min(cart.length - 1, Math.max(0, at + d));
-        setPickedId(cart[nextAt].id);
+        setPickedId(keyOf(cart[nextAt]));
         /* ⚠ FOKUS QIDIRUVDAN SAVATGA O'TADI (V66). ↑/↓ «endi savat
            qatorlari bilan ishlayman» degani; qidiruv maydoni fokusda
            qolsa, keyin bosilgan raqam miqdor emas, QIDIRUV bo'lib
@@ -3112,7 +3164,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
           <summary>{t("kassa.discountSplit")}</summary>
           <ul className="disc-split__list">
             {cart.map((i, idx) => (
-              <li key={i.id}>
+              <li key={keyOf(i)}>
                 <span className="disc-split__name">{i.name}</span>
                 <span className="disc-split__val">−{money(discountSplit[idx])}</span>
               </li>
@@ -3518,9 +3570,9 @@ export default function KassaPage({ toast, refreshLowStock }) {
                        ta'sir qilayotganini KO'RMASDI va «−» ni boshqa
                        tovarga bosib yuborardi. */
                     className={`cart-item ${item._added ? "ek-row-in" : ""} ${item._pulse ? "ek-pop" : ""}${
-                      item.id === pickedId ? " is-picked" : ""}`}
-                    key={`${item.id}-${item._pulse || item._added || 0}`}
-                    onClick={() => setPickedId(item.id)}
+                      keyOf(item) === pickedId ? " is-picked" : ""}`}
+                    key={`${keyOf(item)}-${item._pulse || item._added || 0}`}
+                    onClick={() => setPickedId(keyOf(item))}
                   >
                     <div className="cart-item-info">
                       <div className="cart-item-name">
@@ -3551,6 +3603,12 @@ export default function KassaPage({ toast, refreshLowStock }) {
                           </span>
                         )}
                       </div>
+                      {/* Taom qo'shimchalari (V149) — nom ostida alohida qator:
+                          nom qatori bir qatorli (ellipsis), u yerda
+                          qo'shimcha siqilib ko'rinmay qolardi. */}
+                      {item.modifiers?.length > 0 && (
+                        <div className="cart-item-mods">+ {modsText(item)}</div>
+                      )}
                       {/* Tarozili tovarda "0.35 kg × 95 000" — faqat jami
                           summani ko'rsatish kassirni ham, mijozni ham
                           tekshirish imkonidan mahrum qilardi. */}
@@ -3612,7 +3670,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
                       </button>
                     </div>
                     <div className="qty-ctrl">
-                      <button className="qty-btn" aria-label={t("kassa.decrease")} onClick={() => updateQty(item.id, -1)}>−</button>
+                      <button className="qty-btn" aria-label={t("kassa.decrease")} onClick={() => updateQty(keyOf(item), -1)}>−</button>
                       {/* ⚠ SON BOSILADI. Ilgari bu oddiy `<span>` edi va
                           donalab tovarda miqdorni oshirishning yagona yo'li
                           «+» bo'lgan: 200 dona qog'oz sochiq sotish uchun
@@ -3626,20 +3684,20 @@ export default function KassaPage({ toast, refreshLowStock }) {
                           ko'rmasa, «32» deb yozmoqchi bo'lib «12332»
                           olardi. */}
                       <button
-                        className={`qty-num qty-num--edit${qtyTyping?.id === item.id ? " is-typing" : ""}`}
+                        className={`qty-num qty-num--edit${qtyTyping?.id === keyOf(item) ? " is-typing" : ""}`}
                         onClick={() => editQty(item)}
                         disabled={!!item.markingGroup}
                         title={item.markingGroup ? t("kassa.qtyFromLabels") : t("kassa.enterQuantity")}
                         aria-label={`${item.name} — ${t("kassa.enterQuantity")}`}
                       >
-                        {qtyTyping?.id === item.id
+                        {qtyTyping?.id === keyOf(item)
                           ? <>{qtyTyping.text || "\u00a0"}<span className="qty-num__caret" aria-hidden="true" />
                               <span className="qty-num__win" key={qtyTyping.seq} aria-hidden="true" /></>
                           : fmtQty(item.qty, item.unitDecimals)}
                       </button>
-                      <button className="qty-btn" aria-label={t("kassa.increase")} onClick={() => updateQty(item.id, +1)}>+</button>
+                      <button className="qty-btn" aria-label={t("kassa.increase")} onClick={() => updateQty(keyOf(item), +1)}>+</button>
                     </div>
-                    <button className="btn-icon danger" aria-label={`${item.name} — o'chirish`} onClick={() => removeFromCart(item.id)}>
+                    <button className="btn-icon danger" aria-label={`${item.name} — o'chirish`} onClick={() => removeFromCart(keyOf(item))}>
                       <i className="fa-solid fa-xmark" aria-hidden="true" />
                     </button>
                   </div>
@@ -3772,6 +3830,16 @@ export default function KassaPage({ toast, refreshLowStock }) {
         />
       )}
 
+      {/* ════ Taom qo'shimchalari (V149) ════ */}
+      {modModal && (
+        <ModifierModal
+          product={modModal.product}
+          groups={modModal.groups}
+          onConfirm={applyModifiers}
+          onClose={() => { setModModal(null); focusSearch(); }}
+        />
+      )}
+
       {/* ════ Miqdor kiritish (tarozili tovar) ════ */}
       {qtyModal && (
         <QuantityModal
@@ -3850,7 +3918,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
           item={priceModal}
           onClose={() => setPriceModal(null)}
           onApply={(discount) => {
-            setCart((prev) => prev.map((i) => (i.id === priceModal.id
+            setCart((prev) => prev.map((i) => (keyOf(i) === keyOf(priceModal)
               ? { ...i, discount, _pulse: Date.now() } : i)));
             setPriceModal(null);
           }}
@@ -3944,7 +4012,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
                   const cut = own + (discountSplit[idx] || 0);
                   const gross = (Number(i.salePrice) || 0) * (Number(i.qty) || 0);
                   return (
-                    <li className="pay-items__row" key={i.id}>
+                    <li className="pay-items__row" key={keyOf(i)}>
                       <span className="pay-items__name" title={i.name}>{i.name}</span>
                       <span className="pay-items__qty ek-num">
                         {/* ⚠ E'LON NARXI, chegirmadan KEYINGISI emas:

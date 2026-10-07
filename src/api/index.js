@@ -1313,6 +1313,16 @@ export async function downloadScaleExport() {
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
+/* ── Taom qo'shimchalari (V149, modul MODIFIERS) ── */
+export const modifierApi = {
+  list: () => request("/modifiers"),
+  create: (data) => request("/modifiers", { method: "POST", body: JSON.stringify(data) }),
+  update: (id, data) => request(`/modifiers/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  archive: (id) => request(`/modifiers/${id}`, { method: "DELETE" }),
+  setProductGroups: (productId, groupIds) =>
+    request(`/modifiers/products/${productId}`, { method: "PUT", body: JSON.stringify({ groupIds }) }),
+};
+
 export const shopApi = {
   /* ⚠ CHEK SARLAVHASI SHU YERDA KESHLANADI. Profil to'qqizta sahifada
      so'raladi va har biriga «keshni ham yangilashni unutmang» deb

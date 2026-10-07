@@ -57,6 +57,8 @@ function saleToReceipt(sale) {
          qo'ygan — qayta chop etilgan chek dastlabkisi bilan bir xil
          chiqishi uchun aynan shu raqam kerak. */
       discount:  Number(i.discountAmount) || 0,
+      /* Taom qo'shimchalari (V149) — qayta chop etilgan chek ham birinchisi kabi. */
+      modifiers: i.modifiers || [],
     })),
     total:    sale.totalAmount,
     // Chegirmalar qatorlarda turadi, shuning uchun «Jami» ni hisoblab

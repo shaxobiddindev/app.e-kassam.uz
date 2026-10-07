@@ -412,6 +412,7 @@ async function load() {
        to'qnashardi. */
     pluIndex: buildPluIndex(rows),
     scale: meta?.scale || null,
+    modifierGroups: meta?.modifierGroups || [],
     syncedAt: meta?.syncedAt || null,
     at: meta?.at || null,
     shopId: meta?.shopId ?? null,
@@ -468,14 +469,24 @@ export async function sync({ shopId = null, force = false, fetcher = null } = {}
      do'kon sozlamani o'zgartirsa, kesh eskirgan format bilan qolib
      ketmasligi kerak — o'shanda barkod ochilardi-yu, PLU noto'g'ri
      o'qilib boshqa tovar savatga tushardi. */
+  const prevMeta = await readMeta();
   await writeMeta({
     syncedAt: data.syncedAt, at: Date.now(), shopId,
-    scale: data.scale || (await readMeta())?.scale || null,
+    scale: data.scale || prevMeta?.scale || null,
+    /* Taom qo'shimchalari (V149) — server har javobda TO'LIQ beradi.
+       Maydon umuman yo'q bo'lsa (eski server) — eskisi qoladi. */
+    modifierGroups: Array.isArray(data.modifierGroups)
+      ? data.modifierGroups : (prevMeta?.modifierGroups || []),
   });
 
   drop();
   const next = await load();
   return { count: next.products.length, full: data.full, changed: data.products?.length || 0 };
+}
+
+/** Taom qo'shimchalari guruhlari — oflayn nusxa (V149). */
+export async function modifierGroups() {
+  return (await load()).modifierGroups;
 }
 
 /** Kod bo'yicha — `ScanResponse` shaklida. */

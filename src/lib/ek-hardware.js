@@ -179,6 +179,12 @@ export function buildReceipt({ saleId, serverSaleId, cart = [], total = 0, subto
   cart.forEach((i, idx) => {
     // Tovar nomi ALOHIDA qatorda: uzun nomlar narx ustuniga bosim qilmasin.
     r.wrap(i.name);
+    /* Taom qo'shimchalari (V149) — nom ostida. Narxi allaqachon dona
+       narxida (`salePrice`), bu yerda faqat mijoz NIMA uchun to'laganini
+       ko'rsin: «+ Pishloq 4 000». */
+    for (const m of i.modifiers || []) {
+      r.row(`  + ${m.name}`, Number(m.price) > 0 ? money(m.price) : "");
+    }
     // Miqdor birligi bilan: "0.35 kg x 95 000". Birliksiz "0.35 x 95 000"
     // mijozga nima sotilganini aytmasdi.
     const qtyText = `${quantity(i.qty, i.unitDecimals)}${i.unit ? " " + unitLabel(i.unit) : ""}`;
@@ -1022,7 +1028,10 @@ function printInBrowser({ saleId, serverSaleId, cart = [], total = 0, subtotal, 
   const rows = cart.map((i, idx) => {
     const qtyText = `${quantity(i.qty, i.unitDecimals)}${i.unit ? " " + unitLabel(i.unit) : ""}`;
     const lineDisc = (Number(i.discount) || 0) + (shares[idx] || 0);
+    const mods = (i.modifiers || []).map((m) =>
+      `<div class="row sub"><span>+ ${esc(m.name)}</span><span>${Number(m.price) > 0 ? esc(money(m.price)) : ""}</span></div>`).join("");
     return `<div class="row"><span>${esc(i.name)} × ${esc(qtyText)}</span><span>${esc(money(gross(i.salePrice, i.qty)))}</span></div>`
+      + mods
       + (lineDisc > 0
           ? `<div class="row sub"><span>${esc(t("kassa.discount"))}</span><span>-${esc(money(lineDisc))}</span></div>`
           : "");

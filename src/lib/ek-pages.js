@@ -16,6 +16,7 @@ const LOADERS = {
   Transfers:    () => import("../pages/TransfersPage"),
   Pickup:       () => import("../pages/PickupPage"),
   Prices:       () => import("../pages/PricesPage"),
+  Modifiers:    () => import("../pages/ModifiersPage"),
   Customers:    () => import("../pages/CustomersPage"),
   Kassa:        () => import("../pages/KassaPage"),
   Reports:      () => import("../pages/ReportsPage"),

@@ -48,6 +48,8 @@ export const NAV = [
     { id: "categories", path: "/categories", key: "nav.categories", icon: "fa-tags",               roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
     { id: "labels", path: "/labels", key: "nav.labels", icon: "fa-tag",                       roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
     { id: "prices",     path: "/prices",     key: "nav.prices",     icon: "fa-money-check-dollar", roles: ["ADMIN", "SHOP_ADMIN", "OWNER"] },
+    /* Taom qo'shimchalari (V149) — faqat restoran modulida. */
+    { id: "modifiers",  path: "/modifiers",  key: "nav.modifiers",  icon: "fa-utensils",           roles: ["ADMIN", "SHOP_ADMIN", "OWNER"], feature: "MODIFIERS" },
   ]},
 
   /* OMBOR — tovarning MIQDORINI qo'zg'atadigan ishlar. Ko'chirish ham shu

@@ -48,6 +48,8 @@ export const AUDIT_ACTIONS = [
   "CATEGORY_MERGE", "CATEGORY_DELETE",
   "PRODUCT_RESTORE",
   "PRICE_CHANGE", "PRICE_BULK_CHANGE",
+  /* Taom qo'shimchalari (V149) — narx ham shu yerda o'zgaradi. */
+  "MODIFIER_CHANGE",
   /* ⚠ Yorliq chiqarish narx bilan bir guruhda va bu ataylab:
      «javondagi narx eskirgan» savoli aynan shu ikkisining
      orasida yashaydi. */
