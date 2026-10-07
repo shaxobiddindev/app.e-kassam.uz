@@ -93,9 +93,12 @@ function badge(v) {
   el.innerHTML = `<i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>`
     + `<span class="ek-num">${pct}%</span>`
     + (pct !== 100 ? `<span class="ek-num" style="opacity:.75;font-weight:500">Ctrl 0 → 100%</span>` : "");
-  el.hidden = false;
+  /* ⚠ `hidden` EMAS, `style.display` (2026-10-08). Inline `display:flex`
+     `[hidden]` ning brauzer qoidasidan kuchli — belgi hech qachon
+     yo'qolmasdi va ekranda «100%» bo'lib qolib ketardi (egasi). */
+  el.style.display = "flex";
   clearTimeout(hideTimer);
-  hideTimer = setTimeout(() => { if (el) el.hidden = true; }, 1400);
+  hideTimer = setTimeout(() => { if (el) el.style.display = "none"; }, 1400);
 }
 
 /* ── Klaviatura va g'ildirak ─────────────────────────────────────────────── */

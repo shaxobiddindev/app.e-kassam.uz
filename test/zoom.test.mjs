@@ -100,5 +100,24 @@ listeners.keydown(ev({ key: "0", code: "Digit0" }));
 await wait(10);
 is(z.zoomLevel() === 1 && !mem.has("ek_zoom") && Math.abs(cal.pxPerMm() - 4) < 1e-9, "Ctrl + 0 → 100%, sozlama tozalandi");
 
+console.log("\n── Ekrandagi «100%» belgisi yo'qoladi (2026-10-08) ──");
+{
+  /* ⚠ Egasi: «zoom ko'rsatkichi qolib ketyapti». `el.hidden = true` inline
+     `display:flex` ni yengolmasdi. Soxta DOM — ko'rinishni faqat
+     `style.display` hal qiladi (brauzerdagi kabi). */
+  const made = [];
+  globalThis.document = {
+    createElement: () => { const el = { style: {}, setAttribute() {}, innerHTML: "" }; made.push(el); return el; },
+    body: { appendChild() {} },
+  };
+  await z.setZoom(1.1);
+  const el = made[0];
+  is(!!el && el.style.display !== "none", "masshtab o'zgarganda belgi ko'rinadi");
+  await wait(1500);
+  is(el?.style.display === "none", "⚠ 1,4 soniyadan keyin belgi YO'QOLADI (ekranda qolib ketmaydi)");
+  await z.setZoom(1, { show: false });
+  delete globalThis.document;
+}
+
 console.log(`\n${pass} ✅ · ${fail} ❌`);
 process.exit(fail ? 1 : 0);
