@@ -15,6 +15,8 @@ import { useLoading } from "../../lib/use-loading";
 import Select from "../../components/ek/Select";
 import { UNIT, MARKING_GROUP, options, unitLabel } from "../../lib/ek-labels";
 import { asArray } from "../../lib/ek-array";
+import { useShopFeatures } from "../../hooks/useShopFeatures";
+import { stationOptions } from "../../lib/ek-kitchen";
 
 /* ══════════════════════════════════════════════════════════════════════════
    Kategoriyalar — endi DARAXT va STANDART QIYMATLAR manbai.
@@ -36,6 +38,7 @@ import { asArray } from "../../lib/ek-array";
 const EMPTY_FORM = {
   name: "", parentId: "", color: "brand", icon: "",
   defaultUnit: "", defaultVatRate: "", defaultMxik: "", defaultMarkingGroup: "",
+  station: "",
 };
 
 /* Rang — TOKEN NOMI, hex emas. Kartochka ham, kassa tabi ham shu nomni
@@ -58,6 +61,7 @@ const ICONS = [
 export default function CategoriesPage({ toast }) {
   const confirm = useConfirm();
   const [categories, setCategories] = useState([]);
+  const { has: hasFeature } = useShopFeatures();
   const [loading, setLoading]       = useState(true);
   const busy = useLoading(loading);
   const [modal, setModal]           = useState(null);
@@ -107,6 +111,7 @@ export default function CategoriesPage({ toast }) {
       defaultVatRate: cat.defaultVatRate ?? "",
       defaultMxik: cat.defaultMxik || "",
       defaultMarkingGroup: cat.defaultMarkingGroup || "",
+      station: cat.station || "",
     });
     setModal({ type: "edit", cat });
   };
@@ -156,6 +161,8 @@ export default function CategoriesPage({ toast }) {
         defaultVatRate: form.defaultVatRate === "" ? null : Number(form.defaultVatRate),
         defaultMxik: form.defaultMxik || null,
         defaultMarkingGroup: form.defaultMarkingGroup || null,
+        /* Bo'sh satr — «olib tashlansin» (null serverda «tegilmasin»). */
+        ...(hasFeature("KITCHEN") ? { station: form.station.trim() } : {}),
       };
       if (modal === "add") {
         await productApi.createCategory(body, branchId);
@@ -550,6 +557,24 @@ export default function CategoriesPage({ toast }) {
               ]}
             />
           </FormGroup>
+
+          {/* ═══ Oshxona bo'limi (R4) — sotuvdan keyin shu nom bo'yicha chek chiqadi ═══ */}
+          {hasFeature("KITCHEN") && (
+            <FormGroup label={t("kit.station")}>
+              <Field className="form-input" maxLength={40} value={form.station} onChange={setField("station")}
+                     placeholder={t("kit.stationPh")} />
+              <div className="kit-chips">
+                {stationOptions(categories).map((st) => (
+                  <button key={st} type="button" className={`mod-chip kit-chip${form.station === st ? " is-on" : ""}`}
+                          aria-pressed={form.station === st}
+                          onClick={() => setForm((f) => ({ ...f, station: f.station === st ? "" : st }))}>
+                    {st}
+                  </button>
+                ))}
+              </div>
+              <div className="form-hint">{t("kit.stationHint")}</div>
+            </FormGroup>
+          )}
 
           <div className="grid-2">
             <FormGroup label={t("categories.color")}>

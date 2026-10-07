@@ -623,6 +623,36 @@ export async function printPriceLabels(items = [], opts = {}) {
  * va uni bu yerdan boshqarib bo'lmaydi — shuning uchun matnli
  * yorliqlar uchun drayver yo'li ishonchliroq.
  */
+/* ── Oshxona cheki (R4) ────────────────────────────────────────────────
+   ⚠ `send()` ISHLATILMAYDI — u CHEK printeriga qadalgan va xatoni chek
+   printerining sog'ligiga yozardi (`printRawLabel` dagi bilan bir xil sabab).
+   Har bo'lim o'z printeriga; bittasi yiqilsa qolganlari chiqaveradi.
+
+   @param tickets `kitchenTickets()` natijasi
+   @param meta    { orderNo, at, cashier, note }
+   @returns {{sent: string[], missing: string[], failed: {station, error}[]}} */
+export async function printKitchen(tickets, meta = {}) {
+  const out = { sent: [], missing: [], failed: [] };
+  if (!tickets?.length) return out;
+  if (!isDesktop()) { out.missing = tickets.map((x) => x.station); return out; }
+  const { buildTicket } = await import("./ek-kitchen.js");
+  const map = getSettings().stations || {};
+  for (const tk of tickets) {
+    const cfg = map[tk.station];
+    const tcp = cfg?.transport === "tcp";
+    if (!cfg || (tcp ? !cfg.host : !cfg.printerName)) { out.missing.push(tk.station); continue; }
+    const data = buildTicket({ ...tk, ...meta, width: Number(cfg.width) === 58 ? 58 : 80 });
+    try {
+      if (tcp) await invoke("print_tcp", { host: cfg.host, port: Number(cfg.port) || 9100, data });
+      else await invoke("print_raw", { printer: cfg.printerName, data });
+      out.sent.push(tk.station);
+    } catch (e) {
+      out.failed.push({ station: tk.station, error: String(e?.message || e) });
+    }
+  }
+  return out;
+}
+
 export async function printRawLabel(text) {
   if (!isDesktop()) throw new Error(t("hw.errNoDesktop"));
   if (!text) throw new Error(t("hw.errNoData"));

@@ -25,6 +25,10 @@ const KEY = "ek_hw";
 
 export const DEFAULTS = {
   transport:   "windows",  // "windows" | "tcp" | "browser"
+  /* Oshxona bo'limlarining printerlari (R4): { "Bar": { transport, printerName,
+     host, port, width } }. Bo'lim nomi toifada (serverda), printer — shu
+     kompyuterniki. Yo'q bo'lim — chek chiqmaydi. */
+  stations: {},
   printerName: "",         // windows: drayver nomi
 
   /* ⚠ YORLIQ PRINTERI — ALOHIDA NAVBAT, chek printeri EMAS.

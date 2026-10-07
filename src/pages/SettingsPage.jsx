@@ -13,6 +13,7 @@ import UpdatePanel from "../components/UpdatePanel";
 import PinSetModal from "../components/PinSetModal";
 import TelegramPanel from "../components/TelegramPanel";
 import HardwareSettings from "../components/HardwareSettings";
+import KitchenPrinters from "../components/KitchenPrinters";
 import SoundSettings from "../components/SoundSettings";
 import ScaleSettings from "../components/ScaleSettings";
 import ScaleLive from "../components/ScaleLive";
@@ -724,6 +725,9 @@ export default function SettingsPage({ toast }) {
       {/* Apparatlar — hisobdan OLDIN: kassir bu ekranga aynan printer
           ishlamay qolganda keladi, "hisob" bo'limiga esa deyarli hech qachon. */}
       <HardwareSettings toast={toast} />
+
+      {/* Oshxona bo'limlarining printerlari (R4) — faqat restoran modulida. */}
+      {hasFeature("KITCHEN") && <KitchenPrinters toast={toast} />}
 
       {/* Tarozi formati — faqat EGAGA: server ham shu yo'lni egaga
           cheklaydi (`/shop/scale`), bo'limni kassirga ko'rsatib qo'yish

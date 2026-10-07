@@ -19,6 +19,7 @@ import LinePriceModal from "../components/LinePriceModal";
 import MarkingScanModal from "../components/MarkingScanModal";
 import ModifierModal from "../components/ModifierModal";
 import { keyOf, groupsFor, lineFor, modsText } from "../lib/ek-modifiers";
+import { stationMap, kitchenTickets } from "../lib/ek-kitchen";
 import { useShopFeatures } from "../hooks/useShopFeatures";
 import { Empty, ClearButton } from "../components/ui";
 import { useKeyboard } from "../context/KeyboardProvider";
@@ -44,7 +45,7 @@ import Modal from "../components/Modal";
 import { PhoneField } from "../components/ek/EkFields";
 import { isPhone } from "../lib/ek-input";
 import Select from "../components/ek/Select";
-import { printReceipt, openDrawer, printDebtReceipt, printerHealth } from "../lib/ek-hardware";
+import { printReceipt, openDrawer, printDebtReceipt, printerHealth, printKitchen } from "../lib/ek-hardware";
 import { getSettings } from "../lib/ek-hw-settings";
 
 /* Jamg'arma kvitansiyasi (V66) — kassada kamdan-kam ochiladi, alohida bo'lakda. */
@@ -559,6 +560,10 @@ export default function KassaPage({ toast, refreshLowStock }) {
      ochilishi jurnalda «taqiqlangan so'rov» bo'lib qolardi. */
   const { has: hasFeature, ready: featuresReady } = useShopFeatures();
   const [modGroups, setModGroups] = useState([]);
+  /* Toifa ID → oshxona bo'limi (R4); oflayn ochilganda — oxirgi saqlangani. */
+  const [stations, setStations] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("ek_stations") || "{}") || {}; } catch { return {}; }
+  });
   useEffect(() => {
     if (!featuresReady || !hasFeature("MODIFIERS")) return undefined;
     let alive = true;
@@ -671,8 +676,15 @@ export default function KassaPage({ toast, refreshLowStock }) {
   useEffect(() => {
     productApi.getCategories(branchId)
       .then((r) => {
-        const list = (asArray(r.data)).filter((c) => c.productCount > 0);
+        const all = asArray(r.data);
+        const list = all.filter((c) => c.productCount > 0);
         setCategories(list);
+        /* Oshxona bo'limlari (R4) — TO'LIQ ro'yxatdan: bo'lim ota toifada
+           yozilgan bo'lishi mumkin, otaning o'zida esa tovar yo'q. Keyingi
+           oflayn ochilish uchun saqlanadi. */
+        const st = Object.fromEntries(stationMap(all));
+        setStations(st);
+        try { localStorage.setItem("ek_stations", JSON.stringify(st)); } catch { /* saqlanmasa ham sotuv ishlaydi */ }
         /* ⚠ SAQLANGAN TAB HALI BORMI. Kategoriya o'chirilgan yoki
            tovarsiz qolgan bo'lsa, saqlangan raqam katalogni BO'SH
            ko'rsatib turardi va kassir sababini topa olmasdi. */
@@ -2726,6 +2738,23 @@ export default function KassaPage({ toast, refreshLowStock }) {
        topmasdi. */
     printReceipt({ saleId: receiptNo, serverSaleId: res_saleId, ...snapshot, offline, shopName, cashier, fiscal })
       .catch((err) => toast.error(`${t("hw.printFailed")}: ${err.message}`));
+
+    /* ══ OSHXONA CHEKI (R4) — oflayn sotuvda ham: oshxona internetni
+       kutmaydi. Xatosi sotuvni to'xtatmaydi, faqat AYTILADI — chiqmagan
+       buyurtma jimgina yo'qolsa mijoz ovqatini kutib o'tiraveradi. */
+    /* Brauzerda printerga yo'l yo'q — har sotuvda «printer tanlanmagan»
+       deyish faqat shovqin bo'lardi; oshxona cheki desktop kassaning ishi. */
+    if (hasFeature("KITCHEN") && isDesktop()) {
+      const tickets = kitchenTickets(snapshot.cart, new Map(Object.entries(stations)));
+      if (tickets.length) {
+        printKitchen(tickets, { orderNo: receiptNo, at: new Date(), cashier })
+          .then((r) => {
+            if (r.failed.length) toast.error(t("kit.failed", { names: r.failed.map((f) => f.station).join(", ") }));
+            else if (r.missing.length) toast.error(t("kit.missing", { names: r.missing.join(", ") }));
+          })
+          .catch((err) => toast.error(`${t("kit.title")}: ${err.message}`));
+      }
+    }
 
     /* ⚠ «RAHMAT» EKRANI shu yerdan, savat kuzatuvchisidan EMAS: sotuv
        tugagach savat bo'shaydi va kuzatuvchi darhol «bo'sh ekran»

@@ -7312,3 +7312,10 @@ button.stk__c:hover { background: var(--bg-hover); }
   .rcp-row { grid-template-columns: minmax(0, 1fr) 90px 36px 44px; }
   .rcp-row__cost { display: none; }
 }
+
+/* ══ OSHXONA CHEKI (R4) ══════════════════════════════════════════════════ */
+.kit-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.kit-chip { min-height: 32px; border: 1.5px solid transparent; cursor: pointer; color: var(--fg-primary); font: inherit; font-size: 13px; }
+.kit-chip.is-on { border-color: var(--border-brand); background: var(--bg-brand-subtle, var(--bg-sunken)); }
+.kit-ctl { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.kit-ctl > :first-child { min-width: 220px; flex: 1 1 220px; }
