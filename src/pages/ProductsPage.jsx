@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { t } from "../lib/ek-i18n";
-import { productApi, mediaApi, shopApi, catalogApi, downloadScaleExport } from "../api";
+import { productApi, mediaApi, shopApi, catalogApi, downloadScaleExport, recipeApi } from "../api";
+import RecipeEditor from "../components/RecipeEditor";
+import { toRequest as recipeRequest } from "../lib/ek-recipe";
+import { useShopFeatures } from "../hooks/useShopFeatures";
 import { BranchSelector, Modal } from "../components";
 import CatalogWizard from "../components/CatalogWizard";
 import GlobalCatalogImport from "../components/GlobalCatalogImport";
@@ -198,6 +201,13 @@ export default function ProductsPage({ toast }) {
   const [fiscal, setFiscal]         = useState(null);
   /* Do'kon yo'nalishi — kiyim maydonlari shu asosda ko'rsatiladi. */
   const [bizType, setBizType]       = useState("");
+  /* ══ RETSEPT (R3, V150) — faqat «Taom» turida va RECIPES modulida.
+     `null` — hali yuklanmagan (tahrirda `RecipeEditor` o'zi oladi);
+     `recipeTouched` — o'zgargan bo'lsagina saqlanadi: ochib yopilgan
+     forma retseptni bekorga qayta yozmasin (audit jurnali to'lib ketardi). */
+  const { has: hasFeature } = useShopFeatures();
+  const [recipe, setRecipe] = useState(null);
+  const [recipeTouched, setRecipeTouched] = useState(false);
   const fileRef = useRef(null);
 
   /* ⚠ `hasRole`, ANIQ TENGLIK EMAS. Sessiyada rol bir NECHTA bo'lishi
@@ -323,7 +333,7 @@ export default function ProductsPage({ toast }) {
      javobi ikkinchisiniki ustiga yozilmasin. */
   const catSeq = useRef(0);
 
-  const openAdd = () => { setForm(EMPTY_FORM); setCatLocked(false); setModal("add"); };
+  const openAdd = () => { setForm(EMPTY_FORM); setCatLocked(false); setRecipe(null); setRecipeTouched(false); setModal("add"); };
 
   const openEdit = (p) => {
     setForm({
@@ -359,6 +369,7 @@ export default function ProductsPage({ toast }) {
       pickupRequired: !!p.pickupRequired,
       barcodes: p.barcodes || [],
     });
+    setRecipe(null); setRecipeTouched(false);
     setModal({ type: "edit", product: p });
 
     /* ⚠ XAVFSIZ STANDART — QULFLANGAN. Javob kelguncha maydon ochiq
@@ -441,6 +452,7 @@ export default function ProductsPage({ toast }) {
        bo'lib qoladi. Aynan shu sababli tekshiruv saqlashdan OLDIN:
        serverdan qaytgan xato formani yopib ulgurgan bo'lardi. */
     if (!form.categoryId) { toast.error(t("products.needCategory")); return; }
+    const wantsRecipe = form.type === "DISH" && hasFeature("RECIPES") && recipeTouched && recipe != null;
     setSaving(true);
     try {
       const num = (v) => (v === "" || v == null ? null : Number(v));
@@ -516,6 +528,8 @@ export default function ProductsPage({ toast }) {
           setArchivedConflict({ ...conflict.archived, body });
           return;                      // oyna javobini kutadi
         }
+        /* Yangi taomning retsepti — ID endi bor. */
+        if (wantsRecipe && first?.data?.id) await recipeApi.save(first.data.id, recipeRequest(recipe));
         toast.success(t("products.added"));
       } else {
         /* ⚠ `guard` — NARX O'ZGARSA server bajik so'raydi (428).
@@ -524,6 +538,7 @@ export default function ProductsPage({ toast }) {
            Narx o'zgarmagan tahrirda server bajik so'ramaydi, ya'ni bu
            o'ram oddiy tahrirni sekinlashtirmaydi. */
         await guard(() => productApi.update(modal.product.id, body));
+        if (wantsRecipe) await recipeApi.save(modal.product.id, recipeRequest(recipe));
         toast.success(t("products.updated"));
       }
       closeModal();
@@ -906,7 +921,8 @@ export default function ProductsPage({ toast }) {
      mato uchun esa ochiq edi — ochig'i yomonrog'i, chunki o'sha yerda
      0.488 kg lik yorliq «0.488 metr» bo'lib chekka tushardi. */
   const weighable = isWeighUnit(form.unit);
-  const isService = form.type === "SERVICE";
+  /* Omborsiz turlar — xizmat va taom (R3): ombor bo'limi chizilmaydi. */
+  const isService = form.type === "SERVICE" || form.type === "DISH";
 
   /* ── Narx yorliqlari ────────────────────────────────────────────────
      Faqat `.exe` da ko'rinadi: chek printeriga bayt yuborish Tauri
@@ -1548,7 +1564,10 @@ export default function ProductsPage({ toast }) {
               <FormGroup label={t("products.type")}>
                 <Select block variant="field" ariaLabel={t("products.type")}
                         value={form.type} onChange={setValue("type")}
-                        options={options(PRODUCT_TYPE).map((o) => ({ ...o, icon: PRODUCT_TYPE[o.value]?.icon }))} />
+                        /* «Taom» faqat restoran modulida (yoki allaqachon taom bo'lsa). */
+                        options={options(PRODUCT_TYPE)
+                          .filter((o) => o.value !== "DISH" || hasFeature("RECIPES") || form.type === "DISH")
+                          .map((o) => ({ ...o, icon: PRODUCT_TYPE[o.value]?.icon }))} />
               </FormGroup>
 
               <FormGroup label={t("products.unit")}>
@@ -1910,6 +1929,20 @@ export default function ProductsPage({ toast }) {
                       ]} />
             </FormGroup>
           </div>
+
+          {/* ═══ Retsept ═══ (R3) — taom sotilganda masalliq shundan yechiladi */}
+          {form.type === "DISH" && hasFeature("RECIPES") && (
+            <div className="form-section">
+              <div className="form-section__title"><i className="fa-solid fa-scroll" /> {t("rcp.title")}</div>
+              <p className="form-hint" style={{ marginTop: 0, marginBottom: 10 }}>{t("rcp.hint")}</p>
+              <RecipeEditor
+                productId={modal?.product?.id || null}
+                lines={recipe}
+                salePrice={form.salePrice}
+                onChange={(next, touched) => { setRecipe(next); if (touched) setRecipeTouched(true); }}
+              />
+            </div>
+          )}
 
           {/* ═══ Ombor ═══ (xizmatga ko'rsatilmaydi — unga qoldiq yuritilmaydi) */}
           {!isService && (

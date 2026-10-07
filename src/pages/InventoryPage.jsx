@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import ShortagePanel from "../components/ShortagePanel";
 import { useNavigate } from "react-router-dom";
 import { t } from "../lib/ek-i18n";
 import { inventoryApi, productApi, shopApi } from "../api";
@@ -962,6 +963,9 @@ export default function InventoryPage({ toast }) {
         </div>
         <BranchSelector selectedId={branchId} onSelect={setBranchId} />
       </div>
+
+      {/* Retsept masallig'i yetmagan sotuvlar (R3) — bo'lmasa chizilmaydi. */}
+      <ShortagePanel />
 
       {/* ── OMBOR HOLAT PANELI (V68 da qayta ishlangan) ────────────────
           Do'kon egasi: «2-rasmdagi oynani ham nimadir qilish kerak

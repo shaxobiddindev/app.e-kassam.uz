@@ -1313,6 +1313,14 @@ export async function downloadScaleExport() {
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
+/* ── Texnologik karta (V150, modul RECIPES) ── */
+export const recipeApi = {
+  get: (productId) => request(`/recipes/${productId}`),
+  save: (productId, lines) =>
+    request(`/recipes/${productId}`, { method: "PUT", body: JSON.stringify({ lines }) }),
+  shortages: () => request("/recipes/shortages"),
+};
+
 /* ── Taom qo'shimchalari (V149, modul MODIFIERS) ── */
 export const modifierApi = {
   list: () => request("/modifiers"),

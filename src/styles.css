@@ -7290,3 +7290,25 @@ button.stk__c:hover { background: var(--bg-hover); }
                     background: none; color: var(--fg-primary); font: inherit; cursor: pointer; }
 .mod-found button:hover:not(:disabled) { background: var(--bg-sunken); }
 .mod-found button:disabled { color: var(--fg-secondary); cursor: default; }
+
+/* ══ RETSEPT (R3, V150) ══════════════════════════════════════════════════ */
+.rcp { display: grid; gap: 8px; }
+.rcp-rows { display: grid; gap: 6px; }
+.rcp-row { display: grid; grid-template-columns: minmax(0, 1fr) 110px 44px 90px 44px; gap: 8px; align-items: center; }
+.rcp-row__name { min-width: 0; overflow-wrap: anywhere; font-weight: 600; }
+.rcp-row__unit { font-size: 12px; color: var(--fg-secondary); }
+.rcp-row__cost { text-align: end; font-size: 13px; color: var(--fg-secondary); }
+.rcp-total { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: baseline; font-size: 13px; }
+.rcp-short { margin-bottom: 12px; border: 1px solid var(--border-subtle); border-inline-start: 3px solid var(--fg-warning);
+             border-radius: 10px; background: var(--bg-surface); }
+.rcp-short__head { width: 100%; min-height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 12px;
+                   border: 0; background: none; color: var(--fg-primary); font: inherit; font-weight: 700; cursor: pointer; text-align: start; }
+.rcp-short__head > span { flex: 1 1 auto; }
+.rcp-short__head > .fa-triangle-exclamation { color: var(--fg-warning); }
+.rcp-short__hint { margin: 0 12px 8px; font-size: 12px; color: var(--fg-secondary); }
+.rcp-short__list { list-style: none; margin: 0; padding: 0 12px 10px; display: grid; gap: 4px; font-size: 13px; }
+.rcp-short__list li { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+@media (max-width: 560px) {
+  .rcp-row { grid-template-columns: minmax(0, 1fr) 90px 36px 44px; }
+  .rcp-row__cost { display: none; }
+}

@@ -50,6 +50,8 @@ export const AUDIT_ACTIONS = [
   "PRICE_CHANGE", "PRICE_BULK_CHANGE",
   /* Taom qo'shimchalari (V149) — narx ham shu yerda o'zgaradi. */
   "MODIFIER_CHANGE",
+  /* Retsept — taom tannarxi shundan (V150). */
+  "RECIPE_CHANGE",
   /* ⚠ Yorliq chiqarish narx bilan bir guruhda va bu ataylab:
      «javondagi narx eskirgan» savoli aynan shu ikkisining
      orasida yashaydi. */

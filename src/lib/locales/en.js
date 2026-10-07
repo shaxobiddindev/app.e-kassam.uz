@@ -3195,4 +3195,18 @@ export default {
   "mod.addOption": "Add option",
   "mod.dishes": "For which dishes",
   "mod.findDish": "Type a dish name",
+  /* ── Retsept (R3, V150) ── */
+  "enum.productType.DISH": "Dish (with recipe)",
+  "enum.business.RESTAURANT": "Restaurant and cafe",
+  "enum.audit.RECIPE_CHANGE": "Recipe changed",
+  "rcp.title": "Recipe (tech card)",
+  "rcp.hint": "Ingredients for 1 portion. They are deducted from stock when the dish is sold. A shortage does not stop the sale and shows on the «Stock» page.",
+  "rcp.empty": "No ingredients yet. Type an ingredient name below.",
+  "rcp.qty": "quantity",
+  "rcp.find": "Type an ingredient (rice, meat…)",
+  "rcp.cost": "Cost (1 portion)",
+  "rcp.share": "{pct}% of price",
+  "rcp.shortTitle": "{n} ingredients ran short — sales did not stop",
+  "rcp.shortHint": "A dish was sold while stock was low. Enter the delivery or run a stock count.",
+  "rcp.shortTimes": "{n} times",
 };

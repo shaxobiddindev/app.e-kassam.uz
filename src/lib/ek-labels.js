@@ -270,6 +270,7 @@ export const UNIT = dict("enum.unit", {
 export const PRODUCT_TYPE = dict("enum.productType", {
   GOODS:   { icon: "fa-box",       tone: "neutral" },
   SERVICE: { icon: "fa-handshake", tone: "info" },
+  DISH:    { icon: "fa-utensils",  tone: "info" },
 });
 
 /* ── Markirovka guruhi — MarkingGroup ("Asl Belgisi") ────────────────────── */
@@ -297,6 +298,7 @@ export const BUSINESS_TYPE = dict("enum.business", {
   ELECTRONICS:  { icon: "fa-tv" },
   AUTO_PARTS:   { icon: "fa-car" },
   SERVICE:      { icon: "fa-handshake" },
+  RESTAURANT:   { icon: "fa-utensils" },
   OTHER:        { icon: "fa-store" },
 });
 

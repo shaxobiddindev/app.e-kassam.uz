@@ -3311,4 +3311,18 @@ export default {
   "mod.addOption": "Variant qo'shish",
   "mod.dishes": "Qaysi taomlarga",
   "mod.findDish": "Taom nomini yozing",
+  /* ── Retsept (R3, V150) ── */
+  "enum.productType.DISH": "Taom (retsept bilan)",
+  "enum.business.RESTAURANT": "Restoran va kafe",
+  "enum.audit.RECIPE_CHANGE": "Retsept o'zgardi",
+  "rcp.title": "Retsept (texnologik karta)",
+  "rcp.hint": "1 porsiya uchun masalliqlar. Taom sotilganda ular ombordan yechiladi. Masalliq yetmasa sotuv to'xtamaydi, kamomad «Ombor» sahifasida ko'rinadi.",
+  "rcp.empty": "Hali masalliq yo'q. Pastdan masalliq nomini yozing.",
+  "rcp.qty": "miqdori",
+  "rcp.find": "Masalliq nomini yozing (guruch, go'sht…)",
+  "rcp.cost": "Tannarx (1 porsiya)",
+  "rcp.share": "narxning {pct}%",
+  "rcp.shortTitle": "{n} ta masalliq yetmadi — sotuv to'xtamadi",
+  "rcp.shortHint": "Taom sotildi, lekin omborda masalliq kam edi. Kirimni kiriting yoki inventarizatsiya qiling.",
+  "rcp.shortTimes": "{n} marta",
 };
