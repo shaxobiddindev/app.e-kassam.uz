@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspense } fro
 import { lazySafe } from "../lib/ek-lazy";
 import { charge, gross, roundingOf } from "../lib/ek-money";
 import { t } from "../lib/ek-i18n";
-import { productApi, customerApi, saleApi, securityApi, shopApi, mediaApi, fiscalApi, loyaltyApi, reportApi, modifierApi } from "../api";
+import { productApi, customerApi, saleApi, securityApi, shopApi, mediaApi, fiscalApi, loyaltyApi, reportApi, modifierApi, tableApi } from "../api";
 import { useBadge } from "../context/BadgeProvider";
 import { useConfirm } from "../context/ConfirmProvider";
 import { useAuth } from "../hooks/useAuth";
@@ -21,6 +21,8 @@ import ModifierModal from "../components/ModifierModal";
 import { keyOf, groupsFor, lineFor, modsText } from "../lib/ek-modifiers";
 import { stationMap, kitchenTickets } from "../lib/ek-kitchen";
 import { ORDER_TYPES, servicePercent, serviceCharge as serviceChargeOf } from "../lib/ek-service-charge";
+import { linesOf, sigOf, itemsFrom } from "../lib/ek-table-order";
+import TablesOverlay from "../components/TablesOverlay";
 import { useShopFeatures } from "../hooks/useShopFeatures";
 import { Empty, ClearButton } from "../components/ui";
 import { useKeyboard } from "../context/KeyboardProvider";
@@ -557,6 +559,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
   const [priceModal, setPriceModal] = useState(null);
   const [markModal, setMarkModal]   = useState(null);   // { product } — DataMatrix
   const [modModal, setModModal]     = useState(null);   // { product, groups } — taom qo'shimchalari
+  const [showTables, setShowTables] = useState(false);   // stollar oynasi (T1)
 
   /* ══ TAOM QO'SHIMCHALARI (R2, V149) ═══════════════════════════════════
      Guruhlar bir marta olinadi; internet bo'lmasa — oflayn katalogdagi
@@ -1120,6 +1123,21 @@ export default function KassaPage({ toast, refreshLowStock }) {
     const victim = carts.find((c) => c.id === id);
     if (!victim) return;
 
+    /* ⚠ STOL YORLIG'I YOPILSA BUYURTMA YO'QOLMAYDI (T1): u serverda turadi va
+       stollar ekranidan qayta ochiladi — bajik ham so'ralmaydi, chunki hech
+       narsa o'chirilmayapti. Bo'sh stol esa serverda ham yopiladi. */
+    if (victim.tableOrderId) {
+      if (!victim.items.length) tableApi.cancel(victim.tableOrderId).catch(() => {});
+      else toast.info(t("tbl.parked", { name: victim.tableName }));
+      const list = cartsRef.current;
+      if (list.length === 1) { setCarts([cartStore.blank(++cartSeq.current)]); setActiveId(cartSeq.current); return; }
+      const idx = list.findIndex((c) => c.id === id);
+      const rest = list.filter((c) => c.id !== id);
+      setCarts(rest);
+      if (id === activeIdRef.current) setActiveId(rest[Math.min(idx, rest.length - 1)].id);
+      return;
+    }
+
     if (victim.items.length) {
       try {
         await guard(() => securityApi.confirm({
@@ -1672,6 +1690,76 @@ export default function KassaPage({ toast, refreshLowStock }) {
     addToCart(line, 1);
     focusSearch();
   };
+
+  /* ══ STOL BUYURTMASI (T1, V153) ═════════════════════════════════════
+     Stol kassada SAVAT YORLIG'I bo'lib ochiladi; har o'zgarish serverga
+     butun buyurtma bo'lib yoziladi (versiya bilan). Boshqa qurilma ham
+     (ikkinchi kassa, ofitsiant planshet) shu buyurtmani ko'radi. */
+  const itemsForOrder = async (o) => {
+    const ids = [...new Set((o?.lines || []).map((l) => l.productId))];
+    const got = await Promise.all(ids.map((id) => productApi.getById(id).then((r) => r?.data).catch(() => null)));
+    const map = new Map(got.filter(Boolean).map((p) => [String(p.id), p]));
+    const { items, missing } = itemsFrom(o, map, modGroups);
+    if (missing) toast.error(t("tbl.missing", { n: missing }));
+    return items;
+  };
+
+  const openTable = async (table) => {
+    const here = cartsRef.current.find((c) => c.tableId === table.id);
+    if (here) { setActiveId(here.id); setShowTables(false); focusSearch(); return; }
+    let o;
+    try { o = (await tableApi.open(table.id))?.data; } catch (err) { toast.error(err.message); return; }
+    if (!o) return;
+    const items = await itemsForOrder(o);
+    const bind = { items, tableOrderId: o.id, tableId: o.tableId, tableName: o.tableName,
+                   tableVersion: o.version, tableSig: sigOf(items), customer: null, discount: "", bonusUse: "",
+                   orderType: "DINE_IN" };
+    /* Bo'sh oddiy savat bo'lsa — o'sha egallanadi, yangi yorliq ochilmaydi. */
+    const list = cartsRef.current;
+    const blank = list.find((c) => c.id === activeIdRef.current && !c.items.length && !c.tableOrderId);
+    if (blank) {
+      patchCart(blank.id, bind);
+    } else {
+      if (list.length >= cartStore.MAX_CARTS) { toast.error(t("kassa.cartsMax", { n: cartStore.MAX_CARTS })); return; }
+      const id = ++cartSeq.current;
+      setCarts((prev) => [...prev, { ...cartStore.blank(id), ...bind }]);
+      setActiveId(id);
+    }
+    setShowTables(false);
+    focusSearch();
+  };
+
+  /* Stol savatidagi o'zgarish → serverga (700 ms kutib, faqat haqiqatan
+     o'zgarganda). 409 — boshqa qurilma yozgan: yangisi yuklanadi va kassir
+     ogohlantiriladi; jimgina ustidan yozish ofitsiant qo'shgan taomni
+     o'chirib yuborardi. */
+  useEffect(() => {
+    const c = active;
+    if (!c.tableOrderId) return undefined;
+    const sig = sigOf(c.items);
+    if (sig === c.tableSig) return undefined;
+    const timer = setTimeout(async () => {
+      try {
+        const r = await tableApi.save(c.tableOrderId, {
+          version: c.tableVersion, total: cartStore.totalOf(c.items), lines: linesOf(c.items),
+        });
+        patchCart(c.id, { tableVersion: r?.data?.version ?? c.tableVersion + 1, tableSig: sig });
+      } catch (err) {
+        if (err?.status !== 409) return;          // tarmoq — keyingi o'zgarishda qayta urinadi
+        toast.error(err.message);
+        try {
+          const o = (await tableApi.get(c.tableOrderId))?.data;
+          if (!o || o.status !== "OPEN") {
+            patchCart(c.id, { tableOrderId: null, tableId: null, tableName: "", tableVersion: 0, tableSig: "" });
+            return;
+          }
+          const items = await itemsForOrder(o);
+          patchCart(c.id, { items, tableVersion: o.version, tableSig: sigOf(items) });
+        } catch { /* yangisini olib bo'lmadi — keyingi o'zgarishda yana */ }
+      }
+    }, 700);
+    return () => clearTimeout(timer);
+  }, [active.items, active.tableOrderId, active.tableVersion]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ══ SAVATGA OPTOM NARX (V97) ═══════════════════════════════════════
      ⚠ NEGA BUTUN SAVATGA. Optom mijoz 20 ta tovar oladi va kassir har
@@ -2587,6 +2675,8 @@ export default function KassaPage({ toast, refreshLowStock }) {
       /* Buyurtma turi va xizmat haqi foizi (R5) — summani server hisoblaydi;
          foiz shu yerdan, chunki oflayn chek keyin keladi. */
       ...(orderType ? { orderType, serviceChargePercent: svcAmount > 0 ? svcPct : null } : {}),
+      /* Stol (T1) — to'lov uni serverda yopadi; oflayn chek kelganda ham. */
+      ...(active.tableOrderId ? { tableOrderId: active.tableOrderId } : {}),
       customerId: customer?.id || null,
       items: cart.map((i) => ({
         productId: i.id,
@@ -3276,7 +3366,9 @@ export default function KassaPage({ toast, refreshLowStock }) {
                             className="cart-tab__pick"
                             onClick={() => switchCart(c.id)}>
                       <span className="cart-tab__name">
-                        {c.customer?.name || t("kassa.cartN", { n: i + 1 })}
+                        {c.tableOrderId
+                          ? <><i className="fa-solid fa-chair" aria-hidden="true" /> {c.tableName}</>
+                          : (c.customer?.name || t("kassa.cartN", { n: i + 1 }))}
                       </span>
                       <span className="cart-tab__sum ek-num">
                         {c.items.length
@@ -3295,6 +3387,14 @@ export default function KassaPage({ toast, refreshLowStock }) {
                 );
               })}
             </div>
+
+            {/* Stollar (T1) — restoran modulida, «yangi savat» yonida. */}
+            {hasFeature("TABLES") && (
+              <button type="button" className="btn btn-outline btn-sm cart-head__tables"
+                      onClick={() => setShowTables(true)}>
+                <i className="fa-solid fa-chair" aria-hidden="true" /> {t("tbl.title")}
+              </button>
+            )}
 
             {/* «Yangi savat» — tablarning O'ZI YONIDA. Bu yerda ular bir
                 butun: ro'yxat va unga qo'shish. */}
@@ -3883,6 +3983,15 @@ export default function KassaPage({ toast, refreshLowStock }) {
           mode="sale"
           onDone={applyMarkingCodes}
           onClose={() => { setMarkModal(null); focusSearch(); }}
+        />
+      )}
+
+      {/* ════ Stollar (T1) ════ */}
+      {showTables && (
+        <TablesOverlay
+          openHere={carts.filter((c) => c.tableId).map((c) => c.tableId)}
+          onPick={openTable}
+          onClose={() => { setShowTables(false); focusSearch(); }}
         />
       )}
 

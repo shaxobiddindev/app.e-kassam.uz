@@ -7328,3 +7328,26 @@ button.stk__c:hover { background: var(--bg-hover); }
 .order-type__b.is-on { border-color: var(--border-brand); background: var(--bg-brand-subtle, var(--bg-sunken)); color: var(--fg-brand); }
 .svc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0 16px; padding: 0 16px; }
 .svc-actions { display: flex; justify-content: flex-end; padding: 0 16px 16px; }
+
+/* ══ STOLLAR (T1) — kassir ekrani: plitka ≥ 56px ═════════════════════════ */
+.cart-head__tables { white-space: nowrap; }
+.tbl-modal { display: flex; flex-direction: column; overflow: hidden; max-height: 92vh;
+             width: min(960px, 96vw); background: var(--bg-surface); border-radius: 22px;
+             border: 1px solid var(--border-subtle); box-shadow: var(--sh-xl); }
+.tbl-halls { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 18px 8px; }
+.tbl-hall { min-height: 44px; padding: 0 14px; border-radius: 10px; border: 1.5px solid var(--border-subtle);
+            background: var(--bg-surface); color: var(--fg-primary); font: inherit; font-weight: 700; cursor: pointer; }
+.tbl-hall.is-on { border-color: var(--border-brand); color: var(--fg-brand); }
+.tbl-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 4px 18px 18px; }
+.tbl-empty { color: var(--fg-secondary); }
+.tbl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+.tbl-tile { min-height: 96px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 4px;
+            padding: 12px; border-radius: 14px; border: 1.5px solid var(--border-subtle); background: var(--bg-surface);
+            color: var(--fg-primary); font: inherit; text-align: start; cursor: pointer; }
+.tbl-tile.is-busy { border-color: var(--border-brand); background: var(--bg-brand-subtle, var(--bg-sunken)); }
+.tbl-tile.is-here { box-shadow: 0 0 0 2px var(--border-brand) inset; }
+.tbl-tile__name { font-weight: 800; font-size: 16px; }
+.tbl-tile__sum { font-weight: 800; color: var(--fg-brand); }
+.tbl-tile__meta { font-size: 12px; color: var(--fg-secondary); }
+.tbl-chip { position: relative; min-height: 36px; border: 0; cursor: pointer; color: var(--fg-primary); font: inherit; font-size: 13px; }
+.tbl-chip__busy { color: var(--fg-brand); font-size: 8px; margin-inline-start: 4px; }

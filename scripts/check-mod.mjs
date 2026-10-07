@@ -60,8 +60,8 @@ const ok = (m) => console.log("  ✅ " + m);
 const no = (m, got) => { bad++; console.log(`  ❌ ${m}  →  ${got}`); };
 const pageErrors = [];
 
-async function openKassa({ restaurant, kitchen = false }) {
-  const calls = { modifiers: 0, sales: [] };
+async function openKassa({ restaurant, kitchen = false, tables = false }) {
+  const calls = { modifiers: 0, sales: [], tables: [] };
   const page = await browser.newPage();
   await page.setViewport({ width: 1600, height: 950 });
   await page.setRequestInterception(true);
@@ -78,8 +78,28 @@ async function openKassa({ restaurant, kitchen = false }) {
     let data = [];
     if (u.pathname.endsWith("/shop/features")) {
       data = { directions: restaurant ? ["RESTAURANT"] : ["RETAIL_FOOD"], unconfigured: false,
-               features: restaurant ? [...ALL, "MODIFIERS", ...(kitchen ? ["KITCHEN"] : [])] : ALL,
+               features: restaurant ? [...ALL, "MODIFIERS", ...(kitchen ? ["KITCHEN"] : []), ...(tables ? ["TABLES"] : [])] : ALL,
                allFeatures: [...ALL, "MODIFIERS", "KITCHEN"] };
+    } else if (tables && u.pathname.includes("/tables")) {
+      let body = null;
+      try { body = JSON.parse(r.postData() || "null"); } catch { /* bo'sh */ }
+      calls.tables.push({ m: r.method(), p: u.pathname.replace(/^.*\/api/, ""), body });
+      if (u.pathname.endsWith("/tables/halls")) {
+        data = [{ id: 1, name: "Zal", sortOrder: 0, tables: [
+          { id: 11, name: "Stol 1", seats: 4, sortOrder: 1, order: null },
+          { id: 12, name: "Stol 2", seats: 4, sortOrder: 2,
+            order: { id: 502, total: 70000, guests: 2, openedAt: new Date(Date.now() - 25 * 60000).toISOString(), lineCount: 1, version: 3 } },
+        ] }];
+      } else if (u.pathname.endsWith("/tables/11/open")) {
+        data = { id: 501, tableId: 11, tableName: "Stol 1", hallName: "Zal", status: "OPEN", version: 0, lines: [] };
+      } else if (u.pathname.endsWith("/tables/12/open")) {
+        data = { id: 502, tableId: 12, tableName: "Stol 2", hallName: "Zal", status: "OPEN", version: 3,
+                 lines: [{ productId: 7, quantity: 2, modifierIds: [22], discount: 0 }] };
+      } else if (/\/tables\/orders\/50\d$/.test(u.pathname) && r.method() === "PUT") {
+        data = { id: 501, tableId: 11, tableName: "Stol 1", status: "OPEN", version: (body?.version ?? 0) + 1, lines: body?.lines || [] };
+      }
+    } else if (/\/products\/7$/.test(u.pathname)) {
+      data = PRODUCTS[0];
     } else if (u.pathname.endsWith("/modifiers")) {
       calls.modifiers++;
       data = GROUPS;
@@ -267,6 +287,47 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
   b && b.orderType === "DINE_IN" && Number(b.serviceChargePercent) === 10
     ? ok("serverga orderType DINE_IN va 10% ketdi (summani server hisoblaydi)")
     : no("serverga buyurtma turi/foiz ketmadi", JSON.stringify(b && { orderType: b.orderType, pct: b.serviceChargePercent }));
+  await page.close();
+}
+
+{
+  console.log("\n§7 Stollar (T1): ochish, serverga yozish, to'lov");
+  const { page, calls } = await openKassa({ restaurant: true, tables: true });
+  await waitFor(page, () => false, 600);
+  await page.evaluate(() => document.querySelector(".cart-head__tables")?.click());
+  (await waitFor(page, () => document.querySelectorAll(".tbl-tile").length === 2))
+    ? ok("«Stollar» oynasi: ikki stol") : no("stollar oynasi ochilmadi", "—");
+  const busyTxt = await page.evaluate(() => document.querySelector(".tbl-tile.is-busy")?.textContent || "");
+  /70[\s\u00a0\u202f]?000/.test(busyTxt) && /25/.test(busyTxt) ? ok("band stolda summa va vaqt matni (rang yolg'iz emas)") : no("band stol matni", busyTxt);
+  await page.evaluate(() => document.querySelectorAll(".tbl-tile")[0].click());
+  await waitFor(page, () => !document.querySelector(".tbl-modal"));
+  const tab = await page.evaluate(() => document.querySelector(".cart-tab.is-on .cart-tab__name")?.textContent || "");
+  /Stol 1/.test(tab) ? ok("stol savat yorlig'i bo'lib ochildi: «Stol 1»") : no("yorliq nomi", tab);
+  await tile(page, "suv");
+  await waitFor(page, () => false, 1300);
+  const put = calls.tables.find((c) => c.m === "PUT");
+  put && put.body?.version === 0 && put.body?.lines?.[0]?.productId === 3
+    ? ok("o'zgarish serverga yozildi: versiya 0, suv qatori") : no("PUT ketmadi yoki noto'g'ri", JSON.stringify(put));
+  const puts = calls.tables.filter((c) => c.m === "PUT").length;
+  await waitFor(page, () => false, 1200);
+  calls.tables.filter((c) => c.m === "PUT").length === puts ? ok("o'zgarishsiz qayta yozilmaydi") : no("bekor PUT", "takror");
+
+  await page.evaluate(() => document.querySelector(".cart-head__tables")?.click());
+  await waitFor(page, () => document.querySelectorAll(".tbl-tile").length === 2);
+  await page.evaluate(() => document.querySelectorAll(".tbl-tile")[1].click());
+  await waitFor(page, () => /Stol 2/.test(document.querySelector(".cart-tab.is-on .cart-tab__name")?.textContent || ""), 4000);
+  const items = await cartItems(page);
+  items.length === 1 && items[0].qty === 2 && items[0].price === 38000 && items[0].mods === "Katta"
+    ? ok("band stol buyurtmasi yuklandi: burger + Katta ×2 (38 000)") : no("band stol yuklanmadi", JSON.stringify(items));
+
+  await page.keyboard.press("F9");
+  await waitFor(page, () => !!document.querySelector(".pay-modal-submit"));
+  await page.keyboard.type("76000", { delay: 20 });
+  await new Promise((r) => setTimeout(r, 300));
+  await page.click(".pay-modal-submit");
+  await waitFor(page, () => false, 1500);
+  const b = calls.sales[0];
+  b && b.tableOrderId === 502 ? ok("to'lovda tableOrderId 502 — server stolni yopadi") : no("tableOrderId ketmadi", JSON.stringify(b && b.tableOrderId));
   await page.close();
 }
 

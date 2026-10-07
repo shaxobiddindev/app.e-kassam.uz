@@ -119,6 +119,12 @@ export function take() {
         bonusUse: typeof c?.bonusUse === "string" ? c.bonusUse : "",
         /* Buyurtma turi (R5) — eski yozuvda yo'q, `null` = standart. */
         orderType: typeof c?.orderType === "string" ? c.orderType : null,
+        /* Stol yorlig'i (T1) — buyurtma serverda, bu yerda faqat bog'lanish.
+           Versiya eskirgan bo'lsa birinchi yozuv 409 oladi va yangisi yuklanadi. */
+        ...(c?.tableOrderId ? {
+          tableOrderId: c.tableOrderId, tableId: c.tableId ?? null, tableName: c.tableName || "",
+          tableVersion: Number(c.tableVersion) || 0, tableSig: c.tableSig || "",
+        } : {}),
       }))
       .filter((c) => c.items.length > 0)
       .slice(0, MAX_CARTS);

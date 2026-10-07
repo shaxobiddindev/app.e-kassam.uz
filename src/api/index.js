@@ -1313,6 +1313,21 @@ export async function downloadScaleExport() {
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
+/* ── Zal va stollar (V153, modul TABLES) ── */
+export const tableApi = {
+  halls: () => request("/tables/halls"),
+  createHall: (data) => request("/tables/halls", { method: "POST", body: JSON.stringify(data) }),
+  updateHall: (id, data) => request(`/tables/halls/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  archiveHall: (id) => request(`/tables/halls/${id}`, { method: "DELETE" }),
+  createTables: (hallId, data) => request(`/tables/halls/${hallId}/tables/batch`, { method: "POST", body: JSON.stringify(data) }),
+  updateTable: (id, data) => request(`/tables/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  archiveTable: (id) => request(`/tables/${id}`, { method: "DELETE" }),
+  open: (tableId) => request(`/tables/${tableId}/open`, { method: "POST" }),
+  get: (orderId) => request(`/tables/orders/${orderId}`),
+  save: (orderId, data) => request(`/tables/orders/${orderId}`, { method: "PUT", body: JSON.stringify(data) }),
+  cancel: (orderId) => request(`/tables/orders/${orderId}/cancel`, { method: "POST" }),
+};
+
 /* ── Texnologik karta (V150, modul RECIPES) ── */
 export const recipeApi = {
   get: (productId) => request(`/recipes/${productId}`),

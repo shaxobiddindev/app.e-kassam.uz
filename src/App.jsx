@@ -442,6 +442,7 @@ export default function App() {
                 qo'ymaydi. */}
             <Route path="/prices" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><P.Prices toast={toast} /></ProtectedRoute>} />
             <Route path="/modifiers" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><P.Modifiers toast={toast} /></ProtectedRoute>} />
+            <Route path="/tables-setup" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><P.TablesSetup toast={toast} /></ProtectedRoute>} />
             <Route path="/customers" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"]}><P.Customers toast={toast} /></ProtectedRoute>} />
             <Route path="/sales" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"]}><P.Sales toast={toast} /></ProtectedRoute>} />
             <Route path="/reports" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><P.Reports toast={toast} /></ProtectedRoute>} />
