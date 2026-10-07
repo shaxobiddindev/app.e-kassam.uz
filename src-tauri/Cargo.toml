@@ -1,6 +1,6 @@
 [package]
 name = "e-kassam"
-version = "1.15.33"
+version = "1.15.34"
 description = "e-Kassam — kassir ilovasi"
 authors = ["e-Kassam"]
 edition = "2021"
