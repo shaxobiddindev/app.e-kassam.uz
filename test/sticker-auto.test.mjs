@@ -10,7 +10,7 @@
    Ishga tushirish:  node test/sticker-auto.test.mjs
    ══════════════════════════════════════════════════════════════════════════ */
 const {
-  printerKind, sortPrinters, autoPrinter, profileFor, mediaFor, stickerMedias,
+  printerKind, sortPrinters, autoPrinter, profileFor, mediaFor, stickerMedias, effectivePrinter,
   pickTemplate, setupDone, printerErrorKey, MAIN_SIZES, designOf, designsFor, DESIGN_ORDER,
   sheetMedia,
 } = await import("../src/lib/ek-sticker-auto.js");
@@ -34,7 +34,8 @@ console.log("\n── Printer nomidan turi ──");
   eq(printerKind("XP-58IIH"), "receipt", "⚠ XP-58 — chek printeri");
   eq(printerKind("POS-80"), "receipt", "POS-80 — chek");
   eq(printerKind("Microsoft Print to PDF"), "virtual", "PDF — virtual");
-  eq(printerKind("HP LaserJet M1132"), "other", "ofis printeri — boshqa");
+  eq(printerKind("HP LaserJet M1132"), "office", "ofis printeri — ofis (TSPL yuborilmaydi)");
+  eq(printerKind("USB Printer P1"), "other", "nomi tanilmagan printer — boshqa");
 }
 
 console.log("\n── Ro'yxat va avtomatik tanlov ──");
@@ -65,7 +66,21 @@ console.log("\n── Printer profili ──");
   eq(profileFor("TSC TTP-244", P)?.id, 2, "TSC → tsc_te200");
   eq(profileFor("Rongta RP410", P)?.id, 5, "Rongta → rongta_rp400");
   eq(profileFor("Zebra GK420d", P)?.id, 3, "Zebra → ZPL");
-  eq(profileFor("HP LaserJet", P)?.id, 8, "⚠ noma'lum printer → drayver (oyna), TSPL emas");
+  eq(profileFor("HP LaserJet", P)?.id, 8, "⚠ ofis printeri → drayver (oyna), TSPL emas");
+  /* ⚠ 2026-10-08: drayver yo'lida 30×20 kichrayib/kesilib chiqardi (egasi). */
+  eq(profileFor("4BARCODE 4B-2054L", P)?.id, 1, "⚠ nomi tanilmagan stiker printeri → TSPL, drayver emas");
+
+  const ROLL = { mediaType: "RULON", labelWidthMm: 30, labelHeightMm: 20 };
+  const drv = { id: 8, code: "driver_a4", lang: "DRAYVER", dpi: 300, offsetXMm: 1.5 };
+  const e = effectivePrinter("USB Printer P1", drv, ROLL);
+  eq(`${e.lang}|${e.dpi}|${e.offsetXMm}`, "TSPL|203|1.5", "⚠ eski sozlama (driver_a4) + rulon → TSPL, siljish tuzatishi saqlanadi");
+  eq(effectivePrinter("Xprinter XP-365B", drv, ROLL).lang, "TSPL", "Xprinter + drayver profili → TSPL");
+  eq(effectivePrinter("HP LaserJet", drv, ROLL), drv, "ofis printeri — tegilmaydi");
+  eq(effectivePrinter("XP-80C", drv, ROLL), drv, "chek printeri — tegilmaydi");
+  eq(effectivePrinter("USB Printer P1", drv, { mediaType: "VARAQ" }), drv, "A4 varaq — drayver qoladi");
+  eq(effectivePrinter("", drv, ROLL), drv, "printer tanlanmagan — tegilmaydi");
+  const z = { lang: "ZPL", dpi: 203 };
+  eq(effectivePrinter("Zebra GK420d", z, ROLL), z, "ZPL profili — tegilmaydi");
   eq(profileFor("XP-80C", P)?.id, 8, "⚠ chek printeri → drayver, TSPL emas");
 }
 
