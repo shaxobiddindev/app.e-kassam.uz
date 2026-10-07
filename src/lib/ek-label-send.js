@@ -23,11 +23,15 @@ import { buildPrintDoc, buildRollBytes, buildRollDoc, outputMode, pageOf } from 
 import { rasterizeSvg } from "./ek-label-raster";
 import { ensureBarcodes } from "./ek-label-codes";
 import { calibrationCommand } from "./ek-label-bytes";
+import { effectivePrinter } from "./ek-sticker-auto";
+
+const queueName = () => (getSettings().labelPrinterName || "").trim();
 
 /** Shu kompyuterda qaysi yo'l bilan chiqadi: "bytes" | "driver" | "sheet". */
 export function routeOf(media, printer) {
-  const queue = (getSettings().labelPrinterName || "").trim();
-  return outputMode(media, printer, { desktop: isDesktop(), queue });
+  const queue = queueName();
+  /* ⚠ Rulon stiker — drayver emas, TSPL (`effectivePrinter` izohi). */
+  return outputMode(media, effectivePrinter(queue, printer, media), { desktop: isDesktop(), queue });
 }
 
 /**
@@ -55,8 +59,9 @@ export async function withCodes(items, template) {
  *   "bytes" da yorliq printerga YETIB BORGANI aniq, qolganlarida esa
  *   brauzer oynasi buni bilmaydi (chaqiruvchi so'raydi).
  */
-export async function sendLabels({ template, items, media, printer, title = "",
+export async function sendLabels({ template, items, media, printer: saved, title = "",
                                    ctx = {}, startPosition = 1 }) {
+  const printer = effectivePrinter(queueName(), saved, media);
   const mode = routeOf(media, printer);
   if (mode === "bytes") {
     await measureOnce(media, printer);

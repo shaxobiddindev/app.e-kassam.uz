@@ -25,6 +25,8 @@ const VIRTUAL = /pdf|xps|onenote|fax|факс|anydesk|send to|microsoft print/i;
 const TSPL = /xp[- ]?\d{3}b|xp[- ]?(dt|tt|h)\d|xprinter|tsc|ttp[- ]?\d|te[23]\d\d|da2\d\d|rongta|rp4\d\d|hprt|gprinter|gp[- ]?\d{4}|label|этикет|yorliq|stiker|sticker/i;
 const ZPL = /zebra|\bzd\d|\bgk4|\bgx4|\bzt\d|\bgc4/i;
 const EZPL = /godex|\bg5\d\d|\bez[- ]?\d/i;
+/* Ofis printerlari — rulon tilini bilmaydi, ularga TSPL yuborilmaydi. */
+const OFFICE = /laserjet|deskjet|officejet|\bhp\b|canon|\blbp|epson|brother|kyocera|xerox|ricoh|lexmark|pantum|samsung|\bmfp\b|sharp|konica|\boki\b/i;
 
 /**
  * @returns {"tspl"|"zpl"|"ezpl"|"receipt"|"virtual"|"other"}
@@ -38,6 +40,7 @@ export function printerKind(name) {
   if (ZPL.test(s)) return "zpl";
   if (EZPL.test(s)) return "ezpl";
   if (TSPL.test(s)) return "tspl";
+  if (OFFICE.test(s)) return "office";
   return "other";
 }
 
@@ -50,7 +53,7 @@ const isLabel = (kind) => kind === "tspl" || kind === "zpl" || kind === "ezpl";
  * printeri sifatida sozlangan nom (`receiptName`) ham chek deb sanaladi.
  */
 export function sortPrinters(names = [], receiptName = "") {
-  const rank = { tspl: 0, zpl: 0, ezpl: 0, other: 1, receipt: 2, virtual: 3 };
+  const rank = { tspl: 0, zpl: 0, ezpl: 0, other: 1, office: 1, receipt: 2, virtual: 3 };
   return [...new Set(names.filter(Boolean))]
     .map((name) => {
       const kind = name === receiptName ? "receipt" : printerKind(name);
@@ -82,9 +85,16 @@ const PROFILE_BY = [
 /**
  * Windows nomidan printer profili.
  *
- * ⚠ NOMA'LUM PRINTER — DRAYVER YO'LI (brauzer oynasi). Unga TSPL yuborish
- * xavfli: tilni bilmasa u buyruqlarni matn qilib chiqaradi va rulon to'la
- * tushunarsiz yozuv bo'ladi. Drayver yo'li sekinroq, lekin har doim ishlaydi.
+ * ⚠ NOMI TANILMAGAN PRINTER — TSPL (2026-10-08). Ilgari u drayver yo'liga
+ * (brauzer chop etish oynasi) tushardi va egasi shikoyat qildi: «30×20 da
+ * chegaralardan ko'p bo'shliq, nom ekranda to'g'ri, qog'ozga chala chiqyapti».
+ * Drayver yo'lida qog'oz o'lchami WINDOWS DRAYVERIDAN olinadi (ko'pincha
+ * standart 100×150 yoki 4"×6"): 30×20 sahifa kichrayib bir burchakka
+ * tushadi yoki kesiladi — biz uni boshqara olmaymiz. O'zbekistonda sotiladigan
+ * stiker printerlarining deyarli hammasi (Xprinter, Gprinter, HPRT, 4BARCODE,
+ * iDPRT …) TSPL tushunadi, nomi esa ko'pincha «XP-365B» emas, «USB Printer»
+ * yoki do'konchi qo'ygan nom bo'ladi. Chek printeri, PDF va ofis printeri —
+ * hamon drayver: ularga TSPL yuborilsa matn bo'lib chiqardi.
  */
 export function profileFor(name, profiles = []) {
   const system = profiles.filter((p) => p.system || p.code);
@@ -96,7 +106,32 @@ export function profileFor(name, profiles = []) {
     for (const [re, code] of PROFILE_BY) if (re.test(String(name))) return byCode(code);
     return byCode("xprinter_365b");
   }
+  if (kind === "other") return byCode("xprinter_365b");
   return byCode("driver_a4");
+}
+
+/**
+ * CHOP ETISHDA ISHLATILADIGAN PRINTER PROFILI — rulon stikerda drayver o'rniga TSPL.
+ *
+ * ⚠ ESKI SOZLAMALAR UCHUN (2026-10-08). Avval sozlangan do'konda serverda
+ * `driver_a4` saqlangan bo'lishi mumkin (nomi tanilmagan printer) — qayta
+ * sozlashni kutmasdan, rulon/fanfold stiker TSPL bilan chiqadi. Ofis, chek
+ * va virtual printer, ZPL va o'z tili bor TSPL profili — tegilmaydi.
+ * Do'konchining zichlik va siljish tuzatishlari saqlanadi.
+ */
+export function effectivePrinter(queue, printer, media) {
+  if (!queue || !media || String(media.mediaType) === "VARAQ") return printer;
+  const lang = String(printer?.lang || "").toUpperCase();
+  if (lang === "TSPL" || lang === "ZPL") return printer;
+  const kind = printerKind(queue);
+  if (kind !== "tspl" && kind !== "other") return printer;
+  return {
+    ...(printer || {}),
+    lang: "TSPL",
+    dpi: 203,
+    density: printer?.density ?? 8,
+    speed: printer?.speed ?? 4,
+  };
 }
 
 /* ── Stiker o'lchami ────────────────────────────────────────────────────
