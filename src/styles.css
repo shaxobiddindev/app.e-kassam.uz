@@ -7319,3 +7319,12 @@ button.stk__c:hover { background: var(--bg-hover); }
 .kit-chip.is-on { border-color: var(--border-brand); background: var(--bg-brand-subtle, var(--bg-sunken)); }
 .kit-ctl { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .kit-ctl > :first-child { min-width: 220px; flex: 1 1 220px; }
+
+/* ══ BUYURTMA TURI (R5) — kassir ekrani: tugma ≥ 56px ═════════════════════ */
+.order-type { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 8px 0; }
+.order-type__b { min-height: 56px; display: flex; align-items: center; justify-content: center; gap: 6px;
+                 border-radius: 12px; border: 1.5px solid var(--border-subtle); background: var(--bg-surface);
+                 color: var(--fg-primary); font: inherit; font-weight: 700; font-size: 13px; cursor: pointer; }
+.order-type__b.is-on { border-color: var(--border-brand); background: var(--bg-brand-subtle, var(--bg-sunken)); color: var(--fg-brand); }
+.svc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0 16px; padding: 0 16px; }
+.svc-actions { display: flex; justify-content: flex-end; padding: 0 16px 16px; }

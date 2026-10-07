@@ -117,6 +117,8 @@ export function take() {
            boshqarilmaydiganga aylantirib, React ogohlantirish berardi. */
         discount: typeof c?.discount === "string" ? c.discount : "",
         bonusUse: typeof c?.bonusUse === "string" ? c.bonusUse : "",
+        /* Buyurtma turi (R5) — eski yozuvda yo'q, `null` = standart. */
+        orderType: typeof c?.orderType === "string" ? c.orderType : null,
       }))
       .filter((c) => c.items.length > 0)
       .slice(0, MAX_CARTS);

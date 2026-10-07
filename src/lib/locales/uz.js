@@ -3346,4 +3346,17 @@ export default {
   "kit.noPrinter": "«{name}» uchun printer tanlanmagan",
   "kit.failed": "Oshxona cheki chiqmadi: {names}. Printerni tekshiring.",
   "kit.missing": "Printer tanlanmagan bo'lim: {names}. Sozlamalar → Oshxona printerlari.",
+  /* ── Buyurtma turi va xizmat haqi (R5) ── */
+  "svc.line": "Xizmat haqi {pct}%",
+  "svc.orderType": "Buyurtma turi",
+  "svc.type.DINE_IN": "Zalda",
+  "svc.type.TAKEAWAY": "Olib ketish",
+  "svc.type.DELIVERY": "Yetkazish",
+  "svc.title": "Xizmat haqi",
+  "svc.hint": "Zalda o'tirgan mijozning chekiga qo'shiladi. Fiskal chekda alohida qator bo'ladi.",
+  "svc.percent": "Foiz",
+  "svc.mxik": "Xizmat MXIK kodi",
+  "svc.mxikHint": "17 ta raqam, tasnif.soliq.uz dan. Kodsiz xizmat haqi yoqilmaydi.",
+  "svc.vat": "QQS stavkasi, %",
+  "svc.off": "Foiz 0 — xizmat haqi o'chiq",
 };

@@ -3230,4 +3230,17 @@ export default {
   "kit.noPrinter": "No printer selected for «{name}»",
   "kit.failed": "Kitchen ticket did not print: {names}. Check the printer.",
   "kit.missing": "Station without a printer: {names}. Settings → Kitchen printers.",
+  /* ── Buyurtma turi va xizmat haqi (R5) ── */
+  "svc.line": "Service {pct}%",
+  "svc.orderType": "Order type",
+  "svc.type.DINE_IN": "Dine in",
+  "svc.type.TAKEAWAY": "Takeaway",
+  "svc.type.DELIVERY": "Delivery",
+  "svc.title": "Service charge",
+  "svc.hint": "Added to the bill of guests seated in the hall. It is a separate fiscal line.",
+  "svc.percent": "Percent",
+  "svc.mxik": "Service MXIK code",
+  "svc.mxikHint": "17 digits, from tasnif.soliq.uz. Without a code the charge stays off.",
+  "svc.vat": "VAT rate, %",
+  "svc.off": "Percent 0 — service charge off",
 };

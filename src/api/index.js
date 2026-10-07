@@ -1358,6 +1358,8 @@ export const shopApi = {
      olishi kerak: modul ro'yxatidan menyu, roldan esa o'sha
      menyuning qaysi qismi ochiqligi. */
   getFeatures: () => request("/shop/features"),
+  /* Xizmat haqi (R5): foiz, MXIK, QQS — fiskal chekda alohida qator. */
+  setServiceCharge: (body) => request("/shop/service-charge", { method: "PATCH", body: JSON.stringify(body) }),
 
   /* Tarozi barkodi formati (V42) — BUTUN TANA bilan.
      Boshqa sozlamalar bittalab saqlanadi, bu esa bir butun: prefiks, PLU

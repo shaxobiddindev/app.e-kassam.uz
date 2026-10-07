@@ -61,6 +61,9 @@ function saleToReceipt(sale) {
       modifiers: i.modifiers || [],
     })),
     total:    sale.totalAmount,
+    /* Xizmat haqi (R5) — qayta chop etilgan chekda ham alohida qator. */
+    serviceCharge:  Number(sale.serviceChargeAmount) || 0,
+    servicePercent: Number(sale.serviceChargePercent) || 0,
     // Chegirmalar qatorlarda turadi, shuning uchun «Jami» ni hisoblab
     // chiqarmasdan serverdagi qiymatni olamiz.
     subtotal: sale.subtotalAmount,

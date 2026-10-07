@@ -3230,4 +3230,17 @@ export default {
   "kit.noPrinter": "Для «{name}» не выбран принтер",
   "kit.failed": "Кухонный чек не напечатан: {names}. Проверьте принтер.",
   "kit.missing": "Цех без принтера: {names}. Настройки → Принтеры кухни.",
+  /* ── Buyurtma turi va xizmat haqi (R5) ── */
+  "svc.line": "Обслуживание {pct}%",
+  "svc.orderType": "Тип заказа",
+  "svc.type.DINE_IN": "В зале",
+  "svc.type.TAKEAWAY": "С собой",
+  "svc.type.DELIVERY": "Доставка",
+  "svc.title": "Плата за обслуживание",
+  "svc.hint": "Добавляется к чеку гостя в зале. В фискальном чеке — отдельной строкой.",
+  "svc.percent": "Процент",
+  "svc.mxik": "Код ИКПУ услуги",
+  "svc.mxikHint": "17 цифр, с tasnif.soliq.uz. Без кода обслуживание не включится.",
+  "svc.vat": "Ставка НДС, %",
+  "svc.off": "Процент 0 — обслуживание выключено",
 };

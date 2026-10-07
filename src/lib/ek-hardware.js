@@ -143,7 +143,8 @@ async function send(bytes) {
  */
 export function buildReceipt({ saleId, serverSaleId, cart = [], total = 0, subtotal, discount = 0,
                                customer, offline, shopName, cashier, fiscal,
-                               credit, toSavings, rounding = 0, saleType = "SALE" }) {
+                               credit, toSavings, rounding = 0, saleType = "SALE",
+                               serviceCharge = 0, servicePercent = 0 }) {
   const s = getSettings();
   const r = new Receipt(s.width === 58 ? WIDTH_58 : WIDTH_80);
 
@@ -223,6 +224,8 @@ export function buildReceipt({ saleId, serverSaleId, cart = [], total = 0, subto
 
      ⚠ NOL BO'LSA CHIQMAYDI. Donalab sotiladigan chekda yaxlitlash
      umuman bo'lmaydi va bo'sh qator faqat qog'ozni yeyardi. */
+  /* Xizmat haqi (R5) — alohida qator, fiskal chekdagi bilan bir xil. */
+  if (Number(serviceCharge) > 0) r.row(t("svc.line", { pct: servicePercent }), "+" + money(serviceCharge));
   if (Number(rounding) > 0) r.row(t("kassa.rounding"), "-" + moneyFine(rounding));
   r.bold().double().row(t("kassa.receiptTotal"), money(total)).double(false).bold(false);
   /* ══ ⚠ TO'LOV TURI CHEKDA CHIQMAYDI ═════════════════════════════════
@@ -1033,7 +1036,8 @@ export async function testPrint() {
 function printInBrowser({ saleId, serverSaleId, cart = [], total = 0, subtotal, discount = 0,
                           customer, offline, shopName, cashier,
                           credit, __debt, amount, balanceAfter, balanceBefore, date,
-                          receiptNo, toSavings, bonusEarned, kind, linkedNo , rounding = 0 }) {
+                          receiptNo, toSavings, bonusEarned, kind, linkedNo , rounding = 0,
+                          serviceCharge = 0, servicePercent = 0 }) {
   const win = window.open("", "_blank", "width=360,height=640,toolbar=no,menubar=no");
   if (!win) throw new Error(t("hw.errPopup"));
   /* Qarz cheki yoki jamg'arma kvitansiyasi — so'zlar `kind` dan (V66). */
@@ -1132,6 +1136,7 @@ function printInBrowser({ saleId, serverSaleId, cart = [], total = 0, subtotal, 
       <div class="hr"></div>
       ${discTotal > 0 ? `<div class="row"><span>${esc(t("kassa.receiptSubtotal"))}</span><span>${esc(money(subtotal ?? (total + discTotal)))}</span></div>
       <div class="row"><span>${esc(t("kassa.discount"))}</span><span>-${esc(money(discTotal))}</span></div>` : ""}
+      ${Number(serviceCharge) > 0 ? `<div class="row"><span>${esc(t("svc.line", { pct: servicePercent }))}</span><span>+${esc(money(serviceCharge))}</span></div>` : ""}
       ${Number(rounding) > 0 ? `<div class="row"><span>${esc(t("kassa.rounding"))}</span><span>-${esc(moneyFine(rounding))}</span></div>` : ""}
       <div class="row"><b>${esc(t("kassa.receiptTotal"))}</b><b>${esc(money(total))}</b></div>
       ${Number(toSavings) > 0 && !__debt ? `<div class="row"><span>${esc(t("savings.toSavings"))}</span><span>+${esc(money(toSavings))}</span></div>` : ""}

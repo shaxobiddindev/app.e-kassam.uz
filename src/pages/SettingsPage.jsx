@@ -14,6 +14,7 @@ import PinSetModal from "../components/PinSetModal";
 import TelegramPanel from "../components/TelegramPanel";
 import HardwareSettings from "../components/HardwareSettings";
 import KitchenPrinters from "../components/KitchenPrinters";
+import ServiceChargeSettings from "../components/ServiceChargeSettings";
 import SoundSettings from "../components/SoundSettings";
 import ScaleSettings from "../components/ScaleSettings";
 import ScaleLive from "../components/ScaleLive";
@@ -728,6 +729,8 @@ export default function SettingsPage({ toast }) {
 
       {/* Oshxona bo'limlarining printerlari (R4) — faqat restoran modulida. */}
       {hasFeature("KITCHEN") && <KitchenPrinters toast={toast} />}
+      {/* Xizmat haqi (R5) — faqat ega: chek summasini oshiradi. */}
+      {isOwner && hasFeature("KITCHEN") && <ServiceChargeSettings toast={toast} />}
 
       {/* Tarozi formati — faqat EGAGA: server ham shu yo'lni egaga
           cheklaydi (`/shop/scale`), bo'limni kassirga ko'rsatib qo'yish

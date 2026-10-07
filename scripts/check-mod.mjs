@@ -60,7 +60,7 @@ const ok = (m) => console.log("  ✅ " + m);
 const no = (m, got) => { bad++; console.log(`  ❌ ${m}  →  ${got}`); };
 const pageErrors = [];
 
-async function openKassa({ restaurant }) {
+async function openKassa({ restaurant, kitchen = false }) {
   const calls = { modifiers: 0, sales: [] };
   const page = await browser.newPage();
   await page.setViewport({ width: 1600, height: 950 });
@@ -78,12 +78,14 @@ async function openKassa({ restaurant }) {
     let data = [];
     if (u.pathname.endsWith("/shop/features")) {
       data = { directions: restaurant ? ["RESTAURANT"] : ["RETAIL_FOOD"], unconfigured: false,
-               features: restaurant ? [...ALL, "MODIFIERS"] : ALL, allFeatures: [...ALL, "MODIFIERS"] };
+               features: restaurant ? [...ALL, "MODIFIERS", ...(kitchen ? ["KITCHEN"] : [])] : ALL,
+               allFeatures: [...ALL, "MODIFIERS", "KITCHEN"] };
     } else if (u.pathname.endsWith("/modifiers")) {
       calls.modifiers++;
       data = GROUPS;
     } else if (u.pathname.endsWith("/shop/profile")) {
-      data = { creditEnabled: false, bonusMaxPercent: 0 };
+      data = { creditEnabled: false, bonusMaxPercent: 0,
+               ...(kitchen ? { serviceChargePercent: 10, serviceChargeMxik: "10399001001000000" } : {}) };
     } else if (/\/products\/search$/.test(u.pathname)) {
       const q = (u.searchParams.get("q") || "").trim().toLowerCase();
       data = q ? PRODUCTS.filter((p) => p.name.includes(q)) : PRODUCTS;
@@ -236,6 +238,35 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
   const items = await cartItems(page);
   !(await page.$(".mod-modal")) && items.length === 1 && items[0].price === 30000
     ? ok("taom oynasiz, oddiy narxda") : no("oddiy do'konda oyna yoki noto'g'ri savat", JSON.stringify(items));
+  await page.close();
+}
+
+{
+  console.log("\n§6 Buyurtma turi va xizmat haqi (R5): zalda 10%");
+  const { page, calls } = await openKassa({ restaurant: true, kitchen: true });
+  await waitFor(page, () => false, 600);
+  await tile(page, "suv");
+  await new Promise((r) => setTimeout(r, 400));
+  const rowTxt = await page.evaluate(() => document.querySelector(".total-big")?.textContent || "");
+  /3[\s\u00a0\u202f]?300/.test(rowTxt) ? ok("savatda jami 3 300 (3 000 + 10%)") : no("jamiga xizmat haqi qo'shilmadi", rowTxt);
+  await page.keyboard.press("F9");
+  await waitFor(page, () => !!document.querySelector(".order-type"));
+  const btns = await page.evaluate(() => [...document.querySelectorAll(".order-type__b")].map((b) => b.getAttribute("aria-checked")));
+  JSON.stringify(btns) === '["true","false","false"]' ? ok("to'lov oynasida buyurtma turi, standart «Zalda»") : no("buyurtma turi yo'q yoki noto'g'ri", JSON.stringify(btns));
+  await page.evaluate(() => document.querySelectorAll(".order-type__b")[1].click());
+  await new Promise((r) => setTimeout(r, 200));
+  const take = await page.evaluate(() => document.querySelector(".pay-modal-total-value")?.textContent || "");
+  /^3[\s\u00a0\u202f]?000/.test(take.trim()) ? ok("«Olib ketish» — xizmat haqisiz 3 000") : no("olib ketishda xizmat haqi qoldi", take);
+  await page.evaluate(() => document.querySelectorAll(".order-type__b")[0].click());
+  await new Promise((r) => setTimeout(r, 200));
+  await page.keyboard.type("3300", { delay: 20 });
+  await new Promise((r) => setTimeout(r, 300));
+  await page.click(".pay-modal-submit");
+  await waitFor(page, () => false, 1500);
+  const b = calls.sales[0];
+  b && b.orderType === "DINE_IN" && Number(b.serviceChargePercent) === 10
+    ? ok("serverga orderType DINE_IN va 10% ketdi (summani server hisoblaydi)")
+    : no("serverga buyurtma turi/foiz ketmadi", JSON.stringify(b && { orderType: b.orderType, pct: b.serviceChargePercent }));
   await page.close();
 }
 

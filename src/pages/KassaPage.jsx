@@ -20,6 +20,7 @@ import MarkingScanModal from "../components/MarkingScanModal";
 import ModifierModal from "../components/ModifierModal";
 import { keyOf, groupsFor, lineFor, modsText } from "../lib/ek-modifiers";
 import { stationMap, kitchenTickets } from "../lib/ek-kitchen";
+import { ORDER_TYPES, servicePercent, serviceCharge as serviceChargeOf } from "../lib/ek-service-charge";
 import { useShopFeatures } from "../hooks/useShopFeatures";
 import { Empty, ClearButton } from "../components/ui";
 import { useKeyboard } from "../context/KeyboardProvider";
@@ -340,6 +341,10 @@ export default function KassaPage({ toast, refreshLowStock }) {
   const [newCust, setNewCust] = useState(null);
   const [savingCust, setSavingCust] = useState(false);
   const [bonusMaxPercent, setBonusMaxPercent] = useState(0);
+  /* Xizmat haqi sozlamasi (R5) — oflayn ochilish uchun saqlanadi. */
+  const [svcCfg, setSvcCfg] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("ek_svc") || "null"); } catch { return null; }
+  });
   /* ⚠ NASIYA YOQILGANMI. Do'kon uni butunlay o'chirib qo'ygan bo'lishi
      mumkin; tugmani baribir ko'rsatish kassirni serverdan rad javob
      oladigan yo'lga boshlardi — u esa sababini ekranda ko'rmasdi. */
@@ -704,6 +709,9 @@ export default function KassaPage({ toast, refreshLowStock }) {
     shopApi.getProfile()
       .then((r) => {
         setBonusMaxPercent(Number(r?.data?.bonusMaxPercent) || 0);
+        const svc = { percent: r?.data?.serviceChargePercent ?? null, mxik: r?.data?.serviceChargeMxik ?? null };
+        setSvcCfg(svc);
+        try { localStorage.setItem("ek_svc", JSON.stringify(svc)); } catch { /* saqlanmasa ham ishlaydi */ }
         setDueDays(Number(r?.data?.creditDueDays) || 0);
         setCreditEnabled(r?.data?.creditEnabled !== false);
         /* ⚠ STANDART KO'RINISH — RASMLI (foydalanuvchi qarori: «asosiy
@@ -2034,7 +2042,15 @@ export default function KassaPage({ toast, refreshLowStock }) {
     [cart, discountNum],
   );
 
-  const total    = afterDiscount - bonusNum;
+  /* ══ BUYURTMA TURI VA XIZMAT HAQI (R5) — server bilan bir xil qoida
+     (`ek-service-charge.js`). Restoran modulisiz do'konda ikkalasi yo'q. */
+  const restaurant = hasFeature("KITCHEN");
+  const svcPct = restaurant ? servicePercent(svcCfg) : 0;
+  const orderType = restaurant ? (active.orderType || "DINE_IN") : null;
+  const setOrderType = (v) => patchCart(active.id, { orderType: v });
+  const baseTotal = afterDiscount - bonusNum;
+  const svcAmount = serviceChargeOf(baseTotal, orderType, svcPct);
+  const total    = baseTotal + svcAmount;
   const totalQty = cart.reduce((sum, i) => sum + i.qty, 0);
 
   const handleClearCart = async () => {
@@ -2568,6 +2584,9 @@ export default function KassaPage({ toast, refreshLowStock }) {
 
     const payload = {
       idempotencyKey: queue.newIdempotencyKey(),
+      /* Buyurtma turi va xizmat haqi foizi (R5) — summani server hisoblaydi;
+         foiz shu yerdan, chunki oflayn chek keyin keladi. */
+      ...(orderType ? { orderType, serviceChargePercent: svcAmount > 0 ? svcPct : null } : {}),
       customerId: customer?.id || null,
       items: cart.map((i) => ({
         productId: i.id,
@@ -2659,6 +2678,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
        mijozga hech narsa aytmaydi va u ertaga «karta bilan qancha
        to'lagan edim?» deb do'kon bilan tortishadi. */
     const snapshot = { cart: [...cart], total, subtotal, discount: discountNum, rounding,
+                       serviceCharge: svcAmount, servicePercent: svcPct, orderType,
                        payType: saleType, customer,
                        payments: payload.payments, credit: creditInfo,
                        /* Qaytim jamg'armaga (V66) — chekda va yakun oynasida. */
@@ -2747,7 +2767,8 @@ export default function KassaPage({ toast, refreshLowStock }) {
     if (hasFeature("KITCHEN") && isDesktop()) {
       const tickets = kitchenTickets(snapshot.cart, new Map(Object.entries(stations)));
       if (tickets.length) {
-        printKitchen(tickets, { orderNo: receiptNo, at: new Date(), cashier })
+        printKitchen(tickets, { orderNo: receiptNo, at: new Date(), cashier,
+                                note: orderType ? t(`svc.type.${orderType}`).toUpperCase() : "" })
           .then((r) => {
             if (r.failed.length) toast.error(t("kit.failed", { names: r.failed.map((f) => f.station).join(", ") }));
             else if (r.missing.length) toast.error(t("kit.missing", { names: r.missing.join(", ") }));
@@ -3788,6 +3809,12 @@ export default function KassaPage({ toast, refreshLowStock }) {
               <span>{t("products.title")}</span>
               <span className="ek-num">{cart.length}</span>
             </div>
+            {svcAmount > 0 && (
+              <div className="total-row">
+                <span>{t("svc.line", { pct: svcPct })}</span>
+                <span className="ek-num">+{money(svcAmount)}</span>
+              </div>
+            )}
             <div className="total-big">
               <span>{t("common.total").toUpperCase()}</span>
               <span className="ek-num">{money(total)}</span>
@@ -4026,10 +4053,29 @@ export default function KassaPage({ toast, refreshLowStock }) {
               <div className="pay-modal-total">
                 <div className="pay-modal-total-label">{t("kassa.grandTotal")}</div>
                 <div className="pay-modal-total-value ek-num">{money(total)}</div>
+                {svcAmount > 0 && (
+                  <div className="pay-modal-total-qty">
+                    {t("svc.line", { pct: svcPct })}: <span className="ek-num">+{money(svcAmount)}</span>
+                  </div>
+                )}
                 <div className="pay-modal-total-qty">
                   <span className="ek-num">{cart.length}</span> xil mahsulot
                 </div>
               </div>
+
+              {/* ══ Buyurtma turi (R5) — zalda xizmat haqi qo'shiladi ══ */}
+              {orderType && (
+                <div className="order-type" role="radiogroup" aria-label={t("svc.orderType")}>
+                  {ORDER_TYPES.map((ot) => (
+                    <button key={ot} type="button" role="radio" aria-checked={orderType === ot}
+                            className={`order-type__b${orderType === ot ? " is-on" : ""}`}
+                            onClick={() => setOrderType(ot)}>
+                      <i className={`fa-solid ${ot === "DINE_IN" ? "fa-utensils" : ot === "TAKEAWAY" ? "fa-bag-shopping" : "fa-motorcycle"}`} aria-hidden="true" />
+                      {t(`svc.type.${ot}`)}
+                    </button>
+                  ))}
+                </div>
+              )}
 
               <div className="pay-modal-section-label">
                 <i className="fa-solid fa-basket-shopping" aria-hidden="true" /> {t("kassa.items")}
