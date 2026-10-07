@@ -141,7 +141,12 @@ function SimpleLabels({ toast, onAdvanced }) {
       </div>
       {kind === "SCALE"
         ? <ScaleLabel key={kind} toast={toast} onAdvanced={onAdvanced} />
-        : <StickerSimple key={kind} kind={kind} toast={toast} onAdvanced={onAdvanced} showHeader={false} />}
+        : <StickerSimple key={kind} kind={kind} toast={toast} onAdvanced={onAdvanced} showHeader={false}
+                         onWeighed={(id) => {
+                           /* «Og'irlik bilan» — Tarozi yorlig'i shu tovar tanlangan holda ochiladi. */
+                           try { sessionStorage.setItem("ek_scale_pick", String(id)); } catch { /* yopiq */ }
+                           pick("SCALE");
+                         }} />}
     </div>
   );
 }

@@ -69,11 +69,31 @@ export default function QuantityModal({ product, initial, stock: stockProp, onCo
 
   useEffect(() => { inputRef.current?.focus(); inputRef.current?.select(); }, []);
 
+  /* ══ «TOVARNI TAROZIGA QO'YING» (2026-10-06) ══════════════════════════
+     Egasi: «og'irliksiz stiker chiqara olsin — uni skanerlaganda taroziga
+     mahsulot qo'yish so'ralsin». Tarozi ulangan bo'lsa oyna buni so'raydi
+     va og'irlik BARQARORLASHGACH maydonga O'ZI yoziladi.
+
+     ⚠ Yuqoridagi qoida (V111) buzilmaydi: og'irlik faqat MAYDONGA tushadi,
+     savatga emas — kassir uni ko'rib, Enter bilan tasdiqlaydi. O'zgargani
+     — tugmani bosish qadami yo'qoldi (navbatda har tovarga bitta bosish kam).
+
+     ⚠ Kassir raqamni o'zi yozsa yoki oyna mavjud miqdor bilan ochilsa
+     (savatdagi qatorni tahrirlash) — tarozi maydonni USTIDAN YOZMAYDI. */
+  const [touched, setTouched] = useState(initial != null);
+  const weighUnit = weightQty(product?.unit, 1) != null;
+  useEffect(() => {
+    if (touched || sumModeRef.current || !scale?.stable || !(scaleQty > 0)) return;
+    setValue(String(floorTo(scaleQty, decimals)));
+  }, [scale?.stable, scaleQty, touched, decimals]);
+  const sumModeRef = useRef(false);
+
   const price = Number(product?.salePrice);
   /* Narxsiz tovarda summadan miqdor chiqarib bo'lmaydi (nolga bo'lish):
      tanlov umuman ko'rsatilmaydi — o'chiq tugma savol tug'dirardi. */
   const hasPrice = Number.isFinite(price) && price > 0;
   const sumMode = mode === MODE_SUM && hasPrice;
+  sumModeRef.current = sumMode;
 
   const num = Number(value.replace(",", "."));
   /* ⚠ SAVATGA TUSHADIGAN YAGONA SON. Summa rejimida u kiritilgan
@@ -212,7 +232,7 @@ export default function QuantityModal({ product, initial, stock: stockProp, onCo
             unit={sumMode ? undefined : product?.unit}
             className="form-input qty-modal__input ek-num"
             value={value}
-            onChange={(e) => setValue(e.target.value)}
+            onChange={(e) => { setTouched(true); setValue(e.target.value); }}
             placeholder="0"
             aria-label={sumMode ? t("kassa.enterSum") : t("kassa.enterQuantity")}
           />
@@ -223,6 +243,14 @@ export default function QuantityModal({ product, initial, stock: stockProp, onCo
               savolga olib borardi — holbuki tarozi umuman yo'q.
               Metr yoki soat sotilayotganda esa tugma bo'lmasligi
               KERAK: tarozi ularni o'lchay olmaydi. */}
+          {/* Tarozi ulangan, lekin ustida hech narsa yo'q — kassirdan so'raladi. */}
+          {weighUnit && scale && !sumMode && !touched && !(Number(scale.kg) > 0.004) && (
+            <div className="qty-modal__ask" role="status">
+              <i className="fa-solid fa-scale-balanced" aria-hidden="true" />
+              {t("kassa.putOnScale")}
+            </div>
+          )}
+
           {scaleQty != null && !sumMode && (
             <button type="button" className="btn btn-outline qty-modal__scale"
                     /* ⚠ Birlik xonasiga QIRQILADI: grammga o'girishda

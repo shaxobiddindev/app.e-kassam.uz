@@ -1248,7 +1248,12 @@ export default function KassaPage({ toast, refreshLowStock }) {
         setMarkModal({ product: r.product });
         return;
       }
-      if (r.source === "PRODUCT") { addToCart(r.product, 1); return; }
+      /* ⚠ TAROZILI / BO'LINADIGAN TOVAR — OG'IRLIK SO'RALADI (2026-10-06).
+         Ilgari oddiy barkod yoki og'irliksiz stiker skanerlansa kg li tovar
+         jimgina 1 kg bo'lib savatga tushardi. Egasi: «og'irliksiz stiker
+         skanerlanganda taroziga mahsulot qo'yish so'ralsin» — `pickProduct`
+         miqdor oynasini ochadi, u tarozidan og'irlikni o'zi oladi. */
+      if (r.source === "PRODUCT") { pickProduct(r.product); return; }
 
       if (r.source === "PACK") {
         addToCart(r.product, Number(r.quantity) || 1);
@@ -1356,7 +1361,9 @@ export default function KassaPage({ toast, refreshLowStock }) {
              mijoz ketganidan keyin chiqardi. */
           if (r.product?.markingGroup) { setMarkModal({ product: r.product }); return; }
 
-          addToCart(r.product, r.source === "PACK" ? (Number(r.quantity) || 1) : 1);
+          /* Tarozili tovar — og'irlik so'raladi (onlayn yo'l bilan bir xil). */
+          if (r.source === "PRODUCT") pickProduct(r.product);
+          else addToCart(r.product, Number(r.quantity) || 1);
           if (r.source === "PACK") {
             toast.info(t("kassa.packAdded", {
               label: r.packLabel || t("products.packBarcodes"),

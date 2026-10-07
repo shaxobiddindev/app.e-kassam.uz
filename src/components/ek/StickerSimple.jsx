@@ -27,6 +27,7 @@ import { useLabelOutput } from "../../hooks/useLabelOutput";
 import { useScanner } from "../../hooks/useScanner";
 import { useConfirm } from "../../context/ConfirmProvider";
 import { useLayerCount } from "../../hooks/useLayerCount";
+import { isWeighed } from "../../lib/ek-weight-label";
 
 /* ══════════════════════════════════════════════════════════════════════════
    STIKER CHIQARISH — ODDIY EKRAN (2026-10-03)
@@ -67,7 +68,7 @@ const sizeText = (r) => (r ? `${Number(r.labelWidthMm)} × ${Number(r.labelHeigh
 
 export default function StickerSimple({ toast, productIds = null, compact = false,
                                         onPrinted, onAdvanced, kind = "STICKER",
-                                        showHeader = true }) {
+                                        showHeader = true, onWeighed = null }) {
   const desktop = isDesktop();
   const tk = (key, vars) => t((kind === "SHELF" && SHELF_TEXT.has(key) ? "shf." : "stk.") + key, vars);
   const { outputs, loaded } = useLabelOutput();
@@ -548,6 +549,31 @@ export default function StickerSimple({ toast, productIds = null, compact = fals
               })}
             </ul>
           )}
+
+          {/* ⚠ TAROZILI TOVAR (2026-10-06). Egasi: «og'irliksiz ham stiker chiqara
+              olsin, skanerlanganda taroziga qo'yish so'ralsin». Bu yerdagi stiker
+              og'irliksiz (tovar kodi) — kassa uni skanerlaganda og'irlik so'raydi.
+              Og'irlik bilan kerak bo'lsa — bitta tugma «Tarozi yorlig'i» ni shu
+              tovar tanlangan holda ochadi (ilgari bu ikki yo'l bir-birini
+              bilmasdi va egasi og'irlikli stikerni topa olmadi). */}
+          {kind === "STICKER" && (() => {
+            const w = lines.filter((l) => isWeighed(byId[l.productId] || {}));
+            if (!w.length) return null;
+            return (
+              <div className="stk-note stk-weighed" role="note">
+                <i className="fa-solid fa-scale-balanced" aria-hidden="true" />
+                <div className="stk-weighed__body">
+                  <div>{tk("weighedHint")}</div>
+                  {onWeighed && (
+                    <button type="button" className="btn btn-outline btn-sm"
+                            onClick={() => onWeighed(w[w.length - 1].productId)}>
+                      <i className="fa-solid fa-weight-scale" aria-hidden="true" /> {tk("weighedGo")}
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
         </div>
 
         {/* ── O'ng: ko'rinish va printer ───────────────────────────── */}

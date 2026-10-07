@@ -82,7 +82,13 @@ export default function ScaleLabel({ toast, onAdvanced }) {
           labelApi.templates("STICKER"), productApi.getAll(), shopApi.getProfile().catch(() => null),
         ]);
         setTemplates(asArray(tRes.data));
-        setProducts(asArray(pRes.data).filter(isWeighed));
+        const list = asArray(pRes.data).filter(isWeighed);
+        setProducts(list);
+        /* Stiker ekranidagi «Og'irlik bilan» tugmasidan kelindi — tovar tayyor tanlangan. */
+        let pickId = null;
+        try { pickId = sessionStorage.getItem("ek_scale_pick"); sessionStorage.removeItem("ek_scale_pick"); } catch { /* yopiq */ }
+        const pre = pickId && list.find((x) => String(x.id) === pickId);
+        if (pre) setProduct(pre);
         const d = sRes?.data || {};
         setScale(normScale(d));
         setShopName(d.name || readLS("ek_shopName") || "");

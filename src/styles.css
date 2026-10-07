@@ -6601,6 +6601,21 @@ button.stk__c:hover { background: var(--bg-hover); }
 /* ── Kassadagi tarozi tugmasi (V111) ───────────────────────────────────
    Miqdor maydoni bilan jami qatori orasida. Kenglik to'liq: kassir
    uni tortish bilan bir vaqtda, ko'zini ekrandan olmasdan bosadi. */
+/* Stiker ro'yxatida tarozili tovar izohi (2026-10-06). */
+.stk-weighed { display: flex; gap: 10px; align-items: flex-start; margin-top: 12px; }
+.stk-weighed__body { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+
+/* «Tovarni taroziga qo'ying» (2026-10-06) — tarozi ulangan, ustida hech narsa yo'q. */
+.qty-modal__ask {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  min-height: var(--hit-lg); padding: 10px 14px; border-radius: 12px;
+  background: var(--bg-brand-subtle); color: var(--fg-brand);
+  font-size: 16px; font-weight: 800;
+}
+@keyframes qty-ask-pulse { 0%, 100% { opacity: 1 } 50% { opacity: .45 } }
+@media (prefers-reduced-motion: no-preference) {
+  .qty-modal__ask > i { animation: qty-ask-pulse 1.4s ease-in-out infinite; }
+}
 .qty-modal__scale { width: 100%; margin-top: 10px; min-height: var(--hit-pos);
                     display: flex; align-items: center; justify-content: center; gap: 10px;
                     font-size: 15px; font-weight: 800; }
