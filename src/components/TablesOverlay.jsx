@@ -7,6 +7,7 @@ import { minutesSince } from "../lib/ek-table-order";
 import Overlay from "./ek/Overlay";
 import { SkeletonTiles } from "./ek/Loading";
 import { useLoading } from "../lib/use-loading";
+import { subscribeTables, isLive } from "../lib/ek-live";
 
 /* ══════════════════════════════════════════════════════════════════════════
    STOLLAR — kassada (2-bosqich T1, V153)
@@ -18,7 +19,8 @@ import { useLoading } from "../lib/use-loading";
    ⚠ BAND HOLAT RANG BILAN YOLG'IZ BERILMAYDI — summa va vaqt matni ham bor
    (6-qoida). ⚠ Tugmalar ≥ 56px (kassir ekrani).
 
-   Jonli yangilanish T2 da (SSE); hozircha oyna ochiq turganda har 15 soniyada.
+   Jonli yangilanish (T2): har hodisada (250 ms jamlab) qayta o'qiladi. 15
+   soniyalik so'rov zaxira — oqim ulanmagan bo'lsa (eski server, tarmoq).
    ══════════════════════════════════════════════════════════════════════════ */
 export default function TablesOverlay({ onPick, onClose, openHere = [] }) {
   const [halls, setHalls] = useState([]);
@@ -41,8 +43,13 @@ export default function TablesOverlay({ onPick, onClose, openHere = [] }) {
 
   useEffect(() => {
     load();
-    const id = setInterval(load, 15000);
-    return () => clearInterval(id);
+    let soon = null;
+    const off = subscribeTables(() => {
+      clearTimeout(soon);
+      soon = setTimeout(load, 250);
+    });
+    const id = setInterval(() => { if (!isLive()) load(); else setNow(Date.now()); }, 15000);
+    return () => { off(); clearTimeout(soon); clearInterval(id); };
   }, [load]);
 
   const hall = halls.find((h) => h.id === hallId) || null;

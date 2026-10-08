@@ -61,7 +61,7 @@ const no = (m, got) => { bad++; console.log(`  ❌ ${m}  →  ${got}`); };
 const pageErrors = [];
 
 async function openKassa({ restaurant, kitchen = false, tables = false }) {
-  const calls = { modifiers: 0, sales: [], tables: [] };
+  const calls = { modifiers: 0, sales: [], tables: [], sse: [], orders: {} };
   const page = await browser.newPage();
   await page.setViewport({ width: 1600, height: 950 });
   await page.setRequestInterception(true);
@@ -80,6 +80,12 @@ async function openKassa({ restaurant, kitchen = false, tables = false }) {
       data = { directions: restaurant ? ["RESTAURANT"] : ["RETAIL_FOOD"], unconfigured: false,
                features: restaurant ? [...ALL, "MODIFIERS", ...(kitchen ? ["KITCHEN"] : []), ...(tables ? ["TABLES"] : [])] : ALL,
                allFeatures: [...ALL, "MODIFIERS", "KITCHEN"] };
+    } else if (tables && u.pathname.endsWith("/tables/events")) {
+      /* Jonli oqim (T2): har ulanishda «hello» + navbatdagi hodisalar, keyin
+         javob tugaydi va kassa qayta ulanadi — sinov hodisani navbatga qo'yadi. */
+      const body = "event: hello\ndata: {}\n\n"
+        + calls.sse.splice(0).map((e) => `event: table\ndata: ${JSON.stringify(e)}\n\n`).join("");
+      return r.respond({ status: 200, contentType: "text/event-stream", headers: CORS, body });
     } else if (tables && u.pathname.includes("/tables")) {
       let body = null;
       try { body = JSON.parse(r.postData() || "null"); } catch { /* bo'sh */ }
@@ -95,6 +101,8 @@ async function openKassa({ restaurant, kitchen = false, tables = false }) {
       } else if (u.pathname.endsWith("/tables/12/open")) {
         data = { id: 502, tableId: 12, tableName: "Stol 2", hallName: "Zal", status: "OPEN", version: 3,
                  lines: [{ productId: 7, quantity: 2, modifierIds: [22], discount: 0 }] };
+      } else if (/\/tables\/orders\/50\d$/.test(u.pathname) && r.method() === "GET") {
+        data = calls.orders[u.pathname.split("/").pop()] ?? null;
       } else if (/\/tables\/orders\/50\d$/.test(u.pathname) && r.method() === "PUT") {
         data = { id: 501, tableId: 11, tableName: "Stol 1", status: "OPEN", version: (body?.version ?? 0) + 1, lines: body?.lines || [] };
       }
@@ -328,6 +336,41 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
   await waitFor(page, () => false, 1500);
   const b = calls.sales[0];
   b && b.tableOrderId === 502 ? ok("to'lovda tableOrderId 502 — server stolni yopadi") : no("tableOrderId ketmadi", JSON.stringify(b && b.tableOrderId));
+  await page.close();
+}
+
+{
+  console.log("\n§8 Jonli yangilanish (T2): boshqa qurilma qo'shdi, keyin to'ladi");
+  const { page, calls } = await openKassa({ restaurant: true, tables: true });
+  await waitFor(page, () => false, 600);
+  await page.evaluate(() => document.querySelector(".cart-head__tables")?.click());
+  await waitFor(page, () => document.querySelectorAll(".tbl-tile").length === 2);
+  await page.evaluate(() => document.querySelectorAll(".tbl-tile")[1].click());
+  await waitFor(page, () => /Stol 2/.test(document.querySelector(".cart-tab.is-on .cart-tab__name")?.textContent || ""), 4000);
+  await waitFor(page, () => false, 400);
+
+  /* O'z hodisasi (by = shu qurilma) — e'tiborsiz. ⚠ Server buyurtmasi hali
+     berilmaydi: soxta oqim har qayta ulanishda «hello» yuboradi va kassa
+     haqli ravishda hamma stolni qayta o'qiydi — o'shanda o'zgarish kelardi. */
+  calls.sse.push({ kind: "order", tableId: 12, orderId: 502, version: 4, status: "OPEN", by: "m" });
+  await waitFor(page, () => false, 1500);
+  (await cartItems(page))[0]?.qty === 2 ? ok("o'z hodisasi o'tkazib yuborildi") : no("o'z hodisasi yorliqni o'zgartirdi", JSON.stringify(await cartItems(page)));
+  calls.orders["502"] = { id: 502, tableId: 12, tableName: "Stol 2", hallName: "Zal", status: "OPEN", version: 4,
+                          lines: [{ productId: 7, quantity: 3, modifierIds: [22], discount: 0 }] };
+
+  calls.sse.push({ kind: "order", tableId: 12, orderId: 502, version: 4, status: "OPEN", by: "planshet" });
+  const grew = await waitFor(page, () => {
+    const raw = JSON.parse(localStorage.getItem("ek_cart_m_m") || "{}");
+    const c = (raw.carts || []).find((x) => x.id === raw.activeId) || {};
+    return c.items?.[0]?.qty === 3;
+  }, 5000);
+  grew ? ok("planshet qo'shgan taom yorliqqa yetdi (×2 → ×3), PUT yuborilmadi") : no("yorliq yangilanmadi", JSON.stringify(await cartItems(page)));
+  !calls.tables.some((c) => c.m === "PUT") ? ok("yangilanish serverga qaytib yozilmadi") : no("bekor PUT", "bor");
+
+  calls.orders["502"] = { ...calls.orders["502"], status: "PAID", version: 5 };
+  calls.sse.push({ kind: "order", tableId: 12, orderId: 502, version: 5, status: "PAID", by: "kassa-2" });
+  const gone = await waitFor(page, () => ![...document.querySelectorAll(".cart-tab__name")].some((n) => /Stol 2/.test(n.textContent)), 5000);
+  gone ? ok("⚠ boshqa kassada to'langan stol yorlig'i yopildi (ikki marta pul olinmaydi)") : no("to'langan stol yorlig'i qoldi", "—");
   await page.close();
 }
 

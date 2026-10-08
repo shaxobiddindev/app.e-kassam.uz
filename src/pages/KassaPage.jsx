@@ -23,6 +23,7 @@ import { stationMap, kitchenTickets } from "../lib/ek-kitchen";
 import { ORDER_TYPES, servicePercent, serviceCharge as serviceChargeOf } from "../lib/ek-service-charge";
 import { linesOf, sigOf, itemsFrom } from "../lib/ek-table-order";
 import TablesOverlay from "../components/TablesOverlay";
+import { subscribeTables } from "../lib/ek-live";
 import { useShopFeatures } from "../hooks/useShopFeatures";
 import { Empty, ClearButton } from "../components/ui";
 import { useKeyboard } from "../context/KeyboardProvider";
@@ -560,6 +561,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
   const [markModal, setMarkModal]   = useState(null);   // { product } — DataMatrix
   const [modModal, setModModal]     = useState(null);   // { product, groups } — taom qo'shimchalari
   const [showTables, setShowTables] = useState(false);   // stollar oynasi (T1)
+  const savingRef = useRef(new Set());   // serverga yozilayotgan stol buyurtmalari (T2)
 
   /* ══ TAOM QO'SHIMCHALARI (R2, V149) ═══════════════════════════════════
      Guruhlar bir marta olinadi; internet bo'lmasa — oflayn katalogdagi
@@ -1119,6 +1121,16 @@ export default function KassaPage({ toast, refreshLowStock }) {
    * ⚠ OXIRGI SAVAT YO'QOLMAYDI, faqat bo'shaydi: kassada doim bitta
    * ochiq savat turishi kerak, aks holda ekranda nima ko'rsatiladi?
    */
+  /** Yorliqni ro'yxatdan olib tashlaydi (bajiksiz) — stol yorliqlari uchun. */
+  const removeTab = (id) => {
+    const list = cartsRef.current;
+    if (list.length === 1) { setCarts([cartStore.blank(++cartSeq.current)]); setActiveId(cartSeq.current); return; }
+    const idx = list.findIndex((c) => c.id === id);
+    const rest = list.filter((c) => c.id !== id);
+    setCarts(rest);
+    if (id === activeIdRef.current) setActiveId(rest[Math.min(idx, rest.length - 1)].id);
+  };
+
   const dropCart = async (id) => {
     const victim = carts.find((c) => c.id === id);
     if (!victim) return;
@@ -1129,12 +1141,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
     if (victim.tableOrderId) {
       if (!victim.items.length) tableApi.cancel(victim.tableOrderId).catch(() => {});
       else toast.info(t("tbl.parked", { name: victim.tableName }));
-      const list = cartsRef.current;
-      if (list.length === 1) { setCarts([cartStore.blank(++cartSeq.current)]); setActiveId(cartSeq.current); return; }
-      const idx = list.findIndex((c) => c.id === id);
-      const rest = list.filter((c) => c.id !== id);
-      setCarts(rest);
-      if (id === activeIdRef.current) setActiveId(rest[Math.min(idx, rest.length - 1)].id);
+      removeTab(id);
       return;
     }
 
@@ -1739,6 +1746,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
     const sig = sigOf(c.items);
     if (sig === c.tableSig) return undefined;
     const timer = setTimeout(async () => {
+      savingRef.current.add(c.tableOrderId);
       try {
         const r = await tableApi.save(c.tableOrderId, {
           version: c.tableVersion, total: cartStore.totalOf(c.items), lines: linesOf(c.items),
@@ -1756,10 +1764,61 @@ export default function KassaPage({ toast, refreshLowStock }) {
           const items = await itemsForOrder(o);
           patchCart(c.id, { items, tableVersion: o.version, tableSig: sigOf(items) });
         } catch { /* yangisini olib bo'lmadi — keyingi o'zgarishda yana */ }
+      } finally {
+        savingRef.current.delete(c.tableOrderId);
       }
     }, 700);
     return () => clearTimeout(timer);
   }, [active.items, active.tableOrderId, active.tableVersion]);   // eslint-disable-line react-hooks/exhaustive-deps
+
+  /* ══ JONLI YANGILANISH (T2) ═════════════════════════════════════════
+     Boshqa qurilma stolga taom qo'shsa yoki to'lasa — shu kassadagi yorliq
+     darhol yangilanadi. ⚠ KASSIRNING YOZILMAGAN O'ZGARISHI USTIDAN
+     YOZILMAYDI: savatda serverga hali ketmagan o'zgarish bo'lsa yoki yozuv
+     yo'lda bo'lsa, yorliqqa tegilmaydi — keyingi yozuv 409 oladi va
+     yangisini o'sha yo'l (yuqorida) yuklaydi. Stol boshqa joyda to'lansa,
+     yorliq yopiladi: aks holda kassir ikkinchi marta pul olishi mumkin edi
+     (server yopiq buyurtmali chekni jim o'tkazadi). */
+  const refreshTab = async (cartId, orderId) => {
+    const cur = () => cartsRef.current.find((x) => x.id === cartId && x.tableOrderId === orderId);
+    const clean = (c) => c && !savingRef.current.has(orderId) && sigOf(c.items) === c.tableSig;
+    if (!clean(cur())) return;
+    let o;
+    try { o = (await tableApi.get(orderId))?.data; } catch { return; }
+    let c = cur();
+    if (!clean(c) || !o) return;
+    if (o.status !== "OPEN") {
+      /* To'lov oynasi shu stol uchun ochiq bo'lsa ham yopiladi — pul ikki
+         marta olinmasin; kassir sababini xabardan biladi. */
+      if (cartId === activeIdRef.current) setShowPayModal(false);
+      toast.error(t(o.status === "PAID" ? "tbl.paidElsewhere" : "tbl.closedElsewhere", { name: c.tableName }));
+      removeTab(cartId);
+      return;
+    }
+    if (o.version <= c.tableVersion) return;
+    const items = await itemsForOrder(o);
+    c = cur();
+    if (!clean(c)) return;
+    patchCart(cartId, { items, tableVersion: o.version, tableSig: sigOf(items) });
+    if (cartId === activeIdRef.current) toast.info(t("tbl.updated", { name: c.tableName }));
+  };
+  const liveRef = useRef(null);
+  liveRef.current = (e) => {
+    if (e.kind === "hello") {
+      /* (Qayta) ulandik — uzilish paytidagi hodisalar yo'qolgan: hammasi bir marta. */
+      for (const c of cartsRef.current) if (c.tableOrderId) refreshTab(c.id, c.tableOrderId);
+      return;
+    }
+    if (e.kind !== "order") return;
+    const c = cartsRef.current.find((x) => x.tableOrderId === e.orderId);
+    if (!c || (e.status === "OPEN" && Number(e.version) <= c.tableVersion)) return;
+    refreshTab(c.id, e.orderId);
+  };
+  const tablesOn = featuresReady && hasFeature("TABLES");
+  useEffect(() => {
+    if (!tablesOn) return undefined;
+    return subscribeTables((e) => liveRef.current?.(e));
+  }, [tablesOn]);
 
   /* ══ SAVATGA OPTOM NARX (V97) ═══════════════════════════════════════
      ⚠ NEGA BUTUN SAVATGA. Optom mijoz 20 ta tovar oladi va kassir har

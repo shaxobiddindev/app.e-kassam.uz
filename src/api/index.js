@@ -90,6 +90,9 @@ function showTakenOver() {
 
 let refreshPromise = null;
 
+/* Jonli oqim (`ek-live.js`) ham shu yo'ldan yangilaydi — ikki parallel refresh bo'lmasin. */
+export const refreshSession = () => tryRefreshToken();
+
 async function tryRefreshToken() {
   if (refreshPromise) return refreshPromise;
   
