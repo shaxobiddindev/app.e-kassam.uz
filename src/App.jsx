@@ -7,6 +7,8 @@ import { initLang, withLang, useT } from "./lib/ek-i18n";
 import { t } from "./lib/ek-i18n";
 import * as cartStore from "./lib/ek-cart-store";
 import PinSwitchModal from "./components/PinSwitchModal";
+import TerminalGate from "./components/TerminalGate";
+import { isTerminal } from "./lib/ek-terminal";
 import { useAuth }  from "./hooks/useAuth";
 import { useLowStock } from "./hooks/useLowStock";
 import { useToast } from "./hooks/useToast";
@@ -407,11 +409,17 @@ export default function App() {
                 faqat kassirlik roli borlar. Kassir + omborchi bo'lsa
                 Dashboard foydaliroq. */}
             <Route path="/" element={
-              roleSet(user?.role).size === 1 && roleSet(user?.role).has("CASHIER")
+              /* Ofitsiant va zal terminali — uyi ZAL (D1). */
+              roleSet(user?.role).has("WAITER") && !["OWNER", "SHOP_ADMIN", "STOREKEEPER", "CASHIER"].some((r) => roleSet(user?.role).has(r))
+                ? <Navigate to="/restaurant" replace />
+                : isTerminal() && !roleSet(user?.role).has("OWNER") && !roleSet(user?.role).has("SHOP_ADMIN")
+                ? <Navigate to="/restaurant" replace />
+                : roleSet(user?.role).size === 1 && roleSet(user?.role).has("CASHIER")
                 ? <Navigate to="/sale" replace />
                 : <ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><P.Dashboard toast={toast} /></ProtectedRoute>
             } />
-            <Route path="/sale" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"]}><P.Kassa toast={toast} /></ProtectedRoute>} />
+            <Route path="/sale" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "WAITER", "OWNER"]}><P.Kassa toast={toast} /></ProtectedRoute>} />
+            <Route path="/restaurant" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "WAITER", "OWNER"]}><P.RestaurantFloor /></ProtectedRoute>} />
             <Route path="/products" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><P.Products toast={toast} /></ProtectedRoute>} />
             <Route path="/categories" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><P.Categories toast={toast} /></ProtectedRoute>} />
             <Route path="/labels" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><P.Labels toast={toast} /></ProtectedRoute>} />
@@ -484,6 +492,8 @@ export default function App() {
 
         {/* ⚠ `Layout` DAN TASHQARIDA: oyna butun ekran ustida turadi va
             yon menyu yopilishi bilan yo'q bo'lib qolmasligi kerak. */}
+        {/* Zal terminali (D1) — faqat shu qurilmada yoqilgan bo'lsa. */}
+        {user && isTerminal() && <TerminalGate login={login} logout={logout} />}
         {pinOpen && (
           <PinSwitchModal
             toast={toast}

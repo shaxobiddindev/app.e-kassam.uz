@@ -7351,3 +7351,76 @@ button.stk__c:hover { background: var(--bg-hover); }
 .tbl-tile__meta { font-size: 12px; color: var(--fg-secondary); }
 .tbl-chip { position: relative; min-height: 36px; border: 0; cursor: pointer; color: var(--fg-primary); font: inherit; font-size: 13px; }
 .tbl-chip__busy { color: var(--fg-brand); font-size: 8px; margin-inline-start: 4px; }
+
+/* ══ ZAL TERMINALI — QULF EKRANI (D1) ═══════════════════════════════════════
+   Umumiy monitor: butun ekran, ilova ustida. Yorug' rejimda qora fon yo'q —
+   fon `--bg-canvas`, PIN paneli `--bg-surface`. Tugmalar ≥ 56px. */
+.term-lock { position: fixed; inset: 0; z-index: 2147483000; display: flex; flex-wrap: wrap;
+             background: var(--bg-canvas); color: var(--fg-primary); overflow: auto; }
+.term-lock__side { flex: 999 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 28px; padding: 40px 48px; box-sizing: border-box; }
+.term-lock__brand { display: flex; align-items: center; gap: 12px; }
+.term-lock__brand b { display: block; font-family: var(--font-display, inherit); font-size: 20px; }
+.term-lock__brand small { color: var(--fg-secondary); font-size: 14px; }
+.term-lock__accent { color: var(--fg-brand); }
+.term-lock__logo { width: 44px; height: 44px; border-radius: 12px; background: var(--bg-brand); color: var(--fg-on-brand);
+                   display: flex; align-items: center; justify-content: center; font-size: 20px; }
+.term-lock__clock span { display: block; font-size: clamp(56px, 8vw, 96px); font-weight: 700; line-height: 1; letter-spacing: -2px; }
+.term-lock__clock small { color: var(--fg-secondary); font-size: 18px; }
+.term-lock__staff h2 { margin: 0 0 12px; font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--fg-secondary); }
+.term-lock__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.term-lock__muted { color: var(--fg-secondary); margin: 0; }
+.term-staff { min-height: 72px; display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 16px;
+              border: 1px solid var(--border-subtle); background: var(--bg-surface); color: var(--fg-primary);
+              font: inherit; text-align: start; cursor: pointer; }
+.term-staff.is-on { border: 2px solid var(--border-brand); }
+.term-staff__ava { width: 44px; height: 44px; flex: none; border-radius: 22px; display: flex; align-items: center; justify-content: center;
+                   font-weight: 800; background: var(--bg-brand-soft); color: var(--fg-brand); }
+.term-staff__txt { display: flex; flex-direction: column; min-width: 0; }
+.term-staff__txt small { color: var(--fg-secondary); font-size: 13px; }
+.term-lock__note { margin: auto 0 0; display: flex; align-items: center; gap: 8px; color: var(--fg-secondary); font-size: 14px; }
+.term-lock__pad { flex: 1 1 380px; box-sizing: border-box; padding: 48px 40px; background: var(--bg-surface);
+                  border-inline-start: 1px solid var(--border-subtle); display: flex; flex-direction: column; align-items: center; gap: 20px; }
+.term-lock__head { text-align: center; }
+.term-lock__head h1 { margin: 0 0 6px; font-size: 26px; }
+.term-lock__head p { margin: 0; color: var(--fg-secondary); }
+.term-lock__pad .pin-pad, .term-lock__pad .pinpad { width: 100%; max-width: 340px; }
+.term-lock__err { width: 100%; max-width: 340px; }
+.term-lock__mgr { min-height: 48px; margin-top: auto; }
+
+/* ══ ZAL — RESTORAN BOSH EKRANI (D1) ════════════════════════════════════════ */
+.rf { display: flex; flex-direction: column; gap: 12px; min-height: 100%; }
+.rf-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 10px 14px; border-radius: 16px;
+           background: var(--bg-surface); border: 1px solid var(--border-subtle); }
+.rf-brand { font-weight: 800; font-size: 18px; white-space: nowrap; }
+.rf-brand span { color: var(--fg-brand); }
+.rf-halls { display: flex; gap: 6px; flex-wrap: wrap; }
+.rf-hall, .rf-mine { min-height: 48px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--border-subtle);
+                     background: var(--bg-surface); color: var(--fg-primary); font: inherit; font-weight: 700; cursor: pointer;
+                     display: inline-flex; align-items: center; gap: 8px; }
+.rf-hall.is-on { background: var(--bg-brand); color: var(--fg-on-brand); border-color: transparent; }
+.rf-mine.is-on { background: var(--bg-inverse); color: var(--fg-inverse); border-color: transparent; }
+.rf-head__end { margin-inline-start: auto; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.rf-manage { min-height: 48px; }
+.rf-who { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 6px 0 12px; border-radius: 14px; background: var(--bg-brand-soft); }
+.rf-who__txt { display: flex; flex-direction: column; line-height: 1.2; }
+.rf-who__txt small { color: var(--fg-secondary); font-size: 12px; }
+.rf-lock { width: 48px; height: 48px; border: 0; border-radius: 12px; background: var(--bg-brand); color: var(--fg-on-brand); font-size: 18px; cursor: pointer; }
+.rf-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+.rf-stats > div { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 14px; padding: 10px 14px; display: flex; flex-direction: column; gap: 2px; }
+.rf-stats small { color: var(--fg-secondary); font-size: 12px; font-weight: 600; }
+.rf-stats b { font-size: 20px; }
+.rf-body { flex: 1 1 auto; }
+.rf-empty { color: var(--fg-secondary); }
+.rf-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+.rf-table { min-height: 112px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+            padding: 12px; border-radius: 18px; border: 1.5px solid var(--border-strong); background: var(--bg-surface);
+            color: var(--fg-primary); font: inherit; text-align: center; cursor: pointer; }
+.rf-table.is-busy { border: 2px solid var(--border-brand); background: var(--bg-brand-soft); }
+.rf-table.is-dim { opacity: .35; }
+.rf-table__name { font-weight: 800; font-size: 18px; }
+.rf-table__sum { font-weight: 700; font-size: 16px; color: var(--fg-brand); }
+.rf-table__meta { font-size: 13px; color: var(--fg-secondary); }
+@media (prefers-reduced-motion: no-preference) {
+  .rf-table { transition: transform .12s, box-shadow .12s; }
+  .rf-table:hover { transform: translateY(-2px); box-shadow: var(--sh-md); }
+}

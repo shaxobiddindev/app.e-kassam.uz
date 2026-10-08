@@ -26,6 +26,7 @@ import { shopApi } from "../api";
 import { getTouchMode, setTouchMode } from "../lib/ek-touch";
 import { appVersion } from "../lib/ek-update";
 import { useShopFeatures } from "../hooks/useShopFeatures";
+import { isTerminal, setTerminal, idleSeconds, setIdleSeconds, IDLE_CHOICES } from "../lib/ek-terminal";
 
 /* ══════════════════════════════════════════════════════════════════════════
    Sozlamalar — BARCHA sozlamalar uchun YAGONA joy.
@@ -94,6 +95,8 @@ export default function SettingsPage({ toast }) {
   const isOwner = roleSet(user?.role).has("OWNER");
   // Teginish rejimi QURILMAGA tegishli (localStorage), hisobga emas.
   const [touchMode, setTouch] = useState(() => getTouchMode());
+  const [terminal, setTerminalState] = useState(() => (isTerminal() ? "on" : "off"));
+  const [idle, setIdle] = useState(() => String(idleSeconds()));
   /* Fiskal rekvizitlar (V85) — do'kon profilining fiskal qismi. */
   const [fiscalProfile, setFiscalProfile] = useState(null);
   const [profileNonce, setProfileNonce] = useState(0);
@@ -333,6 +336,28 @@ export default function SettingsPage({ toast }) {
           <LangSelect />
         </Row>
       </Section>
+
+      {/* ══ ZAL TERMINALI (D1) ═══════════════════════════════════════
+          QURILMA sozlamasi: shu kompyuter yoki planshet umumiy terminal
+          bo'ladi — ekran qulfli boshlanadi, ofitsiantlar PIN bilan kiradi.
+          Faqat rahbar yoqadi (terminalni u parol bilan ochadi). */}
+      {isManager && hasFeature("TABLES") && (
+        <Section icon="fa-utensils" title={t("term.section")} hint={t("term.sectionHint")}>
+          <Row label={t("term.mode")} hint={t("term.modeHint")}>
+            <Select value={terminal} variant="field" ariaLabel={t("term.mode")}
+                    onChange={(v) => { setTerminalState(v); setTerminal(v === "on"); }}
+                    options={[
+                      { value: "off", label: t("term.modeOff"), icon: "fa-cash-register" },
+                      { value: "on",  label: t("term.modeOn"),  icon: "fa-lock" },
+                    ]} />
+          </Row>
+          <Row label={t("term.idle")} hint={t("term.idleHint")}>
+            <Select value={idle} variant="field" ariaLabel={t("term.idle")}
+                    onChange={(v) => { setIdle(v); setIdleSeconds(Number(v)); }}
+                    options={IDLE_CHOICES.map((n) => ({ value: String(n), label: t("term.idleN", { n }), icon: "fa-clock" }))} />
+          </Row>
+        </Section>
+      )}
 
       {/* ══ KASSIR PIN I (V99) ════════════════════════════════════════
           Do'kon egasi: «PIN moduli `app` ga o'tkazilsin, `auth` alohida

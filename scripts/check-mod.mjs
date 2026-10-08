@@ -60,7 +60,7 @@ const ok = (m) => console.log("  ✅ " + m);
 const no = (m, got) => { bad++; console.log(`  ❌ ${m}  →  ${got}`); };
 const pageErrors = [];
 
-async function openKassa({ restaurant, kitchen = false, tables = false }) {
+async function openKassa({ restaurant, kitchen = false, tables = false, terminal = false, role = "OWNER", path = "/sale" }) {
   const calls = { modifiers: 0, sales: [], tables: [], sse: [], orders: {} };
   const page = await browser.newPage();
   await page.setViewport({ width: 1600, height: 950 });
@@ -76,7 +76,19 @@ async function openKassa({ restaurant, kitchen = false, tables = false }) {
     if (r.method() === "OPTIONS") return r.respond({ status: 204, headers: CORS });
     const u = new URL(r.url());
     let data = [];
-    if (u.pathname.endsWith("/shop/features")) {
+    if (u.pathname.endsWith("/auth/pin/staff")) {
+      data = [{ id: 5, fullName: "Dilnoza Karimova", role: "WAITER", onShift: true },
+              { id: 6, fullName: "Sardor", role: "CASHIER", onShift: false }];
+    } else if (u.pathname.endsWith("/auth/pin/unlock")) {
+      let body = null;
+      try { body = JSON.parse(r.postData() || "null"); } catch { /* bo'sh */ }
+      calls.unlock = (calls.unlock || 0) + 1;
+      if (body?.pin !== "2468") {
+        return r.respond({ status: 400, contentType: "application/json", headers: CORS,
+                           body: JSON.stringify({ success: false, message: "PIN noto'g'ri" }) });
+      }
+      data = { accessToken: "w2", refreshToken: "r2", shopCode: "m", username: "m", fullName: "Dilnoza Karimova", role: "WAITER" };
+    } else if (u.pathname.endsWith("/shop/features")) {
       data = { directions: restaurant ? ["RESTAURANT"] : ["RETAIL_FOOD"], unconfigured: false,
                features: restaurant ? [...ALL, "MODIFIERS", ...(kitchen ? ["KITCHEN"] : []), ...(tables ? ["TABLES"] : [])] : ALL,
                allFeatures: [...ALL, "MODIFIERS", "KITCHEN"] };
@@ -125,15 +137,16 @@ async function openKassa({ restaurant, kitchen = false, tables = false }) {
                        body: JSON.stringify({ success: true, data }) });
   });
   page.on("pageerror", (e) => { pageErrors.push(e.message); });
-  await page.evaluateOnNewDocument(() => {
+  await page.evaluateOnNewDocument((ROLE, TERMINAL) => {
     for (const [k, v] of Object.entries({
-      ek_token: "m", ek_type: "user", ek_role: "OWNER", ek_username: "m",
+      ek_token: "m", ek_type: "user", ek_role: ROLE, ek_username: "m",
       ek_fullName: "M", ek_shopCode: "m", ek_deviceId: "m", ek_lang: "uz", ek_theme: "light",
     })) localStorage.setItem(k, v);
+    if (TERMINAL) localStorage.setItem("ek_terminal", "1"); else localStorage.removeItem("ek_terminal");
     for (const k of Object.keys(localStorage)) if (k.startsWith("ek_cart")) localStorage.removeItem(k);
-  });
-  await page.goto(`http://127.0.0.1:${PORT}/sale`, { waitUntil: "networkidle2", timeout: 30_000 });
-  await page.waitForSelector(".product-card", { timeout: 20_000 });
+  }, role, terminal);
+  await page.goto(`http://127.0.0.1:${PORT}${path}`, { waitUntil: "networkidle2", timeout: 30_000 });
+  await page.waitForSelector(terminal ? ".term-lock, .rf" : ".product-card", { timeout: 20_000 });
   return { page, calls };
 }
 
@@ -371,6 +384,42 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
   calls.sse.push({ kind: "order", tableId: 12, orderId: 502, version: 5, status: "PAID", by: "kassa-2" });
   const gone = await waitFor(page, () => ![...document.querySelectorAll(".cart-tab__name")].some((n) => /Stol 2/.test(n.textContent)), 5000);
   gone ? ok("⚠ boshqa kassada to'langan stol yorlig'i yopildi (ikki marta pul olinmaydi)") : no("to'langan stol yorlig'i qoldi", "—");
+  await page.close();
+}
+
+{
+  console.log("\n§9 Zal terminali (D1): qulf, PIN, zal, ofitsiant to'lov olmaydi");
+  const { page, calls } = await openKassa({ restaurant: true, tables: true, terminal: true, role: "WAITER", path: "/restaurant" });
+  (await waitFor(page, () => !!document.querySelector(".term-lock"), 6000))
+    ? ok("terminal qulfli ochildi") : no("qulf ekrani chiqmadi", "—");
+  (await waitFor(page, () => document.querySelectorAll(".term-staff").length === 2))
+    ? ok("smenadagi xodimlar ro'yxati (ism, rol)") : no("xodimlar yo'q", "—");
+  /* SHOTS=<papka> — ko'z bilan tekshirish uchun skrinshot (CI da yo'q). */
+  const shot = (name) => process.env.SHOTS && page.screenshot({ path: path.join(process.env.SHOTS, name) });
+  await page.setViewport({ width: 1280, height: 800 });
+  await shot("terminal-lock.png");
+  const pressPin = async (pin) => { for (const d of pin) { await page.keyboard.press(d); await new Promise((r) => setTimeout(r, 60)); } };
+  await pressPin("1111");
+  (await waitFor(page, () => /noto/.test(document.querySelector(".term-lock__err")?.textContent || "")))
+    ? ok("noto'g'ri PIN — xabar, qulf qoladi") : no("xato xabari yo'q", "—");
+  await pressPin("2468");
+  (await waitFor(page, () => !document.querySelector(".term-lock") && document.querySelectorAll(".rf-table").length === 2, 6000))
+    ? ok("to'g'ri PIN — ekran ochildi, zal: ikki stol") : no("ochilmadi yoki zal yo'q", "—");
+  await shot("terminal-hall.png");
+  const who = await page.evaluate(() => document.querySelector(".rf-who__txt b")?.textContent || "");
+  /Dilnoza/.test(who) ? ok("tepada xodim ismi: " + who) : no("xodim ismi", who);
+  const busyTxt = await page.evaluate(() => document.querySelector(".rf-table.is-busy")?.textContent || "");
+  /70[\s\u00a0\u202f]?000/.test(busyTxt) ? ok("band stolda summa (matn bilan)") : no("band stol matni", busyTxt);
+  await page.evaluate(() => document.querySelectorAll(".rf-table")[1].click());
+  (await waitFor(page, () => /Stol 2/.test(document.querySelector(".cart-tab.is-on .cart-tab__name")?.textContent || ""), 6000))
+    ? ok("stol bosildi — kassada «Stol 2» yorlig'i") : no("stol ochilmadi", await page.evaluate(() => location.pathname + location.search));
+  const pay = await page.evaluate(() => [...document.querySelectorAll(".checkout-row button")].map((b) => `${b.disabled}:${b.textContent.trim()}`).join("|"));
+  /true:.*kassir/.test(pay) && !/F9/.test(pay) ? ok("⚠ ofitsiantda to'lov tugmasi yo'q — «To'lovni kassir oladi»") : no("to'lov tugmasi", pay);
+  await page.evaluate(() => document.querySelector('.cart-head__hall')?.click());
+  await waitFor(page, () => !!document.querySelector(".rf-lock"), 4000);
+  await page.evaluate(() => document.querySelector(".rf-lock")?.click());
+  (await waitFor(page, () => !!document.querySelector(".term-lock"), 3000))
+    ? ok("qulf tugmasi — ekran yana qulflandi") : no("qulflanmadi", "—");
   await page.close();
 }
 

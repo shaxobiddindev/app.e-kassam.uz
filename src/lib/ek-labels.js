@@ -229,6 +229,9 @@ export const ROLE = dict("enum.role", {
   SHOP_ADMIN:  { hasShort: true, color: "var(--ek-role-admin)",   bg: "var(--ek-role-admin-bg)" },
   CASHIER:     { hasShort: true, color: "var(--ek-role-cashier)", bg: "var(--ek-role-cashier-bg)" },
   STOREKEEPER: { hasShort: true, color: "var(--ek-role-stock)",   bg: "var(--ek-role-stock-bg)" },
+  /* Ofitsiant (V154) — alohida rang tokeni yo'q: ogohlantirish oilasi
+     (tokenlar umumiy faylda, bitta rol uchun to'rt repoga tarqatilmaydi). */
+  WAITER:      { hasShort: true, color: "var(--fg-warning-strong)", bg: "var(--bg-warning-subtle)" },
 });
 
 /* ── Tizim admini — AdminRole ────────────────────────────────────────────── */

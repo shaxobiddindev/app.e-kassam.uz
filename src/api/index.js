@@ -294,6 +294,17 @@ export const authApi = {
       body: JSON.stringify({ pin }),
     }),
 
+  /** Zal terminali qulf ekrani (D1): shu terminal smenasiga PIN bilan kirish. */
+  pinUnlock: (pin) =>
+    request("/auth/pin/unlock", {
+      method: "POST",
+      headers: { "X-Device-Id": getDeviceId() },
+      body: JSON.stringify({ pin }),
+    }),
+
+  /** Qulf ekranidagi xodimlar (D1). */
+  pinStaff: () => request("/auth/pin/staff", { headers: { "X-Device-Id": getDeviceId() } }),
+
   /** Xodim O'Z PIN ini qo'yadi. Rahbar boshqaga qo'ya olmaydi — serverda. */
   pinSet: (pin) =>
     request("/auth/pin", { method: "POST", body: JSON.stringify({ pin }) }),

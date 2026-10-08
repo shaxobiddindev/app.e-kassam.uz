@@ -16,7 +16,7 @@ import { asArray } from "../../lib/ek-array";
 /* Rollar yagona lug'atdan (src/lib/ek-labels.js). `roleLabel` Spring'ning
    `ROLE_` prefiksini ham, katta-kichik harf farqini ham o'zi hal qiladi —
    shuning uchun bu yerda har bir variantni qo'lda sanab chiqish kerak emas. */
-const ROLE_OPTIONS = ["SHOP_ADMIN", "STOREKEEPER", "CASHIER"];
+const ROLE_OPTIONS = ["SHOP_ADMIN", "STOREKEEPER", "CASHIER", "WAITER"];
 const EMPTY_USER_FORM = { fullName: "", username: "", password: "", role: "CASHIER", email: "" };
 
 export default function ShopUsersPage({ toast }) {

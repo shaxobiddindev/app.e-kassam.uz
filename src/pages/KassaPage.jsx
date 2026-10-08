@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspense } from "react";
+import { useLocation as useRouteLocation, useNavigate as useRouteNavigate } from "react-router-dom";
 import { lazySafe } from "../lib/ek-lazy";
 import { charge, gross, roundingOf } from "../lib/ek-money";
 import { t } from "../lib/ek-i18n";
@@ -450,6 +451,10 @@ export default function KassaPage({ toast, refreshLowStock }) {
   const { user: authUser }          = useAuth();
   const canRestore                  = [...roleSet(authUser?.role)]
     .some((r) => r === "OWNER" || r === "SHOP_ADMIN" || r === "STOREKEEPER");
+  /* Ofitsiant (V154) to'lov olmaydi — server ham `/sales` ni unga yopadi;
+     tugma o'rnida sababi yoziladi (yashirin tugma «buzilgan» ko'rinardi). */
+  const waiterOnly = roleSet(authUser?.role).has("WAITER")
+    && ![...roleSet(authUser?.role)].some((r) => r === "OWNER" || r === "SHOP_ADMIN" || r === "CASHIER");
 
   /* ── Katalog ko'rinishi ────────────────────────────────────────
      Kategoriya tabi va ikki ko'rinish (rasmli / zich). Ko'rinish
@@ -561,6 +566,8 @@ export default function KassaPage({ toast, refreshLowStock }) {
   const [markModal, setMarkModal]   = useState(null);   // { product } — DataMatrix
   const [modModal, setModModal]     = useState(null);   // { product, groups } — taom qo'shimchalari
   const [showTables, setShowTables] = useState(false);   // stollar oynasi (T1)
+  const routeLocation = useRouteLocation();
+  const navigateTo = useRouteNavigate();
   const savingRef = useRef(new Set());   // serverga yozilayotgan stol buyurtmalari (T2)
 
   /* ══ TAOM QO'SHIMCHALARI (R2, V149) ═══════════════════════════════════
@@ -1820,6 +1827,16 @@ export default function KassaPage({ toast, refreshLowStock }) {
     return subscribeTables((e) => liveRef.current?.(e));
   }, [tablesOn]);
 
+  /* Zal ekranidan kelgan stol (`/sale?table=ID`, D1) — bir marta ochiladi
+     va manzil tozalanadi (orqaga qaytilganda qayta ochilmasin). */
+  const tableParam = new URLSearchParams(routeLocation.search).get("table");
+  useEffect(() => {
+    if (!tablesOn || !tableParam) return;
+    const id = Number(tableParam);
+    navigateTo("/sale", { replace: true });
+    if (id > 0) openTable({ id });
+  }, [tablesOn, tableParam]);   // eslint-disable-line react-hooks/exhaustive-deps
+
   /* ══ SAVATGA OPTOM NARX (V97) ═══════════════════════════════════════
      ⚠ NEGA BUTUN SAVATGA. Optom mijoz 20 ta tovar oladi va kassir har
      qatorning narx oynasini ochib o'tira olmaydi — mijoz oldida bu
@@ -2548,7 +2565,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
   const pickCustomer = () => document.querySelector(".cart-cust .ek-select__btn")?.click();
 
   const openPayModal = () => {
-    if (!cart.length) return;
+    if (!cart.length || waiterOnly) return;
     /* ⚠ MAYDON BO'SH OCHILADI (do'kon egasining talabi). Ilgari unga
        butun summa yozilgan turardi va mijoz boshqa summa uzatganda
        kassir avval o'sha raqamni O'CHIRISHI kerak edi — navbat
@@ -3447,6 +3464,13 @@ export default function KassaPage({ toast, refreshLowStock }) {
               })}
             </div>
 
+            {/* Zalga qaytish (D1) — restoranning bosh ekrani. */}
+            {hasFeature("TABLES") && (
+              <button type="button" className="btn btn-outline btn-sm cart-head__hall"
+                      onClick={() => navigateTo("/restaurant")} aria-label={t("nav.restaurant")}>
+                <i className="fa-solid fa-utensils" aria-hidden="true" />
+              </button>
+            )}
             {/* Stollar (T1) — restoran modulida, «yangi savat» yonida. */}
             {hasFeature("TABLES") && (
               <button type="button" className="btn btn-outline btn-sm cart-head__tables"
@@ -4002,6 +4026,13 @@ export default function KassaPage({ toast, refreshLowStock }) {
                 shunchaki pul qoldiradi. To'lov tugmasi bo'sh savatda
                 o'chiq, bu esa aynan bo'sh savatda kerak: mijoz tovar
                 olmasdan «keyingi safarga» pul tashlab ketadi. */}
+            {waiterOnly ? (
+            <div className="checkout-row">
+              <button className="btn btn-pos" disabled title={t("rf.waiterNoPay")}>
+                <i className="fa-solid fa-user-tie" aria-hidden="true" /> {t("rf.waiterNoPay")}
+              </button>
+            </div>
+            ) : (
             <div className="checkout-row">
               <button className="btn btn-savings btn-pos" onClick={openTopUp}
                       title={t("savings.topUpTitle")}>
@@ -4013,6 +4044,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
                 {t("kassa.checkout")} <span className="kbd">F9</span>
               </button>
             </div>
+            )}
           </div>
         </div>
       </div>

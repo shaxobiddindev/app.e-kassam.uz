@@ -38,6 +38,8 @@ const EXEMPT = [
   ["components/EkIntro.jsx",           "Kassa va CRM tizimi",
    "brend shiori; MUDDAT: mijoz tomoni bilan birga (7-qadam qoldig'i)"],
   ["pages/ProductsPage.jsx",           "tasnif.soliq.uz", "tashqi manzil"],
+  ["pages/RestaurantFloorPage.jsx",    "Restaurant", "brend nomi «e-Kassam Restaurant» — tarjima qilinmaydi (D1)"],
+  ["components/TerminalLock.jsx",      "Restaurant", "brend nomi «e-Kassam Restaurant» (D1)"],
 ];
 
 /* Klaviatura belgilari va brend — umumiy qoida sifatida ham o'tadi. */

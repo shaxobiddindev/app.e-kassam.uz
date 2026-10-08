@@ -15,7 +15,7 @@
    ══════════════════════════════════════════════════════════════════════════ */
 
 /** Yuqoridan pastga. Yangi rol qo'shilsa SHU YERGA joylashtiriladi. */
-export const ROLE_RANK = ["OWNER", "SHOP_ADMIN", "ADMIN", "STOREKEEPER", "CASHIER"];
+export const ROLE_RANK = ["OWNER", "SHOP_ADMIN", "ADMIN", "STOREKEEPER", "CASHIER", "WAITER"];
 
 /**
  * Xom qiymatdan rollar to'plami.

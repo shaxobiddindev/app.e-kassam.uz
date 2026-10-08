@@ -40,6 +40,8 @@ import { useShopFeatures } from "../hooks/useShopFeatures";
 export const NAV = [
   { id: "dashboard", path: "/",     key: "nav.dashboard", icon: "fa-chart-pie",     roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
   { id: "sale",      path: "/sale", key: "nav.kassa",     icon: "fa-cash-register", roles: ["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"] },
+  /* Zal (D1) — restoranning bosh ekrani; ofitsiantning yagona bo'limi. */
+  { id: "restaurant", path: "/restaurant", key: "nav.restaurant", icon: "fa-utensils", roles: ["ADMIN", "SHOP_ADMIN", "CASHIER", "WAITER", "OWNER"], feature: "TABLES" },
 
   /* KATALOG — tovarning O'ZI haqidagi ma'lumot: nomi, turkumi, narxi.
      Miqdor bu yerda emas: u «Ombor» ning ishi. */
@@ -440,7 +442,7 @@ export default function Layout({ user, isAdmin, lowStockItems, lowStockCount, on
     : children;
 
   return (
-    <div className={`app-layout ${isCollapsed ? "collapsed" : ""} ${kassaFullscreen ? "kassa-fullscreen" : ""}`}>
+    <div className={`app-layout ${isCollapsed ? "collapsed" : ""} ${kassaFullscreen || location.pathname.startsWith("/restaurant") ? "kassa-fullscreen" : ""}`}>
       {open && <div onClick={() => setOpen(false)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.45)", zIndex:199 }} />}
       <Sidebar 
         user={user} 

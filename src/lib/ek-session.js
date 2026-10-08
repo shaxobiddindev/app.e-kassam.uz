@@ -39,6 +39,8 @@ export const DEVICE_KEYS = [
   "ek_lbl_last_tpl",    // oxirgi stiker dizayni (topilmasa o'zi boshqasini tanlaydi)
   "ek_lbl_mode",        // yorliqlar: oddiy/kengaytirilgan
   "ek_simple_kind",     // yorliqlar: stiker/narx yorlig'i
+  "ek_terminal",        // zal terminali rejimi (ek-terminal, D1)
+  "ek_terminal_idle",   // zal terminali qulf vaqti
 ];
 
 /**

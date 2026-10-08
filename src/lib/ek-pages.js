@@ -18,6 +18,7 @@ const LOADERS = {
   Prices:       () => import("../pages/PricesPage"),
   Modifiers:    () => import("../pages/ModifiersPage"),
   TablesSetup:  () => import("../pages/TablesSetupPage"),
+  RestaurantFloor: () => import("../pages/RestaurantFloorPage"),
   Customers:    () => import("../pages/CustomersPage"),
   Kassa:        () => import("../pages/KassaPage"),
   Reports:      () => import("../pages/ReportsPage"),
