@@ -124,6 +124,7 @@ export function take() {
         ...(c?.tableOrderId ? {
           tableOrderId: c.tableOrderId, tableId: c.tableId ?? null, tableName: c.tableName || "",
           tableVersion: Number(c.tableVersion) || 0, tableSig: c.tableSig || "",
+          ...(c.tablePart ? { tablePart: true } : {}),
         } : {}),
       }))
       .filter((c) => c.items.length > 0)

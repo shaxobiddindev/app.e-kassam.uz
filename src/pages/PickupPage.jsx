@@ -110,10 +110,15 @@ export default function PickupPage({ toast }) {
     return () => { stop = true; };
   }, [orders, autoPrint, view]);   // eslint-disable-line react-hooks/exhaustive-deps
 
+  /* ⚠ AVTOMATIK YANGILASH FAQAT «O'ZI CHOP ETSIN» YOQILGANDA (2026-10-08).
+     Egasi: «muhim ish qilayotganda yangilanib ketyapti — yangilash tugmasi
+     yetarli». Lekin yangi buyurtmani o'zi chop etish yangi buyurtmani
+     bilishga bog'liq: do'kon uni o'zi yoqqan bo'lsa — ro'yxat kuzatiladi. */
   useEffect(() => {
+    if (!autoPrint) return undefined;
     const id = setInterval(() => load(true), POLL_MS);
     return () => clearInterval(id);
-  }, [load]);
+  }, [load, autoPrint]);
 
   /* ── Skaner ───────────────────────────────────────────────────────
      Mijozning chekidagi barkod — `S-000173`. Boshqa kod (tovar barkodi)

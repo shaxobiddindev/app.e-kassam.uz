@@ -66,6 +66,7 @@ export default function RestaurantTablePage({ toast }) {
   const [sending, setSending] = useState(false);
   const [justSent, setJustSent] = useState(false);
   const [now, setNow] = useState(Date.now());
+  const [tool, setTool] = useState(null);           // { kind: "move"|"merge"|"split", halls, mode, part }
   const versionRef = useRef(0);
   const savingRef = useRef(false);
   const stateRef = useRef({});
@@ -261,6 +262,41 @@ export default function RestaurantTablePage({ toast }) {
     navigate(`/sale?table=${tableId}`);
   };
 
+  /* ── D4: ko'chirish, birlashtirish, bo'lish ── */
+  const openTool = async (kind) => {
+    if (dirty && !(await save())) return;
+    if (kind === "split") { setTool({ kind, mode: "seat", part: {} }); return; }
+    try { setTool({ kind, halls: asArray((await tableApi.halls())?.data) }); }
+    catch (err) { toast?.error(err.message); }
+  };
+  const doMove = async (tb) => {
+    try {
+      await tableApi.move(order.id, { version: versionRef.current, tableId: tb.id });
+      toast?.success(t("rt.moved", { name: tb.name }));
+      setTool(null);
+      navigate(`/restaurant/table/${tb.id}`, { replace: true });
+    } catch (err) { toast?.error(err.message); }
+  };
+  const doMerge = async (tb) => {
+    try {
+      const r = await tableApi.merge(order.id, { version: versionRef.current, fromOrderId: tb.order.id, fromVersion: tb.order.version });
+      await apply(r.data, modGroups);
+      toast?.success(t("rt.merged", { name: tb.name }));
+      setTool(null);
+    } catch (err) {
+      toast?.error(err.message);
+      setTool(null);
+    }
+  };
+  /* Qism: { seatKey: miqdor }. Mehmon bo'yicha — o'sha mehmonning hamma qatori. */
+  const partOf = (seatNo) => Object.fromEntries(items.filter((x) => (x.seat || 0) === seatNo).map((x) => [seatKey(x), Number(x.qty)]));
+  const partSum = (part) => items.reduce((s, x) => s + Number(x.salePrice || 0) * (Number(part[seatKey(x)]) || 0), 0);
+  const payPart = (part) => {
+    const list = Object.entries(part).filter(([, q]) => q > 0).map(([k, q]) => ({ k, q }));
+    if (!list.length) return;
+    navigate(`/sale?table=${tableId}&part=${encodeURIComponent(JSON.stringify(list))}`);
+  };
+
   /* ── ko'rinish ── */
   const sentRows = items.filter((x) => Number(x.sentQty) > 0);
   const newRows = items.filter((x) => Number(x.qty) - (Number(x.sentQty) || 0) > 0);
@@ -379,6 +415,18 @@ export default function RestaurantTablePage({ toast }) {
               {sending ? <Spinner /> : <i className="fa-solid fa-paper-plane" aria-hidden="true" />}
               {t("rt.send")} <span className="ek-num">({newCount})</span>
             </button>
+            <div className="rt-actions rt-actions--3">
+              <button type="button" className="btn btn-outline" onClick={() => openTool("move")} disabled={!order}>
+                <i className="fa-solid fa-right-left" aria-hidden="true" /> {t("rt.move")}
+              </button>
+              <button type="button" className="btn btn-outline" onClick={() => openTool("merge")} disabled={!order}>
+                <i className="fa-solid fa-object-group" aria-hidden="true" /> {t("rt.merge")}
+              </button>
+              <button type="button" className="btn btn-outline" onClick={() => openTool("split")} disabled={!items.length || !canPay}
+                      title={canPay ? undefined : t("rf.waiterNoPay")}>
+                <i className="fa-solid fa-divide" aria-hidden="true" /> {t("rt.split")}
+              </button>
+            </div>
             <div className="rt-actions">
               <button type="button" className="btn btn-outline" onClick={markBill} disabled={!items.length}>
                 <i className="fa-solid fa-receipt" aria-hidden="true" /> {t("rf.billBtn")}
@@ -401,6 +449,86 @@ export default function RestaurantTablePage({ toast }) {
         <ModifierModal product={modModal.product} groups={modModal.groups}
                        onConfirm={(mods) => { addLine(modModal.product, mods); setModModal(null); }}
                        onClose={() => setModModal(null)} />
+      )}
+      {tool && (tool.kind === "move" || tool.kind === "merge") && (
+        <Modal title={tool.kind === "move" ? t("rt.moveTitle") : t("rt.mergeTitle")} onClose={() => setTool(null)} maxWidth={620}>
+          <p className="rt-tool__hint">{tool.kind === "move" ? t("rt.moveHint") : t("rt.mergeHint", { name: order?.tableName })}</p>
+          {(tool.halls || []).map((h) => {
+            const list = asArray(h.tables).filter((tb) => tb.id !== tableId
+              && (tool.kind === "move" ? !tb.order && !tb.reservation : !!tb.order));
+            if (!list.length) return null;
+            return (
+              <section key={h.id} className="rt-tool__hall">
+                <h4>{h.name}</h4>
+                <div className="rt-tool__grid">
+                  {list.map((tb) => (
+                    <button key={tb.id} type="button" className="rt-tool__table"
+                            onClick={() => (tool.kind === "move" ? doMove(tb) : doMerge(tb))}>
+                      <b>{tb.name}</b>
+                      <small className="ek-num">{tb.order ? money(tb.order.total) : (tb.seats ? t("rf.seats", { n: tb.seats }) : t("tbl.free"))}</small>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            );
+          })}
+          {!(tool.halls || []).some((h) => asArray(h.tables).some((tb) => tb.id !== tableId
+            && (tool.kind === "move" ? !tb.order && !tb.reservation : !!tb.order))) && (
+            <p className="rf-empty">{tool.kind === "move" ? t("rt.noFree") : t("rt.noBusy")}</p>
+          )}
+        </Modal>
+      )}
+      {tool?.kind === "split" && (
+        <Modal title={t("rt.splitTitle")} onClose={() => setTool(null)} maxWidth={560}
+               footer={
+                 <>
+                   <button className="btn btn-outline btn-sm" onClick={() => setTool(null)}>{t("common.cancel")}</button>
+                   <button className="btn btn-green btn-sm" disabled={partSum(tool.part) <= 0} onClick={() => payPart(tool.part)}>
+                     <i className="fa-solid fa-wallet" aria-hidden="true" /> {t("rt.payPart")} <span className="ek-num">{money(partSum(tool.part))}</span>
+                   </button>
+                 </>
+               }>
+          <div className="rt-pills" role="tablist" aria-label={t("rt.split")}>
+            {["seat", "item"].map((m) => (
+              <button key={m} type="button" role="tab" aria-selected={tool.mode === m} className={`rt-pill${tool.mode === m ? " is-on" : ""}`}
+                      onClick={() => setTool({ ...tool, mode: m, part: {} })}>{t(`rt.splitBy.${m}`)}</button>
+            ))}
+          </div>
+          {tool.mode === "seat" ? (
+            <div className="rt-split">
+              {[...new Set(items.map((x) => x.seat || 0))].sort((a, b) => a - b).map((sn) => {
+                const part = partOf(sn);
+                const on = JSON.stringify(part) === JSON.stringify(tool.part);
+                return (
+                  <button key={sn} type="button" className={`rt-split__seat${on ? " is-on" : ""}`} aria-pressed={on}
+                          onClick={() => setTool({ ...tool, part })}>
+                    <b>{sn ? `M${sn}` : t("rt.all")}</b>
+                    <small>{items.filter((x) => (x.seat || 0) === sn).map((x) => `${x.qty}× ${x.name}`).join(", ")}</small>
+                    <span className="ek-num">{money(partSum(part))}</span>
+                  </button>
+                );
+              })}
+              <p className="rt-tool__hint">{t("rt.splitSeatHint")}</p>
+            </div>
+          ) : (
+            <div className="rt-split">
+              {items.map((x) => {
+                const k = seatKey(x);
+                const q = Number(tool.part[k]) || 0;
+                const set = (v) => setTool({ ...tool, part: { ...tool.part, [k]: Math.max(0, Math.min(Number(x.qty), v)) } });
+                return (
+                  <div key={k} className="rt-line rt-line--new">
+                    <button type="button" className="rt-step" aria-label={t("rt.less", { name: x.name })} onClick={() => set(q - 1)}>−</button>
+                    <span className="rt-line__q ek-num">{q}/{x.qty}</span>
+                    <button type="button" className="rt-step" aria-label={t("rt.more", { name: x.name })} onClick={() => set(q + 1)}>+</button>
+                    <span className="rt-line__t"><b>{x.name}</b><small>{meta(x)}</small></span>
+                    <span className="rt-line__sum ek-num">{money(Number(x.salePrice) * q)}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </Modal>
       )}
       {noteFor && (
         <Modal title={t("rt.noteTitle")} onClose={() => setNoteFor(null)} maxWidth={420}

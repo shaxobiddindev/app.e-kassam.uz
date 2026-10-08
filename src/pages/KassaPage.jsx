@@ -22,7 +22,7 @@ import ModifierModal from "../components/ModifierModal";
 import { keyOf, groupsFor, lineFor, modsText } from "../lib/ek-modifiers";
 import { stationMap, kitchenTickets } from "../lib/ek-kitchen";
 import { ORDER_TYPES, servicePercent, serviceCharge as serviceChargeOf } from "../lib/ek-service-charge";
-import { linesOf, sigOf, itemsFrom } from "../lib/ek-table-order";
+import { linesOf, sigOf, itemsFrom, seatKey } from "../lib/ek-table-order";
 import TablesOverlay from "../components/TablesOverlay";
 import { subscribeTables } from "../lib/ek-live";
 import { useShopFeatures } from "../hooks/useShopFeatures";
@@ -150,7 +150,6 @@ const UNDO_MS    = 5000;   // o'chirishni bekor qilish oynasi
 
 /* Jonli qoldiq qadami — ombor sahifasi bilan bir xil. Kassir bir ilovada
    ikki xil tezlikka ko'nikmasligi kerak. */
-const LIVE_REFRESH_MS = 15_000;
 
 /** Qoldig'i o'zgargan katakcha shuncha vaqt belgilanib turadi. */
 const FLASH_MS = 1600;
@@ -889,39 +888,12 @@ export default function KassaPage({ toast, refreshLowStock }) {
   /* Kategoriya, filtr yoki filial almashsa kesh yaroqsiz — ro'yxat boshqa. */
   useEffect(() => { baseProducts.current = null; }, [branchId, categoryId, favOnly, filter]);
 
-  /* ══ JONLI QOLDIQ ══════════════════════════════════════════
-     Katakchadagi son boshqa kassadagi sotuvdan ham o'zgaradi, lekin
-     ro'yxat faqat qidiruvda va sotuvdan keyin yangilanardi. Ikkinchi
-     kassir oxirgi donani sotib yuborsa, bu kassada u hamon «bor» bo'lib
-     turardi va kassir buni faqat to'lovda bilardi.
-
-     ⚠ FAQAT KASSIR BO'SH TURGANDA. Kassa — eng band ekran: to'lov oynasi,
-     miqdor oynasi, yorliq skaneri ochiq bo'lsa yoki qidiruvga biror narsa
-     yozilgan bo'lsa, jadval QIMIRLAMAYDI. Kassirning qo'li ostida
-     katakchalar o'rin almashishi xato bosishga olib kelardi — mijoz
-     oldida bu eng yomon vaqt.
-
-     ⚠ Sahifa ko'rinmasa ham so'rov yuborilmaydi; tabga qaytilganda
-     darhol yangilanadi. Ombor sahifasi bilan bir xil qoida. */
-  const kassaBusy = useRef(false);
-  useEffect(() => {
-    kassaBusy.current = Boolean(
-      showPayModal || finish || qtyModal || markModal || processing || search
-    );
-  }, [showPayModal, finish, qtyModal, markModal, processing, search]);
-
-  useEffect(() => {
-    const tick = () => {
-      if (document.visibilityState !== "visible" || kassaBusy.current) return;
-      doSearch("", { silent: true });
-    };
-    const timer = setInterval(tick, LIVE_REFRESH_MS);
-    document.addEventListener("visibilitychange", tick);
-    return () => {
-      clearInterval(timer);
-      document.removeEventListener("visibilitychange", tick);
-    };
-  }, [doSearch]);
+  /* ⚠ AVTOMATIK YANGILASH OLIB TASHLANDI (2026-10-08). Egasi: «muhim ish
+     qilayotganda yangilanib ketyapti — oynada yangilash tugmasi bor, shu
+     yetarli». Ro'yxat ish paytida o'zi sakrab, tanlangan qator va o'qilayotgan
+     joy yo'qolardi. Ma'lumot — sahifa ochilganda, amaldan keyin va tugma bilan. */
+  /* Qoldiq (boshqa kassadagi sotuv) — qidiruv yonidagi tugma bilan. */
+  const refreshCatalog = () => doSearch(search, { silent: true });
 
   /**
    * Qidiruvni tozalash — savatga qo'shilgandan keyin.
@@ -1145,6 +1117,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
     /* ⚠ STOL YORLIG'I YOPILSA BUYURTMA YO'QOLMAYDI (T1): u serverda turadi va
        stollar ekranidan qayta ochiladi — bajik ham so'ralmaydi, chunki hech
        narsa o'chirilmayapti. Bo'sh stol esa serverda ham yopiladi. */
+    if (victim.tablePart) { removeTab(id); return; }
     if (victim.tableOrderId) {
       if (!victim.items.length) tableApi.cancel(victim.tableOrderId).catch(() => {});
       else toast.info(t("tbl.parked", { name: victim.tableName }));
@@ -1709,11 +1682,11 @@ export default function KassaPage({ toast, refreshLowStock }) {
      Stol kassada SAVAT YORLIG'I bo'lib ochiladi; har o'zgarish serverga
      butun buyurtma bo'lib yoziladi (versiya bilan). Boshqa qurilma ham
      (ikkinchi kassa, ofitsiant planshet) shu buyurtmani ko'radi. */
-  const itemsForOrder = async (o) => {
+  const itemsForOrder = async (o, groups = modGroups) => {
     const ids = [...new Set((o?.lines || []).map((l) => l.productId))];
     const got = await Promise.all(ids.map((id) => productApi.getById(id).then((r) => r?.data).catch(() => null)));
     const map = new Map(got.filter(Boolean).map((p) => [String(p.id), p]));
-    const { items, missing } = itemsFrom(o, map, modGroups);
+    const { items, missing } = itemsFrom(o, map, groups);
     if (missing) toast.error(t("tbl.missing", { n: missing }));
     return items;
   };
@@ -1749,7 +1722,9 @@ export default function KassaPage({ toast, refreshLowStock }) {
      o'chirib yuborardi. */
   useEffect(() => {
     const c = active;
-    if (!c.tableOrderId) return undefined;
+    /* Qism yorlig'i (D4) — buyurtmaning bo'lagi: serverga yozilmaydi (u
+       butun buyurtmani shu qism bilan almashtirib qo'yardi). */
+    if (!c.tableOrderId || c.tablePart) return undefined;
     const sig = sigOf(c.items);
     if (sig === c.tableSig) return undefined;
     const timer = setTimeout(async () => {
@@ -1821,11 +1796,11 @@ export default function KassaPage({ toast, refreshLowStock }) {
   liveRef.current = (e) => {
     if (e.kind === "hello") {
       /* (Qayta) ulandik — uzilish paytidagi hodisalar yo'qolgan: hammasi bir marta. */
-      for (const c of cartsRef.current) if (c.tableOrderId) refreshTab(c.id, c.tableOrderId);
+      for (const c of cartsRef.current) if (c.tableOrderId && !c.tablePart) refreshTab(c.id, c.tableOrderId);
       return;
     }
     if (e.kind !== "order") return;
-    const c = cartsRef.current.find((x) => x.tableOrderId === e.orderId);
+    const c = cartsRef.current.find((x) => x.tableOrderId === e.orderId && !x.tablePart);
     if (!c || (e.status === "OPEN" && Number(e.version) <= c.tableVersion)) return;
     refreshTab(c.id, e.orderId);
   };
@@ -1838,12 +1813,39 @@ export default function KassaPage({ toast, refreshLowStock }) {
   /* Zal ekranidan kelgan stol (`/sale?table=ID`, D1) — bir marta ochiladi
      va manzil tozalanadi (orqaga qaytilganda qayta ochilmasin). */
   const tableParam = new URLSearchParams(routeLocation.search).get("table");
+  const partParam = new URLSearchParams(routeLocation.search).get("part");
   useEffect(() => {
     if (!tablesOn || !tableParam) return;
     const id = Number(tableParam);
     navigateTo("/sale", { replace: true });
-    if (id > 0) openTable({ id });
+    if (!(id > 0)) return;
+    if (partParam) openPart(id, partParam);
+    else openTable({ id });
   }, [tablesOn, tableParam]);   // eslint-disable-line react-hooks/exhaustive-deps
+
+  /* Hisobning QISMI (D4) — restoran stol ekranidagi «Bo'lish»dan: alohida
+     yorliq, faqat tanlangan qatorlar; to'lovda server ularni ayiradi. */
+  const openPart = async (tableId, raw) => {
+    let want;
+    try { want = new Map(JSON.parse(raw).map((x) => [String(x.k), Number(x.q)])); } catch { return; }
+    let o;
+    try { o = (await tableApi.open(tableId))?.data; } catch (err) { toast.error(err.message); return; }
+    if (!o) return;
+    /* ⚠ Qo'shimchalar hali yuklanmagan bo'lishi mumkin (sahifa endigina
+       ochildi): ularsiz «burger + Katta» oddiy burger bo'lib, qism kaliti mos
+       kelmas va yorliq bo'sh qolardi (e2e ushladi). */
+    const groups = modGroups.length || !hasFeature("MODIFIERS") ? modGroups
+      : asArray((await modifierApi.list().catch(() => null))?.data);
+    const items = (await itemsForOrder(o, groups))
+      .map((it) => ({ ...it, qty: Math.min(Number(it.qty), want.get(String(seatKey(it))) || 0) }))
+      .filter((it) => it.qty > 0);
+    if (!items.length) { toast.error(t("rt.partGone")); return; }
+    if (cartsRef.current.length >= cartStore.MAX_CARTS) { toast.error(t("kassa.cartsMax", { n: cartStore.MAX_CARTS })); return; }
+    const cid = ++cartSeq.current;
+    setCarts((prev) => [...prev, { ...cartStore.blank(cid), items, tableOrderId: o.id, tableId: o.tableId,
+                                   tableName: t("rt.partTab", { name: o.tableName }), tablePart: true, orderType: "DINE_IN" }]);
+    setActiveId(cid);
+  };
 
   /* ══ SAVATGA OPTOM NARX (V97) ═══════════════════════════════════════
      ⚠ NEGA BUTUN SAVATGA. Optom mijoz 20 ta tovar oladi va kassir har
@@ -2761,6 +2763,8 @@ export default function KassaPage({ toast, refreshLowStock }) {
       ...(orderType ? { orderType, serviceChargePercent: svcAmount > 0 ? svcPct : null } : {}),
       /* Stol (T1) — to'lov uni serverda yopadi; oflayn chek kelganda ham. */
       ...(active.tableOrderId ? { tableOrderId: active.tableOrderId } : {}),
+      /* Qisman to'lov (D4): server faqat shu qatorlarni ayiradi, stol ochiq qoladi. */
+      ...(active.tableOrderId && active.tablePart ? { tableLines: linesOf(active.items) } : {}),
       customerId: customer?.id || null,
       items: cart.map((i) => ({
         productId: i.id,
@@ -3577,6 +3581,10 @@ export default function KassaPage({ toast, refreshLowStock }) {
                     <i className="fa-solid fa-calculator" aria-hidden="true" />
                   </button>
                 )}
+                <button type="button" className="search-bar__pad" title={t("common.refresh")} aria-label={t("common.refresh")}
+                        onPointerDown={(e) => e.preventDefault()} onClick={refreshCatalog}>
+                  <i className="fa-solid fa-rotate-right" aria-hidden="true" />
+                </button>
                 <span className="kbd">/</span>
               </div>
 

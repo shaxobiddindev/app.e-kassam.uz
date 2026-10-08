@@ -7530,3 +7530,19 @@ button.stk__c:hover { background: var(--bg-hover); }
 .rt-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .rt-actions .btn { min-height: 52px; justify-content: center; }
 .rt-quick { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+
+/* ══ KO'CHIRISH, BIRLASHTIRISH, BO'LISH (D4) ═════════════════════════════════ */
+.rt-actions--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.rt-tool__hint { margin: 0 0 10px; color: var(--fg-secondary); font-size: 14px; }
+.rt-tool__hall h4 { margin: 10px 0 6px; font-size: 13px; color: var(--fg-secondary); }
+.rt-tool__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+.rt-tool__table { min-height: 64px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+                  border-radius: 14px; border: 1.5px solid var(--border-strong); background: var(--bg-surface); color: var(--fg-primary);
+                  font: inherit; cursor: pointer; }
+.rt-tool__table small { color: var(--fg-secondary); }
+.rt-split { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.rt-split__seat { min-height: 64px; display: grid; grid-template-columns: 64px 1fr auto; align-items: center; gap: 10px; padding: 10px 12px;
+                  border-radius: 14px; border: 1px solid var(--border-subtle); background: var(--bg-surface); color: var(--fg-primary);
+                  font: inherit; text-align: start; cursor: pointer; }
+.rt-split__seat small { color: var(--fg-secondary); font-size: 13px; }
+.rt-split__seat.is-on { border: 2px solid var(--border-brand); background: var(--bg-brand-soft); }

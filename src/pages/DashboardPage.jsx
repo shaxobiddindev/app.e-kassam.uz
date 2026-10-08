@@ -67,8 +67,6 @@ import { asArray } from "../lib/ek-array";
    tegishli bloklarni ko'radi.
    ══════════════════════════════════════════════════════════════════════════ */
 
-/** Avto-yangilanish oralig'i. */
-const REFRESH_MS = 60_000;
 
 /* ══════════════════════════════════════════════════════════════════════
    KICHIK BO'LAKLAR
@@ -1539,19 +1537,10 @@ export default function DashboardPage({ toast }) {
      varaq kechasi ham har daqiqada so'rov yuborardi; o'nta shunday
      varaq serverni bekorga bo'g'ardi. Varaq qaytganda esa DARHOL
      yangilanadi — eski raqamni ko'rsatib turish yomonroq. */
-  useEffect(() => {
-    if (!canMoney) return;
-    let id = null;
-    const start = () => { stop(); id = setInterval(() => loadPulse(true), REFRESH_MS); };
-    const stop = () => { if (id) clearInterval(id); id = null; };
-    const onVis = () => {
-      if (document.hidden) stop();
-      else { loadPulse(true); start(); }
-    };
-    if (!document.hidden) start();
-    document.addEventListener("visibilitychange", onVis);
-    return () => { stop(); document.removeEventListener("visibilitychange", onVis); };
-  }, [loadPulse, canMoney]);
+  /* ⚠ AVTOMATIK YANGILASH OLIB TASHLANDI (2026-10-08). Egasi: «muhim ish
+     qilayotganda yangilanib ketyapti — oynada yangilash tugmasi bor, shu
+     yetarli». Ro'yxat ish paytida o'zi sakrab, tanlangan qator va o'qilayotgan
+     joy yo'qolardi. Ma'lumot — sahifa ochilganda, amaldan keyin va tugma bilan. */
 
   /* ── Ctrl+K ───────────────────────────────────────────────────────
      ⚠ Kirish maydonida turgan bo'lsa ham ishlaydi: bu kombinatsiya

@@ -122,6 +122,9 @@ async function openKassa({ restaurant, kitchen = false, tables = false, terminal
       } else if (/\/tables\/orders\/50\d$/.test(u.pathname) && r.method() === "PUT") {
         calls.lastPut = body;
         data = { id: 501, tableId: 11, tableName: "Stol 1", status: "OPEN", version: (body?.version ?? 0) + 1, lines: body?.lines || [] };
+      } else if (/\/tables\/orders\/501\/merge$/.test(u.pathname)) {
+        data = { id: 501, tableId: 11, tableName: "Stol 1", hallName: "Zal", status: "OPEN", version: (body?.version ?? 0) + 1, guests: 2,
+                 lines: [{ productId: 7, quantity: 2, modifierIds: [22], discount: 0, sentQty: 2, sentAt: new Date().toISOString() }] };
       } else if (/\/tables\/orders\/501\/send$/.test(u.pathname)) {
         const now = new Date().toISOString();
         const lines = (calls.lastPut?.lines || []).map((l) => ({ ...l, sentQty: l.quantity, sentAt: now }));
@@ -533,6 +536,57 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
   sendCall && typeof sendCall.body?.version === "number" ? ok("POST /send versiya bilan ketdi") : no("send", JSON.stringify(sendCall));
   const sendDisabled = await page.evaluate(() => document.querySelector(".rt-send")?.disabled);
   sendDisabled ? ok("yangi taom yo'q — «Oshxonaga yuborish» o'chiq") : no("send tugmasi yoqiq qoldi", "—");
+  await page.close();
+}
+
+{
+  console.log("\n§13 Bo'lish, ko'chirish, birlashtirish (D4)");
+  const { page, calls } = await openKassa({ restaurant: true, tables: true, path: "/restaurant/table/12" });
+  await waitFor(page, () => document.querySelectorAll(".rt-line").length > 0, 6000);
+  await page.evaluate(() => [...document.querySelectorAll(".rt-actions button")].find((b) => /Bo'lish/.test(b.textContent))?.click());
+  await waitFor(page, () => !!document.querySelector(".rt-split"));
+  await page.evaluate(() => [...document.querySelectorAll(".rt-pill")].find((b) => /Taom bo'yicha/.test(b.textContent))?.click());
+  await waitFor(page, () => !!document.querySelector(".rt-split .rt-step"));
+  await page.evaluate(() => [...document.querySelectorAll(".rt-split .rt-step")][1].click());
+  const sum = await page.evaluate(() => [...document.querySelectorAll(".modal-box button")].find((b) => /qismni/.test(b.textContent))?.textContent || "");
+  /38[\s\u00a0\u202f]?000/.test(sum) ? ok("taom bo'yicha: 1 ta burger (Katta) — 38 000") : no("qism summasi", sum);
+  await page.evaluate(() => [...document.querySelectorAll(".modal-box button")].find((b) => /qismni/.test(b.textContent))?.click());
+  (await waitFor(page, () => /qism/.test(document.querySelector(".cart-tab.is-on .cart-tab__name")?.textContent || ""), 6000))
+    ? ok("kassada «Stol 2 · qism» yorlig'i") : no("qism yorlig'i", await page.evaluate(() => location.pathname + location.search));
+  const items = await cartItems(page);
+  items.length === 1 && items[0].qty === 1 ? ok("qism yorlig'ida faqat tanlangan 1 ta") : no("qism savati", JSON.stringify(items));
+  await waitFor(page, () => false, 1000);
+  !calls.tables.some((c) => c.m === "PUT") ? ok("⚠ qism yorlig'i buyurtmani serverda almashtirmadi (PUT yo'q)") : no("qism PUT qildi", "—");
+  await page.keyboard.press("F9");
+  await waitFor(page, () => !!document.querySelector(".pay-modal-submit"));
+  await page.keyboard.type("38000", { delay: 20 });
+  await new Promise((r) => setTimeout(r, 300));
+  await page.click(".pay-modal-submit");
+  await waitFor(page, () => false, 1500);
+  const sale = calls.sales[0];
+  sale && sale.tableOrderId === 502 && sale.tableLines?.length === 1 && sale.tableLines[0].quantity === 1 && sale.tableLines[0].modifierIds?.[0] === 22
+    ? ok("to'lovda tableOrderId + tableLines (1 ta burger) — server faqat shuni ayiradi") : no("qisman to'lov tanasi", JSON.stringify(sale && { t: sale.tableOrderId, l: sale.tableLines }));
+  await page.close();
+}
+{
+  const { page, calls } = await openKassa({ restaurant: true, tables: true, path: "/restaurant/table/12" });
+  calls.resv11 = null;
+  await waitFor(page, () => document.querySelectorAll(".rt-line").length > 0, 6000);
+  await page.evaluate(() => [...document.querySelectorAll(".rt-actions button")].find((b) => /Ko'chirish/.test(b.textContent))?.click());
+  await waitFor(page, () => document.querySelectorAll(".rt-tool__table").length > 0, 4000);
+  await page.evaluate(() => [...document.querySelectorAll(".rt-tool__table")].find((b) => /Stol 1/.test(b.textContent))?.click());
+  await waitFor(page, () => location.pathname === "/restaurant/table/11", 4000);
+  const mv = calls.tables.find((c) => c.m === "POST" && /\/tables\/orders\/502\/move$/.test(c.p));
+  mv && mv.body?.tableId === 11 && (await page.evaluate(() => location.pathname)) === "/restaurant/table/11"
+    ? ok("ko'chirildi: Stol 2 → Stol 1 (versiya bilan), ekran yangi stolda") : no("ko'chirish", JSON.stringify(mv));
+  await waitFor(page, () => /Stol 1/.test(document.querySelector(".rt-title b")?.textContent || ""), 4000);
+  await page.evaluate(() => [...document.querySelectorAll(".rt-actions button")].find((b) => /Birlashtirish/.test(b.textContent))?.click());
+  await waitFor(page, () => document.querySelectorAll(".rt-tool__table").length > 0, 4000);
+  await page.evaluate(() => [...document.querySelectorAll(".rt-tool__table")].find((b) => /Stol 2/.test(b.textContent))?.click());
+  await waitFor(page, () => document.querySelectorAll(".rt-line--sent").length === 1, 4000);
+  const mg = calls.tables.find((c) => c.m === "POST" && /\/tables\/orders\/501\/merge$/.test(c.p));
+  mg && mg.body?.fromOrderId === 502 && mg.body?.fromVersion === 3
+    ? ok("birlashtirildi: Stol 2 buyurtmasi Stol 1 ga (ikkala versiya bilan), taom «oshxonada»") : no("birlashtirish", JSON.stringify(mg));
   await page.close();
 }
 

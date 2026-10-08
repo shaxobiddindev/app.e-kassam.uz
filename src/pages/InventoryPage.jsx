@@ -50,9 +50,6 @@ const MOV_BADGE = {
 
 const isBatchExpired = (b) => b.status === "EXPIRED" || b.expired;
 
-/* Jonli yangilanish qadami. 15 soniya — kassadagi sotuv omborda deyarli
-   darhol ko'rinadi, lekin server bekorga band bo'lmaydi. */
-const LIVE_REFRESH_MS = 15_000;
 
 /* ══════════════════════════════════════════════════════════════════════════
    MUDDAT VA KAM QOLDIQ — QATOR RANGI (2026-08-20)
@@ -161,12 +158,6 @@ export default function InventoryPage({ toast }) {
      `fetcher` o'zgarganini «boshqa ro'yxat» deb tushunadi. */
   const [version, setVersion] = useState(0);
   const reload = useCallback(() => setVersion((v) => v + 1), []);
-  /* ⚠ JAMLAMA ALOHIDA HISOBLAGICHDA: fonda faqat chiplar
-     yangilanishi kerak, ro'yxat esa joyida qolishi (pastdagi
-     izoh). Bitta hisoblagich bo'lsa, har 15 soniyada ro'yxat ham
-     boshidan yuklanardi. */
-  const [sumVersion, setSumVersion] = useState(0);
-  const bumpSummary = useCallback(() => setSumVersion((v) => v + 1), []);
   const [search, setSearch]   = useState("");
   const [modal, setModal]     = useState(null); // null | {productId,...}  (kirim)
   const [correct, setCorrect] = useState(null); // null | batch            (to'g'irlash)
@@ -260,19 +251,6 @@ export default function InventoryPage({ toast }) {
   const [scanned, setScanned] = useState(null);
   const [scanRow, setScanRow] = useState(null);
 
-  const pausedRef = useRef(false);
-  useEffect(() => {
-    pausedRef.current = modal !== null || correct !== null || markScan || scanned !== null;
-  }, [modal, correct, markScan, scanned]);
-
-  /* Jonli yangilanish. Qoldiq shu sahifada emas, KASSADA o'zgaradi —
-     boshqa kassir sotgani ham, ikkinchi terminaldagi kirim ham bu yerda
-     ko'rinishi kerak edi, lekin jadval faqat sahifa ochilganda yuklanardi.
-
-     ⚠ Sahifa KO'RINMASA so'rov yuborilmaydi. Ombor tabi kun bo'yi orqada
-     ochiq turadi — uni har 15 soniyada so'rovga tutish serverni ham,
-     tarmoqni ham bekorga band qilardi. Tabga qaytilganda esa darhol
-     yangilanadi: odam aynan o'sha lahzada ekranga qaraydi. */
 
   const loadMovements = useCallback(async () => {
     setMovLoading(true);
@@ -409,43 +387,16 @@ export default function InventoryPage({ toast }) {
       .then((r) => { if (alive) setSum(r?.data || null); })
       .catch(() => { if (alive) setSum(null); });
     return () => { alive = false; };
-  }, [branchId, nearDays, version, sumVersion]);
+  }, [branchId, nearDays, version]);
 
   /* Server har qatorga tovarning BARCHA partiyalarini qo'shib beradi,
      ya'ni hisob har doim to'liq ro'yxat ustida bajariladi. */
   const groups = useMemo(() => pageRows.map(summarize), [pageRows]);
 
-  /* ⚠ SAHIFALASHDAN KEYIN YANGILANISH TANLAB BO'LDI.
-
-     Ro'yxatni har 15 soniyada boshidan yuklash uni ikkinchi
-     sahifagacha scroll qilgan omborchini har safar TEPAGA otib
-     yuborardi — ya'ni ishlab bo'lmasdi.
-
-     Shuning uchun fonda faqat JAMLAMA (chiplar va katakchalar)
-     yangilanadi: «muddati yaqin 46 ta» degan ogohlantirish aynan
-     shu yerda ko'rinadi va u eskirmasligi kerak. Ro'yxatning o'zi
-     esa faqat BIRINCHI sahifada turgan bo'lsa yangilanadi —
-     o'shanda sakraydigan joy yo'q.
-
-     ⚠ Sahifa KO'RINMASA so'rov yuborilmaydi. Ombor tabi kun bo'yi
-     orqada ochiq turadi. Tabga qaytilganda esa darhol yangilanadi:
-     odam aynan o'sha lahzada ekranga qaraydi. */
-  const liveRef = useRef(null);
-  liveRef.current = { onePage: pageRows.length <= 50, reload, bumpSummary };
-  useEffect(() => {
-    const tick = () => {
-      if (document.visibilityState !== "visible" || pausedRef.current) return;
-      const live = liveRef.current;
-      if (live.onePage) live.reload();
-      else live.bumpSummary();
-    };
-    const timer = setInterval(tick, LIVE_REFRESH_MS);
-    document.addEventListener("visibilitychange", tick);
-    return () => {
-      clearInterval(timer);
-      document.removeEventListener("visibilitychange", tick);
-    };
-  }, []);
+  /* ⚠ AVTOMATIK YANGILASH OLIB TASHLANDI (2026-10-08). Egasi: «muhim ish
+     qilayotganda yangilanib ketyapti — oynada yangilash tugmasi bor, shu
+     yetarli». Ro'yxat ish paytida o'zi sakrab, tanlangan qator va o'qilayotgan
+     joy yo'qolardi. Ma'lumot — sahifa ochilganda, amaldan keyin va tugma bilan. */
 
   /* Har qatorning holati bir marta hisoblanadi: u ham rang, ham yozuv,
      ham filtr, ham ogohlantirishdagi raqam uchun kerak. */

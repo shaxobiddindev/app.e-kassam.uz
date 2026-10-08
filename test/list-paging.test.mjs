@@ -170,10 +170,11 @@ ok(/brands: clothFilter\.brands/.test(inv),
 ok(/const collectNear\s*=\s*async/.test(inv),
    "⚠ stikerlar uchun qolgan sahifalar ham so'raladi");
 
-/* ⚠ JONLI YANGILANISH RO'YXATNI TEPAGA OTMASIN: ikkinchi sahifagacha
-   scroll qilgan omborchi har 15 soniyada boshiga qaytarilardi. */
-ok(/bumpSummary/.test(inv) && /onePage/.test(inv),
-   "⚠ fonda faqat jamlama yangilanadi, ro'yxat joyida qoladi");
+/* ⚠ OMBOR O'ZI YANGILANMAYDI (2026-10-08). Egasi: «muhim ish qilayotganda
+   yangilanib ketyapti — yangilash tugmasi yetarli». Ilgari ro'yxat har 15
+   soniyada qayta yuklanardi (avval boshiga otardi, keyin faqat jamlama). */
+ok(!/setInterval\(/.test(inv) && !/visibilitychange/.test(inv),
+   "⚠ omborda avtomatik yangilash yo'q — faqat tugma bilan");
 
 console.log(`\n${fail === 0 ? "✅" : "❌"}  ${pass} o'tdi, ${fail} yiqildi\n`);
 process.exit(fail === 0 ? 0 : 1);

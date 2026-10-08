@@ -1347,6 +1347,9 @@ export const tableApi = {
   bill: (orderId) => request(`/tables/orders/${orderId}/bill`, { method: "POST" }),
   /** Oshxonaga yuborish (D3): faqat yangi qism; javobda — chekka chiqadigani. */
   send: (orderId, data) => request(`/tables/orders/${orderId}/send`, { method: "POST", body: JSON.stringify(data) }),
+  /* ── Ko'chirish va birlashtirish (D4) ── */
+  move: (orderId, data) => request(`/tables/orders/${orderId}/move`, { method: "POST", body: JSON.stringify(data) }),
+  merge: (orderId, data) => request(`/tables/orders/${orderId}/merge`, { method: "POST", body: JSON.stringify(data) }),
 };
 
 /* ── Texnologik karta (V150, modul RECIPES) ── */

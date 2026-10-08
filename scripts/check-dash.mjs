@@ -542,7 +542,9 @@ console.log("\n── K. Avto-yangilanish ──");
   const slowBefore = calls.filter((c) => c.startsWith("/api/reports/analytics")).length;
   const fastBefore = calls.filter((c) => c.startsWith("/api/reports/pulse")).length;
 
-  /* Varaq ko'rinmas bo'lib, keyin qaytadi — DARHOL yangilanishi kerak. */
+  /* ⚠ Varaq ko'rinmas bo'lib, keyin qaytadi — endi O'ZI YANGILANMAYDI
+     (2026-10-08, egasi: «muhim ish qilayotganda yangilanib ketyapti —
+     yangilash tugmasi yetarli»). Ilgari darhol yangilanardi. */
   await page.evaluate(() => {
     Object.defineProperty(document, "hidden", { value: true, configurable: true });
     document.dispatchEvent(new Event("visibilitychange"));
@@ -557,7 +559,7 @@ console.log("\n── K. Avto-yangilanish ──");
   const slowAfter = calls.filter((c) => c.startsWith("/api/reports/analytics")).length;
   const fastAfter = calls.filter((c) => c.startsWith("/api/reports/pulse")).length;
 
-  is(fastAfter > fastBefore, "varaq qaytganda YENGIL so'rov takrorlandi", `${fastBefore} → ${fastAfter}`);
+  is(fastAfter === fastBefore, "varaq qaytganda o'zi yangilanmadi (faqat tugma bilan)", `${fastBefore} → ${fastAfter}`);
   /* ⚠ Og'ir so'rov TAKRORLANMASLIGI kerak: har daqiqada butun davr
      tahlilini qayta hisoblash bitta ochiq oyna bilan serverni bo'g'ardi. */
   is(slowAfter === slowBefore, "OG'IR so'rov takrorlanmadi", `${slowBefore} → ${slowAfter}`);
