@@ -84,6 +84,12 @@ export async function pick() {
  */
 export async function open(port, opts = {}, onData = () => {}) {
   if (port?.native) return openNative(port, opts, onData);
+  /* ⚠ OLDINGI ULANISHDAN OCHIQ QOLGAN PORT (2026-10-08). Ochiq portga
+     `open()` «allaqachon ochiq» deb yiqiladi va tarozi sahifa qayta
+     yuklanmaguncha ulanmasdi. `readable`/`writable` faqat ochiq portda bor. */
+  if (port.readable || port.writable) {
+    try { await port.close(); } catch (_) { /* qulflangan — quyida open o'zi aytadi */ }
+  }
   await port.open({
     baudRate: opts.baudRate ?? 9600,
     dataBits: opts.dataBits ?? 8,
@@ -116,7 +122,6 @@ export async function open(port, opts = {}, onData = () => {}) {
      o'giriladi — har bayt bitta belgiga to'g'ri keladi va ASCII
      raqamlar buzilmaydi. */
   const reader = port.readable.getReader();
-  const closed = Promise.resolve();
 
   /* ⚠ Yozuvchi o'qish halqasidan OLDIN olinadi: halqa ichida ACK ga
      javob yuboriladi va u paytda `writer` allaqachon tayyor
@@ -130,7 +135,7 @@ export async function open(port, opts = {}, onData = () => {}) {
   let stopped = false;
   let state = null;
 
-  (async () => {
+  const loop = (async () => {
     try {
       for (;;) {
         const { value, done } = await reader.read();
@@ -193,12 +198,25 @@ export async function open(port, opts = {}, onData = () => {}) {
     timer = setInterval(() => ask(opts.poll), Math.max(200, opts.pollMs ?? 500));
   }
 
+  /* ══ ⚠ YOPISH TARTIBI — WEB SERIAL QOIDASI (2026-10-08) ══════════════
+     Egasi: «brauzerda yana tarozi bilan ulanishda muammo». Ilgari
+     `reader.cancel()` dan keyin darhol `port.close()` chaqirilardi, lekin
+     o'quvchining QULFI bo'shatilmasdi. Web Serial qulflangan oqim bilan
+     portni yopmaydi (TypeError) — xato yutilardi va port OCHIQ qolardi.
+     Keyingi ulanish (jimlik qorovuli, USB qayta ulanishi, uyqudan chiqish)
+     `open()` da «allaqachon ochiq» deb yiqilar va tarozi sahifa qayta
+     yuklanmaguncha qaytib ulanmasdi.
+
+     To'g'ri tartib: so'rovni to'xtatish → yozuvchini bo'shatish → o'qishni
+     bekor qilish → halqa tugashini KUTISH → o'quvchi qulfini bo'shatish →
+     portni yopish. */
   return async function stop() {
     stopped = true;
     if (timer) clearInterval(timer);
     try { writer?.releaseLock(); } catch (_) { /* allaqachon bo'shatilgan */ }
     try { await reader.cancel(); } catch (_) { /* allaqachon yopiq */ }
-    try { await closed; } catch (_) { /* yuqoridagi bilan bir xil */ }
+    try { await loop; } catch (_) { /* halqa xatolarni o'zi yutadi */ }
+    try { reader.releaseLock(); } catch (_) { /* allaqachon bo'shatilgan */ }
     try { await port.close(); } catch (_) { /* allaqachon yopiq */ }
   };
 }
