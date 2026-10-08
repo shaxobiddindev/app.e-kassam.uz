@@ -192,5 +192,46 @@ console.log("\n── Uzun nom (2026-10-06) ──");
   ok(short.lines.length === 1 && short.sizePt === 9, "qisqa nom — bir qatorda, asl o'lchamda");
 }
 
+console.log("\n── 30×20 «Nom yirik»: Arial Black, ikkinchi qator, «so'm» (2026-10-08) ──");
+{
+  const { layoutLabel } = await import("../src/lib/ek-label-render.js");
+  /* `gen-sticker-templates.mjs` dagi stk_name_big_30x20 joylashuvi. */
+  const S30 = { kind: "STICKER", widthMm: 30, heightMm: 20, dpi: 203, thermal: true, spec: {
+    barcode: { moduleDots: 2, quietLeftModules: 9, quietRightModules: 7, showText: true },
+    fields: [
+      { key: "nameShort", x: 0.8, y: 0.8, w: 28.4, h: 4.6, size: 7, weight: 800, align: "center", overflow: "shrink", visible: true },
+      { key: "barcode", x: 1, y: 5.8, w: 28, h: 10, align: "center", visible: true },
+      { key: "price", x: 0.8, y: 16.1, w: 28.4, h: 3.1, size: 7, weight: 900, align: "center", style: "major-minor", visible: true },
+    ] } };
+  const lines = (svg) => [...svg.matchAll(/<tspan x="[^"]*"[^>]*>([^<]*)</g)].map((m) => m[1]);
+  const nameSize = (svg) => Number(svg.match(/font-size="([\d.]+)" font-weight="800"/)[1]);
+
+  /* Egasining qog'ozi: bir qatorda qolib ikki chetidan kesilgan edi. 800 qalinlik
+     Windows'da Arial Black — bu nomning eni 12,09 em (Chromium'da o'lchangan). */
+  const P1 = { id: 1, name: "Oq non Qora non Qora", salePrice: 2990, barcode: "20021016" };
+  const r1 = renderLabel(S30, P1);
+  const l1 = lines(r1.svg);
+  ok(l1.length === 2 || 12.09 * nameSize(r1.svg) <= 28.4,
+     `⚠ nom Arial Black enida ham maydonga sig'adi (kesilmaydi) — ${l1.join(" / ")} @${nameSize(r1.svg)}`);
+
+  const P2 = { ...P1, name: "Oq non Qora non Qora non 500 g" };
+  const bc = layoutLabel(S30, P2).items.find((i) => i.kind === "barcode");
+  const r2 = renderLabel(S30, P2);
+  eq(lines(r2.svg).length, 2, "uzun nom — ikki qatorda");
+  ok(Math.abs(nameSize(r2.svg) - 7 * 0.352778) < 0.01, `ikki qatorda asl shrift (7 pt) — maydalanmadi (${nameSize(r2.svg)})`);
+  ok(bc.h >= 8.5 && bc.h < 10, `joy barkoddan olindi: biroz pastroq, 8,5 mm dan kam emas (${bc.h})`);
+  ok(Math.abs(bc.y + bc.h - 15.8) < 0.001, "barkodning pastki cheti joyida — narx siljimadi");
+  ok(!r2.warnings.some((w) => w.code === "BARCODE_SHORT"), "qisqargan barkod ogohlantirish bermaydi");
+  const short = { ...P1, name: "Non" };
+  eq(layoutLabel(S30, short).items.find((i) => i.kind === "barcode").h, 10, "qisqa nomda barkod tegilmaydi");
+  eq(lines(renderLabel(S30, short).svg).length, 1, "qisqa nom — bir qatorda");
+
+  /* «so'm» narxning 0,55 i, kamida 2,8 mm (40×30, 14 pt narx). */
+  const S40 = { ...S30, widthMm: 40, heightMm: 30, spec: { ...S30.spec, fields: [
+    { key: "price", x: 1.5, y: 21.8, w: 37, h: 6.6, size: 14, weight: 900, align: "center", style: "major-minor", visible: true }] } };
+  const som = Number(renderLabel(S40, P1).svg.match(/<tspan font-size="([\d.]+)"[^>]*> so'm/)?.[1]);
+  ok(som >= 2.8, `«so'm» yirikroq (≥ 2,8 mm, ilgari 2,4) — ${som}`);
+}
+
 console.log(`\n${fail === 0 ? "✅" : "❌"}  ${pass} o'tdi, ${fail} yiqildi\n`);
 process.exit(fail === 0 ? 0 : 1);

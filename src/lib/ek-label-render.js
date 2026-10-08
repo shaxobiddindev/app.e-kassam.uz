@@ -23,7 +23,7 @@
  * ⚠ DETERMINISTIK: bir xil kirish → BAYT DARAJASIDA bir xil chiqish.
  * Sana, tasodifiy id, `Math.random` yo'q. Sinov shuni tekshiradi.
  */
-import { barcodeMetrics, barcodeSvgMm } from "./ek-label-barcode.js";
+import { barcodeMetrics, barcodeSvgMm, eanMinMm, SMALL_STICKER_MAX_H } from "./ek-label-barcode.js";
 import { groupDigits } from "./ek-format.js";
 import { productCode } from "./ek-code.js";
 
@@ -48,6 +48,16 @@ const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) =>
  * sig'mayapti»). Endi Arial/Helvetica jadvaliga yaqin guruhlar: tor
  * (i, l, t, bo'shliq), keng (m, w, Ш, Ж), bosh harf, raqam. Hali ham
  * BAHO va DETERMINISTIK — DOM kerak emas.
+ *
+ * ⚠ QALINLIK 800/900 = ARIAL BLACK (2026-10-08, Chromium/WebView2 da
+ * o'lchandi). CSS shrift tanlash qoidasi 800 ni so'raganda AVVAL og'irroq
+ * yuzni qidiradi va Windows'da «Arial» oilasida Black (900) bor — ya'ni
+ * nom va narx Arial Bold emas, Arial Black bo'lib chiziladi. U oddiy
+ * matndan 17–24% keng; ilgari 13% deb olinardi va 30×20 «Nom yirik»
+ * stikerida «Oq non Qora non Qora» «sig'adi» deb bir qatorda qolib,
+ * qog'ozda ikki chetidan kesildi. 600 esa Arial Bold (semibold yuzi yo'q),
+ * ilgari u oddiy matn deb olinardi. Koeffitsiyentlar o'lchangan eng
+ * kattasidan biroz yuqori — baho kam emas, ortiq bo'lsin.
  */
 const PT_TO_MM = 0.352778;
 const NARROW_RE = /[iljtfI.,:;'!|ʻʼ`()[\] ]/;
@@ -63,7 +73,7 @@ const charEm = (c) => {
 const textWidthMm = (text, sizePt, weight = 400) => {
   let em = 0;
   for (const c of String(text ?? "")) em += charEm(c);
-  return em * sizePt * PT_TO_MM * (weight >= 800 ? 1.13 : weight >= 700 ? 1.08 : 1);
+  return em * sizePt * PT_TO_MM * (weight >= 800 ? 1.25 : weight >= 600 ? 1.12 : 1);
 };
 
 /* ── Maydon qiymatlari ────────────────────────────────────────────────
@@ -119,6 +129,57 @@ const rotGroup = (it, inner) =>
  * @param ctx      {shopName, qrUrl, labels}
  * @returns {{svg: string, warnings: Array<{field, code, text}>}}
  */
+/* ══ NOM SIG'MASA — IKKINCHI QATOR, JOYI BARKODDAN (2026-10-08) ═══════
+   Egasi: «nom sig'may qolsa ikkinchi qatorga tushir, kerak bo'lsa shtrix
+   kodni biroz kichraytir». Shablondagi nom maydoni (ayniqsa 30×20 da) bir
+   qatorlik balandlikda: uzun nom ikki qatorga tushish o'rniga 5–6 pt gacha
+   maydalanardi. Endi nom asl shriftining 90% ida bir qatorga sig'masa,
+   ikki qatorlik joy uning ostidagi BARKODDAN olinadi: barkodning tepasi
+   pastga tushadi, pastki cheti joyida qoladi, oradagi maydonlar ham
+   siljiydi. Barkod `floor` dan past bo'lmaydi — kichik stikerda 8,5 mm
+   (chiziqlar ~6 mm, qo'l skaneri uchun yetarli), kattasida qoida
+   minimumi. Joy yetmasa qolganini `fitLines` shriftni kichraytirib oladi.
+   ⚠ JOYLASHUVDA — SVG ham, TSPL/ZPL ham aynan shu maydonlarni oladi. */
+const NAME_KEYS = new Set(["name", "nameShort", "nameRu"]);
+const SMALL_LEND_FLOOR_MM = 8.5;
+const overlapsX = (a, b) => Number(a.x) < Number(b.x) + Number(b.w) - 0.05
+  && Number(b.x) < Number(a.x) + Number(a.w) - 0.05;
+
+function lendBarcodeToNames(fields, template, product, ctx) {
+  const H = Number(template.heightMm);
+  const out = [...fields];
+  for (let i = 0; i < out.length; i++) {
+    const f = out[i];
+    if (f.visible === false || f.overflow !== "shrink" || !NAME_KEYS.has(f.key) || Number(f.rot) === ROT) continue;
+    const val = VALUE[f.key](product, ctx, f);
+    if (val == null || val === "") continue;
+    const text = f.prefix ? f.prefix + String(val) : String(val);
+    const size = Number(f.size || 8), weight = Number(f.weight || 400);
+    const y = Number(f.y), h = Number(f.h);
+    const fit = fitLines(text, size, weight, Number(f.w), h);
+    if (!fit.clipped && fit.sizePt >= size * 0.9 - 1e-9) continue;
+    /* Ikki qator asl shriftda sig'adigan balandlik (`fitLines.linesAt`). */
+    const need = 2 * size * PT_TO_MM * LINE_H - 0.1 - h;
+    if (need <= 0) continue;
+    const bi = out.findIndex((b) => b.key === "barcode" && b.visible !== false && Number(b.rot) !== ROT
+      && Number(b.y) >= y + h - 0.05 && overlapsX(b, f));
+    if (bi < 0) continue;
+    const bc = out[bi];
+    const floor = String(template.kind || "").toUpperCase() === "STICKER" && H <= SMALL_STICKER_MAX_H
+      ? SMALL_LEND_FLOOR_MM : eanMinMm(template.kind, H);
+    const give = Math.floor(Math.min(need + 0.009, Number(bc.h) - floor) * 100) / 100;
+    if (give <= 0.05) continue;
+    for (let j = 0; j < out.length; j++) {
+      const x = out[j];
+      if (j === i) out[j] = { ...x, h: h + give };
+      else if (j === bi) out[j] = { ...x, y: Number(x.y) + give, h: Number(x.h) - give, lent: true };
+      else if (x.visible !== false && Number(x.y) >= y + h - 0.05 && Number(x.y) < Number(bc.y) - 0.05
+               && overlapsX(x, f)) out[j] = { ...x, y: Number(x.y) + give };
+    }
+  }
+  return out;
+}
+
 /**
  * ══════════════════════════════════════════════════════════════════
  * JOYLASHUV — YAGONA HISOBLAGICH (G3)
@@ -153,7 +214,7 @@ export function layoutLabel(template, product, ctx = {}) {
                  stroke: spec.border.color || "#000", strokeWidthMm: bw });
   }
 
-  for (const f of spec.fields || []) {
+  for (const f of lendBarcodeToNames(spec.fields || [], template, product, ctx)) {
     if (f.visible === false) continue;
     const val = (VALUE[f.key] || (() => null))(product, ctx, f);
     const box = { key: f.key, x: Number(f.x), y: Number(f.y),
@@ -292,7 +353,8 @@ function drawBarcode(f, value, template, spec, warnings) {
           + `${(m.widthMm - f.w).toFixed(1)} mm toshdi` });
     return "";
   }
-  if (!m.ok) {
+  /* Nomga joy bergan barkod (`lent`) ataylab qisqa — `floor` dan past emas. */
+  if (!m.ok && !f.lent) {
     warnings.push({ field: f.key, code: "BARCODE_SHORT",
       text: `barkod balandligi ${Number(f.h).toFixed(1)} mm — `
           + `${m.minHeightMm} mm dan kam, skaner o'qimasligi mumkin` });
@@ -461,13 +523,16 @@ function drawPrice(f, value, size, weight, anchor, tx) {
      sig'magandagina tashlanadi (narx «so'm» dan muhimroq).
      ⚠ Faqat `price` maydoni: tarozi yorlig'ida «so'm» alohida maydon
      (`gen-scale-templates.mjs`), u yerda ikki marta chiqardi. */
-  /* Kichik narxda «so'm» nisbatan kattaroq: 30×20 dagi 11 pt narxning 0,42 si
-     ~1,6 mm — termoprinterda o'qilmaydi. ~2,4 mm dan kichik bo'lmasin (narxning yarmigacha). */
-  const somMm = Math.max(majorMm * 0.42, Math.min(majorMm * 0.6, 2.4));
+  /* ⚠ «SO'M» YIRIKROQ (2026-10-08). Egasi: «so'm so'zini kattalashtir» —
+     narxning 0,42 si (kamida 2,4 mm) qog'ozda zo'rg'a o'qilardi. Endi
+     narxning 0,55 i, kamida 2,8 mm (narxning 3/4 idan oshmay). Sig'masa —
+     avvalgi kichik o'lcham, u ham sig'masa tashlanadi (narx muhimroq). */
   const minorW = minor ? textWidthMm(minor, size * 0.45, weight) : 0;
-  const som = f.key === "price" && f.currency !== false
-    && textWidthMm(sign + major, size, weight) + minorW
-       + textWidthMm(" so'm", somMm / PT_TO_MM, 700) <= Number(f.w) + 0.001;
+  const fitsSom = (mm) => textWidthMm(sign + major, size, weight) + minorW
+    + textWidthMm(" so'm", mm / PT_TO_MM, 700) <= Number(f.w) + 0.001;
+  const somMm = [Math.max(majorMm * 0.55, Math.min(majorMm * 0.75, 2.8)),
+    Math.max(majorMm * 0.42, Math.min(majorMm * 0.6, 2.4))].find(fitsSom);
+  const som = f.key === "price" && f.currency !== false && somMm != null;
   let out = `<text x="${r(tx)}" y="${r(baseline)}" text-anchor="${anchor}"`
     + ` font-family="sans-serif" font-size="${r(majorMm)}" font-weight="${weight}"`
     + ` fill="#000">${esc(sign + major)}`;
