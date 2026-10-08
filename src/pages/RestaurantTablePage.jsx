@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { t } from "../lib/ek-i18n";
-import { tableApi, productApi, modifierApi } from "../api";
+import { tableApi, productApi, modifierApi, kitchenApi } from "../api";
 import { money } from "../lib/ek-format";
 import { asArray } from "../lib/ek-array";
 import { roleSet } from "../lib/ek-roles";
 import { linesOf, sigOf, itemsFrom, seatKey, minutesSince } from "../lib/ek-table-order";
 import { groupsFor, lineFor, modsText } from "../lib/ek-modifiers";
 import { stationMap, kitchenTickets } from "../lib/ek-kitchen";
+import { urgencyOf } from "../lib/ek-floor";
 import { printKitchen } from "../lib/ek-hardware";
 import { isDesktop } from "../lib/ek-desktop";
 import { isTerminal, lockNow } from "../lib/ek-terminal";
@@ -67,6 +68,7 @@ export default function RestaurantTablePage({ toast }) {
   const [justSent, setJustSent] = useState(false);
   const [now, setNow] = useState(Date.now());
   const [tool, setTool] = useState(null);           // { kind: "move"|"merge"|"split", halls, mode, part }
+  const [tickets, setTickets] = useState([]);       // oshxona holati (D5)
   const versionRef = useRef(0);
   const savingRef = useRef(false);
   const stateRef = useRef({});
@@ -161,10 +163,22 @@ export default function RestaurantTablePage({ toast }) {
     return () => clearTimeout(timer);
   }, [sig, dirty, save]);
 
+  /* ── oshxona holati (D5) ── */
+  const loadTickets = useCallback(() => {
+    if (!order || !hasFeature("KITCHEN")) return;
+    kitchenApi.forOrder(order.id).then((r) => setTickets(asArray(r?.data).filter((x) => x.status !== "SERVED"))).catch(() => {});
+  }, [order?.id]);   // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { loadTickets(); }, [loadTickets]);
+  const served = async (tk) => {
+    try { await kitchenApi.served(tk.id); setTickets((l) => l.filter((x) => x.id !== tk.id)); }
+    catch (err) { toast?.error(err.message); loadTickets(); }
+  };
+
   /* ── jonli: boshqa qurilma o'zgartirdi ── */
   useEffect(() => {
     if (!order) return undefined;
     return subscribeTables(async (e) => {
+      if (e.kind === "kitchen" && e.orderId === order.id) { loadTickets(); return; }
       if (e.kind !== "order" || e.orderId !== order.id) return;
       const st = stateRef.current;
       if (savingRef.current || sigOf(st.items, { guests: st.guests }) !== st.savedSig) return;
@@ -222,6 +236,7 @@ export default function RestaurantTablePage({ toast }) {
                      qty: Number(l.quantity), seat: l.seat, course: l.course, note: l.note } : null;
       }).filter(Boolean);
       await apply(r.order, groups);
+      loadTickets();
       if (hasFeature("KITCHEN") && isDesktop()) {
         const tickets = kitchenTickets(cart, stations);
         if (tickets.length) {
@@ -378,6 +393,28 @@ export default function RestaurantTablePage({ toast }) {
 
         <aside className="rt-order" aria-label={t("rt.order")}>
           <div className="rt-order__list">
+            {tickets.length > 0 && (
+              <div className="rt-kitchen" aria-label={t("kd.title")}>
+                {tickets.map((tk) => {
+                  const u = urgencyOf(tk.createdAt, now);
+                  return (
+                    <div key={tk.id} className={`rt-kt rt-kt--${tk.status === "READY" ? "ready" : u}`}>
+                      <span className="rt-kt__t">
+                        <b>{tk.station}</b>
+                        <small>{asArray(tk.lines).map((l) => `${Number(l.quantity)}× ${l.name}`).join(", ")}</small>
+                      </span>
+                      {tk.status === "READY" ? (
+                        <button type="button" className="btn btn-green btn-sm rt-kt__btn" onClick={() => served(tk)}>
+                          <i className="fa-solid fa-bell-concierge" aria-hidden="true" /> {t("rt.served")}
+                        </button>
+                      ) : (
+                        <span className="rt-chip">{t("rt.cooking", { n: minutesSince(tk.createdAt, now) ?? 0 })}</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
             {sentRows.length > 0 && (
               <h3 className="rt-sec"><i className="fa-solid fa-lock" aria-hidden="true" /> {manager ? t("rt.sentMgr") : t("rt.sent2")}</h3>
             )}

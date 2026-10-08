@@ -1327,6 +1327,14 @@ export async function downloadScaleExport() {
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
+/* ── Oshxona ekrani (D5, V157, modul KITCHEN) ── */
+export const kitchenApi = {
+  tickets: (status) => request(`/kitchen/tickets${status ? `?status=${status}` : ""}`),
+  forOrder: (orderId) => request(`/kitchen/orders/${orderId}`),
+  ready: (id) => request(`/kitchen/tickets/${id}/ready`, { method: "POST" }),
+  served: (id) => request(`/kitchen/tickets/${id}/served`, { method: "POST" }),
+};
+
 /* ── Zal va stollar (V153, modul TABLES) ── */
 export const tableApi = {
   halls: () => request("/tables/halls"),

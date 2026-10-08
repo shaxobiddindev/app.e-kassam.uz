@@ -47,6 +47,23 @@ console.log("\n── Diqqat ro'yxati ──");
   ok(a.map((x) => x.table.id).join() === "4,3,1", "hisob (eskisi birinchi), keyin bir soatlik bron; uzoq bron va oddiy band yo'q");
 }
 
+console.log("\n── Oshxona holatlari (D5) ──");
+{
+  const now = Date.parse("2026-10-08T18:00:00Z");
+  const ago = (m) => new Date(now - m * 60000).toISOString();
+  ok(F.statusOf({ order: { kitchenReady: 1, billAt: ago(1) } }, now) === "ready", "⚠ tayyor taom — hisobdan ham ustun (sovuyapti)");
+  ok(F.statusOf({ order: { kitchenWaitingSince: ago(25) } }, now) === "late", "25 daqiqa kutyapti — kechikmoqda");
+  ok(F.statusOf({ order: { kitchenWaitingSince: ago(5) } }, now) === "busy", "5 daqiqa — oddiy band");
+  ok(F.urgencyOf(ago(3), now) === "new" && F.urgencyOf(ago(14), now) === "hurry" && F.urgencyOf(ago(21), now) === "late",
+     "oshxona ekrani: yangi · shoshiling · kechikdi");
+  const halls = [{ id: 1, tables: [
+    { id: 1, order: { billAt: ago(3) } },
+    { id: 2, order: { kitchenWaitingSince: ago(30) } },
+    { id: 3, order: { kitchenReady: 2 } },
+  ] }];
+  ok(F.attention(halls, now).map((x) => x.kind).join() === "ready,late,bill", "diqqat: tayyor → kechikmoqda → hisob");
+}
+
 console.log("\n── Vaqt ──");
 {
   const now = new Date(2026, 9, 8, 18, 0);

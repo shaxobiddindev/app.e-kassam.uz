@@ -20,6 +20,7 @@ const LOADERS = {
   TablesSetup:  () => import("../pages/TablesSetupPage"),
   RestaurantFloor: () => import("../pages/RestaurantFloorPage"),
   RestaurantTable: () => import("../pages/RestaurantTablePage"),
+  Kitchen: () => import("../pages/KitchenPage"),
   Customers:    () => import("../pages/CustomersPage"),
   Kassa:        () => import("../pages/KassaPage"),
   Reports:      () => import("../pages/ReportsPage"),

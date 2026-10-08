@@ -93,6 +93,21 @@ async function openKassa({ restaurant, kitchen = false, tables = false, terminal
       data = { directions: restaurant ? ["RESTAURANT"] : ["RETAIL_FOOD"], unconfigured: false,
                features: restaurant ? [...ALL, "MODIFIERS", ...(kitchen ? ["KITCHEN"] : []), ...(tables ? ["TABLES"] : [])] : ALL,
                allFeatures: [...ALL, "MODIFIERS", "KITCHEN"] };
+    } else if (kitchen && tables && u.pathname.includes("/kitchen/")) {
+      calls.kitchen = calls.kitchen || [];
+      calls.kitchen.push({ m: r.method(), p: u.pathname.replace(/^.*\/api/, "") });
+      const ago = (m) => new Date(Date.now() - m * 60000).toISOString();
+      if (u.pathname.endsWith("/kitchen/tickets")) {
+        data = [
+          { id: 71, orderId: 502, tableId: 12, tableName: "Stol 2", station: "Oshxona", status: "NEW", waiter: "Dilnoza", createdAt: ago(25),
+            lines: [{ name: "Osh", quantity: 2, mods: null, seat: 1, course: 2, note: "achchiqsiz" }] },
+          { id: 72, orderId: 501, tableId: 11, tableName: "Stol 1", station: "Bar", status: "NEW", waiter: "Javohir", createdAt: ago(3),
+            lines: [{ name: "Choy", quantity: 1, mods: null, seat: null, course: null, note: null }] },
+        ];
+      } else if (/\/kitchen\/orders\/50\d$/.test(u.pathname)) {
+        data = [{ id: 77, orderId: 502, tableId: 12, tableName: "Stol 2", station: "Oshxona", status: "READY", createdAt: ago(18),
+                  lines: [{ name: "burger", quantity: 2 }] }];
+      }
     } else if (tables && u.pathname.endsWith("/tables/events")) {
       /* Jonli oqim (T2): har ulanishda «hello» + navbatdagi hodisalar, keyin
          javob tugaydi va kassa qayta ulanadi — sinov hodisani navbatga qo'yadi. */
@@ -108,7 +123,8 @@ async function openKassa({ restaurant, kitchen = false, tables = false, terminal
           { id: 11, name: "Stol 1", seats: 4, sortOrder: 1, order: null, x: 40, y: 40, shape: "ROUND", reservation: calls.resv11 },
           { id: 12, name: "Stol 2", seats: 4, sortOrder: 2, x: 300, y: 200, shape: "LONG", reservation: null,
             order: { id: 502, total: 70000, guests: 2, openedAt: new Date(Date.now() - 25 * 60000).toISOString(), lineCount: 1, version: 3,
-                     openedBy: "dn", openedByName: "Dilnoza Karimova", billAt: new Date(Date.now() - 5 * 60000).toISOString() } },
+                     openedBy: "dn", openedByName: "Dilnoza Karimova", billAt: new Date(Date.now() - 5 * 60000).toISOString(),
+                     ...(kitchen ? { kitchenReady: 1 } : {}) } },
         ] }];
       } else if (u.pathname.endsWith("/tables/11/reserve")) {
         calls.resv11 = r.method() === "DELETE" ? null : { at: body?.at, name: body?.name, guests: body?.guests };
@@ -587,6 +603,39 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
   const mg = calls.tables.find((c) => c.m === "POST" && /\/tables\/orders\/501\/merge$/.test(c.p));
   mg && mg.body?.fromOrderId === 502 && mg.body?.fromVersion === 3
     ? ok("birlashtirildi: Stol 2 buyurtmasi Stol 1 ga (ikkala versiya bilan), taom «oshxonada»") : no("birlashtirish", JSON.stringify(mg));
+  await page.close();
+}
+
+{
+  console.log("\n§14 Oshxona ekrani (D5): buyurtmalar, kechikish, «Tayyor», zal va stol");
+  const { page, calls } = await openKassa({ restaurant: true, kitchen: true, tables: true, path: "/kitchen" });
+  (await waitFor(page, () => document.querySelectorAll(".kd-card").length === 2, 6000))
+    ? ok("oshxona ekranida ikki buyurtma") : no("oshxona ekrani", await page.evaluate(() => document.body.innerText.slice(0, 200)));
+  const late = await page.evaluate(() => document.querySelector(".kd-card--late")?.textContent || "");
+  /Kechikdi/.test(late) && /Stol 2/.test(late) && /achchiqsiz/.test(late) && /\(M1\)/.test(late) && /2-kurs/.test(late)
+    ? ok("25 daqiqalik — «Kechikdi» (matn bilan), izoh, mehmon, kurs") : no("kechikkan karta", late);
+  const tabs = await page.evaluate(() => [...document.querySelectorAll(".kd-tabs .rt-pill")].map((b) => b.textContent.trim()).join("|"));
+  /Bar/.test(tabs) && /Oshxona/.test(tabs) ? ok("sex tablari: " + tabs) : no("sex tablari", tabs);
+  await page.evaluate(() => document.querySelector(".kd-card--late .kd-ready")?.click());
+  (await waitFor(page, () => document.querySelectorAll(".kd-card").length === 1, 3000))
+    && calls.kitchen.some((c) => c.m === "POST" && /\/kitchen\/tickets\/71\/ready$/.test(c.p))
+    ? ok("«Tayyor» — serverga ketdi, karta oshpaz ekranidan chiqdi") : no("tayyor", JSON.stringify(calls.kitchen));
+  await page.close();
+}
+{
+  const { page, calls } = await openKassa({ restaurant: true, kitchen: true, tables: true, path: "/restaurant" });
+  await waitFor(page, () => document.querySelectorAll(".rf-plan .rf-table").length === 2, 6000);
+  const st = await page.evaluate(() => document.querySelector(".rf-table--ready")?.textContent || "");
+  /1 ta tayyor/.test(st) ? ok("zalda Stol 2 — «1 ta tayyor» (hisobdan ustun)") : no("zal holati", st);
+  const al = await page.evaluate(() => document.querySelector(".rf-alert")?.textContent || "");
+  /olib chiqing/.test(al) ? ok("diqqat ro'yxatida birinchi — tayyor taom") : no("diqqat", al);
+  await page.evaluate(() => document.querySelector(".rf-table--ready")?.click());
+  (await waitFor(page, () => !!document.querySelector(".rt-kt--ready"), 6000))
+    ? ok("stol ekranida oshxona holati: tayyor") : no("stol ekranida holat yo'q", "—");
+  await page.evaluate(() => document.querySelector(".rt-kt__btn")?.click());
+  (await waitFor(page, () => !document.querySelector(".rt-kt--ready"), 3000))
+    && calls.kitchen.some((c) => c.m === "POST" && /\/kitchen\/tickets\/77\/served$/.test(c.p))
+    ? ok("«Olib chiqdim» — serverga ketdi") : no("served", JSON.stringify(calls.kitchen));
   await page.close();
 }
 

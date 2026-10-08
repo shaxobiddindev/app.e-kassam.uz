@@ -30,7 +30,8 @@ import { useLoading } from "../lib/use-loading";
    ⚠ «Taom kechikmoqda» va «tayyor» — D3/D5 da (oshxona vaqti kerak).
    ══════════════════════════════════════════════════════════════════════════ */
 const MANAGERS = ["OWNER", "SHOP_ADMIN", "ADMIN"];
-const ICON = { free: "fa-chair", busy: "fa-utensils", bill: "fa-receipt", resv: "fa-calendar-check" };
+const ICON = { free: "fa-chair", busy: "fa-utensils", bill: "fa-receipt", resv: "fa-calendar-check",
+               ready: "fa-bell-concierge", late: "fa-hourglass-half" };
 
 export default function RestaurantFloorPage({ toast }) {
   const navigate = useNavigate();
@@ -86,8 +87,8 @@ export default function RestaurantFloorPage({ toast }) {
      yuborish); to'lov uchun u yerdan kassaga o'tiladi. */
   const openOrder = (tb) => navigate(`/restaurant/table/${tb.id}`);
   const pick = (tb) => {
-    const st = statusOf(tb);
-    if (st === "busy" || st === "bill") return openOrder(tb);
+    const st = statusOf(tb, now);
+    if (tb.order) return openOrder(tb);
     setSheet({ table: tb, mode: st === "resv" ? "resv" : "free" });
   };
 
@@ -105,8 +106,10 @@ export default function RestaurantFloorPage({ toast }) {
 
   const line = (tb) => {
     const o = tb.order;
-    const st = statusOf(tb);
+    const st = statusOf(tb, now);
     const who = o?.openedByName || o?.openedBy || "";
+    if (st === "ready") return [t("rf.readyN", { n: o.kitchenReady }), `${money(o.total)}${who ? ` · ${who}` : ""}`];
+    if (st === "late") return [t("rf.lateMin", { n: minutesSince(o.kitchenWaitingSince, now) }), `${money(o.total)}${who ? ` · ${who}` : ""}`];
     if (st === "bill") return [t("rf.billGiven"), `${money(o.total)}${who ? ` · ${who}` : ""}`];
     if (st === "busy") return [money(o.total), `${t("tbl.minutes", { n: minutesSince(o.openedAt, now) })}${who ? ` · ${who}` : ""}`];
     if (st === "resv") return [t("rf.resvAt", { time: hhmm(tb.reservation.at) }),
@@ -166,7 +169,7 @@ export default function RestaurantFloorPage({ toast }) {
           ) : (
             <div className="rf-plan" aria-label={t("rf.plan")}>
               {placedTables.map((tb) => {
-                const st = statusOf(tb);
+                const st = statusOf(tb, now);
                 const [l1, l2] = line(tb);
                 const s = sizeOf(tb.shape);
                 const dim = mine && (!tb.order || tb.order.openedBy !== me);
@@ -186,7 +189,7 @@ export default function RestaurantFloorPage({ toast }) {
             </div>
           )}
           <div className="rf-legend" aria-hidden="true">
-            {["free", "busy", "bill", "resv"].map((st) => (
+            {["free", "busy", "ready", "late", "bill", "resv"].map((st) => (
               <span key={st}><span className={`rf-sw rf-table--${st}`} /> {t(`rf.st.${st}`)}</span>
             ))}
           </div>
@@ -200,9 +203,12 @@ export default function RestaurantFloorPage({ toast }) {
             <button key={`${a.kind}-${a.table.id}`} type="button" className={`rf-alert rf-table--${a.kind}`} onClick={() => pick(a.table)}>
               <span className="rf-alert__top">
                 <b>{a.table.name}{halls.length > 1 ? ` · ${a.hall.name}` : ""}</b>
-                <span className="ek-num">{a.kind === "bill" ? t("tbl.minutes", { n: minutesSince(a.table.order.billAt, now) }) : hhmm(a.table.reservation.at)}</span>
+                <span className="ek-num">{a.kind === "bill" ? t("tbl.minutes", { n: minutesSince(a.table.order.billAt, now) })
+                  : a.kind === "late" ? t("tbl.minutes", { n: minutesSince(a.table.order.kitchenWaitingSince, now) })
+                  : a.kind === "ready" ? t("rf.now") : hhmm(a.table.reservation.at)}</span>
               </span>
-              <span>{a.kind === "bill" ? t("rf.alertBill") : t("rf.alertResv", { name: a.table.reservation.name || "—" })}</span>
+              <span>{a.kind === "bill" ? t("rf.alertBill") : a.kind === "ready" ? t("rf.alertReady", { n: a.table.order.kitchenReady })
+                : a.kind === "late" ? t("rf.alertLate") : t("rf.alertResv", { name: a.table.reservation.name || "—" })}</span>
             </button>
           ))}
         </aside>

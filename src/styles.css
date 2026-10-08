@@ -7546,3 +7546,48 @@ button.stk__c:hover { background: var(--bg-hover); }
                   font: inherit; text-align: start; cursor: pointer; }
 .rt-split__seat small { color: var(--fg-secondary); font-size: 13px; }
 .rt-split__seat.is-on { border: 2px solid var(--border-brand); background: var(--bg-brand-soft); }
+
+/* ══ OSHXONA EKRANI VA HOLATLARI (D5) ═════════════════════════════════════════
+   Kechikish rang + matn bilan (6-qoida). Oshxona ekrani yorug' rejimda ham
+   oq fonli — qora fon faqat qorong'i rejimda. */
+.rf-table--ready { background: var(--bg-success-subtle); border: 2px solid var(--border-success); }
+.rf-table--ready .rf-table__l1, .rf-table--ready .rf-table__name i { color: var(--fg-success); }
+.rf-table--late { background: var(--bg-danger-subtle); border: 2px solid var(--border-danger); }
+.rf-table--late .rf-table__l1, .rf-table--late .rf-table__name i { color: var(--fg-danger); }
+.kd { display: flex; flex-direction: column; gap: 12px; min-height: 100%; }
+.kd-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 14px; border-radius: 16px;
+           background: var(--bg-surface); border: 1px solid var(--border-subtle); }
+.kd-title { font-weight: 800; font-size: 20px; display: inline-flex; gap: 8px; align-items: center; }
+.kd-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.kd-head__end { margin-inline-start: auto; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.kd-head__end .btn { min-height: 48px; }
+.kd-stat { color: var(--fg-secondary); }
+.kd-empty { margin: 40px auto; color: var(--fg-secondary); font-size: 18px; display: flex; gap: 8px; align-items: center; }
+.kd-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; align-items: start; }
+.kd-card { display: flex; flex-direction: column; background: var(--bg-surface); border-radius: 16px; border: 1px solid var(--border-subtle); overflow: hidden; }
+.kd-card--hurry { border: 2px solid var(--border-warning); }
+.kd-card--late { border: 2px solid var(--border-danger); }
+.kd-card__head { display: flex; justify-content: space-between; gap: 8px; padding: 12px 14px; border-bottom: 1px solid var(--border-subtle); }
+.kd-card--hurry .kd-card__head { background: var(--bg-warning-subtle); color: var(--fg-warning-strong); }
+.kd-card--late .kd-card__head { background: var(--bg-danger-subtle); color: var(--fg-danger); }
+.kd-card__head > span { display: flex; flex-direction: column; }
+.kd-card__head b { font-size: 18px; }
+.kd-card__head small { font-size: 12px; }
+.kd-card__age { align-items: flex-end; text-align: end; }
+.kd-card__body { padding: 10px 14px; display: flex; flex-direction: column; gap: 8px; }
+.kd-course { font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--fg-secondary); border-bottom: 1px dashed var(--border-strong); padding-bottom: 2px; }
+.kd-line { display: flex; gap: 10px; align-items: baseline; }
+.kd-line__q { font-weight: 800; font-size: 20px; min-width: 36px; }
+.kd-line__t { display: flex; flex-direction: column; }
+.kd-line__t b { font-size: 17px; }
+.kd-line__t small { color: var(--fg-secondary); font-size: 13px; }
+.kd-note { color: var(--fg-warning-strong) !important; font-weight: 700; }
+.kd-ready { margin: 0 12px 12px; min-height: 56px; font-size: 17px; justify-content: center; }
+.rt-kitchen { display: flex; flex-direction: column; gap: 6px; }
+.rt-kt { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 12px; border: 1px solid var(--border-subtle); }
+.rt-kt--ready { background: var(--bg-success-subtle); border-color: var(--border-success); }
+.rt-kt--hurry { border-color: var(--border-warning); }
+.rt-kt--late { background: var(--bg-danger-subtle); border-color: var(--border-danger); }
+.rt-kt__t { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; }
+.rt-kt__t small { color: var(--fg-secondary); font-size: 12px; }
+.rt-kt__btn { min-height: 44px; }

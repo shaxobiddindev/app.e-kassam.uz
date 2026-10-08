@@ -60,11 +60,35 @@ export function autoPlace(tables) {
   return out;
 }
 
-/** Stol holati: «free» · «busy» · «bill» · «resv». */
-export function statusOf(t) {
-  if (t?.order) return t.order.billAt ? "bill" : "busy";
+/** Oshxonada shuncha daqiqadan ko'p kutsa — «kechikmoqda» (D5). */
+export const LATE_MIN = 20;
+/** Oshxona ekranida: shundan keyin «shoshiling». */
+export const HURRY_MIN = 12;
+
+/**
+ * Stol holati: «ready» · «late» · «bill» · «busy» · «resv» · «free».
+ *
+ * ⚠ TARTIB — KIM HARAKAT QILISHI KERAKLIGI BO'YICHA: tayyor taom sovuyapti
+ * (ofitsiant darhol borishi kerak) — eng ustun; keyin kechikayotgan taom
+ * (oshxonani so'rash); keyin hisob (kassaga). Oddiy band — eng past.
+ */
+export function statusOf(t, now = Date.now()) {
+  const o = t?.order;
+  if (o) {
+    if (Number(o.kitchenReady) > 0) return "ready";
+    const w = Date.parse(o.kitchenWaitingSince || "");
+    if (Number.isFinite(w) && now - w >= LATE_MIN * 60000) return "late";
+    return o.billAt ? "bill" : "busy";
+  }
   if (t?.reservation) return "resv";
   return "free";
+}
+
+/** Oshxona buyurtmasining shoshilinchligi: «new» · «hurry» · «late» (D5). */
+export function urgencyOf(createdAt, now = Date.now()) {
+  const m = (now - Date.parse(createdAt || "")) / 60000;
+  if (!Number.isFinite(m)) return "new";
+  return m >= LATE_MIN ? "late" : m >= HURRY_MIN ? "hurry" : "new";
 }
 
 /**
@@ -76,7 +100,12 @@ export function attention(halls, now = Date.now()) {
   const out = [];
   for (const h of halls || []) {
     for (const t of h.tables || []) {
-      if (t.order?.billAt) {
+      const st = statusOf(t, now);
+      if (st === "ready") {
+        out.push({ kind: "ready", table: t, hall: h, at: now });
+      } else if (st === "late") {
+        out.push({ kind: "late", table: t, hall: h, at: Date.parse(t.order.kitchenWaitingSince) });
+      } else if (t.order?.billAt) {
         out.push({ kind: "bill", table: t, hall: h, at: Date.parse(t.order.billAt) });
       } else if (!t.order && t.reservation?.at) {
         const at = Date.parse(t.reservation.at);
@@ -84,7 +113,8 @@ export function attention(halls, now = Date.now()) {
       }
     }
   }
-  return out.sort((a, b) => (a.kind === b.kind ? a.at - b.at : a.kind === "bill" ? -1 : 1));
+  const rank = { ready: 0, late: 1, bill: 2, resv: 3 };
+  return out.sort((a, b) => (a.kind === b.kind ? a.at - b.at : rank[a.kind] - rank[b.kind]));
 }
 
 /** «20:30» — bron vaqti. */

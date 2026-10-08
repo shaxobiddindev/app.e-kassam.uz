@@ -7,7 +7,6 @@ import { initLang, withLang, useT } from "./lib/ek-i18n";
 import { t } from "./lib/ek-i18n";
 import * as cartStore from "./lib/ek-cart-store";
 import PinSwitchModal from "./components/PinSwitchModal";
-import TerminalGate from "./components/TerminalGate";
 import { isTerminal } from "./lib/ek-terminal";
 import { useAuth }  from "./hooks/useAuth";
 import { useLowStock } from "./hooks/useLowStock";
@@ -41,6 +40,9 @@ const CustomerApp = lazySafe(() => import("./customer/CustomerApp"), "CustomerAp
 /* Mijoz ilovasi BRAUZERDA (V40) — Telegram OIDC dan qaytish ham shu yerda */
 const CustomerWeb = lazySafe(() => import("./customer/CustomerWeb"), "CustomerWeb");
 const DisplayPage = lazySafe(() => import("./pages/DisplayPage"), "DisplayPage");
+/* Zal terminali (D1) — faqat terminal qurilmada kerak: kassir ochilishidagi
+   asosiy faylga kirmasin (KIRISH byudjeti, 2026-10-08). */
+const TerminalGate = lazySafe(() => import("./components/TerminalGate"), "TerminalGate");
 import { getAppToken } from "./customer/customerApi";
 
 // ⚠ Tilni URL dan olish MODUL TANASIDA, `replaceState` dan OLDIN bo'lishi
@@ -420,6 +422,7 @@ export default function App() {
             } />
             <Route path="/sale" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "WAITER", "OWNER"]}><P.Kassa toast={toast} /></ProtectedRoute>} />
             <Route path="/restaurant" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "WAITER", "OWNER"]}><P.RestaurantFloor toast={toast} /></ProtectedRoute>} />
+            <Route path="/kitchen" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "WAITER", "OWNER"]}><P.Kitchen toast={toast} /></ProtectedRoute>} />
             <Route path="/restaurant/table/:id" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "WAITER", "OWNER"]}><P.RestaurantTable toast={toast} /></ProtectedRoute>} />
             <Route path="/products" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><P.Products toast={toast} /></ProtectedRoute>} />
             <Route path="/categories" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><P.Categories toast={toast} /></ProtectedRoute>} />
@@ -494,7 +497,7 @@ export default function App() {
         {/* ⚠ `Layout` DAN TASHQARIDA: oyna butun ekran ustida turadi va
             yon menyu yopilishi bilan yo'q bo'lib qolmasligi kerak. */}
         {/* Zal terminali (D1) — faqat shu qurilmada yoqilgan bo'lsa. */}
-        {user && isTerminal() && <TerminalGate login={login} logout={logout} />}
+        {user && isTerminal() && <Suspense fallback={null}><TerminalGate login={login} logout={logout} /></Suspense>}
         {pinOpen && (
           <PinSwitchModal
             toast={toast}

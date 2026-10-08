@@ -42,6 +42,8 @@ export const NAV = [
   { id: "sale",      path: "/sale", key: "nav.kassa",     icon: "fa-cash-register", roles: ["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"] },
   /* Zal (D1) — restoranning bosh ekrani; ofitsiantning yagona bo'limi. */
   { id: "restaurant", path: "/restaurant", key: "nav.restaurant", icon: "fa-utensils", roles: ["ADMIN", "SHOP_ADMIN", "CASHIER", "WAITER", "OWNER"], feature: "TABLES" },
+  /* Oshxona ekrani (D5) — oshxonadagi monitor. */
+  { id: "kitchen", path: "/kitchen", key: "nav.kitchen", icon: "fa-fire-burner", roles: ["ADMIN", "SHOP_ADMIN", "CASHIER", "WAITER", "OWNER"], feature: "KITCHEN" },
 
   /* KATALOG — tovarning O'ZI haqidagi ma'lumot: nomi, turkumi, narxi.
      Miqdor bu yerda emas: u «Ombor» ning ishi. */
@@ -442,7 +444,7 @@ export default function Layout({ user, isAdmin, lowStockItems, lowStockCount, on
     : children;
 
   return (
-    <div className={`app-layout ${isCollapsed ? "collapsed" : ""} ${kassaFullscreen || location.pathname.startsWith("/restaurant") ? "kassa-fullscreen" : ""}`}>
+    <div className={`app-layout ${isCollapsed ? "collapsed" : ""} ${kassaFullscreen || location.pathname.startsWith("/restaurant") || location.pathname.startsWith("/kitchen") ? "kassa-fullscreen" : ""}`}>
       {open && <div onClick={() => setOpen(false)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.45)", zIndex:199 }} />}
       <Sidebar 
         user={user} 
