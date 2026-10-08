@@ -38,6 +38,22 @@ eq(tk[0].lines.map((l) => `${l.qty}x${l.name}${l.mods.length ? "+" + l.mods.join
    "qo'shimchali va qo'shimchasiz osh — alohida qator (oshpaz uchun boshqa taom)");
 eq(kitchenTickets([], map), [], "bo'sh savat — chek yo'q");
 
+console.log("\n── Stol: oshxonaga ketgani, mehmon, kurs, izoh (D3) ──");
+{
+  const sent = [
+    { id: 7, name: "Osh", categoryId: 1, qty: 3, sentQty: 2, unitDecimals: 0, seat: 2, course: 2, note: "achchiqsiz" },
+    { id: 7, name: "Sho'rva", categoryId: 1, qty: 1, sentQty: 1, unitDecimals: 0 },
+    { id: 8, name: "Salat", categoryId: 1, qty: 1, unitDecimals: 0, course: 1 },
+  ];
+  const t2 = kitchenTickets(sent, map);
+  eq(t2[0].lines.map((l) => `${l.qty}x${l.name}`), ["1xOsh", "1xSalat"], "⚠ ketgani qayta chiqmaydi — oshdan faqat yangi 1 ta, sho'rva umuman yo'q");
+  eq([t2[0].lines[0].seat, t2[0].lines[0].course, t2[0].lines[0].note], [2, 2, "achchiqsiz"], "mehmon, kurs, izoh chekka o'tdi");
+  const txt = new TextDecoder("latin1").decode(Uint8Array.from(buildTicket({ station: "Oshxona", lines: t2[0].lines, orderNo: "Stol 6", at: new Date(2026, 9, 8, 19, 5) })));
+  const k1 = txt.indexOf("1-KURS"), k2 = txt.indexOf("2-KURS");
+  eq(k1 >= 0 && k2 > k1 && txt.indexOf("Salat") < k2 && txt.indexOf("Osh (M2)") > k2, true, "kurs bo'yicha: avval 1-kurs (salat), keyin 2-kurs (osh, M2)");
+  eq(txt.includes("! achchiqsiz"), true, "izoh chekda");
+}
+
 console.log("\n── Chek baytlari ──");
 const bytes = buildTicket({ station: "Oshxona", lines: tk[0].lines, orderNo: "A-901", at: new Date(2026, 9, 8, 12, 5), cashier: "Ali" });
 const txt = String.fromCharCode(...bytes.filter((b) => b >= 32 && b < 127));

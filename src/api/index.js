@@ -1345,6 +1345,8 @@ export const tableApi = {
   reserve: (tableId, data) => request(`/tables/${tableId}/reserve`, { method: "POST", body: JSON.stringify(data) }),
   unreserve: (tableId) => request(`/tables/${tableId}/reserve`, { method: "DELETE" }),
   bill: (orderId) => request(`/tables/orders/${orderId}/bill`, { method: "POST" }),
+  /** Oshxonaga yuborish (D3): faqat yangi qism; javobda — chekka chiqadigani. */
+  send: (orderId, data) => request(`/tables/orders/${orderId}/send`, { method: "POST", body: JSON.stringify(data) }),
 };
 
 /* ── Texnologik karta (V150, modul RECIPES) ── */

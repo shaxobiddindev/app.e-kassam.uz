@@ -52,13 +52,21 @@ export function kitchenTickets(cart, map) {
   for (const l of cart || []) {
     const st = map?.get(String(l?.categoryId));
     if (!st) continue;
+    /* ⚠ OSHXONAGA KETGANI QAYTA CHIQMAYDI (D3): stol buyurtmasida qator
+       allaqachon «Oshxonaga yuborish» bilan ketgan bo'lishi mumkin — to'lovda
+       faqat qolgani. Aks holda oshpaz bitta oshni ikki marta pishirardi. */
+    const qty = (Number(l.qty) || 0) - (Number(l.sentQty) || 0);
+    if (qty <= 0) continue;
     if (!groups.has(st)) groups.set(st, []);
     groups.get(st).push({
       name: String(l.name || ""),
-      qty: Number(l.qty) || 0,
+      qty,
       unit: l.unit || null,
       unitDecimals: Number(l.unitDecimals) || 0,
       mods: (l.modifiers || []).map((m) => String(m.name || "")).filter(Boolean),
+      ...(l.seat ? { seat: Number(l.seat) } : {}),
+      ...(l.course ? { course: Number(l.course) } : {}),
+      ...(l.note ? { note: String(l.note) } : {}),
     });
   }
   return [...groups].map(([station, lines]) => ({ station, lines }));
@@ -108,12 +116,21 @@ export function buildTicket({ station, lines, orderNo = "", at = new Date(), cas
   r.bold(false).line(`${hh}:${mm}${cashier ? ` · ${cashier}` : ""}`);
   if (note) r.line(note);
   r.left().rule();
-  for (const l of lines) {
+  /* Kurs bo'yicha (D3): oshpaz avval 1-taomni beradi. Kurssiz qatorlar —
+     boshida, sarlavhasiz (do'kon kassasidagi chek o'zgarmaydi). */
+  const sorted = [...lines].sort((a, b) => (a.course || 0) - (b.course || 0));
+  let course = null;
+  for (const l of sorted) {
+    if (l.course && l.course !== course) {
+      course = l.course;
+      r.center().bold(true).line(`-- ${course}-KURS --`).left();
+    }
     r.bold(true).double(true);
-    const head = `${qtyText(l)} x ${l.name}`;
+    const head = `${qtyText(l)} x ${l.name}${l.seat ? ` (M${l.seat})` : ""}`;
     for (const ln of wrapTo(head, half)) r.line(ln);
     r.double(false);
-    for (const m of l.mods) r.line(`   + ${m}`);
+    for (const m of l.mods || []) r.line(`   + ${m}`);
+    if (l.note) for (const ln of wrapTo(`! ${l.note}`, cols - 3)) r.line(`   ${ln}`);
     r.bold(false);
   }
   r.rule();

@@ -82,7 +82,9 @@ export default function RestaurantFloorPage({ toast }) {
     };
   }, [all]);
 
-  const openOrder = (tb) => navigate(`/sale?table=${tb.id}`);
+  /* D3: stol restoranning O'Z ekranida ochiladi (mehmon, kurs, oshxonaga
+     yuborish); to'lov uchun u yerdan kassaga o'tiladi. */
+  const openOrder = (tb) => navigate(`/restaurant/table/${tb.id}`);
   const pick = (tb) => {
     const st = statusOf(tb);
     if (st === "busy" || st === "bill") return openOrder(tb);
