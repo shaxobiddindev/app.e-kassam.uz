@@ -419,7 +419,7 @@ export default function App() {
                 : <ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><P.Dashboard toast={toast} /></ProtectedRoute>
             } />
             <Route path="/sale" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "WAITER", "OWNER"]}><P.Kassa toast={toast} /></ProtectedRoute>} />
-            <Route path="/restaurant" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "WAITER", "OWNER"]}><P.RestaurantFloor /></ProtectedRoute>} />
+            <Route path="/restaurant" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "WAITER", "OWNER"]}><P.RestaurantFloor toast={toast} /></ProtectedRoute>} />
             <Route path="/products" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><P.Products toast={toast} /></ProtectedRoute>} />
             <Route path="/categories" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><P.Categories toast={toast} /></ProtectedRoute>} />
             <Route path="/labels" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><P.Labels toast={toast} /></ProtectedRoute>} />

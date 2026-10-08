@@ -17,6 +17,7 @@ import { useConfirm } from "../context/ConfirmProvider";
 import { SkeletonList, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
 import { asArray } from "../lib/ek-array";
+import FloorEditor from "../components/FloorEditor";
 
 export default function TablesSetupPage({ toast }) {
   const confirm = useConfirm();
@@ -25,6 +26,7 @@ export default function TablesSetupPage({ toast }) {
   const busy = useLoading(loading);
   const [modal, setModal] = useState(null);   // {kind: "hall"|"batch"|"table", ...}
   const [saving, setSaving] = useState(false);
+  const [plan, setPlan] = useState(null);      // zal rejasi muharriri (D2)
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -81,6 +83,9 @@ export default function TablesSetupPage({ toast }) {
                 <h3 className="mod-card__name">{h.name}</h3>
                 <span className="badge">{t("tbl.count", { n: asArray(h.tables).length })}</span>
                 <span className="mod-card__actions">
+                  <button className="btn btn-outline btn-sm" onClick={() => setPlan(h)} disabled={!asArray(h.tables).length}>
+                    <i className="fa-solid fa-map" aria-hidden="true" /> {t("fe.open")}
+                  </button>
                   <button className="btn btn-outline btn-sm" onClick={() => setModal({ kind: "hall", id: h.id, name: h.name })}>
                     <i className="fa-solid fa-pen" aria-hidden="true" /> {t("common.edit")}
                   </button>
@@ -110,6 +115,8 @@ export default function TablesSetupPage({ toast }) {
           ))}
         </div>
       )}
+
+      {plan && <FloorEditor hall={plan} toast={toast} onClose={() => setPlan(null)} onSaved={load} />}
 
       {modal && (
         <Modal

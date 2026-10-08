@@ -1340,6 +1340,11 @@ export const tableApi = {
   get: (orderId) => request(`/tables/orders/${orderId}`),
   save: (orderId, data) => request(`/tables/orders/${orderId}`, { method: "PUT", body: JSON.stringify(data) }),
   cancel: (orderId) => request(`/tables/orders/${orderId}/cancel`, { method: "POST" }),
+  /* ── Zal rejasi, bron, hisob (D2, V155) ── */
+  saveLayout: (hallId, items) => request(`/tables/halls/${hallId}/layout`, { method: "PUT", body: JSON.stringify(items) }),
+  reserve: (tableId, data) => request(`/tables/${tableId}/reserve`, { method: "POST", body: JSON.stringify(data) }),
+  unreserve: (tableId) => request(`/tables/${tableId}/reserve`, { method: "DELETE" }),
+  bill: (orderId) => request(`/tables/orders/${orderId}/bill`, { method: "POST" }),
 };
 
 /* ── Texnologik karta (V150, modul RECIPES) ── */

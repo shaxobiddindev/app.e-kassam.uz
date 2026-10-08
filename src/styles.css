@@ -7424,3 +7424,46 @@ button.stk__c:hover { background: var(--bg-hover); }
   .rf-table { transition: transform .12s, box-shadow .12s; }
   .rf-table:hover { transform: translateY(-2px); box-shadow: var(--sh-md); }
 }
+
+/* ══ ZAL REJASI VA HOLATLAR (D2) ═══════════════════════════════════════════
+   Holat rangi + belgi + matn (6-qoida). Reja 1000 × 640 tekislik foizda. */
+.rf-main { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; }
+.rf-main .rf-body { flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.rf-plan { position: relative; width: 100%; aspect-ratio: 1000 / 640; background: var(--bg-surface);
+           border: 1px solid var(--border-subtle); border-radius: 18px; overflow: hidden; container-type: inline-size; }
+.rf-plan .rf-table { position: absolute; min-height: 0; box-sizing: border-box; padding: 4px; gap: 2px; overflow: hidden; }
+.rf-plan .rf-table__name { font-size: clamp(11px, 1.7cqw, 18px); }
+.rf-plan .rf-table__l1 { font-size: clamp(10px, 1.45cqw, 16px); font-weight: 700; }
+.rf-plan .rf-table__meta { font-size: clamp(9px, 1.15cqw, 13px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.rf-shape--round { border-radius: 50% !important; }
+.rf-table--free { background: var(--bg-surface); border: 1.5px solid var(--border-strong); }
+.rf-table--busy { background: var(--bg-brand-soft); border: 2px solid var(--border-brand); }
+.rf-table--busy .rf-table__l1 { color: var(--fg-brand); }
+.rf-table--bill { background: var(--bg-warning-subtle); border: 2px solid var(--border-warning); }
+.rf-table--bill .rf-table__l1, .rf-table--bill .rf-table__name i { color: var(--fg-warning-strong); }
+.rf-table--resv { background: var(--bg-canvas); border: 2px dashed var(--border-strong); }
+.rf-legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 12px; color: var(--fg-secondary); }
+.rf-legend > span { display: inline-flex; align-items: center; gap: 6px; }
+.rf-sw { width: 14px; height: 14px; border-radius: 4px; box-sizing: border-box; display: inline-block; }
+.rf-side { flex: 1 1 280px; max-width: 100%; box-sizing: border-box; background: var(--bg-surface); border: 1px solid var(--border-subtle);
+           border-radius: 18px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.rf-side h2 { margin: 0; font-size: 16px; }
+.rf-alert { min-height: 56px; display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 12px;
+            font: inherit; text-align: start; color: var(--fg-primary); cursor: pointer; }
+.rf-alert__top { display: flex; justify-content: space-between; gap: 8px; }
+.rf-sheet { display: flex; flex-direction: column; gap: 10px; }
+.rf-sheet__btn { min-height: 56px; justify-content: center; font-size: 16px; }
+.rf-sheet__info { margin: 0 0 4px; color: var(--fg-secondary); }
+.cart-head__bill { white-space: nowrap; }
+.fe-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px; }
+.fe-bar__label { font-weight: 700; margin-inline-end: 6px; }
+.fe-plane { position: relative; width: 100%; aspect-ratio: 1000 / 640; border-radius: 14px; border: 1px dashed var(--border-strong);
+            background-color: var(--bg-canvas); background-image: radial-gradient(var(--border-subtle) 1px, transparent 1px);
+            background-size: 2.5% 3.9%; touch-action: none; user-select: none; container-type: inline-size; }
+.fe-table { position: absolute; box-sizing: border-box; border-radius: 14px; border: 2px solid var(--border-strong);
+            background: var(--bg-surface); color: var(--fg-primary); font: inherit; font-weight: 800;
+            font-size: clamp(10px, 1.6cqw, 16px); cursor: grab; display: flex; align-items: center; justify-content: center; }
+.fe-table.is-auto { border-style: dashed; }
+.fe-table.is-sel { border-color: var(--border-brand); box-shadow: 0 0 0 3px var(--bg-brand-soft); }
+.fe-table:active { cursor: grabbing; }
+.fe-hint { margin-inline-end: auto; font-size: 13px; color: var(--fg-secondary); }

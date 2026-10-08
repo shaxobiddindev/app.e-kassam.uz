@@ -1809,6 +1809,14 @@ export default function KassaPage({ toast, refreshLowStock }) {
     patchCart(cartId, { items, tableVersion: o.version, tableSig: sigOf(items) });
     if (cartId === activeIdRef.current) toast.info(t("tbl.updated", { name: c.tableName }));
   };
+  const markBill = async () => {
+    const c = active;
+    try {
+      const r = await tableApi.bill(c.tableOrderId);
+      patchCart(c.id, { tableVersion: r?.data?.version ?? c.tableVersion + 1 });
+      toast.success(t("rf.billDone", { name: c.tableName }));
+    } catch (err) { toast.error(err.message); }
+  };
   const liveRef = useRef(null);
   liveRef.current = (e) => {
     if (e.kind === "hello") {
@@ -3469,6 +3477,14 @@ export default function KassaPage({ toast, refreshLowStock }) {
               <button type="button" className="btn btn-outline btn-sm cart-head__hall"
                       onClick={() => navigateTo("/restaurant")} aria-label={t("nav.restaurant")}>
                 <i className="fa-solid fa-utensils" aria-hidden="true" />
+              </button>
+            )}
+            {/* «Hisob berildi» (D2) — stol yorlig'ida: zal buni ko'radi. Serverda
+                yozilmagan o'zgarish bo'lsa avval o'sha ketadi (aks holda 409). */}
+            {active.tableOrderId && active.items.length > 0 && (
+              <button type="button" className="btn btn-outline btn-sm cart-head__bill" onClick={markBill}
+                      disabled={sigOf(active.items) !== active.tableSig}>
+                <i className="fa-solid fa-receipt" aria-hidden="true" /> {t("rf.billBtn")}
               </button>
             )}
             {/* Stollar (T1) — restoran modulida, «yangi savat» yonida. */}
