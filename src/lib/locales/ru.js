@@ -759,6 +759,10 @@ export default {
   "enum.role.STOREKEEPER.short": "Кладовщик",
   "enum.role.WAITER": "Официант",
   "enum.role.WAITER.short": "Официант",
+  "enum.role.COOK": "Повар",
+  "enum.role.COOK.short": "Повар",
+  "enum.role.MANAGER": "Менеджер",
+  "nav.group.restaurant": "Ресторан",
 
   "enum.adminRole.SUPER_ADMIN": "Суперадмин",
   "enum.adminRole.SYSTEM_ADMIN": "Системный админ",

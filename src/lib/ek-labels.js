@@ -232,6 +232,8 @@ export const ROLE = dict("enum.role", {
   /* Ofitsiant (V154) — alohida rang tokeni yo'q: ogohlantirish oilasi
      (tokenlar umumiy faylda, bitta rol uchun to'rt repoga tarqatilmaydi). */
   WAITER:      { hasShort: true, color: "var(--fg-warning-strong)", bg: "var(--bg-warning-subtle)" },
+  /* Oshpaz (V158) — faqat oshxona ekrani. */
+  COOK:        { hasShort: true, color: "var(--fg-danger)", bg: "var(--bg-danger-subtle)" },
 });
 
 /* ── Tizim admini — AdminRole ────────────────────────────────────────────── */

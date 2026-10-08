@@ -25,6 +25,18 @@ import { isOn as scaleOn, stop as scaleStop } from "../lib/ek-scale-live";
    modul o'chirganda xodimga baribir aytiladi.
    ══════════════════════════════════════════════════════════════════════════ */
 
+/**
+ * Faqat restoranda bo'ladigan modullar (backenddagi `ShopFeature.isOptIn`).
+ *
+ * ⚠ ULAR UCHUN QOIDA TESKARI — noma'lum bo'lsa YOPIQ (2026-10-08). Egasi:
+ * «restoranning ba'zi bo'limlari do'konlarda ko'rinyapti — aslo
+ * aralashmasin». Javob kelguncha yoki so'rov yiqilganda «hammasi ochiq»
+ * qoidasi do'kon kassasida zal va oshxonani ko'rsatib qo'yardi. Do'kon
+ * uchun bu bo'limlar «ish yo'qolishi» emas — ular umuman uning ishi emas;
+ * restoranda esa ular baribir serverga bog'liq (stol buyurtmasi serverda).
+ */
+export const RESTAURANT_FEATURES = ["MODIFIERS", "RECIPES", "KITCHEN", "TABLES"];
+
 /** Modul holati — ilova ichida bitta nusxa. */
 let cache = null;
 let inflight = null;
@@ -96,9 +108,15 @@ export function useShopFeatures() {
    */
   const has = (feature) => {
     if (!feature) return true;
-    if (!state || !state.features) return true;
+    if (!state || !state.features) return !RESTAURANT_FEATURES.includes(feature);
     return state.features.has(feature);
   };
 
-  return { has, ready: !!state, directions: state?.directions || [], unconfigured: !!state?.unconfigured };
+  const directions = state?.directions || [];
+  /* Restoranmi — rollar va «Menejer» nomi shundan. Yo'nalish bo'yicha,
+     modul bo'yicha emas: admin restoranda stolni o'chirib qo'ysa ham u
+     restoranligicha qoladi. */
+  const isRestaurant = directions.includes("RESTAURANT");
+
+  return { has, ready: !!state, directions, isRestaurant, unconfigured: !!state?.unconfigured };
 }

@@ -40,10 +40,21 @@ import { useShopFeatures } from "../hooks/useShopFeatures";
 export const NAV = [
   { id: "dashboard", path: "/",     key: "nav.dashboard", icon: "fa-chart-pie",     roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
   { id: "sale",      path: "/sale", key: "nav.kassa",     icon: "fa-cash-register", roles: ["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"] },
-  /* Zal (D1) — restoranning bosh ekrani; ofitsiantning yagona bo'limi. */
-  { id: "restaurant", path: "/restaurant", key: "nav.restaurant", icon: "fa-utensils", roles: ["ADMIN", "SHOP_ADMIN", "CASHIER", "WAITER", "OWNER"], feature: "TABLES" },
-  /* Oshxona ekrani (D5) — oshxonadagi monitor. */
-  { id: "kitchen", path: "/kitchen", key: "nav.kitchen", icon: "fa-fire-burner", roles: ["ADMIN", "SHOP_ADMIN", "CASHIER", "WAITER", "OWNER"], feature: "KITCHEN" },
+  /* RESTORAN — hamma restoran bandi BITTA guruhda (2026-10-08). Ilgari
+     zal va oshxona yuqorida, qo'shimchalar «Katalog» da, stollar
+     «Boshqaruv» da turardi: do'kon bandlari orasiga sochilgan edi.
+     Do'konda guruh UMUMAN chizilmaydi — bandlarning hammasi restoran
+     modulida (`feature`), noma'lum bo'lsa ham yopiq (`useShopFeatures`). */
+  { id: "restaurant-group", key: "nav.group.restaurant", icon: "fa-utensils", children: [
+    /* Zal (D1) — restoranning bosh ekrani; ofitsiantning yagona bo'limi. */
+    { id: "restaurant",   path: "/restaurant",   key: "nav.restaurant", icon: "fa-utensils",    roles: ["ADMIN", "SHOP_ADMIN", "CASHIER", "WAITER", "OWNER"], feature: "TABLES" },
+    /* Oshxona ekrani (D5) — oshxonadagi monitor; oshpazning yagona bo'limi. */
+    { id: "kitchen",      path: "/kitchen",      key: "nav.kitchen",    icon: "fa-fire-burner", roles: ["ADMIN", "SHOP_ADMIN", "CASHIER", "WAITER", "COOK", "OWNER"], feature: "KITCHEN" },
+    /* Zal va stollar (T1) — rejani rahbar chizadi. */
+    { id: "tables-setup", path: "/tables-setup", key: "nav.tables",     icon: "fa-chair",       roles: ["ADMIN", "SHOP_ADMIN", "OWNER"], feature: "TABLES" },
+    /* Taom qo'shimchalari (V149). */
+    { id: "modifiers",    path: "/modifiers",    key: "nav.modifiers",  icon: "fa-utensils",    roles: ["ADMIN", "SHOP_ADMIN", "OWNER"], feature: "MODIFIERS" },
+  ]},
 
   /* KATALOG — tovarning O'ZI haqidagi ma'lumot: nomi, turkumi, narxi.
      Miqdor bu yerda emas: u «Ombor» ning ishi. */
@@ -52,8 +63,6 @@ export const NAV = [
     { id: "categories", path: "/categories", key: "nav.categories", icon: "fa-tags",               roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
     { id: "labels", path: "/labels", key: "nav.labels", icon: "fa-tag",                       roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
     { id: "prices",     path: "/prices",     key: "nav.prices",     icon: "fa-money-check-dollar", roles: ["ADMIN", "SHOP_ADMIN", "OWNER"] },
-    /* Taom qo'shimchalari (V149) — faqat restoran modulida. */
-    { id: "modifiers",  path: "/modifiers",  key: "nav.modifiers",  icon: "fa-utensils",           roles: ["ADMIN", "SHOP_ADMIN", "OWNER"], feature: "MODIFIERS" },
   ]},
 
   /* OMBOR — tovarning MIQDORINI qo'zg'atadigan ishlar. Ko'chirish ham shu
@@ -98,8 +107,6 @@ export const NAV = [
   { id: "manage", key: "nav.group.manage", icon: "fa-users-gear", children: [
     { id: "shop-users",    path: "/shop-users",    key: "nav.staff",         icon: "fa-users-gear",        roles: ["ADMIN", "SHOP_ADMIN", "OWNER"] },
     { id: "branches",      path: "/branches",      key: "nav.branches",      icon: "fa-store",             roles: ["OWNER"] },
-    /* Zal va stollar (T1) — faqat restoran modulida. */
-    { id: "tables-setup",  path: "/tables-setup",  key: "nav.tables",        icon: "fa-chair",             roles: ["ADMIN", "SHOP_ADMIN", "OWNER"], feature: "TABLES" },
     /* Breezz (V140) — tasdiq faqat egasida, shuning uchun band ham faqat unda.
        ⏸ Vaqtincha yashirin (`BREEZZ_UI`, config.js). */
     ...(BREEZZ_UI

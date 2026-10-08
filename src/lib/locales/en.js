@@ -759,6 +759,10 @@ export default {
   "enum.role.STOREKEEPER.short": "Storekeeper",
   "enum.role.WAITER": "Waiter",
   "enum.role.WAITER.short": "Waiter",
+  "enum.role.COOK": "Cook",
+  "enum.role.COOK.short": "Cook",
+  "enum.role.MANAGER": "Manager",
+  "nav.group.restaurant": "Restaurant",
 
   "enum.adminRole.SUPER_ADMIN": "Super admin",
   "enum.adminRole.SYSTEM_ADMIN": "System admin",

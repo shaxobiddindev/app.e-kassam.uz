@@ -16,12 +16,12 @@ import Toast            from "./components/Toast";
 import Layout           from "./components/Layout";
 import AppUpdater       from "./components/AppUpdater";
 import { ConfirmProvider } from "./context/ConfirmProvider";
-import LoginPage       from "./pages/LoginPage";
 import NotFound from "./pages/NotFound";
 import { isDesktop, isNativeShell, isMobileApp } from "./lib/ek-desktop";
 import { prime as sfxPrime } from "./lib/ek-sound";
 import MobileApp from "./mobile/MobileApp";
 import { hasRole, roleSet } from "./lib/ek-roles";
+import { useShopFeatures } from "./hooks/useShopFeatures";
 import ErrorBoundary, { RouteErrorBoundary } from "./components/ek/ErrorBoundary";
 import { P } from "./lib/ek-pages";
 import { lazySafe } from "./lib/ek-lazy";
@@ -43,6 +43,9 @@ const DisplayPage = lazySafe(() => import("./pages/DisplayPage"), "DisplayPage")
 /* Zal terminali (D1) — faqat terminal qurilmada kerak: kassir ochilishidagi
    asosiy faylga kirmasin (KIRISH byudjeti, 2026-10-08). */
 const TerminalGate = lazySafe(() => import("./components/TerminalGate"), "TerminalGate");
+/* Kirish sahifasi — faqat ilova ichida kirganda (desktop/telefon); kirgan
+   kassir uni har ochilishda yuklamasin (KIRISH byudjeti, 2026-10-08). */
+const LoginPage = lazySafe(() => import("./pages/LoginPage"), "LoginPage");
 import { getAppToken } from "./customer/customerApi";
 
 // ⚠ Tilni URL dan olish MODUL TANASIDA, `replaceState` dan OLDIN bo'lishi
@@ -161,6 +164,44 @@ const ProtectedRoute = ({ user, roles, children }) => {
   if (!user) return <Navigate to={LOGIN_URL} replace />;
   if (!hasRole(user.role, roles)) return <Navigate to="/" replace />;
   return children;
+};
+
+/**
+ * Restoran marshruti — faqat shu modul bor joyda (2026-10-08).
+ *
+ * ⚠ Ilgari menyu bandi yashirilardi-yu, manzil ochiq edi: do'konda
+ * `/restaurant` yozilsa zal ekrani chizilardi. Javob kelguncha — ingichka
+ * chiziq (sahifa sakramaydi), keyin yo sahifa, yo bosh sahifa.
+ */
+const FeatureRoute = ({ feature, children }) => {
+  const { has, ready } = useShopFeatures();
+  if (!ready) return <Progress />;
+  return has(feature) ? children : <Navigate to="/" replace />;
+};
+
+/**
+ * Bosh sahifa: kim qayerdan boshlaydi.
+ *
+ * ⚠ RESTORAN YO'NALTIRISHI MODULGA QARAB. Ilgari ofitsiant va zal
+ * terminali shartsiz `/restaurant` ga yuborilardi; endi u marshrut
+ * do'konda `/` ga qaytaradi — tekshiruvsiz ikkalasi bir-birini
+ * cheksiz yo'naltirardi.
+ */
+const HomeRoute = ({ user, toast }) => {
+  const { has, ready } = useShopFeatures();
+  const roles = roleSet(user?.role);
+  const staff = ["OWNER", "SHOP_ADMIN", "STOREKEEPER", "CASHIER"].some((r) => roles.has(r));
+  const waiterOnly = roles.has("WAITER") && !staff;
+  /* Oshpaz (V158) — uyi oshxona ekrani. */
+  const cookOnly = roles.has("COOK") && !staff && !roles.has("WAITER");
+  const terminal = isTerminal() && !roles.has("OWNER") && !roles.has("SHOP_ADMIN");
+
+  if ((waiterOnly || cookOnly || terminal) && !ready) return <Progress />;
+  if (cookOnly && has("KITCHEN")) return <Navigate to="/kitchen" replace />;
+  /* Ofitsiant va zal terminali — uyi ZAL (D1). */
+  if ((waiterOnly || terminal) && has("TABLES")) return <Navigate to="/restaurant" replace />;
+  if (roles.size === 1 && roles.has("CASHIER")) return <Navigate to="/sale" replace />;
+  return <ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><P.Dashboard toast={toast} /></ProtectedRoute>;
 };
 
 export default function App() {
@@ -335,7 +376,7 @@ export default function App() {
             <i className="fa-solid fa-chevron-left" aria-hidden="true" /> Mijoz ilovasi
           </button>
         )}
-        <LoginPage onLogin={login} />
+        <Suspense fallback={<Progress />}><LoginPage onLogin={login} /></Suspense>
         <AppUpdater loggedIn={false} toast={toast} />
       </KeyboardProvider>
     ) : null;
@@ -410,20 +451,11 @@ export default function App() {
                 sotuvdan boshlaydi. Tekshiruv `hasRole` bilan emas, ANIQ:
                 faqat kassirlik roli borlar. Kassir + omborchi bo'lsa
                 Dashboard foydaliroq. */}
-            <Route path="/" element={
-              /* Ofitsiant va zal terminali — uyi ZAL (D1). */
-              roleSet(user?.role).has("WAITER") && !["OWNER", "SHOP_ADMIN", "STOREKEEPER", "CASHIER"].some((r) => roleSet(user?.role).has(r))
-                ? <Navigate to="/restaurant" replace />
-                : isTerminal() && !roleSet(user?.role).has("OWNER") && !roleSet(user?.role).has("SHOP_ADMIN")
-                ? <Navigate to="/restaurant" replace />
-                : roleSet(user?.role).size === 1 && roleSet(user?.role).has("CASHIER")
-                ? <Navigate to="/sale" replace />
-                : <ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><P.Dashboard toast={toast} /></ProtectedRoute>
-            } />
+            <Route path="/" element={<HomeRoute user={user} toast={toast} />} />
             <Route path="/sale" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "WAITER", "OWNER"]}><P.Kassa toast={toast} /></ProtectedRoute>} />
-            <Route path="/restaurant" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "WAITER", "OWNER"]}><P.RestaurantFloor toast={toast} /></ProtectedRoute>} />
-            <Route path="/kitchen" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "WAITER", "OWNER"]}><P.Kitchen toast={toast} /></ProtectedRoute>} />
-            <Route path="/restaurant/table/:id" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "WAITER", "OWNER"]}><P.RestaurantTable toast={toast} /></ProtectedRoute>} />
+            <Route path="/restaurant" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "WAITER", "OWNER"]}><FeatureRoute feature="TABLES"><P.RestaurantFloor toast={toast} /></FeatureRoute></ProtectedRoute>} />
+            <Route path="/kitchen" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "WAITER", "COOK", "OWNER"]}><FeatureRoute feature="KITCHEN"><P.Kitchen toast={toast} /></FeatureRoute></ProtectedRoute>} />
+            <Route path="/restaurant/table/:id" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "WAITER", "OWNER"]}><FeatureRoute feature="TABLES"><P.RestaurantTable toast={toast} /></FeatureRoute></ProtectedRoute>} />
             <Route path="/products" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><P.Products toast={toast} /></ProtectedRoute>} />
             <Route path="/categories" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><P.Categories toast={toast} /></ProtectedRoute>} />
             <Route path="/labels" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><P.Labels toast={toast} /></ProtectedRoute>} />
@@ -453,8 +485,8 @@ export default function App() {
             {/* Narx — egasi va do'kon adminining ishi; omborchi narx
                 qo'ymaydi. */}
             <Route path="/prices" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><P.Prices toast={toast} /></ProtectedRoute>} />
-            <Route path="/modifiers" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><P.Modifiers toast={toast} /></ProtectedRoute>} />
-            <Route path="/tables-setup" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><P.TablesSetup toast={toast} /></ProtectedRoute>} />
+            <Route path="/modifiers" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><FeatureRoute feature="MODIFIERS"><P.Modifiers toast={toast} /></FeatureRoute></ProtectedRoute>} />
+            <Route path="/tables-setup" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><FeatureRoute feature="TABLES"><P.TablesSetup toast={toast} /></FeatureRoute></ProtectedRoute>} />
             <Route path="/customers" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"]}><P.Customers toast={toast} /></ProtectedRoute>} />
             <Route path="/sales" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"]}><P.Sales toast={toast} /></ProtectedRoute>} />
             <Route path="/reports" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><P.Reports toast={toast} /></ProtectedRoute>} />

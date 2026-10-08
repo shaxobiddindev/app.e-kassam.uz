@@ -781,6 +781,10 @@ export default {
   "enum.role.STOREKEEPER.short": "Omborchi",
   "enum.role.WAITER": "Ofitsiant",
   "enum.role.WAITER.short": "Ofitsiant",
+  "enum.role.COOK": "Oshpaz",
+  "enum.role.COOK.short": "Oshpaz",
+  "enum.role.MANAGER": "Menejer",
+  "nav.group.restaurant": "Restoran",
 
   /* ── Enumlar: tizim admini ──────────────────────────────────────────── */
   "enum.adminRole.SUPER_ADMIN": "Super admin",

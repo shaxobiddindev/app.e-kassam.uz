@@ -12,15 +12,24 @@ import Select from "../../components/ek/Select";
 import { SkeletonList, Spinner } from "../../components/ek/Loading";
 import { useLoading } from "../../lib/use-loading";
 import { asArray } from "../../lib/ek-array";
+import { useShopFeatures } from "../../hooks/useShopFeatures";
 
 /* Rollar yagona lug'atdan (src/lib/ek-labels.js). `roleLabel` Spring'ning
    `ROLE_` prefiksini ham, katta-kichik harf farqini ham o'zi hal qiladi —
    shuning uchun bu yerda har bir variantni qo'lda sanab chiqish kerak emas. */
-const ROLE_OPTIONS = ["SHOP_ADMIN", "STOREKEEPER", "CASHIER", "WAITER"];
+const ROLE_OPTIONS = ["SHOP_ADMIN", "STOREKEEPER", "CASHIER", "WAITER", "COOK"];
+/* ⚠ Ofitsiant va oshpaz — FAQAT restoranda (2026-10-08; server ham rad
+   etadi). Do'konda ular taklif qilinsa, xodim kassada bo'sh ekranga
+   tushardi: uning ishi (zal, oshxona) do'konda yo'q. */
+const RESTAURANT_ROLES = ["WAITER", "COOK"];
 const EMPTY_USER_FORM = { fullName: "", username: "", password: "", role: "CASHIER", email: "" };
 
 export default function ShopUsersPage({ toast }) {
   const { user: currentUser }   = useAuth();
+  const { isRestaurant }        = useShopFeatures();
+  const roleOptions = isRestaurant ? ROLE_OPTIONS : ROLE_OPTIONS.filter((r) => !RESTAURANT_ROLES.includes(r));
+  /* Restoranda do'kon admini — «Menejer»: rol bitta, nomi joyga qarab. */
+  const roleName = (r) => (isRestaurant && String(r).replace(/^ROLE_/, "") === "SHOP_ADMIN" ? t("enum.role.MANAGER") : roleLabel(r));
   const confirm                 = useConfirm();
   const { guard } = useBadge();
   const [users, setUsers]       = useState([]);
@@ -212,12 +221,12 @@ export default function ShopUsersPage({ toast }) {
                       {(u.roles && u.roles.length > 0) ? (
                         u.roles.map((r) => (
                           <Badge key={r.id || r.name} color="blue">
-                            {roleLabel(r)}
+                            {roleName(r)}
                           </Badge>
                         ))
                       ) : (
                         <Badge color="blue">
-                          {roleLabel(u.role)}
+                          {roleName(u.role)}
                         </Badge>
                       )}
                     </td>
@@ -307,7 +316,7 @@ export default function ShopUsersPage({ toast }) {
               block variant="field" ariaLabel={t("common.role")}
               value={form.role}
               onChange={(v) => setField("role")({ target: { value: v } })}
-              options={ROLE_OPTIONS.map((r) => ({ value: r, label: roleLabel(r), icon: "fa-user-tag" }))}
+              options={roleOptions.map((r) => ({ value: r, label: roleName(r), icon: "fa-user-tag" }))}
             />
           </FormGroup>
           {/* Pochta IXTIYORIY (V29): parolni tiklash havolasi va yangi

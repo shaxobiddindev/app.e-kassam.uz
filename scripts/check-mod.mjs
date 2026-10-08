@@ -60,7 +60,7 @@ const ok = (m) => console.log("  ✅ " + m);
 const no = (m, got) => { bad++; console.log(`  ❌ ${m}  →  ${got}`); };
 const pageErrors = [];
 
-async function openKassa({ restaurant, kitchen = false, tables = false, terminal = false, role = "OWNER", path = "/sale" }) {
+async function openKassa({ restaurant, kitchen = false, tables = false, terminal = false, role = "OWNER", path = "/sale", ready }) {
   const calls = { modifiers: 0, sales: [], tables: [], sse: [], orders: {},
                   resv11: { at: new Date(Date.now() + 30 * 60000).toISOString(), name: "Aziz", guests: 6 } };
   const page = await browser.newPage();
@@ -178,8 +178,10 @@ async function openKassa({ restaurant, kitchen = false, tables = false, terminal
     for (const k of Object.keys(localStorage)) if (k.startsWith("ek_cart")) localStorage.removeItem(k);
   }, role, terminal);
   await page.goto(`http://127.0.0.1:${PORT}${path}`, { waitUntil: "networkidle2", timeout: 30_000 });
-  await page.waitForSelector(terminal ? ".term-lock, .rf" : path === "/sale" ? ".product-card"
-    : path === "/restaurant" ? ".rf" : ".page-content", { timeout: 20_000 });
+  /* `ready` — o'zi tanlagan selektor: do'konda restoran manzili boshqa
+     sahifaga qaytadi va uning selektori kutilmaydi (§15). */
+  await page.waitForSelector(ready || (terminal ? ".term-lock, .rf" : path === "/sale" ? ".product-card"
+    : path === "/restaurant" ? ".rf" : ".page-content"), { timeout: 20_000 });
   return { page, calls };
 }
 
@@ -637,6 +639,32 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
     && calls.kitchen.some((c) => c.m === "POST" && /\/kitchen\/tickets\/77\/served$/.test(c.p))
     ? ok("«Olib chiqdim» — serverga ketdi") : no("served", JSON.stringify(calls.kitchen));
   await page.close();
+}
+
+{
+  console.log("\n§15 Do'kon va restoran aralashmaydi (2026-10-08)");
+  for (const path of ["/restaurant", "/kitchen", "/tables-setup", "/modifiers"]) {
+    const { page } = await openKassa({ restaurant: false, path, ready: "body" });
+    await waitFor(page, () => location.pathname !== "/restaurant" && location.pathname !== "/kitchen"
+      && location.pathname !== "/tables-setup" && location.pathname !== "/modifiers", 6000);
+    const at = await page.evaluate(() => location.pathname);
+    at !== path ? ok(`do'konda ${path} ochilmaydi → ${at}`) : no(`do'konda ${path} ochildi`, at);
+    await page.close();
+  }
+  {
+    const { page } = await openKassa({ restaurant: false, path: "/products" });
+    await waitFor(page, () => !!document.querySelector(".sb-nav, nav"), 6000);
+    const nav = await page.evaluate(() => document.querySelector("aside, .sidebar, nav")?.innerText || "");
+    /Katalog/.test(nav) && !/Restoran|Zal\b|Oshxona|Qo'shimchalar/.test(nav) ? ok("do'kon menyusida restoran bandlari yo'q") : no("do'kon menyusida restoran", nav.slice(0, 300));
+    await page.close();
+  }
+  {
+    const { page } = await openKassa({ restaurant: true, kitchen: true, tables: true, path: "/products" });
+    await waitFor(page, () => /Restoran/.test(document.body.innerText), 6000);
+    const nav = await page.evaluate(() => document.querySelector("aside, .sidebar, nav")?.innerText || "");
+    /Restoran/.test(nav) ? ok("restoranda «Restoran» guruhi bor") : no("restoran guruhi yo'q", nav.slice(0, 300));
+    await page.close();
+  }
 }
 
 pageErrors.length === 0 ? ok("sahifada JS xatosi yo'q") : no("JS xatosi", pageErrors.join(" | "));
