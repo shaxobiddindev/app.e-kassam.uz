@@ -3,6 +3,7 @@ import { t, withLang } from "../lib/ek-i18n";
 import { isNativeShell } from "../lib/ek-desktop";
 import { useCallback, useSyncExternalStore } from "react";
 import { resetShopFeatures } from "./useShopFeatures";
+import { authApi } from "../api";
 
 function ls(...keys) {
   for (const k of keys) {
@@ -80,6 +81,11 @@ export function useAuth() {
   }, []);
 
   const logout = useCallback(() => {
+    /* ⚠ SERVERGA HAM AYTILADI (2026-10-09): ilgari chiqish faqat brauzer
+       xotirasini tozalardi — serverda token 30 kun tirik qolardi. Javob
+       kutilmaydi: internet yo'q bo'lsa ham chiqish to'xtamasin. */
+    const refresh = localStorage.getItem("ek_refresh");
+    if (refresh) authApi.logout(refresh).catch(() => {});
     ["ek_token","ek_type","ek_username","ek_fullName","ek_role",
      "ek_user","ek_name","ek_shop","ek_shopCode","ek_refresh","ek_deviceId"
     ].forEach((k) => localStorage.removeItem(k));

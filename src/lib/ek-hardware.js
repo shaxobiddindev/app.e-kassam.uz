@@ -144,7 +144,7 @@ async function send(bytes) {
 export function buildReceipt({ saleId, serverSaleId, cart = [], total = 0, subtotal, discount = 0,
                                customer, offline, shopName, cashier, fiscal,
                                credit, toSavings, rounding = 0, saleType = "SALE",
-                               serviceCharge = 0, servicePercent = 0 }) {
+                               serviceCharge = 0, servicePercent = 0, tip = 0 }) {
   const s = getSettings();
   const r = new Receipt(s.width === 58 ? WIDTH_58 : WIDTH_80);
 
@@ -228,6 +228,8 @@ export function buildReceipt({ saleId, serverSaleId, cart = [], total = 0, subto
   if (Number(serviceCharge) > 0) r.row(t("svc.line", { pct: servicePercent }), "+" + money(serviceCharge));
   if (Number(rounding) > 0) r.row(t("kassa.rounding"), "-" + moneyFine(rounding));
   r.bold().double().row(t("kassa.receiptTotal"), money(total)).double(false).bold(false);
+  /* Choy puli (V160) — JAMIDAN KEYIN: fiskal jami o'zgarmaydi. */
+  if (Number(tip) > 0) r.row(t("tip.receipt"), money(tip));
   /* ══ ⚠ TO'LOV TURI CHEKDA CHIQMAYDI ═════════════════════════════════
      Ilgari bu yerda «To'lov: Naqd» qatori va aralash to'lovda usullar
      bo'yicha taqsimot (V53) turardi. Chekning vazifasi — mijoz NIMA
@@ -531,6 +533,7 @@ export async function printShiftReport(r, shopName) {
   }
   rc.rule();
   rc.row(t("rpt.cancelled"), `${r.cancelledCount} / ${money(r.cancelledTotal)}`);
+  if (Number(r.tipsTotal) > 0) rc.row(t("tip.receipt"), money(r.tipsTotal));
   rc.row(t("rpt.confirmations"), String(r.confirmationsCount));
   if (r.suspiciousCount > 0) {
     rc.bold().row(t("rpt.suspicious"), String(r.suspiciousCount)).bold(false);
@@ -1037,7 +1040,7 @@ function printInBrowser({ saleId, serverSaleId, cart = [], total = 0, subtotal, 
                           customer, offline, shopName, cashier,
                           credit, __debt, amount, balanceAfter, balanceBefore, date,
                           receiptNo, toSavings, bonusEarned, kind, linkedNo , rounding = 0,
-                          serviceCharge = 0, servicePercent = 0 }) {
+                          serviceCharge = 0, servicePercent = 0, tip = 0 }) {
   const win = window.open("", "_blank", "width=360,height=640,toolbar=no,menubar=no");
   if (!win) throw new Error(t("hw.errPopup"));
   /* Qarz cheki yoki jamg'arma kvitansiyasi — so'zlar `kind` dan (V66). */
@@ -1139,6 +1142,7 @@ function printInBrowser({ saleId, serverSaleId, cart = [], total = 0, subtotal, 
       ${Number(serviceCharge) > 0 ? `<div class="row"><span>${esc(t("svc.line", { pct: servicePercent }))}</span><span>+${esc(money(serviceCharge))}</span></div>` : ""}
       ${Number(rounding) > 0 ? `<div class="row"><span>${esc(t("kassa.rounding"))}</span><span>-${esc(moneyFine(rounding))}</span></div>` : ""}
       <div class="row"><b>${esc(t("kassa.receiptTotal"))}</b><b>${esc(money(total))}</b></div>
+      ${Number(tip) > 0 ? `<div class="row"><span>${esc(t("tip.receipt"))}</span><span>${esc(money(tip))}</span></div>` : ""}
       ${Number(toSavings) > 0 && !__debt ? `<div class="row"><span>${esc(t("savings.toSavings"))}</span><span>+${esc(money(toSavings))}</span></div>` : ""}
       ${customer?.fullName ? `<div class="row"><span>${esc(t("kassa.receiptCustomer"))}</span><span>${esc(customer.fullName)}</span></div>` : ""}
       ${credit && Number(credit.amount) > 0 ? `<div class="hr"></div>

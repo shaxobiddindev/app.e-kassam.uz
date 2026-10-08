@@ -60,6 +60,15 @@ export function autoPlace(tables) {
   return out;
 }
 
+/**
+ * Rejadagi o'qish tartibi: yuqoridan pastga, chapdan o'ngga (taxminan bir
+ * qatordagilar — 60 birlik ichida — bitta qator). Telefonda reja plitkaga
+ * aylanadi va tartib shundan olinadi.
+ */
+export function byPlace(tables) {
+  return [...tables].sort((a, b) => (Math.abs(a.y - b.y) > 60 ? a.y - b.y : a.x - b.x));
+}
+
 /** Oshxonada shuncha daqiqadan ko'p kutsa — «kechikmoqda» (D5). */
 export const LATE_MIN = 20;
 /** Oshxona ekranida: shundan keyin «shoshiling». */

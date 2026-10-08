@@ -276,7 +276,8 @@ export const authApi = {
       headers: { "X-Device-Id": getDeviceId() },
       body: JSON.stringify(data),
     }),
-  logout: () => request("/auth/logout", { method: "POST" }),
+  /* Refresh token tanada: ilovada u cookie'da emas, `ek_refresh` da. */
+  logout: (refreshToken) => request("/auth/logout", { method: "POST", body: JSON.stringify({ refreshToken }) }),
 
   /* ══ KASSIR PIN BILAN ALMASHADI (V99) ═══════════════════════════════
      ⚠ `X-Device-Id` SHART. Serverdagi qulf aynan qurilma bo'yicha

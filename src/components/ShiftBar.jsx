@@ -87,14 +87,19 @@ export default function ShiftBar({ toast, compact = false, onState }) {
   const [panel, setPanel] = useState(false);
   const [cashForm, setCashForm]   = useState(null); // { type, amount, reason }
 
+  /* Server javob berdimi — «smena yopiq» faqat shunda haqiqat. */
+  const [known, setKnown] = useState(false);
+
   const load = useCallback(async () => {
     try {
       const res = await securityApi.currentShift();
       setShift(res.data || null);
+      setKnown(true);
     } catch (_) {
       // Smena holati bilinmasa kassani TO'XTATMAYMIZ — panel shunchaki
       // ko'rinmaydi; muhim amalda server baribir o'zi tekshiradi.
       setShift(null);
+      setKnown(false);
     }
   }, []);
 
@@ -105,8 +110,8 @@ export default function ShiftBar({ toast, compact = false, onState }) {
      (nusxa har safar boshqa havola bo'ladi). */
   const isOpen = !!shift;
   useEffect(() => {
-    if (shift !== undefined) onState?.({ open: isOpen });
-  }, [isOpen, shift, onState]);
+    if (shift !== undefined) onState?.({ open: isOpen, known });
+  }, [isOpen, shift, known, onState]);
 
   /* Ochish/yopish endi BIR BOSISHDA emas: ikkalasi ham naqd summa so'raydi.
      Ochishda — boshlang'ich qoldiq, yopishda — kassir SANAGAN summa. */
@@ -249,6 +254,8 @@ export default function ShiftBar({ toast, compact = false, onState }) {
             ))}
             <hr style={{ border: "none", borderTop: "1px dashed var(--border, #d4d4d8)", margin: "4px 0" }} />
             <Row k={t("rpt.cancelled")} v={`${report.cancelledCount} / ${money(report.cancelledTotal)}`} />
+            {/* Choy puli (V160) — sotuv emas, lekin kutilgan summaga qo'shilgan. */}
+            {Number(report.tipsTotal) > 0 && <Row k={t("tip.receipt")} v={money(report.tipsTotal)} />}
             <Row k={t("rpt.confirmations")} v={report.confirmationsCount} />
             {report.suspiciousCount > 0 && (
               <Row k={t("rpt.suspicious")} v={report.suspiciousCount} danger />

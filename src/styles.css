@@ -7435,6 +7435,17 @@ button.stk__c:hover { background: var(--bg-hover); }
 .rf-plan .rf-table__name { font-size: clamp(11px, 1.7cqw, 18px); }
 .rf-plan .rf-table__l1 { font-size: clamp(10px, 1.45cqw, 16px); font-weight: 700; }
 .rf-plan .rf-table__meta { font-size: clamp(9px, 1.15cqw, 13px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+/* Telefonda (ofitsiant cho'ntagida) reja o'rniga plitkalar: 390 px ga siqilgan
+   rejada stol 40 px bo'lib qolardi — yurib turib bosib bo'lmaydi (3-qoida).
+   Tartib — rejadagidek, yuqoridan pastga (`ek-floor.byPlace`). */
+@media (max-width: 640px) {
+  .rf-plan { aspect-ratio: auto; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 10px; }
+  .rf-plan .rf-table { position: static; width: auto !important; height: auto !important; min-height: 84px; padding: 10px; }
+  .rf-plan .rf-shape--round { border-radius: 18px !important; }
+  .rf-plan .rf-table__name { font-size: 16px; }
+  .rf-plan .rf-table__l1 { font-size: 14px; }
+  .rf-plan .rf-table__meta { font-size: 12px; }
+}
 .rf-shape--round { border-radius: 50% !important; }
 .rf-table--free { background: var(--bg-surface); border: 1.5px solid var(--border-strong); }
 .rf-table--busy { background: var(--bg-brand-soft); border: 2px solid var(--border-brand); }
@@ -7591,3 +7602,12 @@ button.stk__c:hover { background: var(--bg-hover); }
 .rt-kt__t { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; }
 .rt-kt__t small { color: var(--fg-secondary); font-size: 12px; }
 .rt-kt__btn { min-height: 44px; }
+
+/* ══ Choy puli va teng bo'lish (restoran, 2026-10-09) ══ */
+.tip-box .form-input { width: 120px; min-height: 44px; }
+.tip-box .is-on { background: var(--bg-brand); color: var(--fg-on-brand); border-color: var(--bg-brand); }
+.tip-box__hint { display: block; color: var(--fg-secondary); font-size: 12px; margin: 4px 0 8px; }
+.split-list { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 6px; }
+.split-list li { display: flex; align-items: center; gap: 8px; min-height: 44px; }
+.split-list li b { margin-left: auto; }
+.split-list li.is-done { color: var(--fg-success); }

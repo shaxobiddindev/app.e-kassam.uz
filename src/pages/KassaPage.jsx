@@ -42,6 +42,7 @@ import * as catalog from "../lib/ek-catalog";
 import { useOnline } from "../hooks/useOnline";
 import * as cartStore from "../lib/ek-cart-store";
 import { PAYMENT_TYPE, paymentLabel } from "../lib/ek-labels";
+import { splitEven, tipOf } from "../lib/ek-split";
 import { shortDate, time } from "../lib/ek-format";
 import * as due from "../lib/ek-due";
 import { sfx } from "../lib/ek-sound";
@@ -516,7 +517,9 @@ export default function KassaPage({ toast, refreshLowStock }) {
   /* Smena ochiqmi — `ShiftBar` xabar beradi. To'lov tugmasi yonidagi
      ogohlantirish shunga qarab chiziladi (`ShiftBar` izohiga qarang). */
   const [shiftOpen, setShiftOpen] = useState(true);
-  const onShiftState = useCallback(({ open }) => setShiftOpen(open), []);
+  /* ⚠ «Yopiq» faqat server ANIQ aytganda (2026-10-09): internet yo'q yoki
+     smena moduli o'chiq bo'lsa holat noma'lum — oflayn savdo to'xtamasin. */
+  const onShiftState = useCallback(({ open, known }) => setShiftOpen(known === false ? true : open), []);
 
   const layoutRef = useRef(null);
   /* Tovar to'ri — rasm nisbatini saqlash uchun o'lchanadi. */
@@ -574,7 +577,14 @@ export default function KassaPage({ toast, refreshLowStock }) {
      nusxa (u har sinxronda to'liq yangilanadi). ⚠ Modul yopiq do'konda
      so'rov UMUMAN yuborilmaydi: server 403 qaytaradi va har kassa
      ochilishi jurnalda «taqiqlangan so'rov» bo'lib qolardi. */
-  const { has: hasFeature, ready: featuresReady } = useShopFeatures();
+  const { has: hasFeature, ready: featuresReady, isRestaurant } = useShopFeatures();
+  /* ══ CHOY PULI VA TENG BO'LISH (restoran, 2026-10-09) ═════════════════
+     Choy puli chek jamisiga ham, soliqqa ham KIRMAYDI (V160) — alohida
+     yuboriladi va chekda jamidan keyin chiqadi. Teng bo'lish — BITTA
+     chek, to'lov N ulushda (`ek-split.js`). */
+  const [tip, setTip] = useState({ amount: "", type: "CASH" });
+  const [split, setSplit] = useState(null); // { n, done: [] }
+  const tipNum = isRestaurant ? Math.max(0, Math.round(Number(tip.amount) || 0)) : 0;
   const [modGroups, setModGroups] = useState([]);
   /* Toifa ID → oshxona bo'limi (R4); oflayn ochilganda — oxirgi saqlangani. */
   const [stations, setStations] = useState(() => {
@@ -2529,6 +2539,12 @@ export default function KassaPage({ toast, refreshLowStock }) {
 
   const fillRest = () => setPayValue(String(restFor(paid, total, payFocus)));
 
+  /** Teng bo'lishda bitta mehmonning ulushi — tanlangan usulga QO'SHILADI. */
+  const payShare = (idx, amount, method) => {
+    setPaid((prev) => ({ ...prev, [method]: String((Number(prev[method]) || 0) + amount) }));
+    setSplit((s) => (s ? { ...s, done: [...s.done, idx] } : s));
+  };
+
   /* ══════════════════════════════════════════════════════════════════
      MIJOZ EKRANI (V77)
 
@@ -2588,6 +2604,8 @@ export default function KassaPage({ toast, refreshLowStock }) {
        TAKLIF — kassir uni tasdiqlashi kerak. */
     setPaid({});
     setPayFocus("CASH");
+    setTip({ amount: "", type: "CASH" });
+    setSplit(null);
     /* ⚠ MUDDAT SOZLAMADAN TO'LDIRILADI (V87). Do'kon egasi
        «sozlamadagi muddat deb belgilay olsin» dedi: kun soni
        qo'yilgan bo'lsa maydon o'sha sana bilan ochiladi va odatiy
@@ -2746,9 +2764,17 @@ export default function KassaPage({ toast, refreshLowStock }) {
      o'tgan bo'lib yozilardi. */
   const duePast = creditPart > 0 && due.isPast(dueDate);
 
+  /* ⚠ SMENASIZ SOTUV YO'Q (2026-10-09). Ilgari kassa smena yopiq bo'lsa
+     ham sotardi: tushum hech qaysi smenaga tushmas, kassadagi naqd
+     sanog'i esa mos kelmasdi. Server buni RAD ETMAYDI — oflayn yozilgan
+     sotuv smena yopilgandan keyin yetib kelishi mumkin va u yo'qolmasligi
+     kerak; to'siq shu yerda, sotuv tug'iladigan joyda. Smena moduli
+     o'chiq do'konda — talab yo'q. */
+  const noShift = !shiftOpen && featuresReady && hasFeature("SHIFTS");
+
   const canSubmit = cart.length > 0 && !processing
                     && creditOk && !creditBlocked && overOk && !payUntouched
-                    && !duePast;
+                    && !duePast && !noShift;
 
   /* ── Sotuvni yakunlash ────────────────────────────────────── */
   /** Sotuvning O'ZI — tugmaning holati pastdagi `handleSubmit` da. */
@@ -2765,6 +2791,8 @@ export default function KassaPage({ toast, refreshLowStock }) {
       ...(active.tableOrderId ? { tableOrderId: active.tableOrderId } : {}),
       /* Qisman to'lov (D4): server faqat shu qatorlarni ayiradi, stol ochiq qoladi. */
       ...(active.tableOrderId && active.tablePart ? { tableLines: linesOf(active.items) } : {}),
+      /* Choy puli (V160) — jamidan TASHQARI; server do'konda e'tiborsiz qoldiradi. */
+      ...(tipNum > 0 ? { tipAmount: tipNum, tipType: tip.type } : {}),
       customerId: customer?.id || null,
       items: cart.map((i) => ({
         productId: i.id,
@@ -2860,7 +2888,8 @@ export default function KassaPage({ toast, refreshLowStock }) {
                        payType: saleType, customer,
                        payments: payload.payments, credit: creditInfo,
                        /* Qaytim jamg'armaga (V66) — chekda va yakun oynasida. */
-                       toSavings: Number(payload.changeToSavings) || 0 };
+                       toSavings: Number(payload.changeToSavings) || 0,
+                       tip: tipNum };
 
     setShowPayModal(false);
     setFinish({ phase: "printing", total: money(total) });
@@ -3001,6 +3030,8 @@ export default function KassaPage({ toast, refreshLowStock }) {
        `finally` har qanday holatda tugmani ochib qo'yadi. */
     setPaid({});
     setPayFocus("CASH");
+    setTip({ amount: "", type: "CASH" });
+    setSplit(null);
     /* ⚠ MUDDAT SOZLAMADAN TO'LDIRILADI (V87). Do'kon egasi
        «sozlamadagi muddat deb belgilay olsin» dedi: kun soni
        qo'yilgan bo'lsa maydon o'sha sana bilan ochiladi va odatiy
@@ -4287,6 +4318,63 @@ export default function KassaPage({ toast, refreshLowStock }) {
                 </div>
               </div>
 
+              {/* ══ Choy puli va teng bo'lish (restoran) ══ */}
+              {isRestaurant && (
+                <div className="tip-box">
+                  <div className="pay-modal-section-label">
+                    <i className="fa-solid fa-hand-holding-heart" aria-hidden="true" /> {t("tip.title")}
+                  </div>
+                  <div className="ek-quick-cash">
+                    <input className="form-input ek-num" inputMode="numeric" aria-label={t("tip.title")}
+                           placeholder="0" value={tip.amount}
+                           onChange={(e) => setTip((p) => ({ ...p, amount: e.target.value.replace(/\D/g, "").slice(0, 9) }))} />
+                    {[5, 10].map((pct) => (
+                      <button key={pct} type="button" onClick={() => setTip((p) => ({ ...p, amount: String(tipOf(total, pct)) }))}>
+                        {pct}%
+                      </button>
+                    ))}
+                    {["CASH", "CARD"].map((m) => (
+                      <button key={m} type="button" aria-pressed={tip.type === m}
+                              className={tip.type === m ? "is-on" : ""}
+                              onClick={() => setTip((p) => ({ ...p, type: m }))}>
+                        {paymentLabel(m)}
+                      </button>
+                    ))}
+                  </div>
+                  <small className="tip-box__hint">{t("tip.hint")}</small>
+
+                  <div className="pay-modal-section-label">
+                    <i className="fa-solid fa-people-group" aria-hidden="true" /> {t("split.title")}
+                  </div>
+                  <div className="ek-quick-cash">
+                    {[2, 3, 4, 5, 6].map((n) => (
+                      <button key={n} type="button" aria-pressed={split?.n === n}
+                              className={split?.n === n ? "is-on" : ""}
+                              onClick={() => { setPaid({}); setSplit(split?.n === n ? null : { n, done: [] }); }}>
+                        {t("split.people", { n })}
+                      </button>
+                    ))}
+                  </div>
+                  {split && (
+                    <ul className="split-list">
+                      {splitEven(total, split.n).map((amt, i) => (
+                        <li key={i} className={split.done.includes(i) ? "is-done" : ""}>
+                          <span>{t("split.person", { n: i + 1 })}</span>
+                          <b className="ek-num">{money(amt)}</b>
+                          {split.done.includes(i) ? (
+                            <span><i className="fa-solid fa-check" aria-hidden="true" /> {t("split.paid")}</span>
+                          ) : ["CASH", "CARD"].map((m) => (
+                            <button key={m} type="button" className="btn btn-outline btn-sm" onClick={() => payShare(i, amt, m)}>
+                              {paymentLabel(m)}
+                            </button>
+                          ))}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+
               {/* ══ Buyurtma turi (R5) — zalda xizmat haqi qo'shiladi ══ */}
               {orderType && (
                 <div className="order-type" role="radiogroup" aria-label={t("svc.orderType")}>
@@ -4968,6 +5056,11 @@ export default function KassaPage({ toast, refreshLowStock }) {
               </div>
             </div>
 
+            {noShift && (
+              <div className="ek-note ek-note--warning" role="alert">
+                <i className="fa-solid fa-lock" aria-hidden="true" /> <span>{t("kassa.noShift")}</span>
+              </div>
+            )}
             <div className="pay-modal-footer">
               <button className="btn btn-outline" onClick={closePayModal} disabled={processing}>
                 <i className="fa-solid fa-arrow-left" aria-hidden="true" /> Orqaga

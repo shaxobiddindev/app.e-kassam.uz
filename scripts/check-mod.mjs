@@ -60,7 +60,7 @@ const ok = (m) => console.log("  ✅ " + m);
 const no = (m, got) => { bad++; console.log(`  ❌ ${m}  →  ${got}`); };
 const pageErrors = [];
 
-async function openKassa({ restaurant, kitchen = false, tables = false, terminal = false, role = "OWNER", path = "/sale", ready }) {
+async function openKassa({ restaurant, kitchen = false, tables = false, terminal = false, role = "OWNER", path = "/sale", ready, shiftClosed = false }) {
   const calls = { modifiers: 0, sales: [], tables: [], sse: [], orders: {},
                   resv11: { at: new Date(Date.now() + 30 * 60000).toISOString(), name: "Aziz", guests: 6 } };
   const page = await browser.newPage();
@@ -161,6 +161,9 @@ async function openKassa({ restaurant, kitchen = false, tables = false, terminal
     } else if (/\/products\/search$/.test(u.pathname)) {
       const q = (u.searchParams.get("q") || "").trim().toLowerCase();
       data = q ? PRODUCTS.filter((p) => p.name.includes(q)) : PRODUCTS;
+    } else if (u.pathname.endsWith("/security/shift/current")) {
+      /* Smena: ochiq (obyekt) yoki server aniq «yopiq» deydi (null). */
+      data = shiftClosed ? null : { id: 1, openedAt: new Date().toISOString(), openedByName: "M" };
     } else if (/\/sales\b/.test(u.pathname) && r.method() === "POST") {
       try { calls.sales.push(JSON.parse(r.postData() || "{}")); } catch { calls.sales.push(null); }
       data = { id: 901, receiptUrl: null };
@@ -665,6 +668,105 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
     /Restoran/.test(nav) ? ok("restoranda «Restoran» guruhi bor") : no("restoran guruhi yo'q", nav.slice(0, 300));
     await page.close();
   }
+}
+
+{
+  console.log("\n§16 Ofitsiant telefonida (390 px): zal, stol, oshxona");
+  /* Telefon — ofitsiantning cho'ntagidagi qurilma: gorizontal aylantirish
+     bo'lsa tugma ekrandan chiqib ketadi, 44 px dan kichik tugmani
+     yurib turib bosib bo'lmaydi (CLAUDE.md #3). */
+  const probe = () => {
+    const W = document.documentElement.clientWidth;
+    const wide = [...document.querySelectorAll("body *")].filter((e) => {
+      const r = e.getBoundingClientRect();
+      return r.width > 0 && r.right > W + 1 && getComputedStyle(e).position !== "fixed";
+    }).slice(0, 4).map((e) => `${e.tagName.toLowerCase()}.${String(e.className).split(" ")[0]} ${Math.round(e.getBoundingClientRect().right)}`);
+    /* Ko'rinmaydigan (yopiq yon menyu, `inert`) va ekrandan tashqaridagi
+       tugmalar sanalmaydi — ularni hech kim bosmaydi. */
+    const seen = (e) => {
+      const r = e.getBoundingClientRect();
+      return r.width > 0 && r.height > 0 && r.right > 0 && r.left < W && r.bottom > 0
+        && !e.closest("[inert], [aria-hidden='true']")
+        && (e.checkVisibility ? e.checkVisibility({ visibilityProperty: true, opacityProperty: true }) : true);
+    };
+    const small = [...document.querySelectorAll("button, a[href], [role=button]")].filter((e) => {
+      const r = e.getBoundingClientRect();
+      return seen(e) && (r.height < 43.5 || r.width < 43.5);
+    }).slice(0, 4).map((e) => `${(e.getAttribute("aria-label") || e.textContent || e.className).trim().slice(0, 24)} ${Math.round(e.getBoundingClientRect().width)}×${Math.round(e.getBoundingClientRect().height)} @${Math.round(e.getBoundingClientRect().left)},${Math.round(e.getBoundingClientRect().top)} <${e.parentElement?.className?.split?.(" ")[0] || ""}>`);
+    return { scroll: document.documentElement.scrollWidth > W + 1, wide, small };
+  };
+  for (const [where, ready, name] of [["/restaurant", ".rf-plan .rf-table, .rf-list .rf-table", "phone-floor"],
+                                     ["/restaurant/table/11", ".rt-dish", "phone-table"],
+                                     ["/kitchen", ".kd-card", "phone-kitchen"]]) {
+    const { page } = await openKassa({ restaurant: true, kitchen: true, tables: true, role: "WAITER", path: where, ready: "body" });
+    await page.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
+    await page.reload({ waitUntil: "networkidle2" });
+    await page.waitForSelector(ready, { timeout: 8000 }).catch(() => {});
+    await waitFor(page, () => false, 300);
+    const r = await page.evaluate(probe);
+    !r.scroll && r.wide.length === 0 ? ok(`${where}: gorizontal aylantirish yo'q`) : no(`${where}: ekrandan chiqadi`, r.wide.join(" · "));
+    r.small.length === 0 ? ok(`${where}: tugmalar ≥ 44 px`) : no(`${where}: kichik tugma`, r.small.join(" · "));
+    if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/${name}.png`, fullPage: true });
+    await page.close();
+  }
+}
+
+{
+  console.log("\n§17 Choy puli va teng bo'lish (restoran): bitta chek, ulushlar, choy puli alohida");
+  const { page, calls } = await openKassa({ restaurant: true, kitchen: true });
+  await waitFor(page, () => false, 600);
+  await tile(page, "suv");
+  await new Promise((r) => setTimeout(r, 400));
+  await page.keyboard.press("F9");
+  (await waitFor(page, () => !!document.querySelector(".tip-box")))
+    ? ok("restoranda to'lov oynasida choy puli va teng bo'lish") : no("choy puli bloki yo'q", "—");
+  await page.evaluate(() => [...document.querySelectorAll(".tip-box .ek-quick-cash button")].find((b) => /^2 kishi$/.test(b.textContent.trim()))?.click());
+  await waitFor(page, () => document.querySelectorAll(".split-list li").length === 2);
+  const shares = await page.evaluate(() => [...document.querySelectorAll(".split-list li b")].map((b) => b.textContent.replace(/\D/g, "")).join(","));
+  shares === "1650,1650" ? ok("3 300 → 2 × 1 650") : no("ulushlar", shares);
+  await page.evaluate(() => document.querySelectorAll(".split-list li")[0].querySelectorAll("button")[0].click());
+  await new Promise((r) => setTimeout(r, 150));
+  await page.evaluate(() => document.querySelectorAll(".split-list li")[1].querySelectorAll("button")[1].click());
+  await new Promise((r) => setTimeout(r, 150));
+  const done = await page.evaluate(() => document.querySelectorAll(".split-list li.is-done").length);
+  if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/pay-tip-split.png` });
+  done === 2 ? ok("ikkala mehmon to'ladi (naqd + karta)") : no("ulush belgilanmadi", String(done));
+  const tipIn = await page.$(".tip-box input");
+  await tipIn.click();
+  await page.keyboard.type("5000", { delay: 15 });
+  await page.evaluate(() => [...document.querySelectorAll(".tip-box .ek-quick-cash button")].find((b) => /Karta/i.test(b.textContent) && !b.closest(".split-list"))?.click());
+  await new Promise((r) => setTimeout(r, 200));
+  await page.click(".pay-modal-submit");
+  await waitFor(page, () => false, 1500);
+  const b = calls.sales[0] || {};
+  const parts = (b.payments || []).map((x) => `${x.type}:${Number(x.amount)}`).sort().join(",");
+  parts === "CARD:1650,CASH:1650" ? ok("bitta chek, to'lov ikki ulushda: " + parts) : no("to'lov qismlari", JSON.stringify(b.payments));
+  Number(b.tipAmount) === 5000 && b.tipType === "CARD"
+    ? ok("choy puli 5 000 (karta) — alohida maydon, to'lovga qo'shilmadi") : no("choy puli", JSON.stringify({ t: b.tipAmount, y: b.tipType }));
+  await page.close();
+}
+{
+  const { page } = await openKassa({ restaurant: false });
+  await waitFor(page, () => false, 600);
+  await tile(page, "suv");
+  await page.keyboard.press("F9");
+  await waitFor(page, () => !!document.querySelector(".pay-modal-submit"));
+  !(await page.$(".tip-box")) ? ok("do'konda choy puli bloki yo'q") : no("do'konda choy puli bor", "—");
+  await page.close();
+}
+{
+  console.log("\n§18 Smenasiz sotuv yo'q (2026-10-09)");
+  const { page } = await openKassa({ restaurant: false, shiftClosed: true });
+  await waitFor(page, () => false, 800);
+  await tile(page, "suv");
+  await page.keyboard.press("F9");
+  await waitFor(page, () => !!document.querySelector(".pay-modal-submit"));
+  await page.keyboard.type("3000", { delay: 15 });
+  await new Promise((r) => setTimeout(r, 300));
+  const st = await page.evaluate(() => ({ dis: document.querySelector(".pay-modal-submit")?.disabled,
+                                          note: document.querySelector(".pay-modal [role=alert], [role=alert]")?.textContent || "" }));
+  st.dis && /Smena ochilmagan/.test(st.note) ? ok("smena yopiq — «Sotish» o'chiq va sababi yozilgan") : no("smenasiz sotish mumkin", JSON.stringify(st));
+  await page.close();
 }
 
 pageErrors.length === 0 ? ok("sahifada JS xatosi yo'q") : no("JS xatosi", pageErrors.join(" | "));

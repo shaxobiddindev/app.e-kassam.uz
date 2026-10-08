@@ -64,6 +64,12 @@ console.log("\n── Oshxona holatlari (D5) ──");
   ok(F.attention(halls, now).map((x) => x.kind).join() === "ready,late,bill", "diqqat: tayyor → kechikmoqda → hisob");
 }
 
+console.log("\n── Telefon tartibi ──");
+{
+  const out = F.byPlace([{ id: 3, x: 500, y: 300 }, { id: 2, x: 600, y: 20 }, { id: 1, x: 20, y: 40 }]);
+  ok(out.map((t) => t.id).join() === "1,2,3", "yuqoridan pastga, bir qatorda chapdan o'ngga");
+}
+
 console.log("\n── Vaqt ──");
 {
   const now = new Date(2026, 9, 8, 18, 0);

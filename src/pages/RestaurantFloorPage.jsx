@@ -9,7 +9,7 @@ import { subscribeTables, isLive } from "../lib/ek-live";
 import { isTerminal, lockNow } from "../lib/ek-terminal";
 import { roleSet } from "../lib/ek-roles";
 import { roleLabel } from "../lib/ek-labels";
-import { PLANE, autoPlace, sizeOf, statusOf, attention, hhmm, atToday } from "../lib/ek-floor";
+import { PLANE, autoPlace, byPlace, sizeOf, statusOf, attention, hhmm, atToday } from "../lib/ek-floor";
 import { Modal } from "../components";
 import { Field, FormGroup } from "../components/ui";
 import { SkeletonTiles, Spinner } from "../components/ek/Loading";
@@ -71,7 +71,7 @@ export default function RestaurantFloorPage({ toast }) {
   }, [load]);
 
   const hall = halls.find((h) => h.id === hallId) || null;
-  const placedTables = useMemo(() => autoPlace(asArray(hall?.tables)), [hall]);
+  const placedTables = useMemo(() => byPlace(autoPlace(asArray(hall?.tables))), [hall]);
   const all = useMemo(() => halls.flatMap((h) => asArray(h.tables)), [halls]);
   const alerts = useMemo(() => attention(halls, now), [halls, now]);
   const stats = useMemo(() => {
