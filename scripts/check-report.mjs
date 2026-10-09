@@ -220,6 +220,20 @@ let productCalls = [];
 
 let TARGET = null;
 let calls = [];
+/* Kunlik hisobot (2026-10-09): ikki tovar — biri sotildi va tugadi, biri keldi. */
+let dayCalls = [];
+const DAY = {
+  date: "2026-10-09", rows: [
+    { productId: 1, name: "Pista", barcode: "4780000000079", unit: "DONA", category: "Yong'oq", salePrice: 90000,
+      tracksStock: true, opening: 3, received: 0, transferIn: 0, transferOut: 0, sold: 3, returned: 0,
+      writtenOff: 0, other: 0, closing: 0, soldMoney: 270000, returnedMoney: 0, cost: 180000, profit: 90000, receipts: 2 },
+    { productId: 2, name: "Un", barcode: null, unit: "KG", category: null, salePrice: 9000,
+      tracksStock: true, opening: 10, received: 25, transferIn: 0, transferOut: 0, sold: 0, returned: 0,
+      writtenOff: 1, other: 0, closing: 34, soldMoney: 0, returnedMoney: 0, cost: 0, profit: 0, receipts: 0 },
+  ],
+  totals: { products: 2, soldProducts: 1, soldMoney: 270000, returnedMoney: 0, cost: 180000, profit: 90000, closingValue: 204000 },
+};
+
 async function openReports(payload = ANALYTICS, url = "/reports") {
   calls = [];
   const page = await browser.newPage();
@@ -232,10 +246,13 @@ async function openReports(payload = ANALYTICS, url = "/reports") {
     const u = new URL(r.url());
     if (u.pathname === "/api/reports/analytics") calls.push(u.search);
     if (u.pathname.startsWith("/api/reports/product/")) productCalls.push(u.pathname + u.search);
+    if (u.pathname === "/api/reports/day-products") dayCalls.push(u.search);
     const body = u.pathname === "/api/reports/analytics"
       ? { success: true, data: payload }
       : u.pathname.startsWith("/api/reports/product/")
         ? { success: true, data: productPayload }
+      : u.pathname === "/api/reports/day-products"
+        ? { success: true, data: { ...DAY, rows: u.searchParams.get("all") ? [...DAY.rows, { ...DAY.rows[1], productId: 3, name: "Tuz", received: 0, writtenOff: 0, opening: 5, closing: 5 }] : DAY.rows } }
       : /^\/api\/sales\/\d+$/.test(u.pathname)
         ? { success: true, data: SALE }
       : u.pathname === "/api/products" && u.searchParams.get("q")
@@ -258,6 +275,10 @@ async function openReports(payload = ANALYTICS, url = "/reports") {
     for (const k of Object.keys(localStorage)) if (k.startsWith("ek_flt_")) localStorage.removeItem(k);
   });
   await page.goto(`http://127.0.0.1:${PORT}${url}`, { waitUntil: "networkidle2", timeout: 30_000 });
+  if (url.startsWith("/reports/day")) {
+    await page.waitForSelector(".rpt-lead", { timeout: 15_000 });
+    return page;
+  }
   if (url.startsWith("/reports/product")) {
     await page.waitForSelector(".prep", { timeout: 15_000 });
     return page;
@@ -608,6 +629,36 @@ console.log("\n── K. Qidiruv ──");
   await wait(500);
   is(/\/reports\/product\/7$/.test(p8.url()), "tanlangach hisobot ochildi", p8.url());
   await p8.close();
+}
+
+/* ══ L. Kunlik hisobot (2026-10-09) ═════════════════════════════════════ */
+console.log("\n── L. Kunlik hisobot ──");
+{
+  dayCalls = []; calls = [];
+  const p9 = await openReports(ANALYTICS, "/reports/day");
+  await p9.waitForSelector(".table tbody tr", { timeout: 8000 }).catch(() => {});
+  const lead = await p9.$eval(".rpt-lead", (n) => n.textContent).catch(() => "");
+  is(/nima bo'ldi/.test(lead) && /xarid bo'ldi/.test(lead) && !/so'm so'm/.test(lead), "kun xulosasi oddiy gap bilan", lead.slice(0, 160));
+  is(dayCalls.length === 1 && /date=\d{4}-\d{2}-\d{2}/.test(dayCalls[0]) && calls.length === 1,
+     "bitta kun so'raldi (tovarlar + xulosa)", dayCalls.join(" ") + " | " + calls.join(" "));
+  const rowsTxt = await p9.$$eval(".table tbody tr", (n) => n.map((x) => x.textContent));
+  const pista = rowsTxt.find((x) => /Pista/.test(x)) || "";
+  is(/−3/.test(pista) && /270/.test(pista), "Pista: −3 sotildi, 270 000 so'm", pista);
+  const un = rowsTxt.find((x) => /^Un/.test(x.trim())) || "";
+  is(/\+25/.test(un) && /−1/.test(un) && /34/.test(un), "Un: +25 keldi, −1 buzildi, kun oxirida 34", un);
+  const body = await p9.evaluate(() => document.body.textContent);
+  is(/tugab qolgan/i.test(body) && /Pista/.test(body), "«Kun oxirida tugab qolgan tovarlar» — Pista");
+  is(/Kun boshida bor edi \+ keldi/.test(body), "jadval ustida hisob qoidasi oddiy so'z bilan");
+  await p9.evaluate(() => [...document.querySelectorAll(".rpt-tab")].find((b) => /Hamma tovarlar/.test(b.textContent))?.click());
+  await wait(800);
+  is(dayCalls.some((c) => /all=true/.test(c)), "«Hamma tovarlar» — harakatsizlari ham so'raldi", dayCalls.join(" "));
+  const n3 = await p9.$$eval(".table tbody tr", (n) => n.length);
+  is(n3 >= 3, "harakatsiz tovar ham jadvalda", String(n3));
+  await p9.evaluate(() => document.querySelector("[aria-label='Oldingi kun']")?.click());
+  await wait(800);
+  is(dayCalls.length >= 3, "oldingi kunga o'tildi", dayCalls.join(" "));
+  await shot(p9, "day-report");
+  await p9.close();
 }
 
 is(pageErrors.length === 0, "sahifada JS xatosi tushmadi", pageErrors.join(" | "));

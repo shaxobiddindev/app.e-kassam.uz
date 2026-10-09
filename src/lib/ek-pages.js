@@ -28,6 +28,7 @@ const LOADERS = {
   Categories:   () => import("../pages/admin/CategoriesPage"),
   Labels:       () => import("../pages/LabelsPage"),
   ProductReport: () => import("../pages/ProductReportPage"),
+  DayReport:    () => import("../pages/DayReportPage"),
   ShopUsers:    () => import("../pages/admin/ShopUsersPage"),
   Shops:        () => import("../pages/admin/ShopsPage"),
   Breezz:       () => import("../pages/admin/BreezzPage"),

@@ -491,6 +491,7 @@ export default function App() {
             <Route path="/sales" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"]}><P.Sales toast={toast} /></ProtectedRoute>} />
             <Route path="/reports" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><P.Reports toast={toast} /></ProtectedRoute>} />
             {/* MAHSULOT HISOBOTI (2026-10-05). `:id` siz — qidiruv. */}
+            <Route path="/reports/day" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><P.DayReport toast={toast} /></ProtectedRoute>} />
             <Route path="/reports/product" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><P.ProductReport toast={toast} /></ProtectedRoute>} />
             <Route path="/reports/product/:id" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><P.ProductReport toast={toast} /></ProtectedRoute>} />
             {/* ⚠ «Maxsus hisobot» olib tashlandi — u «Umumiy» dagi «O'z oralig'i»

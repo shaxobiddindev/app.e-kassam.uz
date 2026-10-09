@@ -91,6 +91,8 @@ export const NAV = [
     /* Mahsulot hisoboti (2026-10-05) — «Maxsus hisobot» o'rnida. U sahifa
        «Umumiy» dagi «O'z oralig'i» davrining to'liq takrori edi; endi
        `/custom-report` shu yerga yo'naltiriladi (App.jsx). */
+    /* Kunlik hisobot (2026-10-09) — bir kun, har tovarning butun harakati. */
+    { id: "day-report", path: "/reports/day", key: "nav.dayReport", icon: "fa-calendar-day", roles: ["ADMIN", "SHOP_ADMIN", "OWNER"], feature: "REPORTS" },
     { id: "product-report", path: "/reports/product", key: "nav.productReport", icon: "fa-magnifying-glass-chart", roles: ["ADMIN", "SHOP_ADMIN", "OWNER"], feature: "REPORTS" },
   ]},
 

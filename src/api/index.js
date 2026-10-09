@@ -363,6 +363,18 @@ export const reportApi = {
     return request(`/reports/product/${id}?${q}`);
   },
 
+  /**
+   * KUNLIK TOVAR HISOBOTI (2026-10-09) — har tovarning bir kundagi harakati
+   * (kun boshi, keldi, sotildi, qaytdi, chiqit, kun oxiri). Kun — sana
+   * («YYYY-MM-DD»), server uni Toshkent bo'yicha oladi.
+   */
+  dayProducts: (date, shopId, all) => {
+    const q = new URLSearchParams({ date });
+    if (shopId) q.set("shopId", shopId);
+    if (all) q.set("all", "true");
+    return request(`/reports/day-products?${q}`);
+  },
+
   /* ⚠ KASSA UCHUN: birga sotiladigan juftliklar (V79). Ochilishda BIR
      MARTA olinadi va keyin xotiradan qidiriladi — kassirning oldida
      navbat turadi va har skanerdan keyin serverga borish mumkin
