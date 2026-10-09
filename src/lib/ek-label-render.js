@@ -26,6 +26,7 @@
 import { barcodeMetrics, barcodeSvgMm, eanMinMm, SMALL_STICKER_MAX_H } from "./ek-label-barcode.js";
 import { groupDigits } from "./ek-format.js";
 import { productCode } from "./ek-code.js";
+import { storeCodeOf } from "./ek-store-code.js";
 
 /** ⚠ Uch xona — bayt darajasidagi taqqoslash uchun barqaror. */
 const r = (n) => (Math.round(n * 1000) / 1000).toString();
@@ -197,6 +198,19 @@ function lendBarcodeToNames(fields, template, product, ctx) {
  *
  * @returns {{widthMm, heightMm, items: Array, warnings: Array}}
  */
+/** Do'kon kodi barkodi ostidagi yozuv balandligi (printer raqamlari o'rnida, mm). */
+const CAPTION_MM = 3.2;
+
+/**
+ * Barkod do'kon kodidan yasalganmi (`storeCodeOf`) — bo'lsa «*123».
+ * Tovarning o'z barkodi (EAN-13 va h.k.) bo'lsa `null`: uning raqamlari
+ * qadoqdagi bilan bir xil bo'lishi kerak va ular tegilmaydi.
+ */
+export function storeCaption(product, value) {
+  const code = String(product?.searchCode ?? "").trim().replace(/^\*/, "");
+  return code && value != null && storeCodeOf(code) === String(value) ? `*${code}` : null;
+}
+
 export function layoutLabel(template, product, ctx = {}) {
   const spec = typeof template.spec === "string"
     ? JSON.parse(template.spec) : (template.spec || {});
@@ -244,6 +258,26 @@ export function layoutLabel(template, product, ctx = {}) {
          o'zgarmaydi. */
       const shift = f.align === "center" && m && m.widthMm < box.w
         ? (box.w - m.widthMm) / 2 : 0;
+      /* ⚠ DO'KON KODI BARKODI — OSTIDA FAQAT «*123» (2026-10-09). Egasi:
+         «*kodning oldi va orqasiga raqamlar qo'shilyapti — faqat *kodning
+         o'zi qolsin». Barkodsiz tovarga do'kon kodidan EAN-8 yasaladi
+         (`2` + 000123 + nazorat raqami) va printer ostiga uning TO'LIQ
+         raqamini yozardi. Chiziqlar o'zgarmaydi (skaner aynan shuni
+         o'qiydi); printerning raqamlari o'chiriladi va o'rniga oddiy matn
+         chiziladi — ko'rish oynasi, TSPL rasm va ZPL bitta joylashuvdan. */
+      const caption = m && cfg.showText !== false ? storeCaption(product, val) : null;
+      if (caption) {
+        const capH = Math.min(CAPTION_MM, box.h * 0.35);
+        const barsH = box.h - capH;
+        const sizePt = Math.max(5, Math.min(8, (capH / 0.3528) * 0.8));
+        const cap = { key: "barcodeCaption", x: box.x + shift, y: box.y + barsH, w: m.widthMm, h: capH };
+        items.push({ ...box, h: barsH, x: box.x + shift, kind: "barcode", value: val, field: { ...f, noText: true, capMm: capH },
+                     cfg, metrics: m, dpi: template.dpi, showText: false });
+        items.push({ ...cap, kind: "text", value: caption, text: caption,
+                     field: { ...f, ...cap, size: sizePt, weight: 700, align: "center", overflow: "shrink", prefix: "" },
+                     sizePt, weight: 700, align: "center", style: null });
+        continue;
+      }
       items.push({ ...box, x: box.x + shift, kind: "barcode", value: val, field: f,
                    cfg, metrics: m, dpi: template.dpi,
                    showText: cfg.showText !== false });
@@ -331,7 +365,8 @@ function drawBarcode(f, value, template, spec, warnings) {
     dpi: template.dpi, moduleDots: cfg.moduleDots ?? 2,
     quietLeftModules: cfg.quietLeftModules ?? 9,
     quietRightModules: cfg.quietRightModules ?? 7,
-    heightMm: f.h, showText: cfg.showText !== false, x: f.x, y: f.y,
+    /* `noText` — do'kon kodi: raqamlar o'rnida «*123» matni (joylashuvda). */
+    heightMm: f.h, showText: cfg.showText !== false && !f.noText, x: f.x, y: f.y,
     /* ⚠ TUR UZATILADI: minimal balandlik javon yorlig'i va ombor
        kartoni uchun bir xil emas — birinchisi qo'ldagi skaner bilan
        5–10 sm dan o'qiladi. */
@@ -359,7 +394,10 @@ function drawBarcode(f, value, template, spec, warnings) {
       text: `barkod balandligi ${Number(f.h).toFixed(1)} mm — `
           + `${m.minHeightMm} mm dan kam, skaner o'qimasligi mumkin` });
   }
-  return barcodeSvgMm(value, opts) || "";
+  /* Do'kon kodida chiziqlar «*123» matni uchun qisqaradi; balandlik tekshiruvi
+     esa yuqorida UMUMIY maydon bo'yicha — printer raqamlari bilan bir xil. */
+  const draw = f.noText ? { ...opts, heightMm: Math.max(f.h - (f.capMm || 0), 1) } : opts;
+  return barcodeSvgMm(value, draw) || "";
 }
 
 /* ── Matn va narx ────────────────────────────────────────────────────── */
