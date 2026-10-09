@@ -10,7 +10,7 @@
    "+5%" deb yozib butun katalogni o'zgartirib qo'yish juda oson.
    ══════════════════════════════════════════════════════════════════════════ */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "../lib/ek-i18n";
 import { productApi } from "../api";
 import { Empty, Field, FormGroup } from "../components/ui";
@@ -23,6 +23,8 @@ import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
 import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
 import { asArray } from "../lib/ek-array";
+import ExcelButton from "../components/ek/ExcelButton";
+import { collectPages } from "../lib/ek-table-xlsx";
 
 /* ⚠ SANA+VAQT — `lib/ek-format.js` dan (V70). Uchta sahifada
    uchta bir xil mahalliy nusxa bor edi va ular `uz-UZ` ni
@@ -41,6 +43,7 @@ export default function PricesPage({ toast }) {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ categoryId: "", mode: "percent", value: "", roundTo: "100" });
   const [preview, setPreview] = useState(null);
+  const previewRef = useRef(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -126,6 +129,22 @@ export default function PricesPage({ toast }) {
   const hFlt = useDataFilter(HCOLS, "prices");
   const shownHistory = hFlt.apply(history);
 
+  /* ⚠ EXCEL — HAMMA SAHIFA. Ekranda faqat birinchi sahifa (50 ta)
+     turadi; «marja nega tushdi?» savoliga to'liq tarix kerak. Filtr
+     esa xuddi ekrandagidek qo'llanadi. Faylda eski narx ham alohida
+     ustun: ekranda u «eski → yangi» bo'lib bitta katakda turadi. */
+  const XCOLS = useMemo(() => [
+    HCOLS[0], HCOLS[1],
+    { key: "oldPrice", label: `${t("price.salePrice")} (${t("price.oldPrice")})`, type: "number", get: (h) => h.oldSalePrice },
+    HCOLS[2],
+    { key: "oldCost",  label: `${t("dash.costPrice")} (${t("price.oldPrice")})`,  type: "number", get: (h) => h.oldCostPrice },
+    HCOLS[3], HCOLS[4], HCOLS[5],
+  ], [HCOLS]);
+  const exportHistory = async () => {
+    const all = await collectPages((page, size) => productApi.shopPriceHistory(page, size));
+    return all && hFlt.apply(all);
+  };
+
   return (
     <div>
       <h2 className="page-title" style={{ marginBottom: 18 }}>{t("price.title")}</h2>
@@ -190,6 +209,7 @@ export default function PricesPage({ toast }) {
             <span className="card-title">
               <i className="fa-solid fa-eye text-blue" /> {t("price.preview")} ({preview.count})
             </span>
+            <ExcelButton name="narx-oldindan" table={() => previewRef.current} toast={toast} />
           </div>
           {/* ⚠ O'TKAZIB YUBORILGAN TOVARLAR (V53). Yangi narx tan yoki
               optom narxdan past bo'lib qolsa, o'sha tovar O'ZGARMAYDI.
@@ -203,7 +223,7 @@ export default function PricesPage({ toast }) {
             </div>
           )}
           <div className="table-wrap" style={{ maxHeight: 320, overflowY: "auto" }}>
-            <table>
+            <table ref={previewRef}>
               <thead>
                 <tr>
                   <th>{t("products.col")}</th>
@@ -241,7 +261,11 @@ export default function PricesPage({ toast }) {
           <span className="card-title">
             <i className="fa-solid fa-clock-rotate-left text-blue" /> {t("price.history")}
           </span>
-          <DataFilter cols={HCOLS} flt={hFlt} />
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <DataFilter cols={HCOLS} flt={hFlt} />
+            <ExcelButton name="narx-tarixi" cols={XCOLS} fetchAll={exportHistory}
+                         disabled={!history.length} toast={toast} />
+          </div>
         </div>
         <div className="table-wrap">
           {busy ? <SkeletonTable rows={6} cols={["wide", "num", "num", "text"]} /> : (

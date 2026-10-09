@@ -22,6 +22,7 @@ import { useLayerCount } from "../../hooks/useLayerCount";
 import { useLabelOutput } from "../../hooks/useLabelOutput";
 import { lastTemplateId, rememberTemplate } from "../../lib/ek-sticker-auto";
 import { withPreviewBarcode } from "../../lib/ek-label-codes";
+import ExcelButton from "./ExcelButton";
 
 /* ══════════════════════════════════════════════════════════════════════════
    CHOP ETISH NAVBATI (F5)
@@ -518,6 +519,15 @@ export default function LabelQueue({
         {/* ⚠ SABAB TUGMA YONIDA: uni ko'rish uchun sichqonchani
             ushlab turish kerak bo'lmasin. */}
         {blocked && <span className="form-hint form-hint--warn">{blocked}</span>}
+        {/* Miqdor katagi — `<input>`, uning qiymati DOM matnida yo'q:
+            shuning uchun jadvaldan emas, qatorlarning o'zidan. */}
+        <ExcelButton name="yorliq-navbati" rows={lines} toast={toast} cols={[
+          { label: t("products.name"),      type: "text",   get: (l) => l.productName },
+          { label: t("lbl.code"),           type: "text",   get: (l) => l.code },
+          { label: t("products.salePrice"), type: "number", get: (l) => l.salePrice },
+          { label: t("lbl.quantity"),       type: "number", get: (l) => l.quantity },
+          { label: t("lbl.printedAt"),      type: "date",   get: (l) => l.printedAt },
+        ]} />
       </div>
 
       {/* ⚠ KOD BU SOZLAMANI KO'RA OLMAYDI. Brauzer chop etish

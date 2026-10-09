@@ -661,6 +661,57 @@ console.log("\n── L. Kunlik hisobot ──");
   await p9.close();
 }
 
+/* ══ M. Har jadvalda «Excel» (2026-10-09) ═════════════════════════════════
+   Egasi: «har qanday jadval ko'rinishidagi ma'lumotni Excel'ga yuklab olish».
+   Umumiy `ExcelButton` — bu yerda ikki jadvalda haqiqiy fayl tekshiriladi:
+   ZIP imzosi, sana bilan nom, ichida tovar nomi va RAQAM katak (`t="n"`
+   yoki `<v>` — matn emas). */
+console.log("\n── M. Jadval Excel tugmasi ──");
+const grab = async (page, clickFn) => {
+  await page.evaluate(() => {
+    window.__xlsxBlob = null; window.__xlsxName = null;
+    const real = URL.createObjectURL.bind(URL);
+    URL.createObjectURL = (blob) => { window.__xlsxBlob = blob; return real(blob); };
+    const click = HTMLAnchorElement.prototype.click;
+    HTMLAnchorElement.prototype.click = function () {
+      if (this.download) { window.__xlsxName = this.download; return; }
+      return click.call(this);
+    };
+  });
+  await page.evaluate(clickFn);
+  await wait(900);
+  return page.evaluate(async () => {
+    if (!window.__xlsxBlob) return null;
+    const buf = new Uint8Array(await window.__xlsxBlob.arrayBuffer());
+    let text = "";
+    for (let i = 0; i < buf.length; i++) text += String.fromCharCode(buf[i]);
+    return { name: window.__xlsxName, head: text.slice(0, 4), text };
+  });
+};
+{
+  const p10 = await openReports(ANALYTICS, "/reports");
+  await openTab(p10, 3);
+  await p10.waitForSelector("#rpt-all-products", { timeout: 8000 }).catch(() => {});
+  const x = await grab(p10, () => [...document.querySelectorAll("#rpt-all-products button")]
+    .find((b) => /excel/i.test(b.textContent))?.click());
+  is(!!x, "«Barcha tovarlar» jadvalida Excel fayli yaratildi");
+  if (x) {
+    is(x.head === "PK\u0003\u0004", "haqiqiy xlsx (ZIP)", JSON.stringify(x.head));
+    is(/^tovarlar-hisoboti-\d{4}-\d{2}-\d{2}\.xlsx$/.test(x.name || ""), "fayl nomi sana bilan", x.name);
+    is(/Tovar 1/.test(x.text), "ichida tovar nomi");
+    is(/<c r="C2"[^>]*><v>/.test(x.text) || /<c r="C2" t="n"/.test(x.text), "⚠ «Sotildi» RAQAM bo'lib yozilgan (matn emas)");
+  }
+  await p10.close();
+}
+{
+  const p11 = await openReports(ANALYTICS, "/reports/day");
+  await p11.waitForSelector(".table tbody tr", { timeout: 8000 }).catch(() => {});
+  const panels = await p11.$$eval(".card", (n) => n.filter((c) => /Kim qancha sotdi/.test(c.textContent)
+    && [...c.querySelectorAll("button")].some((b) => /excel/i.test(b.textContent))).length);
+  is(panels >= 1, "kunlik hisobotda «Kim qancha sotdi» jadvalining o'z Excel tugmasi bor", String(panels));
+  await p11.close();
+}
+
 is(pageErrors.length === 0, "sahifada JS xatosi tushmadi", pageErrors.join(" | "));
 
 await browser.close();

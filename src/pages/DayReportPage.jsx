@@ -14,6 +14,7 @@ import { BarChart } from "../components/ek/Charts";
 import { downloadXlsx } from "../lib/ek-xlsx";
 import { C, PALETTE, num, Kpi, Panel, Lead, ShareList } from "../components/report/RptUi";
 import { asArray } from "../lib/ek-array";
+import ExcelButton from "../components/ek/ExcelButton";
 import { dayBounds, shiftDay, todayIso, rowFilter } from "../lib/ek-day-report";
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -91,6 +92,17 @@ export default function DayReportPage({ toast }) {
   const ran = rows.filter((r) => r.tracksStock && r.closing != null && num(r.closing) <= 0 && num(r.sold) > 0);
   const hours = asArray(an?.hourly).filter((h) => h.hour >= 6 || num(h.netSales) > 0);
 
+  /* ⚠ Ko'chirish ustunlari (filialdan keldi/ketdi) faylda HAM bo'lishi
+     shart: ularsiz «boshida + keldi − sotildi … = oxirida» tengligi
+     Excel'da buziladi va egasi farqni «yo'qolgan tovar» deb o'qiydi.
+     Ekrandagidek — faqat shu kuni ko'chirish bo'lganda. */
+  const xlsxCols = hasTransfers ? [
+    ...COLS.slice(0, 4),
+    { key: "tin",  label: t("day.col.tin"),  type: "number", get: (r) => r.transferIn },
+    { key: "tout", label: t("day.col.tout"), type: "number", get: (r) => r.transferOut },
+    ...COLS.slice(4),
+  ] : COLS;
+
   const exportXlsx = () => {
     const sum = [
       [{ v: shopName || t("day.title"), bold: true }], [t("day.date"), date], [],
@@ -104,8 +116,8 @@ export default function DayReportPage({ toast }) {
     downloadXlsx(`kunlik-hisobot-${date}`, [
       { name: t("day.sheet.summary"), rows: sum },
       { name: t("day.sheet.products"), rows: [
-        COLS.map((c) => ({ v: c.label, bold: true })),
-        ...shown.map((r) => COLS.map((c) => (c.type === "number" ? (c.get(r) == null ? "" : num(c.get(r))) : (c.get(r) || "")))),
+        xlsxCols.map((c) => ({ v: c.label, bold: true })),
+        ...shown.map((r) => xlsxCols.map((c) => (c.type === "number" ? (c.get(r) == null ? "" : num(c.get(r))) : (c.get(r) || "")))),
       ] },
       { name: t("day.sheet.hours"), rows: [[t("day.hour"), t("day.k.sales"), t("day.k.receipts")],
         ...hours.map((h) => [`${h.hour}:00`, num(h.netSales), num(h.receipts)])] },
@@ -215,7 +227,14 @@ export default function DayReportPage({ toast }) {
           </div>
 
           <div className="rpt-cols">
-            <Panel title={t("day.q.who")} icon="fa-user-tie">
+            <Panel title={t("day.q.who")} icon="fa-user-tie"
+                   right={<ExcelButton name={`kassirlar-${date}`} rows={asArray(an.cashiers)} toast={toast} cols={[
+                     { label: t("day.who"),        type: "text",   get: (c) => c.name },
+                     { label: t("day.k.receipts"), type: "number", get: (c) => num(c.receipts) },
+                     { label: t("day.k.sales"),    type: "number", get: (c) => num(c.netSales) },
+                     { label: t("day.k.returns"),  type: "number", get: (c) => num(c.returns) },
+                     { label: t("day.k.discount"), type: "number", get: (c) => num(c.discount) },
+                   ]} />}>
               <div className="table-wrap">
                 <table className="table">
                   <thead><tr>

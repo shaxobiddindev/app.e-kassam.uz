@@ -20,6 +20,7 @@ import { useLoading } from "../lib/use-loading";
 import { money } from "../utils";
 import { NumField } from "../components/ek/EkFields";
 import { asArray } from "../lib/ek-array";
+import ExcelButton from "../components/ek/ExcelButton";
 
 const EMPTY_FORM = { name: "", minSpent: "", discountPercent: "", cashbackPercent: "" };
 
@@ -213,9 +214,19 @@ export default function LoyaltyPage({ toast }) {
     <div>
       <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
         <h2 className="page-title">{t("loyalty.title")}</h2>
-        <button className="btn btn-primary btn-sm" onClick={() => setForm({ ...EMPTY_FORM })}>
-          <i className="fa-solid fa-plus" /> {t("loyalty.add")}
-        </button>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <ExcelButton name="darajalar" rows={tiers} toast={toast} cols={[
+            { label: t("loyalty.name"),     type: "text",   get: (x) => x.name },
+            { label: t("loyalty.minSpent"), type: "number", get: (x) => x.minSpent },
+            { label: t("loyalty.percent"),  type: "number", get: (x) => x.discountPercent },
+            { label: t("loyalty.cashback"), type: "number", get: (x) => x.cashbackPercent ?? 0 },
+            { label: t("common.status"),    type: "text",
+              get: (x) => (x.active ? t("common.active") : t("loyalty.inactive")) },
+          ]} />
+          <button className="btn btn-primary btn-sm" onClick={() => setForm({ ...EMPTY_FORM })}>
+            <i className="fa-solid fa-plus" /> {t("loyalty.add")}
+          </button>
+        </div>
       </div>
       <p className="text-muted" style={{ fontSize: 13, marginTop: 0 }}>{t("loyalty.hint")}</p>
 

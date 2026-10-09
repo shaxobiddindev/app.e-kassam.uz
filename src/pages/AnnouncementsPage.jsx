@@ -24,6 +24,7 @@ import { SkeletonTable } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
 import { dateTime, date as fmtDate } from "../lib/ek-format";
 import { asArray } from "../lib/ek-array";
+import ExcelButton from "../components/ek/ExcelButton";
 
 const EMPTY_FORM = { title: "", body: "", startsAt: "", endsAt: "", active: true };
 
@@ -133,9 +134,20 @@ export default function AnnouncementsPage({ toast }) {
             {t("ann.hint")}
           </p>
         </div>
-        <button className="btn btn-primary" onClick={() => setForm({ ...EMPTY_FORM })}>
-          <i className="fa-solid fa-plus" aria-hidden="true" /> {t("ann.add")}
-        </button>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <ExcelButton name="elonlar" rows={items} toast={toast} cols={[
+            { label: t("ann.field.title"),  type: "text", get: (a) => a.title },
+            { label: t("ann.field.body"),   type: "text", get: (a) => a.body },
+            { label: t("ann.field.starts"), type: "date", get: (a) => a.startsAt },
+            { label: t("ann.field.ends"),   type: "date", get: (a) => a.endsAt },
+            { label: t("common.status"),    type: "text",
+              get: (a) => (a.visibleNow ? t("ann.status.visible") : t("ann.status.hidden")) },
+            { label: t("ann.pushSent"),     type: "date", get: (a) => a.pushSentAt },
+          ]} />
+          <button className="btn btn-primary" onClick={() => setForm({ ...EMPTY_FORM })}>
+            <i className="fa-solid fa-plus" aria-hidden="true" /> {t("ann.add")}
+          </button>
+        </div>
       </div>
 
       {busy && <SkeletonTable rows={3} />}

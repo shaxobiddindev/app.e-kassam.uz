@@ -32,6 +32,8 @@ import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
 import { PhoneField } from "../components/ek/EkFields";
 import { isPhone } from "../lib/ek-input";
+import ExcelButton from "../components/ek/ExcelButton";
+import { collectPages } from "../lib/ek-table-xlsx";
 
 /* Yangi mijozda telefon BO'SH boshlanadi. Ilgari bu yerda `"998"` turardi
    va maydon «(99) 8» bilan to'ldirilgan holda ochilardi: odam uni
@@ -532,6 +534,28 @@ export default function CustomersPage({ toast }) {
      reyting qo'yib bergan. */
   const filtered = view === "debtors" ? colFlt.apply(customers) : customers;
 
+  /* ⚠ EXCEL: hamma sahifalar yig'iladi, ekrandagi 50 tasi emas — va
+     AYNAN ekrandagi so'rov bilan (filtr, qidiruv, jamg'arma tartibi).
+     Qarzdorlar ro'yxati to'liq keladi, u brauzerda kesilgan holda ketadi. */
+  const exportAll = () => collectPages((page, size) => customerApi.getPage(page, size, {
+    shopId: branchId, flt: fltJson, q: slowSearch, savings: view === "savings",
+  }));
+
+  /* Qarz jurnali: ekrandagi katakda summa, qoldiq va belgi bitta joyda —
+     Excel'da ular alohida ustun bo'lishi kerak (qo'shib bo'lsin). */
+  const LEDGER_COLS = [
+    { key: "type",  label: t("common.type"),    type: "text",   get: (l) => t(`credit.type.${l.type}`) },
+    { key: "date",  label: t("common.date"),    type: "date",   get: (l) => l.createdAt },
+    { key: "ref",   label: t("common.comment"), type: "text",   get: (l) => (l.saleId ? `#${l.saleId}` : l.reason) },
+    { key: "sum",   label: t("common.sum"),     type: "number", get: (l) => ledgerSigned(l) },
+    { key: "left",  label: t("credit.left"),    type: "number", get: (l) => l.remaining },
+    { key: "state", label: t("common.status"),  type: "text",
+      get: (l) => [l.reversed ? t("credit.reversedBadge") : "",
+                   l.confirmState && l.confirmState !== "NONE"
+                     ? t(`debt.state.${l.confirmState}`) + (l.confirmNote ? ` — «${l.confirmNote}»` : "")
+                     : ""].filter(Boolean).join("; ") },
+  ];
+
   const [reminding, setReminding] = useState(false);
   /* DAFTARDAN KO'CHIRISH (V48 → 2026-10-04 jadval). Serverda ham FAQAT
      rahbarga ochiq: pul harakatisiz qarz tug'dirish `adjust` bilan bir
@@ -610,6 +634,10 @@ export default function CustomersPage({ toast }) {
             />
             <DataFilter cols={COLS} flt={colFlt} />
             <div className="cust-actions">
+              {view === "debtors"
+                ? <ExcelButton name="qarzdorlar" cols={COLS} rows={filtered} toast={toast} />
+                : <ExcelButton name={view === "savings" ? "jamgarma" : "mijozlar"} cols={COLS}
+                               fetchAll={exportAll} disabled={!filtered.length} toast={toast} />}
               {/* Eslatma tugmasi FAQAT muddati o'tgan qarz bo'lganda (V44).
                   Yuboradigan narsa yo'q joyda turgan tugma bosiladi-yu,
                   «0 ta yuborildi» deydi — bu foydali emas, chalg'ituvchi.
@@ -993,6 +1021,8 @@ export default function CustomersPage({ toast }) {
               <button className="btn btn-outline btn-sm" onClick={() => setDebt(null)}>
                 {t("common.close")}
               </button>
+              <ExcelButton name={`qarz-${debt.customer.id}`} cols={LEDGER_COLS}
+                           rows={debt.ledger || []} toast={toast} />
               {/* ⚠ HISOBOT QARZI YO'QLARDA HAM OCHILADI — «To'lash» dan
                   farqli. Mijoz «men hammasini to'laganman» deb kelsa,
                   unga aynan TO'LANGAN qarzning tarixini ko'rsatish

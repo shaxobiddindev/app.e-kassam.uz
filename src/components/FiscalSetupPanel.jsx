@@ -3,6 +3,7 @@ import { t } from "../lib/ek-i18n";
 import { shopApi, cashRegisterApi } from "../api";
 import { getDeviceId } from "../config";
 import { Spinner } from "./ek/Loading";
+import ExcelButton from "./ek/ExcelButton";
 
 /* ══════════════════════════════════════════════════════════════════════════
    FISKAL REKVIZITLAR VA KASSALAR (V81) — do'kon egasi uchun
@@ -264,12 +265,23 @@ export default function FiscalSetupPanel({ profile, toast, onSaved }) {
         <span className="card-title">
           <i className="fa-solid fa-cash-register" aria-hidden="true" /> {t("fiscalSetup.registers")}
         </span>
-        {!draft && (
-          <button className="btn btn-outline btn-sm"
-                  onClick={() => setDraft({ ...EMPTY_REGISTER, terminalId: thisDevice })}>
-            <i className="fa-solid fa-plus" /> {t("common.add")}
-          </button>
-        )}
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <ExcelButton name="kassalar" rows={registers} toast={toast} cols={[
+            { label: t("fiscalSetup.regName"),  type: "text", get: (r) => r.name },
+            { label: t("fiscalSetup.serial"),   type: "text", get: (r) => r.virtualCashRegisterSerial },
+            { label: t("fiscalSetup.moduleNo"), type: "text", get: (r) => r.fiscalModuleNumber },
+            { label: t("fiscalSetup.device"),   type: "text", get: (r) => r.terminalId },
+            { label: t("common.status"),        type: "text",
+              get: (r) => (r.status === "ACTIVE" ? t("fiscalSetup.active") : t("fiscalSetup.inactive"))
+                + (r.fiscalReady ? "" : ` (${t("fiscalSetup.notReady")})`) },
+          ]} />
+          {!draft && (
+            <button className="btn btn-outline btn-sm"
+                    onClick={() => setDraft({ ...EMPTY_REGISTER, terminalId: thisDevice })}>
+              <i className="fa-solid fa-plus" /> {t("common.add")}
+            </button>
+          )}
+        </div>
       </div>
       <p className="set-card__hint">{t("fiscalSetup.registersHint")}</p>
 

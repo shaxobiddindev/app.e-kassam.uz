@@ -15,9 +15,10 @@ import { periodRange, isoInstant, isoDay, lengthDays, growth } from "../lib/ek-p
 import { forecast, expectedTotal, targetProgress, MIN_POINTS } from "../lib/ek-forecast";
 import { downloadXlsx } from "../lib/ek-xlsx";
 import {
-  C, PALETTE, num, Hint, Kpi, Panel, Lead, ShareList, TopList, downloadCsv, PeriodBar,
+  C, PALETTE, num, Hint, Kpi, Panel, Lead, ShareList, TopList, PeriodBar,
 } from "../components/report/RptUi";
 import ProductFinder from "../components/report/ProductFinder";
+import ExcelButton from "../components/ek/ExcelButton";
 
 /* ══════════════════════════════════════════════════════════════════════════
    HISOBOTLAR — biznes tahlili (V69)
@@ -385,10 +386,10 @@ export default function ReportsPage({ toast }) {
                                      target={target} range={range} period={period}
                                      openProduct={openProduct} setTab={setTab} />}
             {tab === "sales"    && <Sales    d={data} k={k} p={p} points={points}
-                                     bucket={bucket} setBucket={setBucket} />}
-            {tab === "profit"   && <Profit   d={data} k={k} p={p} />}
-            {tab === "products" && <Products d={data} openProduct={openProduct} branchId={branchId} />}
-            {tab === "staff"    && <Staff    d={data} />}
+                                     bucket={bucket} setBucket={setBucket} toast={toast} />}
+            {tab === "profit"   && <Profit   d={data} k={k} p={p} toast={toast} />}
+            {tab === "products" && <Products d={data} openProduct={openProduct} branchId={branchId} toast={toast} />}
+            {tab === "staff"    && <Staff    d={data} toast={toast} />}
             {tab === "people"   && <People   d={data} k={k} p={p} />}
           </>
         )}
@@ -649,7 +650,7 @@ function Insights({ d, k, p }) {
    Ilgari uch bo'lim edi: «Savdo», «Pul» (to'lov turlari) va «Vaqt»
    (soatlar). Ularning hammasi bitta savolning qismlari — qancha, qanday
    to'lab, qachon — va endi bir sahifada, shu tartibda. */
-function Sales({ d, k, p, points, bucket, setBucket }) {
+function Sales({ d, k, p, points, bucket, setBucket, toast }) {
   return (
     <>
       <Lead q={t("rpt2.q.sales")} a={t("rpt2.a.sales")} />
@@ -703,7 +704,15 @@ function Sales({ d, k, p, points, bucket, setBucket }) {
       <TimeBlock d={d} />
 
       {(d.branches || []).length > 0 && (
-        <Panel title={t("rpt2.branches")} icon="fa-store" wide>
+        <Panel title={t("rpt2.branches")} icon="fa-store" wide
+               right={<ExcelButton name="filiallar-hisoboti" toast={toast} rows={d.branches} cols={[
+                 { label: t("rpt2.branch"),      type: "text",   get: (b) => b.name },
+                 { label: t("rpt2.receipts"),    type: "number", get: (b) => b.receipts },
+                 { label: t("rpt2.netSales"),    type: "number", get: (b) => Math.round(num(b.netSales)) },
+                 { label: t("rpt2.grossProfit"), type: "number", get: (b) => Math.round(num(b.profit)) },
+                 { label: t("rpt2.margin"),      type: "number", get: (b) => b.margin },
+                 { label: t("rpt2.customers"),   type: "number", get: (b) => b.customers },
+               ]} />}>
           <div className="table-wrap">
             <table className="table">
               <thead><tr>
@@ -743,7 +752,7 @@ function Sales({ d, k, p, points, bucket, setBucket }) {
  * qanday chiqqani ko'rinib turadi va ayiriladigan qatorlar chekkaga
  * suriladi.
  */
-function Profit({ d, k, p }) {
+function Profit({ d, k, p, toast }) {
   const rows = [
     { label: t("rpt2.grossSales"),  value: k.grossSales,  strong: true },
     { label: t("rpt2.discount"),    value: -num(k.discount), minus: true },
@@ -798,12 +807,10 @@ function Profit({ d, k, p }) {
       </div>
 
       <Panel title={t("rpt2.pnl")} icon="fa-scale-balanced" wide
-             right={<button className="btn btn-outline btn-sm"
-                            onClick={() => downloadCsv("pnl",
-                              [t("rpt2.metric"), t("common.sum")],
-                              rows.map((r) => [r.label, Math.round(num(r.value))]))}>
-                      <i className="fa-solid fa-file-csv" aria-hidden="true" /> CSV
-                    </button>}>
+             right={<ExcelButton name="foyda-zarar" toast={toast} rows={rows} cols={[
+                      { label: t("rpt2.metric"), type: "text",   get: (r) => r.label },
+                      { label: t("common.sum"),  type: "number", get: (r) => Math.round(num(r.value)) },
+                    ]} />}>
         <div className="card-body">
           <table className="pnl">
             <tbody>
@@ -857,7 +864,7 @@ function Profit({ d, k, p }) {
 
 /* ══ 4. TOVARLAR — «Nima sotildi, omborda nima bor?» ══════════════════════ */
 
-function Products({ d, openProduct, branchId }) {
+function Products({ d, openProduct, branchId, toast }) {
   /* ⚠ Ustun filtri SHU YERDA ham: «marjasi 10% dan past tovarlar» yoki
      «eng ko'p qaytarilgani» — bularning har biri boshqa savol va
      ularni qattiq tugmalar bilan qoplab bo'lmaydi. */
@@ -892,12 +899,7 @@ function Products({ d, openProduct, branchId }) {
       <Panel title={t("rpt2.allProducts")} icon="fa-boxes-stacked" wide id="rpt-all-products"
              right={<div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                       <DataFilter cols={COLS} flt={flt} />
-                      <button className="btn btn-outline btn-sm"
-                              onClick={() => downloadCsv("tovarlar",
-                                COLS.map((c) => c.label),
-                                rows.map((r) => COLS.map((c) => c.get(r))))}>
-                        <i className="fa-solid fa-file-csv" aria-hidden="true" /> CSV
-                      </button>
+                      <ExcelButton name="tovarlar-hisoboti" toast={toast} cols={COLS} rows={rows} />
                     </div>}>
         <div className="table-wrap">
           <table className="table">
@@ -966,7 +968,15 @@ function Products({ d, openProduct, branchId }) {
           ikkinchisi qimmatli javob. */}
       {(d.basket || []).length > 0 && (
         <Panel title={t("rpt2.basket")} icon="fa-cart-plus" wide
-               right={<span className="text-muted" style={{ fontSize: 12 }}>{t("rpt2.basketHint")}</span>}>
+               right={<div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                        <span className="text-muted" style={{ fontSize: 12 }}>{t("rpt2.basketHint")}</span>
+                        <ExcelButton name="savat-juftliklari" toast={toast} rows={d.basket.slice(0, 20)} cols={[
+                          { label: t("rpt2.basketA"),    type: "text",   get: (b) => b.nameA },
+                          { label: t("rpt2.basketB"),    type: "text",   get: (b) => b.nameB },
+                          { label: t("rpt2.together"),   type: "number", get: (b) => b.together },
+                          { label: t("rpt2.confidence"), type: "number", get: (b) => b.confidence },
+                        ]} />
+                      </div>}>
           <div className="table-wrap">
             <table className="table">
               <thead><tr>
@@ -994,14 +1004,14 @@ function Products({ d, openProduct, branchId }) {
 
       {/* ── Ombor — ilgari alohida bo'lim edi ──────────────────────────── */}
       <h3 className="rpt-sub">{t("rpt2.q.stock")}</h3>
-      <StockBlock d={d} openProduct={openProduct} />
+      <StockBlock d={d} openProduct={openProduct} toast={toast} />
     </>
   );
 }
 
 /* ══ OMBOR — «Tovarlar» bo'limining pastki qismi ══════════════════════════ */
 
-function StockBlock({ d, openProduct }) {
+function StockBlock({ d, openProduct, toast }) {
   const s = d.stock || {};
   return (
     <>
@@ -1019,7 +1029,15 @@ function StockBlock({ d, openProduct }) {
       </div>
 
       <Panel title={t("rpt2.slowMoving")} icon="fa-snowflake" wide
-             right={<span className="text-muted" style={{ fontSize: 12 }}>{t("rpt2.slowHint")}</span>}>
+             right={<div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                      <span className="text-muted" style={{ fontSize: 12 }}>{t("rpt2.slowHint")}</span>
+                      <ExcelButton name="sekin-sotilayotgan" toast={toast} rows={s.slowMoving || []} cols={[
+                        { label: t("products.col"),    type: "text",   get: (x) => x.name },
+                        { label: t("rpt2.stockQty"),   type: "number", get: (x) => x.stockQty },
+                        { label: t("rpt2.stockValue"), type: "number", get: (x) => Math.round(num(x.stockValue)) },
+                        { label: t("rpt2.sold"),       type: "number", get: (x) => x.soldQty },
+                      ]} />
+                    </div>}>
         <div className="table-wrap">
           <table className="table">
             <thead><tr>
@@ -1061,22 +1079,22 @@ function StockBlock({ d, openProduct }) {
 
 /* ══ 5. KASSIRLAR — «Kim qanday ishlayapti?» ══════════════════════════════ */
 
-function Staff({ d }) {
+function Staff({ d, toast }) {
   const rows = d.cashiers || [];
   return (
     <>
       <Lead q={t("rpt2.q.staff")} a={t("rpt2.a.staff")} />
       <Panel title={t("rpt2.byCashier")} icon="fa-user-tie" wide
-             right={<button className="btn btn-outline btn-sm"
-                            onClick={() => downloadCsv("kassirlar",
-                              [t("staff.name"), t("rpt2.receipts"), t("rpt2.netSales"),
-                               t("rpt2.discount"), t("rpt2.returns"), t("rpt2.cancelled"),
-                               t("rpt2.avgReceipt"), t("rpt2.nonCash")],
-                              rows.map((c) => [c.name, c.receipts, Math.round(num(c.netSales)),
-                                Math.round(num(c.discount)), Math.round(num(c.returns)),
-                                c.cancelled, Math.round(num(c.avgReceipt)), num(c.nonCashShare)]))}>
-                      <i className="fa-solid fa-file-csv" aria-hidden="true" /> CSV
-                    </button>}>
+             right={<ExcelButton name="kassirlar" toast={toast} rows={rows} cols={[
+                      { label: t("staff.name"),      type: "text",   get: (c) => c.name },
+                      { label: t("rpt2.receipts"),   type: "number", get: (c) => c.receipts },
+                      { label: t("rpt2.netSales"),   type: "number", get: (c) => Math.round(num(c.netSales)) },
+                      { label: t("rpt2.avgReceipt"), type: "number", get: (c) => Math.round(num(c.avgReceipt)) },
+                      { label: t("rpt2.discount"),   type: "number", get: (c) => Math.round(num(c.discount)) },
+                      { label: t("rpt2.returns"),    type: "number", get: (c) => Math.round(num(c.returns)) },
+                      { label: t("rpt2.cancelled"),  type: "number", get: (c) => num(c.cancelled) },
+                      { label: t("rpt2.nonCash"),    type: "number", get: (c) => c.nonCashShare },
+                    ]} />}>
         <div className="table-wrap">
           <table className="table">
             <thead><tr>

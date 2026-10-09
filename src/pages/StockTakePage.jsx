@@ -25,6 +25,7 @@ import { useLoading } from "../lib/use-loading";
 import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
 import { NoTh, NoTd, NO_COL } from "../components/ek/RowNo";
 import { asArray } from "../lib/ek-array";
+import ExcelButton from "../components/ek/ExcelButton";
 import { useScanner } from "../hooks/useScanner";
 import { useLayerCount } from "../hooks/useLayerCount";
 
@@ -216,6 +217,18 @@ export default function StockTakePage({ toast }) {
   // Kutilgan qiymat kelgan bo'lsa — foydalanuvchi rahbar (yoki sanoq
   // yopilgan). Ustunlarni shunga qarab chizamiz.
   const reveal = lines.some((l) => l.expectedQuantity != null);
+  /* Excel — ekrandagi ustunlar; kutilgan qoldiq va farq omborchiga
+     ekranda ko'rinmagani kabi faylga ham tushmaydi. */
+  const LINE_COLS = [
+    { key: "name",    label: t("products.col"),          type: "text",   get: (l) => l.productName },
+    { key: "code",    label: t("products.barcode"),      type: "text",   get: (l) => l.barcode },
+    { key: "counted", label: t("stocktake.countedQty"),  type: "number", get: (l) => l.countedQuantity },
+    ...(reveal ? [
+      { key: "exp",   label: t("stocktake.expected"),    type: "number", get: (l) => l.expectedQuantity },
+      { key: "diff",  label: t("stocktake.difference"),  type: "number", get: (l) => l.difference },
+    ] : []),
+    { key: "who",     label: t("sales.colCashier"),      type: "text",   get: (l) => l.countedBy },
+  ];
 
   return (
     <div>
@@ -258,6 +271,7 @@ export default function StockTakePage({ toast }) {
               <span className="card-title">
                 <i className="fa-solid fa-list-check text-blue" /> {t("stocktake.counted")} ({lines.length})
               </span>
+              <ExcelButton name="inventarizatsiya" cols={LINE_COLS} rows={lines} toast={toast} />
             </div>
             <div className="table-wrap">
               <table>
@@ -308,7 +322,10 @@ export default function StockTakePage({ toast }) {
             <span className="card-title">
               <i className="fa-solid fa-clock-rotate-left text-blue" /> {t("stocktake.history")}
             </span>
-            <DataFilter cols={HCOLS} flt={hFlt} />
+            <div style={{ display: "flex", gap: 8 }}>
+              <DataFilter cols={HCOLS} flt={hFlt} />
+              <ExcelButton name="inventarizatsiyalar" cols={HCOLS} rows={shownHistory} toast={toast} />
+            </div>
           </div>
           <div className="table-wrap">
             <table>

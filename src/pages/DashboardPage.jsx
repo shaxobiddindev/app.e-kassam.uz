@@ -19,6 +19,7 @@ import {
   healthTone, readLayout, saveLayout, move, toggle, comparePoints,
 } from "../lib/ek-dash";
 import { asArray } from "../lib/ek-array";
+import ExcelButton from "../components/ek/ExcelButton";
 
 /* ══════════════════════════════════════════════════════════════════════════
    BOSH SAHIFA — boshqaruv paneli (V74)
@@ -790,15 +791,27 @@ function PaymentsPanel({ analytics, loading, onGo }) {
  * «savdo» ustuni bilan yonma-yon turganda ma'no oladi: eng ko'p
  * sotgan kassirning eng ko'p bekor qilgani ham bo'lishi tasodif emas.
  */
-function StaffPanel({ analytics, loading, onGo }) {
+function StaffPanel({ analytics, loading, onGo, toast }) {
   const { t } = useT();
-  const rows = (analytics?.cashiers || []).slice(0, 6);
+  /* Faylga HAMMA kassir: ekranda joy yo'qligi uchun 6 tasi, Excel'da cheklov kerak emas. */
+  const all = analytics?.cashiers || [];
+  const rows = all.slice(0, 6);
   const anomalies = analytics?.anomalies || [];
   const flagged = new Set(anomalies.map((a) => a.subjectName));
 
   return (
     <Panel title={t("dash.staff")} icon="fa-user-tie" hint={t("dash.hintStaff")}
-           onTitleClick={() => onGo("/reports?tab=staff")}>
+           onTitleClick={() => onGo("/reports?tab=staff")}
+           right={!loading && all.length > 0 && (
+             <ExcelButton name="kassirlar" rows={all} toast={toast} cols={[
+               { label: t("dash.cashier"),    type: "text",   get: (c) => c.name },
+               { label: t("dash.receipts"),   type: "number", get: (c) => c.receipts },
+               { label: t("common.sum"),      type: "number", get: (c) => c.netSales },
+               { label: t("rpt2.avgReceipt"), type: "number", get: (c) => c.avgReceipt },
+               { label: t("rpt2.returns"),    type: "number", get: (c) => c.returnCount ?? 0 },
+               { label: t("rpt2.cancelled"),  type: "number", get: (c) => c.cancelled ?? 0 },
+             ]} />
+           )}>
       {loading ? <span className="ek-skeleton" style={{ height: 130 }} />
        : rows.length === 0 ? <Empty text={t("dash.noSales")} />
        : (
@@ -1665,7 +1678,7 @@ export default function DashboardPage({ toast }) {
     stock: () => <StockPanel key="stock" pulse={pulse} analytics={analytics} lowStock={lowStock}
                              loading={loadingSlow} canMoney={canMoney} onGo={go} />,
     payments: () => <PaymentsPanel key="payments" analytics={analytics} loading={loadingSlow} onGo={go} />,
-    staff: () => <StaffPanel key="staff" analytics={analytics} loading={loadingSlow} onGo={go} />,
+    staff: () => <StaffPanel key="staff" analytics={analytics} loading={loadingSlow} onGo={go} toast={toast} />,
     people: () => <PeoplePanel key="people" analytics={analytics} loyalty={loyalty} loading={loadingSlow} onGo={go} />,
     opps: () => <OppsPanel key="opps" analytics={analytics} pulse={pulse} loading={loadingSlow} onGo={go} />,
     actions: () => <ActionsPanel key="actions" role={user?.role} onGo={go} />,

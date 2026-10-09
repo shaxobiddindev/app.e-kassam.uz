@@ -41,6 +41,8 @@ import ScanResultModal from "../components/ScanResultModal";
 import { scanOutcome, copyFields } from "../lib/ek-scan-result";
 import { barcodeSuspicious } from "../lib/ek-barcode-check";
 import { isStoreCode, prettyStoreCode, storeCodeShort } from "../lib/ek-store-code";
+import ExcelButton from "../components/ek/ExcelButton";
+import { collectPages } from "../lib/ek-table-xlsx";
 
 /* ══════════════════════════════════════════════════════════════════════════
    Tovarlar.
@@ -1002,6 +1004,11 @@ export default function ProductsPage({ toast }) {
    * eng yomon natija bo'lardi (qaysi yarmi ekani ko'rinmaydi).
    */
   const LABEL_CAP = 5000;
+  /* ⚠ EKRANDAGI SO'ROVNING AYNAN O'ZI — `archived` ham. Ilgari u bu
+     yerda yo'q edi va arxivdan bosilgan yig'ish faol katalogni olardi. */
+  const listOpts = {
+    shopId: branchId, flt: fltJson, q: slowSearch, below: belowOnly, archived,
+  };
   const collectAll = async () => {
     /* Kod rejimida ro'yxat allaqachon to'liq (server ≤200 beradi). */
     if (codeMode || total == null || filtered.length >= total) return filtered;
@@ -1012,9 +1019,7 @@ export default function ProductsPage({ toast }) {
     const size = 200;
     const out = [];
     for (let page = 0; page * size < total; page++) {
-      const r = await productApi.getPage(page, size, {
-        shopId: branchId, flt: fltJson, q: slowSearch, below: belowOnly,
-      });
+      const r = await productApi.getPage(page, size, listOpts);
       const got = asArray(r?.data?.content ?? r?.data);
       if (!got.length) break;
       out.push(...got);
@@ -1024,6 +1029,16 @@ export default function ProductsPage({ toast }) {
     }
     return out;
   };
+
+  /* EXCEL: hamma sahifalar yig'iladi, ekrandagi 50 tasi emas. Arxivda
+     ustunlar ekrandagidek almashadi (qoldiq/holat o'rniga ikki sana). */
+  const exportAll = () => (codeMode ? filtered
+    : collectPages((page, size) => productApi.getPage(page, size, listOpts)));
+  const XLSX_COLS = archived
+    ? [...COLS.filter((c) => c.key !== "qty" && c.key !== "st"),
+       { key: "archivedAt", label: t("products.archivedAtCol"),    type: "date", get: (p) => p.archivedAt },
+       { key: "lastSold",   label: t("products.archivedLastSold"), type: "date", get: (p) => p.lastSoldAt }]
+    : COLS;
 
   const printFiltered = async () => {
     setLabelBusy(true);
@@ -1167,7 +1182,11 @@ export default function ProductsPage({ toast }) {
         <div className="card-header">
           <SearchBar code value={search} onChange={setSearch} codeLabel={t("kassa.codeMode")}
             placeholder={t("products.search")} style={{ width: 320 }} />
-          <DataFilter cols={COLS} flt={colFlt} />
+          <div style={{ display: "flex", gap: 8 }}>
+            <DataFilter cols={COLS} flt={colFlt} />
+            <ExcelButton name={archived ? "tovarlar-arxiv" : "tovarlar"} cols={XLSX_COLS}
+                         fetchAll={exportAll} disabled={!filtered.length} toast={toast} />
+          </div>
         </div>
 
         {/* ⚠ FILTR YOQILGANI KO'RINIB TURSIN. Usiz ro'yxat sababsiz

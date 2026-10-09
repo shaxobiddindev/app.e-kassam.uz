@@ -10,6 +10,7 @@ import { SkeletonList } from "../../components/ek/Loading";
 import { useLoading } from "../../lib/use-loading";
 import { PhoneField } from "../../components/ek/EkFields";
 import { asArray } from "../../lib/ek-array";
+import ExcelButton from "../../components/ek/ExcelButton";
 
 const EMPTY_BRANCH_FORM = { name: "", code: "", phone: "998", address: "" };
 
@@ -89,6 +90,15 @@ export default function ShopsPage({ toast }) {
           <button className="btn btn-outline btn-sm" onClick={loadBranches} title={t("products.refreshTitle")}>
             <i className="fa-solid fa-rotate-right" /> {t("common.refresh")}
           </button>
+          <ExcelButton name="filiallar" rows={branches} toast={toast} cols={[
+            { label: t("branch.name"),    type: "text", get: (b) => b.name },
+            { label: t("branch.code"),    type: "text", get: (b) => b.code },
+            { label: t("common.phone"),   type: "text", get: (b) => (b.phone ? maskPhone(b.phone) : "") },
+            { label: t("common.address"), type: "text", get: (b) => b.address },
+            { label: t("common.status"),  type: "text",
+              get: (b) => (b.status === "ACTIVE" ? t("common.active") : b.status === "INACTIVE" ? t("branch.inactive") : b.status) },
+            { label: t("common.date"),    type: "date", get: (b) => b.createdAt },
+          ]} />
           <button className="btn btn-primary" onClick={openAdd}>
             <i className="fa-solid fa-plus" /> {t("branch.new")}
           </button>

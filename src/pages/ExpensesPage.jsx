@@ -23,6 +23,7 @@ import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
 import { DateField } from "../components/ek/EkFields";
 import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
+import ExcelButton from "../components/ek/ExcelButton";
 import { NoTh, NoTd, NO_COL } from "../components/ek/RowNo";
 import { asArray } from "../lib/ek-array";
 
@@ -190,7 +191,10 @@ export default function ExpensesPage({ toast }) {
                   {items.length}
                 </span>
               </span>
-              <DataFilter cols={COLS} flt={colFlt} />
+              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                <DataFilter cols={COLS} flt={colFlt} />
+                <ExcelButton name="xarajatlar" cols={COLS} rows={items} toast={toast} />
+              </div>
             </div>
             <div className="table-wrap">
               <table>

@@ -27,6 +27,7 @@ import { productApi } from "../api";
 import { asArray } from "../lib/ek-array";
 import { money } from "../utils";
 import LabelPrintModal from "./ek/LabelPrintModal";
+import ExcelButton from "./ek/ExcelButton";
 
 /* ⚠ RO'YXAT CHEGARALANADI. Eng katta bazada 2 241 ta to'qnashuv
    o'lchandi va hammasini bir yo'la chizish sahifani muzlatardi. Ega
@@ -94,6 +95,13 @@ export default function CodeConflictPanel({ toast }) {
           <i className="fa-solid fa-print" aria-hidden="true" />
           {" "}{t("codeFix.printAll", { n: rows.length })}
         </button>
+        {/* Faylga HAMMA qator — ekrandagi «yana N ta» kesimi emas. */}
+        <ExcelButton name="kod-almashgan" rows={rows} toast={toast} cols={[
+          { label: t("common.name"),       type: "text",   get: (c) => c.name },
+          { label: t("codeFix.oldCode"),   type: "text",   get: (c) => c.oldCode },
+          { label: t("codeFix.newCode"),   type: "text",   get: (c) => c.newCode },
+          { label: t("products.salePrice"), type: "number", get: (c) => c.salePrice },
+        ]} />
       </div>
 
       <div className="table-wrap" style={{ maxHeight: 420, overflow: "auto" }}>

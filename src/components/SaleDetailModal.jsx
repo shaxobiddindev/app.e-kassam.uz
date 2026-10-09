@@ -5,6 +5,7 @@ import { money } from "../config";
 import { saleStatus, paymentEntry, unitDecimals, unitLabel } from "../lib/ek-labels";
 import { shortDate, quantity } from "../lib/ek-format";
 import { Spinner } from "./ek/Loading";
+import ExcelButton from "./ek/ExcelButton";
 
 /* ══════════════════════════════════════════════════════════════════════════
    CHEK TAFSILOTI — BITTA joyda (V47)
@@ -32,6 +33,19 @@ export default function SaleDetailModal({ sale, onClose, onReprint, printing = f
      tushdi?» degan savolning javobi shu yerda. Chegirmasiz chekda esa
      bo'sh ustun jadvalni bekorga toraytirardi. */
   const hasDiscount = (sale.items || []).some((i) => Number(i.discountAmount) > 0);
+  /* Excel: miqdor va birlik ALOHIDA ustun — «2,5 kg» matn bo'lib
+     qolsa, Excel'da qo'shib bo'lmasdi. ⚠ Hook emas (yuqorida `return`). */
+  const net = (i) => Math.max(0, (Number(i.subtotal) || 0) - (Number(i.discountAmount) || 0));
+  const LINE_COLS = [
+    { key: "name",  label: t("products.col"),   type: "text",
+      get: (i) => i.productName + (i.returnDisposition ? ` (${t(`enum.disposition.${i.returnDisposition}`)})` : "") },
+    { key: "qty",   label: t("common.count"),   type: "number", get: (i) => Number(i.quantity) },
+    { key: "unit",  label: t("products.unit"),  type: "text",   get: (i) => (i.unit ? unitLabel(i.unit) : "") },
+    { key: "price", label: t("sales.colPrice"), type: "number", get: (i) => i.price },
+    ...(hasDiscount ? [{ key: "disc", label: t("kassa.discount"), type: "number",
+                         get: (i) => Number(i.discountAmount) || 0 }] : []),
+    { key: "total", label: t("common.total"),   type: "number", get: net },
+  ];
 
   return (
     <Modal
@@ -45,6 +59,7 @@ export default function SaleDetailModal({ sale, onClose, onReprint, printing = f
               {t("kassa.reprint")}
             </button>
           )}
+          <ExcelButton name={`chek-${sale.id}`} cols={LINE_COLS} rows={sale.items || []} />
           <button className="btn btn-outline btn-sm" onClick={onClose}>{t("common.close")}</button>
         </>
       }

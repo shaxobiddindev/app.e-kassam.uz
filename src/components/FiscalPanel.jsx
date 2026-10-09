@@ -3,6 +3,8 @@ import { t } from "../lib/ek-i18n";
 import { fiscalApi } from "../api";
 import { fmtDateTime } from "../utils";
 import { Spinner } from "./ek/Loading";
+import ExcelButton from "./ek/ExcelButton";
+import { collectPages } from "../lib/ek-table-xlsx";
 
 /* ══════════════════════════════════════════════════════════════════════════
    Fiskal holat paneli — do'kon egasi uchun.
@@ -89,9 +91,24 @@ export default function FiscalPanel({ toast }) {
         <span className="card-title">
           <i className="fa-solid fa-receipt text-blue" aria-hidden="true" /> {t("fiscal.title")}
         </span>
-        <button className="btn btn-outline btn-sm" onClick={load}>
-          <i className="fa-solid fa-rotate-right" /> {t("common.refresh")}
-        </button>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          {/* ⚠ Ekranda oxirgi 20 ta; fayl uchun HAMMA sahifa so'raladi —
+              tekshiruvchi «qaysi cheklar soliqqa bormadi?» deb so'raganda
+              20 tasi javob emas. */}
+          <ExcelButton name="fiskal-cheklar" toast={toast} disabled={!receipts.length}
+                       fetchAll={() => collectPages((page, size) => fiscalApi.receipts(null, page, size))}
+                       cols={[
+                         { label: "#", type: "number",
+                           get: (r) => (r.operation === "REFUND" ? `${r.saleId ?? ""} ↩` : r.saleId) },
+                         { label: t("common.status"),            type: "text", get: (r) => statusLabel(r.status) },
+                         { label: t("kassa.receiptFiscalSign"),  type: "text", get: (r) => r.fiscalSign },
+                         { label: t("common.date"),              type: "date", get: (r) => r.createdAt },
+                         { label: t("common.error"),             type: "text", get: (r) => r.lastError },
+                       ]} />
+          <button className="btn btn-outline btn-sm" onClick={load}>
+            <i className="fa-solid fa-rotate-right" /> {t("common.refresh")}
+          </button>
+        </div>
       </div>
 
       <div style={{ padding: 16 }}>

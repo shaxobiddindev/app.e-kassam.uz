@@ -26,6 +26,7 @@ import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
 import { NoTh, NoTd, NO_COL } from "../components/ek/RowNo";
 import { returnReasonOptions, supplierReturnReason, unitDecimals, unitLabel } from "../lib/ek-labels";
 import { asArray } from "../lib/ek-array";
+import ExcelButton from "../components/ek/ExcelButton";
 import { useScanner } from "../hooks/useScanner";
 import { useLayerCount } from "../hooks/useLayerCount";
 
@@ -458,6 +459,26 @@ export default function SupplyPage({ toast }) {
   const supFlt = useDataFilter(SUP_COLS, "supply-sup");
   const shownSuppliers = supFlt.apply(suppliers);
 
+  /* Excel — hujjat qatorlari: miqdor va birlik ALOHIDA ustun («12 dona»
+     matn bo'lib qolsa Excel'da qo'shib bo'lmasdi). Kirim va qaytarish
+     qatorlari bir xil shaklda. */
+  const LINE_COLS = [
+    { key: "name", label: t("products.col"),   type: "text",   get: (l) => l.productName },
+    { key: "qty",  label: t("common.count"),   type: "number", get: (l) => l.quantity },
+    { key: "unit", label: t("products.unit"),  type: "text",   get: (l) => unitLabel(l.unit) },
+    { key: "cost", label: t("dash.costPrice"), type: "number", get: (l) => l.costPrice },
+    { key: "sum",  label: t("common.sum"),     type: "number", get: (l) => l.lineTotal },
+  ];
+  /* Ta'minotchi jurnali: ekrandagi ishora saqlanadi (to'lov/qaytarish «−»). */
+  const LEDGER_COLS = [
+    { key: "date", label: t("common.date"),    type: "date",   get: (l) => l.createdAt },
+    { key: "type", label: t("common.type"),    type: "text",   get: (l) => t(`credit.type.${l.type}`) },
+    { key: "ref",  label: t("common.comment"), type: "text",   get: (l) => (l.receiptId ? `#${l.receiptId}` : l.reason) },
+    { key: "sum",  label: t("common.sum"),     type: "number",
+      get: (l) => (DEBT_DOWN.includes(l.type) ? -1 : 1) * (Number(l.amount) || 0) },
+    { key: "who",  label: t("inv.histWho"),    type: "text",   get: (l) => l.userName },
+  ];
+
   return (
     <div>
       <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
@@ -498,9 +519,16 @@ export default function SupplyPage({ toast }) {
                   : tab === "returns" ? shownReturns.length : shownSuppliers.length}
               </span>
             </span>
-            {tab === "receipts" ? <DataFilter cols={RCPT_COLS} flt={rcptFlt} />
-              : tab === "returns" ? <DataFilter cols={RET_COLS} flt={retFlt} />
-              : <DataFilter cols={SUP_COLS} flt={supFlt} />}
+            <div style={{ display: "flex", gap: 8 }}>
+              {tab === "receipts" ? <DataFilter cols={RCPT_COLS} flt={rcptFlt} />
+                : tab === "returns" ? <DataFilter cols={RET_COLS} flt={retFlt} />
+                : <DataFilter cols={SUP_COLS} flt={supFlt} />}
+              {tab === "receipts"
+                ? <ExcelButton name="kirimlar" cols={RCPT_COLS} rows={shownReceipts} toast={toast} />
+                : tab === "returns"
+                  ? <ExcelButton name="qaytarishlar" cols={RET_COLS} rows={shownReturns} toast={toast} />
+                  : <ExcelButton name="yetkazuvchilar" cols={SUP_COLS} rows={shownSuppliers} toast={toast} />}
+            </div>
           </div>
           <div className="table-wrap">
             {tab === "receipts" ? (
@@ -869,7 +897,11 @@ export default function SupplyPage({ toast }) {
       {retView && (
         <Modal title={`${t("supply.return")} №${retView.docNo ?? retView.id}`}
                onClose={() => setRetView(null)} maxWidth={640}
-               footer={<button className="btn btn-outline btn-sm" onClick={() => setRetView(null)}>{t("common.close")}</button>}>
+               footer={<>
+                 <ExcelButton name={`qaytarish-${retView.docNo ?? retView.id}`} cols={LINE_COLS}
+                              rows={retView.lines || []} toast={toast} />
+                 <button className="btn btn-outline btn-sm" onClick={() => setRetView(null)}>{t("common.close")}</button>
+               </>}>
           <div style={{ display: "grid", gap: 6, marginBottom: 12 }}>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
               <span className="text-muted">{t("supply.supplier")}</span>
@@ -1065,6 +1097,8 @@ export default function SupplyPage({ toast }) {
           footer={
             <>
               <button className="btn btn-outline btn-sm" onClick={() => setPay(null)}>{t("common.close")}</button>
+              <ExcelButton name={`yetkazuvchi-${pay.supplier.id}`} cols={LEDGER_COLS}
+                           rows={pay.ledger || []} toast={toast} />
               <button className="btn btn-primary btn-sm" onClick={submitPay}
                       disabled={saving || !(enteredTotal(pay.entered) > 0)}>
                 <i className="fa-solid fa-money-bill-transfer" /> {t("supply.pay")}
@@ -1117,7 +1151,10 @@ export default function SupplyPage({ toast }) {
       {/* ── Hujjat tafsiloti ───────────────────────────────────────────── */}
       {view && (
         <Modal title={`${t("supply.receipt")} #${view.id}`} onClose={() => setView(null)} maxWidth={640}
-               footer={<button className="btn btn-outline btn-sm" onClick={() => setView(null)}>{t("common.close")}</button>}>
+               footer={<>
+                 <ExcelButton name={`kirim-${view.id}`} cols={LINE_COLS} rows={view.lines || []} toast={toast} />
+                 <button className="btn btn-outline btn-sm" onClick={() => setView(null)}>{t("common.close")}</button>
+               </>}>
           <div style={{ display: "grid", gap: 6, marginBottom: 12 }}>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
               <span className="text-muted">{t("supply.supplier")}</span><span className="fw-700">{view.supplierName}</span>

@@ -28,6 +28,8 @@ import BadgeCard from "../components/BadgeCard";
 import { isDesktop } from "../lib/ek-desktop";
 import { useSuspiciousCount } from "../hooks/useSuspiciousCount";
 import { asArray } from "../lib/ek-array";
+import ExcelButton from "../components/ek/ExcelButton";
+import { collectPages } from "../lib/ek-table-xlsx";
 
 const TABS = ["badges", "log", "policies", "shifts", "billing"];
 
@@ -237,6 +239,44 @@ export default function SecurityPage({ toast }) {
   const logFlt = useDataFilter(LOG_COLS, "sec-log");
   const shownLog = logFlt.apply(log);
 
+  /* ══ EXCEL ═════════════════════════════════════════════════════════
+     ⚠ Jurnal ekranda faqat birinchi sahifa (50 ta) — fayl uchun HAMMA
+     sahifa o'sha «faqat shubhali» belgisi bilan yig'iladi, so'ng
+     ustun filtri. «Izoh» faylda ikkiga ajraladi: shubha sababi va
+     xodim izohi alohida savollar. */
+  const LOG_XCOLS = useMemo(() => [
+    LOG_COLS[0], LOG_COLS[1],
+    { key: "badge", label: t("sec.badgeUser"), type: "text",
+      get: (c) => (c.badgeVersion ? `${c.badgeUserName || ""} v${c.badgeVersion}` : c.badgeUserName) },
+    LOG_COLS[3],
+    { key: "why",  label: t("sec.detail"),    type: "text", get: (c) => c.suspicionReason },
+    { key: "note", label: t("common.details"), type: "text", get: (c) => c.note },
+    { key: "ack",  label: t("sec.acked"),     type: "bool", get: (c) => !!c.acknowledgedAt },
+  ], [LOG_COLS]);
+  const exportLog = async () => {
+    const all = await collectPages((page, size) => securityApi.log(onlySuspicious, page, size));
+    return all && logFlt.apply(all);
+  };
+  const TAB_XLSX = useMemo(() => ({
+    badges: { name: "bajiklar", rows: badges, cols: [
+      { label: t("staff.name"),     type: "text", get: (b) => b.fullName || b.username },
+      { label: t("staff.role"),     type: "text", get: (b) => t(`enum.role.${b.role}`) },
+      { label: t("badge.status"),   type: "text", get: (b) => (b.hasBadge ? `v${b.version}` : t("badge.none")) },
+      { label: t("badge.issuedAt"), type: "date", get: (b) => b.issuedAt },
+    ] },
+    policies: { name: "tasdiq-siyosati", rows: policies, cols: [
+      { label: t("sec.action"),      type: "text", get: (p) => t(`act.${p.action}`) },
+      { label: t("sec.whoConfirms"), type: "text", get: (p) => t(`sec.policy.${p.policy}`) },
+      { label: t("sec.enabled"),     type: "text", get: (p) => (p.enabled ? t("sec.guarded") : t("sec.notGuarded")) },
+    ] },
+    shifts: { name: "ochiq-smenalar", rows: shifts, cols: [
+      { label: t("staff.name"),   type: "text", get: (x) => x.fullName },
+      { label: t("sec.openedAt"), type: "date", get: (x) => x.openedAt },
+      { label: t("sec.terminal"), type: "text", get: (x) => x.openedDeviceId },
+    ] },
+  }), [badges, policies, shifts]);
+  const tabXlsx = TAB_XLSX[tab];
+
   return (
     <div>
       <div className="page-header">
@@ -263,6 +303,11 @@ export default function SecurityPage({ toast }) {
               )}
             </button>
           ))}
+          {tabXlsx && !busy && (
+            <span style={{ marginLeft: "auto" }}>
+              <ExcelButton name={tabXlsx.name} cols={tabXlsx.cols} rows={tabXlsx.rows} toast={toast} />
+            </span>
+          )}
         </div>
 
         <div className="table-wrap">
@@ -321,8 +366,10 @@ export default function SecurityPage({ toast }) {
                              onChange={(e) => setOnlySuspicious(e.target.checked)} />
                       <span style={{ fontSize: 13, fontWeight: 600 }}>{t("sec.onlySuspicious")}</span>
                     </label>
-                    <span style={{ marginLeft: 12 }}>
+                    <span style={{ marginLeft: 12, display: "inline-flex", gap: 8, alignItems: "center", verticalAlign: "middle" }}>
                       <DataFilter cols={LOG_COLS} flt={logFlt} />
+                      <ExcelButton name="shubhali-amallar" cols={LOG_XCOLS} fetchAll={exportLog}
+                                   disabled={!log.length} toast={toast} />
                     </span>
                   </div>
                   {log.length === 0 ? <Empty text={t("sec.logEmpty")} /> : (

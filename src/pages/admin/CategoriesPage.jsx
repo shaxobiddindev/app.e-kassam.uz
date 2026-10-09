@@ -5,6 +5,7 @@ import { BranchSelector } from "../../components";
 import Modal from "../../components/Modal";
 import { Empty, Field, FormGroup, SearchBar } from "../../components/ui";
 import DataFilter, { useDataFilter, SortTh } from "../../components/ek/DataFilter";
+import ExcelButton from "../../components/ek/ExcelButton";
 import { SkeletonTable } from "../../components/ek/Loading";
 import { rankItems } from "../../lib/ek-search";
 import { fmtDateTime } from "../../utils";
@@ -275,6 +276,7 @@ export default function CategoriesPage({ toast }) {
             <SearchBar value={search} onChange={setSearch}
                        placeholder={t("cat.search")} style={{ width: 240 }} />
             <DataFilter cols={COLS} flt={colFlt} />
+            <ExcelButton name="turkumlar" cols={COLS} rows={filtered} toast={toast} />
             <button className="btn btn-primary btn-sm" onClick={() => openAdd()}>
               <i className="fa-solid fa-plus" /> {t("common.add")}
             </button>
@@ -470,6 +472,16 @@ export default function CategoriesPage({ toast }) {
           title={`${peek.cat.name} — ${archived ? t("cat.peekArchived") : t("cat.peek")}`}
           onClose={() => setPeek(null)}
           maxWidth={860}
+          footer={rows?.length ? (
+            <ExcelButton name={`turkum-tovarlari-${peek.cat.code || peek.cat.id}`} rows={rows} toast={toast}
+                         cols={[
+                           { label: t("common.name"),       type: "text",   get: (p) => p.name },
+                           { label: t("kassa.codeMode"),    type: "text",   get: (p) => p.searchCode },
+                           { label: t("products.salePrice"), type: "number", get: (p) => p.salePrice },
+                           { label: t("inv.currentQty"),    type: "number", get: (p) => p.stockQuantity },
+                           { label: t("cat.createdCol"),    type: "date",   get: (p) => p.createdAt },
+                         ]} />
+          ) : null}
         >
           {archived && (
             <div className="ek-note ek-note--info" style={{ marginBottom: 12 }}>

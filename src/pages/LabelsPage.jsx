@@ -27,6 +27,7 @@ import { designsFor } from "../lib/ek-sticker-auto";
 import { prettyStoreCode } from "../lib/ek-store-code";
 import { useScanner } from "../hooks/useScanner";
 import { useLayerCount } from "../hooks/useLayerCount";
+import ExcelButton from "../components/ek/ExcelButton";
 
 /* ══════════════════════════════════════════════════════════════════════════
    YORLIQLAR — KO'RISH VA NAVBAT (F3 + F5)
@@ -512,10 +513,19 @@ function LabelsAdvanced({ toast, onSimple }) {
               <i className="fa-solid fa-tag text-blue" /> {t("lbl.tabStale")}
             </span>
             {stale?.count > 0 && (
-              <button type="button" className="btn btn-primary btn-sm" onClick={queueStale}>
-                <i className="fa-solid fa-list-check" />
-                {" "}{t("lbl.queueAllStale", { n: stale.count })}
-              </button>
+              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                <ExcelButton name="eskirgan-yorliqlar" rows={stale.items || []} toast={toast} cols={[
+                  { label: t("products.name"), type: "text",   get: (it) => it.name },
+                  { label: t("lbl.code"),      type: "text",   get: (it) => it.code },
+                  { label: t("lbl.onShelf"),   type: "number", get: (it) => it.printedPrice },
+                  { label: t("lbl.atTill"),    type: "number", get: (it) => it.salePrice },
+                  { label: t("lbl.diff"),      type: "number", get: (it) => it.diff },
+                ]} />
+                <button type="button" className="btn btn-primary btn-sm" onClick={queueStale}>
+                  <i className="fa-solid fa-list-check" />
+                  {" "}{t("lbl.queueAllStale", { n: stale.count })}
+                </button>
+              </div>
             )}
           </div>
 

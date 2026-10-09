@@ -23,6 +23,8 @@ import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
 import { AUDIT_ACTIONS as ACTIONS, AUDIT_MONEY as MONEY } from "../lib/ek-audit";
 import { useInfinite } from "../hooks/useInfinite";
 import InfiniteList from "../components/ek/InfiniteList";
+import ExcelButton from "../components/ek/ExcelButton";
+import { collectPages } from "../lib/ek-table-xlsx";
 
 /* ⚠ RO'YXAT ENDI `lib/ek-audit.js` DA (V81).
 
@@ -125,6 +127,26 @@ export default function AuditPage({ toast }) {
   const colFlt = useDataFilter(COLS, "audit");
   const shown = colFlt.apply(rows);
 
+  /* ⚠ EXCEL — HAMMA SAHIFA, xuddi shu server filtri (amal, kim) bilan,
+     so'ng ustun filtri. Ekranda faqat aylantirilgan qism turadi va
+     «ko'ringan 50 ta» tekshiruv uchun to'liqsiz fayl bo'lardi.
+     «Tafsilot» faylda to'rt ustunga ajraladi: ekrandagi birlashgan
+     matn faqat qidiruv uchun, Excel'da esa «dan → gacha» alohida kerak. */
+  const XCOLS = useMemo(() => [
+    COLS[0], COLS[1],
+    { key: "sum",  label: t("audit.summary"),  type: "text", get: (r) => r.summary },
+    { key: "old",  label: t("common.from"),    type: "text", get: (r) => r.oldValue },
+    { key: "new",  label: t("common.to"),      type: "text", get: (r) => r.newValue },
+    { key: "det",  label: t("common.details"), type: "text", get: (r) => r.details },
+    COLS[3], COLS[4],
+  ], [COLS]);
+  const exportAll = async () => {
+    const all = await collectPages((page, size) => shopApi.audit({
+      action: action || null, actor: actor || null, page, size,
+    }));
+    return all && colFlt.apply(all);
+  };
+
   return (
     <div>
       <div className="page-header" style={{ marginBottom: 12 }}>
@@ -144,6 +166,8 @@ export default function AuditPage({ toast }) {
             />
             <SearchBar value={actor} onChange={setActor} placeholder={t("audit.actor")} style={{ width: 220 }} />
             <DataFilter cols={COLS} flt={colFlt} />
+            <ExcelButton name="audit" cols={XCOLS} fetchAll={exportAll}
+                         disabled={!rows.length} toast={toast} />
           </div>
           <span className="text-muted mono" style={{ fontSize: 13 }}>{total}</span>
         </div>

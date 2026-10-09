@@ -34,6 +34,8 @@ import { DEFAULT_NEAR_EXPIRY_DAYS, daysLeft } from "../lib/ek-expiry";
 import { printExpiryLabels } from "../lib/ek-hardware";
 import { useCodeSearch, filterByCode } from "../lib/ek-code-search";
 import { asArray } from "../lib/ek-array";
+import ExcelButton from "../components/ek/ExcelButton";
+import { collectPages } from "../lib/ek-table-xlsx";
 
 /* Jurnal turlari — rang bilan: kirim yashil, chiqim qizil, to'g'irlash sariq.
    Omborchi ro'yxatga qarab o'qimasdan ham manzarani ko'rsin. */
@@ -573,6 +575,38 @@ export default function InventoryPage({ toast }) {
     ? filterByCode(rows, (row) => row.g?.productId ?? row.productId, code)
     : rows;
 
+  /* ══ EXCEL ═══════════════════════════════════════════════════════
+     ⚠ Hamma sahifalar yig'iladi, ekrandagi 50 tasi emas — va AYNAN
+     `fetchPage` dagi shartlar bilan (holat, ustun filtri, kiyim
+     filtri). Xom qatorlar ekrandagidek `summarize` + `flagsOf` dan
+     o'tadi: `COLS` ning `get` i shu shaklni kutadi. Raqam rejimida
+     ro'yxat allaqachon to'liq. */
+  const exportStock = async () => {
+    if (code.active) return filtered;
+    const raw = await collectPages((page, size) => inventoryApi.getPage(page, size, {
+      shopId: branchId, flt: fltJson, near: nearDays, q: slowSearch, state: flt,
+      brands: clothFilter.brands, sizes: clothFilter.sizes,
+      colors: clothFilter.colors, targets: clothFilter.targets,
+      seasons: clothFilter.seasons,
+    }));
+    return raw && raw.map(summarize).map((g) => ({ g, f: flagsOf(g, nearDays) }));
+  };
+
+  /* Jurnal ekranda faqat oxirgi 50 yozuv; Excel'ga hammasi (server
+     sahifasi ≤ 200, massiv qaytaradi — `collectPages` qisqa sahifada to'xtaydi). */
+  const exportMovements = () => collectPages((page, size) => inventoryApi.getMovements(null, page, size));
+  const MOV_COLS = [
+    { key: "when",   label: t("inv.histWhen"),  type: "date",   get: (m) => m.createdAt },
+    { key: "name",   label: t("products.col"),  type: "text",   get: (m) => m.productName },
+    { key: "type",   label: t("inv.histType"),  type: "text",   get: (m) => t(`mov.${m.type}`) },
+    { key: "delta",  label: t("inv.histDelta"), type: "number", get: (m) => m.delta },
+    { key: "expiry", label: t("inv.expiry"),    type: "date",   get: (m) => m.expiryDate },
+    { key: "who",    label: t("inv.histWho"),   type: "text",   get: (m) => m.performedBy },
+    { key: "reason", label: t("inv.reason"),    type: "text",
+      get: (m) => [m.writeOffReason ? t(`enum.writeOff.${m.writeOffReason}`) : "", m.reason || ""]
+        .filter(Boolean).join(" — ") },
+  ];
+
 
   /**
    * Tafsilotdan chaqirilgan oynadan ORQAGA.
@@ -1035,6 +1069,11 @@ export default function InventoryPage({ toast }) {
             >
               <i className="fa-solid fa-clock-rotate-left" /> {t("inv.history")}
             </button>
+            {showHistory
+              ? <ExcelButton name="ombor-harakati" cols={MOV_COLS} fetchAll={exportMovements}
+                             disabled={!movements.length} toast={toast} />
+              : <ExcelButton name="ombor" cols={COLS} fetchAll={exportStock}
+                             disabled={!filtered.length} toast={toast} />}
             <button className="btn btn-outline btn-sm" onClick={() => (showHistory ? loadMovements() : reload())} title={t("products.refreshTitle")}>
               <i className="fa-solid fa-rotate-right" /> {t("common.refresh")}
             </button>

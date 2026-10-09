@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { t } from "../lib/ek-i18n";
 import { money } from "../config";
 import { dateTime } from "../lib/ek-format";
@@ -7,6 +7,7 @@ import Modal from "./Modal";
 import { Empty } from "./ui";
 import { Spinner } from "./ek/Loading";
 import DebtPayModal from "./DebtPayModal";
+import ExcelButton from "./ek/ExcelButton";
 
 /* ══════════════════════════════════════════════════════════════════════════
    MIJOZ JAMG'ARMASI — MIJOZLAR SAHIFASIDAGI OYNA (V63)
@@ -61,6 +62,7 @@ export default function SavingsModal({ account, customer, canRefund, busy,
                                        onTopUp, onRefund, onReceipt, receiptLoading, onClose }) {
   /* Ochiq amal: `"savings"` — to'ldirish, `"refund"` — qaytarish. */
   const [action, setAction] = useState(null);
+  const tableRef = useRef(null);
   const balance = Number(account?.balance) || 0;
 
   /* ⚠ Oyna faqat MUVAFFAQIYATDA yopiladi: xatoda kassir summani va
@@ -81,6 +83,8 @@ export default function SavingsModal({ account, customer, canRefund, busy,
             <button className="btn btn-outline btn-sm" onClick={onClose}>
               {t("common.close")}
             </button>
+            <ExcelButton name={`jamgarma-${customer?.id ?? ""}`} table={() => tableRef.current}
+                         disabled={!(account?.history || []).length} />
             {/* ⚠ QAYTARISH CHAPDA va OUTLINE: u kamdan-kam kerak
                 bo'ladigan, orqaga qaytarib bo'lmaydigan amal —
                 to'ldirish tugmasi bilan bir xil ko'rinsa, kassir
@@ -116,7 +120,7 @@ export default function SavingsModal({ account, customer, canRefund, busy,
         <div className="form-label">{t("savings.history")}</div>
         <div className="table-wrap"
              style={{ maxHeight: "min(52vh, 520px)", minHeight: 180, overflowY: "auto" }}>
-          <table>
+          <table ref={tableRef}>
             <thead>
               <tr>
                 <th>{t("common.type")}</th>

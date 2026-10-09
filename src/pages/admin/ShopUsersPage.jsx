@@ -13,6 +13,7 @@ import { SkeletonList, Spinner } from "../../components/ek/Loading";
 import { useLoading } from "../../lib/use-loading";
 import { asArray } from "../../lib/ek-array";
 import { useShopFeatures } from "../../hooks/useShopFeatures";
+import ExcelButton from "../../components/ek/ExcelButton";
 
 /* Rollar yagona lug'atdan (src/lib/ek-labels.js). `roleLabel` Spring'ning
    `ROLE_` prefiksini ham, katta-kichik harf farqini ham o'zi hal qiladi —
@@ -185,6 +186,16 @@ export default function ShopUsersPage({ toast }) {
             <i className="fa-solid fa-rotate-right" /> {t("common.refresh")}
           </button>
           <BranchSelector selectedId={branchId} onSelect={setBranchId} />
+          <ExcelButton name="xodimlar" rows={users} toast={toast} cols={[
+            { label: t("staff.col"),         type: "text", get: (u) => u.fullName },
+            { label: t("common.username"),   type: "text", get: (u) => u.username },
+            { label: t("common.role"),       type: "text",
+              get: (u) => (u.roles?.length ? u.roles.map(roleName) : [roleName(u.role)]).join(", ") },
+            { label: t("staff.discountLimit"), type: "text", hidden: !isOwner,
+              get: (u) => (u.maxDiscountPercent == null ? t("staff.shopDefault") : `${u.maxDiscountPercent}%`) },
+            { label: t("common.status"),     type: "text",
+              get: (u) => (u.enabled !== false ? t("common.active") : t("common.blocked")) },
+          ]} />
            <button className="btn btn-primary" onClick={() => { setForm(EMPTY_USER_FORM); setModalMode("add"); }}>
             <i className="fa-solid fa-plus" /> {t("common.add")}
           </button>

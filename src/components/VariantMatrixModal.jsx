@@ -3,6 +3,7 @@ import { t } from "../lib/ek-i18n";
 import Overlay from "./ek/Overlay";
 import { productApi } from "../api";
 import { money, quantity as fmtQty } from "../utils";
+import ExcelButton from "./ek/ExcelButton";
 
 /**
  * ══════════════════════════════════════════════════════════════════════════
@@ -57,6 +58,22 @@ export default function VariantMatrixModal({ groupId, shopId, onClose, onPick, t
      bitta nomsiz ustun chiziladi — jadval shakli o'zgarmaydi. */
   const colors = data?.colors?.length ? data.colors : [{ value: "", label: "", hex: null }];
 
+  /* Excel — ekrandagi jadval emas, USTUNLAR TA'RIFIDAN: katakda son
+     bilan SKU bitta matnga qo'shilib ketardi, «qolmagan» esa 0 emas
+     so'z bo'lib tushardi; rangsiz modelning sarlavhasi bo'sh va DOM
+     eksporti bunday ustunni tashlab yuborardi. Yaratilmagan variant —
+     bo'sh katak, tugagani — 0 (ekrandagi farq saqlanadi). */
+  const XLSX_COLS = [
+    { key: "size", label: t("clothing.size"), type: "text", get: (size) => size },
+    ...colors.map((c) => ({
+      key: `c-${c.value}`, label: c.label || t("common.quantity"), type: "number",
+      get: (size) => {
+        const cell = byKey.get(`${size}|${c.value}`);
+        return cell ? Number(cell.quantity) || 0 : "";
+      },
+    })),
+  ];
+
   return (
     <Overlay className="pay-modal-overlay ek-overlay" role="dialog" aria-modal="true"
              aria-label={t("clothing.matrix")} onEscape={onClose}>
@@ -66,9 +83,12 @@ export default function VariantMatrixModal({ groupId, shopId, onClose, onPick, t
             <i className="fa-solid fa-table-cells" aria-hidden="true" />
             {data?.groupName || t("clothing.matrix")}
           </div>
-          <button className="pay-modal-close" onClick={onClose} aria-label={t("common.close")}>
-            <i className="fa-solid fa-xmark" aria-hidden="true" />
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <ExcelButton name={`matritsa-${groupId}`} cols={XLSX_COLS} rows={sizes} toast={toast} />
+            <button className="pay-modal-close" onClick={onClose} aria-label={t("common.close")}>
+              <i className="fa-solid fa-xmark" aria-hidden="true" />
+            </button>
+          </div>
         </div>
 
         <div className="vmx__body">

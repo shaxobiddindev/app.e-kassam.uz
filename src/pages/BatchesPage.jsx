@@ -12,6 +12,7 @@ import { DEFAULT_NEAR_EXPIRY_DAYS, daysLeft } from "../lib/ek-expiry";
 import BatchCorrectModal from "../components/BatchCorrectModal";
 import BatchExpiryModal from "../components/BatchExpiryModal";
 import { asArray } from "../lib/ek-array";
+import ExcelButton from "../components/ek/ExcelButton";
 
 /* ══════════════════════════════════════════════════════════════════════════
    PARTIYALAR — SAHIFA (V60, jadval V76)
@@ -403,6 +404,7 @@ export default function BatchesPage({ toast }) {
                   onClick={load} title={t("products.refreshTitle")}>
             <i className="fa-solid fa-rotate-right" aria-hidden="true" /> {t("common.refresh")}
           </button>
+          <ExcelButton name={`partiyalar-${productId}`} cols={cols} rows={rows} toast={toast} />
         </div>
 
         {/* Faol shartlar — TO'LIQ kenglikdagi o'z qatorida. */}

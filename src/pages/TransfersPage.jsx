@@ -26,6 +26,7 @@ import { NoTh, NoTd, NO_COL } from "../components/ek/RowNo";
 import { SkeletonTable, Spinner } from "../components/ek/Loading";
 import { useLoading } from "../lib/use-loading";
 import { asArray } from "../lib/ek-array";
+import ExcelButton from "../components/ek/ExcelButton";
 import { useScanner } from "../hooks/useScanner";
 import { useLayerCount } from "../hooks/useLayerCount";
 import { looksLikeCode } from "../lib/ek-search";
@@ -338,6 +339,18 @@ export default function TransfersPage({ toast }) {
   const colFlt = useDataFilter(COLS, `transfer-${tab}`);
   const rows = colFlt.apply(all);
 
+  /* Excel — yopilgan hujjat qatorlari; miqdor va birlik alohida ustun. */
+  const LINE_COLS = [
+    { key: "name",   label: t("products.col"),        type: "text",   get: (l) => l.productName },
+    { key: "expiry", label: t("inv.expiry"),          type: "date",   get: (l) => l.expiryDate },
+    { key: "sent",   label: t("transfer.sentQty"),     type: "number", get: (l) => l.quantity },
+    { key: "recv",   label: t("transfer.receivedQty"), type: "number", get: (l) => l.receivedQuantity },
+    { key: "unit",   label: t("products.unit"),       type: "text",   get: (l) => unitLabel(l.unit) },
+    { key: "reason", label: t("inv.reason"),          type: "text",
+      get: (l) => [l.writeOffReason ? t(`enum.writeOff.${l.writeOffReason}`) : "", l.note || ""]
+        .filter(Boolean).join(" — ") },
+  ];
+
   const table = (
     <table>
       <thead>
@@ -445,7 +458,11 @@ export default function TransfersPage({ toast }) {
                     {tab === "incoming" ? t("transfer.incoming") : t("transfer.outgoing")}
                     <span className="text-muted" style={{ marginLeft: 8, fontWeight: 600 }}>{rows.length}</span>
                   </span>
-                  <DataFilter cols={COLS} flt={colFlt} />
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <DataFilter cols={COLS} flt={colFlt} />
+                    <ExcelButton name={tab === "incoming" ? "kochirishlar-kirish" : "kochirishlar-chiqish"}
+                                 cols={COLS} rows={rows} toast={toast} />
+                  </div>
                 </div>
                 <div className="table-wrap">{table}</div>
               </div>
@@ -692,7 +709,9 @@ export default function TransfersPage({ toast }) {
       {/* ── Yopilgan hujjat ───────────────────────────────────────────── */}
       {view && (
         <Modal title={`#${view.id} · ${view.fromShopName} → ${view.toShopName}`}
-               onClose={() => setView(null)} maxWidth={720}>
+               onClose={() => setView(null)} maxWidth={720}
+               footer={<ExcelButton name={`kochirish-${view.id}`} cols={LINE_COLS}
+                                    rows={view.lines || []} toast={toast} />}>
           <div className="table-wrap">
             <table>
               <thead>
