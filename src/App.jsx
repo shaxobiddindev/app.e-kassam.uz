@@ -173,6 +173,16 @@ const ProtectedRoute = ({ user, roles, children }) => {
  * `/restaurant` yozilsa zal ekrani chizilardi. Javob kelguncha — ingichka
  * chiziq (sahifa sakramaydi), keyin yo sahifa, yo bosh sahifa.
  */
+/**
+ * Do'konga xos sahifa — restoranda OCHILMAYDI (E1): manzil qo'lda yozilsa
+ * ham bosh sahifaga qaytadi. Ro'yxat `Layout.STORE_ONLY_PATHS` da.
+ */
+const StoreOnlyRoute = ({ children }) => {
+  const { isRestaurant, ready } = useShopFeatures();
+  if (!ready) return <Progress />;
+  return isRestaurant ? <Navigate to="/" replace /> : children;
+};
+
 const FeatureRoute = ({ feature, children }) => {
   const { has, ready } = useShopFeatures();
   if (!ready) return <Progress />;
@@ -188,7 +198,7 @@ const FeatureRoute = ({ feature, children }) => {
  * cheksiz yo'naltirardi.
  */
 const HomeRoute = ({ user, toast }) => {
-  const { has, ready } = useShopFeatures();
+  const { has, ready, isRestaurant } = useShopFeatures();
   const roles = roleSet(user?.role);
   const staff = ["OWNER", "SHOP_ADMIN", "STOREKEEPER", "CASHIER"].some((r) => roles.has(r));
   const waiterOnly = roles.has("WAITER") && !staff;
@@ -200,7 +210,12 @@ const HomeRoute = ({ user, toast }) => {
   if (cookOnly && has("KITCHEN")) return <Navigate to="/kitchen" replace />;
   /* Ofitsiant va zal terminali — uyi ZAL (D1). */
   if ((waiterOnly || terminal) && has("TABLES")) return <Navigate to="/restaurant" replace />;
-  if (roles.size === 1 && roles.has("CASHIER")) return <Navigate to="/sale" replace />;
+  /* Restoranda kassir ham ishni ZALDAN boshlaydi (E1): to'lov stol hisobidan
+     olinadi, do'kon kassasining tovar katakchalaridan emas. */
+  if (roles.size === 1 && roles.has("CASHIER")) {
+    if (!ready) return <Progress />;
+    return <Navigate to={isRestaurant && has("TABLES") ? "/restaurant" : "/sale"} replace />;
+  }
   return <ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><P.Dashboard toast={toast} /></ProtectedRoute>;
 };
 
@@ -458,7 +473,7 @@ export default function App() {
             <Route path="/restaurant/table/:id" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "WAITER", "OWNER"]}><FeatureRoute feature="TABLES"><P.RestaurantTable toast={toast} /></FeatureRoute></ProtectedRoute>} />
             <Route path="/products" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><P.Products toast={toast} /></ProtectedRoute>} />
             <Route path="/categories" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><P.Categories toast={toast} /></ProtectedRoute>} />
-            <Route path="/labels" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><P.Labels toast={toast} /></ProtectedRoute>} />
+            <Route path="/labels" element={<StoreOnlyRoute><ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><P.Labels toast={toast} /></ProtectedRoute></StoreOnlyRoute>} />
             <Route path="/inventory" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><P.Inventory toast={toast} refreshLowStock={refreshLowStock} /></ProtectedRoute>} />
             {/* ⚠ BITTA TOVARNING PARTIYALARI — alohida SAHIFA (V60).
                 Ilgari bu modal edi va uchta bo'lim (faol, muddati o'tgan,
@@ -481,7 +496,7 @@ export default function App() {
             {/* OMBORDAN BERIB YUBORISH (V48). ⚠ KASSIR YO'Q: tovarni
                 chiqaruvchi bilan pulni oluvchi ajralgan bo'lishi kerak —
                 sabab `SecurityConfig` dagi izohda. */}
-            <Route path="/pickup" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><P.Pickup toast={toast} /></ProtectedRoute>} />
+            <Route path="/pickup" element={<StoreOnlyRoute><ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><P.Pickup toast={toast} /></ProtectedRoute></StoreOnlyRoute>} />
             {/* Narx — egasi va do'kon adminining ishi; omborchi narx
                 qo'ymaydi. */}
             <Route path="/prices" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><P.Prices toast={toast} /></ProtectedRoute>} />
@@ -505,13 +520,13 @@ export default function App() {
             {/* Breezz ulanishi (V140) — faqat egasi: tasdiq egalikning isboti.
                 ⏸ Vaqtincha yashirin (`BREEZZ_UI`, config.js). */}
             {BREEZZ_UI && (
-              <Route path="/breezz" element={<ProtectedRoute user={user} roles={["OWNER"]}><P.Breezz toast={toast} /></ProtectedRoute>} />
+              <Route path="/breezz" element={<StoreOnlyRoute><ProtectedRoute user={user} roles={["OWNER"]}><P.Breezz toast={toast} /></ProtectedRoute></StoreOnlyRoute>} />
             )}
             {/* Sodiqlik jadvali — chegirma, ya'ni pulga tegadigan sozlama. */}
-            <Route path="/loyalty" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><P.Loyalty toast={toast} /></ProtectedRoute>} />
+            <Route path="/loyalty" element={<StoreOnlyRoute><ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><P.Loyalty toast={toast} /></ProtectedRoute></StoreOnlyRoute>} />
             {/* Aksiyalar (V39) — do'konning MIJOZLARGA ketadigan gapi;
                 kassirga yopiq (server ham shu cheklovni qo'yadi). */}
-            <Route path="/announcements" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><P.Announcements toast={toast} /></ProtectedRoute>} />
+            <Route path="/announcements" element={<StoreOnlyRoute><ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><P.Announcements toast={toast} /></ProtectedRoute></StoreOnlyRoute>} />
             {/* Sozlamalar — hamma rolga ochiq: mavzu va til xodimning
                 shaxsiy tanlovi, do'kon sozlamasi emas. */}
             <Route path="/settings" element={<P.Settings toast={toast} />} />

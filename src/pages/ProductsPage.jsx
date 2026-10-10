@@ -207,7 +207,7 @@ export default function ProductsPage({ toast }) {
      `null` — hali yuklanmagan (tahrirda `RecipeEditor` o'zi oladi);
      `recipeTouched` — o'zgargan bo'lsagina saqlanadi: ochib yopilgan
      forma retseptni bekorga qayta yozmasin (audit jurnali to'lib ketardi). */
-  const { has: hasFeature } = useShopFeatures();
+  const { has: hasFeature, isRestaurant } = useShopFeatures();
   const [recipe, setRecipe] = useState(null);
   const [recipeTouched, setRecipeTouched] = useState(false);
   const fileRef = useRef(null);
@@ -1069,7 +1069,8 @@ export default function ProductsPage({ toast }) {
     <div>
       <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
         <div>
-          <h2 className="page-title">{t("products.title")}</h2>
+          {/* Restoranda bu sahifa — «Menyu → Taomlar» (E1; o'z sahifasi E3 da). */}
+          <h2 className="page-title">{t(isRestaurant ? "rnav.dishes" : "products.title")}</h2>
         </div>
         {/* ⚠ SINF ORQALI (V84): oltita tugma 980px da bitta qatorga
             sig'masdi va sahifa YON TOMONGA surilardi. Kassa
@@ -1124,21 +1125,23 @@ export default function ProductsPage({ toast }) {
               qaytarish uchun kelgan. */}
           {!branchId && isHeadUser && !archived && (
             <>
-              <button className="btn btn-outline btn-sm" onClick={() => setWizard(true)}>
+              {/* ⚠ Do'kon vositalari restoranda YO'Q (E1): tayyor tovar katalogi,
+                  shtrix-kodli umumiy baza va tarozi eksporti — taomga tegishli emas. */}
+              {!isRestaurant && <button className="btn btn-outline btn-sm" onClick={() => setWizard(true)}>
                 <i className="fa-solid fa-wand-magic-sparkles" /> {t("products.fromCatalog")}
-              </button>
+              </button>}
               {/* ⚠ TAYYOR KATALOG BILAN BIR XIL EMAS. Yuqoridagi tugma —
                   bo'sh do'kon uchun tipik tovarlar shabloni (bir marta,
                   boshlanishida). Bu esa UMUMIY BAZA: unda haqiqiy
                   shtrix-kodlar bor va u kundan kunga o'sib boradi —
                   yangi tovar kelganda shu yerdan qidiriladi. */}
-              <button className="btn btn-outline btn-sm" onClick={() => setGcat(true)}>
+              {!isRestaurant && <button className="btn btn-outline btn-sm" onClick={() => setGcat(true)}>
                 <i className="fa-solid fa-cloud-arrow-down" /> {t("gcat.button")}
-              </button>
+              </button>}
               {/* ⚠ TUGMA FAQAT YANGILANISH BOR BO'LSA. Doim ko'rinsa,
                   do'kon uni bosib har safar bo'sh ro'yxat ko'rardi va
                   bir haftadan keyin unga umuman qaramay qo'yardi. */}
-              {gupdCount > 0 && (
+              {gupdCount > 0 && !isRestaurant && (
                 <button className="btn btn-outline btn-sm" onClick={() => setGupd(true)}>
                   <i className="fa-solid fa-rotate" /> {t("gcat.updButton")}
                   <span className="ek-num"> ({gupdCount})</span>
@@ -1148,10 +1151,10 @@ export default function ProductsPage({ toast }) {
                   chiqadi. Tugma HAR DOIM ko'rinadi: PLU'li tovar yo'q bo'lsa
                   ham odam qayerdan boshlashni bilishi kerak, bo'sh fayl esa
                   o'zi tushuntiradi. */}
-              <button className="btn btn-outline btn-sm" onClick={exportForScale}
+              {!isRestaurant && <button className="btn btn-outline btn-sm" onClick={exportForScale}
                       title={t("products.scaleExportHint")}>
                 <i className="fa-solid fa-scale-balanced" /> {t("products.scaleExport")}
-              </button>
+              </button>}
               <button className="btn btn-primary" onClick={openAdd}>
                 <i className="fa-solid fa-plus" /> {t("products.new")}
               </button>

@@ -40,22 +40,6 @@ import { useShopFeatures } from "../hooks/useShopFeatures";
 export const NAV = [
   { id: "dashboard", path: "/",     key: "nav.dashboard", icon: "fa-chart-pie",     roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"] },
   { id: "sale",      path: "/sale", key: "nav.kassa",     icon: "fa-cash-register", roles: ["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"] },
-  /* RESTORAN — hamma restoran bandi BITTA guruhda (2026-10-08). Ilgari
-     zal va oshxona yuqorida, qo'shimchalar «Katalog» da, stollar
-     «Boshqaruv» da turardi: do'kon bandlari orasiga sochilgan edi.
-     Do'konda guruh UMUMAN chizilmaydi — bandlarning hammasi restoran
-     modulida (`feature`), noma'lum bo'lsa ham yopiq (`useShopFeatures`). */
-  { id: "restaurant-group", key: "nav.group.restaurant", icon: "fa-utensils", children: [
-    /* Zal (D1) — restoranning bosh ekrani; ofitsiantning yagona bo'limi. */
-    { id: "restaurant",   path: "/restaurant",   key: "nav.restaurant", icon: "fa-utensils",    roles: ["ADMIN", "SHOP_ADMIN", "CASHIER", "WAITER", "OWNER"], feature: "TABLES" },
-    /* Oshxona ekrani (D5) — oshxonadagi monitor; oshpazning yagona bo'limi. */
-    { id: "kitchen",      path: "/kitchen",      key: "nav.kitchen",    icon: "fa-fire-burner", roles: ["ADMIN", "SHOP_ADMIN", "CASHIER", "WAITER", "COOK", "OWNER"], feature: "KITCHEN" },
-    /* Zal va stollar (T1) — rejani rahbar chizadi. */
-    { id: "tables-setup", path: "/tables-setup", key: "nav.tables",     icon: "fa-chair",       roles: ["ADMIN", "SHOP_ADMIN", "OWNER"], feature: "TABLES" },
-    /* Taom qo'shimchalari (V149). */
-    { id: "modifiers",    path: "/modifiers",    key: "nav.modifiers",  icon: "fa-utensils",    roles: ["ADMIN", "SHOP_ADMIN", "OWNER"], feature: "MODIFIERS" },
-  ]},
-
   /* KATALOG — tovarning O'ZI haqidagi ma'lumot: nomi, turkumi, narxi.
      Miqdor bu yerda emas: u «Ombor» ning ishi. */
   { id: "catalog", key: "nav.group.catalog", icon: "fa-box", children: [
@@ -125,6 +109,68 @@ export const NAV = [
   { id: "settings", path: "/settings", key: "nav.settings", icon: "fa-gear" },
 ];
 
+/* ══════════════════════════════════════════════════════════════════════════
+   RESTORAN MENYUSI — ALOHIDA ILOVA (4-bosqich E1, 2026-10-10)
+
+   Egasi: «restoran bo'limi baribir do'konlarga o'xshab qolyapti — umuman
+   yaqin bo'lmasin; restoran bo'lsa mutlaqo boshqa oyna ishlasin».
+   Restoran yo'nalishli joyda yon menyu BUTUNLAY shu ro'yxatdan quriladi:
+   do'konning «Katalog / Ombor / Savdo» guruhlari umuman chizilmaydi.
+
+   ⚠ Ikki bo'lim — `section` (sarlavha): XIZMAT (zalda har kuni ishlaydigan
+   joylar) va BOSHQARUV (menejer va egasi). Prototip:
+   docs/22-RESTORAN.md, 4-bosqich.
+
+   ⚠ Ba'zi bandlar hozircha mavjud sahifaga olib boradi (taomlar —
+   `/products`, masalliq qoldig'i — `/inventory`, buyurtmalar — `/sales`):
+   ular E2–E7 da restoranning o'z sahifasi bilan almashadi. Menyuda nomi
+   va o'rni allaqachon restoranniki — keyin faqat sahifa almashadi.
+   ══════════════════════════════════════════════════════════════════════════ */
+const MGR = ["ADMIN", "SHOP_ADMIN", "OWNER"];
+export const RESTAURANT_NAV = [
+  { id: "r-hall",    section: "rnav.sec.service", path: "/restaurant", key: "rnav.hall",    icon: "fa-utensils",      roles: ["ADMIN", "SHOP_ADMIN", "CASHIER", "WAITER", "OWNER"], feature: "TABLES" },
+  { id: "r-kitchen", path: "/kitchen",    key: "rnav.kitchen", icon: "fa-fire-burner",   roles: ["ADMIN", "SHOP_ADMIN", "CASHIER", "WAITER", "COOK", "OWNER"], feature: "KITCHEN" },
+  { id: "r-orders",  path: "/sales",      key: "rnav.orders",  icon: "fa-receipt",       roles: ["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"] },
+  { id: "r-till",    path: "/sale",       key: "rnav.till",    icon: "fa-cash-register", roles: ["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"] },
+  { id: "r-guests",  path: "/customers",  key: "rnav.guests",  icon: "fa-users",         roles: ["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"], feature: "CUSTOMERS" },
+
+  { id: "r-today",   section: "rnav.sec.manage", path: "/", key: "rnav.today", icon: "fa-chart-simple", roles: MGR },
+  { id: "r-menu", key: "rnav.menu", icon: "fa-book-open", children: [
+    { id: "r-dishes",   path: "/products",   key: "rnav.dishes",   icon: "fa-bowl-food",           roles: MGR },
+    { id: "r-sections", path: "/categories", key: "rnav.sections", icon: "fa-layer-group",         roles: MGR },
+    { id: "r-mods",     path: "/modifiers",  key: "nav.modifiers", icon: "fa-plus",                roles: MGR, feature: "MODIFIERS" },
+    { id: "r-prices",   path: "/prices",     key: "rnav.prices",   icon: "fa-money-check-dollar",  roles: MGR },
+  ]},
+  { id: "r-stock", key: "rnav.stock", icon: "fa-carrot", children: [
+    { id: "inventory",    path: "/inventory",  key: "rnav.stockLeft", icon: "fa-carrot",          roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"], feature: "INVENTORY" },
+    { id: "r-supply",     path: "/supply",     key: "rnav.supply",    icon: "fa-truck-ramp-box",  roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"], feature: "SUPPLY" },
+    { id: "r-count",      path: "/stock-take", key: "rnav.count",     icon: "fa-clipboard-list",  roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"], feature: "STOCK_TAKE" },
+    { id: "r-transfers",  path: "/transfers",  key: "nav.transfers",  icon: "fa-truck-fast",      roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"], feature: "TRANSFER" },
+  ]},
+  { id: "r-reports", key: "rnav.reports", icon: "fa-chart-column", children: [
+    { id: "r-rep-main", path: "/reports",     key: "nav.overview",  icon: "fa-chart-column",     roles: MGR, feature: "REPORTS" },
+    { id: "r-rep-day",  path: "/reports/day", key: "nav.dayReport", icon: "fa-calendar-day",     roles: MGR, feature: "REPORTS" },
+    { id: "r-expenses", path: "/expenses",    key: "nav.expenses",  icon: "fa-money-bill-wave",  roles: MGR, feature: "EXPENSES" },
+  ]},
+  { id: "r-staff", key: "rnav.staff", icon: "fa-user-group", children: [
+    { id: "r-users",  path: "/shop-users", key: "rnav.staff",   icon: "fa-user-group",         roles: MGR },
+    { id: "security", path: "/security",   key: "nav.security", icon: "fa-shield-halved",      roles: ["SHOP_ADMIN", "OWNER"] },
+    { id: "r-audit",  path: "/audit",      key: "nav.audit",    icon: "fa-clock-rotate-left",  roles: ["SHOP_ADMIN", "OWNER"] },
+  ]},
+  { id: "r-setup", key: "nav.settings", icon: "fa-gear", children: [
+    { id: "r-tables",   path: "/tables-setup", key: "nav.tables",   icon: "fa-chair",  roles: MGR, feature: "TABLES" },
+    { id: "r-branches", path: "/branches",     key: "nav.branches", icon: "fa-store",  roles: ["OWNER"] },
+    { id: "r-settings", path: "/settings",     key: "nav.settings", icon: "fa-gear" },
+  ]},
+];
+
+/**
+ * Restoranda OCHILMAYDIGAN do'kon sahifalari — manzil qo'lda yozilsa ham
+ * bosh sahifaga qaytadi (`App.jsx`). Restoranda bu ishlarning o'zi yo'q:
+ * omborchining berib yuborish navbati, javon yorliqlari, aksiyalar, Breezz.
+ */
+export const STORE_ONLY_PATHS = ["/pickup", "/labels", "/loyalty", "/announcements", "/breezz"];
+
 /** Guruhning bolalari; oddiy band — o'zi bitta bola. */
 const childrenOf = (item) => item.children || [item];
 
@@ -156,7 +202,7 @@ const visibleChildren = (item, role, hasFeature = () => true) =>
  * sahifa tepasida «Dashboard» deb yozilib turgan edi. Endi sarlavha ham,
  * tab qatori ham AYNAN shu yagona ro'yxatdan chiqadi.
  */
-function findPlace(pathname) {
+function findPlace(pathname, NAV) {
   for (const item of NAV) {
     const child = childrenOf(item).find((c) => c.path === pathname);
     if (child) return { group: item, child };
@@ -187,10 +233,11 @@ function findPlace(pathname) {
    egasi menyudagi qizil sonni ko'rib guruhga kirardi-yu, keyin tab'lar
    orasidan qay birida ekanini qidirishga majbur bo'lardi. */
 const badgeFor = (id, { lowStock, suspicious, breezz = 0 }) => {
-  if (id === "warehouse" || id === "inventory") return lowStock;
+  if (id === "warehouse" || id === "inventory" || id === "r-stock") return lowStock;
   /* «Boshqaruv» guruhi — ikkala sababning yig'indisi: egasi guruhga
      kirgach qaysi tab'da ekanini tab'dagi sondan ko'radi. */
   if (id === "manage") return suspicious + breezz;
+  if (id === "r-staff") return suspicious;
   if (id === "security") return suspicious;
   if (id === "breezz") return breezz;
   return 0;
@@ -253,7 +300,7 @@ function LowStockBadge({ items, count, onGoInventory }) {
   );
 }
 
-function Sidebar({ user, open, onClose, isCollapsed, onToggleCollapse, lowStockCount, suspiciousCount, breezzCount, onSwitchUser }) {
+function Sidebar({ user, open, onClose, isCollapsed, onToggleCollapse, lowStockCount, suspiciousCount, breezzCount, onSwitchUser, nav, restaurant }) {
   const { t } = useT();
   /* Do'konda qaysi bo'limlar borligi (V49). Ro'yxat kelmaguncha
      `has()` hamma narsaga `true` qaytaradi — menyu bo'sh ko'rinmaydi. */
@@ -285,6 +332,12 @@ function Sidebar({ user, open, onClose, isCollapsed, onToggleCollapse, lowStockC
             </>
           )}
         </div>
+        {/* Restoran — alohida ilova: logotip ostida nomi (yangi CSS yo'q, 44/44). */}
+        {restaurant && !isCollapsed && (
+          <span style={{ display: "block", marginTop: 4, fontFamily: "Manrope, var(--font-sans)", fontWeight: 800, fontSize: 14, color: "var(--fg-brand)" }}>
+            Restaurant
+          </span>
+        )}
       </div>
       <button className="sb-toggle" onClick={onToggleCollapse}
               aria-label={isCollapsed ? t("nav.expand") : t("nav.collapse")}
@@ -292,7 +345,7 @@ function Sidebar({ user, open, onClose, isCollapsed, onToggleCollapse, lowStockC
         <i className={`fa-solid ${isCollapsed ? "fa-chevron-right" : "fa-chevron-left"}`} />
       </button>
       <nav className="sb-nav">
-        {NAV.map((item) => {
+        {nav.map((item) => {
           // ⚠ Tekshiruv TO'PLAM bo'yicha. Ilgari bu yerda
           // `item.roles.includes(userRole)` turardi va `userRole` — sessiyadagi
           // BUTUN satr. Xodimda ikkita rol bo'lsa u `"SHOP_ADMIN,CASHIER"`
@@ -312,7 +365,7 @@ function Sidebar({ user, open, onClose, isCollapsed, onToggleCollapse, lowStockC
           const active = kids.some((c) => c.path === pathname);
           const badge = badgeFor(item.id, { lowStock: lowStockCount, suspicious: suspiciousCount, breezz: breezzCount });
 
-          return (
+          const link = (
             <NavLink key={item.id} to={to} title={isCollapsed ? t(item.key) : ""} onClick={() => onClose()}
                      className={`sb-item ${active ? "active" : ""}`}>
               <i className={`fa-solid ${item.icon}`} aria-hidden="true" />
@@ -320,6 +373,14 @@ function Sidebar({ user, open, onClose, isCollapsed, onToggleCollapse, lowStockC
               {badge > 0 && <span className="badge badge-red sb-badge" style={{ marginLeft: "auto" }}>{badge}</span>}
             </NavLink>
           );
+          /* Restoran menyusida bo'lim sarlavhasi («Xizmat», «Boshqaruv»). */
+          if (!item.section || isCollapsed) return link;
+          return [
+            <span key={item.id + "-sec"} style={{ display: "block", padding: "12px 12px 4px", fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--fg-secondary)" }}>
+              {t(item.section)}
+            </span>,
+            link,
+          ];
         })}
       </nav>
       {/* Tema tanlagichi bu yerdan OLIB TASHLANDI: barcha sozlamalar endi
@@ -373,7 +434,9 @@ export default function Layout({ user, isAdmin, lowStockItems, lowStockCount, on
      ikkinchi chaqiruv yangi so'rov yubormaydi. Tab qatori va yon menyu
      bir xil ro'yxatdan chizilishi shart — aks holda menyuda yo'q
      sahifa tab'da paydo bo'lardi. */
-  const { has: hasFeature } = useShopFeatures();
+  const { has: hasFeature, isRestaurant } = useShopFeatures();
+  /* ⚠ Restoran — BOSHQA menyu (E1): do'kon guruhlari umuman chizilmaydi. */
+  const nav = isRestaurant ? RESTAURANT_NAV : NAV;
   const { t } = useT();
   const [open, setOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(() => localStorage.getItem("sb_collapsed") === "1");
@@ -442,7 +505,7 @@ export default function Layout({ user, isAdmin, lowStockItems, lowStockCount, on
   /* Sarlavha ham, tab qatori ham YAGONA `NAV` ro'yxatidan chiqadi —
      ilgari buning uchun alohida `PAGE_TITLES` jadvali bor edi va u
      ro'yxat bilan qo'lda sinxron turishi kerak edi. */
-  const { group, child } = findPlace(location.pathname);
+  const { group, child } = findPlace(location.pathname, nav);
   const tabs = visibleChildren(group, user?.role, hasFeature);
 
   // Children ga kassaFullscreen props ni uzatish
@@ -465,6 +528,8 @@ export default function Layout({ user, isAdmin, lowStockItems, lowStockCount, on
         suspiciousCount={suspiciousCount}
         breezzCount={breezzCount}
         onSwitchUser={onSwitchUser}
+        nav={nav}
+        restaurant={isRestaurant}
       />
       <main className="main-content">
         <div className="topbar">

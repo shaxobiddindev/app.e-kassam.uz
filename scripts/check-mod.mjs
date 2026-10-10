@@ -662,10 +662,32 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
     await page.close();
   }
   {
+    /* E1 (2026-10-10): restoranda yon menyu BUTUNLAY boshqa — do'kon guruhlari yo'q. */
     const { page } = await openKassa({ restaurant: true, kitchen: true, tables: true, path: "/products" });
-    await waitFor(page, () => /Restoran/.test(document.body.innerText), 6000);
-    const nav = await page.evaluate(() => document.querySelector("aside, .sidebar, nav")?.innerText || "");
-    /Restoran/.test(nav) ? ok("restoranda «Restoran» guruhi bor") : no("restoran guruhi yo'q", nav.slice(0, 300));
+    await waitFor(page, () => /Boshqaruv/i.test(document.querySelector(".sidebar")?.innerText || ""), 6000);
+    const nav = await page.evaluate(() => document.querySelector(".sidebar")?.innerText || "");
+    /Xizmat/i.test(nav) && /Boshqaruv/i.test(nav) && /Menyu/.test(nav) && /Masalliqlar/.test(nav) && /Restaurant/.test(nav)
+      ? ok("restoranda o'z menyusi: «Xizmat», «Boshqaruv», Menyu, Masalliqlar") : no("restoran menyusi", nav.slice(0, 300));
+    !/Katalog|Ombor\b|Savdo/.test(nav) ? ok("restoran menyusida do'kon guruhlari (Katalog, Ombor, Savdo) yo'q") : no("do'kon guruhi restoranda", nav.slice(0, 300));
+    const title = await page.evaluate(() => document.querySelector(".topbar-title")?.innerText || "");
+    /Menyu/.test(title) ? ok("sarlavha restoranniki: «Menyu»") : no("sarlavha", title);
+    const tabs = await page.evaluate(() => [...document.querySelectorAll(".pg-tabs [role=tab]")].map((x) => x.innerText.trim()).join("|"));
+    /Taomlar/.test(tabs) ? ok("ichki tablar: " + tabs) : no("ichki tablar", tabs);
+    if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/restaurant-shell.png` });
+    await page.close();
+  }
+  for (const path of ["/pickup", "/labels", "/loyalty"]) {
+    const { page } = await openKassa({ restaurant: true, kitchen: true, tables: true, path, ready: "body" });
+    await waitFor(page, () => location.pathname !== "/pickup" && location.pathname !== "/labels" && location.pathname !== "/loyalty", 6000);
+    const at = await page.evaluate(() => location.pathname);
+    at !== path ? ok(`restoranda do'kon sahifasi ${path} ochilmaydi → ${at}`) : no(`restoranda ${path} ochildi`, at);
+    await page.close();
+  }
+  {
+    const { page } = await openKassa({ restaurant: true, kitchen: true, tables: true, role: "CASHIER", path: "/", ready: "body" });
+    await waitFor(page, () => location.pathname === "/restaurant", 6000);
+    const at = await page.evaluate(() => location.pathname);
+    at === "/restaurant" ? ok("restoranda kassirning uyi — zal") : no("kassir uyi", at);
     await page.close();
   }
 }
