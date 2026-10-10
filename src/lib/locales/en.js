@@ -1568,6 +1568,7 @@ export default {
   "enum.writeOff.THEFT": "Lost",
   "enum.writeOff.SUPPLIER_RETURN": "Returned to supplier",
   "enum.writeOff.OWN_USE": "Shop's own use",
+  "enum.writeOff.KITCHEN_VOID": "Voided dish (kitchen)",
   "enum.writeOff.RECOUNT": "Bookkeeping fix",
   "enum.writeOff.OTHER": "Other",
   "ret.amount": "Amount",

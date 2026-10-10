@@ -1632,6 +1632,7 @@ export default {
   "enum.writeOff.THEFT": "Yo'qoldi",
   "enum.writeOff.SUPPLIER_RETURN": "Ta'minotchiga qaytarildi",
   "enum.writeOff.OWN_USE": "Do'kon o'zi oldi",
+  "enum.writeOff.KITCHEN_VOID": "Bekor qilingan taom (oshxona)",
   "enum.writeOff.RECOUNT": "Hisob xatosi",
   "enum.writeOff.OTHER": "Boshqa",
   "ret.amount": "Summa",

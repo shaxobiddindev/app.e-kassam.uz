@@ -1568,6 +1568,7 @@ export default {
   "enum.writeOff.THEFT": "Пропало",
   "enum.writeOff.SUPPLIER_RETURN": "Возврат поставщику",
   "enum.writeOff.OWN_USE": "Для нужд магазина",
+  "enum.writeOff.KITCHEN_VOID": "Отмена блюда (кухня)",
   "enum.writeOff.RECOUNT": "Ошибка учёта",
   "enum.writeOff.OTHER": "Другое",
   "ret.amount": "Сумма",

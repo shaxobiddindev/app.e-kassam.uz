@@ -95,6 +95,9 @@ export const WRITE_OFF_REASON = dict("enum.writeOff", {
      yo'qotdik» degan yolg'on xulosaga olib kelardi. */
   RECOUNT:         { icon: "fa-calculator" },
   OTHER:           { icon: "fa-ellipsis" },
+  /* Oshxonadan keyin bekor qilingan taomning masalliqlari (V162) — jurnalda
+     ko'rinadi, lekin FAQAT TIZIM yozadi: tanlash ro'yxatlariga tushmaydi. */
+  KITCHEN_VOID:    { icon: "fa-ban" },
 });
 
 /** `Select` uchun tayyor ro'yxat — yorliqlar TILGA bog'liq, shuning
@@ -117,9 +120,11 @@ export const dispositionOptions = () =>
  *
  * @param exclude  ko'rsatilmaydigan sabablar
  */
+/** Tizim yozadigan turkumlar — qo'lda hech qachon tanlanmaydi (server ham rad etadi). */
+export const SYSTEM_WRITE_OFF = ["KITCHEN_VOID"];
 export const writeOffOptions = ({ exclude = [] } = {}) =>
   Object.entries(WRITE_OFF_REASON)
-    .filter(([value]) => !exclude.includes(value))
+    .filter(([value]) => !exclude.includes(value) && !SYSTEM_WRITE_OFF.includes(value))
     .map(([value, m]) => ({ value, label: m.label, icon: m.icon }));
 
 /**
