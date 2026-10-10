@@ -177,6 +177,22 @@ async function openKassa({ restaurant, kitchen = false, tables = false, terminal
       calls.menuStop.push({ id: Number(u.pathname.split("/").slice(-2)[0]), stopped: body?.stopped });
       calls.stop7 = !!body?.stopped;
       data = null;
+    } else if (u.pathname.endsWith("/reports/restaurant/report")) {
+      calls.report = [...(calls.report || []), u.search];
+      data = { from: u.searchParams.get("from"), to: u.searchParams.get("to"), days: 10,
+               revenue: 164200000, revenuePrev: 150640000, receipts: 516, guests: 1912, perGuest: 85900, avgCheck: 318000,
+               turnover: 2.6, foodCostPct: 31.4, latePct: 3.1, tablesTotal: 14,
+               sources: [{ kind: "HALL", revenue: 118200000, receipts: 380 }, { kind: "TAKEAWAY", revenue: 29600000, receipts: 96 },
+                         { kind: "DELIVERY", revenue: 16400000, receipts: 40 }],
+               serviceCharge: 14820000, tips: 3410000,
+               losses: { waste: 860000, countShortage: 410000, returns: 220000, returnsCount: 3, cancelledTables: 4 },
+               dishes: [{ productId: 1, name: "Osh", qty: 412, revenue: 18540000, cost: 5850000, profit: 12690000, costPct: 31.6, group: "A" },
+                        { productId: 2, name: "Qozon kabob", qty: 236, revenue: 16520000, cost: 6443000, profit: 10077000, costPct: 39.0, group: "A" },
+                        { productId: 3, name: "Baliq (grill)", qty: 19, revenue: 1520000, cost: 912000, profit: 608000, costPct: 60.0, group: "C" }],
+               waiters: [{ login: "dn", name: "Dilnoza Karimova", shifts: 9, tables: 120, guests: 512, revenue: 44300000, perGuest: 86500, avgMinutes: 54, tips: 1240000, cancelled: 2 },
+                         { login: "jv", name: "Javohir", shifts: 10, tables: 140, guests: 604, revenue: 47900000, perGuest: 79300, avgMinutes: 61, tips: 980000, cancelled: 9 }],
+               heat: [{ dow: 5, hour: 13, occupancy: 88 }, { dow: 6, hour: 20, occupancy: 99 }, { dow: 1, hour: 12, occupancy: 35 }],
+               tables: [{ id: 5, name: "Stol 5", seats: 8, orders: 18, turnsPerDay: 1.8, revenue: 21400000, avgGuests: 6.2 }] };
     } else if (u.pathname.endsWith("/reports/restaurant/orders")) {
       const at = (m) => new Date(Date.now() - m * 60000).toISOString();
       data = { date: u.searchParams.get("date"), rows: [
@@ -916,6 +932,44 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
     await waitFor(page, () => location.pathname !== "/orders", 6000);
     const at = await page.evaluate(() => location.pathname);
     at === "/sales" ? ok("kassir: /orders → /sales (hisobot ma'lumoti yopiq)") : no("kassir buyurtmalar", at);
+    await page.close();
+  }
+}
+
+{
+  console.log("\n§15e Restoran hisoboti (E6, 2026-10-10)");
+  {
+    const { page, calls } = await openKassa({ restaurant: true, kitchen: true, tables: true, path: "/restaurant-report", ready: "body" });
+    await waitFor(page, () => /Tushum qayerdan keldi/.test(document.body.innerText) && /Qozon kabob/.test(document.body.innerText), 8000);
+    const txt = await page.evaluate(() => document.querySelector("main, .main, body")?.innerText || "");
+    /▲ 9% oldingi shuncha kunga/.test(txt) && /31,4%/.test(txt) && /2,6 marta/.test(txt)
+      ? ok("raqamlar: o'sish, tannarx ulushi, stol aylanmasi") : no("KPI", txt.slice(0, 600));
+    /Zalda/.test(txt) && /72%/.test(txt) && /Olib ketish/.test(txt) && /Yetkazish/.test(txt)
+      ? ok("tushum manbalari ulush bilan") : no("manba", txt.slice(0, 800));
+    /Xizmat haqi/.test(txt) && /Choy puli/.test(txt) && /Sanash kamomadi/.test(txt) && /Qaytarilgan cheklar — 3 ta/.test(txt) && /4 ta/.test(txt)
+      ? ok("tushumdan tashqari pul va yo'qotishlar") : no("yo'qotishlar", txt.slice(0, 1200));
+    /A: 2 ta taom/.test(txt) && /C: 1 ta taom/.test(txt) && /60%/.test(txt) ? ok("ABC: guruhlar xulosasi, yuqori tannarx ulushi") : no("ABC", txt.slice(-800));
+    /\d{4}-\d{2}-\d{2}/.test(calls.report?.[0] || "") && /from=/.test(calls.report?.[0] || "") && /to=/.test(calls.report?.[0] || "")
+      ? ok("davr serverga kun bilan ketdi: " + calls.report[0]) : no("davr", String(calls.report));
+    if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/restaurant-report.png`, fullPage: true });
+
+    await page.evaluate(() => [...document.querySelectorAll("[role=tab]")].find((b) => /^Ofitsiantlar$/.test(b.innerText.trim()))?.click());
+    (await waitFor(page, () => /kim yaxshi xizmat/.test(document.body.innerText) && /54 daq/.test(document.body.innerText), 3000))
+      ? ok("ofitsiantlar: ish kunlari, mehmon boshiga, stolda o'rtacha vaqt") : no("ofitsiantlar", await page.evaluate(() => document.body.innerText.slice(-600)));
+
+    await page.evaluate(() => [...document.querySelectorAll("[role=tab]")].find((b) => /Zal va vaqt/.test(b.innerText))?.click());
+    (await waitFor(page, () => /Zal qachon to'la/.test(document.body.innerText), 3000)) ? ok("zal bandligi jadvali") : no("zal", "");
+    const cells = await page.evaluate(() => [...document.querySelectorAll("td[title]")].filter((c) => c.innerText.trim()).map((c) => c.title).join("|"));
+    /Ju 13:00 — 88%/.test(cells) && /Sh 20:00 — 99%/.test(cells) ? ok("katakda raqam ham bor (rang yolg'iz emas)") : no("kataklar", cells.slice(0, 300));
+    /Stol 5/.test(await page.evaluate(() => document.body.innerText)) ? ok("stollar ro'yxati") : no("stollar", "");
+    if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/restaurant-report-hall.png`, fullPage: true });
+    await page.close();
+  }
+  {
+    const { page } = await openKassa({ restaurant: false, path: "/restaurant-report", ready: "body" });
+    await waitFor(page, () => location.pathname !== "/restaurant-report", 6000);
+    const at = await page.evaluate(() => location.pathname);
+    at === "/reports" ? ok("do'konda /restaurant-report → /reports") : no("do'konda hisobot", at);
     await page.close();
   }
 }

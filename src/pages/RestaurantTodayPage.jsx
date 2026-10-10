@@ -107,7 +107,7 @@ export default function RestaurantTodayPage({ toast }) {
           <div className="kpi-grid">
             <Kpi label={t("rtd.k.revenue")} value={money(d.revenue)} icon="fa-sack-dollar" tone="brand"
                  sub={change ? t(change.up ? "rtd.up" : "rtd.down", { p: change.pct }) : t("rtd.noCompare")} />
-            <Kpi label={t("rtd.k.guests")} value={num(d.guests)} icon="fa-users" sub={t("rtd.checksN", { n: num(d.receipts) })} />
+            <Kpi label={t("rtd.k.guests")} value={quantity(d.guests, 0)} icon="fa-users" sub={t("rtd.checksN", { n: num(d.receipts) })} />
             <Kpi label={t("rtd.k.perGuest")} value={money(d.perGuest)} icon="fa-user" sub={t("rtd.avgCheck", { sum: money(d.avgCheck) })} />
             <Kpi label={t("rtd.k.tables")} value={isToday ? `${num(d.tablesBusy)} / ${num(d.tablesTotal)}` : num(d.tablesClosed)} icon="fa-chair"
                  sub={t("rtd.turnover", { n: String(num(d.turnover)).replace(".", ",") })} />
@@ -163,7 +163,7 @@ export default function RestaurantTodayPage({ toast }) {
           </div>
 
           <div className="rpt-cols">
-            <Panel title={t("rtd.dishes")} icon="fa-bowl-food" right={<Link to="/reports" className="btn btn-outline btn-sm">{t("rtd.all")}</Link>}>
+            <Panel title={t("rtd.dishes")} icon="fa-bowl-food" right={<Link to="/restaurant-report" className="btn btn-outline btn-sm">{t("rtd.all")}</Link>}>
               <div className="card-body">
                 {asArray(d.dishes).length === 0 ? <Empty icon="fa-bowl-food" text={t("rpt2.noData")} /> : asArray(d.dishes).map((x, i) => (
                   <div key={x.productId || i} style={{ display: "flex", alignItems: "center", gap: 10, minHeight: 32 }}>

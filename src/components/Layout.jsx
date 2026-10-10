@@ -154,7 +154,8 @@ export const RESTAURANT_NAV = [
     { id: "r-transfers",  path: "/transfers",  key: "nav.transfers",  icon: "fa-truck-fast",      roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"], feature: "TRANSFER" },
   ]},
   { id: "r-reports", key: "rnav.reports", icon: "fa-chart-column", children: [
-    { id: "r-rep-main", path: "/reports",     key: "nav.overview",  icon: "fa-chart-column",     roles: MGR, feature: "REPORTS" },
+    /* E6: restoran hisoboti; do'konning batafsil hisobotlari (`/reports`) — taxallus. */
+    { id: "r-rep-main", path: "/restaurant-report", alias: ["/reports"],     key: "nav.overview",  icon: "fa-chart-column",     roles: MGR, feature: "REPORTS" },
     { id: "r-rep-day",  path: "/reports/day", key: "nav.dayReport", icon: "fa-calendar-day",     roles: MGR, feature: "REPORTS" },
     { id: "r-expenses", path: "/expenses",    key: "nav.expenses",  icon: "fa-money-bill-wave",  roles: MGR, feature: "EXPENSES" },
   ]},
