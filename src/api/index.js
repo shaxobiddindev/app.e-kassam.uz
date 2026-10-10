@@ -1385,6 +1385,7 @@ export const tableApi = {
 /* Restoran menyusi (E3, V161): taomlar, tannarx ulushi, stop-list. */
 export const menuApi = {
   board: () => request("/menu/board"),
+  ingredients: () => request("/menu/ingredients"),
   stop: (productId, stopped) =>
     request(`/menu/${productId}/stop`, { method: "PUT", body: JSON.stringify({ stopped }) }),
   card: (productId, body) =>

@@ -177,6 +177,21 @@ async function openKassa({ restaurant, kitchen = false, tables = false, terminal
       calls.menuStop.push({ id: Number(u.pathname.split("/").slice(-2)[0]), stopped: body?.stopped });
       calls.stop7 = !!body?.stopped;
       data = null;
+    } else if (u.pathname.endsWith("/menu/ingredients")) {
+      data = { stockValue: 28460000, kinds: 3, usedTodayValue: 5860000, revenueToday: 18900000, wasteTodayValue: 120000,
+               lowCount: 2, shortageCount: 1,
+               rows: [
+                 { id: 50, name: "Mol go'shti", unit: "KG", unitDecimals: 3, stock: 3.2, minQuantity: 0, cost: 90000, stockValue: 288000,
+                   usedToday: 6.8, avgDaily: 7.1, daysLeft: 0.4, dishes: ["Osh", "Lag'mon"], stopDish: false, supplierId: 1, supplierName: "Chorvador" },
+                 { id: 51, name: "Pomidor", unit: "KG", unitDecimals: 3, stock: 4.1, minQuantity: 0, cost: 20000, stockValue: 82000,
+                   usedToday: 3.5, avgDaily: 3.3, daysLeft: 1.2, dishes: ["Achchiq-chuchuk"], stopDish: true, supplierId: null, supplierName: null },
+                 { id: 52, name: "Guruch", unit: "KG", unitDecimals: 3, stock: 18, minQuantity: 0, cost: 22000, stockValue: 396000,
+                   usedToday: 4.6, avgDaily: 4.8, daysLeft: 3.7, dishes: ["Osh"], stopDish: false, supplierId: 1, supplierName: "Chorvador" }],
+               orders: [{ supplierId: 1, supplierName: "Chorvador", phone: "+998901112233", sum: 1620000,
+                          lines: [{ productId: 50, name: "Mol go'shti", unit: "KG", qty: 18.1, sum: 1620000 }] },
+                        { supplierId: null, supplierName: null, phone: null, sum: 116000,
+                          lines: [{ productId: 51, name: "Pomidor", unit: "KG", qty: 5.8, sum: 116000 }] }],
+               shortages: [{ ingredientId: 53, name: "Lag'mon xamiri", unit: "KG", qty: 2.5, times: 4, lastAt: new Date().toISOString() }] };
     } else if (/\/recipes\/7$/.test(u.pathname)) {
       data = { productId: 7, productName: "burger", salePrice: 30000, cost: 9000,
                lines: [{ ingredientId: 50, name: "Go'sht", unit: "KG", unitDecimals: 3, quantity: 0.1, costPrice: 90000, lineCost: 9000 }] };
@@ -791,6 +806,47 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
     await waitFor(page, () => document.querySelectorAll(".rt-dish").length > 0, 6000);
     const names = await page.evaluate(() => [...document.querySelectorAll(".rt-dish")].map((b) => b.textContent).join("|"));
     /burger/.test(names) && !/suv/.test(names) ? ok("ofitsiant menyusida stop-listdagi taom yo'q") : no("ofitsiant menyusi", names);
+    await page.close();
+  }
+}
+
+{
+  console.log("\n§15c Restoran masalliqlari (E4, 2026-10-10)");
+  {
+    const { page } = await openKassa({ restaurant: true, kitchen: true, tables: true, path: "/ingredients", ready: "body" });
+    await waitFor(page, () => /Qancha bor/.test(document.body.innerText) && /Mol go'shti/.test(document.body.innerText), 8000);
+    const txt = await page.evaluate(() => document.querySelector("main, .main, body")?.innerText || "");
+    /bugun tugaydi/.test(txt) && /1,2 kun — buyurtma bering/.test(txt) && /3,7 kun/.test(txt)
+      ? ok("necha kunga yetadi: bugun tugaydi / buyurtma bering / yetarli") : no("kunlar", txt.slice(0, 600));
+    /tushumning 31%i/.test(txt) && /2 xil/.test(txt) && /1 holat/.test(txt)
+      ? ok("raqamlar: sarf tushumga nisbatan, tez tugaydi, kamomad") : no("KPI", txt.slice(0, 500));
+    /stop-listda/.test(txt) ? ok("stop-listdagi taom masalliq qatorida belgilangan") : no("stop belgisi", "");
+    /Chorvador/.test(txt) && /Yetkazuvchi ko'rsatilmagan/.test(txt) && /Mol go'shti 18,1 kg/.test(txt)
+      ? ok("ertaga uchun buyurtma — yetkazuvchi bo'yicha, yetkazuvchisizlari alohida") : no("buyurtma", txt.slice(-700));
+    /Lag'mon xamiri/.test(txt) && /4 marta/.test(txt) ? ok("kamomad ro'yxati") : no("kamomad", txt.slice(-400));
+    const title = await page.evaluate(() => document.querySelector(".topbar-title")?.innerText || "");
+    /Masalliqlar/.test(title) ? ok("sarlavha: «Masalliqlar»") : no("sarlavha", title);
+    if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/restaurant-ingredients.png`, fullPage: true });
+
+    await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => /Faqat kam qolganlar/.test(b.innerText))?.click());
+    (await waitFor(page, () => !/Guruch/.test(document.querySelector("table")?.innerText || "x")
+        && /Pomidor/.test(document.querySelector("table")?.innerText || ""), 3000))
+      ? ok("«Faqat kam qolganlar» — yetarlisi yashirindi") : no("filtr", await page.evaluate(() => document.querySelector("table")?.innerText.slice(0, 300)));
+
+    await page.evaluate(() => { window.__opened = []; window.open = (u) => { window.__opened.push(u); return null; }; });
+    await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => /Telegramga/.test(b.innerText))?.click());
+    await waitFor(page, () => (window.__opened || []).length > 0, 3000);
+    const url = await page.evaluate(() => (window.__opened || [])[0] || "");
+    /^https:\/\/t\.me\/share\/url\?/.test(url) && decodeURIComponent(url).includes("Buyurtma: Chorvador")
+      && decodeURIComponent(url).includes("Mol go'shti — 18,1 kg")
+      ? ok("«Telegramga» — yetkazuvchiga tayyor matn bilan ulashish oynasi") : no("telegram", url.slice(0, 200));
+    await page.close();
+  }
+  {
+    const { page } = await openKassa({ restaurant: false, path: "/ingredients", ready: "body" });
+    await waitFor(page, () => location.pathname !== "/ingredients", 6000);
+    const at = await page.evaluate(() => location.pathname);
+    at === "/inventory" ? ok("do'konda /ingredients → /inventory") : no("do'konda masalliq", at);
     await page.close();
   }
 }

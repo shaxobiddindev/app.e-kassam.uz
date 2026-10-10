@@ -29,7 +29,7 @@ import { hourWindow, changeText } from "../lib/ek-restaurant-today";
 const ALERT = {
   LATE:  { to: "/kitchen",    bg: "var(--bg-danger-subtle)",  bd: "var(--border-danger)",   ink: "var(--fg-danger)" },
   BILL:  { to: "/restaurant", bg: "var(--bg-warning-subtle)", bd: "var(--border-warning)", ink: "var(--fg-warning)" },
-  STOCK: { to: "/inventory",  bg: "var(--bg-warning-subtle)", bd: "var(--border-warning)", ink: "var(--fg-warning)" },
+  STOCK: { to: "/ingredients",  bg: "var(--bg-warning-subtle)", bd: "var(--border-warning)", ink: "var(--fg-warning)" },
   STOP:  { to: "/menu",       bg: "var(--bg-warning-subtle)", bd: "var(--border-warning)", ink: "var(--fg-warning)" },
   RESV:  { to: "/restaurant", bg: "var(--bg-sunken)",         bd: "var(--border-strong)",  ink: "var(--fg-primary)" },
 };

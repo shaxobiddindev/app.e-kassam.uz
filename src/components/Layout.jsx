@@ -144,7 +144,9 @@ export const RESTAURANT_NAV = [
     { id: "r-prices",   path: "/prices",     key: "rnav.prices",   icon: "fa-money-check-dollar",  roles: MGR },
   ]},
   { id: "r-stock", key: "rnav.stock", icon: "fa-carrot", children: [
-    { id: "inventory",    path: "/inventory",  key: "rnav.stockLeft", icon: "fa-carrot",          roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"], feature: "INVENTORY" },
+    /* E4: restoranning o'z «Qoldiq» sahifasi; do'kon ombori (partiyalar,
+       tuzatish, chiqit) `/inventory` da qoladi va shu bandga taxallus. */
+    { id: "inventory",    path: "/ingredients", alias: ["/inventory"], key: "rnav.stockLeft", icon: "fa-carrot",          roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"], feature: "INVENTORY" },
     { id: "r-supply",     path: "/supply",     key: "rnav.supply",    icon: "fa-truck-ramp-box",  roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"], feature: "SUPPLY" },
     { id: "r-count",      path: "/stock-take", key: "rnav.count",     icon: "fa-clipboard-list",  roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"], feature: "STOCK_TAKE" },
     { id: "r-transfers",  path: "/transfers",  key: "nav.transfers",  icon: "fa-truck-fast",      roles: ["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"], feature: "TRANSFER" },
@@ -214,13 +216,15 @@ function findPlace(pathname, NAV) {
      ilgari ular BOSH SAHIFA deb hisoblanardi: partiyalar sahifasi
      ochilganda sarlavhada «Dashboard» yozilib, menyuda ham boshqa band
      yonardi. Endi eng UZUN mos keluvchi ota-yo'l olinadi. */
-  let best = null;
+  let best = null, bestLen = 0;
   for (const item of NAV) {
     for (const c of childrenOf(item)) {
       if (!c.path || c.path === "/") continue;
-      if (pathname.startsWith(c.path + "/")
-          && (!best || c.path.length > best.child.path.length)) {
-        best = { group: item, child: c };
+      /* Taxallus ham ota-yo'l (E4: restoranda `/inventory/5` — «Qoldiq»). */
+      for (const p of [c.path, ...(c.alias || [])]) {
+        if (pathname.startsWith(p + "/") && p.length > bestLen) {
+          best = { group: item, child: c }; bestLen = p.length;
+        }
       }
     }
   }
