@@ -148,6 +148,17 @@ async function openKassa({ restaurant, kitchen = false, tables = false, terminal
                           version: (body?.version ?? 0) + 1, guests: calls.lastPut?.guests || 1, lines },
                  sent: lines };
       }
+    } else if (u.pathname.endsWith("/reports/restaurant/today")) {
+      calls.today = (calls.today || 0) + 1;
+      const now = new Date().toISOString();
+      data = { date: u.searchParams.get("date"), revenue: 3250000, revenueLastWeek: 2900000, receipts: 41, guests: 96,
+               perGuest: 33854, avgCheck: 79268, tablesTotal: 14, tablesBusy: 9, tablesClosed: 38, turnover: 2.7,
+               kitchenOpen: 6, kitchenLate: 1, cookMinutes: 14, tips: 120000, serviceCharge: 295000,
+               hours: Array.from({ length: 24 }, (_, h) => ({ hour: h, revenue: h >= 11 && h <= 15 ? 400000 + h * 10000 : 0, occupancy: h === 13 ? 93 : h >= 11 && h <= 15 ? 60 : 0 })),
+               alerts: [{ kind: "LATE", title: "Stol 4", text: "Osh, Lag'mon", at: now, minutes: 24 },
+                        { kind: "STOCK", title: "Mol go'shti", text: "2.5", unit: "KG", at: null }],
+               dishes: [{ productId: 7, name: "Osh", qty: 42, revenue: 1890000 }],
+               waiters: [{ login: "dn", name: "Dilnoza Karimova", tables: 9, guests: 31, revenue: 1240000, avgCheck: 137777, tips: 60000 }] };
     } else if (u.pathname.endsWith("/products/categories")) {
       data = tables ? [{ id: 1, name: "Taomlar", productCount: 2, station: "Oshxona" }] : [];
     } else if (/\/products\/\d+$/.test(u.pathname)) {
@@ -681,6 +692,27 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
     await waitFor(page, () => location.pathname !== "/pickup" && location.pathname !== "/labels" && location.pathname !== "/loyalty", 6000);
     const at = await page.evaluate(() => location.pathname);
     at !== path ? ok(`restoranda do'kon sahifasi ${path} ochilmaydi → ${at}`) : no(`restoranda ${path} ochildi`, at);
+    await page.close();
+  }
+  {
+    /* E2 (2026-10-10): restoran egasining bosh sahifasi — do'kon paneli emas, «Bugun». */
+    const { page, calls } = await openKassa({ restaurant: true, kitchen: true, tables: true, path: "/", ready: "body" });
+    await waitFor(page, () => /Bugun restoranda/.test(document.body.innerText), 8000);
+    const txt = await page.evaluate(() => document.querySelector("main, .main, body")?.innerText || "");
+    /Bugun restoranda/.test(txt) && /Mehmon boshiga/.test(txt) && /9 \/ 14/.test(txt)
+      ? ok("restoran egasining uyi — «Bugun»: mehmon boshiga, band stollar 9/14") : no("Bugun paneli", txt.slice(0, 300));
+    /▲ 12%/.test(txt) ? ok("o'tgan hafta bilan solishtirish: ▲ 12%") : no("solishtirish", txt.slice(0, 400));
+    /Stol 4 — buyurtma kechikmoqda/.test(txt) && /Mol go'shti tugayapti/.test(txt) && /2,5 kg|2\.5 kg/i.test(txt)
+      ? ok("diqqat: kechikkan buyurtma va tugayotgan masalliq (birligi bilan)") : no("diqqat", txt.slice(0, 600));
+    /Dilnoza Karimova/.test(txt) && /Choy puli/i.test(txt) ? ok("ofitsiantlar jadvali choy puli bilan") : no("ofitsiantlar", txt.slice(-400));
+    !/Kunlik savdo|Dashboard/.test(txt) ? ok("do'kon bosh sahifasi chizilmadi") : no("do'kon paneli restoranda", txt.slice(0, 200));
+    if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/restaurant-today.png`, fullPage: true });
+    const before = calls.today;
+    await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => /Kecha/.test(b.innerText))?.click());
+    (await waitFor(page, () => /kun yakuni/.test(document.body.innerText), 4000)) && calls.today > before
+      ? ok("«Kecha» — kun yakuni qayta so'raldi") : no("kecha", String(calls.today));
+    await page.evaluate(() => [...document.querySelectorAll("a")].find((a) => /buyurtma kechikmoqda/.test(a.innerText))?.click());
+    (await waitFor(page, () => location.pathname === "/kitchen", 4000)) ? ok("kechikish qatori → oshxona") : no("kechikish havolasi", await page.evaluate(() => location.pathname));
     await page.close();
   }
   {

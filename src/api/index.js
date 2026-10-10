@@ -375,6 +375,14 @@ export const reportApi = {
     return request(`/reports/day-products?${q}`);
   },
 
+  /* Restoranning «Bugun» paneli (E2): mehmon, stol, oshxona, ofitsiant. */
+  restaurantToday: (date, shopId) => {
+    const q = new URLSearchParams();
+    if (date) q.set("date", date);
+    if (shopId) q.set("shopId", shopId);
+    return request(`/reports/restaurant/today?${q}`);
+  },
+
   /* ⚠ KASSA UCHUN: birga sotiladigan juftliklar (V79). Ochilishda BIR
      MARTA olinadi va keyin xotiradan qidiriladi — kassirning oldida
      navbat turadi va har skanerdan keyin serverga borish mumkin

@@ -216,6 +216,14 @@ const HomeRoute = ({ user, toast }) => {
     if (!ready) return <Progress />;
     return <Navigate to={isRestaurant && has("TABLES") ? "/restaurant" : "/sale"} replace />;
   }
+  /* Restoran rahbari — do'kon bosh sahifasi emas, «Bugun» paneli (E2).
+     ⚠ `ready` kutiladi: aks holda restoranda bir lahza do'kon paneli
+     chizilib, keyin almashardi. */
+  const manager = ["ADMIN", "SHOP_ADMIN", "OWNER"].some((r) => roles.has(r));
+  if (manager && !ready) return <Progress />;
+  if (manager && isRestaurant) {
+    return <ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><P.RestaurantToday toast={toast} /></ProtectedRoute>;
+  }
   return <ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><P.Dashboard toast={toast} /></ProtectedRoute>;
 };
 
