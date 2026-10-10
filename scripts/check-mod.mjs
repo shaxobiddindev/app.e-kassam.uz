@@ -440,13 +440,16 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
   /3[\s\u00a0\u202f]?300/.test(rowTxt) ? ok("savatda jami 3 300 (3 000 + 10%)") : no("jamiga xizmat haqi qo'shilmadi", rowTxt);
   await page.keyboard.press("F9");
   await waitFor(page, () => !!document.querySelector(".order-type"));
-  const btns = await page.evaluate(() => [...document.querySelectorAll(".order-type__b")].map((b) => b.getAttribute("aria-checked")));
+  /* 2026-10-11: restoranda buyurtma turi savat tepasida HAM bor — to'lov oynasidagisi oxirgi guruh. */
+  const groups = await page.evaluate(() => document.querySelectorAll(".order-type").length);
+  groups === 2 ? ok("buyurtma turi savat tepasida ham (restoran kassasi)") : no("savat tepasida buyurtma turi yo'q", String(groups));
+  const btns = await page.evaluate(() => [...[...document.querySelectorAll(".order-type")].pop().querySelectorAll(".order-type__b")].map((b) => b.getAttribute("aria-checked")));
   JSON.stringify(btns) === '["true","false","false"]' ? ok("to'lov oynasida buyurtma turi, standart «Zalda»") : no("buyurtma turi yo'q yoki noto'g'ri", JSON.stringify(btns));
-  await page.evaluate(() => document.querySelectorAll(".order-type__b")[1].click());
+  await page.evaluate(() => [...document.querySelectorAll(".order-type")].pop().querySelectorAll(".order-type__b")[1].click());
   await new Promise((r) => setTimeout(r, 200));
   const take = await page.evaluate(() => document.querySelector(".pay-modal-total-value")?.textContent || "");
   /^3[\s\u00a0\u202f]?000/.test(take.trim()) ? ok("«Olib ketish» — xizmat haqisiz 3 000") : no("olib ketishda xizmat haqi qoldi", take);
-  await page.evaluate(() => document.querySelectorAll(".order-type__b")[0].click());
+  await page.evaluate(() => [...document.querySelectorAll(".order-type")].pop().querySelectorAll(".order-type__b")[0].click());
   await new Promise((r) => setTimeout(r, 200));
   await page.keyboard.type("3300", { delay: 20 });
   await new Promise((r) => setTimeout(r, 300));
@@ -1074,6 +1077,38 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
     await waitFor(page, () => !!document.querySelector(".app-layout"), 6000);
     const full = await page.evaluate(() => document.querySelector(".app-layout")?.classList.contains("kassa-fullscreen"));
     full ? ok("faqat ofitsiant: zal to'liq ekranda (panel boshqa joy ochmaydi)") : no("ofitsiant zali", "");
+    await page.close();
+  }
+}
+
+{
+  console.log("\n§15h Restoran kassasi (2026-10-11)");
+  {
+    const { page } = await openKassa({ restaurant: true, kitchen: true, tables: true, path: "/sale", stopIds: [3] });
+    await waitFor(page, () => document.querySelectorAll(".product-card").length > 0, 6000);
+    const tabs = await page.evaluate(() => [...document.querySelectorAll(".kassa-left [role=tablist] [role=tab]")].map((b) => b.innerText.trim()).join("|"));
+    /Hammasi/.test(tabs) && /Tez taomlar/.test(tabs) && /Taomlar/.test(tabs) ? ok("menyu bo'limlari — tablar: " + tabs) : no("bo'lim tablari", tabs);
+    const sel = await page.evaluate(() => !!document.querySelector(".kassa-cat"));
+    !sel ? ok("do'konning bo'lim tanlagichi yo'q") : no("restoranda bo'lim tanlagichi", "");
+    const names = await page.evaluate(() => [...document.querySelectorAll(".product-card")].map((c) => c.innerText).join("|"));
+    /burger/.test(names) && !/suv/.test(names) ? ok("stop-listdagi taom kassada ham yo'q") : no("stop-list kassada", names);
+    const empty = await page.evaluate(() => document.querySelector(".kassa-right")?.innerText || "");
+    /zaldan stolni oching/.test(empty) && /Zalga o'tish/.test(empty) ? ok("bo'sh savat: taom tanlang yoki zaldan stol oching") : no("bo'sh savat", empty.slice(0, 200));
+    const savings = await page.evaluate(() => !!document.querySelector(".btn-savings"));
+    !savings ? ok("jamg'arma tugmasi restoranda yo'q") : no("jamg'arma tugmasi", "");
+    await page.evaluate(() => [...document.querySelectorAll(".kassa-right .order-type__b")].find((b) => /Olib ketish/.test(b.innerText))?.click());
+    const on = await page.evaluate(() => document.querySelector(".kassa-right .order-type__b[aria-checked=true]")?.innerText || "");
+    /Olib ketish/.test(on) ? ok("savat tepasida buyurtma turi: «Olib ketish» tanlandi") : no("buyurtma turi savatda", on);
+    await tile(page, "burger");
+    if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/restaurant-kassa.png` });
+    await page.close();
+  }
+  {
+    const { page } = await openKassa({ restaurant: false, path: "/sale" });
+    await waitFor(page, () => document.querySelectorAll(".product-card").length > 0, 6000);
+    const st = await page.evaluate(() => ({ sel: !!document.querySelector(".kassa-cat"), sav: !!document.querySelector(".btn-savings"),
+      tabs: document.querySelectorAll(".kassa-left [role=tablist] [role=tab]").length }));
+    st.sel && st.sav && st.tabs === 0 ? ok("do'kon kassasi o'zgarmadi (tanlagich, jamg'arma)") : no("do'kon kassasi", JSON.stringify(st));
     await page.close();
   }
 }

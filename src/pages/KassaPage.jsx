@@ -2231,6 +2231,10 @@ export default function KassaPage({ toast, refreshLowStock }) {
   const restaurant = hasFeature("KITCHEN");
   const svcPct = restaurant ? servicePercent(svcCfg) : 0;
   const orderType = restaurant ? (active.orderType || "DINE_IN") : null;
+  /* Restoranda stop-listdagi taom (E3) kassada ham chiqmaydi: kassir uni
+     olib ketishga sotib qo'ymasin — oshxonada yo'q. Oflayn katalog ham
+     belgini olib yuradi. */
+  const shownProducts = isRestaurant ? products.filter((p) => !p.stopListed) : products;
   const setOrderType = (v) => patchCart(active.id, { orderType: v });
   const baseTotal = afterDiscount - bonusNum;
   const svcAmount = serviceChargeOf(baseTotal, orderType, svcPct);
@@ -3487,7 +3491,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
                       <span className="cart-tab__name">
                         {c.tableOrderId
                           ? <><i className="fa-solid fa-chair" aria-hidden="true" /> {c.tableName}</>
-                          : (c.customer?.name || t("kassa.cartN", { n: i + 1 }))}
+                          : (c.customer?.name || t(isRestaurant ? "rkassa.orderN" : "kassa.cartN", { n: i + 1 }))}
                       </span>
                       <span className="cart-tab__sum ek-num">
                         {c.items.length
@@ -3574,7 +3578,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
                      Kerak bo'lganda yonidagi tugma bilan ochiladi. */
                   data-osk="off"
                   autoComplete="off"
-                  placeholder={t("kassa.searchOrScan")}
+                  placeholder={t(isRestaurant ? "rkassa.search" : "kassa.searchOrScan")}
                   value={search}
                   inputMode={search.startsWith("*") ? "numeric" : undefined}
                   onChange={(e) => handleSearchChange(takeQuery(e.target.value))}
@@ -3625,7 +3629,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
                   surilardi, ya'ni kassir kerakli bo'limni topish uchun
                   avval uni qidirib surishi kerak edi. Tanlagichda
                   hammasi bir bosishda ko'rinadi va joy olmaydi. */}
-              <Select
+              {!isRestaurant && <Select
                 className="kassa-cat"
                 ariaLabel={t("products.category")}
                 searchable searchPlaceholder={t("common.searchShort")}
@@ -3651,7 +3655,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
                     icon: c.icon || "fa-tag",
                   })),
                 ]}
-              />
+              />}
 
               {/* ⚠ FILTR TUGMASI — TANLAGICH YONIDA (V57). Tanlagich bitta
                   kategoriya beradi, filtr esa bir nechtasini va kiyim
@@ -3662,7 +3666,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
                   ⚠ Belgilangan katakchalar soni TUGMADA ko'rinadi —
                   aks holda kassir bo'sh natijani «tovar yo'q» deb
                   tushunardi, holbuki sabab kechagi filtr edi. */}
-              {facets && (
+              {facets && !isRestaurant && (
                 <button type="button"
                         className={`btn-icon filter-btn ${filterCount > 0 ? "is-on" : ""}`}
                         title={`${t("common.filter")} (${keyLabel("filter")})`}
@@ -3765,6 +3769,30 @@ export default function KassaPage({ toast, refreshLowStock }) {
 
                 ⚠ Rang yolg'iz signal emas (qoida №6): ikonka va
                 yozuv ham bor. */}
+            {/* ══ RESTORAN: MENYU BO'LIMLARI — TABLAR (2026-10-11) ═════════
+                Do'konda bu tanlagich (yuzlab kategoriya bir qatorga
+                sig'masdi). Restoran menyusida bo'lim 5–10 ta va kassir
+                ularni BIR BOSISHDA almashtirishi kerak — ofitsiant
+                ekranidagidek. Qator suriladi, sinmaydi. */}
+            {isRestaurant && (
+              <div role="tablist" aria-label={t("rnav.sections")}
+                   style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 6, flex: "none" }}>
+                {[{ id: "", name: t("rkassa.all"), icon: "fa-grip" }, { id: "fav", name: t("rkassa.fav"), icon: "fa-star" },
+                  ...categories.map((c) => ({ id: String(c.id), name: c.name, icon: c.icon || "fa-bowl-food" }))].map((c) => {
+                  const on = c.id === "fav" ? favOnly : (!favOnly && String(categoryId || "") === c.id);
+                  return (
+                    <button key={c.id || "all"} type="button" role="tab" aria-selected={on}
+                            className="btn btn-outline btn-sm"
+                            style={{ minHeight: 56, padding: "0 16px", borderRadius: 12, fontWeight: 700, whiteSpace: "nowrap", flex: "none",
+                                     ...(on ? { background: "var(--bg-brand)", color: "var(--fg-on-brand)", borderColor: "transparent" } : {}) }}
+                            onClick={() => { setFavOnly(c.id === "fav"); setCategoryId(c.id && c.id !== "fav" ? Number(c.id) : null); }}>
+                      <i className={`fa-solid ${c.icon}`} aria-hidden="true" /> {c.name}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
             {(cacheOnly || !online) && (
               <div className="kassa-offline-note" role="status">
                 <i className="fa-solid fa-cloud-arrow-down" aria-hidden="true" />
@@ -3791,7 +3819,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
                   <Spinner small /> Qidirilmoqda…
                 </div>
               )}
-              {products.map((p) => (
+              {shownProducts.map((p) => (
                 /* Katakchadagi son SAVATNI hisobga oladi: 38 dona bordi,
                    3 tasi savatda — katakchada 35 turadi. Ilgari u ombor
                    qoldig'ini ko'rsatib turaverardi va kassir savatga
@@ -3814,7 +3842,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
                   showCode={numericSearch}
                 />
               ))}
-              {products.length === 0 && !searching && (
+              {shownProducts.length === 0 && !searching && (
                 <div style={{ gridColumn: "1/-1" }}>
                   {/* ⚠ SERVER SABABNI AYTGAN BO'LSA — O'SHA MATN.
                       «Bu kod o'chirilgan tovarga tegishli» degan javob
@@ -3847,9 +3875,43 @@ export default function KassaPage({ toast, refreshLowStock }) {
                 so'rovi). Bu ustun endi FAQAT savat: sarlavha ham,
                 mijoz bloki ham olib tashlangan va butun balandlik
                 tovarlar ro'yxatiga tegishli. */}
+            {/* ══ RESTORAN: BUYURTMA TURI SAVAT TEPASIDA (2026-10-11) ═════
+                Ilgari faqat to'lov oynasida edi — kassir olib ketishni
+                to'lovgacha «zalda» deb o'ylab qolardi (xizmat haqi shunga
+                bog'liq). Stol tabida tur o'zgarmaydi: stol — zal. */}
+            {isRestaurant && orderType && (
+              active.tableOrderId || active.tablePart ? (
+                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderBottom: "1px solid var(--border-subtle)", fontWeight: 700 }}>
+                  <i className="fa-solid fa-chair" aria-hidden="true" style={{ color: "var(--fg-brand)" }} />
+                  <span>{active.tableName}</span>
+                  <span className="text-muted" style={{ fontWeight: 500 }}>· {t("svc.type.DINE_IN")}</span>
+                </div>
+              ) : (
+                <div className="order-type" role="radiogroup" aria-label={t("svc.orderType")} style={{ padding: "8px 8px 0" }}>
+                  {ORDER_TYPES.map((ot) => (
+                    <button key={ot} type="button" role="radio" aria-checked={orderType === ot}
+                            className={`order-type__b${orderType === ot ? " is-on" : ""}`}
+                            style={{ minHeight: 56 }}
+                            onClick={() => setOrderType(ot)}>
+                      <i className={`fa-solid ${ot === "DINE_IN" ? "fa-utensils" : ot === "TAKEAWAY" ? "fa-bag-shopping" : "fa-motorcycle"}`} aria-hidden="true" />
+                      {t(`svc.type.${ot}`)}
+                    </button>
+                  ))}
+                </div>
+              )
+            )}
             <div className="cart-items">
               {cart.length === 0 ? (
-                <Empty icon="fa-barcode" text={t("kassa.scanPrompt")} />
+                isRestaurant ? (
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+                    <Empty icon="fa-utensils" text={t("rkassa.empty")} />
+                    {hasFeature("TABLES") && (
+                      <button type="button" className="btn btn-outline" style={{ minHeight: 56, fontWeight: 700 }} onClick={() => navigateTo("/restaurant")}>
+                        <i className="fa-solid fa-chair" aria-hidden="true" /> {t("rkassa.toHall")}
+                      </button>
+                    )}
+                  </div>
+                ) : <Empty icon="fa-barcode" text={t("kassa.scanPrompt")} />
               ) : (
                 cart.map((item) => (
                   <div
@@ -4000,7 +4062,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
                 {/* ⚠ FAQAT MOS TOVAR BO'LGANDA KO'RINADI: optom narxi
                     yo'q savatda bu tugma hech narsa qilmasdi va
                     kassirni chalg'itardi. */}
-                {wsPlan.rows.length > 0 && (
+                {wsPlan.rows.length > 0 && !isRestaurant && (
                   <button className={`btn btn-sm cart-wholesale${wsPlan.isOn ? " is-on" : ""}`}
                           onClick={toggleWholesale}
                           title={`${wsPlan.rows.length} ta tovar`}>
@@ -4044,7 +4106,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
                 raqam ma'nosiz va chalg'ituvchi bo'lardi. Savatdagi SATRLAR
                 soni ko'rsatiladi. */}
             <div className="total-row">
-              <span>{t("products.title")}</span>
+              <span>{t(isRestaurant ? "rnav.dishes" : "products.title")}</span>
               <span className="ek-num">{cart.length}</span>
             </div>
             {svcAmount > 0 && (
@@ -4089,11 +4151,13 @@ export default function KassaPage({ toast, refreshLowStock }) {
             </div>
             ) : (
             <div className="checkout-row">
+              {!isRestaurant && (
               <button className="btn btn-savings btn-pos" onClick={openTopUp}
                       title={t("savings.topUpTitle")}>
                 <i className="fa-solid fa-sack-dollar" aria-hidden="true" />
                 {t("savings.short")} <span className="kbd">{keyLabel("topUp")}</span>
               </button>
+              )}
               <button className="btn btn-green btn-pos" onClick={openPayModal} disabled={!cart.length}>
                 <i className="fa-solid fa-wallet" aria-hidden="true" />
                 {t("kassa.checkout")} <span className="kbd">F9</span>
