@@ -43,6 +43,20 @@ const LOADERS = {
   en: () => import("./locales/en"),
 };
 
+/* ── BO'LIM LUG'ATLARI (restoran 4-bosqich, 2026-10-10) ──────────────────
+   Bo'limning o'z matnlari o'z bo'lagida keladi va sahifa import qilinganda
+   shu yerga qo'shiladi (`addKeys`).
+
+   ⚠ NEGA. O'zbekcha lug'at statik — kirish to'plamida, kassir har ochilishda
+   uni kutadi (KIRISH 198/200). Restoran boshqaruv sahifalari (E2–E7) yuzlab
+   kalit qo'shadi; ular uz.js da tursa, restoranga umuman aloqasi yo'q do'kon
+   kassiri ham har ochilishda shuni yuklardi.
+   ⚠ Asosiy lug'at USTUN: bir xil kalit ikkala joyda bo'lsa, uz.js dagisi. */
+const EXT = {};
+export function addKeys(pack) {
+  for (const [lang, dict] of Object.entries(pack || {})) EXT[lang] = { ...EXT[lang], ...dict };
+}
+
 /* Bir tilni ikki marta tortmaslik uchun: so'rov ketgan bo'lsa, o'sha
    va'da qaytariladi. */
 const pending = {};
@@ -196,7 +210,9 @@ export function initLang() {
 export function t(key, vars) {
   const raw =
     DICT[current]?.[key] ??
+    EXT[current]?.[key] ??
     DICT[DEFAULT_LANG]?.[key] ??
+    EXT[DEFAULT_LANG]?.[key] ??
     key;
 
   if (!vars) return raw;

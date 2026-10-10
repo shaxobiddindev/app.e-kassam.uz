@@ -52,6 +52,8 @@ export const AUDIT_ACTIONS = [
   "MODIFIER_CHANGE",
   /* Retsept — taom tannarxi shundan (V150). */
   "RECIPE_CHANGE",
+  /* Stop-list (E3, V161) — «nega bugun yo'q, kim qo'ydi». */
+  "MENU_STOP",
   /* ⚠ Yorliq chiqarish narx bilan bir guruhda va bu ataylab:
      «javondagi narx eskirgan» savoli aynan shu ikkisining
      orasida yashaydi. */

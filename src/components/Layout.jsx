@@ -136,7 +136,9 @@ export const RESTAURANT_NAV = [
 
   { id: "r-today",   section: "rnav.sec.manage", path: "/", key: "rnav.today", icon: "fa-chart-simple", roles: MGR },
   { id: "r-menu", key: "rnav.menu", icon: "fa-book-open", children: [
-    { id: "r-dishes",   path: "/products",   key: "rnav.dishes",   icon: "fa-bowl-food",           roles: MGR },
+    /* `/products` — taom formasi (menyudan «Tahrirlash», E3): sarlavha va
+       ichki tablar o'sha joyda ham «Menyu» bo'lib qolsin. */
+    { id: "r-dishes",   path: "/menu", alias: ["/products"],   key: "rnav.dishes",   icon: "fa-bowl-food",           roles: MGR },
     { id: "r-sections", path: "/categories", key: "rnav.sections", icon: "fa-layer-group",         roles: MGR },
     { id: "r-mods",     path: "/modifiers",  key: "nav.modifiers", icon: "fa-plus",                roles: MGR, feature: "MODIFIERS" },
     { id: "r-prices",   path: "/prices",     key: "rnav.prices",   icon: "fa-money-check-dollar",  roles: MGR },
@@ -204,7 +206,7 @@ const visibleChildren = (item, role, hasFeature = () => true) =>
  */
 function findPlace(pathname, NAV) {
   for (const item of NAV) {
-    const child = childrenOf(item).find((c) => c.path === pathname);
+    const child = childrenOf(item).find((c) => c.path === pathname || c.alias?.includes(pathname));
     if (child) return { group: item, child };
   }
 

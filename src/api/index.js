@@ -1382,6 +1382,15 @@ export const tableApi = {
 };
 
 /* ── Texnologik karta (V150, modul RECIPES) ── */
+/* Restoran menyusi (E3, V161): taomlar, tannarx ulushi, stop-list. */
+export const menuApi = {
+  board: () => request("/menu/board"),
+  stop: (productId, stopped) =>
+    request(`/menu/${productId}/stop`, { method: "PUT", body: JSON.stringify({ stopped }) }),
+  card: (productId, body) =>
+    request(`/menu/${productId}/card`, { method: "PUT", body: JSON.stringify(body) }),
+};
+
 export const recipeApi = {
   get: (productId) => request(`/recipes/${productId}`),
   save: (productId, lines) =>

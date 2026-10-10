@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { t } from "../lib/ek-i18n";
+import "../lib/ek-rest-words";
 import { reportApi } from "../api";
 import { money } from "../utils";
 import { quantity, time } from "../lib/ek-format";
@@ -29,6 +30,7 @@ const ALERT = {
   LATE:  { to: "/kitchen",    bg: "var(--bg-danger-subtle)",  bd: "var(--border-danger)",   ink: "var(--fg-danger)" },
   BILL:  { to: "/restaurant", bg: "var(--bg-warning-subtle)", bd: "var(--border-warning)", ink: "var(--fg-warning)" },
   STOCK: { to: "/inventory",  bg: "var(--bg-warning-subtle)", bd: "var(--border-warning)", ink: "var(--fg-warning)" },
+  STOP:  { to: "/menu",       bg: "var(--bg-warning-subtle)", bd: "var(--border-warning)", ink: "var(--fg-warning)" },
   RESV:  { to: "/restaurant", bg: "var(--bg-sunken)",         bd: "var(--border-strong)",  ink: "var(--fg-primary)" },
 };
 
@@ -56,6 +58,7 @@ export default function RestaurantTodayPage({ toast }) {
   const alertText = (a) => {
     if (a.kind === "LATE") return { title: t("rtd.a.late", { table: a.title }), text: a.text || "", when: t("tbl.minutes", { n: a.minutes }) };
     if (a.kind === "BILL") return { title: t("rtd.a.bill", { table: a.title }), text: t("rtd.a.billText", { sum: money(a.text) }), when: t("tbl.minutes", { n: a.minutes }) };
+    if (a.kind === "STOP") return { title: t("rtd.a.stop", { name: a.title }), text: a.text ? t("rtd.a.stopBy", { who: a.text }) : "", when: a.at ? time(a.at) : "" };
     if (a.kind === "STOCK") return { title: t("rtd.a.stock", { name: a.title }), text: t("rtd.a.stockText"), when: `${quantity(a.text)} ${unitLabel(a.unit)}` };
     return { title: t("rtd.a.resv", { table: a.title }), text: [a.text, a.guests ? t("rtd.guestsN", { n: a.guests }) : ""].filter(Boolean).join(" · "), when: time(a.at) };
   };

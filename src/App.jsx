@@ -183,6 +183,13 @@ const StoreOnlyRoute = ({ children }) => {
   return isRestaurant ? <Navigate to="/" replace /> : children;
 };
 
+/* Faqat restoranda (E3): do'konda menyu sahifasi o'rniga tovarlar ro'yxati. */
+const RestaurantOnlyRoute = ({ children, fallback = "/" }) => {
+  const { isRestaurant, ready } = useShopFeatures();
+  if (!ready) return <Progress />;
+  return isRestaurant ? children : <Navigate to={fallback} replace />;
+};
+
 const FeatureRoute = ({ feature, children }) => {
   const { has, ready } = useShopFeatures();
   if (!ready) return <Progress />;
@@ -479,6 +486,7 @@ export default function App() {
             <Route path="/restaurant" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "WAITER", "OWNER"]}><FeatureRoute feature="TABLES"><P.RestaurantFloor toast={toast} /></FeatureRoute></ProtectedRoute>} />
             <Route path="/kitchen" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "WAITER", "COOK", "OWNER"]}><FeatureRoute feature="KITCHEN"><P.Kitchen toast={toast} /></FeatureRoute></ProtectedRoute>} />
             <Route path="/restaurant/table/:id" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "CASHIER", "WAITER", "OWNER"]}><FeatureRoute feature="TABLES"><P.RestaurantTable toast={toast} /></FeatureRoute></ProtectedRoute>} />
+            <Route path="/menu" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><RestaurantOnlyRoute fallback="/products"><P.RestaurantMenu toast={toast} /></RestaurantOnlyRoute></ProtectedRoute>} />
             <Route path="/products" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><P.Products toast={toast} /></ProtectedRoute>} />
             <Route path="/categories" element={<ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><P.Categories toast={toast} /></ProtectedRoute>} />
             <Route path="/labels" element={<StoreOnlyRoute><ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><P.Labels toast={toast} /></ProtectedRoute></StoreOnlyRoute>} />

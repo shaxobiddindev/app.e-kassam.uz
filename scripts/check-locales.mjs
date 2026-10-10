@@ -105,12 +105,48 @@ const stripComments = (src) => src
   .replace(/\/\*[\s\S]*?\*\//g, " ")
   .replace(/(^|[^:])\/\/[^\n]*/g, "$1 ");
 
+/* ── 5. BO'LIM LUG'ATLARI (restoran, 2026-10-10) ────────────────────
+   Restoran sahifalarining matnlari uz.js da emas, `lib/ek-rest-words.js`
+   da (`addKeys`) — kirish to'plamini og'irlashtirmaslik uchun. Shu
+   faylning kalitlari ham «lug'atda bor» hisoblanadi va o'sha uchta qoida
+   unga ham qo'llanadi: uchala til mos, takror yo'q. Qo'shimcha — kalit
+   uz.js da ham bo'lmasin (ikkalasida bo'lsa uz.js dagisi ko'rinadi va
+   bo'lim faylidagi tarjima jimgina o'ladi). */
+const PACKS = [path.join(SRC, "lib", "ek-rest-words.js")];
+const packKeys = (file) => {
+  const src = fs.readFileSync(file, "utf8");
+  return Object.fromEntries(langs.map((lang) => {
+    const m = src.match(new RegExp(`const ${lang} = \\{([\\s\\S]*?)\\n\\};`));
+    return [lang, m ? [...m[1].matchAll(/^\s*"([\w.]+)"\s*:/gm)].map((x) => x[1]) : []];
+  }));
+};
+const known = new Set(base);
+const packIssues = [];
+for (const file of PACKS) {
+  const name = path.relative(ROOT, file);
+  const pk = packKeys(file);
+  if (!pk.uz.length) packIssues.push(`${name}: o'zbekcha bo'lim topilmadi`);
+  for (const lang of langs.slice(1)) {
+    const here = new Set(pk[lang]);
+    const miss = pk.uz.filter((k) => !here.has(k));
+    const extra = pk[lang].filter((k) => !pk.uz.includes(k));
+    if (miss.length || extra.length) packIssues.push(`${name} ${lang}: yetishmaydi ${miss.length} (${miss.slice(0, 3).join(", ")}), ortiqcha ${extra.length}`);
+  }
+  for (const lang of langs) {
+    const d = pk[lang].filter((k, i, a) => a.indexOf(k) !== i);
+    if (d.length) packIssues.push(`${name} ${lang}: ikki marta — ${d.slice(0, 3).join(", ")}`);
+  }
+  const both = pk.uz.filter((k) => base.has(k));
+  if (both.length) packIssues.push(`${name}: uz.js da ham bor — ${both.slice(0, 3).join(", ")}`);
+  for (const k of pk.uz) known.add(k);
+}
+
 const missingKeys = new Map();
 for (const f of walk(SRC)) {
   if (!/\.(js|jsx)$/.test(f) || f.includes(`${path.sep}locales${path.sep}`)) continue;
   const src = stripComments(fs.readFileSync(f, "utf8"));
   for (const m of src.matchAll(/\bt\(\s*"([A-Za-z][A-Za-z0-9_.]*)"/g)) {
-    if (base.has(m[1])) continue;
+    if (known.has(m[1])) continue;
     if (!missingKeys.has(m[1])) missingKeys.set(m[1], new Set());
     missingKeys.get(m[1]).add(path.relative(ROOT, f));
   }
@@ -142,6 +178,14 @@ for (const [lang, ks] of dups) {
   for (const k of ks.slice(0, 10)) console.log(`       ${k}`);
 }
 if (!dups.length) console.log("  ✅ Takrorlangan kalit yo'q (uchala tilda)");
+
+if (packIssues.length) {
+  bad++;
+  console.log("  ❌ Bo'lim lug'ati:");
+  for (const x of packIssues) console.log(`       ${x}`);
+} else {
+  console.log(`  ✅ Bo'lim lug'atlari mos (${PACKS.length} fayl)`);
+}
 
 if (missingKeys.size) {
   bad++;

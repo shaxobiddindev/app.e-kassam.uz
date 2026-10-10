@@ -392,7 +392,14 @@ export default function ProductsPage({ toast }) {
     }
   };
 
-  const closeModal = () => { setModal(null); setCopyNote(null); };
+  /* Restoran menyusidan kelgan forma (E3, `?back=/menu`) yopilgach o'sha
+     sahifaga qaytadi: menejer ro'yxatni emas, menyuni ko'rib turgan edi.
+     ⚠ Faqat ilova ichidagi manzil — `//` yoki to'liq URL qabul qilinmaydi. */
+  const closeModal = () => {
+    setModal(null); setCopyNote(null);
+    const back = new URLSearchParams(window.location.search).get("back");
+    if (back && back.startsWith("/") && !back.startsWith("//")) navigate(back, { replace: true });
+  };
 
   // ── Rasm ───────────────────────────────────────────────────
   const pickImage = async (file) => {
@@ -840,6 +847,19 @@ export default function ProductsPage({ toast }) {
      ulashilganda ham bir xil ro'yxat ochiladi. */
   const [params, setParams] = useSearchParams();
   const belowOnly = params.get("below") === "1";
+
+  /* Menyu sahifasining «Taom qo'shish» va «Tahrirlash» tugmalari (E3) shu
+     formani ochadi — ikkinchi forma yozilmaydi (2000 qatorlik forma bitta
+     joyda yashashi kerak). */
+  useEffect(() => {
+    const id = params.get("edit");
+    if (params.get("new") === "1") {
+      setForm({ ...EMPTY_FORM, ...(hasFeature("RECIPES") ? { type: "DISH" } : {}) });
+      setCatLocked(false); setRecipe(null); setRecipeTouched(false); setModal("add");
+    } else if (id) {
+      productApi.getById(id).then((r) => { if (r?.data) openEdit(r.data); }).catch((e) => toast?.error(e.message));
+    }
+  }, []);   // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ══ RO'YXAT — SERVERDAN, SAHIFA-SAHIFA ═══════════════════════════
 

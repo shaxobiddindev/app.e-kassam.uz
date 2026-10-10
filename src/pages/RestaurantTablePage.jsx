@@ -122,7 +122,10 @@ export default function RestaurantTablePage({ toast }) {
     if (!q && catId == null) return undefined;
     const timer = setTimeout(() => {
       productApi.search(q, 0, 120, undefined, q ? {} : { categoryId: catId })
-        .then((r) => setMenu(asArray(r?.data)))
+        /* Stop-listdagi taom ofitsiant menyusida yo'q (E3): mehmonga «bor»
+           deb aytib, keyin oshxonadan qaytib kelmasin. Server ham yangi
+           porsiyani rad etadi. */
+        .then((r) => setMenu(asArray(r?.data).filter((p) => !p.stopListed)))
         .catch(() => {});
     }, q ? 250 : 0);
     return () => clearTimeout(timer);

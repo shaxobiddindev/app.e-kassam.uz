@@ -60,9 +60,10 @@ const ok = (m) => console.log("  ✅ " + m);
 const no = (m, got) => { bad++; console.log(`  ❌ ${m}  →  ${got}`); };
 const pageErrors = [];
 
-async function openKassa({ restaurant, kitchen = false, tables = false, terminal = false, role = "OWNER", path = "/sale", ready, shiftClosed = false }) {
+async function openKassa({ restaurant, kitchen = false, tables = false, terminal = false, role = "OWNER", path = "/sale", ready, shiftClosed = false, stopIds = [] }) {
   const calls = { modifiers: 0, sales: [], tables: [], sse: [], orders: {},
-                  resv11: { at: new Date(Date.now() + 30 * 60000).toISOString(), name: "Aziz", guests: 6 } };
+                  resv11: { at: new Date(Date.now() + 30 * 60000).toISOString(), name: "Aziz", guests: 6 },
+                  menuStop: [], stop7: false };
   const page = await browser.newPage();
   await page.setViewport({ width: 1600, height: 950 });
   await page.setRequestInterception(true);
@@ -159,6 +160,26 @@ async function openKassa({ restaurant, kitchen = false, tables = false, terminal
                         { kind: "STOCK", title: "Mol go'shti", text: "2.5", unit: "KG", at: null }],
                dishes: [{ productId: 7, name: "Osh", qty: 42, revenue: 1890000 }],
                waiters: [{ login: "dn", name: "Dilnoza Karimova", tables: 9, guests: 31, revenue: 1240000, avgCheck: 137777, tips: 60000 }] };
+    } else if (u.pathname.endsWith("/menu/board")) {
+      data = { dishCount: 2, stopCount: calls.stop7 ? 1 : 0,
+               sections: [{ id: 1, name: "Taomlar", station: "Oshxona", count: 1 }],
+               dishes: [
+                 { id: 7, name: "burger", type: "DISH", categoryId: 1, categoryName: "Taomlar", station: "Oshxona", thumbUrl: null,
+                   price: 30000, cost: 9000, hasRecipe: true, costPct: 30, cookMinutes: 12, portion: "350 g",
+                   stopListed: calls.stop7, stopListedAt: calls.stop7 ? new Date().toISOString() : null, stopListedBy: calls.stop7 ? "m" : null,
+                   todayQty: 5, todayRevenue: 150000, portionsLeft: 4, limitName: "Go'sht", modifiers: ["Porsiya", "Sous"] },
+                 { id: 3, name: "suv", type: "GOODS", categoryId: null, categoryName: null, station: null, thumbUrl: null,
+                   price: 3000, cost: 2000, hasRecipe: false, costPct: 66.7, cookMinutes: null, portion: null,
+                   stopListed: false, todayQty: 0, todayRevenue: 0, portionsLeft: null, limitName: null, modifiers: [] }] };
+    } else if (/\/menu\/\d+\/stop$/.test(u.pathname)) {
+      let body = null;
+      try { body = JSON.parse(r.postData() || "null"); } catch { /* bo'sh */ }
+      calls.menuStop.push({ id: Number(u.pathname.split("/").slice(-2)[0]), stopped: body?.stopped });
+      calls.stop7 = !!body?.stopped;
+      data = null;
+    } else if (/\/recipes\/7$/.test(u.pathname)) {
+      data = { productId: 7, productName: "burger", salePrice: 30000, cost: 9000,
+               lines: [{ ingredientId: 50, name: "Go'sht", unit: "KG", unitDecimals: 3, quantity: 0.1, costPrice: 90000, lineCost: 9000 }] };
     } else if (u.pathname.endsWith("/products/categories")) {
       data = tables ? [{ id: 1, name: "Taomlar", productCount: 2, station: "Oshxona" }] : [];
     } else if (/\/products\/\d+$/.test(u.pathname)) {
@@ -171,7 +192,8 @@ async function openKassa({ restaurant, kitchen = false, tables = false, terminal
                ...(kitchen ? { serviceChargePercent: 10, serviceChargeMxik: "10399001001000000" } : {}) };
     } else if (/\/products\/search$/.test(u.pathname)) {
       const q = (u.searchParams.get("q") || "").trim().toLowerCase();
-      data = q ? PRODUCTS.filter((p) => p.name.includes(q)) : PRODUCTS;
+      data = (q ? PRODUCTS.filter((p) => p.name.includes(q)) : PRODUCTS)
+        .map((p) => (stopIds.includes(p.id) ? { ...p, stopListed: true } : p));
     } else if (u.pathname.endsWith("/security/shift/current")) {
       /* Smena: ochiq (obyekt) yoki server aniq «yopiq» deydi (null). */
       data = shiftClosed ? null : { id: 1, openedAt: new Date().toISOString(), openedByName: "M" };
@@ -720,6 +742,55 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
     await waitFor(page, () => location.pathname === "/restaurant", 6000);
     const at = await page.evaluate(() => location.pathname);
     at === "/restaurant" ? ok("restoranda kassirning uyi — zal") : no("kassir uyi", at);
+    await page.close();
+  }
+}
+
+{
+  console.log("\n§15b Restoran menyusi va stop-list (E3, 2026-10-10)");
+  {
+    const { page, calls } = await openKassa({ restaurant: true, kitchen: true, tables: true, path: "/menu", ready: "body" });
+    await waitFor(page, () => /Texkarta/.test(document.body.innerText) && /Go'sht/.test(document.body.innerText), 8000);
+    const txt = await page.evaluate(() => document.querySelector("main, .main, body")?.innerText || "");
+    /burger/.test(txt) && /350 g/.test(txt) && /30% yaxshi/.test(txt) && /Go'sht 4 porsiyaga yetadi/.test(txt) && /Sotuvda/.test(txt)
+      ? ok("menyu: karta, porsiya, tannarx ulushi bahosi, «necha porsiyaga yetadi»") : no("menyu sahifasi", txt.slice(0, 500));
+    /Porsiya/.test(txt) && /Sous/.test(txt) ? ok("texkartada qo'shimchalar") : no("qo'shimchalar", txt.slice(0, 500));
+    /* Menyu guruhi yopiq bo'lishi mumkin — havola ichki tablardan olinadi. */
+    const href = await page.evaluate(() => [...document.querySelectorAll(".pg-tabs a, .pg-tabs [role=tab]")].find((a) => /Taomlar/.test(a.innerText))?.getAttribute("href"));
+    href === "/menu" ? ok("«Taomlar» tabi → /menu") : no("Taomlar havolasi", String(href));
+    if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/restaurant-menu.png`, fullPage: true });
+
+    await page.evaluate(() => [...document.querySelectorAll("section button")].find((b) => /suv/.test(b.innerText))?.click());
+    (await waitFor(page, () => /Texkarta yo'q/.test(document.body.innerText) && /66,7%\s*yuqori/.test(document.body.innerText), 3000))
+      ? ok("texkartasiz ichimlik: «Texkarta yo'q», ulush «yuqori»") : no("suv paneli", (await page.evaluate(() => document.body.innerText)).slice(0, 600));
+
+    await page.evaluate(() => [...document.querySelectorAll("section button")].find((b) => /burger/.test(b.innerText))?.click());
+    await waitFor(page, () => [...document.querySelectorAll("aside button")].some((b) => /Stop-listga qo'yish/.test(b.innerText)), 3000);
+    await page.evaluate(() => [...document.querySelectorAll("aside button")].find((b) => /Stop-listga qo'yish/.test(b.innerText))?.click());
+    (await waitFor(page, () => /Stop-listda — sotilmaydi/.test(document.body.innerText)
+        && [...document.querySelectorAll("aside button")].some((b) => /Sotuvga qaytarish/.test(b.innerText)), 4000))
+      && calls.menuStop[0]?.id === 7 && calls.menuStop[0]?.stopped === true
+      ? ok("stop-listga qo'yildi: serverga ketdi, karta va tugma almashdi") : no("stop", JSON.stringify(calls.menuStop));
+    const stopBtn = await page.evaluate(() => [...document.querySelectorAll(".rpt-bar button")].map((b) => b.innerText).find((x) => /Stop-list/.test(x)) || "");
+    /Stop-list\s*·\s*1/.test(stopBtn) ? ok("sarlavhada stop-list soni") : no("stop soni", JSON.stringify(stopBtn));
+
+    await page.evaluate(() => [...document.querySelectorAll("aside button")].find((b) => /Tahrirlash/.test(b.innerText))?.click());
+    (await waitFor(page, () => location.pathname === "/products" && /edit=7/.test(location.search) && /back=%2Fmenu|back=\/menu/.test(location.search), 3000))
+      ? ok("«Tahrirlash» — taom formasi (/products?edit=7&back=/menu)") : no("tahrirlash", await page.evaluate(() => location.href));
+    await page.close();
+  }
+  {
+    const { page } = await openKassa({ restaurant: false, path: "/menu", ready: "body" });
+    await waitFor(page, () => location.pathname !== "/menu", 6000);
+    const at = await page.evaluate(() => location.pathname);
+    at === "/products" ? ok("do'konda /menu → /products") : no("do'konda menyu", at);
+    await page.close();
+  }
+  {
+    const { page } = await openKassa({ restaurant: true, tables: true, path: "/restaurant/table/11", stopIds: [3] });
+    await waitFor(page, () => document.querySelectorAll(".rt-dish").length > 0, 6000);
+    const names = await page.evaluate(() => [...document.querySelectorAll(".rt-dish")].map((b) => b.textContent).join("|"));
+    /burger/.test(names) && !/suv/.test(names) ? ok("ofitsiant menyusida stop-listdagi taom yo'q") : no("ofitsiant menyusi", names);
     await page.close();
   }
 }
