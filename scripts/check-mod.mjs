@@ -177,6 +177,35 @@ async function openKassa({ restaurant, kitchen = false, tables = false, terminal
       calls.menuStop.push({ id: Number(u.pathname.split("/").slice(-2)[0]), stopped: body?.stopped });
       calls.stop7 = !!body?.stopped;
       data = null;
+    } else if (u.pathname.endsWith("/reports/restaurant/orders")) {
+      const at = (m) => new Date(Date.now() - m * 60000).toISOString();
+      data = { date: u.searchParams.get("date"), rows: [
+        { kind: "TABLE", id: 1052, openedAt: at(20), hall: "Zal", table: "Stol 12", waiter: "Javohir", guests: 2, total: 98000, status: "OPEN" },
+        { kind: "AWAY", id: 901, openedAt: at(35), hall: null, table: null, waiter: "Kassa", guests: 1, total: 126000, status: "TAKEAWAY" },
+        { kind: "TABLE", id: 1043, openedAt: at(90), hall: "Zal", table: "Stol 3", waiter: "Dilnoza", guests: 5, total: 1120000, status: "BILL" },
+        { kind: "TABLE", id: 1038, openedAt: at(150), hall: "Zal", table: "Stol 2", waiter: "Kamola", guests: 2, total: 186000, status: "PAID" },
+        { kind: "TABLE", id: 1036, openedAt: at(170), hall: "Zal", table: "Stol 9", waiter: "Kamola", guests: 3, total: 0, status: "CANCELLED" }] };
+    } else if (/\/reports\/restaurant\/orders\/table\/\d+$/.test(u.pathname)) {
+      const id = Number(u.pathname.split("/").pop());
+      const at = (m) => new Date(Date.now() - m * 60000).toISOString();
+      data = id === 1038
+        ? { kind: "TABLE", id, tableId: 2, status: "PAID", hall: "Zal", table: "Stol 2", waiter: "Kamola", guests: 2, note: null,
+            lines: [{ course: null, name: "Osh", qty: 2, mods: null, seat: null, note: null, sum: 90000, sentQty: null }],
+            subtotal: 169000, serviceCharge: 16900, total: 185900, tip: 20000,
+            payments: [{ type: "CASH", amount: 185900 }], saleIds: [77],
+            timeline: [{ at: at(150), kind: "OPENED", text: "Kamola" }, { at: at(100), kind: "PAID", amount: 185900 }] }
+        : { kind: "TABLE", id, tableId: 3, status: "BILL", hall: "Zal", table: "Stol 3", waiter: "Dilnoza", guests: 5, note: "Tug'ilgan kun",
+            lines: [{ course: 1, name: "Achchiq-chuchuk", qty: 2, mods: null, seat: null, note: null, sum: 30000, sentQty: 2 },
+                    { course: 2, name: "Osh", qty: 3, mods: "Katta", seat: 1, note: null, sum: 159000, sentQty: 3 },
+                    { course: 2, name: "Patir non", qty: 4, mods: null, seat: null, note: null, sum: 32000, sentQty: 0 }],
+            subtotal: 221000, serviceCharge: 0, total: 1120000, tip: 0, payments: [], saleIds: [],
+            timeline: [{ at: at(90), kind: "OPENED", text: "Dilnoza" }, { at: at(85), kind: "KITCHEN", text: "Oshxona", amount: 5 },
+                       { at: at(60), kind: "READY", text: "Oshxona" }, { at: at(30), kind: "BILL" }] };
+    } else if (/\/reports\/restaurant\/orders\/sale\/\d+$/.test(u.pathname)) {
+      data = { kind: "AWAY", id: 901, tableId: null, status: "TAKEAWAY", waiter: "Kassa", guests: 1,
+               lines: [{ course: null, name: "Somsa", qty: 6, sum: 72000 }], subtotal: 72000, serviceCharge: 0, total: 126000, tip: 0,
+               payments: [{ type: "CARD", amount: 126000 }], saleIds: [901],
+               timeline: [{ at: new Date().toISOString(), kind: "PAID", amount: 126000 }] };
     } else if (u.pathname.endsWith("/menu/ingredients")) {
       data = { stockValue: 28460000, kinds: 3, usedTodayValue: 5860000, revenueToday: 18900000, wasteTodayValue: 120000,
                lowCount: 2, shortageCount: 1,
@@ -847,6 +876,46 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
     await waitFor(page, () => location.pathname !== "/ingredients", 6000);
     const at = await page.evaluate(() => location.pathname);
     at === "/inventory" ? ok("do'konda /ingredients → /inventory") : no("do'konda masalliq", at);
+    await page.close();
+  }
+}
+
+{
+  console.log("\n§15d Restoran buyurtmalari (E5, 2026-10-10)");
+  {
+    const { page } = await openKassa({ restaurant: true, kitchen: true, tables: true, path: "/orders", ready: "body" });
+    await waitFor(page, () => /Stol 12/.test(document.body.innerText) && /Vaqt chizig'i/.test(document.body.innerText), 8000);
+    const txt = await page.evaluate(() => document.querySelector("main, .main, body")?.innerText || "");
+    /Hisob berildi/.test(txt) && /Olib ketish/.test(txt) && /Bekor qilingan/.test(txt) && /Chek #901/.test(txt)
+      ? ok("ro'yxat: ochiq, hisob berilgan, olib ketish, bekor — holat nomi bilan") : no("ro'yxat", txt.slice(0, 600));
+    const tabs = await page.evaluate(() => [...document.querySelectorAll("[role=tablist] [role=tab]")].map((b) => b.innerText.replace(/\s+/g, " ").trim()).join("|"));
+    /Ochiq 2/.test(tabs) && /To'langan 1/.test(tabs) && /Bekor 1/.test(tabs) ? ok("filtrlar soni bilan: " + tabs) : no("filtrlar", tabs);
+
+    await page.evaluate(() => [...document.querySelectorAll("tbody tr")].find((r) => /Stol 3/.test(r.innerText))?.click());
+    (await waitFor(page, () => /1-kurs/i.test(document.querySelector("aside[aria-label='Buyurtma tafsiloti']")?.innerText || "") && /Tug'ilgan kun/.test(document.querySelector("aside[aria-label='Buyurtma tafsiloti']")?.innerText || ""), 4000))
+      ? ok("tafsilot: kurslar va izoh") : no("tafsilot", await page.evaluate(() => document.querySelector("aside[aria-label='Buyurtma tafsiloti']")?.innerText.slice(0, 400)));
+    const aside = await page.evaluate(() => document.querySelector("aside[aria-label='Buyurtma tafsiloti']")?.innerText || "");
+    /Katta/.test(aside) && /M1/.test(aside) && /oshxonaga ketmagan/.test(aside) ? ok("qo'shimcha, mehmon raqami, oshxonaga ketmagan taom") : no("qator", aside.slice(0, 500));
+    /Oshxonaga: Oshxona \(5 ta\)/.test(aside) && /Tayyor: Oshxona/.test(aside) && /Hisob berildi/.test(aside) && /60 daqiqa/.test(aside)
+      ? ok("vaqt chizig'i: ochildi → oshxona → tayyor → hisob, davomiyligi bilan") : no("vaqt chizig'i", aside.slice(-400));
+    const openHref = await page.evaluate(() => [...document.querySelectorAll("aside[aria-label='Buyurtma tafsiloti'] a")].find((a) => /Stolni ochish/.test(a.innerText))?.getAttribute("href"));
+    openHref === "/restaurant/table/3" ? ok("ochiq hisob — «Stolni ochish» → stol ekrani") : no("stolni ochish", String(openHref));
+    if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/restaurant-orders.png`, fullPage: true });
+
+    await page.evaluate(() => [...document.querySelectorAll("tbody tr")].find((r) => /Stol 2/.test(r.innerText))?.click());
+    (await waitFor(page, () => /Xizmat haqi/.test(document.querySelector("aside[aria-label='Buyurtma tafsiloti']")?.innerText || "") && /Choy puli/.test(document.querySelector("aside[aria-label='Buyurtma tafsiloti']")?.innerText || ""), 4000))
+      ? ok("to'langan: xizmat haqi, jami, choy puli, to'lov turi") : no("to'langan", await page.evaluate(() => document.querySelector("aside[aria-label='Buyurtma tafsiloti']")?.innerText.slice(0, 400)));
+
+    await page.evaluate(() => [...document.querySelectorAll("[role=tab]")].find((b) => /Olib ketish/.test(b.innerText))?.click());
+    (await waitFor(page, () => document.querySelectorAll("tbody tr").length === 1 && /Somsa/.test(document.querySelector("aside[aria-label='Buyurtma tafsiloti']")?.innerText || ""), 4000))
+      ? ok("«Olib ketish» filtri — stolsiz sotuv va uning cheki") : no("olib ketish", await page.evaluate(() => document.body.innerText.slice(0, 300)));
+    await page.close();
+  }
+  {
+    const { page } = await openKassa({ restaurant: true, kitchen: true, tables: true, role: "CASHIER", path: "/orders", ready: "body" });
+    await waitFor(page, () => location.pathname !== "/orders", 6000);
+    const at = await page.evaluate(() => location.pathname);
+    at === "/sales" ? ok("kassir: /orders → /sales (hisobot ma'lumoti yopiq)") : no("kassir buyurtmalar", at);
     await page.close();
   }
 }

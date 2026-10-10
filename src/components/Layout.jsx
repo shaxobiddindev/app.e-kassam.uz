@@ -130,7 +130,9 @@ const MGR = ["ADMIN", "SHOP_ADMIN", "OWNER"];
 export const RESTAURANT_NAV = [
   { id: "r-hall",    section: "rnav.sec.service", path: "/restaurant", key: "rnav.hall",    icon: "fa-utensils",      roles: ["ADMIN", "SHOP_ADMIN", "CASHIER", "WAITER", "OWNER"], feature: "TABLES" },
   { id: "r-kitchen", path: "/kitchen",    key: "rnav.kitchen", icon: "fa-fire-burner",   roles: ["ADMIN", "SHOP_ADMIN", "CASHIER", "WAITER", "COOK", "OWNER"], feature: "KITCHEN" },
-  { id: "r-orders",  path: "/sales",      key: "rnav.orders",  icon: "fa-receipt",       roles: ["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"] },
+  /* E5: rahbarga restoran buyurtmalari; kassir `/orders` dan `/sales` ga
+     o'tadi (hisobot ma'lumoti unga yopiq). `/sales` — taxallus. */
+  { id: "r-orders",  path: "/orders", alias: ["/sales"],      key: "rnav.orders",  icon: "fa-receipt",       roles: ["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"] },
   { id: "r-till",    path: "/sale",       key: "rnav.till",    icon: "fa-cash-register", roles: ["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"] },
   { id: "r-guests",  path: "/customers",  key: "rnav.guests",  icon: "fa-users",         roles: ["ADMIN", "SHOP_ADMIN", "CASHIER", "OWNER"], feature: "CUSTOMERS" },
 

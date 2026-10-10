@@ -382,6 +382,10 @@ export const reportApi = {
     if (shopId) q.set("shopId", shopId);
     return request(`/reports/restaurant/today?${q}`);
   },
+  /* Restoran buyurtmalari (E5): kun ro'yxati va bittasining tafsiloti. */
+  restaurantOrders: (date) => request(`/reports/restaurant/orders${date ? `?date=${date}` : ""}`),
+  restaurantOrderTable: (id) => request(`/reports/restaurant/orders/table/${id}`),
+  restaurantOrderSale: (id) => request(`/reports/restaurant/orders/sale/${id}`),
 
   /* ⚠ KASSA UCHUN: birga sotiladigan juftliklar (V79). Ochilishda BIR
      MARTA olinadi va keyin xotiradan qidiriladi — kassirning oldida
