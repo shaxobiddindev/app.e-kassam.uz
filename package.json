@@ -1,7 +1,7 @@
 {
   "name": "e-kassam-app",
   "private": true,
-  "version": "1.15.51",
+  "version": "1.15.52",
   "type": "module",
   "scripts": {
     "dev": "vite",
