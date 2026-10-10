@@ -5,6 +5,7 @@ import { roleLabel, unitDecimals, unitLabel } from "../lib/ek-labels";
 import { hasRole, topRole, roleSet } from "../lib/ek-roles";
 import { isMobileApp } from "../lib/ek-desktop";
 import { setFullscreen, onFullscreenLeft } from "../lib/ek-fullscreen";
+import { isTerminal } from "../lib/ek-terminal";
 import { KEY_BY_ID, matches as keyMatches, keyLabel } from "../lib/ek-kassa-keys";
 import { useT } from "../lib/ek-i18n";
 import { weekdayDate, quantity } from "../lib/ek-format";
@@ -519,6 +520,20 @@ export default function Layout({ user, isAdmin, lowStockItems, lowStockCount, on
   const { group, child } = findPlace(location.pathname, nav);
   const tabs = visibleChildren(group, user?.role, hasFeature);
 
+  /* ZAL, STOL VA OSHXONA — to'liq ekran FAQAT planshet uchun (2026-10-11).
+     Ilgari bu uch sahifa HAMMAGA yon panelsiz ochilardi va rahbar u yerdan
+     boshqa bo'limga o'ta olmasdi; `startsWith("/restaurant")` esa
+     `/restaurant-report` ni ham tutib, hisobotda ham panel yo'qolardi.
+     Egasi: «yo umuman bo'lmasin yoki hammasida bo'lsin». Endi panel hamma
+     sahifada bor; yashirinadi faqat zal terminalida va menyusi shu ekranlar
+     bilan cheklangan xodimda (faqat ofitsiant yoki faqat oshpaz) — ularga
+     panel boshqa joy ochmaydi, faqat ekranni toraytiradi. */
+  const path = location.pathname;
+  const floorPage = path === "/restaurant" || path.startsWith("/restaurant/table/") || path === "/kitchen";
+  const rs = roleSet(user?.role);
+  const floorOnly = !["OWNER", "SHOP_ADMIN", "CASHIER", "STOREKEEPER", "ADMIN"].some((r) => rs.has(r));
+  const floorFullscreen = floorPage && (isTerminal() || floorOnly);
+
   // Children ga kassaFullscreen props ni uzatish
   const enhancedChildren = isKassaPage
     ? (typeof children?.type === 'function' || children?.type?.$$typeof)
@@ -527,7 +542,7 @@ export default function Layout({ user, isAdmin, lowStockItems, lowStockCount, on
     : children;
 
   return (
-    <div className={`app-layout ${isCollapsed ? "collapsed" : ""} ${kassaFullscreen || location.pathname.startsWith("/restaurant") || location.pathname.startsWith("/kitchen") ? "kassa-fullscreen" : ""}`}>
+    <div className={`app-layout ${isCollapsed ? "collapsed" : ""} ${kassaFullscreen || floorFullscreen ? "kassa-fullscreen" : ""}`}>
       {open && <div onClick={() => setOpen(false)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.45)", zIndex:199 }} />}
       <Sidebar 
         user={user} 

@@ -1387,6 +1387,8 @@ export const tableApi = {
   /* ── Ko'chirish va birlashtirish (D4) ── */
   move: (orderId, data) => request(`/tables/orders/${orderId}/move`, { method: "POST", body: JSON.stringify(data) }),
   merge: (orderId, data) => request(`/tables/orders/${orderId}/merge`, { method: "POST", body: JSON.stringify(data) }),
+  /** Oshxonaga ketgan taomni bekor qilish (V162) — rahbar, son va sabab bilan. */
+  voidLine: (orderId, data) => request(`/tables/orders/${orderId}/void`, { method: "POST", body: JSON.stringify(data) }),
 };
 
 /* ── Texnologik karta (V150, modul RECIPES) ── */

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { t } from "../lib/ek-i18n";
+import "../lib/ek-rest-words";
 import { tableApi, productApi, modifierApi, kitchenApi } from "../api";
 import { money } from "../lib/ek-format";
 import { asArray } from "../lib/ek-array";
@@ -295,6 +296,44 @@ export default function RestaurantTablePage({ toast }) {
       navigate(`/restaurant/table/${tb.id}`, { replace: true });
     } catch (err) { toast?.error(err.message); }
   };
+  /* ── Oshxonaga ketgan taomni bekor qilish (V162) — faqat rahbar ──
+     ⚠ Sabab majburiy: hisobotda «yo'qotish» bo'lib chiqadi va egasi «nega?» deb
+     so'raydi. Saqlanmagan yangi taom bo'lsa — avval saqlanadi (aks holda
+     versiya eskirib, bekor qilish rad etilardi). */
+  const [voidFor, setVoidFor] = useState(null);   // { line, qty, reason, text }
+  const [voiding, setVoiding] = useState(false);
+  const doVoid = async () => {
+    const v = voidFor;
+    if (!v || voiding) return;
+    const reason = v.reason === "other" ? (v.text || "").trim() : t(`void.r.${v.reason}`);
+    if (!reason) return;
+    setVoiding(true);
+    try {
+      if (dirty && !(await save())) return;
+      const l = v.line;
+      const r = await tableApi.voidLine(order.id, {
+        version: versionRef.current, productId: l.id,
+        modifierIds: (l.modifiers || []).map((m) => Number(m.id)).sort((a, b) => a - b),
+        seat: l.seat || null, course: l.course || null, note: l.note || null,
+        quantity: v.qty, reason,
+      });
+      await apply(r.data, modGroups);
+      loadTickets();
+      /* Oshxona printeri (yuborishdagi kabi): ekrani yo'q oshxonada «BEKOR»
+         qog'ozda chiqadi — aks holda oshpaz pishirishni davom ettirardi. */
+      if (hasFeature("KITCHEN") && isDesktop()) {
+        const tickets = kitchenTickets([{ ...l, qty: v.qty, sentQty: 0 }], stations);
+        if (tickets.length) {
+          printKitchen(tickets, { orderNo: r.data.tableName, at: new Date(), cashier: fullName,
+                                  note: `*** ${t("void.kitchen")}: ${reason} ***` })
+            .catch((err) => toast?.error(`${t("kit.title")}: ${err.message}`));
+        }
+      }
+      toast?.success(t("void.done", { name: l.name, n: v.qty }));
+      setVoidFor(null);
+    } catch (err) { toast?.error(err.message); }
+    finally { setVoiding(false); }
+  };
   const doMerge = async (tb) => {
     try {
       const r = await tableApi.merge(order.id, { version: versionRef.current, fromOrderId: tb.order.id, fromVersion: tb.order.version });
@@ -426,6 +465,13 @@ export default function RestaurantTablePage({ toast }) {
                 <span className="rt-line__q ek-num">{Number(x.sentQty)}×</span>
                 <span className="rt-line__t"><b>{x.name}</b><small>{meta(x)}</small></span>
                 <span className="rt-chip">{t("rt.sentAt", { time: x.sentAt ? new Date(x.sentAt).toTimeString().slice(0, 5) : "" })}</span>
+                {manager && (
+                  <button type="button" className="rt-step rt-note" aria-label={t("void.for", { name: x.name })} title={t("void.for", { name: x.name })}
+                          style={{ color: "var(--fg-danger)" }}
+                          onClick={() => setVoidFor({ line: x, qty: 1, reason: "guest", text: "" })}>
+                    <i className="fa-solid fa-ban" aria-hidden="true" />
+                  </button>
+                )}
               </div>
             ))}
             <h3 className="rt-sec rt-sec--new">{t("rt.newSec")}</h3>
@@ -490,6 +536,41 @@ export default function RestaurantTablePage({ toast }) {
                        onConfirm={(mods) => { addLine(modModal.product, mods); setModModal(null); }}
                        onClose={() => setModModal(null)} />
       )}
+      {voidFor && (
+        <Modal title={t("void.title", { name: voidFor.line.name })} onClose={() => !voiding && setVoidFor(null)} maxWidth={480}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <p style={{ margin: 0, color: "var(--fg-secondary)" }}>{t("void.hint")}</p>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <span className="fw-700">{t("void.qty")}</span>
+              <button type="button" className="rt-step" aria-label={t("rt.less", { name: voidFor.line.name })} disabled={voidFor.qty <= 1}
+                      onClick={() => setVoidFor((v) => ({ ...v, qty: Math.max(1, v.qty - 1) }))}>−</button>
+              <span className="ek-num fw-700" style={{ fontSize: 20, minWidth: 28, textAlign: "center" }}>{voidFor.qty}</span>
+              <button type="button" className="rt-step" aria-label={t("rt.more", { name: voidFor.line.name })}
+                      disabled={voidFor.qty >= Number(voidFor.line.sentQty)}
+                      onClick={() => setVoidFor((v) => ({ ...v, qty: Math.min(Number(v.line.sentQty), v.qty + 1) }))}>+</button>
+              <span className="text-muted ek-num">/ {Number(voidFor.line.sentQty)}</span>
+            </div>
+            <div role="radiogroup" aria-label={t("void.reason")} style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {["guest", "mistake", "late", "quality", "other"].map((k) => (
+                <button key={k} type="button" role="radio" aria-checked={voidFor.reason === k} className="btn btn-outline btn-sm"
+                        style={{ minHeight: 44, fontWeight: 700, ...(voidFor.reason === k ? { background: "var(--bg-danger-subtle)", color: "var(--fg-danger)", borderColor: "var(--border-danger)" } : {}) }}
+                        onClick={() => setVoidFor((v) => ({ ...v, reason: k }))}>
+                  {t(`void.r.${k}`)}
+                </button>
+              ))}
+            </div>
+            {voidFor.reason === "other" && (
+              <input className="form-input" autoFocus maxLength={200} value={voidFor.text} placeholder={t("void.textHint")}
+                     onChange={(e) => setVoidFor((v) => ({ ...v, text: e.target.value }))} />
+            )}
+            <button type="button" className="btn" disabled={voiding || (voidFor.reason === "other" && !voidFor.text.trim())} onClick={doVoid}
+                    style={{ minHeight: 56, fontWeight: 800, background: "var(--bg-danger)", color: "var(--fg-on-brand)", border: 0 }}>
+              {voiding ? <Spinner /> : <i className="fa-solid fa-ban" aria-hidden="true" />} {t("void.confirm", { n: voidFor.qty })}
+            </button>
+          </div>
+        </Modal>
+      )}
+
       {tool && (tool.kind === "move" || tool.kind === "merge") && (
         <Modal title={tool.kind === "move" ? t("rt.moveTitle") : t("rt.mergeTitle")} onClose={() => setTool(null)} maxWidth={620}>
           <p className="rt-tool__hint">{tool.kind === "move" ? t("rt.moveHint") : t("rt.mergeHint", { name: order?.tableName })}</p>

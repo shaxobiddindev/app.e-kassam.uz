@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { t } from "../lib/ek-i18n";
+import "../lib/ek-rest-words";
 import { kitchenApi } from "../api";
 import { asArray } from "../lib/ek-array";
 import { quantity } from "../lib/ek-format";
@@ -126,10 +127,13 @@ export default function KitchenPage({ toast }) {
                     return (
                       <div key={i}>
                         {head && <div className="kd-course">{t("rt.courseN", { n: head })}</div>}
-                        <div className="kd-line">
-                          <span className="kd-line__q ek-num">{quantity(l.quantity)}×</span>
+                        {/* «BEKOR» (V162): rahbar bekor qildi — pishirmang. Rang yolg'iz
+                            emas: «BEKOR» so'zi va chizilgan nom ham bor. */}
+                        <div className="kd-line" style={l.voided ? { background: "var(--bg-danger-subtle)", borderRadius: 8, padding: "4px 6px" } : undefined}>
+                          <span className="kd-line__q ek-num" style={l.voided ? { color: "var(--fg-danger)" } : undefined}>{quantity(l.quantity)}×</span>
                           <span className="kd-line__t">
-                            <b>{l.name}{l.seat ? ` (M${l.seat})` : ""}</b>
+                            {l.voided && <b style={{ color: "var(--fg-danger)", letterSpacing: ".04em" }}><i className="fa-solid fa-ban" aria-hidden="true" /> {t("void.kitchen")} — {t("void.kitchenHint")}</b>}
+                            <b style={l.voided ? { textDecoration: "line-through", color: "var(--fg-danger)" } : undefined}>{l.name}{l.seat ? ` (M${l.seat})` : ""}</b>
                             {l.mods && <small>+ {l.mods}</small>}
                             {l.note && <small className="kd-note">! {l.note}</small>}
                           </span>

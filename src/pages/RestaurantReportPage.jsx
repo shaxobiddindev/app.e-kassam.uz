@@ -73,6 +73,7 @@ export default function RestaurantReportPage({ toast }) {
       [t("rrep.service"), num(d?.serviceCharge)], [t("rrep.tips"), num(d?.tips)], [],
       [t("rrep.l.waste"), num(L.waste)], [t("rrep.l.count"), num(L.countShortage)],
       [t("rrep.l.returns", { n: L.returnsCount ?? 0 }), num(L.returns)], [t("rrep.l.cancel"), num(L.cancelledTables)],
+      [t("rrep.l.voids", { n: num(L.voidQty) }), num(L.voidAmount)],
     ] },
     { name: "ABC", rows: [
       [t("rrep.c.dish"), t("rrep.c.qty"), t("rrep.c.revenue"), t("rrep.c.profit"), t("rrep.c.fc"), t("rrep.c.group")].map((v) => ({ v, bold: true })),
@@ -165,6 +166,18 @@ export default function RestaurantReportPage({ toast }) {
                 {row(t("rrep.l.count"), money(L.countShortage), num(L.countShortage) > 0 ? "var(--fg-danger)" : undefined)}
                 {row(t("rrep.l.returns", { n: L.returnsCount ?? 0 }), money(L.returns))}
                 {row(t("rrep.l.cancel"), t("rrep.l.cancelVal", { n: L.cancelledTables ?? 0 }))}
+                {row(t("rrep.l.voids", { n: quantity(L.voidQty ?? 0) }), money(L.voidAmount), num(L.voidAmount) > 0 ? "var(--fg-danger)" : undefined)}
+                {num(L.voidQty) > 0 && (
+                  <div style={{ fontSize: 12, color: "var(--fg-secondary)", paddingLeft: 12 }}>
+                    {t("rrep.l.voidCost", { sum: money(L.voidCost) })}
+                    {asArray(L.voidReasons).map((r) => (
+                      <div key={r.reason} style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                        <span>· {r.reason || t("ord.noReason")} — <span className="ek-num">{quantity(r.qty)}</span></span>
+                        <span className="ek-num">{money(r.amount)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </Panel>
@@ -211,6 +224,7 @@ export default function RestaurantReportPage({ toast }) {
                   <th style={{ textAlign: "right" }}>{t("rrep.c.guests")}</th><th style={{ textAlign: "right" }}>{t("rrep.c.revenue")}</th>
                   <th style={{ textAlign: "right" }}>{t("rrep.c.perGuest")}</th><th style={{ textAlign: "right" }}>{t("rrep.c.time")}</th>
                   <th style={{ textAlign: "right" }}>{t("rrep.c.tips")}</th><th style={{ textAlign: "right" }}>{t("rrep.c.cancel")}</th>
+                  <th style={{ textAlign: "right" }}>{t("rrep.c.voids")}</th>
                 </tr></thead>
                 <tbody>
                   {asArray(d.waiters).map((w) => (
@@ -224,6 +238,7 @@ export default function RestaurantReportPage({ toast }) {
                       <td className="ek-num" style={{ textAlign: "right" }}>{w.avgMinutes != null ? t("rrep.min", { n: w.avgMinutes }) : "—"}</td>
                       <td className="ek-num" style={{ textAlign: "right" }}>{num(w.tips) ? money(w.tips) : "—"}</td>
                       <td className="ek-num fw-700" style={{ textAlign: "right", color: w.cancelled >= 5 ? "var(--fg-danger)" : undefined }}>{w.cancelled}</td>
+                      <td className="ek-num fw-700" style={{ textAlign: "right", color: num(w.voids) >= 5 ? "var(--fg-danger)" : undefined }}>{quantity(w.voids ?? 0)}</td>
                     </tr>
                   ))}
                 </tbody>

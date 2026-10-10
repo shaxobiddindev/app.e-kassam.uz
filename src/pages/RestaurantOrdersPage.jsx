@@ -83,6 +83,7 @@ export default function RestaurantOrdersPage({ toast }) {
   const eventText = (e) => {
     if (e.kind === "PAID") return t("ord.e.PAID", { sum: money(e.amount) });
     if (e.kind === "KITCHEN") return t("ord.e.KITCHEN", { text: e.text || "—", n: quantity(e.amount) });
+    if (e.kind === "VOID") return `${t("ord.e.VOID", { text: e.text || "—", n: quantity(e.amount), note: e.note || t("ord.noReason") })}${e.by ? ` · ${e.by}` : ""}`;
     return t(`ord.e.${e.kind}`, { text: e.text || "—" });
   };
 
@@ -234,7 +235,7 @@ export default function RestaurantOrdersPage({ toast }) {
                 {asArray(detail.timeline).map((e, i) => (
                   <span key={i} style={{ display: "flex", gap: 10, alignItems: "baseline", fontSize: 13 }}>
                     <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: 4, flex: "none", alignSelf: "center",
-                                                      background: e.kind === "PAID" ? "var(--fg-success)" : e.kind === "CANCELLED" ? "var(--fg-danger)" : "var(--bg-brand)" }} />
+                                                      background: e.kind === "PAID" ? "var(--fg-success)" : e.kind === "CANCELLED" || e.kind === "VOID" ? "var(--fg-danger)" : "var(--bg-brand)" }} />
                     <span className="ek-num" style={{ width: 44, flex: "none", color: "var(--fg-secondary)" }}>{time(e.at)}</span>
                     <span>{eventText(e)}</span>
                   </span>

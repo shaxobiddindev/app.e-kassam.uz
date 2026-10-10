@@ -60,7 +60,7 @@ const ok = (m) => console.log("  ✅ " + m);
 const no = (m, got) => { bad++; console.log(`  ❌ ${m}  →  ${got}`); };
 const pageErrors = [];
 
-async function openKassa({ restaurant, kitchen = false, tables = false, terminal = false, role = "OWNER", path = "/sale", ready, shiftClosed = false, stopIds = [] }) {
+async function openKassa({ restaurant, kitchen = false, tables = false, terminal = false, role = "OWNER", path = "/sale", ready, shiftClosed = false, stopIds = [], sent = false, voidTicket = false }) {
   const calls = { modifiers: 0, sales: [], tables: [], sse: [], orders: {},
                   resv11: { at: new Date(Date.now() + 30 * 60000).toISOString(), name: "Aziz", guests: 6 },
                   menuStop: [], stop7: false };
@@ -104,6 +104,8 @@ async function openKassa({ restaurant, kitchen = false, tables = false, terminal
             lines: [{ name: "Osh", quantity: 2, mods: null, seat: 1, course: 2, note: "achchiqsiz" }] },
           { id: 72, orderId: 501, tableId: 11, tableName: "Stol 1", station: "Bar", status: "NEW", waiter: "Javohir", createdAt: ago(3),
             lines: [{ name: "Choy", quantity: 1, mods: null, seat: null, course: null, note: null }] },
+          ...(voidTicket ? [{ id: 73, orderId: 502, tableId: 12, tableName: "Stol 2", station: "Oshxona", status: "NEW", waiter: "Sardor", createdAt: ago(1),
+            lines: [{ name: "Lag'mon", quantity: 1, mods: null, seat: null, course: null, note: "Mehmon voz kechdi", voided: true }] }] : []),
         ];
       } else if (/\/kitchen\/orders\/50\d$/.test(u.pathname)) {
         data = [{ id: 77, orderId: 502, tableId: 12, tableName: "Stol 2", station: "Oshxona", status: "READY", createdAt: ago(18),
@@ -133,7 +135,13 @@ async function openKassa({ restaurant, kitchen = false, tables = false, terminal
         data = { id: 501, tableId: 11, tableName: "Stol 1", hallName: "Zal", status: "OPEN", version: 0, lines: [] };
       } else if (u.pathname.endsWith("/tables/12/open")) {
         data = { id: 502, tableId: 12, tableName: "Stol 2", hallName: "Zal", status: "OPEN", version: 3,
-                 lines: [{ productId: 7, quantity: 2, modifierIds: [22], discount: 0 }] };
+                 lines: [{ productId: 7, quantity: 2, modifierIds: [22], discount: 0,
+                           ...(sent ? { sentQty: 2, sentAt: new Date(Date.now() - 10 * 60000).toISOString() } : {}) }] };
+      } else if (/\/tables\/orders\/50\d\/void$/.test(u.pathname)) {
+        calls.voids = [...(calls.voids || []), body];
+        const left = 2 - Number(body?.quantity || 0);
+        data = { id: 502, tableId: 12, tableName: "Stol 2", hallName: "Zal", status: "OPEN", version: (body?.version ?? 3) + 1,
+                 lines: left > 0 ? [{ productId: 7, quantity: left, modifierIds: [22], discount: 0, sentQty: left, sentAt: new Date().toISOString() }] : [] };
       } else if (/\/tables\/orders\/50\d$/.test(u.pathname) && r.method() === "GET") {
         data = calls.orders[u.pathname.split("/").pop()] ?? null;
       } else if (/\/tables\/orders\/50\d$/.test(u.pathname) && r.method() === "PUT") {
@@ -1015,6 +1023,57 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
     await waitFor(page, () => location.pathname !== "/staff", 6000);
     const at = await page.evaluate(() => location.pathname);
     at === "/shop-users" ? ok("do'konda /staff → /shop-users") : no("do'konda xodimlar", at);
+    await page.close();
+  }
+}
+
+{
+  console.log("\n§15g Oshxonadan keyin bekor qilish (V162, 2026-10-11)");
+  {
+    const { page, calls } = await openKassa({ restaurant: true, kitchen: true, tables: true, path: "/restaurant/table/12", sent: true });
+    await waitFor(page, () => !!document.querySelector(".rt-line--sent"), 6000);
+    const btn = await page.evaluate(() => !!document.querySelector(".rt-line--sent button[aria-label*='bekor qilish']"));
+    btn ? ok("rahbar: oshxonaga ketgan qatorda «Bekor qilish» tugmasi") : no("bekor tugmasi", await page.evaluate(() => document.querySelector(".rt-line--sent")?.outerHTML.slice(0, 300)));
+    await page.evaluate(() => document.querySelector(".rt-line--sent button[aria-label*='bekor qilish']")?.click());
+    await waitFor(page, () => /Bekor qilish: burger/.test(document.body.innerText), 3000);
+    const modal = await page.evaluate(() => document.body.innerText);
+    /Mehmon voz kechdi/.test(modal) && /hisobotda yo'qotish/.test(modal) ? ok("oyna: sabablar va ogohlantirish") : no("oyna", modal.slice(-500));
+    await page.evaluate(() => [...document.querySelectorAll("[role=radio]")].find((b) => /Sifati yomon/.test(b.innerText))?.click());
+    await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => /tasini bekor qilish/.test(b.innerText))?.click());
+    (await waitFor(page, () => !/Bekor qilish: burger/.test(document.body.innerText), 4000)) && calls.voids?.[0]?.reason === "Sifati yomon"
+      && calls.voids[0].quantity === 1 && calls.voids[0].productId === 7 && JSON.stringify(calls.voids[0].modifierIds) === "[22]"
+      ? ok("serverga: taom, qo'shimchalar, soni va sabab") : no("bekor so'rovi", JSON.stringify(calls.voids));
+    if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/restaurant-void.png` });
+    await page.close();
+  }
+  {
+    const { page } = await openKassa({ restaurant: true, kitchen: true, tables: true, role: "WAITER", path: "/restaurant/table/12", sent: true });
+    await waitFor(page, () => !!document.querySelector(".rt-line--sent"), 6000);
+    const btn = await page.evaluate(() => !!document.querySelector(".rt-line--sent button"));
+    !btn ? ok("ofitsiantda «Bekor qilish» yo'q (faqat rahbar)") : no("ofitsiantda bekor tugmasi", "");
+    await page.close();
+  }
+  {
+    const { page } = await openKassa({ restaurant: true, kitchen: true, tables: true, path: "/kitchen", voidTicket: true, ready: "body" });
+    await waitFor(page, () => /BEKOR/.test(document.body.innerText), 6000);
+    const txt = await page.evaluate(() => document.body.innerText);
+    /BEKOR — Pishirmang/.test(txt) && /Lag'mon/.test(txt) ? ok("oshxona ekranida «BEKOR — Pishirmang» qatori") : no("oshxona BEKOR", txt.slice(0, 500));
+    await page.close();
+  }
+  {
+    /* Yon panel (2026-10-11): rahbarda zal va oshxonada ham bor, hisobotda ham. */
+    for (const path of ["/restaurant", "/kitchen", "/restaurant-report"]) {
+      const { page } = await openKassa({ restaurant: true, kitchen: true, tables: true, path, ready: "body" });
+      await waitFor(page, () => !!document.querySelector(".app-layout"), 6000);
+      await new Promise((r) => setTimeout(r, 400));
+      const full = await page.evaluate(() => document.querySelector(".app-layout")?.classList.contains("kassa-fullscreen"));
+      !full ? ok(`rahbar: ${path} — yon panel bor`) : no(`${path} yon panelsiz`, "");
+      await page.close();
+    }
+    const { page } = await openKassa({ restaurant: true, kitchen: true, tables: true, role: "WAITER", path: "/restaurant", ready: "body" });
+    await waitFor(page, () => !!document.querySelector(".app-layout"), 6000);
+    const full = await page.evaluate(() => document.querySelector(".app-layout")?.classList.contains("kassa-fullscreen"));
+    full ? ok("faqat ofitsiant: zal to'liq ekranda (panel boshqa joy ochmaydi)") : no("ofitsiant zali", "");
     await page.close();
   }
 }
