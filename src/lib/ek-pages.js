@@ -34,6 +34,7 @@ const LOADERS = {
   RestaurantIngredients: () => import("../pages/RestaurantIngredientsPage"),
   RestaurantOrders: () => import("../pages/RestaurantOrdersPage"),
   RestaurantReport: () => import("../pages/RestaurantReportPage"),
+  RestaurantStaff: () => import("../pages/RestaurantStaffPage"),
   ShopUsers:    () => import("../pages/admin/ShopUsersPage"),
   Shops:        () => import("../pages/admin/ShopsPage"),
   Breezz:       () => import("../pages/admin/BreezzPage"),

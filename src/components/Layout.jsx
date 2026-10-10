@@ -160,7 +160,9 @@ export const RESTAURANT_NAV = [
     { id: "r-expenses", path: "/expenses",    key: "nav.expenses",  icon: "fa-money-bill-wave",  roles: MGR, feature: "EXPENSES" },
   ]},
   { id: "r-staff", key: "rnav.staff", icon: "fa-user-group", children: [
-    { id: "r-users",  path: "/shop-users", key: "rnav.staff",   icon: "fa-user-group",         roles: MGR },
+    /* E7: kim smenada, PIN, choy puli; tahrirlash — mavjud oynada (`/shop-users`). */
+    { id: "r-team",   path: "/staff",      key: "rnav.staff",     icon: "fa-user-group",       roles: MGR, feature: "REPORTS" },
+    { id: "r-users",  path: "/shop-users", key: "rnav.staffEdit", icon: "fa-user-pen",         roles: MGR },
     { id: "security", path: "/security",   key: "nav.security", icon: "fa-shield-halved",      roles: ["SHOP_ADMIN", "OWNER"] },
     { id: "r-audit",  path: "/audit",      key: "nav.audit",    icon: "fa-clock-rotate-left",  roles: ["SHOP_ADMIN", "OWNER"] },
   ]},

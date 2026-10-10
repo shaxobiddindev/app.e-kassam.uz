@@ -385,6 +385,8 @@ export const reportApi = {
   /* Restoran buyurtmalari (E5): kun ro'yxati va bittasining tafsiloti. */
   /* Restoran hisoboti (E6): davr — Toshkent kunlari, `to` kiradi. */
   restaurantReport: (from, to) => request(`/reports/restaurant/report?from=${from}&to=${to}`),
+  /* Restoran xodimlari (E7): smena, PIN, bugungi ish, choy puli. */
+  restaurantStaff: () => request("/reports/restaurant/staff"),
   restaurantOrders: (date) => request(`/reports/restaurant/orders${date ? `?date=${date}` : ""}`),
   restaurantOrderTable: (id) => request(`/reports/restaurant/orders/table/${id}`),
   restaurantOrderSale: (id) => request(`/reports/restaurant/orders/sale/${id}`),

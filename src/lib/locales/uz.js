@@ -195,6 +195,7 @@ export default {
   "rnav.count": "Sanash",
   "rnav.reports": "Hisobotlar",
   "rnav.staff": "Xodimlar",
+  "rnav.staffEdit": "Rol, parol va PIN",
   "day.title": "Kunlik hisobot",
   "day.date": "Sana",
   "day.prev": "Oldingi kun",

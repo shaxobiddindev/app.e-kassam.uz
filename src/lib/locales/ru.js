@@ -190,6 +190,7 @@ export default {
   "rnav.count": "Пересчёт",
   "rnav.reports": "Отчёты",
   "rnav.staff": "Сотрудники",
+  "rnav.staffEdit": "Роли, пароли и PIN",
   "day.title": "Отчёт за день",
   "day.date": "Дата",
   "day.prev": "Предыдущий день",

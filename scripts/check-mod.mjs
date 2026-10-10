@@ -177,6 +177,15 @@ async function openKassa({ restaurant, kitchen = false, tables = false, terminal
       calls.menuStop.push({ id: Number(u.pathname.split("/").slice(-2)[0]), stopped: body?.stopped });
       calls.stop7 = !!body?.stopped;
       data = null;
+    } else if (u.pathname.endsWith("/reports/restaurant/staff")) {
+      const at = (m) => new Date(Date.now() - m * 60000).toISOString();
+      data = { staff: [
+        { id: 1, login: "sm", name: "Sardor Mirzayev", roles: ["SHOP_ADMIN"], pinSet: false, enabled: true, onShift: false, since: null, lastShift: at(30), tablesToday: 0, tablesRevenue: 0, checksToday: 0, checksRevenue: 0 },
+        { id: 2, login: "dn", name: "Dilnoza Karimova", roles: ["WAITER"], pinSet: true, enabled: true, onShift: true, since: at(180), lastShift: at(180), tablesToday: 9, tablesRevenue: 4860000, checksToday: 0, checksRevenue: 0 },
+        { id: 3, login: "bk", name: "Bekzod Aliyev", roles: ["COOK"], pinSet: false, enabled: true, onShift: true, since: at(200), lastShift: at(200), tablesToday: 0, tablesRevenue: 0, checksToday: 0, checksRevenue: 0 },
+        { id: 4, login: "ml", name: "Malika Saidova", roles: ["CASHIER"], pinSet: true, enabled: true, onShift: true, since: at(170), lastShift: at(170), tablesToday: 0, tablesRevenue: 0, checksToday: 41, checksRevenue: 16920000 },
+        { id: 5, login: "an", name: "Anvar Holiqov", roles: ["STOREKEEPER"], pinSet: false, enabled: false, onShift: false, since: null, lastShift: "2026-10-07T07:00:00Z", tablesToday: 0, tablesRevenue: 0, checksToday: 0, checksRevenue: 0 }],
+        tips: { cash: 240000, card: 95000, byWaiter: [{ login: "dn", name: "Dilnoza Karimova", amount: 180000, checks: 6 }, { login: "x", name: "Ali <b>", amount: 60000, checks: 2 }] } };
     } else if (u.pathname.endsWith("/reports/restaurant/report")) {
       calls.report = [...(calls.report || []), u.search];
       data = { from: u.searchParams.get("from"), to: u.searchParams.get("to"), days: 10,
@@ -970,6 +979,42 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
     await waitFor(page, () => location.pathname !== "/restaurant-report", 6000);
     const at = await page.evaluate(() => location.pathname);
     at === "/reports" ? ok("do'konda /restaurant-report → /reports") : no("do'konda hisobot", at);
+    await page.close();
+  }
+}
+
+{
+  console.log("\n§15f Restoran xodimlari (E7, 2026-10-10)");
+  {
+    const { page } = await openKassa({ restaurant: true, kitchen: true, tables: true, path: "/staff", ready: "body" });
+    await waitFor(page, () => /Hamma xodimlar/.test(document.body.innerText) && /Dilnoza Karimova/.test(document.body.innerText), 8000);
+    const txt = await page.evaluate(() => document.querySelector("main, .main, body")?.innerText || "");
+    /Hozir smenada 3 kishi/.test(txt) && /9 stol/.test(txt) && /41 chek/.test(txt) && /oshxona ekranida/.test(txt)
+      ? ok("smenadagilar: ofitsiant — stollar, kassir — cheklar, oshpaz") : no("smenada", txt.slice(0, 600));
+    /yo'q — terminalga kira olmaydi/.test(txt) && /parol bilan kiradi/.test(txt) && /o'chirilgan/.test(txt)
+      ? ok("PIN: oshpazda yo'q (ogohlantirish), rahbar parol bilan, o'chirilgan xodim belgilangan") : no("PIN", txt.slice(0, 1200));
+    /Stol ochish, taom qo'shish/.test(txt) && /Faqat oshxona ekrani/.test(txt) ? ok("har rol nima qila oladi") : no("rol", "");
+    /240\s000/.test(txt) && /95\s000/.test(txt) && /6 chek/.test(txt) ? ok("bugungi choy puli: naqd, karta, ofitsiant bo'yicha") : no("choy puli", txt.slice(-600));
+    if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/restaurant-staff.png`, fullPage: true });
+
+    await page.evaluate(() => [...document.querySelectorAll("[role=tab]")].find((b) => /Oshpazlar/.test(b.innerText))?.click());
+    (await waitFor(page, () => { const t = document.querySelector("table")?.innerText || ""; return /Bekzod/.test(t) && !/Dilnoza/.test(t); }, 3000))
+      ? ok("«Oshpazlar» filtri") : no("filtr", await page.evaluate(() => document.querySelector("table")?.innerText.slice(0, 200)));
+
+    await page.evaluate(() => { window.__doc = ""; window.open = () => ({ document: { write: (h) => { window.__doc += h; }, close: () => {} } }); });
+    await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => /Taqsimotni chop etish/.test(b.innerText))?.click());
+    const doc = await page.evaluate(() => window.__doc || "");
+    /Choy puli taqsimoti/.test(doc) && /Dilnoza Karimova/.test(doc) && /Ali &lt;b&gt;/.test(doc) && !/Ali <b>/.test(doc)
+      ? ok("chop etish: taqsimot hujjati, ism HTML'ga qochirilgan") : no("chop etish", doc.slice(0, 300));
+    const href = await page.evaluate(() => [...document.querySelectorAll("a")].find((a) => /Xodim qo'shish/.test(a.innerText))?.getAttribute("href"));
+    href === "/shop-users" ? ok("«Xodim qo'shish» → mavjud xodimlar oynasi") : no("qo'shish", String(href));
+    await page.close();
+  }
+  {
+    const { page } = await openKassa({ restaurant: false, path: "/staff", ready: "body" });
+    await waitFor(page, () => location.pathname !== "/staff", 6000);
+    const at = await page.evaluate(() => location.pathname);
+    at === "/shop-users" ? ok("do'konda /staff → /shop-users") : no("do'konda xodimlar", at);
     await page.close();
   }
 }

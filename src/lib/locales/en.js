@@ -190,6 +190,7 @@ export default {
   "rnav.count": "Count",
   "rnav.reports": "Reports",
   "rnav.staff": "Staff",
+  "rnav.staffEdit": "Roles, passwords and PIN",
   "day.title": "Daily report",
   "day.date": "Date",
   "day.prev": "Previous day",
