@@ -86,6 +86,8 @@ const GLOBALS = new Set([
   "Set", "WeakMap", "WeakSet", "WeakRef", "FinalizationRegistry", "ArrayBuffer",
   "SharedArrayBuffer", "DataView", "JSON", "Promise", "Reflect", "Proxy",
   "Intl", "structuredClone", "queueMicrotask", "arguments",
+  // Vite `define` (`vite.config.js`) — build paytida qiymatga almashadi
+  "__APP_VERSION__",
   // brauzer
   "window", "self", "top", "parent", "frames", "document", "console",
   "navigator", "location", "history", "screen", "localStorage",

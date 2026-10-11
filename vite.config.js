@@ -1,6 +1,11 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import earlyPreload from "./scripts/vite-early-preload.mjs";
+import { readFileSync } from "node:fs";
+
+/* Xato hisobotidagi versiya (`ek-errors.js`). Brauzerda boshqa manba yo'q:
+   `appVersion()` faqat desktopda ishlaydi. */
+const { version } = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8"));
 
 /* ══════════════════════════════════════════════════════════════════════════
    ⚠ QR KUTUBXONASI ALOHIDA BO'LAKDA (V60)
@@ -21,6 +26,7 @@ import earlyPreload from "./scripts/vite-early-preload.mjs";
    ══════════════════════════════════════════════════════════════════════════ */
 export default defineConfig({
   plugins: [react(), earlyPreload()],
+  define: { __APP_VERSION__: JSON.stringify(version) },
   server: { port: 5173 },
   build: {
     rollupOptions: {

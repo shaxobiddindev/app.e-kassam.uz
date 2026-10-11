@@ -18,6 +18,7 @@
 import { Component } from "react";
 import { useLocation } from "react-router-dom";
 import { t } from "../../lib/ek-i18n";
+import { reportError } from "../../lib/ek-errors";
 
 class ErrorBoundary extends Component {
   constructor(props) {
@@ -34,6 +35,9 @@ class ErrorBoundary extends Component {
     // bilan ulanilganda (WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS) shu yerdan
     // to'liq stack olinadi.
     console.error("ErrorBoundary:", error, info?.componentStack);
+    /* Va serverga (`ek-errors.js`): ilgari xato shu yerda to'xtardi va
+       kassir qo'ng'iroq qilmasa, biz hech qachon bilmasdik. */
+    reportError(error, { kind: "render", componentStack: info?.componentStack });
   }
 
   render() {

@@ -10,6 +10,10 @@ import { initStatusBar } from "./lib/ek-statusbar";
 import { autoConnect as scaleAutoConnect } from "./lib/ek-scale-live";
 import { restoreDevice } from "./lib/ek-device-store";
 import { initZoom } from "./lib/ek-zoom";
+import { installErrorReporting } from "./lib/ek-errors";
+
+/* Xato kuzatuvi — HAMMADAN OLDIN: ishga tushishdagi xato ham yetib borsin. */
+installErrorReporting();
 
 // Tema — index.html dagi inline skript birinchi bo'yoqni to'g'ri qiladi,
 // bu yerda tizim sozlamasi o'zgarishini kuzatish yoqiladi.
