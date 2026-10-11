@@ -21,24 +21,25 @@
    ========================================================================== */
 
 import { useCallback, useSyncExternalStore } from "react";
-/* ⚠ O'ZBEKCHA STATIK, qolgani KECHIKTIRILGAN (V48).
-   Ilgari uchala til ham kirish to'plamiga tushardi (~75 KB xom matn),
-   holbuki do'kon bitta tilda ishlaydi. Endi faqat tanlangan til
-   yuklanadi. O'zbekcha esa DOIM birga keladi va bu ataylab:
-   1. u foydalanuvchilarning aksariyatining tili — ular uchun
-      qo'shimcha so'rov umuman bo'lmaydi;
-   2. u YETISHMAYOTGAN kalitlar uchun zaxira (`t()` quyida shundan
-      oladi) — kechiktirilsa, yangi kalit tarjima qilinmagan tilda
-      kalitning o'zi bo'lib chiqib qolardi. */
-import uz from "./locales/uz.js";
+/* ⚠ UCHALA TIL HAM KECHIKTIRILGAN (2026-10-11; ru/en — V48 dan beri).
+   Ilgari o'zbekcha statik edi — kirish to'plamida, kassir har ochilishda
+   uni kutardi (KIRISH 198/200, har yangi sahifa uni oshirardi). Ikki sabab
+   bilan shunday qilingan edi va ikkalasi ham endi o'z kuchida emas:
+   1. «qo'shimcha so'rov bo'lmasin» — lug'at baribir ilova chizilishidan
+      OLDIN yuklanadi (`main.jsx`), service worker uni birinchi ochilishdan
+      keyin keshdan beradi (oflayn ham), desktopda fayl lokal;
+   2. «yetishmayotgan kalit uchun zaxira» — `check-locales` uchala tilning
+      kalitlari bir xilligini CI da tekshiradi, ya'ni zaxira kerak bo'lmaydi.
+   ⚠ Node sinovlari o'zbekcha matnni kutsa — `await loadLocale("uz")`. */
 
 const KEY = "ek_lang";
 
 /* Yuklangan lug'atlar. `uz` doim shu yerda; qolgani `loadLocale` bilan
    qo'shiladi. */
-const DICT = { uz };
+const DICT = {};
 
 const LOADERS = {
+  uz: () => import("./locales/uz.js"),
   ru: () => import("./locales/ru"),
   en: () => import("./locales/en"),
 };

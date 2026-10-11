@@ -639,7 +639,9 @@ console.log("\n── L. Kunlik hisobot ──");
   await p9.waitForSelector(".table tbody tr", { timeout: 8000 }).catch(() => {});
   const lead = await p9.$eval(".rpt-lead", (n) => n.textContent).catch(() => "");
   is(/nima bo'ldi/.test(lead) && /xarid bo'ldi/.test(lead) && !/so'm so'm/.test(lead), "kun xulosasi oddiy gap bilan", lead.slice(0, 160));
-  is(dayCalls.length === 1 && /date=\d{4}-\d{2}-\d{2}/.test(dayCalls[0]) && calls.length === 1,
+  /* 2026-10-11: davr — `from`/`to` (bitta kunda ikkalasi bir xil). */
+  const m0 = /from=(\d{4}-\d{2}-\d{2})&to=(\d{4}-\d{2}-\d{2})/.exec(dayCalls[0] || "");
+  is(dayCalls.length === 1 && m0 && m0[1] === m0[2] && calls.length === 1,
      "bitta kun so'raldi (tovarlar + xulosa)", dayCalls.join(" ") + " | " + calls.join(" "));
   const rowsTxt = await p9.$$eval(".table tbody tr", (n) => n.map((x) => x.textContent));
   const pista = rowsTxt.find((x) => /Pista/.test(x)) || "";
@@ -648,7 +650,7 @@ console.log("\n── L. Kunlik hisobot ──");
   is(/\+25/.test(un) && /−1/.test(un) && /34/.test(un), "Un: +25 keldi, −1 buzildi, kun oxirida 34", un);
   const body = await p9.evaluate(() => document.body.textContent);
   is(/tugab qolgan/i.test(body) && /Pista/.test(body), "«Kun oxirida tugab qolgan tovarlar» — Pista");
-  is(/Kun boshida bor edi \+ keldi/.test(body), "jadval ustida hisob qoidasi oddiy so'z bilan");
+  is(/Boshida bor edi \+ keldi/.test(body), "jadval ustida hisob qoidasi oddiy so'z bilan");
   await p9.evaluate(() => [...document.querySelectorAll(".rpt-tab")].find((b) => /Hamma tovarlar/.test(b.textContent))?.click());
   await wait(800);
   is(dayCalls.some((c) => /all=true/.test(c)), "«Hamma tovarlar» — harakatsizlari ham so'raldi", dayCalls.join(" "));
@@ -658,6 +660,20 @@ console.log("\n── L. Kunlik hisobot ──");
   await wait(800);
   is(dayCalls.length >= 3, "oldingi kunga o'tildi", dayCalls.join(" "));
   await shot(p9, "day-report");
+
+  /* ══ Davr (2026-10-11): «Shu oy» — oy boshidan bugungacha, grafik va eng ko'p sotilganlar ══ */
+  dayCalls = [];
+  await p9.evaluate(() => [...document.querySelectorAll(".rpt-seg")].find((b) => /Shu oy|Oy/.test(b.textContent))?.click());
+  await wait(1200);
+  const mm = /from=(\d{4})-(\d{2})-(\d{2})&to=(\d{4}-\d{2}-\d{2})/.exec(dayCalls[dayCalls.length - 1] || "");
+  is(!!mm && mm[3] === "01" && `${mm[1]}-${mm[2]}-01` <= mm[4], "«Shu oy» — oy boshidan bugungacha so'raldi", dayCalls.join(" "));
+  const b2 = await p9.evaluate(() => document.body.textContent);
+  is(/bo'yicha qancha sotildi/.test(b2), "bir necha kunda — kunlar/haftalar bo'yicha grafik");
+  is(/Eng ko'p sotilgan tovarlar/.test(b2) && /Eng ko'p foyda keltirgan/.test(b2), "eng ko'p sotilgan va eng ko'p foyda keltirgan tovarlar");
+  is(/Sotilmay yotgan tovarlar/.test(b2), "sotilmay yotgan tovarlar bo'limi");
+  is(/Kuniga o'rtacha/.test(b2), "jadvalda «Kuniga o'rtacha» ustuni");
+  is(/oldingi|▲|▼|%/.test(await p9.$eval(".kpi", (n) => n.textContent).catch(() => "")), "sotuv raqamida oldingi davr bilan solishtirish");
+  await shot(p9, "product-report-month");
   await p9.close();
 }
 

@@ -12,10 +12,10 @@ import { useLoading } from "../lib/use-loading";
 import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
 import { BarChart } from "../components/ek/Charts";
 import { downloadXlsx } from "../lib/ek-xlsx";
-import { C, PALETTE, num, Kpi, Panel, Lead, ShareList } from "../components/report/RptUi";
+import { C, PALETTE, num, Kpi, Panel, Lead, ShareList, PeriodBar } from "../components/report/RptUi";
 import { asArray } from "../lib/ek-array";
 import ExcelButton from "../components/ek/ExcelButton";
-import { dayBounds, shiftDay, todayIso, rowFilter } from "../lib/ek-day-report";
+import { dayBounds, shiftDay, todayIso, rowFilter, periodDays, daysBetween, topBy, idleRows } from "../lib/ek-day-report";
 
 /* ══════════════════════════════════════════════════════════════════════════
    KUNLIK HISOBOT (2026-10-09)
@@ -33,12 +33,26 @@ import { dayBounds, shiftDay, todayIso, rowFilter } from "../lib/ek-day-report";
    Tenglik doim saqlanadi (`DayReportService`, «Boshqa» ustuni).
 
    ⚠ YANGI CSS YO'Q (byudjet 44/44): hisobot bo'limining klasslari.
+
+   ⚠ DAVR (2026-10-11, egasi: «kunlik, oylik, yillik va hokazo — juda keng va
+   sodda»): sahifa endi istalgan davrni ko'rsatadi — bugun, kecha, hafta, oy,
+   chorak, yil, ixtiyoriy oraliq. Chegaralar Toshkent kunlarida
+   (`periodDays`); bitta kunda ‹ › bilan kunma-kun yuriladi. Bir necha kunda
+   soatlar o'rniga kunlar/haftalar/oylar bo'yicha grafik, oldingi teng davr
+   bilan solishtirish, eng ko'p sotilgan va sotilmay yotgan tovarlar.
    ══════════════════════════════════════════════════════════════════════════ */
 const SHOW = ["moved", "sold", "all"];
 
 export default function DayReportPage({ toast }) {
   const navigate = useNavigate();
-  const [date, setDate] = useState(todayIso);
+  const [period, setPeriod] = useState("today");
+  const [custom, setCustom] = useState({ from: "", to: "" });
+  const { from: dFrom, to: dTo } = periodDays(period, todayIso(), custom);
+  const single = dFrom === dTo;
+  const date = dFrom;
+  const days = daysBetween(dFrom, dTo);
+  /* Bitta kunga o'tish (‹ ›, sana) — ixtiyoriy oraliq sifatida. */
+  const setDate = (d) => { setPeriod("custom"); setCustom({ from: d, to: d }); };
   const [branchId, setBranchId] = useState(null);
   const [show, setShow] = useState("moved");
   const [an, setAn] = useState(null);
@@ -53,21 +67,25 @@ export default function DayReportPage({ toast }) {
 
   const load = useCallback(() => {
     setLoading(true);
-    const { from, to } = dayBounds(date);
+    const from = dayBounds(dFrom).from;
+    const to = dayBounds(dTo).to;
     Promise.all([
-      reportApi.analytics(from, to, "hour", branchId),
-      reportApi.dayProducts(date, branchId, show === "all"),
+      reportApi.analytics(from, to, undefined, branchId),
+      reportApi.dayProducts(dFrom, dTo, branchId, show === "all"),
     ])
       .then(([a, d]) => { setAn(a?.data || null); setDp(d?.data || null); })
       .catch((e) => toast?.error(e.message))
       .finally(() => setLoading(false));
-  }, [date, branchId, show === "all", toast]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [dFrom, dTo, branchId, show === "all", toast]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { load(); }, [load]);
 
   const k = an?.now || {};
-  const isToday = date === todayIso();
-  const dayWord = isToday ? t("day.today") : weekdayDate(`${date}T12:00:00`);
+  const isToday = single && date === todayIso();
+  const dayWord = single
+    ? (isToday ? t("day.today") : weekdayDate(`${date}T12:00:00`))
+    : (period === "custom" ? `${dFrom} — ${dTo}` : t(`rpt2.p.${period}`));
+  const pk = an?.prev || {};
   const rows = useMemo(() => rowFilter(asArray(dp?.rows), show), [dp, show]);
   const hasTransfers = rows.some((r) => num(r.transferIn) || num(r.transferOut));
 
@@ -81,13 +99,19 @@ export default function DayReportPage({ toast }) {
     { key: "off",   label: t("day.col.off"),     type: "number", get: (r) => r.writtenOff },
     { key: "other", label: t("day.col.other"),   type: "number", get: (r) => r.other },
     { key: "close", label: t("day.col.close"),   type: "number", get: (r) => r.closing },
+    ...(single ? [] : [{ key: "perDay", label: t("day.col.perDay"), type: "number", get: (r) => (num(r.sold) ? Math.round((num(r.sold) / days) * 100) / 100 : 0) }]),
     { key: "money", label: t("day.col.money"),   type: "number", get: (r) => num(r.soldMoney) - num(r.returnedMoney) },
     { key: "prof",  label: t("day.col.profit"),  type: "number", get: (r) => r.profit },
-  ], []);
+  ], [single, days]);
   const flt = useDataFilter(COLS, "day-products");
   const shown = flt.apply(rows);
 
-  const openProduct = (id) => navigate(`/reports/product/${id}?${new URLSearchParams({ period: "custom", from: date, to: date })}`);
+  const openProduct = (id) => navigate(`/reports/product/${id}?${new URLSearchParams({ period: "custom", from: dFrom, to: dTo })}`);
+  const allRows = asArray(dp?.rows);
+  const topSold = topBy(allRows, (r) => num(r.soldMoney) - num(r.returnedMoney));
+  const topProfit = topBy(allRows, (r) => r.profit);
+  const idle = show === "all" ? idleRows(allRows) : [];
+  const series = asArray(an?.series);
 
   const ran = rows.filter((r) => r.tracksStock && r.closing != null && num(r.closing) <= 0 && num(r.sold) > 0);
   const hours = asArray(an?.hourly).filter((h) => h.hour >= 6 || num(h.netSales) > 0);
@@ -105,7 +129,7 @@ export default function DayReportPage({ toast }) {
 
   const exportXlsx = () => {
     const sum = [
-      [{ v: shopName || t("day.title"), bold: true }], [t("day.date"), date], [],
+      [{ v: shopName || t("day.title"), bold: true }], [t("day.date"), single ? date : `${dFrom} — ${dTo}`], [],
       [t("day.k.sales"), num(k.netSales)], [t("day.k.profit"), num(k.grossProfit)],
       [t("day.k.receipts"), num(k.receipts)], [t("day.k.avg"), num(k.avgReceipt)],
       [t("day.k.cash"), num(k.cash)], [t("day.k.card"), num(k.card)], [t("day.k.online"), num(k.online)],
@@ -113,14 +137,19 @@ export default function DayReportPage({ toast }) {
       [t("day.k.returns"), num(k.returns)], [t("day.k.expenses"), num(k.expenses)],
       [t("day.k.net"), num(k.netProfit)],
     ];
-    downloadXlsx(`kunlik-hisobot-${date}`, [
+    downloadXlsx(`tovar-hisoboti-${dFrom}${single ? "" : `_${dTo}`}`, [
       { name: t("day.sheet.summary"), rows: sum },
       { name: t("day.sheet.products"), rows: [
         xlsxCols.map((c) => ({ v: c.label, bold: true })),
         ...shown.map((r) => xlsxCols.map((c) => (c.type === "number" ? (c.get(r) == null ? "" : num(c.get(r))) : (c.get(r) || "")))),
       ] },
-      { name: t("day.sheet.hours"), rows: [[t("day.hour"), t("day.k.sales"), t("day.k.receipts")],
-        ...hours.map((h) => [`${h.hour}:00`, num(h.netSales), num(h.receipts)])] },
+      single
+        ? { name: t("day.sheet.hours"), rows: [[t("day.hour"), t("day.k.sales"), t("day.k.receipts")],
+            ...hours.map((h) => [`${h.hour}:00`, num(h.netSales), num(h.receipts)])] }
+        : { name: t("day.sheet.trend"), rows: [[t("day.date"), t("day.k.sales"), t("day.k.profit"), t("day.k.receipts")],
+            ...series.map((p) => [p.label, num(p.netSales), num(p.grossProfit), num(p.receipts)])] },
+      { name: t("day.sheet.top"), rows: [[t("day.col.name"), t("day.col.sold"), t("day.col.money"), t("day.col.profit")].map((v) => ({ v, bold: true })),
+        ...topSold.map((r) => [r.name, num(r.sold), num(r.soldMoney) - num(r.returnedMoney), num(r.profit)])] },
       { name: t("day.sheet.cashiers"), rows: [[t("day.who"), t("day.k.receipts"), t("day.k.sales"), t("day.k.returns")],
         ...asArray(an?.cashiers).map((c) => [c.name, num(c.receipts), num(c.netSales), num(c.returns)])] },
       { name: t("day.sheet.pay"), rows: [[t("day.how"), t("day.k.sales")],
@@ -134,22 +163,25 @@ export default function DayReportPage({ toast }) {
   return (
     <div className="rpt">
       <div className="rpt-bar">
-        <div className="rpt-bar__tools" role="group" aria-label={t("day.date")} style={{ flexWrap: "nowrap" }}>
-          <button type="button" className="btn btn-outline btn-sm" onClick={() => setDate(shiftDay(date, -1))}
-                  aria-label={t("day.prev")}>
-            <i className="fa-solid fa-chevron-left" aria-hidden="true" />
-          </button>
-          <input type="date" className="form-input ek-num" value={date} max={todayIso()} style={{ width: 170 }}
-                 aria-label={t("day.date")} onChange={(e) => e.target.value && setDate(e.target.value)} />
-          <button type="button" className="btn btn-outline btn-sm" disabled={isToday}
-                  onClick={() => setDate(shiftDay(date, 1))} aria-label={t("day.next")}>
-            <i className="fa-solid fa-chevron-right" aria-hidden="true" />
-          </button>
-          {!isToday && (
-            <button type="button" className="btn btn-outline btn-sm" onClick={() => setDate(todayIso())}>
-              {t("day.today")}
-            </button>
+        <div className="rpt-bar__tools" role="group" aria-label={t("day.date")}>
+          <PeriodBar period={period} setPeriod={setPeriod} custom={custom} setCustom={setCustom} />
+          {single && (
+            <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
+              <button type="button" className="btn btn-outline btn-sm" onClick={() => setDate(shiftDay(date, -1))}
+                      aria-label={t("day.prev")}>
+                <i className="fa-solid fa-chevron-left" aria-hidden="true" />
+              </button>
+              {period !== "custom" && (
+                <input type="date" className="form-input ek-num" value={date} max={todayIso()} style={{ width: 170 }}
+                       aria-label={t("day.date")} onChange={(e) => e.target.value && setDate(e.target.value)} />
+              )}
+              <button type="button" className="btn btn-outline btn-sm" disabled={isToday}
+                      onClick={() => setDate(shiftDay(date, 1))} aria-label={t("day.next")}>
+                <i className="fa-solid fa-chevron-right" aria-hidden="true" />
+              </button>
+            </span>
           )}
+          {!single && <span className="text-muted ek-num">{dFrom} — {dTo} · {t("day.periodDays", { n: days })}</span>}
         </div>
         <div className="rpt-bar__tools">
           <BranchSelector selectedId={branchId} onSelect={setBranchId} />
@@ -168,7 +200,7 @@ export default function DayReportPage({ toast }) {
 
       <div className="rpt-print-head">
         <b>{shopName || t("day.title")}</b>
-        <span>{t("day.title")} · {date}</span>
+        <span>{t("day.title")} · {single ? date : `${dFrom} — ${dTo}`}</span>
       </div>
 
       {busy || !an || !dp ? <SkeletonCards count={8} className="kpi-grid" /> : (
@@ -185,8 +217,10 @@ export default function DayReportPage({ toast }) {
                 ].filter(Boolean).join(" ")} />
 
           <div className="kpi-grid">
-            <Kpi label={t("day.k.sales")} value={money(k.netSales)} icon="fa-sack-dollar" tone="brand" />
+            <Kpi label={t("day.k.sales")} value={money(k.netSales)} icon="fa-sack-dollar" tone="brand"
+                 now={num(k.netSales)} prev={an.prev ? num(pk.netSales) : undefined} />
             <Kpi label={t("day.k.profit")} value={money(k.grossProfit)} icon="fa-arrow-trend-up" tone="good"
+                 now={num(k.grossProfit)} prev={an.prev ? num(pk.grossProfit) : undefined}
                  sub={t("day.k.costSub", { cost: money(k.cogs) })} />
             <Kpi label={t("day.k.receipts")} value={num(k.receipts)} icon="fa-receipt"
                  sub={t("day.k.itemsSub", { n: quantity(k.itemsSold) })} />
@@ -211,12 +245,21 @@ export default function DayReportPage({ toast }) {
 
           {/* ══ 2. QACHON, KIM, QANDAY ══ */}
           <div className="rpt-cols">
-            <Panel title={t("day.q.hours")} icon="fa-clock">
-              <div className="card-body">
-                <BarChart height={200} empty={t("rpt2.noData")} color={C.sales}
-                          bars={hours.map((h) => ({ label: String(h.hour), value: num(h.netSales) }))} />
-              </div>
-            </Panel>
+            {single ? (
+              <Panel title={t("day.q.hours")} icon="fa-clock">
+                <div className="card-body">
+                  <BarChart height={200} empty={t("rpt2.noData")} color={C.sales}
+                            bars={hours.map((h) => ({ label: String(h.hour), value: num(h.netSales) }))} />
+                </div>
+              </Panel>
+            ) : (
+              <Panel title={t(`day.q.by.${an.bucket || "day"}`)} icon="fa-chart-column">
+                <div className="card-body">
+                  <BarChart height={200} empty={t("rpt2.noData")} color={C.sales}
+                            bars={series.map((p) => ({ label: p.label, value: num(p.netSales) }))} />
+                </div>
+              </Panel>
+            )}
             <Panel title={t("day.q.pay")} icon="fa-wallet">
               <div className="card-body">
                 <ShareList rows={asArray(an.payments).map((p, i) => ({
@@ -228,7 +271,7 @@ export default function DayReportPage({ toast }) {
 
           <div className="rpt-cols">
             <Panel title={t("day.q.who")} icon="fa-user-tie"
-                   right={<ExcelButton name={`kassirlar-${date}`} rows={asArray(an.cashiers)} toast={toast} cols={[
+                   right={<ExcelButton name={`kassirlar-${dFrom}${single ? "" : `_${dTo}`}`} rows={asArray(an.cashiers)} toast={toast} cols={[
                      { label: t("day.who"),        type: "text",   get: (c) => c.name },
                      { label: t("day.k.receipts"), type: "number", get: (c) => num(c.receipts) },
                      { label: t("day.k.sales"),    type: "number", get: (c) => num(c.netSales) },
@@ -264,6 +307,46 @@ export default function DayReportPage({ toast }) {
               </div>
             </Panel>
           </div>
+
+          {/* ══ ENG KO'P VA ENG KAM ══ */}
+          <div className="rpt-cols">
+            {[["top", topSold, (r) => num(r.soldMoney) - num(r.returnedMoney), "fa-ranking-star"],
+              ["topProfit", topProfit, (r) => num(r.profit), "fa-sack-dollar"]].map(([key, list, val, icon]) => (
+              <Panel key={key} title={t(`day.q.${key}`)} icon={icon}>
+                <div className="card-body">
+                  {list.length === 0 ? <Empty icon="fa-box-open" text={t("rpt2.noData")} /> : list.map((r, i) => (
+                    <div key={r.productId} className="tr-link" role="button" tabIndex={0}
+                         onClick={() => openProduct(r.productId)} onKeyDown={(e) => { if (e.key === "Enter") openProduct(r.productId); }}
+                         style={{ display: "flex", alignItems: "center", gap: 10, minHeight: 44, cursor: "pointer" }}>
+                      <span className="ek-num text-muted" style={{ width: 22 }}>{i + 1}</span>
+                      <span className="fw-700" style={{ flex: "1 1 0", minWidth: 0 }}>{r.name}</span>
+                      <span className="ek-num text-muted">{q(r.sold, r.unit)}</span>
+                      <span className="ek-num fw-700" style={{ minWidth: 110, textAlign: "right" }}>{money(val(r))}</span>
+                    </div>
+                  ))}
+                </div>
+              </Panel>
+            ))}
+          </div>
+
+          <Panel title={t("day.q.idle")} icon="fa-box-archive" wide>
+            <div className="card-body">
+              <p className="text-muted" style={{ marginTop: 0 }}>{t("day.idleHint")}</p>
+              {show !== "all" ? (
+                <button type="button" className="btn btn-outline btn-sm" style={{ minHeight: 44 }} onClick={() => setShow("all")}>
+                  <i className="fa-solid fa-eye" aria-hidden="true" /> {t("day.idleShow")}
+                </button>
+              ) : idle.length === 0 ? <p className="fw-700" style={{ margin: 0 }}><i className="fa-solid fa-check" aria-hidden="true" /> {t("day.idleNone")}</p> : idle.map((r) => (
+                <div key={r.productId} className="tr-link" role="button" tabIndex={0}
+                     onClick={() => openProduct(r.productId)} onKeyDown={(e) => { if (e.key === "Enter") openProduct(r.productId); }}
+                     style={{ display: "flex", alignItems: "center", gap: 10, minHeight: 40, cursor: "pointer" }}>
+                  <span className="fw-700" style={{ flex: "1 1 0", minWidth: 0 }}>{r.name}</span>
+                  <span className="ek-num text-muted">{t("day.idleLine", { qty: q(r.closing, r.unit) })}</span>
+                  <span className="ek-num" style={{ minWidth: 110, textAlign: "right" }}>{money(num(r.closing) * num(r.salePrice))}</span>
+                </div>
+              ))}
+            </div>
+          </Panel>
 
           {ran.length > 0 && (
             <Panel title={t("day.q.ran")} icon="fa-triangle-exclamation" wide>
@@ -304,6 +387,7 @@ export default function DayReportPage({ toast }) {
                     <SortTh flt={flt} col="off">{t("day.col.off")}</SortTh>
                     <SortTh flt={flt} col="other">{t("day.col.other")}</SortTh>
                     <SortTh flt={flt} col="close">{t("day.col.close")}</SortTh>
+                    {!single && <SortTh flt={flt} col="perDay">{t("day.col.perDay")}</SortTh>}
                     <SortTh flt={flt} col="money">{t("day.col.money")}</SortTh>
                     <SortTh flt={flt} col="prof">{t("day.col.profit")}</SortTh>
                   </tr></thead>
@@ -327,15 +411,16 @@ export default function DayReportPage({ toast }) {
                         <td className={`mono${zero(r.writtenOff) ? "" : " text-danger"}`}>{zero(r.writtenOff) ? "—" : `−${q(r.writtenOff)}`}</td>
                         <td className="mono">{r.other == null || zero(r.other) ? "—" : `${num(r.other) > 0 ? "+" : ""}${q(r.other)}`}</td>
                         <td className={`mono fw-700${r.closing != null && num(r.closing) <= 0 ? " text-danger" : ""}`}>{q(r.closing, r.unit)}</td>
+                        {!single && <td className="mono">{num(r.sold) ? quantity(Math.round((num(r.sold) / days) * 100) / 100) : "—"}</td>}
                         <td className="mono text-blue">{zero(r.soldMoney) && zero(r.returnedMoney) ? "—" : money(num(r.soldMoney) - num(r.returnedMoney))}</td>
                         <td className={`mono${num(r.profit) < 0 ? " text-danger" : ""}`}>{zero(r.profit) ? "—" : money(r.profit)}</td>
                       </tr>
-                    )) : <tr><td colSpan={hasTransfers ? 12 : 10}><Empty icon="fa-box-open" text={t("day.empty")} /></td></tr>}
+                    )) : <tr><td colSpan={(hasTransfers ? 12 : 10) + (single ? 0 : 1)}><Empty icon="fa-box-open" text={t("day.empty")} /></td></tr>}
                   </tbody>
                   {shown.length > 0 && (
                     <tfoot><tr className="fw-700">
                       <td>{t("day.total", { n: shown.length })}</td>
-                      <td colSpan={hasTransfers ? 9 : 7} />
+                      <td colSpan={(hasTransfers ? 9 : 7) + (single ? 0 : 1)} />
                       <td className="mono text-blue">{money(shown.reduce((s, r) => s + num(r.soldMoney) - num(r.returnedMoney), 0))}</td>
                       <td className="mono">{money(shown.reduce((s, r) => s + num(r.profit), 0))}</td>
                     </tr></tfoot>

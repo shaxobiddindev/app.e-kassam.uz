@@ -73,13 +73,13 @@ if (navigator.serviceWorker && import.meta.env.PROD && !isDesktop()) {
    inglizcha ishlaydigan do'kon ekranni bir lahza O'ZBEKCHA ko'rib,
    keyin uning almashishini kuzatardi.
 
-   ⚠ O'zbekchada KUTISH YO'Q: uning lug'ati statik import, ya'ni
-   va'da darhol yopiladi va birinchi chizish sekinlashmaydi. */
+   ⚠ 2026-10-11 dan O'ZBEKCHA HAM kechiktirilgan (sabab `ek-i18n.js` da):
+   kirish to'plami kichraydi, lug'at esa keshdan keladi. Xato bo'lsa ham
+   chiziladi — kalit ko'rinadi, bo'sh ekran emas. */
 const render = () =>
   createRoot(document.getElementById("root")).render(<StrictMode><App /></StrictMode>);
 
-if (lang === "uz") render();
-else loadLocale(lang).then(render, render);
+loadLocale(lang).then(render, render);
 
 /* ⚠ OLDINDAN YUKLASH SHU YERDA, `App` ICHIDA EMAS.
 

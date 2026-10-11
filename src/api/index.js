@@ -368,8 +368,9 @@ export const reportApi = {
    * (kun boshi, keldi, sotildi, qaytdi, chiqit, kun oxiri). Kun — sana
    * («YYYY-MM-DD»), server uni Toshkent bo'yicha oladi.
    */
-  dayProducts: (date, shopId, all) => {
-    const q = new URLSearchParams({ date });
+  dayProducts: (from, to, shopId, all) => {
+    /* Davr (2026-10-11): `from`/`to` — Toshkent kunlari, ikkalasi ham kiradi. */
+    const q = new URLSearchParams({ from, to: to || from });
     if (shopId) q.set("shopId", shopId);
     if (all) q.set("all", "true");
     return request(`/reports/day-products?${q}`);
