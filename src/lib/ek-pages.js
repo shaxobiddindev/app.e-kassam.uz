@@ -2,6 +2,7 @@
    ishlatadi va shu fayldan import qilsalar aylanma bog'lanish
    hosil bo'lardi (`ek-pages` → sahifa → `ek-pages`). */
 import { lazySafe } from "./ek-lazy.js";
+import { PAGE_ROUTES, HOME_KEY } from "./ek-page-routes.js";
 
 const LOADERS = {
   Dashboard:    () => import("../pages/DashboardPage"),
@@ -42,6 +43,42 @@ const LOADERS = {
   Security:     () => import("../pages/SecurityPage"),
   Audit:        () => import("../pages/AuditPage"),
 };
+
+/**
+ * Bosh sahifa (`/`) qaysi sahifani chizganini eslab qolish — keyingi
+ * ochilishda `index.html` dagi skript uning bo'lagini kirish JS bilan
+ * parallel yuklaydi (`scripts/vite-early-preload.mjs`). Faqat tezlik:
+ * noto'g'ri qiymat bitta ortiqcha yuklash, xolos.
+ */
+export function rememberHome(name) {
+  try {
+    if (localStorage.getItem(HOME_KEY) !== name) localStorage.setItem(HOME_KEY, name);
+  } catch (_) { /* maxfiy rejim */ }
+}
+
+/**
+ * Ochilayotgan sahifani render'dan OLDIN bajarib qo'yish (`main.jsx`).
+ *
+ * ⚠ NEGA. Kechiktirilgan sahifa birinchi chizishda Suspense ga tushadi:
+ * avval qobiq chiziladi, modul bajarilgach — yana bir to'liq chizish va
+ * layout. Sekin protsessorda har biri yuzlab millisekund (sharsharada
+ * bosh sahifa uch alohida commitda chiqardi). Bo'lak HTML dagi
+ * `modulepreload` bilan allaqachon yuklangan, bu yerda faqat bajariladi
+ * va `lazySafe` uni birinchi chizishning o'zida beradi.
+ *
+ * ⚠ Lug'atdan KEYIN chaqiriladi: modul darajasidagi `t()` kalit qaytarmasin.
+ * ⚠ Xato yutiladi: sahifa keyin oddiy yo'l bilan yuklanadi.
+ */
+export function preloadBootPage() {
+  let name = null;
+  try {
+    if (localStorage.getItem("ek_token") && localStorage.getItem("ek_type") === "user") {
+      name = location.pathname === "/" ? localStorage.getItem(HOME_KEY) : PAGE_ROUTES[location.pathname];
+    }
+  } catch (_) { /* maxfiy rejim */ }
+  const page = name && Object.prototype.hasOwnProperty.call(LOADERS, name) ? P[name] : null;
+  return page ? page.preload().catch(() => {}) : Promise.resolve();
+}
 
 /** `<P.Kassa toast={toast} />` — marshrutlarda shu ko'rinishda ishlatiladi. */
 export const P = Object.fromEntries(

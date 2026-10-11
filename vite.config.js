@@ -1,5 +1,6 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import earlyPreload from "./scripts/vite-early-preload.mjs";
 
 /* ══════════════════════════════════════════════════════════════════════════
    ⚠ QR KUTUBXONASI ALOHIDA BO'LAKDA (V60)
@@ -19,7 +20,7 @@ import react from "@vitejs/plugin-react";
    so'rov qo'shadi.
    ══════════════════════════════════════════════════════════════════════════ */
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), earlyPreload()],
   server: { port: 5173 },
   build: {
     rollupOptions: {

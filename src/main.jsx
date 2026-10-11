@@ -1,9 +1,10 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { schedulePrefetch } from "./lib/ek-pages";
+import { schedulePrefetch, preloadBootPage } from "./lib/ek-pages";
 import App from "./App.jsx";
 import { initTheme } from "./lib/ek-theme";
 import { initLang, loadLocale } from "./lib/ek-i18n";
+import { prefetchShopFeatures } from "./hooks/useShopFeatures";
 import { isDesktop } from "./lib/ek-desktop";
 import { initStatusBar } from "./lib/ek-statusbar";
 import { autoConnect as scaleAutoConnect } from "./lib/ek-scale-live";
@@ -42,6 +43,22 @@ restoreDevice().finally(() => {
 // ko'chiriladi va <html lang> qo'yiladi. Faqat INTERFEYSGA ta'sir qiladi.
 const lang = initLang();
 
+/* ⚠ SHRIFTLAR SHU YERDAN SO'RALADI (2026-10-11). Brauzer shriftni faqat
+   birinchi chizishda matn topilganda so'raydi — sharsharada ~2.4 s da,
+   ya'ni ular birinchi layoutdan KEYIN kelib, sahifani yana ikki-uch marta
+   qayta joylashtirardi (4× sekin protsessorda har biri 100–300 ms).
+   Bu nuqtada esa JS allaqachon yuklangan va tarmoq BO'SH: shriftlar
+   birinchi layoutga yetib keladi.
+
+   ⚠ `<link rel=preload>` EMAS: HTML dan so'ralsa, ular kirish JS bilan
+   bir vaqtda tarmoq uchun raqobatlashib, uni sekinlashtirardi.
+   ⚠ `document.fonts.load` — fayl nomi emas, CSS dagi `@font-face` bo'yicha:
+   `unicode-range` hisobga olinadi (ruscha bo'lsa kirill bo'lagi ham). */
+try {
+  const sample = lang === "ru" ? "Aя" : "A";
+  for (const f of ["1em Inter", "600 1em Manrope", "1em 'JetBrains Mono'"]) document.fonts.load(f, sample).catch(() => {});
+} catch (_) { /* eski brauzer — shrift odatdagidek keyin keladi */ }
+
 // PWA — planshetga o'rnatilganda brauzer paneli yo'qoladi, POS terminaliday ko'rinadi.
 //
 // ⚠ DESKTOP'DA RO'YXATDAN O'TKAZILMAYDI. `.exe` ichida service worker foydasiz
@@ -79,7 +96,20 @@ if (navigator.serviceWorker && import.meta.env.PROD && !isDesktop()) {
 const render = () =>
   createRoot(document.getElementById("root")).render(<StrictMode><App /></StrictMode>);
 
-loadLocale(lang).then(render, render);
+/* Do'kon modullari so'rovi lug'at bilan PARALLEL (sabab `useShopFeatures.js`
+   da). Faqat xodim sessiyasi bo'lsa — mijoz kabineti va kirish sahifasida
+   bu so'rovning ma'nosi yo'q (401 qaytarardi). */
+try {
+  if (localStorage.getItem("ek_token") && localStorage.getItem("ek_type") === "user") prefetchShopFeatures();
+} catch (_) { /* maxfiy rejim */ }
+
+/* Ochilayotgan sahifa lug'atdan keyin, render'dan OLDIN bajariladi (sabab
+   `ek-pages.js`, `preloadBootPage`). Bo'lak odatda kirish JS bilan birga
+   allaqachon kelgan bo'ladi; kelmagan bo'lsa ko'pi bilan 1 soniya
+   kutiladi — noto'g'ri taxmin yoki sekin tarmoq ekranni ushlab turmasin. */
+const bootPage = () => Promise.race([preloadBootPage(), new Promise((r) => setTimeout(r, 1000))]);
+
+loadLocale(lang).then(bootPage, bootPage).then(render, render);
 
 /* ⚠ OLDINDAN YUKLASH SHU YERDA, `App` ICHIDA EMAS.
 

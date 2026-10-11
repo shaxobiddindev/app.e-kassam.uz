@@ -1,4 +1,4 @@
-import { lazy } from "react";
+import { createElement, lazy, useState } from "react";
 
 /* ══════════════════════════════════════════════════════════════════════════
    ESKIRGAN CHUNK — «Failed to fetch dynamically imported module»
@@ -53,9 +53,13 @@ const unmark = () => { try { sessionStorage.removeItem(RELOAD_KEY); } catch (_) 
  * ham ko'rsatmasdi.
  */
 export function lazySafe(load, name) {
-  return lazy(async () => {
+  /** Bajarilgan modul — bo'lsa, sahifa Suspense'siz chiziladi. */
+  let done = null;
+
+  const Lazy = lazy(async () => {
     try {
       const mod = await load();
+      done = mod;
       /* Muvaffaqiyatdan keyin bayroq tozalanadi: keyingi reliz yana
          eskirtirsa, yangilash yo'li ochiq qolishi kerak. */
       if (marked() === name) unmark();
@@ -77,6 +81,25 @@ export function lazySafe(load, name) {
       throw first;
     }
   });
+
+  /* ⚠ MODUL TAYYOR BO'LSA — TO'G'RIDAN-TO'G'RI (2026-10-11). `lazy()` modul
+     allaqachon bajarilgan bo'lsa ham birinchi chizishda bir marta
+     to'xtaydi (va'da mikro-vazifada hal bo'ladi) — ya'ni qobiq alohida,
+     sahifa alohida chiziladi. `preloadBootPage` sahifani render'dan oldin
+     bajaradi va bu yerda u darhol chiqadi.
+
+     ⚠ Qaror NUSXA BO'YICHA BIR MARTA (`useState`). Har chizishda qayta
+     tanlansa, `Lazy` orqali o'rnatilgan sahifa modul kelgach boshqa
+     turdagi elementga almashib, QAYTA O'RNATILARDI: holat yo'qolib,
+     so'rovlar ikki marta ketardi. */
+  function Page(props) {
+    const [mod] = useState(() => done);
+    return createElement(mod ? mod.default : Lazy, props);
+  }
+  Page.displayName = name;
+  /** Modulni yuklab BAJARISH (Suspense'siz chizish uchun). */
+  Page.preload = () => load().then((m) => { done = m; return m; });
+  return Page;
 }
 
 /* ══════════════════════════════════════════════════════════════════════════

@@ -19,11 +19,10 @@ import { ConfirmProvider } from "./context/ConfirmProvider";
 import NotFound from "./pages/NotFound";
 import { isDesktop, isNativeShell, isMobileApp } from "./lib/ek-desktop";
 import { prime as sfxPrime } from "./lib/ek-sound";
-import MobileApp from "./mobile/MobileApp";
 import { hasRole, roleSet } from "./lib/ek-roles";
 import { useShopFeatures } from "./hooks/useShopFeatures";
 import ErrorBoundary, { RouteErrorBoundary } from "./components/ek/ErrorBoundary";
-import { P } from "./lib/ek-pages";
+import { P, rememberHome } from "./lib/ek-pages";
 import { lazySafe } from "./lib/ek-lazy";
 import { clearSession } from "./lib/ek-session";
 import { Progress } from "./components/ek/Loading";
@@ -46,6 +45,12 @@ const TerminalGate = lazySafe(() => import("./components/TerminalGate"), "Termin
 /* Kirish sahifasi — faqat ilova ichida kirganda (desktop/telefon); kirgan
    kassir uni har ochilishda yuklamasin (KIRISH byudjeti, 2026-10-08). */
 const LoginPage = lazySafe(() => import("./pages/LoginPage"), "LoginPage");
+/* Egasining telefon paneli (V33) — faqat Android ilovada chiziladi. Statik
+   import bilan u o'z bo'limlari va QR kutubxonasi (`MobileShopQr` →
+   `CodeZoom` → `ek-qr`) bilan birga HAR BIR veb va desktop kassirning
+   kirish to'plamida yurardi — `vite.config.js` dagi «QR alohida bo'lakda»
+   qarori shu yo'l bilan jimgina bekor bo'lgan edi (2026-10-11). */
+const MobileApp = lazySafe(() => import("./mobile/MobileApp"), "MobileApp");
 import { getAppToken } from "./customer/customerApi";
 
 // ⚠ Tilni URL dan olish MODUL TANASIDA, `replaceState` dan OLDIN bo'lishi
@@ -205,7 +210,7 @@ const FeatureRoute = ({ feature, children }) => {
  * cheksiz yo'naltirardi.
  */
 const HomeRoute = ({ user, toast }) => {
-  const { has, ready, isRestaurant } = useShopFeatures();
+  const { has, ready, known, isRestaurant } = useShopFeatures();
   const roles = roleSet(user?.role);
   const staff = ["OWNER", "SHOP_ADMIN", "STOREKEEPER", "CASHIER"].some((r) => roles.has(r));
   const waiterOnly = roles.has("WAITER") && !staff;
@@ -214,23 +219,32 @@ const HomeRoute = ({ user, toast }) => {
   const terminal = isTerminal() && !roles.has("OWNER") && !roles.has("SHOP_ADMIN");
 
   if ((waiterOnly || cookOnly || terminal) && !ready) return <Progress />;
-  if (cookOnly && has("KITCHEN")) return <Navigate to="/kitchen" replace />;
+  if (cookOnly && has("KITCHEN")) { rememberHome("Kitchen"); return <Navigate to="/kitchen" replace />; }
   /* Ofitsiant va zal terminali — uyi ZAL (D1). */
-  if ((waiterOnly || terminal) && has("TABLES")) return <Navigate to="/restaurant" replace />;
+  if ((waiterOnly || terminal) && has("TABLES")) { rememberHome("RestaurantFloor"); return <Navigate to="/restaurant" replace />; }
   /* Restoranda kassir ham ishni ZALDAN boshlaydi (E1): to'lov stol hisobidan
      olinadi, do'kon kassasining tovar katakchalaridan emas. */
   if (roles.size === 1 && roles.has("CASHIER")) {
     if (!ready) return <Progress />;
-    return <Navigate to={isRestaurant && has("TABLES") ? "/restaurant" : "/sale"} replace />;
+    const floor = isRestaurant && has("TABLES");
+    rememberHome(floor ? "RestaurantFloor" : "Kassa");
+    return <Navigate to={floor ? "/restaurant" : "/sale"} replace />;
   }
   /* Restoran rahbari — do'kon bosh sahifasi emas, «Bugun» paneli (E2).
-     ⚠ `ready` kutiladi: aks holda restoranda bir lahza do'kon paneli
-     chizilib, keyin almashardi. */
+     ⚠ Javob kutiladi: aks holda restoranda bir lahza do'kon paneli
+     chizilib, keyin almashardi. Lekin `known` yetadi — oxirgi ma'lum javob
+     (`useShopFeatures`): bu yo'naltirish emas, javob farq qilsa panel o'zi
+     almashadi, va farq faqat admin yo'nalishni o'zgartirgandan keyingi
+     BIRINCHI ochilishda bo'ladi. `ready` kutilganda esa rahbar har
+     ochilishda avval ingichka chiziqni, keyin ikkinchi to'liq chizishni
+     ko'rardi (2026-10-11, o'lchovda ~0.3 s). */
   const manager = ["ADMIN", "SHOP_ADMIN", "OWNER"].some((r) => roles.has(r));
-  if (manager && !ready) return <Progress />;
+  if (manager && !known) return <Progress />;
   if (manager && isRestaurant) {
+    rememberHome("RestaurantToday");
     return <ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "OWNER"]}><P.RestaurantToday toast={toast} /></ProtectedRoute>;
   }
+  rememberHome("Dashboard");
   return <ProtectedRoute user={user} roles={["ADMIN", "SHOP_ADMIN", "STOREKEEPER", "OWNER"]}><P.Dashboard toast={toast} /></ProtectedRoute>;
 };
 
@@ -435,7 +449,9 @@ export default function App() {
           {/* ConfirmProvider kerak: chiqish tasdig'i + TelegramPanel */}
           <ConfirmProvider>
             <Toast toasts={toasts} onDismiss={dismiss} />
-            <MobileApp user={user} logout={logout} toast={toast} />
+            <Suspense fallback={<Progress />}>
+              <MobileApp user={user} logout={logout} toast={toast} />
+            </Suspense>
           </ConfirmProvider>
         </ErrorBoundary>
       );
