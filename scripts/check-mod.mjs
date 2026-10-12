@@ -288,6 +288,11 @@ async function openKassa({ restaurant, kitchen = false, tables = false, terminal
       ek_fullName: "M", ek_shopCode: "m", ek_deviceId: "m", ek_lang: "uz", ek_theme: "light",
     })) localStorage.setItem(k, v);
     if (TERMINAL) localStorage.setItem("ek_terminal", "1"); else localStorage.removeItem("ek_terminal");
+    /* ⚠ Har stsenariy — TOZA QURILMA. Sahifalar bitta brauzer profilida va
+       `localStorage` umumiy: oldingi stsenariyning modullar keshi
+       (`ek_features`), bosh sahifa taxmini va xato navbati keyingisiga
+       o'tib, uni boshqa holatdan boshlab yuborardi (A1, 2026-10-12). */
+    for (const k of ["ek_features", "ek_home_page", "ek_err_queue"]) localStorage.removeItem(k);
     for (const k of Object.keys(localStorage)) if (k.startsWith("ek_cart")) localStorage.removeItem(k);
   }, role, terminal);
   await page.goto(`http://127.0.0.1:${PORT}${path}`, { waitUntil: "networkidle2", timeout: 30_000 });
@@ -871,10 +876,25 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
     /Dilnoza Karimova/.test(txt) && /Choy puli/i.test(txt) ? ok("ofitsiantlar jadvali choy puli bilan") : no("ofitsiantlar", txt.slice(-400));
     !/Kunlik savdo|Dashboard/.test(txt) ? ok("do'kon bosh sahifasi chizilmadi") : no("do'kon paneli restoranda", txt.slice(0, 200));
     if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/restaurant-today.png`, fullPage: true });
+    /* ⚠ SHARTGA TAYANADI (A1, 2026-10-12): CI da bir marta «kecha → 1»
+       bo'lgan va lokalda qayta hosil bo'lmagan. Endi: birinchi yuklash
+       tugaguncha kutiladi, tugma HAQIQIY sichqoncha bilan bosiladi va
+       bosilgani `aria-pressed` dan tasdiqlanadi; yiqilsa — holat yoziladi. */
+    await waitFor(page, () => !document.querySelector(".rpt .ek-sk"), 6000);
     const before = calls.today;
-    await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => /Kecha/.test(b.innerText))?.click());
-    (await waitFor(page, () => /kun yakuni/.test(document.body.innerText), 4000)) && calls.today > before
-      ? ok("«Kecha» — kun yakuni qayta so'raldi") : no("kecha", String(calls.today));
+    const yBtn = await page.evaluateHandle(() => [...document.querySelectorAll(".rpt-bar__tools button")].find((b) => /Kecha/.test(b.innerText)));
+    if (yBtn.asElement()) await yBtn.asElement().click();
+    const pressed = await waitFor(page, () => [...document.querySelectorAll(".rpt-bar__tools button")]
+      .find((b) => /Kecha/.test(b.innerText))?.getAttribute("aria-pressed") === "true", 6000);
+    const shown = await waitFor(page, () => /kun yakuni/.test(document.body.innerText), 8000);
+    const asked = await waitFor(page, () => false, 0).then(async () => {
+      for (let i = 0; i < 80 && !(calls.today > before); i++) await new Promise((r) => setTimeout(r, 100));
+      return calls.today > before;
+    });
+    pressed && shown && asked
+      ? ok("«Kecha» — kun yakuni qayta so'raldi")
+      : no("kecha", JSON.stringify({ tugma: !!yBtn.asElement(), bosildi: pressed, sarlavha: shown, so_rov: `${before} → ${calls.today}`,
+                                     sahifa: await page.evaluate(() => document.querySelector(".rpt-bar")?.innerText.slice(0, 120)) }));
     await page.evaluate(() => [...document.querySelectorAll("a")].find((a) => /buyurtma kechikmoqda/.test(a.innerText))?.click());
     (await waitFor(page, () => location.pathname === "/kitchen", 4000)) ? ok("kechikish qatori → oshxona") : no("kechikish havolasi", await page.evaluate(() => location.pathname));
     await page.close();

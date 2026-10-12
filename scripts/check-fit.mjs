@@ -31,6 +31,7 @@ import fs from "node:fs";
 import path from "node:path";
 import http from "node:http";
 import puppeteer from "puppeteer-core";
+import { typeTimed } from "./lib/keys.mjs";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const DIST = path.join(ROOT, "dist");
@@ -346,7 +347,7 @@ const qty = (n = 0) => page.evaluate((i) => {
 }, n);
 const press = async (keys, gap) => { for (const k of keys) { await page.keyboard.press(k); await sleep(gap); } };
 await page.click(".cart-item .cart-item-name"); await sleep(150);
-await press(["1", "2", "3"], 160);
+await typeTimed(page, "123", 160);
 await sleep(120);
 let q = await qty(0);
 yes(q.text === "123", "1,2,3 ketma-ket → 123", q.text);
@@ -356,7 +357,7 @@ await sleep(1700);
 q = await qty(0);
 yes(!q.typing, "1,5 s dan keyin ko'rsatkich o'chdi", JSON.stringify(q));
 yes(q.text === "123", "miqdor 123 qoldi", q.text);
-await press(["3", "2"], 160); await sleep(120);
+await typeTimed(page, "32", 160); await sleep(120);
 q = await qty(0);
 yes(q.text === "32", "oyna tugagach 3,2 → 32 (eskisi o'rniga)", q.text);
 await press(["4"], 0); await sleep(120);
@@ -367,7 +368,7 @@ q = await qty(0);
 yes(q.text === "32", "Backspace → 32", q.text);
 await sleep(1700);
 // skaner tezligida raqamlar — tegmasin
-await press(["9", "8", "7", "6", "5"], 4); await page.keyboard.press("Enter"); await sleep(300);
+await typeTimed(page, "98765", 4, { enter: true }); await sleep(300);
 q = await qty(0);
 yes(q.text === "32", "skaner tezligidagi 98765 miqdorga TEGMADI", q.text);
 // ikkinchi qator — yangidan

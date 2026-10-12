@@ -32,6 +32,7 @@ import fs from "node:fs";
 import path from "node:path";
 import http from "node:http";
 import puppeteer from "puppeteer-core";
+import { typeTimed } from "./lib/keys.mjs";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const DIST = path.join(ROOT, "dist");
@@ -175,7 +176,8 @@ const typeQ = async (text) => {
   await page.click(".search-bar input");
   await page.evaluate(() => document.querySelector(".search-bar input").select());
   for (let i = 0; i < 20; i++) await page.keyboard.press("Backspace");
-  if (text) await page.type(".search-bar input", text, { delay: 80 });
+  /* Vaqt belgisi bilan (`lib/keys.mjs`): yuklamada to'planib skaner deb tanilmasin. */
+  if (text) await typeTimed(page, text, 80);
 };
 
 /* ⚠ «SUV» — KATALOGDA OXIRGI va bu ataylab. Agar ro'yxat qo'shilgandan
@@ -224,7 +226,8 @@ const sel = await page.evaluate(() => {
 });
 if (sel[2] > 0 && sel[0] === 0 && sel[1] === sel[2]) ok("bosilganda eski matn belgilandi");
 else no("ishlatilgan matn bosilganda belgilanishi kerak", JSON.stringify(sel));
-await page.type(".search-bar input", "kef", { delay: 80 });
+await page.focus(".search-bar input");
+await typeTimed(page, "kef", 80);
 s = await until((x) => x.q === "kef");
 if (s.q !== "kef") no("yangi matn eskisining DAVOMIGA yozilmasligi kerak", JSON.stringify(s.q));
 else ok("yozilgan matn eski qidiruvni almashtirdi");
@@ -275,8 +278,7 @@ console.log("\n── 4b. Skaner fokusdagi qidiruvga hech narsa qoldirmaydi ─�
   const scan = async (code) => {
     await page.keyboard.press("Shift");
     await new Promise((r) => setTimeout(r, 150));
-    await page.keyboard.type(code, { delay: 5 });
-    await page.keyboard.press("Enter");
+    await typeTimed(page, code, 5, { enter: true });
   };
 
   await typeQ("");

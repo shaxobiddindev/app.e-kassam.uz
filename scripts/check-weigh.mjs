@@ -21,6 +21,7 @@ import fs from "node:fs";
 import path from "node:path";
 import http from "node:http";
 import puppeteer from "puppeteer-core";
+import { typeTimed } from "./lib/keys.mjs";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const DIST = path.join(ROOT, "dist");
@@ -124,8 +125,7 @@ const waitFor = async (page, fn, ms = 5000) => {
 const scan = async (page, code) => {
   await page.keyboard.press("Shift");
   await new Promise((r) => setTimeout(r, 150));
-  await page.keyboard.type(code, { delay: 5 });
-  await page.keyboard.press("Enter");
+  await typeTimed(page, code, 5, { enter: true });
 };
 const cartQty = (page) => page.$eval(".qty-num--edit", (e) => e.textContent.trim()).catch(() => null);
 

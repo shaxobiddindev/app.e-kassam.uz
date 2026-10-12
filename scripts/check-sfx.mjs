@@ -29,6 +29,7 @@ import fs from "node:fs";
 import path from "node:path";
 import http from "node:http";
 import puppeteer from "puppeteer-core";
+import { typeTimed } from "./lib/keys.mjs";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const DIST = path.join(ROOT, "dist");
@@ -204,8 +205,8 @@ console.log("\n── 3. Har amal — o'z ovozi, va qatlam sahifani yiqitmaydi �
      Sun'iy `keydown` lar hech narsani ishga tushirmasdi va sinov
      o'zini o'zi aldardi. */
   const scan = async (code) => {
-    for (const ch of code) await pg.keyboard.press(ch, { delay: 5 });
-    await pg.keyboard.press("Enter");
+    /* Vaqt belgisi bilan (`lib/keys.mjs`): yuklamada cho'zilib odam deb tanilmasin. */
+    await typeTimed(pg, code, 5, { enter: true });
   };
 
   const base = await pg.evaluate(() => window.__sfx.osc);
