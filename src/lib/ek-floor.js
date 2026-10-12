@@ -11,16 +11,69 @@
 export const PLANE = { w: 1000, h: 640 };
 export const SHAPES = ["SQUARE", "ROUND", "LONG"];
 
-/** Stol o'lchami tekislik birligida. Uzun stol ikki baravar keng. */
-export function sizeOf(shape) {
-  if (shape === "LONG") return { w: 220, h: 104 };
-  if (shape === "ROUND") return { w: 112, h: 112 };
-  return { w: 116, h: 104 };
+/* ══ VIZUAL MUHARRIR (V164) ═════════════════════════════════════════════
+   Egasi: «raqam kiritib emas, zalning o'zida yasay olsin; murakkab bo'lib
+   ketmasligi uchun shakllar soni cheklansin; ko'rsatilganda joy tejalsin,
+   lekin juda yopishib ketmasin».
+
+   ⚠ TO'RTTA TAYYOR SHAKL, boshqasi yo'q. Erkin o'lcham (eni, bo'yi) bersa,
+   rahbar rejani chizish bilan band bo'lib qolardi; ofitsiantga esa stol
+   qayerdaligi kerak, aniq o'lchami emas. O'lcham O'RINLAR SONIDAN kelib
+   chiqadi: −/+ bosilsa stol kattalashadi va stullar qo'shiladi.
+
+   ⚠ STULLAR stol QUTISI ichida (`CHAIR`) va stollar orasida yana `GAP`
+   bo'shliq — shuning uchun reja qancha siqilsa ham stullar bir-biriga
+   tegmaydi va ofitsiant o'tadigan yo'l qoladi. */
+export const CHAIR = 18;
+export const GAP = 16;
+export const GRID = 8;
+/** Serverdagi `DiningService.MAX_TABLES_PER_HALL` bilan bir xil. */
+export const MAX_TABLES = 60;
+
+export const PRESETS = [
+  { key: "small", shape: "SQUARE", seats: 2 },
+  { key: "square", shape: "SQUARE", seats: 4 },
+  { key: "round", shape: "ROUND", seats: 4 },
+  { key: "long", shape: "LONG", seats: 6 },
+];
+export const SEAT_RANGE = { SQUARE: [1, 4], ROUND: [2, 8], LONG: [4, 12] };
+const DEFAULT_SEATS = { SQUARE: 4, ROUND: 4, LONG: 6 };
+
+const shapeOf = (shape) => (SHAPES.includes(shape) ? shape : "SQUARE");
+const range = (a, b) => Array.from({ length: Math.max(0, b - a + 1) }, (_, i) => a + i);
+
+/** O'rinlar soni shakl chegarasida (yo'q bo'lsa — shaklning odatdagisi). */
+export function seatsOf(shape, seats) {
+  const sh = shapeOf(shape);
+  const [lo, hi] = SEAT_RANGE[sh];
+  const n = Number(seats);
+  return Number.isFinite(n) && n > 0 ? Math.max(lo, Math.min(hi, Math.round(n))) : DEFAULT_SEATS[sh];
 }
 
+/** Stolning o'zi (stullarsiz), tekislik birligida. */
+export function bodyOf(shape, seats, vertical) {
+  const sh = shapeOf(shape);
+  const n = seatsOf(sh, seats);
+  if (sh === "ROUND") { const d = 70 + (n - 2) * 8; return { w: d, h: d }; }
+  if (sh === "LONG") {
+    const len = Math.ceil(n / 2) * 34 + 20;
+    return vertical ? { w: 64, h: len } : { w: len, h: 64 };
+  }
+  const a = n <= 2 ? 64 : 84;
+  return { w: a, h: a };
+}
+
+/** Stol qutisi — stullar bilan. Rejadagi joy (`x`, `y`) shu qutining burchagi. */
+export function sizeOf(shape, seats, vertical) {
+  const b = bodyOf(shape, seats, vertical);
+  return { w: b.w + CHAIR * 2, h: b.h + CHAIR * 2 };
+}
+
+export const boxOf = (t) => ({ x: t.x, y: t.y, ...sizeOf(t.shape, t.seats, t.vertical) });
+
 /** Joyni tekislik ichida ushlaydi (stol chetdan chiqmasin). */
-export function clampPos(x, y, shape) {
-  const s = sizeOf(shape);
+export function clampPos(x, y, shape, seats, vertical) {
+  const s = sizeOf(shape, seats, vertical);
   return {
     x: Math.round(Math.max(0, Math.min(PLANE.w - s.w, x))),
     y: Math.round(Math.max(0, Math.min(PLANE.h - s.h, y))),
@@ -30,32 +83,125 @@ export function clampPos(x, y, shape) {
 /** Rejada joyi bormi. */
 export const placed = (t) => Number.isFinite(t?.x) && Number.isFinite(t?.y);
 
+/** Ikki quti `gap` dan yaqinmi (yoki ustma-ust). */
+export function overlaps(a, b, gap = GAP) {
+  return a.x < b.x + b.w + gap && b.x < a.x + a.w + gap && a.y < b.y + b.h + gap && b.y < a.y + a.h + gap;
+}
+
+/** Stol shu joyga sig'adimi: tekislik ichida va boshqalardan `GAP` uzoqda. */
+export function fits(t, items) {
+  const a = boxOf(t);
+  if (a.x < 0 || a.y < 0 || a.x + a.w > PLANE.w || a.y + a.h > PLANE.h) return false;
+  return !items.some((o) => o !== t && o.id !== t.id && placed(o) && overlaps(a, boxOf(o)));
+}
+
 /**
- * Joyi yo'q stollarga vaqtinchalik joy — qator-qator, band joyni chetlab.
+ * Eng yaqin bo'sh joy — `t.x`, `t.y` atrofida halqa-halqa qidiriladi.
+ * Shakl palitradan tashlanganda yoki kattalashtirilganda qo'shnisiga
+ * tegsa, stol shu yerga suriladi. Joy umuman bo'lmasa — `null`.
+ */
+export function nearestFree(t, items) {
+  const s = sizeOf(t.shape, t.seats, t.vertical);
+  const sx = Math.round((Number.isFinite(t.x) ? t.x : 24) / GRID) * GRID;
+  const sy = Math.round((Number.isFinite(t.y) ? t.y : 24) / GRID) * GRID;
+  const at = (x, y) => ({ ...t, ...clampPos(x, y, t.shape, t.seats, t.vertical) });
+  const first = at(sx, sy);
+  if (fits(first, items)) return { x: first.x, y: first.y };
+  const maxR = Math.ceil(Math.max(PLANE.w, PLANE.h) / GRID);
+  for (let r = 1; r <= maxR; r++) {
+    let best = null;
+    for (let dx = -r; dx <= r; dx++) {
+      for (const dy of (Math.abs(dx) === r ? range(-r, r) : [-r, r])) {
+        const x = sx + dx * GRID, y = sy + dy * GRID;
+        if (x < 0 || y < 0 || x + s.w > PLANE.w || y + s.h > PLANE.h) continue;
+        const c = at(x, y);
+        if (!fits(c, items)) continue;
+        const d = dx * dx + dy * dy;
+        if (!best || d < best.d) best = { x: c.x, y: c.y, d };
+      }
+    }
+    if (best) return { x: best.x, y: best.y };
+  }
+  return null;
+}
+
+/**
+ * Stullar — stol qutisi ichida, tanadan tashqarida (birlikda, qutiga nisbatan).
+ * Faqat chizish uchun: o'rinlar soni ko'zga ko'rinsin, raqam o'qilmasin.
+ */
+export function chairsOf(shape, seats, vertical) {
+  const sh = shapeOf(shape);
+  const n = seatsOf(sh, seats);
+  const b = bodyOf(sh, n, vertical);
+  const W = 26, D = CHAIR - 4;
+  const box = { w: b.w + CHAIR * 2, h: b.h + CHAIR * 2 };
+  const top = (cx) => ({ x: cx - W / 2, y: 2, w: W, h: D });
+  const bottom = (cx) => ({ x: cx - W / 2, y: box.h - D - 2, w: W, h: D });
+  const left = (cy) => ({ x: 2, y: cy - W / 2, w: D, h: W });
+  const right = (cy) => ({ x: box.w - D - 2, y: cy - W / 2, w: D, h: W });
+  if (sh === "ROUND") {
+    const r = b.w / 2 + CHAIR / 2, c = box.w / 2;
+    return range(0, n - 1).map((i) => {
+      const a = -Math.PI / 2 + (i * 2 * Math.PI) / n;
+      return { x: c + r * Math.cos(a) - D / 2, y: c + r * Math.sin(a) - D / 2, w: D, h: D, round: true };
+    });
+  }
+  if (sh === "LONG") {
+    const a = Math.ceil(n / 2), z = n - a;
+    const len = vertical ? b.h : b.w;
+    const along = (k, i) => CHAIR + (len * (i + 0.5)) / k;
+    return vertical
+      ? [...range(0, a - 1).map((i) => left(along(a, i))), ...range(0, z - 1).map((i) => right(along(z, i)))]
+      : [...range(0, a - 1).map((i) => top(along(a, i))), ...range(0, z - 1).map((i) => bottom(along(z, i)))];
+  }
+  const cx = box.w / 2, cy = box.h / 2;
+  return [top(cx), bottom(cx), left(cy), right(cy)].slice(0, n);
+}
+
+/**
+ * Zal ko'rinishi uchun kesim: hamma stol qutisi + chekka. Bo'sh tekislik
+ * chizilmaydi — reja ekranga to'liq cho'ziladi (egasi: «maksimal joy
+ * tejalsin»). ⚠ Eng kichik o'lcham bor: ikki stolli zal ekranni to'ldirib,
+ * stollar ulkan bo'lib ketmasin.
+ */
+export function fitBox(tables, pad = GAP, min = { w: 480, h: 300 }) {
+  const boxes = (tables || []).filter(placed).map(boxOf);
+  if (!boxes.length) return { x: 0, y: 0, w: PLANE.w, h: PLANE.h };
+  let x1 = Math.min(...boxes.map((b) => b.x)) - pad, y1 = Math.min(...boxes.map((b) => b.y)) - pad;
+  let x2 = Math.max(...boxes.map((b) => b.x + b.w)) + pad, y2 = Math.max(...boxes.map((b) => b.y + b.h)) + pad;
+  const grow = (a, b, need, lim) => {
+    const extra = Math.max(0, need - (b - a));
+    a -= extra / 2; b += extra / 2;
+    if (a < 0) { b -= a; a = 0; }
+    if (b > lim) { a -= b - lim; b = lim; }
+    return [Math.max(0, a), Math.min(lim, b)];
+  };
+  [x1, x2] = grow(x1, x2, min.w, PLANE.w);
+  [y1, y2] = grow(y1, y2, min.h, PLANE.h);
+  return { x: Math.round(x1), y: Math.round(y1), w: Math.round(x2 - x1), h: Math.round(y2 - y1) };
+}
+
+/** Keyingi nom: «Stol 7» — mavjud nomlardagi eng katta raqamdan keyingisi. */
+export function nextName(items, prefix) {
+  const max = (items || []).reduce((m, t) => {
+    const n = Number(/(\d+)\s*$/.exec(String(t.name || ""))?.[1]);
+    return Number.isFinite(n) ? Math.max(m, n) : m;
+  }, 0);
+  return `${prefix ? prefix + " " : ""}${max + 1}`;
+}
+
+/**
+ * Joyi yo'q stollarga vaqtinchalik joy — bo'sh joy chapdan-yuqoridan.
  *
  * ⚠ SERVERGA YOZILMAYDI: bu faqat ko'rinish. Rahbar rejani tahrirlasa va
  * saqlasa, o'shanda joy haqiqiy bo'ladi.
  */
 export function autoPlace(tables) {
-  const step = { x: 250, y: 150 };
-  const taken = tables.filter(placed).map((t) => ({ ...t, ...sizeOf(t.shape) }));
-  const hit = (x, y, s) => taken.some((o) => x < o.x + o.w + 12 && o.x < x + s.w + 12 && y < o.y + o.h + 12 && o.y < y + s.h + 12);
-  const out = [];
-  let cx = 24, cy = 24;
-  for (const t of tables) {
-    if (placed(t)) { out.push(t); continue; }
-    const s = sizeOf(t.shape);
-    let guard = 0;
-    while ((hit(cx, cy, s) || cx + s.w > PLANE.w) && guard++ < 200) {
-      cx += step.x;
-      if (cx + s.w > PLANE.w) { cx = 24; cy += step.y; }
-      if (cy + s.h > PLANE.h) { cy = 24; break; }
-    }
-    const p = { ...t, x: cx, y: cy, auto: true };
-    taken.push({ ...p, ...s });
-    out.push(p);
-    cx += step.x;
-    if (cx + s.w > PLANE.w) { cx = 24; cy += step.y; }
+  const out = (tables || []).map((t) => ({ ...t }));
+  for (const t of out) {
+    if (placed(t)) continue;
+    const p = nearestFree({ ...t, x: 24, y: 24 }, out) || { x: 0, y: 0 };
+    t.x = p.x; t.y = p.y; t.auto = true;
   }
   return out;
 }

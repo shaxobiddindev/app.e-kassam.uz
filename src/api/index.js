@@ -1380,6 +1380,8 @@ export const tableApi = {
   cancel: (orderId) => request(`/tables/orders/${orderId}/cancel`, { method: "POST" }),
   /* ── Zal rejasi, bron, hisob (D2, V155) ── */
   saveLayout: (hallId, items) => request(`/tables/halls/${hallId}/layout`, { method: "PUT", body: JSON.stringify(items) }),
+  /* Vizual muharrir (V164): butun zal — yangi, o'zgargan, o'chirilgan stollar bitta so'rovda. */
+  savePlan: (hallId, plan) => request(`/tables/halls/${hallId}/plan`, { method: "PUT", body: JSON.stringify(plan) }),
   reserve: (tableId, data) => request(`/tables/${tableId}/reserve`, { method: "POST", body: JSON.stringify(data) }),
   unreserve: (tableId) => request(`/tables/${tableId}/reserve`, { method: "DELETE" }),
   bill: (orderId) => request(`/tables/orders/${orderId}/bill`, { method: "POST" }),

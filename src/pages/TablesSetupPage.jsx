@@ -2,8 +2,9 @@
    ZAL VA STOLLAR — sozlash (2-bosqich T1, V153, docs/22-RESTORAN.md)
 
    Yangi restoranni sozlash bir daqiqalik ish bo'lsin: zal qo'shiladi va
-   «Stol 1–12» bir bosishda yaratiladi. Stolni bosib nomi yoki o'rinlari
-   o'zgartiriladi.
+   stollar «Reja» da (vizual muharrir, V164) shakl tanlab qo'shiladi va
+   sudrab joylanadi. «Stol 1–12» bir bosishda ham qoldi — katta zalni tez
+   to'ldirish uchun. Stolni bosib nomi yoki o'rinlari o'zgartiriladi.
 
    ⚠ O'CHIRISH = NOFAOL: yopilgan buyurtmalar stolga havola qiladi. Ochiq
    buyurtmasi bor stol yoki zalni server o'chirmaydi (pul ochiq turibdi).
@@ -83,7 +84,8 @@ export default function TablesSetupPage({ toast }) {
                 <h3 className="mod-card__name">{h.name}</h3>
                 <span className="badge">{t("tbl.count", { n: asArray(h.tables).length })}</span>
                 <span className="mod-card__actions">
-                  <button className="btn btn-outline btn-sm" onClick={() => setPlan(h)} disabled={!asArray(h.tables).length}>
+                  {/* ⚠ Bo'sh zalda ham ochiladi (V164): stollar endi rejaning o'zida qo'shiladi. */}
+                  <button className="btn btn-primary btn-sm" onClick={() => setPlan(h)}>
                     <i className="fa-solid fa-map" aria-hidden="true" /> {t("fe.open")}
                   </button>
                   <button className="btn btn-outline btn-sm" onClick={() => setModal({ kind: "hall", id: h.id, name: h.name })}>

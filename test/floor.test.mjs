@@ -15,16 +15,54 @@ const ok = (c, m) => { if (c) { pass++; console.log("  ✅ " + m); } else { fail
 console.log("\n── Joy ──");
 {
   const c = F.clampPos(2000, -10, "LONG");
-  ok(c.x === 1000 - 220 && c.y === 0, "uzun stol chetdan chiqmaydi");
+  ok(c.x === 1000 - F.sizeOf("LONG").w && c.y === 0, "uzun stol chetdan chiqmaydi");
   const tables = [{ id: 1, x: 24, y: 24, shape: "SQUARE" }, ...Array.from({ length: 11 }, (_, i) => ({ id: i + 2, shape: i % 3 === 0 ? "LONG" : "SQUARE" }))];
   const out = F.autoPlace(tables);
   ok(out.every(F.placed), "hammasiga joy berildi");
   ok(out[0].x === 24 && !out[0].auto, "joyi bor stol o'z joyida");
-  const box = (t) => ({ ...t, ...F.sizeOf(t.shape) });
-  const overlap = out.map(box).some((a, i, arr) => arr.some((b, j) => j > i
-    && a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h));
-  ok(!overlap, "⚠ avtomatik joylar ustma-ust tushmaydi");
-  ok(out.map(box).every((t) => t.x + t.w <= F.PLANE.w && t.y + t.h <= F.PLANE.h), "hammasi tekislik ichida");
+  const overlap = out.map(F.boxOf).some((a, i, arr) => arr.some((b, j) => j > i && F.overlaps(a, b)));
+  ok(!overlap, "⚠ avtomatik joylar ustma-ust tushmaydi (orada GAP bo'shliq ham bor)");
+  ok(out.map(F.boxOf).every((t) => t.x + t.w <= F.PLANE.w && t.y + t.h <= F.PLANE.h), "hammasi tekislik ichida");
+}
+
+console.log("\n── Vizual muharrir (V164): shakllar, o'rinlar, bo'shliq ──");
+{
+  ok(F.PRESETS.length === 4, "⚠ faqat 4 ta tayyor shakl (egasi: «murakkab bo'lib ketmasin»)");
+  ok(F.seatsOf("SQUARE", 9) === 4 && F.seatsOf("ROUND", 1) === 2 && F.seatsOf("LONG", 99) === 12, "o'rinlar shakl chegarasida");
+  ok(F.seatsOf("LONG", null) === 6, "o'rin yo'q — shaklning odatdagisi");
+  ok(F.sizeOf("LONG", 10).w > F.sizeOf("LONG", 6).w, "uzun stol o'rin qo'shilsa uzayadi");
+  ok(F.sizeOf("ROUND", 8).w > F.sizeOf("ROUND", 4).w, "dumaloq stol o'rin qo'shilsa kattalashadi");
+  const h = F.sizeOf("LONG", 8, false), v = F.sizeOf("LONG", 8, true);
+  ok(h.w === v.h && h.h === v.w, "burilgan uzun stol — eni va bo'yi almashadi");
+  for (const [sh, n] of [["SQUARE", 2], ["SQUARE", 4], ["ROUND", 6], ["LONG", 7]]) {
+    ok(F.chairsOf(sh, n).length === n, `${sh} ${n} — ${n} ta stul chiziladi`);
+  }
+
+  const a = { id: 1, x: 100, y: 100, shape: "SQUARE", seats: 4 };
+  const near = { id: 2, x: 100 + F.sizeOf("SQUARE", 4).w + 4, y: 100, shape: "SQUARE", seats: 4 };
+  ok(!F.fits(near, [a, near]), "⚠ 4 birlik oraliq — sig'maydi (juda yopishib ketmasin)");
+  const far = { ...near, x: 100 + F.sizeOf("SQUARE", 4).w + F.GAP };
+  ok(F.fits(far, [a, far]), "GAP oraliq — sig'adi");
+  const p = F.nearestFree({ id: 3, x: 104, y: 104, shape: "ROUND", seats: 4 }, [a]);
+  ok(p && F.fits({ id: 3, ...p, shape: "ROUND", seats: 4 }, [a]), "ustiga tashlangan stol eng yaqin bo'sh joyga suriladi");
+  ok(Math.hypot(p.x - 104, p.y - 104) < 200, "…va uzoqqa emas");
+  const full = Array.from({ length: 200 }, (_, i) => ({ id: 100 + i, x: (i % 20) * 50, y: Math.floor(i / 20) * 64, shape: "SQUARE", seats: 1 }));
+  ok(F.nearestFree({ id: 9, x: 0, y: 0, shape: "LONG", seats: 12 }, full) === null, "joy yo'q — null (stol qo'shilmaydi)");
+
+  ok(F.nextName([{ name: "Stol 3" }, { name: "Oyna yoni" }, { name: "Stol 12" }], "Stol") === "Stol 13", "keyingi nom — eng katta raqamdan keyingisi");
+  ok(F.nextName([], "Stol") === "Stol 1", "birinchi stol — 1");
+}
+
+console.log("\n── Zal ko'rinishi: bo'sh joy kesiladi (V164) ──");
+{
+  const tables = [{ id: 1, x: 600, y: 400, shape: "SQUARE", seats: 4 }, { id: 2, x: 800, y: 480, shape: "LONG", seats: 6 }];
+  const b = F.fitBox(tables);
+  ok(b.x > 0 && b.y > 0, "chap-yuqoridagi bo'sh tekislik chizilmaydi");
+  ok(tables.map(F.boxOf).every((t) => t.x >= b.x && t.y >= b.y && t.x + t.w <= b.x + b.w && t.y + t.h <= b.y + b.h), "hamma stol kesim ichida");
+  ok(b.w >= 480 && b.h >= 300, "⚠ eng kichik o'lcham: ikki stol ekranni to'ldirib ulkan bo'lmaydi");
+  ok(b.x + b.w <= F.PLANE.w && b.y + b.h <= F.PLANE.h, "kesim tekislikdan chiqmaydi");
+  const all = F.fitBox([{ id: 1, x: 0, y: 0, shape: "SQUARE" }, { id: 2, x: 840, y: 520, shape: "SQUARE" }]);
+  ok(all.w === F.PLANE.w || all.w <= F.PLANE.w, "butun zal band — butun tekislik");
 }
 
 console.log("\n── Holat ──");

@@ -7429,7 +7429,7 @@ button.stk__c:hover { background: var(--bg-hover); }
    Holat rangi + belgi + matn (6-qoida). Reja 1000 × 640 tekislik foizda. */
 .rf-main { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; }
 .rf-main .rf-body { flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
-.rf-plan { position: relative; width: 100%; aspect-ratio: 1000 / 640; background: var(--bg-surface);
+.rf-plan { position: relative; width: var(--rf-w, 100%); margin-inline: auto; aspect-ratio: var(--rf-ar, 1000 / 640); background: var(--bg-surface);
            border: 1px solid var(--border-subtle); border-radius: 18px; overflow: hidden; container-type: inline-size; }
 .rf-plan .rf-table { position: absolute; min-height: 0; box-sizing: border-box; padding: 4px; gap: 2px; overflow: hidden; }
 .rf-plan .rf-table__name { font-size: clamp(11px, 1.7cqw, 18px); }
@@ -7439,7 +7439,7 @@ button.stk__c:hover { background: var(--bg-hover); }
    rejada stol 40 px bo'lib qolardi — yurib turib bosib bo'lmaydi (3-qoida).
    Tartib — rejadagidek, yuqoridan pastga (`ek-floor.byPlace`). */
 @media (max-width: 640px) {
-  .rf-plan { aspect-ratio: auto; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 10px; }
+  .rf-plan { width: 100%; aspect-ratio: auto; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 10px; }
   .rf-plan .rf-table { position: static; width: auto !important; height: auto !important; min-height: 84px; padding: 10px; }
   .rf-plan .rf-shape--round { border-radius: 18px !important; }
   .rf-plan .rf-table__name { font-size: 16px; }

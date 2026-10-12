@@ -580,8 +580,19 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
   await waitFor(page, () => document.querySelectorAll(".rf-plan .rf-table").length === 2, 6000);
   await page.setViewport({ width: 1280, height: 800 });
   if (process.env.SHOTS) { await waitFor(page, () => false, 300); await page.screenshot({ path: path.join(process.env.SHOTS, "floor-plan.png") }); }
-  const pos = await page.evaluate(() => [...document.querySelectorAll(".rf-plan .rf-table")].map((b) => `${b.style.left}|${b.style.top}`));
-  pos[0] === "4%|6.25%" && pos[1] === "30%|31.25%" ? ok("stollar rejadagi joyida (foizda): " + pos.join(" ; ")) : no("joy", pos.join(" ; "));
+  /* V164: reja stollar egallagan qismga kesiladi (`fitBox`), stol stullarsiz
+     chiziladi. Kutilgan joy — o'sha hisobning o'zidan (qo'lda yozilgan foiz
+     geometriya o'zgarganda jimgina eskirardi). */
+  const F = await import("../src/lib/ek-floor.js");
+  const mockT = [{ x: 40, y: 40, shape: "ROUND", seats: 4 }, { x: 300, y: 200, shape: "LONG", seats: 4 }];
+  const vw = F.fitBox(mockT);
+  const want = mockT.map((x) => [((x.x + F.CHAIR - vw.x) / vw.w) * 100, ((x.y + F.CHAIR - vw.y) / vw.h) * 100]);
+  const pos = await page.evaluate(() => [...document.querySelectorAll(".rf-plan .rf-table")].map((b) => [parseFloat(b.style.left), parseFloat(b.style.top)]));
+  pos.length === 2 && pos.every((p, i) => Math.abs(p[0] - want[i][0]) < 0.01 && Math.abs(p[1] - want[i][1]) < 0.01)
+    ? ok("stollar rejadagi joyida — bo'sh tekislik kesilgan: " + pos.map((p) => p.map((v) => v.toFixed(1)).join("/")).join(" ; "))
+    : no("joy", JSON.stringify(pos) + " ≠ " + JSON.stringify(want));
+  const ar = await page.evaluate(() => getComputedStyle(document.querySelector(".rf-plan")).aspectRatio);
+  !/1000 \/ 640/.test(ar) ? ok(`reja nisbati kesimdan: ${ar}`) : no("reja kesilmadi", ar);
   const txt = await page.evaluate(() => [...document.querySelectorAll(".rf-plan .rf-table")].map((b) => b.textContent).join(" || "));
   /Bron \d\d:\d\d/.test(txt) && /Aziz/.test(txt) && /Hisob berildi/.test(txt) && /Dilnoza Karimova/.test(txt)
     ? ok("holat matni: bron vaqti va ismi, «Hisob berildi», ofitsiant ismi") : no("holat matni", txt);
@@ -623,23 +634,74 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
 }
 
 {
-  console.log("\n§11 Reja muharriri (D2): strelka bilan surish, shakl, saqlash");
+  const F2 = await import("../src/lib/ek-floor.js");
+  console.log("\n§11 Reja muharriri (V164): sudrab qo'shish, o'rinlar, burish, o'chirish — bitta saqlash");
   const { page, calls } = await openKassa({ restaurant: true, tables: true, path: "/tables-setup" });
+  await page.setViewport({ width: 1280, height: 860 });
   await waitFor(page, () => [...document.querySelectorAll("button")].some((b) => b.textContent.trim() === "Reja"), 6000);
   await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => b.textContent.trim() === "Reja")?.click());
   (await waitFor(page, () => document.querySelectorAll(".fe-table").length === 2))
     ? ok("muharrir ochildi: ikki stol") : no("muharrir", "—");
-  if (process.env.SHOTS) { await waitFor(page, () => false, 700); await page.screenshot({ path: path.join(process.env.SHOTS, "floor-editor.png") }); }
-  await page.focus(".fe-table");
+  const presets = await page.evaluate(() => [...document.querySelectorAll(".fe-bar button")].map((b) => b.textContent.trim()));
+  presets.length === 4 ? ok("palitrada 4 ta shakl: " + presets.join(", ")) : no("palitra", presets.join(" | "));
+
+  const tbl = (name) => page.evaluateHandle(
+    (n) => [...document.querySelectorAll(".fe-table")].find((b) => b.textContent.trim().endsWith(n)), name);
+  const tool = (label) => page.evaluate((l) => {
+    const b = [...document.querySelectorAll("[role=toolbar] button")].find((x) => (x.getAttribute("aria-label") || "") === l);
+    if (!b) return "yo'q"; if (b.disabled) return "o'chiq"; b.click(); return "bosildi";
+  }, label);
+
+  /* Band stol (Stol 2): strelka bilan surish, burish; o'chirish — o'chiq. */
+  const t2 = await tbl("Stol 2");
+  await t2.focus();
   await page.keyboard.press("ArrowRight");
   await page.keyboard.down("Shift"); await page.keyboard.press("ArrowDown"); await page.keyboard.up("Shift");
-  await page.evaluate(() => [...document.querySelectorAll(".fe-bar button")].find((b) => /Kvadrat/.test(b.textContent))?.click());
+  (await tool("Burish")) === "bosildi" ? ok("uzun stol burildi") : no("burish", "—");
+  (await tool("Stolda ochiq buyurtma bor — olib tashlab bo'lmaydi")) === "o'chiq"
+    ? ok("⚠ band stolni o'chirish tugmasi o'chiq") : no("band stol o'chirildi", "—");
+
+  /* Palitradan qo'shish (bosish) va o'rin qo'shish — raqam yozilmaydi. */
+  await page.evaluate(() => [...document.querySelectorAll(".fe-bar button")].find((b) => /2 kishilik/.test(b.textContent))
+    ?.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0, clientX: 5, clientY: 5 })));
+  await page.evaluate(() => window.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, clientX: 5, clientY: 5 })));
+  (await waitFor(page, () => document.querySelectorAll(".fe-table").length === 3))
+    ? ok("«2 kishilik» bosildi — yangi stol rejada") : no("qo'shish", "—");
+  (await tool("O'rin qo'shish")) === "bosildi" ? ok("o'rin qo'shildi (−/+)") : no("o'rin", "—");
+  const chairs = await page.evaluate(() => [...document.querySelectorAll(".fe-table")].pop().querySelectorAll("span[aria-hidden]").length);
+  chairs === 3 ? ok("yangi stolda 3 ta stul chizildi") : no("stullar", String(chairs));
+  if (process.env.SHOTS) { await waitFor(page, () => false, 400); await page.screenshot({ path: path.join(process.env.SHOTS, "floor-editor.png") }); }
+
+  /* Rejaga sudrab tashlash — palitradan bo'sh joyga. */
+  const plane = await page.$eval(".fe-plane", (el) => { const r = el.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; });
+  const round = await page.evaluateHandle(() => [...document.querySelectorAll(".fe-bar button")].find((b) => /Dumaloq/.test(b.textContent)));
+  const rb = await round.boundingBox();
+  await page.mouse.move(rb.x + rb.width / 2, rb.y + rb.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(plane.x + plane.w * 0.8, plane.y + plane.h * 0.75, { steps: 8 });
+  await page.mouse.up();
+  (await waitFor(page, () => document.querySelectorAll(".fe-table").length === 4))
+    ? ok("dumaloq stol rejaga sudrab qo'shildi") : no("sudrab qo'shish", "—");
+
+  /* Bo'sh Stol 1 — o'chiriladi. */
+  const t1 = await tbl("Stol 1");
+  await t1.click();
+  (await tool("Stolni olib tashlash")) === "bosildi" ? ok("bo'sh stol olib tashlandi") : no("o'chirish", "—");
+
   await page.evaluate(() => [...document.querySelectorAll(".modal-box button")].find((b) => /Saqlash/.test(b.textContent))?.click());
   await waitFor(page, () => false, 800);
-  const put = calls.tables.find((c) => c.m === "PUT" && /\/tables\/halls\/1\/layout$/.test(c.p));
-  const first = put?.body?.find?.((x) => x.id === 11);
-  first && first.x === 48 && first.y === 80 && first.shape === "SQUARE"
-    ? ok("saqlandi: Stol 1 → (48, 80), kvadrat (8 va Shift bilan 40 birlik)") : no("layout PUT", JSON.stringify(put?.body));
+  const put = calls.tables.find((c) => c.m === "PUT" && /\/tables\/halls\/1\/plan$/.test(c.p));
+  const body = put?.body || {};
+  const it2 = body.items?.find((x) => x.id === 12);
+  const fresh = (body.items || []).filter((x) => x.id === null);
+  it2 && it2.x === 308 && it2.y === 240 && it2.vertical === true
+    ? ok("saqlandi: Stol 2 → (308, 240), tik") : no("Stol 2", JSON.stringify(it2));
+  fresh.length === 2 && fresh.some((x) => x.shape === "SQUARE" && x.seats === 3 && x.name === "Stol 3") && fresh.some((x) => x.shape === "ROUND")
+    ? ok("yangi stollar: «Stol 3» (3 o'rin) va dumaloq — id siz") : no("yangi stollar", JSON.stringify(fresh));
+  JSON.stringify(body.removed) === "[11]" ? ok("o'chirilgan: [11] — bitta so'rovda") : no("removed", JSON.stringify(body.removed));
+  const boxes = (body.items || []).map((x) => ({ ...x, ...F2.sizeOf(x.shape, x.seats, x.vertical) }));
+  !boxes.some((a, i) => boxes.some((b, j) => j > i && F2.overlaps(a, b, F2.GAP - 1)))
+    ? ok("⚠ saqlangan rejada stollar ustma-ust emas (orada bo'shliq bor)") : no("ustma-ust", JSON.stringify(boxes));
   await page.close();
 }
 

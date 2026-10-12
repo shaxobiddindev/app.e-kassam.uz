@@ -9,7 +9,7 @@ import { subscribeTables, isLive } from "../lib/ek-live";
 import { isTerminal, lockNow } from "../lib/ek-terminal";
 import { roleSet } from "../lib/ek-roles";
 import { roleLabel } from "../lib/ek-labels";
-import { PLANE, autoPlace, byPlace, sizeOf, statusOf, attention, hhmm, atToday } from "../lib/ek-floor";
+import { CHAIR, autoPlace, byPlace, bodyOf, fitBox, statusOf, attention, hhmm, atToday } from "../lib/ek-floor";
 import { Modal } from "../components";
 import { Field, FormGroup } from "../components/ui";
 import { SkeletonTiles, Spinner } from "../components/ek/Loading";
@@ -72,6 +72,12 @@ export default function RestaurantFloorPage({ toast }) {
 
   const hall = halls.find((h) => h.id === hallId) || null;
   const placedTables = useMemo(() => byPlace(autoPlace(asArray(hall?.tables))), [hall]);
+  /* ⚠ FAQAT STOLLAR EGALLAGAN QISM (V164). Ilgari butun 1000 × 640 tekislik
+     chizilardi: stollar bir burchakda bo'lsa, ekranning yarmi bo'sh qolib,
+     stollar mayda chiqardi. Kesim stullar bilan hisoblanadi (`fitBox`),
+     stolning o'zi esa stullarsiz chiziladi — stul joyi oraliq bo'lib
+     qoladi va reja qancha cho'zilsa ham stollar yopishib ketmaydi. */
+  const view = useMemo(() => fitBox(placedTables), [placedTables]);
   const all = useMemo(() => halls.flatMap((h) => asArray(h.tables)), [halls]);
   const alerts = useMemo(() => attention(halls, now), [halls, now]);
   const stats = useMemo(() => {
@@ -167,17 +173,20 @@ export default function RestaurantFloorPage({ toast }) {
           ) : !hall ? (
             <p className="rf-empty">{manager ? t("tbl.none") : t("rf.noneStaff")}</p>
           ) : (
-            <div className="rf-plan" aria-label={t("rf.plan")}>
+            <div className="rf-plan" aria-label={t("rf.plan")}
+                 style={{ "--rf-ar": `${view.w} / ${view.h}`,
+                          /* Bo'yi ekranga sig'sin: tor-baland zalda eni qisqaradi. */
+                          "--rf-w": `min(100%, calc((100dvh - 260px) * ${(view.w / view.h).toFixed(3)}))` }}>
               {placedTables.map((tb) => {
                 const st = statusOf(tb, now);
                 const [l1, l2] = line(tb);
-                const s = sizeOf(tb.shape);
+                const s = bodyOf(tb.shape, tb.seats, tb.vertical);
                 const dim = mine && (!tb.order || tb.order.openedBy !== me);
                 return (
                   <button key={tb.id} type="button"
                           className={`rf-table rf-table--${st} rf-shape--${String(tb.shape || "SQUARE").toLowerCase()}${dim ? " is-dim" : ""}`}
-                          style={{ left: `${(tb.x / PLANE.w) * 100}%`, top: `${(tb.y / PLANE.h) * 100}%`,
-                                   width: `${(s.w / PLANE.w) * 100}%`, height: `${(s.h / PLANE.h) * 100}%` }}
+                          style={{ left: `${((tb.x + CHAIR - view.x) / view.w) * 100}%`, top: `${((tb.y + CHAIR - view.y) / view.h) * 100}%`,
+                                   width: `${(s.w / view.w) * 100}%`, height: `${(s.h / view.h) * 100}%` }}
                           onClick={() => pick(tb)}
                           aria-label={`${tb.name}: ${t(`rf.st.${st}`)}. ${l1}${l2 ? `, ${l2}` : ""}`}>
                     <span className="rf-table__name"><i className={`fa-solid ${ICON[st]}`} aria-hidden="true" /> {tb.name}</span>
