@@ -150,3 +150,33 @@ if (missing.size) {
   process.exit(1);
 }
 console.log("\n  ✅ Har bir ikonka nomi to'plamda bor.\n");
+
+/* ══ YENGIL BO'LAK (B2, 2026-10-12) ═══════════════════════════════════
+   Ikonkalar avval yengil bo'lakdan (`*.sub.woff2`, ~34 KB) keladi, to'liq
+   shrift (183 KB) faqat bo'lakda yo'q belgi uchun (`gen-fa-subset.py`).
+   Kodga yangi ikonka qo'shilib bo'lak yangilanmasa — XATO EMAS (u to'liq
+   shriftdan chiziladi), lekin har kassir yana 158 KB yuklaydi va bu
+   jimgina bo'ladi. Shuning uchun bu yerda to'xtatiladi. */
+const SUB = path.join(ROOT, "scripts/fa-subset.json");
+if (fs.existsSync(SUB)) {
+  const meta = JSON.parse(fs.readFileSync(SUB, "utf8"));
+  const codeOf = new Map();
+  for (const m of cssText.matchAll(/((?:\.fa-[a-z0-9-]+,?)+)\{--fa:"\\([0-9a-f]+)"\}/g)) {
+    for (const n of m[1].matchAll(/\.fa-([a-z0-9-]+)/g)) codeOf.set("fa-" + n[1], parseInt(m[2], 16));
+  }
+  const out = [];
+  for (const n of seen) {
+    const c = codeOf.get(n);
+    if (c == null) continue;
+    for (const [font, { subset, full }] of Object.entries(meta)) {
+      if (full.includes(c) && !subset.includes(c)) out.push(`${n} (${font})`);
+    }
+  }
+  if (out.length) {
+    console.error(`  ❌ ${out.length} ta ikonka yengil bo'lakda yo'q: ${out.slice(0, 8).join(", ")}`);
+    console.error("     Ular to'liq shriftdan chiziladi (har kassirga +158 KB). Bo'lakni yangilang:");
+    console.error("       PYTHONIOENCODING=utf-8 python scripts/gen-fa-subset.py\n");
+    process.exit(1);
+  }
+  console.log("  ✅ Hamma ikonka yengil bo'lakda (to'liq shrift kerak emas).\n");
+}

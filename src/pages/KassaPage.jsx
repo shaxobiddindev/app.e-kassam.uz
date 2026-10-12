@@ -14,17 +14,10 @@ import { isWeighUnit } from "../lib/ek-scale";
 import ProductTile from "../components/ProductTile";
 import { asArray } from "../lib/ek-array";
 /* Jamg'armaga pul qo'yish (V64) — qarz to'lovi oynasining «savings» rejimi. */
-import DebtPayModal from "../components/DebtPayModal";
-import QuantityModal from "../components/QuantityModal";
-import LinePriceModal from "../components/LinePriceModal";
-import MarkingScanModal from "../components/MarkingScanModal";
-import ModifierModal from "../components/ModifierModal";
 import { keyOf, groupsFor, lineFor, modsText } from "../lib/ek-modifiers";
 import { stationMap, kitchenTickets } from "../lib/ek-kitchen";
 import { ORDER_TYPES, servicePercent, serviceCharge as serviceChargeOf } from "../lib/ek-service-charge";
 import { linesOf, sigOf, itemsFrom, seatKey } from "../lib/ek-table-order";
-import TablesOverlay from "../components/TablesOverlay";
-import { subscribeTables } from "../lib/ek-live";
 import { useShopFeatures } from "../hooks/useShopFeatures";
 import { Empty, ClearButton } from "../components/ui";
 import { useKeyboard } from "../context/KeyboardProvider";
@@ -51,7 +44,28 @@ import Modal from "../components/Modal";
 import { PhoneField } from "../components/ek/EkFields";
 import { isPhone } from "../lib/ek-input";
 import Select from "../components/ek/Select";
-import { printReceipt, openDrawer, printDebtReceipt, printerHealth, printKitchen } from "../lib/ek-hardware";
+/* ⚠ KECHIKTIRILGAN QISMLAR (B1, 2026-10-12). Kassa ochilishida ular kerak
+   emas — oyna bosilganda, chek sotuvdan KEYIN, stollar faqat restoranda.
+   Ilgari hammasi kassa bilan birga yuklanardi: 20 fayl, 64.6 KB (gzip),
+   kirish JS bilan bir tarmoqni bo'lishib.
+   ⚠ OFLAYN: service worker faqat yuklangan faylni keshlaydi — shuning
+   uchun kassa chizilgach ular FONDA yuklab qo'yiladi (pastda,
+   `preloadLater`). Aks holda internetsiz kassada birinchi marta ochilgan
+   oyna ochilmasdi. */
+const hw = () => import("../lib/ek-hardware");
+const lazyModal = (load, name) => {
+  const L = lazySafe(load, name);
+  const C = (props) => <Suspense fallback={null}><L {...props} /></Suspense>;
+  C.preload = L.preload;
+  return C;
+};
+const DebtPayModal = lazyModal(() => import("../components/DebtPayModal"), "DebtPayModal");
+const QuantityModal = lazyModal(() => import("../components/QuantityModal"), "QuantityModal");
+const LinePriceModal = lazyModal(() => import("../components/LinePriceModal"), "LinePriceModal");
+const MarkingScanModal = lazyModal(() => import("../components/MarkingScanModal"), "MarkingScanModal");
+const ModifierModal = lazyModal(() => import("../components/ModifierModal"), "ModifierModal");
+const TablesOverlay = lazyModal(() => import("../components/TablesOverlay"), "TablesOverlay");
+const LATER = [DebtPayModal, QuantityModal, LinePriceModal, MarkingScanModal, ModifierModal, TablesOverlay];
 import { getSettings } from "../lib/ek-hw-settings";
 
 /* Jamg'arma kvitansiyasi (V66) — kassada kamdan-kam ochiladi, alohida bo'lakda. */
@@ -293,7 +307,14 @@ export default function KassaPage({ toast, refreshLowStock }) {
      OLDIN bilishi kerak — mijoz pulini bergandan keyin «chek chiqmadi»
      deyish eng yomon vaqt. Holat oxirgi chop etish urinishidan
      olinadi (`ek-hardware`), chunki printerni «so'rab» bo'lmaydi. */
-  const [printer, setPrinter] = useState(printerHealth);
+  const [printer, setPrinter] = useState(null);
+  useEffect(() => {
+    hw().then((m) => setPrinter((p) => p ?? m.printerHealth())).catch(() => { /* oflayn va keshda yo'q — banner keyin */ });
+    /* Kechiktirilgan qismlar fonda (yuqoridagi izoh): kassa ochilib, kassir
+       ishni boshlagach — birinchi chizish bilan tarmoqni bo'lishmasin. */
+    const id = setTimeout(() => { for (const C of LATER) C.preload().catch(() => {}); }, 3000);
+    return () => clearTimeout(id);
+  }, []);
 
   /* ══════════════════════════════════════════════════════════════════
      OXIRGI CHEKLAR (V79)
@@ -1817,7 +1838,10 @@ export default function KassaPage({ toast, refreshLowStock }) {
   const tablesOn = featuresReady && hasFeature("TABLES");
   useEffect(() => {
     if (!tablesOn) return undefined;
-    return subscribeTables((e) => liveRef.current?.(e));
+    /* Jonli oqim faqat restoranda — modul ham faqat shu yerda yuklanadi (B1). */
+    let off = null, dead = false;
+    import("../lib/ek-live").then((m) => { if (!dead) off = m.subscribeTables((e) => liveRef.current?.(e)); }).catch(() => {});
+    return () => { dead = true; off?.(); };
   }, [tablesOn]);
 
   /* Zal ekranidan kelgan stol (`/sale?table=ID`, D1) — bir marta ochiladi
@@ -2421,7 +2445,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
       const rc = r?.data?.receipt || null;
       if (rc) {
         try {
-          await printDebtReceipt({
+          await (await hw()).printDebtReceipt({
             kind: rc.kind, customer: c, amount, method,
             balanceAfter: rc.balanceAfter, balanceBefore: rc.balanceBefore,
             receiptNo: rc.receiptNo, shopName: rc.shopName,
@@ -2967,7 +2991,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
     /* `serverSaleId` — chekdagi barkod uchun. Oflayn sotuvda `null`:
        serverda bunday sotuv hali yo'q va barkodni skanerlash hech narsa
        topmasdi. */
-    printReceipt({ saleId: receiptNo, serverSaleId: res_saleId, ...snapshot, offline, shopName, cashier, fiscal })
+    hw().then((m) => m.printReceipt({ saleId: receiptNo, serverSaleId: res_saleId, ...snapshot, offline, shopName, cashier, fiscal }))
       .catch((err) => toast.error(`${t("hw.printFailed")}: ${err.message}`));
 
     /* ══ OSHXONA CHEKI (R4) — oflayn sotuvda ham: oshxona internetni
@@ -2978,8 +3002,8 @@ export default function KassaPage({ toast, refreshLowStock }) {
     if (hasFeature("KITCHEN") && isDesktop()) {
       const tickets = kitchenTickets(snapshot.cart, new Map(Object.entries(stations)));
       if (tickets.length) {
-        printKitchen(tickets, { orderNo: receiptNo, at: new Date(), cashier,
-                                note: orderType ? t(`svc.type.${orderType}`).toUpperCase() : "" })
+        hw().then((m) => m.printKitchen(tickets, { orderNo: receiptNo, at: new Date(), cashier,
+                                note: orderType ? t(`svc.type.${orderType}`).toUpperCase() : "" }))
           .then((r) => {
             if (r.failed.length) toast.error(t("kit.failed", { names: r.failed.map((f) => f.station).join(", ") }));
             else if (r.missing.length) toast.error(t("kit.missing", { names: r.missing.join(", ") }));
@@ -3085,7 +3109,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
 
   const reprint = () => {
     if (!lastSale.current) { toast.info(t("kassa.noReceipt")); return; }
-    printReceipt({ ...lastSale.current, shopName, cashier })
+    hw().then((m) => m.printReceipt({ ...lastSale.current, shopName, cashier }))
       .catch((err) => toast.error(`${t("hw.printFailed")}: ${err.message}`));
   };
 
@@ -3101,7 +3125,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
       if (!err?.cancelled) toast.error(err.message);
       return;
     }
-    openDrawer().catch((err) => toast.error(`${t("hw.drawerFailed")}: ${err.message}`));
+    hw().then((m) => m.openDrawer()).catch((err) => toast.error(`${t("hw.drawerFailed")}: ${err.message}`));
   };
 
   /* ══ KLAVIATURA YORLIQLARI ════════════════════════════════ */
@@ -5161,7 +5185,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
                            ochiq qoldirish uni yana bir marta
                            yopishga majbur qilardi. */
                         setSalesOpen(false);
-                        printReceipt({ ...x, shopName, cashier })
+                        hw().then((m) => m.printReceipt({ ...x, shopName, cashier }))
                           .then(() => toast.success(t("kassa.reprinted")))
                           .catch((e) => toast.error(e.message));
                       }}>

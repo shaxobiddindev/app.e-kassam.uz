@@ -22,7 +22,6 @@ import { Field } from "./ui";
 import { money } from "../utils";
 import { time as fmtTime, dateTime } from "../lib/ek-format";
 import { paymentLabel } from "../lib/ek-labels";
-import { printShiftReport } from "../lib/ek-hardware";
 import { isDesktop } from "../lib/ek-desktop";
 import { useBadge } from "../context/BadgeProvider";
 import { useOnline } from "../hooks/useOnline";
@@ -205,6 +204,8 @@ export default function ShiftBar({ toast, compact = false, onState }) {
 
   const print = async () => {
     try {
+      /* Chop etish moduli kechiktirilgan (B1): smena paneli kassa bilan birga keladi. */
+      const { printShiftReport } = await import("../lib/ek-hardware");
       await printShiftReport(report, localStorage.getItem("ek_shopName") || localStorage.getItem("ek_shopCode"));
       toast?.success(t("shift.reportPrinted"));
     } catch (err) {

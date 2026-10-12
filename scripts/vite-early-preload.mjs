@@ -61,7 +61,12 @@ export default function earlyPreload() {
         const have = closure(entry, new Set([entry.fileName]));
         const files = (c) => [c.fileName, ...closure(c)].filter((f) => !have.has(f)).map((f) => base + f);
         const by = (suffix) => {
-          const c = chunks.find((x) => (x.facadeModuleId || "").replace(/\\/g, "/").endsWith(suffix));
+          const norm = (m) => String(m || "").replace(/\\/g, "/");
+          /* ⚠ Bo'lakda bir nechta dinamik kirish bo'lsa (masalan `KassaPage` va
+             boshqa joydan kechiktirilgan `ShiftBar`), Rollup `facadeModuleId`
+             ni bo'sh qoldiradi — shunda modul ro'yxatidan qidiriladi (B1). */
+          const c = chunks.find((x) => norm(x.facadeModuleId).endsWith(suffix))
+            || chunks.find((x) => x.isDynamicEntry && Object.keys(x.modules).some((m) => norm(m).endsWith(suffix)));
           if (!c) throw new Error(`ek-early-preload: ${suffix} bo'lagi topilmadi`);
           return files(c);
         };
