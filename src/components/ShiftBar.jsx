@@ -247,13 +247,13 @@ export default function ShiftBar({ toast, compact = false, onState }) {
             <Row k={t("sales.colCashier")} v={report.cashierName} />
             <Row k={t("sec.openedAt")} v={fmtT(report.openedAt)} />
             {report.closedAt && <Row k={t("shift.closedAt")} v={fmtT(report.closedAt)} />}
-            <hr style={{ border: "none", borderTop: "1px dashed var(--border, #d4d4d8)", margin: "4px 0" }} />
+            <hr style={{ border: "none", borderTop: "1px dashed var(--border-subtle)", margin: "4px 0" }} />
             <Row k={t("rpt.salesCount")} v={report.salesCount} />
             <Row k={t("rpt.salesTotal")} v={money(report.salesTotal)} strong />
             {Object.entries(report.byPaymentType || {}).map(([type, sum]) => (
               <Row key={type} k={`· ${paymentLabel(type)}`} v={money(sum)} muted />
             ))}
-            <hr style={{ border: "none", borderTop: "1px dashed var(--border, #d4d4d8)", margin: "4px 0" }} />
+            <hr style={{ border: "none", borderTop: "1px dashed var(--border-subtle)", margin: "4px 0" }} />
             <Row k={t("rpt.cancelled")} v={`${report.cancelledCount} / ${money(report.cancelledTotal)}`} />
             {/* Choy puli (V160) — sotuv emas, lekin kutilgan summaga qo'shilgan. */}
             {Number(report.tipsTotal) > 0 && <Row k={t("tip.receipt")} v={money(report.tipsTotal)} />}
@@ -267,7 +267,7 @@ export default function ShiftBar({ toast, compact = false, onState }) {
                 Z-hisobotda esa farq ham chiqadi. */}
             {report.cash && (
               <>
-                <hr style={{ border: "none", borderTop: "1px dashed var(--border, #d4d4d8)", margin: "4px 0" }} />
+                <hr style={{ border: "none", borderTop: "1px dashed var(--border-subtle)", margin: "4px 0" }} />
                 <Row k={t("cash.openingFloat")} v={money(report.cash.openingFloat)} />
                 {/* ⚠ Kutilgan qiymatlar kassirga `null` keladi (server
                     maskalaydi) — u sanashdan oldin raqamni ko'rmasligi
@@ -292,7 +292,7 @@ export default function ShiftBar({ toast, compact = false, onState }) {
                 Z-hisobotda esa tizim/terminal/farq uchligi. */}
             {report.nonCash?.length > 0 && (
               <>
-                <hr style={{ border: "none", borderTop: "1px dashed var(--border, #d4d4d8)", margin: "4px 0" }} />
+                <hr style={{ border: "none", borderTop: "1px dashed var(--border-subtle)", margin: "4px 0" }} />
                 <Row k={t("noncash.title")} v="" muted />
                 {report.nonCash.map((l) => (
                   <div key={l.paymentType} style={{ marginLeft: 8 }}>
@@ -362,7 +362,7 @@ export default function ShiftBar({ toast, compact = false, onState }) {
               raqami va kassir uni o'ylab topa olmaydi. */}
           {(closeForm.types || []).length > 0 && (
             <>
-              <hr style={{ border: "none", borderTop: "1px dashed var(--border, #d4d4d8)", margin: "14px 0 10px" }} />
+              <hr style={{ border: "none", borderTop: "1px dashed var(--border-subtle)", margin: "14px 0 10px" }} />
               <p className="form-hint" style={{ marginTop: 0 }}>{t("noncash.hint")}</p>
               {closeForm.types.map((k) => (
                 <div key={k} style={{ marginTop: 8 }}>
@@ -506,10 +506,11 @@ export default function ShiftBar({ toast, compact = false, onState }) {
       <div style={{
         display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10,
         padding: "8px 14px", borderRadius: 10, marginBottom: 10,
-        background: shift ? "var(--green-l, #dcfce7)" : "#fef3c7",
-        border: `1px solid ${shift ? "var(--green, #16a34a)" : "#f59e0b"}`,
+        /* Semantik juftliklar (C1): xom hex qorong'i rejimda och sariq dog' bo'lib qolardi. */
+        background: shift ? "var(--bg-success-subtle)" : "var(--bg-warning-subtle)",
+        border: `1px solid ${shift ? "var(--border-success)" : "var(--border-warning)"}`,
       }}>
-        <span style={{ fontSize: 13, fontWeight: 700, color: shift ? "var(--green-d, #166534)" : "#92400e" }}>
+        <span style={{ fontSize: 13, fontWeight: 700, color: shift ? "var(--fg-success)" : "var(--fg-warning-strong)" }}>
           <i className={`fa-solid ${shift ? "fa-circle-check" : "fa-triangle-exclamation"}`} aria-hidden="true" />{" "}
           {shift
             ? `${t("shift.openSince")} ${fmtTime(shift.openedAt)}`
@@ -545,7 +546,7 @@ function Row({ k, v, strong, muted, danger }) {
     <div style={{ display: "flex", justifyContent: "space-between", gap: 12, fontSize: muted ? 13 : 14 }}>
       <span className={muted ? "text-muted" : "fw-600"}>{k}</span>
       <span className={strong ? "fw-800 mono" : "mono"}
-            style={danger ? { color: "var(--red, #dc2626)", fontWeight: 700 } : undefined}>
+            style={danger ? { color: "var(--fg-danger)", fontWeight: 700 } : undefined}>
         {v}
       </span>
     </div>

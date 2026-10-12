@@ -40,8 +40,8 @@ export default function EkIntro({ onDone }) {
         <svg className="ek-intro__mark" viewBox="0 0 48 48" width="96" height="96" fill="none" aria-hidden="true">
           <path className="ek-intro__back" d="M19 7.6a4.2 4.2 0 0 1 4.2-4.2h11.6a4.2 4.2 0 0 1 4.2 4.2v20.8L35.67 32 32.33 28.4 29 32l-3.33-3.6L22.33 32 19 28.4Z" fill="var(--ek-blue-400)" />
           <path className="ek-intro__front" d="M9 13.2a4.6 4.6 0 0 1 4.6-4.6h14.8a4.6 4.6 0 0 1 4.6 4.6v21.4L30 39l-3-4.4L24 39l-3-4.4L18 39l-3-4.4L12 39l-3-4.4Z" fill="var(--ek-blue-600)" />
-          <path className="ek-intro__ln l1" d="M13.6 13.2h14a1.35 1.35 0 0 1 0 2.7h-14a1.35 1.35 0 0 1 0-2.7Z" fill="#fff" />
-          <path className="ek-intro__ln l2" d="M13.6 18.1h9a1.35 1.35 0 0 1 0 2.7h-9a1.35 1.35 0 0 1 0-2.7Z" fill="#fff" />
+          <path className="ek-intro__ln l1" d="M13.6 13.2h14a1.35 1.35 0 0 1 0 2.7h-14a1.35 1.35 0 0 1 0-2.7Z" fill="#fff" /> {/* hex: brend belgisi — ko\'k fondagi oq chiziqlar */}
+          <path className="ek-intro__ln l2" d="M13.6 18.1h9a1.35 1.35 0 0 1 0 2.7h-9a1.35 1.35 0 0 1 0-2.7Z" fill="#fff" /> {/* hex: brend belgisi — ko\'k fondagi oq chiziqlar */}
           <path className="ek-intro__chk" d="M14.1 28.9l3.4 3.4L28 21.8" stroke="var(--ek-green-400)" strokeWidth="3.3" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
         <div className="ek-intro__word">

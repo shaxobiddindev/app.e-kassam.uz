@@ -403,7 +403,7 @@ export default function SecurityPage({ toast }) {
                             </td>
                             <td style={{ maxWidth: 300 }}>
                               {c.suspicious && (
-                                <div style={{ color: "var(--red, #dc2626)", fontWeight: 700, fontSize: 12.5 }}>
+                                <div style={{ color: "var(--fg-danger)", fontWeight: 700, fontSize: 12.5 }}>
                                   <i className="fa-solid fa-triangle-exclamation" /> {c.suspicionReason}
                                 </div>
                               )}
@@ -546,8 +546,8 @@ export default function SecurityPage({ toast }) {
           }
         >
           <div style={{
-            background: "#fef3c7", border: "1px solid #f59e0b", borderRadius: 10,
-            padding: "10px 14px", marginBottom: 14, fontSize: 13, color: "#92400e", lineHeight: 1.55,
+            background: "var(--bg-warning-subtle)", border: "1px solid var(--border-warning)", borderRadius: 10,
+            padding: "10px 14px", marginBottom: 14, fontSize: 13, color: "var(--fg-warning-strong)", lineHeight: 1.55,
           }}>
             ⚠️ {t("badge.onceWarn")}
           </div>
@@ -583,7 +583,7 @@ function BillingRow({ label, value, strong, danger }) {
     }}>
       <span className="text-muted" style={{ fontSize: 13, fontWeight: 600 }}>{label}</span>
       <span className={strong ? "fw-800" : "fw-700"}
-            style={{ fontSize: strong ? 16 : 14, color: danger ? "var(--red, #dc2626)" : undefined }}>
+            style={{ fontSize: strong ? 16 : 14, color: danger ? "var(--fg-danger)" : undefined }}>
         {value}
       </span>
     </div>

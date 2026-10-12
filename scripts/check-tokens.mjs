@@ -57,8 +57,11 @@ function walk(dir, out = []) {
 
 /* E'lon uch xil bo'ladi: CSS da `--x:`, JSX inline uslubda `"--x":`,
    JS da `setProperty("--x", …)`. Uchalasi ham haqiqiy e'lon. */
+/* ⚠ `(?<![\w-])` — BEM modifikatori e'lon EMAS (C1, 2026-10-12): `.cu-btn--danger:hover`
+   ilgari «`--danger` e'lon qilingan» deb o'qilardi va aniqlanmagan `var(--danger, #D64545)`
+   qorovuldan o'tib, doim qattiq rang chizardi. */
 const DEFS = [
-  /--([A-Za-z0-9_-]+)\s*:/g,
+  /(?<![\w-])--([A-Za-z0-9_-]+)\s*:/g,
   /["'`]--([A-Za-z0-9_-]+)["'`]\s*:/g,
   /setProperty\(\s*["'`]--([A-Za-z0-9_-]+)["'`]/g,
 ];
@@ -79,6 +82,18 @@ for (const f of files) {
 }
 
 const dead = [];   // aniqlanmagan + zaxirasiz → HECH NARSA chizilmaydi
+/* ⚠ KERAKSIZ RANG ZAXIRASI (C1, 2026-10-12): token MAVJUD — zaxira hech qachon
+   chizilmaydi, lekin kodda turib «token yo'q bo'lsa shu rang» degan yolg'on
+   va'da beradi. Amalda ular bir-biridan ajralib ketgan edi: `--fg-danger`
+   uchun uch xil zaxira yozilgan, faqat bittasi tokenning haqiqiy qiymati edi.
+   Umumiy fayllarga ham tatbiq etiladi — u yerdagi zaxiralar tozalandi. */
+const spare = [];
+/* Umumiy fayllarda (`src/styles/`) — faqat ASOSIY tokenlar: `--sb-hover` kabi
+   o'zgaruvchini yon menyusi bor ilova o'zi aniqlaydi, menyusiz ilovada zaxira
+   kerak — u yerda «keraksiz» emas. */
+const core = new Set();
+const TOK = path.join(SHARED_DIR, "ekassam-tokens.css");
+if (fs.existsSync(TOK)) for (const m of strip(fs.readFileSync(TOK, "utf8")).matchAll(DEFS[0])) core.add(m[1]);
 const hard = [];   // aniqlanmagan + rang zaxirasi → token chetlab o'tilgan
 
 for (const f of files) {
@@ -87,7 +102,10 @@ for (const f of files) {
   strip(fs.readFileSync(f, "utf8")).split("\n").forEach((line, i) => {
     for (const m of line.matchAll(USE)) {
       const [, name, , fallback] = m;
-      if (defined.has(name)) continue;
+      if (defined.has(name)) {
+        if (fallback !== undefined && IS_COLOR.test(fallback) && (!shared || core.has(name))) spare.push([`${rel}:${i + 1}`, name, fallback.trim()]);
+        continue;
+      }
       const where = `${rel}:${i + 1}`;
       if (fallback === undefined) dead.push([where, name]);
       else if (!shared && IS_COLOR.test(fallback)) hard.push([where, name, fallback.trim()]);
@@ -95,7 +113,7 @@ for (const f of files) {
   });
 }
 
-if (!dead.length && !hard.length) {
+if (!dead.length && !hard.length && !spare.length) {
   console.log("✅ Tokenlar: aniqlanmagan `var(--…)` yo'q.");
   process.exit(0);
 }
@@ -103,6 +121,10 @@ if (!dead.length && !hard.length) {
 if (dead.length) {
   console.error(`\n❌ ANIQLANMAGAN VA ZAXIRASIZ (${dead.length} ta) — e'lon BEKOR bo'ladi:`);
   for (const [where, name] of dead) console.error(`   ${where}  var(--${name})`);
+}
+if (spare.length) {
+  console.error(`\n❌ KERAKSIZ RANG ZAXIRASI (${spare.length} ta) — token bor, zaxira hech qachon chizilmaydi:`);
+  for (const [where, name, fb] of spare) console.error(`   ${where}  var(--${name}, ${fb})  →  var(--${name})`);
 }
 if (hard.length) {
   console.error(`\n❌ TOKEN CHETLAB O'TILGAN (${hard.length} ta) — doim qattiq rang chiziladi:`);

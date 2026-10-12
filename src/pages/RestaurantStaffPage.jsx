@@ -79,7 +79,7 @@ export default function RestaurantStaffPage({ toast }) {
     const rows = asArray(tips.byWaiter).map((x) =>
       `<tr><td>${esc(x.name || t("rst.tips.noWaiter"))}</td><td style="text-align:right">${esc(t("rst.tips.checks", { n: x.checks }))}</td><td style="text-align:right">${esc(money(x.amount))}</td></tr>`).join("");
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>${esc(t("rst.tips.printTitle"))}</title>
-      <style>body{font-family:system-ui,sans-serif;padding:24px}table{width:100%;border-collapse:collapse}td,th{padding:6px 4px;border-bottom:1px solid #ccc;text-align:left}</style></head>
+      <style>/* hex: chop etish oynasi — ilova CSS'isiz */body{font-family:system-ui,sans-serif;padding:24px}table{width:100%;border-collapse:collapse}td,th{padding:6px 4px;border-bottom:1px solid #ccc;text-align:left}</style></head>
       <body><h2>${esc(t("rst.tips.printTitle"))} — ${esc(today)}</h2>
       <p>${esc(t("rst.tips.cash"))}: <b>${esc(money(tips.cash))}</b> · ${esc(t("rst.tips.card"))}: <b>${esc(money(tips.card))}</b></p>
       <table>${rows}</table><p style="font-size:12px">${esc(t("rst.tips.note"))}</p>

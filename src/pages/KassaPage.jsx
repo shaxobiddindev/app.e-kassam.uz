@@ -87,6 +87,7 @@ import { NumField } from "../components/ek/EkFields";
 import { useFitHeight, fitStyle } from "../hooks/useFitHeight";
 import { typeQtyKey, isBurst, QTY_TYPE_MS, APPLY_DELAY_MS } from "../lib/ek-qty-type";
 import { customerOption } from "../lib/ek-customer-option";
+import { nextStartedAt, durationOf } from "../lib/ek-sale-speed";
 
 /* ══════════════════════════════════════════════════════════════════════════
    Kassir paneli — 06-APP-KASSIR.md
@@ -254,9 +255,12 @@ export default function KassaPage({ toast, refreshLowStock }) {
     setCarts((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)));
 
   const setCart = (updater) =>
-    setCarts((prev) => prev.map((c) => (c.id === active.id
-      ? { ...c, items: typeof updater === "function" ? updater(c.items) : updater }
-      : c)));
+    setCarts((prev) => prev.map((c) => {
+      if (c.id !== active.id) return c;
+      const items = typeof updater === "function" ? updater(c.items) : updater;
+      /* Sotuv vaqti (C4): savat bo'shdan to'laga o'tgan payt — `ek-sale-speed.js`. */
+      return { ...c, items, startedAt: nextStartedAt(c.items, items, c.startedAt) };
+    }));
   const [search, setSearch]         = useState("");
   const [searching, setSearching]   = useState(true);   // birinchi yuklash
   /* ⚠ BO'SH JAVOBNING SABABI — SERVERDAN. «Topilmadi» bilan «bu kod
@@ -2812,6 +2816,8 @@ export default function KassaPage({ toast, refreshLowStock }) {
 
     const payload = {
       idempotencyKey: queue.newIdempotencyKey(),
+      /* Sotuv vaqti, ms (C4, V165) — o'lchov; null bo'lsa ham sotuv o'tadi. */
+      durationMs: durationOf(active.startedAt, { tableOrderId: active.tableOrderId }),
       /* Buyurtma turi va xizmat haqi foizi (R5) — summani server hisoblaydi;
          foiz shu yerdan, chunki oflayn chek keyin keladi. */
       ...(orderType ? { orderType, serviceChargePercent: svcAmount > 0 ? svcPct : null } : {}),

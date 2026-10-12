@@ -1918,7 +1918,7 @@ export default function ProductsPage({ toast }) {
                              placeholder={t("clothing.colorName")} />
                       <input type="color" className="color-pair__dot"
                              aria-label={t("clothing.color")}
-                             value={form.colorHex || "#888888"}
+                             value={form.colorHex || "#888888" /* hex: <input type=color> faqat hex qabul qiladi */}
                              onChange={(e) => setForm((f) => ({ ...f, colorHex: e.target.value }))} />
                     </div>
                   </FormGroup>

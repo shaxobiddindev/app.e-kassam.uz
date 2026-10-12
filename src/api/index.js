@@ -58,7 +58,7 @@ function showTakenOver() {
 
   const card = document.createElement("div");
   card.style.cssText =
-    "max-width:420px;width:100%;background:#fff;color:#101828;border-radius:16px;" +
+    "max-width:420px;width:100%;background:var(--bg-surface);color:var(--fg-primary);border-radius:16px;" +
     "padding:28px 26px;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,.35)";
 
   const title = document.createElement("div");
@@ -67,14 +67,14 @@ function showTakenOver() {
 
   const body = document.createElement("div");
   body.textContent = t("auth.takenOverBody");
-  body.style.cssText = "font-size:14px;line-height:1.55;color:#475467;margin-bottom:22px";
+  body.style.cssText = "font-size:14px;line-height:1.55;color:var(--fg-secondary);margin-bottom:22px";
 
   const btn = document.createElement("button");
   btn.type = "button";
   btn.textContent = t("auth.takenOverAction");
   btn.style.cssText =
     "width:100%;min-height:48px;border:0;border-radius:12px;cursor:pointer;" +
-    "background:#1570ef;color:#fff;font-size:15px;font-weight:700";
+    "background:var(--bg-brand);color:var(--fg-on-brand);font-size:15px;font-weight:700";
   btn.onclick = () => forceLogout("taken-over");
 
   card.append(title, body, btn);

@@ -349,7 +349,7 @@ h1, h2, h3, .page-title, .card-title, .modal-title {
 /* Izoh belgichasi — matn emas. Sabab `StatCard` izohida. */
 .stat-hint       { color: var(--text3, var(--text2)); opacity: .65; font-size: 11px; cursor: help; line-height: 1; }
 .stat-hint:hover,
-.stat-hint:focus-visible { opacity: 1; color: var(--blue, #017dca); outline: none; }
+.stat-hint:focus-visible { opacity: 1; color: var(--fg-brand); outline: none; }
 .stat-change     { font-size: 11px; font-weight: 700; margin-top: 4px; color: var(--green); }
 /* Qiymat ostidagi ikkinchi o'lchov — «12 ta chek» kabi (V53). Rangsiz
    va kichik: u asosiy raqam bilan RAQOBAT QILMASLIGI kerak. */
@@ -802,7 +802,7 @@ select.form-input { cursor: pointer; }
 .shift-chip__tip {
   position: absolute; top: calc(100% + 6px); right: 0; z-index: 40;
   width: max-content; max-width: 250px; padding: 8px 10px;
-  border-radius: 9px; box-shadow: var(--sh2, 0 6px 16px rgba(0,0,0,.18));
+  border-radius: 9px; box-shadow: var(--sh2);
   background: var(--bg-warning-subtle); color: var(--fg-warning);
   border: 1px solid var(--border-warning);
   font-size: 12.5px; font-weight: 700; line-height: 1.5; text-align: left;
@@ -1448,7 +1448,7 @@ select.form-input { cursor: pointer; }
 .grid-2c { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
 /* To'lov turi ulushi — ingichka chiziq */
 .pay-share      { margin-top: 7px; height: 4px; border-radius: 2px; background: var(--bg-sunken); overflow: hidden; }
-.pay-share span { display: block; height: 100%; background: var(--blue, #017dca); border-radius: 2px; }
+.pay-share span { display: block; height: 100%; background: var(--bg-brand); border-radius: 2px; }
 
 /* ── UTILS ── */
 .mono    { font-family: var(--mono); }
@@ -1588,8 +1588,8 @@ select.form-input { cursor: pointer; }
    strelka ham tanlagichni ko'rsatadi.
    ══════════════════════════════════════════════════════════════════════════ */
 .cart-cust.is-needed .ek-select__btn {
-  border-color: var(--border-warning, rgba(245, 158, 11, .55));
-  background: var(--bg-warning-subtle, rgba(245, 158, 11, .08));
+  border-color: var(--border-warning);
+  background: var(--bg-warning-subtle);
   animation: custNeed 1.8s ease-in-out infinite;
 }
 
@@ -2630,7 +2630,7 @@ img.logo--dark { display: none; }
 }
 [data-theme="dark"] .auth__brand-side {
   background: linear-gradient(160deg, var(--ek-blue-950), var(--ek-blue-800) 70%);
-  color: #FFFFFF;
+  color: var(--fg-on-brand);
   border-left-color: transparent;
 }
 @media (min-width: 900px) { .auth__brand-side { display: flex; } }
@@ -2963,7 +2963,7 @@ img.logo--dark { display: none; }
 .m-head__title { font-size: 20px; font-weight: 800; margin: 0; }
 
 .m-hero {
-  background: var(--bg-brand); color: #fff;
+  background: var(--bg-brand); color: var(--fg-on-brand);
   border-radius: 16px; padding: 18px 16px;
 }
 .m-hero__label { font-size: 12px; opacity: .85; }
@@ -3025,7 +3025,7 @@ img.logo--dark { display: none; }
   padding: 8px 0; font-family: inherit; font-size: 13px; font-weight: 600;
   color: var(--fg-secondary); cursor: pointer;
 }
-.m-seg button.active { background: var(--bg-brand); color: #fff; }
+.m-seg button.active { background: var(--bg-brand); color: var(--fg-on-brand); }
 
 .m-empty { display: flex; align-items: center; gap: 8px; color: var(--fg-secondary); font-size: 13px; padding: 10px 0; }
 .m-empty i { color: var(--ek-green-700); }
@@ -3187,7 +3187,7 @@ img.logo--dark { display: none; }
 .pt-codes { display: grid; justify-items: center; gap: 10px; }
 /* ⚠ QR va shtrix DOIM oq fonda: qorong'i temada ham skaner o'qishi kerak,
    teskari rangdagi kodni ko'p qurilma umuman ko'rmaydi. */
-.pt-qr, .pt-bars { background: #FFFFFF; padding: 10px; border-radius: var(--r-md); }
+.pt-qr, .pt-bars { background: #FFFFFF; padding: 10px; border-radius: var(--r-md); /* hex: QR/kod foni — skaner faqat oqda o'qiydi */ }
 .pt-bars svg { width: 100%; max-width: 260px; height: auto; }
 .pt-cardcode { font-family: var(--font-mono); font-size: var(--fs-lg); letter-spacing: .18em; font-weight: 700; }
 .pt-balance {
@@ -3237,7 +3237,7 @@ img.logo--dark { display: none; }
    ko'rinmaydi — bu detal butun taassurotni ushlab turadi. */
 .pt-tape {
   --tear: 9px;
-  background: #FFFFFF; color: #111111;
+  background: #FFFFFF; color: #111111; /* hex: chek qog'ozi ko'rinishi — qorong'i rejimda ham oq qog'oz */
   font-family: var(--font-mono); font-variant-numeric: tabular-nums;
   font-size: 12.5px; line-height: 1.45;
   padding: 18px 16px 22px;
@@ -3245,27 +3245,27 @@ img.logo--dark { display: none; }
   box-shadow: var(--sh-lg);
 }
 /* Chek DOIM oq qog'ozda — qorong'i tema unga tegmaydi (qog'oz qorayamaydi) */
-[data-theme="dark"] .pt-tape { background: #FFFFFF; color: #111111; }
+[data-theme="dark"] .pt-tape { background: #FFFFFF; color: #111111; /* hex: chek qog'ozi ko'rinishi — qorong'i rejimda ham oq qog'oz */ }
 .pt-tape__head { text-align: center; }
 .pt-tape__shop { font-size: 15px; font-weight: 800; letter-spacing: .5px; }
-.pt-hr { border-top: 1px dashed #999999; margin: 8px 0; }
+.pt-hr { border-top: 1px dashed #999999; margin: 8px 0; /* hex: chek qog'ozi ko'rinishi — qorong'i rejimda ham oq qog'oz */ }
 .pt-tape__row { display: flex; justify-content: space-between; gap: 10px; padding: 1px 0; }
 .pt-tape__row > span:last-child { white-space: nowrap; }
 .pt-line { padding: 3px 0; }
 .pt-line__name { font-weight: 700; }
-.pt-total { font-size: 15px; font-weight: 800; padding: 6px 0; border-top: 1px solid #111111; margin-top: 4px; }
+.pt-total { font-size: 15px; font-weight: 800; padding: 6px 0; border-top: 1px solid #111111; margin-top: 4px; /* hex: chek qog'ozi ko'rinishi — qorong'i rejimda ham oq qog'oz */ }
 .pt-earn { font-weight: 700; }
 /* ⚠ CHEK TURI (V61) — «QARZ TO'LOVI». Xarid cheki bilan bir xil tasmada
    chiqadi va ularni ajratib turadigan yagona narsa shu qator, shuning
    uchun u ko'zga tashlanishi kerak: yozuvi katta emas, lekin harflar
    ajratilgan va ustidan chiziq o'tadi. */
 .pt-tape__kind {
-  margin-top: 6px; padding-top: 5px; border-top: 1px solid #111111;
+  margin-top: 6px; padding-top: 5px; border-top: 1px solid #111111; /* hex: chek qog'ozi ko'rinishi — qorong'i rejimda ham oq qog'oz */
   font-size: 12px; font-weight: 800; letter-spacing: .18em;
 }
 .pt-returned {
   margin: 10px 0; padding: 6px; text-align: center; font-weight: 800; letter-spacing: .2em;
-  border: 2px solid #111111; border-radius: 4px;
+  border: 2px solid #111111; border-radius: 4px; /* hex: chek qog'ozi ko'rinishi — qorong'i rejimda ham oq qog'oz */
 }
 /* ⚠ BEKOR QILINGAN TO'LOV (V109) — `.pt-returned` bilan bir oilada:
    ikkalasi ham «bu hujjat endi boshqa narsani anglatadi» deydi va
@@ -3273,7 +3273,7 @@ img.logo--dark { display: none; }
    (nima · qachon · nega), chunki «nega?» savoli darhol tug'iladi. */
 .pt-void {
   margin: 10px 0; padding: 6px; text-align: center;
-  border: 2px solid #111111; border-radius: 4px;
+  border: 2px solid #111111; border-radius: 4px; /* hex: chek qog'ozi ko'rinishi — qorong'i rejimda ham oq qog'oz */
 }
 .pt-void__title { font-weight: 800; letter-spacing: .2em; }
 .pt-void__when  { font-size: 11px; margin-top: 2px; }
@@ -3287,7 +3287,7 @@ img.logo--dark { display: none; }
 .pt-barcode svg { width: 100%; max-width: 240px; height: auto; }
 .pt-tape__no { font-size: 13px; font-weight: 800; margin-top: 2px; }
 .pt-thanks { margin-top: 10px; font-weight: 700; }
-.pt-tape__site { font-size: 11px; color: #555555; }
+.pt-tape__site { font-size: 11px; color: #555555; /* hex: chek qog'ozi ko'rinishi — qorong'i rejimda ham oq qog'oz */ }
 /* PDF tugmasi — tasmadan TASHQARIDA (nusxaga tushmasligi uchun).
    ⚠ Yuqoridagi bo'shliq `--tear` (9px) dan katta: yirtilgan qirra
    tasmadan pastda, absolyut joylashgan — tugma unga tegib turmasin. */
@@ -3300,7 +3300,7 @@ img.logo--dark { display: none; }
    rangdagi kodni ko'p kamera umuman o'qimaydi, o'lcham o'zgarsa esa
    yangilanish paytida sakrab ko'rinardi. */
 .m-qr__box {
-  background: #FFFFFF; padding: 14px; border-radius: var(--r-lg);
+  background: #FFFFFF; padding: 14px; border-radius: var(--r-lg); /* hex: QR/kod foni — skaner faqat oqda o'qiydi */
   width: 288px; height: 288px; display: grid; place-items: center;
 }
 .m-qr__box svg { display: block; }
@@ -3325,7 +3325,7 @@ img.logo--dark { display: none; }
 
 /* Telegramga ulash taklifi (V35) — mijoz kabinetida */
 .pt-tg { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 12px; }
-.pt-tg__icon { font-size: 30px; color: #229ED9; flex-shrink: 0; }
+.pt-tg__icon { font-size: 30px; color: #229ED9; flex-shrink: 0; /* hex: Telegram brend rangi */ }
 .pt-tg b { display: block; margin-bottom: 2px; }
 .pt-tg p { margin: 0; }
 
@@ -3335,7 +3335,7 @@ img.logo--dark { display: none; }
 /* ⚠ Oq fon va qat'iy o'lcham: qorong'i temada teskari rangdagi QR ni ko'p
    kamera o'qimaydi, o'lcham o'zgarsa yangilanishda sakrab ko'rinadi. */
 .qrp__box {
-  background: #FFFFFF; padding: 12px; border-radius: var(--r-lg);
+  background: #FFFFFF; padding: 12px; border-radius: var(--r-lg); /* hex: QR/kod foni — skaner faqat oqda o'qiydi */
   width: 264px; height: 264px; display: grid; place-items: center;
 }
 .qrp__timer { width: 100%; height: 4px; border-radius: 2px; background: var(--bg-sunken); overflow: hidden; }
@@ -3385,7 +3385,7 @@ img.logo--dark { display: none; }
   justify-content: center; gap: 10px;
 }
 .cu-btn:disabled { opacity: .6; }
-.cu-btn--tg { background: #229ED9; }
+.cu-btn--tg { background: #229ED9; /* hex: Telegram brend rangi */ }
 .cu-btn--ghost {
   background: transparent; color: var(--fg-secondary);
   border: 1px solid var(--border-subtle); min-height: 46px; font-size: var(--fs-md);
@@ -3396,11 +3396,11 @@ img.logo--dark { display: none; }
    bir marta ham bosmaydigan amal. Yuqorida bo'sh joy — «Chiqish» bilan
    yonma-yon turib xato bosilmasin. */
 .cu-btn--danger {
-  background: transparent; color: var(--fg-danger, #dc2626);
-  border: 1px solid var(--border-danger, color-mix(in srgb, #dc2626 40%, transparent));
+  background: transparent; color: var(--fg-danger);
+  border: 1px solid var(--border-danger);
   min-height: 46px; font-size: var(--fs-md); font-weight: 600;
 }
-.cu-btn--danger:hover:not(:disabled) { background: var(--bg-danger-subtle, rgba(220, 38, 38, .08)); }
+.cu-btn--danger:hover:not(:disabled) { background: var(--bg-danger-subtle); }
 .cu-delete { margin-top: 22px; }
 
 /* Kirish usullari ro'yxati (V40) — birinchisi asosiy, qolgani zaxira */
@@ -3444,7 +3444,7 @@ img.logo--dark { display: none; }
   padding: 20px; background: var(--bg-surface);
   border: 1px solid var(--border-subtle); border-radius: var(--r-xl);
 }
-.cu-waiting__icon { font-size: 40px; color: #229ED9; }
+.cu-waiting__icon { font-size: 40px; color: #229ED9; /* hex: Telegram brend rangi */ }
 .cu-error {
   padding: 10px 14px; border-radius: var(--r-md);
   background: var(--bg-danger-subtle); color: var(--fg-danger);
@@ -3489,7 +3489,7 @@ img.logo--dark { display: none; }
   font-size: var(--fs-xs); letter-spacing: .1em; text-transform: uppercase;
   color: var(--fg-brand); font-weight: 600;
 }
-.cu-code__qr, .cu-code__bars { background: #FFFFFF; padding: 10px; border-radius: var(--r-md); }
+.cu-code__qr, .cu-code__bars { background: #FFFFFF; padding: 10px; border-radius: var(--r-md); /* hex: QR/kod foni — skaner faqat oqda o'qiydi */ }
 .cu-code__bars svg { width: 100%; max-width: 240px; height: auto; }
 .cu-code__num {
   font-family: var(--font-mono); font-size: var(--fs-lg);
@@ -3688,7 +3688,7 @@ img.logo--dark { display: none; }
 .cu-switch.on { background: var(--bg-success); }
 .cu-switch span {
   position: absolute; top: 3px; left: 3px; width: 22px; height: 22px;
-  border-radius: 50%; background: #FFFFFF; transition: transform .2s;
+  border-radius: 50%; background: #FFFFFF; transition: transform .2s; /* hex: tugma dastagi — ikkala temada oq */
 }
 .cu-switch.on span { transform: translateX(20px); }
 
@@ -3716,7 +3716,7 @@ img.logo--dark { display: none; }
 /* Bosiladigan kod — tugma, lekin ko'rinishi kartadagidek qolsin */
 .ek-code-btn {
   display: block; border: 0; padding: 10px; cursor: pointer;
-  background: #FFFFFF; border-radius: var(--r-md); line-height: 0;
+  background: #FFFFFF; border-radius: var(--r-md); line-height: 0; /* hex: QR/kod foni — skaner faqat oqda o'qiydi */
 }
 .ek-code-btn:active { transform: scale(.98); }
 .ek-code-btn:focus-visible { outline: 2px solid var(--border-brand); outline-offset: 2px; }
@@ -3725,17 +3725,17 @@ img.logo--dark { display: none; }
    rangdagi kodni skanerlarning ko'pi o'qimaydi. */
 .ekz {
   position: fixed; inset: 0; z-index: 900;
-  background: #FFFFFF; color: #0B1220;
+  background: #FFFFFF; color: #0B1220; /* hex: kodni xaridorga ko'rsatish oynasi — doim oq qog'oz, skaner o'qisin */
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 18px; padding: max(18px, env(safe-area-inset-top)) 16px 22px;
 }
 .ekz__x {
   position: absolute; top: max(12px, env(safe-area-inset-top)); right: 12px;
   width: 44px; height: 44px; border-radius: 50%; cursor: pointer;
-  border: 1.5px solid #D5DAE3; background: #FFFFFF; color: #0B1220;
+  border: 1.5px solid #D5DAE3; background: #FFFFFF; color: #0B1220; /* hex: kodni xaridorga ko'rsatish oynasi — doim oq qog'oz, skaner o'qisin */
   font-size: 18px; display: flex; align-items: center; justify-content: center;
 }
-.ekz__x:active { background: #EEF1F6; }
+.ekz__x:active { background: #EEF1F6; /* hex: kodni xaridorga ko'rsatish oynasi — doim oq qog'oz, skaner o'qisin */ }
 .ekz__code { line-height: 0; }
 .ekz__code svg { display: block; width: 100%; height: auto; }
 /* QR — kvadrat, ekranning kaltaroq tomoniga sig'adi */
@@ -3746,7 +3746,7 @@ img.logo--dark { display: none; }
   font-family: var(--font-mono); font-size: var(--fs-xl); font-weight: 700;
   letter-spacing: .18em;
 }
-.ekz__hint { font-size: var(--fs-sm); color: #5B6675; }
+.ekz__hint { font-size: var(--fs-sm); color: #5B6675; /* hex: kodni xaridorga ko'rsatish oynasi — doim oq qog'oz, skaner o'qisin */ }
 
 /* ══ Ombor — mahsulot tafsiloti modali ═════════════════════════════════
    Partiyalar jadval qatori sifatida emas, o'z kartochkalarida: jadval
@@ -3820,8 +3820,8 @@ img.logo--dark { display: none; }
    marta berib yuborardi. */
 .pickup-warn { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px;
                border-radius: 10px; margin-bottom: 12px; font-size: 13px; font-weight: 700; }
-.pickup-warn.is-done   { background: var(--bg-success-subtle, #eaf7ee); color: var(--fg-success, #1a7f37); }
-.pickup-warn.is-cancel { background: var(--bg-danger-subtle, #fdecec); color: var(--fg-danger, #b42318); }
+.pickup-warn.is-done   { background: var(--bg-success-subtle); color: var(--fg-success); }
+.pickup-warn.is-cancel { background: var(--bg-danger-subtle); color: var(--fg-danger); }
 
 /* ══════════════════════════════════════════════════════════════════════════
    QATOR NARXI: CHEGARA va TAYYOR NARXLAR (V56)
@@ -4071,14 +4071,14 @@ img.logo--dark { display: none; }
 }
 .disc-warn i { margin-top: 1px; flex: none; }
 .disc-warn--over {
-  background: var(--bg-warning-subtle, rgba(245, 158, 11, .10));
-  border-color: var(--border-warning, rgba(245, 158, 11, .35));
-  color: var(--fg-warning, #92400e);
+  background: var(--bg-warning-subtle);
+  border-color: var(--border-warning);
+  color: var(--fg-warning);
 }
 .disc-warn--loss {
-  background: var(--bg-danger-subtle, rgba(239, 68, 68, .10));
-  border-color: var(--border-danger, rgba(239, 68, 68, .35));
-  color: var(--fg-danger, #991b1b);
+  background: var(--bg-danger-subtle);
+  border-color: var(--border-danger);
+  color: var(--fg-danger);
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -4141,7 +4141,7 @@ img.logo--dark { display: none; }
      bilan urishib qolardi va yangi qo'shilgan qator «tanlangan» bo'lib
      ko'rinardi. */
   box-shadow: inset 3px 0 0 var(--blue);
-  background: var(--bg-brand-subtle, rgba(1, 54, 141, .05));
+  background: var(--bg-brand-subtle);
 }
 
 .kbd-help {
@@ -4229,7 +4229,7 @@ img.logo--dark { display: none; }
 }
 .facet__badge {
   min-width: 18px; height: 18px; padding: 0 5px;
-  border-radius: 9px; background: var(--blue); color: #fff;
+  border-radius: 9px; background: var(--bg-brand); color: var(--fg-on-brand);
   font-size: 11px; font-weight: 800; line-height: 18px; text-align: center;
 }
 .facet__search { margin-bottom: 6px; font-size: 12.5px; padding: 6px 9px; }
@@ -4250,7 +4250,7 @@ img.logo--dark { display: none; }
 }
 .facet__row + .facet__row { border-top: 1px solid var(--border-subtle); }
 .facet__row:hover { background: var(--bg); }
-.facet__row.is-on { background: var(--bg-brand-subtle, rgba(1, 54, 141, .06)); font-weight: 700; }
+.facet__row.is-on { background: var(--bg-brand-subtle); font-weight: 700; }
 .facet__row input { accent-color: var(--blue); cursor: pointer; }
 .facet__label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Sanoq — «Qora (0)» ni bosgan kassir bo'sh ekran ko'rmasin */
@@ -4265,7 +4265,7 @@ img.logo--dark { display: none; }
    natijani «tovar yo'q» deb tushunardi. */
 .filter-btn.is-on {
   border-color: var(--border-brand);
-  background: var(--bg-brand-subtle, rgba(1, 54, 141, .08));
+  background: var(--bg-brand-subtle);
   color: var(--fg-brand, var(--blue));
 }
 
@@ -4315,11 +4315,11 @@ img.logo--dark { display: none; }
 /* ⚠ NOL QOLDIQ va YARATILMAGAN variant BOSHQA narsa va shunday
    ko'rinadi ham: birinchisi «tugagan» (buyurtma kerak), ikkinchisi
    «kiritilmagan» (kartochka to'liq emas). */
-.vmx__cell.is-empty { background: var(--bg-danger-subtle, rgba(239,68,68,.08)); }
+.vmx__cell.is-empty { background: var(--bg-danger-subtle); }
 .vmx__cell.is-empty .vmx__qty { color: var(--red); font-weight: 800; }
 .vmx__cell.is-missing { color: var(--text2); opacity: .45; }
 .vmx__cell.is-pickable { cursor: pointer; }
-.vmx__cell.is-pickable:hover { background: var(--bg-brand-subtle, rgba(1,54,141,.07)); }
+.vmx__cell.is-pickable:hover { background: var(--bg-brand-subtle); }
 
 .vmx__foot {
   padding: 12px 26px 18px;
@@ -4429,7 +4429,7 @@ img.logo--dark { display: none; }
 .batch-tab:hover { border-color: var(--border-brand); }
 .batch-tab.is-on {
   border-color: var(--border-brand);
-  background: var(--bg-brand-subtle, color-mix(in srgb, var(--fg-brand) 8%, var(--bg-surface)));
+  background: var(--bg-brand-subtle);
   color: var(--fg-brand);
 }
 /* ⚠ Son HAR DOIM ko'rinadi: bo'limni ochmasdan ham u yerda nima
@@ -4759,7 +4759,7 @@ img.logo--dark { display: none; }
 }
 .pay-change-sav__switch::after {
   content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px;
-  border-radius: 50%; background: #fff; transition: transform var(--dur-fast) var(--ease-out);
+  border-radius: 50%; background: #fff; transition: transform var(--dur-fast) var(--ease-out); /* hex: tugma dastagi — ikkala temada oq */
 }
 .pay-change-sav.active { border-style: solid; background: var(--bg-success-subtle); }
 .pay-change-sav.active .pay-change-sav__switch { background: var(--fg-success); }
@@ -5069,7 +5069,7 @@ body.osk-open .mark-modal {
 .inv-seg__n.is-warn   { background: var(--yellow-l); color: var(--fg-warning); }
 .inv-seg__n.is-danger { background: var(--red-l);    color: var(--red); }
 .inv-seg.is-on .inv-seg__n:not(.is-warn):not(.is-danger) {
-  background: var(--bg-brand); color: var(--fg-on-brand, #fff);
+  background: var(--bg-brand); color: var(--fg-on-brand);
 }
 
 /* Tor ekranda asboblar pastki qatorga tushadi — segmentlar siqilib
@@ -5135,7 +5135,7 @@ body.osk-open .mark-modal {
   transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
 }
 .rpt-seg:hover { background: var(--bg-hover); color: var(--fg-primary); }
-.rpt-seg.is-on { background: var(--bg-brand); color: var(--fg-on-brand, #fff); }
+.rpt-seg.is-on { background: var(--bg-brand); color: var(--fg-on-brand); }
 
 .rpt-custom { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 12px; }
 .rpt-custom label { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; }
@@ -5738,7 +5738,7 @@ body.osk-open .mark-modal {
   white-space: nowrap;
 }
 .seg__b:hover { color: var(--fg-primary); }
-.seg__b.is-on { background: var(--bg-brand); color: var(--fg-on-brand, #fff); }
+.seg__b.is-on { background: var(--bg-brand); color: var(--fg-on-brand); }
 
 /* ── Panel ───────────────────────────────────────────────────────────── */
 .dpn {
@@ -5823,10 +5823,10 @@ body.osk-open .mark-modal {
 .alr__money { font-size: 13px; font-weight: 800; color: var(--fg-danger); }
 .alr__chip {
   min-width: 20px; padding: 1px 6px; border-radius: 999px;
-  font-size: 11px; font-weight: 800; text-align: center; color: #fff;
+  font-size: 11px; font-weight: 800; text-align: center; color: var(--fg-on-brand);
 }
 .alr__chip[data-tone="critical"] { background: var(--fg-danger); }
-.alr__chip[data-tone="warning"]  { background: var(--fg-warning); color: #3b2c00; }
+.alr__chip[data-tone="warning"]  { background: var(--fg-warning); color: #3b2c00; /* hex: to'q sariq chipda to'q matn — ikkala temada o'qiladi (fg-on-warning tokeni yo'q) */ }
 .alr__chip[data-tone="info"]     { background: var(--fg-tertiary); }
 
 .alr__list { display: flex; flex-direction: column; gap: 7px; }
@@ -6098,7 +6098,7 @@ button.stk__c:hover { background: var(--bg-hover); }
   position: fixed; inset: 0; z-index: 1200;
   display: flex; align-items: flex-start; justify-content: center;
   padding: max(8vh, 40px) 16px 16px;
-  background: color-mix(in srgb, #000 45%, transparent);
+  background: color-mix(in srgb, #000 45%, transparent); /* hex: parda — sahifani xiralashtiradi, ikkala temada qora */
 }
 .cmd {
   width: min(620px, 100%); max-height: 76vh; display: flex; flex-direction: column;
@@ -6135,7 +6135,7 @@ button.stk__c:hover { background: var(--bg-hover); }
   border: 0; background: none; cursor: pointer; text-align: start; font: inherit;
 }
 .cmd__row > i { color: var(--fg-tertiary); font-size: 13px; }
-.cmd__row.is-active { background: var(--bg-brand); color: var(--fg-on-brand, #fff); }
+.cmd__row.is-active { background: var(--bg-brand); color: var(--fg-on-brand); }
 .cmd__row.is-active > i, .cmd__row.is-active .cmd__s { color: inherit; opacity: .85; }
 .cmd__t { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cmd__s { font-size: 11px; font-weight: 700; color: var(--fg-tertiary); white-space: nowrap; }
@@ -6208,7 +6208,7 @@ button.stk__c:hover { background: var(--bg-hover); }
 .pln__add input:focus { outline: none; border-color: var(--bg-brand); }
 .pln__add button {
   width: 36px; display: grid; place-items: center; cursor: pointer;
-  border: 0; border-radius: 8px; background: var(--bg-brand); color: var(--fg-on-brand, #fff);
+  border: 0; border-radius: 8px; background: var(--bg-brand); color: var(--fg-on-brand);
 }
 .pln__add button:disabled { opacity: .4; cursor: not-allowed; }
 
@@ -6350,7 +6350,7 @@ button.stk__c:hover { background: var(--bg-hover); }
 .cd__promo { text-align: center; }
 .cd__promoTag {
   display: inline-block; padding: 4px 14px; border-radius: 999px;
-  background: var(--bg-brand); color: var(--fg-on-brand, #fff);
+  background: var(--bg-brand); color: var(--fg-on-brand);
   font-size: 15px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
 }
 .cd__promoName { font-size: 34px; font-weight: 800; margin-top: 12px; }
@@ -6383,7 +6383,7 @@ button.stk__c:hover { background: var(--bg-hover); }
   background: var(--bg-danger-subtle); color: var(--fg-danger);
   font: inherit; font-size: 12px; font-weight: 700; white-space: nowrap;
 }
-.prn-chip:hover { background: var(--fg-danger); color: #fff; }
+.prn-chip:hover { background: var(--fg-danger); color: var(--fg-on-brand); }
 .prn-chip:focus-visible { outline: 2px solid var(--bg-brand); outline-offset: 2px; }
 
 /* ── Oxirgi cheklar (V79) ─────────────────────────────────────────────
@@ -6664,8 +6664,8 @@ button.stk__c:hover { background: var(--bg-hover); }
   font-weight: 700;
   line-height: 1.5;
   white-space: nowrap;
-  color: #fff;
-  background: var(--danger, #D64545);
+  color: var(--fg-on-brand);
+  background: var(--bg-danger);
 }
 
 /* ══ SOTUVLAR TARIXI SARLAVHASI (V100) ═══════════════════════════════
@@ -6731,7 +6731,7 @@ button.stk__c:hover { background: var(--bg-hover); }
                     height: 96px; padding: 6px; border-radius: 8px;
                     /* ⚠ FON OQ, tema tokeni EMAS: yorliq fizik bosma yuza va
                        qorong'i rejimda ham oq qog'ozda chiqadi. */
-                    background: #fff; overflow: hidden; }
+                    background: #fff; overflow: hidden; /* hex: yorliq/stiker qog'ozi — fizik bosma yuza, doim oq */ }
 .lbl-card__svg svg{ max-width: 100%; max-height: 84px; height: auto; width: auto; }
 .lbl-card__name   { font-weight: 700; font-size: 13px; line-height: 1.25; }
 .lbl-card__meta   { color: var(--fg-secondary); font-size: 12px; }
@@ -6761,7 +6761,7 @@ button.stk__c:hover { background: var(--bg-hover); }
                       background: var(--bg-sunken); border: 1px solid var(--border);
                       border-radius: 10px; overflow: auto; }
 /* ⚠ Yorliqning foni HAR DOIM oq — yuqoridagi izohga qarang. */
-.lbl-preview__paper { background: #fff; box-shadow: 0 1px 6px rgba(0,0,0,.18);
+.lbl-preview__paper { background: #fff; box-shadow: 0 1px 6px rgba(0,0,0,.18); /* hex: yorliq/stiker qog'ozi — fizik bosma yuza, doim oq */
                       flex: 0 0 auto; }
 .lbl-preview__paper svg { display: block; }
 
@@ -6879,7 +6879,7 @@ button.stk__c:hover { background: var(--bg-hover); }
 .stk-preview       { display: flex; justify-content: center; align-items: center; min-height: 150px;
                      margin-top: 10px; padding: 16px; border-radius: 10px;
                      background: var(--bg-sunken); border: 1px solid var(--border-subtle); }
-.stk-preview__paper{ background: #fff; box-shadow: 0 1px 6px rgba(0,0,0,.18); width: 100%; max-width: 260px; }
+.stk-preview__paper{ background: #fff; box-shadow: 0 1px 6px rgba(0,0,0,.18); width: 100%; max-width: 260px; /* hex: yorliq/stiker qog'ozi — fizik bosma yuza, doim oq */ }
 .stk-preview__paper svg { display: block; width: 100%; height: auto; }
 .stk-design        { display: flex; align-items: center; justify-content: space-between; gap: 8px;
                      flex-wrap: wrap; margin-top: 10px; color: var(--fg-secondary); font-size: 13.5px; }
@@ -6958,7 +6958,7 @@ button.stk__c:hover { background: var(--bg-hover); }
 .stk-size.is-on    { border-color: var(--border-brand); background: var(--bg-brand-subtle);
                      box-shadow: 0 0 0 1px var(--border-brand) inset; }
 .stk-size__art     { display: flex; align-items: center; justify-content: center; height: 72px; }
-.stk-size__paper   { display: block; background: #fff; border: 1.5px dashed var(--fg-secondary);
+.stk-size__paper   { display: block; background: #fff; border: 1.5px dashed var(--fg-secondary); /* hex: yorliq/stiker qog'ozi — fizik bosma yuza, doim oq */
                      border-radius: 4px; }
 .stk-size__num     { font-size: 22px; font-weight: 900; }
 .stk-size__unit    { color: var(--fg-secondary); font-size: 13px; font-weight: 700; }
@@ -7036,7 +7036,7 @@ button.stk__c:hover { background: var(--bg-hover); }
    ⚠ Qasddan qora/oq: bu qog'ozdagi ko'rinishning surati, tema rangi emas. */
 .stk-fix__art      { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto;
                      min-width: 34px; height: 22px; border-radius: 4px; font-size: 10px; font-weight: 900; }
-.stk-fix__art--inv { background: #000; color: #fff; }
+.stk-fix__art--inv { background: #000; color: #fff; /* hex: teskari (oq-qora) stiker namunasi */ }
 .stk-pad           { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
 .stk-pad__grid     { display: grid; grid-template-columns: repeat(3, var(--hit-pos)); gap: 6px; }
 .stk-pad__grid .btn{ min-height: var(--hit-pos); padding: 0; }

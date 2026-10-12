@@ -186,8 +186,8 @@ export function BootLoader({ text = t("loading.boot") }) {
         <g className="paper">
           <path d="M9 13.2a4.6 4.6 0 0 1 4.6-4.6h14.8a4.6 4.6 0 0 1 4.6 4.6v21.4L30 39l-3-4.4L24 39l-3-4.4L18 39l-3-4.4L12 39l-3-4.4Z"
                 fill="var(--bg-brand)" />
-          <path d="M13.6 13.2h14a1.35 1.35 0 0 1 0 2.7h-14a1.35 1.35 0 0 1 0-2.7Z" fill="#fff" />
-          <path d="M13.6 18.1h9a1.35 1.35 0 0 1 0 2.7h-9a1.35 1.35 0 0 1 0-2.7Z" fill="#fff" />
+          <path d="M13.6 13.2h14a1.35 1.35 0 0 1 0 2.7h-14a1.35 1.35 0 0 1 0-2.7Z" fill="#fff" /> {/* hex: brend belgisi — ko\'k fondagi oq chiziqlar */}
+          <path d="M13.6 18.1h9a1.35 1.35 0 0 1 0 2.7h-9a1.35 1.35 0 0 1 0-2.7Z" fill="#fff" /> {/* hex: brend belgisi — ko\'k fondagi oq chiziqlar */}
         </g>
         <path className="check" d="M14.1 28.9l3.4 3.4L28 21.8"
               stroke="var(--ek-green-400)" strokeWidth="3.3"

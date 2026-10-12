@@ -417,6 +417,9 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
       : no("modifierIds noto'g'ri", JSON.stringify(lines));
     const w = lines.find((l) => l.productId === 3);
     w && !("modifierIds" in w) ? ok("suv qatorida modifierIds yo'q") : no("suv qatori noto'g'ri", JSON.stringify(w));
+    /* C4 (V165): sotuv vaqti — birinchi tovardan yuborishgacha, sinovda bir necha soniya. */
+    Number.isInteger(body.durationMs) && body.durationMs > 500 && body.durationMs < 120000
+      ? ok(`sotuv vaqti yuborildi: ${(body.durationMs / 1000).toFixed(1)} s`) : no("durationMs", String(body.durationMs));
   }
   calls.modifiers === 1 ? ok("guruhlar bir marta so'raldi") : no("guruhlar so'rovi soni", calls.modifiers);
   await page.close();

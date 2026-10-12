@@ -68,7 +68,7 @@
 .ek-printing { --w: 96px; width: var(--w); }
 .ek-printing__slot {
   height: 8px; border-radius: 4px;
-  background: var(--fg-tertiary, #93A0B5); opacity: .35;
+  background: var(--fg-tertiary); opacity: .35;
 }
 .ek-printing__paper {
   overflow: hidden;
@@ -82,7 +82,7 @@
 }
 .ek-printing__line {
   height: 5px; border-radius: 3px; margin: 7px 8px 0;
-  background: var(--border-subtle, #DDE2EB);
+  background: var(--border-subtle);
   animation: ek-line 2.2s var(--ease-out) infinite;
   opacity: 0;
 }
@@ -90,13 +90,13 @@
 .ek-printing__line:nth-child(2) { animation-delay: .40s; width: 54% }
 .ek-printing__line:nth-child(3) { animation-delay: .58s; width: 82% }
 .ek-printing__line:nth-child(4) { animation-delay: .76s; width: 40%;
-  background: var(--ek-green-400, #35C863); height: 7px }
+  background: var(--ek-green-400); height: 7px }
 @keyframes ek-line { 0%,8% {opacity:0; transform:translateY(-4px)} 20%,88% {opacity:1;transform:none} 100%{opacity:0} }
 
 /* --- 4. SKELETON ---------------------------------------------------------- */
 .ek-skeleton {
   position: relative; overflow: hidden;
-  background: var(--bg-sunken, #EDF0F5);
+  background: var(--bg-sunken);
   border-radius: var(--r-sm, 6px);
 }
 .ek-skeleton::after {
@@ -173,10 +173,10 @@
 .ek-carousel__dots { display: flex; gap: 6px; justify-content: center }
 .ek-carousel__dot {
   width: 7px; height: 7px; border-radius: 999px; border: 0; padding: 0; cursor: pointer;
-  background: var(--border-strong, #C3CBD9);
+  background: var(--border-strong);
   transition: width var(--dur-base) var(--ease-out), background var(--dur-base) var(--ease-out);
 }
-.ek-carousel__dot[aria-selected="true"] { width: 22px; background: var(--bg-brand, #1663D8) }
+.ek-carousel__dot[aria-selected="true"] { width: 22px; background: var(--bg-brand) }
 
 /* --- 11. OFLAYN TASMASI --------------------------------------------------- */
 .ek-offline-bar { animation: ek-slide-down var(--dur-slow) var(--ease-out) both }

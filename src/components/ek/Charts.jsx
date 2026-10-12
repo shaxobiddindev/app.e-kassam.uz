@@ -152,10 +152,10 @@ export function LineChart({ points = [], lines = [], height = 240, fmt = shortNu
         {grid.map((v, i) => (
           <g key={i}>
             <line x1={PL} y1={y(v)} x2={W - PR} y2={y(v)}
-                  stroke="var(--border-subtle, #e5e7eb)" strokeWidth="1"
+                  stroke="var(--border-subtle)" strokeWidth="1"
                   strokeDasharray={v === 0 ? "" : "3 4"} vectorEffect="non-scaling-stroke" />
             <text x={PL - 8} y={y(v) + 4} textAnchor="end"
-                  fill="var(--fg-tertiary, #9ca3af)" fontSize="11">{fmt(v)}</text>
+                  fill="var(--fg-tertiary)" fontSize="11">{fmt(v)}</text>
           </g>
         ))}
 
@@ -174,7 +174,7 @@ export function LineChart({ points = [], lines = [], height = 240, fmt = shortNu
         {points.map((p, i) => (i % every === 0 || i === n - 1) && (
           <text key={`x-${i}`} x={x(i)} y={H - 8}
                 textAnchor={i === 0 ? "start" : i === n - 1 ? "end" : "middle"}
-                fill="var(--fg-tertiary, #9ca3af)" fontSize="11">{p.label}</text>
+                fill="var(--fg-tertiary)" fontSize="11">{p.label}</text>
         ))}
 
         {/* Sichqoncha uchun ko'rinmas ustunlar — nuqtaning o'ziga tegish
@@ -187,11 +187,11 @@ export function LineChart({ points = [], lines = [], height = 240, fmt = shortNu
         {hover != null && (
           <>
             <line x1={x(hover)} y1={PT} x2={x(hover)} y2={H - PB}
-                  stroke="var(--fg-tertiary, #9ca3af)" strokeWidth="1" strokeDasharray="3 3"
+                  stroke="var(--fg-tertiary)" strokeWidth="1" strokeDasharray="3 3"
                   vectorEffect="non-scaling-stroke" />
             {lines.map((l) => (
               <circle key={l.key} cx={x(hover)} cy={y(points[hover][l.key])} r="4"
-                      fill="var(--bg-surface, #fff)" stroke={l.color} strokeWidth="2.5"
+                      fill="var(--bg-surface)" stroke={l.color} strokeWidth="2.5"
                       vectorEffect="non-scaling-stroke" />
             ))}
           </>
