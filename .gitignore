@@ -35,3 +35,6 @@ src-tauri/target/
 
 # Ohang renderi (scripts/sfx-render.mjs) — vaqtinchalik chiqish
 sfx-out/
+
+# `scripts/resolve-stack.mjs` — vaqtinchalik worktree va qayta qurilgan xaritalar
+.cache/
