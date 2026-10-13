@@ -3441,6 +3441,8 @@ export default {
   "rf.attention": "Needs attention",
   "rf.allCalm": "All calm for now",
   "rf.openTables": "Open tables",
+  "rf.resize": "Divider between plan and side column",
+  "rf.resizeHint": "Drag to resize. Double-click to reset",
   "rf.openNone": "No tables are occupied right now",
   "rf.freeCap": "Free: {n} tables · {seats} seats",
   "rf.longOpen": "Open too long",

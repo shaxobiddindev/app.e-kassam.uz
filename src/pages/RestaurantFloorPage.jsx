@@ -9,7 +9,7 @@ import { subscribeTables, isLive } from "../lib/ek-live";
 import { isTerminal, lockNow } from "../lib/ek-terminal";
 import { roleSet } from "../lib/ek-roles";
 import { roleLabel } from "../lib/ek-labels";
-import { autoPlace, byPlace, floorView, statusOf, attention, hhmm, atToday, openTables, freeCapacity, waiterLoad } from "../lib/ek-floor";
+import { autoPlace, byPlace, floorView, statusOf, attention, hhmm, atToday, openTables, freeCapacity, waiterLoad, planWidth, PLAN_MIN } from "../lib/ek-floor";
 import { Modal } from "../components";
 import { Field, FormGroup } from "../components/ui";
 import { SkeletonTiles, Spinner } from "../components/ek/Loading";
@@ -33,8 +33,14 @@ const MANAGERS = ["OWNER", "SHOP_ADMIN", "ADMIN"];
 const ICON = { free: "fa-chair", busy: "fa-utensils", bill: "fa-receipt", resv: "fa-calendar-check",
                ready: "fa-bell-concierge", late: "fa-hourglass-half" };
 
-/** Keng ekranda o'ng ustunning eng kichik eni (stat + diqqat) — CSS bilan bir xil. */
-const SIDE_MIN = 300;
+/** Reja eni (ajratgich bilan tanlangan) — shu qurilmada eslab qolinadi. */
+const PLAN_KEY = "ek.rf.planRatio";
+const readRatio = () => {
+  try { const v = Number(localStorage.getItem(PLAN_KEY)); return v > 0 && v < 1 ? v : null; } catch { return null; }
+};
+const saveRatio = (v) => {
+  try { v == null ? localStorage.removeItem(PLAN_KEY) : localStorage.setItem(PLAN_KEY, String(v)); } catch { /* xotira yopiq */ }
+};
 
 const since = (min) => { const e = elapsed(min); return t(e.key, e.vars); };
 
@@ -93,6 +99,7 @@ export default function RestaurantFloorPage({ toast }) {
   const bodyRef = useRef(null);
   const legendRef = useRef(null);
   const [size, setSize] = useState(null);
+  const [ratio, setRatio] = useState(readRatio);
   const ar = view.w / view.h;
   useLayoutEffect(() => {
     const main = mainRef.current, body = bodyRef.current;
@@ -100,19 +107,74 @@ export default function RestaurantFloorPage({ toast }) {
     const measure = () => {
       if (matchMedia("(max-width: 640px)").matches) { setSize(null); return; }
       const wide = matchMedia("(min-width: 1100px)").matches;
-      const availW = main.clientWidth - (wide ? SIDE_MIN + 12 : 0);
       const top = body.getBoundingClientRect().top + window.scrollY;
       const legend = legendRef.current?.offsetHeight || 0;
       const availH = Math.max(300, window.innerHeight - top - legend - 26);
-      const w = Math.max(280, Math.min(availW, availH * ar));
-      setSize((old) => (old && Math.abs(old.w - w) < 1 ? old : { w, h: w / ar }));
+      const { w, max } = planWidth({ mainW: main.clientWidth, availH, ar, ratio, wide });
+      setSize((old) => (old && Math.abs(old.w - w) < 1 && Math.abs(old.max - max) < 1 ? old : { w, h: w / ar, max }));
     };
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(main);
     window.addEventListener("resize", measure);
     return () => { ro.disconnect(); window.removeEventListener("resize", measure); };
-  }, [ar, hall]);
+  }, [ar, hall, ratio]);
+
+  /* Ajratgich: sudrash (sichqoncha va barmoq), strelkalar, ikki marta bosish — avtomatik. */
+  /* ⚠ Bu yerda faqat NIYAT saqlanadi; chegarani `planWidth` har o'lchovda
+     YANGIDAN qo'yadi. Ilgari sudrash boshidagi `size.max` ishlatilardi va u
+     eskirardi: reja torayganda legend ikki qatorga o'tib, bo'y kamayardi —
+     o'ngga qaytarishda reja 642 o'rniga 608 da to'xtardi. */
+  const setPlanW = (w) => {
+    const mainW = mainRef.current?.clientWidth || 1;
+    const v = Math.min(0.99, Math.max(PLAN_MIN, w) / mainW);
+    setRatio(v);
+    return v;
+  };
+  const resetGrip = () => { setRatio(null); saveRatio(null); };
+  /* ⚠ Ikki marta bosish QO'LDA aniqlanadi: `pointerdown` dagi
+     `preventDefault` brauzerning `dblclick` ini bosib qo'yadi, sensorli
+     ekranda esa u umuman yo'q (zal terminali — planshet). */
+  const lastTap = useRef(0);
+  const onGripDown = (e) => {
+    if (!size) return;
+    e.preventDefault();
+    const now = Date.now();
+    if (now - lastTap.current < 350) { lastTap.current = 0; resetGrip(); return; }
+    lastTap.current = now;
+    /* Boshlangan nuqtaga NISBATAN: chegara barmoq ostiga sakramaydi. */
+    const startX = e.clientX, startW = size.w;
+    /* ⚠ Tinglovchilar OYNADA, elementda emas: ko'rsatkich chegaradan o'zib
+       ketsa (tez sudrash) element hodisani olmay qolardi va reja orqada
+       qolardi — sinovda o'ngga surish 642 o'rniga 608 da to'xtagan. */
+    let last = null;
+    const move = (ev) => {
+      if (Math.abs(ev.clientX - startX) < 2) return;
+      lastTap.current = 0;
+      last = setPlanW(startW + (ev.clientX - startX));
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+      if (last != null) saveRatio(last);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+  };
+  const onGripKey = (e) => {
+    if (!size) return;
+    const step = e.shiftKey ? 80 : 24;
+    if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+      e.preventDefault();
+      saveRatio(setPlanW(Math.min(size.max, size.w + (e.key === "ArrowLeft" ? -step : step))));
+    } else if (e.key === "Home" || e.key === "Escape") {
+      e.preventDefault();
+      setRatio(null); saveRatio(null);
+    }
+  };
+
   const all = useMemo(() => halls.flatMap((h) => asArray(h.tables)), [halls]);
   const alerts = useMemo(() => attention(halls, now), [halls, now]);
   const opened = useMemo(() => openTables(halls, now), [halls, now]);
@@ -198,7 +260,7 @@ export default function RestaurantFloorPage({ toast }) {
         </div>
       </header>
 
-      <div className="rf-main" ref={mainRef}>
+      <div className="rf-main" ref={mainRef} style={size ? { "--rf-w": `${Math.round(size.w)}px` } : undefined}>
         <div className="rf-stats">
           <div><small>{t("rf.busy")}</small><b className="ek-num">{stats.busy} / {stats.total}</b></div>
           <div><small>{t("rf.guests")}</small><b className="ek-num">{stats.guests}</b></div>
@@ -212,7 +274,7 @@ export default function RestaurantFloorPage({ toast }) {
             <p className="rf-empty">{manager ? t("tbl.none") : t("rf.noneStaff")}</p>
           ) : (
             <div className="rf-plan" aria-label={t("rf.plan")}
-                 style={{ "--rf-ar": `${view.w} / ${view.h}`, ...(size ? { "--rf-w": `${Math.round(size.w)}px` } : null) }}>
+                 style={{ "--rf-ar": `${view.w} / ${view.h}` }}>
               {placedTables.map((tb) => {
                 const st = statusOf(tb, now);
                 const [l1, l2] = line(tb);
@@ -238,6 +300,13 @@ export default function RestaurantFloorPage({ toast }) {
             ))}
           </div>
         </main>
+
+        <div className="rf-grip" role="separator" aria-orientation="vertical" tabIndex={0}
+             aria-label={t("rf.resize")} title={t("rf.resizeHint")}
+             aria-valuemin={PLAN_MIN} aria-valuemax={Math.round(size?.max || PLAN_MIN)} aria-valuenow={Math.round(size?.w || PLAN_MIN)}
+             onPointerDown={onGripDown} onKeyDown={onGripKey} onDoubleClick={resetGrip}>
+          <span className="rf-grip__bar" aria-hidden="true" />
+        </div>
 
         <aside className="rf-side" aria-label={t("rf.attention")}>
           <h2>{t("rf.attention")}</h2>

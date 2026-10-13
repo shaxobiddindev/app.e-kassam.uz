@@ -606,13 +606,20 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
   /* ⚠ Egasining skrinshoti (2026-10-13): reja o'rtada tor, ikki yoni bo'sh edi.
      Endi keng ekranda reja chapda, o'ng ustun (stat + diqqat) qolgan kenglikni
      oladi va reja bo'yi ekranga to'liq sig'adi. */
+  /* ⚠ O'lcham `resize` dan keyin React qayta chizganda yangilanadi — HOLAT
+     kutiladi. Ilgari faqat `SHOTS` rejimida 300 ms kutish bor edi va to'liq
+     zanjirda reja 1600 px dagi eni bilan o'qilib, sinov yiqilardi. */
+  await waitFor(page, () => {
+    const p = document.querySelector(".rf-plan")?.getBoundingClientRect(), s = document.querySelector(".rf-side")?.getBoundingClientRect();
+    return p && s && p.right <= s.left && s.right <= document.querySelector(".rf-main").getBoundingClientRect().right + 1;
+  }, 4000);
   const lay = await page.evaluate(() => {
     const r = (s) => document.querySelector(s).getBoundingClientRect();
     const main = r(".rf-main"), plan = r(".rf-plan"), side = r(".rf-side"), stats = r(".rf-stats");
     return { leftGap: plan.left - main.left, between: side.left - plan.right, rightGap: main.right - side.right,
              statsBeside: stats.left > plan.right, bottom: plan.bottom, vh: innerHeight, planW: plan.width };
   });
-  lay.leftGap < 2 && lay.between <= 14 && lay.rightGap < 2 && lay.statsBeside
+  lay.leftGap < 2 && lay.between <= 18 && lay.rightGap < 2 && lay.statsBeside
     ? ok(`keng ekran: reja chapda, yonida bo'sh joy yo'q (oraliq ${lay.between.toFixed(0)} px), statlar o'ng ustunda`)
     : no("keng ekran joylashuvi", JSON.stringify(lay));
   lay.bottom <= lay.vh ? ok(`reja ekranga sig'adi (pasti ${lay.bottom.toFixed(0)} ≤ ${lay.vh})`) : no("reja ekrandan chiqdi", JSON.stringify(lay));
@@ -687,7 +694,7 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
   m.gap / m.tableW < 0.4 && m.gap > 20
     ? ok(`stollar orasi ${m.gap.toFixed(0)} px — stol enining ${Math.round((m.gap / m.tableW) * 100)}% (ilgari ~64%), yopishmagan`)
     : no("stollar orasi", JSON.stringify(m));
-  m.leftGap < 2 && m.between <= 14 ? ok("reja chapda, o'ng ustun bilan orasida bo'sh joy yo'q") : no("yon bo'sh joy", JSON.stringify(m));
+  m.leftGap < 2 && m.between <= 18 ? ok("reja chapda, o'ng ustun bilan orasida bo'sh joy yo'q") : no("yon bo'sh joy", JSON.stringify(m));
   m.bottom <= m.vh ? ok(`reja ekranga sig'adi (bo'yi ${m.planH.toFixed(0)} px)`) : no("reja ekrandan chiqdi", JSON.stringify(m));
   /2 kun 11 soat/.test(m.text) && !/3564/.test(m.text)
     ? ok("uzoq ochiq stol: «2 kun 11 soat», «3564 daq» emas") : no("vaqt matni", m.text);
@@ -707,6 +714,41 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
     ? ok("ochiq stollar: eng uzog'i tepada, «Uzoq ochiq» belgisi bilan") : no("ochiq stollar", JSON.stringify(col.rows));
   col.waiters.length === 2 && /Bo'sh: 4 stol · 24 o'rin/.test(col.free)
     ? ok(`ofitsiantlar (${col.waiters.length}) va bo'sh sig'im: ${col.free}`) : no("ofitsiantlar / sig'im", JSON.stringify(col));
+
+  /* Egasi (uchinchi skrinshot): «shu oynani o'lchamini surish orqali o'zgartirsa bo'lsin». */
+  const geo = () => page.evaluate(() => {
+    const r = (s) => document.querySelector(s).getBoundingClientRect();
+    const g = r(".rf-grip");
+    return { plan: r(".rf-plan").width, side: r(".rf-side").width, gx: g.left + g.width / 2, gy: g.top + g.height / 2,
+             gw: g.width + 28, ratio: localStorage.getItem("ek.rf.planRatio") };
+  });
+  const g0 = await geo();
+  await page.mouse.move(g0.gx, g0.gy);
+  await page.mouse.down();
+  await page.mouse.move(g0.gx - 120, g0.gy, { steps: 6 });
+  await page.mouse.move(g0.gx - 240, g0.gy, { steps: 6 });
+  await page.mouse.up();
+  await waitFor(page, () => false, 250);
+  const g1 = await geo();
+  Math.abs(g0.plan - g1.plan - 240) < 6 && g1.side > g0.side + 230 && g1.ratio
+    ? ok(`ajratgich chapga surildi: reja ${g0.plan.toFixed(0)} → ${g1.plan.toFixed(0)} px, o'ng ustun ${g0.side.toFixed(0)} → ${g1.side.toFixed(0)} px, saqlandi`)
+    : no("ajratgich sudrash", JSON.stringify({ g0, g1 }));
+  g0.gw >= 44 ? ok(`ajratgichning bosish maydoni ${g0.gw.toFixed(0)} px (≥ 44)`) : no("ajratgich tor", String(g0.gw));
+  await page.mouse.move(g1.gx, g1.gy); await page.mouse.down(); await page.mouse.move(g1.gx + 900, g1.gy, { steps: 8 }); await page.mouse.up();
+  await waitFor(page, () => false, 250);
+  const g2 = await geo();
+  Math.abs(g2.plan - g0.plan) < 2 ? ok("o'ngga ko'p surilsa ham reja ekran bo'yidan oshmaydi (bo'sh joy qolmaydi)") : no("o'ngga surish", JSON.stringify({ g0, g2 }));
+  await page.focus(".rf-grip"); await page.keyboard.press("ArrowLeft"); await page.keyboard.press("ArrowLeft");
+  await waitFor(page, () => false, 200);
+  const g3 = await geo();
+  Math.abs(g2.plan - g3.plan - 48) < 3 ? ok("klaviatura: ← ikki marta — 48 px") : no("klaviatura", JSON.stringify({ g2, g3 }));
+  /* ⚠ Ikki ALOHIDA bosish (haqiqiy sichqoncha va barmoq kabi): Puppeteer'ning
+     `clickCount: 2` atigi bitta `pointerdown` yuboradi. */
+  await page.mouse.click(g3.gx, g3.gy);
+  await page.mouse.click(g3.gx, g3.gy);
+  await waitFor(page, () => false, 250);
+  const g4 = await geo();
+  Math.abs(g4.plan - g0.plan) < 2 && !g4.ratio ? ok("ikki marta bosish — avtomatik o'lcham, saqlangani o'chdi") : no("qaytarish", JSON.stringify({ g0, g4 }));
   await page.close();
 }
 

@@ -117,6 +117,18 @@ console.log("\n── O'ng ustun: ochiq stollar va ofitsiantlar (2026-10-13) ─
   ok(F.openTables(null).length === 0 && F.waiterLoad(undefined).length === 0, "ma'lumot yo'q — bo'sh ro'yxat");
 }
 
+console.log("\n── Reja ajratgichi (2026-10-13) ──");
+{
+  const base = { mainW: 1400, availH: 600, ar: 1 };
+  ok(F.planWidth(base).w === 600, "avtomatik — ekran bo'yiga sig'adigan eng katta en");
+  ok(F.planWidth({ ...base, ratio: 0.3 }).w === 420, "ajratgich bilan toraytirildi — 30% = 420 px");
+  ok(F.planWidth({ ...base, ratio: 0.9 }).w === 600, "⚠ bo'ydan kattaroq bo'lmaydi (yon tomonda yana bo'sh joy qolmasin)");
+  ok(F.planWidth({ ...base, ratio: 0.01 }).w === F.PLAN_MIN, "eng kichigi — PLAN_MIN");
+  const tight = F.planWidth({ mainW: 1000, availH: 2000, ar: 1, ratio: 0.95 });
+  ok(tight.w === 1000 - F.SIDE_MIN - F.GRIP, "o'ng ustun SIDE_MIN dan torayib ketmaydi");
+  ok(F.planWidth({ ...base, ratio: 0.3, wide: false }).w === 600, "tor ekranda ajratgich yo'q — avtomatik");
+}
+
 console.log("\n── Holat ──");
 ok(F.statusOf({}) === "free", "bo'sh");
 ok(F.statusOf({ order: { id: 1 } }) === "busy", "band");

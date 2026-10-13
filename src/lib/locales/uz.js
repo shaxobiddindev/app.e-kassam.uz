@@ -3557,6 +3557,8 @@ export default {
   "rf.attention": "Diqqat talab qiladi",
   "rf.allCalm": "Hozircha hammasi joyida",
   "rf.openTables": "Ochiq stollar",
+  "rf.resize": "Reja va o'ng ustun chegarasi",
+  "rf.resizeHint": "Surib o'lchamni o'zgartiring. Ikki marta bosilsa — avvalgi holat",
   "rf.openNone": "Hozir band stol yo'q",
   "rf.freeCap": "Bo'sh: {n} stol · {seats} o'rin",
   "rf.longOpen": "Uzoq ochiq",

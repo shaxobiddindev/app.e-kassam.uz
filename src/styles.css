@@ -7438,7 +7438,9 @@ button.stk__c:hover { background: var(--bg-hover); }
 .rf-main .rf-open { grid-area: open; }
 @media (min-width: 1100px) {
   /* O'ng ustun reja bo'yigacha: oxirgi qator (`open`) qolganini oladi. */
-  .rf-main { grid-template-columns: auto minmax(300px, 1fr); grid-template-rows: auto auto minmax(0, 1fr); grid-template-areas: "plan stats" "plan side" "plan open"; }
+  .rf-main { column-gap: 0; grid-template-columns: var(--rf-w, auto) 16px minmax(300px, 1fr); grid-template-rows: auto auto minmax(0, 1fr);
+             grid-template-areas: "plan grip stats" "plan grip side" "plan grip open"; }
+  .rf-main .rf-grip { display: flex; }
   .rf-main .rf-open { align-self: stretch; min-height: 0; }
   .rf-main .rf-stats { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
   .rf-main .rf-plan { margin-inline: 0; }
@@ -7651,3 +7653,16 @@ button.stk__c:hover { background: var(--bg-hover); }
 .rf-open__wait { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-top: 1px solid var(--border-subtle); font-size: 14px; }
 .rf-open__wait:first-of-type { border-top: 0; }
 .rf-open__wait .ek-num { color: var(--fg-secondary); white-space: nowrap; }
+
+/* ── Reja ajratgichi (2026-10-13, egasi: «surish orqali o'lchamini o'zgartirsa bo'lsin») ──
+   ⚠ Ko'rinadigan chiziq ingichka, BOSISH MAYDONI ≥ 44 px (3-qoida): `::before`
+   ikki tomonga chiqadi. Faqat keng ekranda — tor ekranda ustunlar ustma-ust. */
+.rf-grip { grid-area: grip; display: none; position: relative; align-self: stretch; justify-content: center; cursor: col-resize; touch-action: none; outline: none; }
+.rf-grip::before { content: ""; position: absolute; inset: 0 -14px; }
+.rf-grip__bar { position: relative; width: 4px; margin-block: 24px; border-radius: 4px; background: var(--border-subtle); }
+/* Ushlash belgisi o'rtada — ingichka chiziqni ko'rmay qolish oson. */
+.rf-grip__bar::after { content: ""; position: absolute; left: 50%; top: 50%; width: 10px; height: 48px; transform: translate(-50%, -50%);
+                       border-radius: 6px; background: var(--border-strong); }
+.rf-grip:hover .rf-grip__bar::after, .rf-grip:focus-visible .rf-grip__bar::after, .rf-grip:active .rf-grip__bar::after { background: var(--border-brand); }
+.rf-grip:hover .rf-grip__bar, .rf-grip:focus-visible .rf-grip__bar, .rf-grip:active .rf-grip__bar { background: var(--border-brand); }
+.rf-grip:focus-visible { box-shadow: 0 0 0 2px var(--border-brand); border-radius: 6px; }

@@ -335,6 +335,24 @@ export function attention(halls, now = Date.now()) {
   return out.sort((a, b) => (a.kind === b.kind ? a.at - b.at : rank[a.kind] - rank[b.kind]));
 }
 
+/* ══ REJA ENI: AJRATGICH BILAN (2026-10-13) ═════════════════════════════════
+   Egasi: «shu oynani o'lchamini surish orqali o'zgartirsa bo'ladigan qil».
+   Keng ekranda reja va o'ng ustun orasida ajratgich; `ratio` — rejaning
+   asosiy maydon eniga nisbati (qurilmada saqlanadi, `null` — avtomatik).
+   ⚠ Reja ekran bo'yiga sig'adiganidan katta bo'lmaydi: aks holda o'ngga
+   surilganda sahifa pastga cho'zilib, yon tomonda yana bo'sh joy qolardi.
+   ⚠ O'ng ustun `SIDE_MIN` dan tor bo'lmaydi — statlar va ro'yxat sig'sin. */
+export const SIDE_MIN = 300;
+export const GRIP = 16;
+export const PLAN_MIN = 280;
+
+export function planWidth({ mainW, availH, ar, ratio = null, wide = true }) {
+  const roomW = mainW - (wide ? SIDE_MIN + GRIP : 0);
+  const max = Math.max(PLAN_MIN, Math.min(roomW, availH * ar));
+  if (!wide || ratio == null || !Number.isFinite(ratio)) return { w: max, max };
+  return { w: Math.max(PLAN_MIN, Math.min(max, ratio * mainW)), max };
+}
+
 /* ══ ZAL EKRANINING O'NG USTUNI (2026-10-13) ════════════════════════════════
    Egasi: «bu joy ham bo'sh qolmasligi kerak» — «Diqqat» panelidan pastda
    ustun bo'sh edi. U yerga mavjud ma'lumotdan (yangi so'rovsiz) ikki
