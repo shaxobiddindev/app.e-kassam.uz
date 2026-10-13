@@ -289,7 +289,10 @@ await page.click(".pay-modal-box--lite .pay-modal-footer .btn-primary"); await s
 u = await tu();
 yes(!u.open, "yuborilgach oyna yopildi");
 {
-  /* KVITANSIYA (V66) — ekranda, J- raqami va jamg'arma sarlavhasi bilan. */
+  /* KVITANSIYA (V66) — ekranda, J- raqami va jamg'arma sarlavhasi bilan.
+     ⚠ HOLATGA TAYANIB KUTILADI (2026-10-13): qat'iy 700 ms dan keyin o'qilardi va
+     yuklamada kvitansiya hali chizilmagan bo'lardi — 3 yurishdan 1 tasi yiqildi. */
+  await page.waitForFunction(() => /J-77/.test(document.querySelector(".pt-tape")?.textContent || ""), { timeout: 6000 }).catch(() => {});
   const tape = await page.evaluate(() => document.querySelector(".pt-tape")?.textContent || "");
   yes(/J-77/.test(tape) && /JAMG'ARMA KVITANSIYASI/.test(tape) && /72\s?020/.test(tape),
       "to'ldirishdan keyin kvitansiya ekranda (J-77, jamg'armada 72 020)", tape.slice(0, 120));

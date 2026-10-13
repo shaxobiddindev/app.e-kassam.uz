@@ -3,7 +3,9 @@ import { t } from "../lib/ek-i18n";
 import { tableApi } from "../api";
 import { money } from "../lib/ek-format";
 import { asArray } from "../lib/ek-array";
-import { minutesSince } from "../lib/ek-table-order";
+import { minutesSince, elapsed } from "../lib/ek-table-order";
+
+const since = (min) => { const e = elapsed(min); return t(e.key, e.vars); };
 import Overlay from "./ek/Overlay";
 import { SkeletonTiles } from "./ek/Loading";
 import { useLoading } from "../lib/use-loading";
@@ -101,7 +103,7 @@ export default function TablesOverlay({ onPick, onClose, openHere = [] }) {
                       <>
                         <span className="tbl-tile__sum ek-num">{money(o.total)}</span>
                         <span className="tbl-tile__meta">
-                          <i className="fa-solid fa-clock" aria-hidden="true" /> {t("tbl.minutes", { n: mins ?? 0 })}
+                          <i className="fa-solid fa-clock" aria-hidden="true" /> {since(mins ?? 0)}
                           {o.guests ? <> · <i className="fa-solid fa-user" aria-hidden="true" /> {o.guests}</> : null}
                         </span>
                       </>

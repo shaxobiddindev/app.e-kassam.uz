@@ -1,15 +1,15 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { t } from "../lib/ek-i18n";
 import { tableApi } from "../api";
 import { money } from "../lib/ek-format";
 import { asArray } from "../lib/ek-array";
-import { minutesSince } from "../lib/ek-table-order";
+import { minutesSince, elapsed } from "../lib/ek-table-order";
 import { subscribeTables, isLive } from "../lib/ek-live";
 import { isTerminal, lockNow } from "../lib/ek-terminal";
 import { roleSet } from "../lib/ek-roles";
 import { roleLabel } from "../lib/ek-labels";
-import { CHAIR, autoPlace, byPlace, bodyOf, fitBox, statusOf, attention, hhmm, atToday } from "../lib/ek-floor";
+import { autoPlace, byPlace, floorView, statusOf, attention, hhmm, atToday, openTables, freeCapacity, waiterLoad } from "../lib/ek-floor";
 import { Modal } from "../components";
 import { Field, FormGroup } from "../components/ui";
 import { SkeletonTiles, Spinner } from "../components/ek/Loading";
@@ -32,6 +32,11 @@ import { useLoading } from "../lib/use-loading";
 const MANAGERS = ["OWNER", "SHOP_ADMIN", "ADMIN"];
 const ICON = { free: "fa-chair", busy: "fa-utensils", bill: "fa-receipt", resv: "fa-calendar-check",
                ready: "fa-bell-concierge", late: "fa-hourglass-half" };
+
+/** Keng ekranda o'ng ustunning eng kichik eni (stat + diqqat) — CSS bilan bir xil. */
+const SIDE_MIN = 300;
+
+const since = (min) => { const e = elapsed(min); return t(e.key, e.vars); };
 
 export default function RestaurantFloorPage({ toast }) {
   const navigate = useNavigate();
@@ -72,14 +77,47 @@ export default function RestaurantFloorPage({ toast }) {
 
   const hall = halls.find((h) => h.id === hallId) || null;
   const placedTables = useMemo(() => byPlace(autoPlace(asArray(hall?.tables))), [hall]);
-  /* ⚠ FAQAT STOLLAR EGALLAGAN QISM (V164). Ilgari butun 1000 × 640 tekislik
-     chizilardi: stollar bir burchakda bo'lsa, ekranning yarmi bo'sh qolib,
-     stollar mayda chiqardi. Kesim stullar bilan hisoblanadi (`fitBox`),
-     stolning o'zi esa stullarsiz chiziladi — stul joyi oraliq bo'lib
-     qoladi va reja qancha cho'zilsa ham stollar yopishib ketmaydi. */
-  const view = useMemo(() => fitBox(placedTables), [placedTables]);
+  /* ⚠ FAQAT STOLLAR EGALLAGAN QISM (V164), katta bo'shliqlar qisqargan va
+     stol stullar zonasiga kirib chizilgan (2026-10-13, `ek-floor.floorView`). */
+  const { view, items: placeOf } = useMemo(() => {
+    const v = floorView(placedTables);
+    return { view: v.view, items: new Map(v.items.map((i) => [i.id, i])) };
+  }, [placedTables]);
+
+  /* ⚠ REJA O'LCHAMI HAQIQIY BO'SH JOYDAN (2026-10-13). Ilgari bo'y
+     `100dvh - 260px` deb TAXMIN qilinardi: zal deyarli kvadrat, ekran keng —
+     reja bo'yga sig'ib, o'rtada tor turardi va ikki yoni bo'sh qolardi.
+     Endi keng ekranda stat kartochkalari o'ng ustunda (bo'y rejaga qoladi),
+     reja chapga yopishadi va o'ng ustun qolgan kenglikni oladi. */
+  const mainRef = useRef(null);
+  const bodyRef = useRef(null);
+  const legendRef = useRef(null);
+  const [size, setSize] = useState(null);
+  const ar = view.w / view.h;
+  useLayoutEffect(() => {
+    const main = mainRef.current, body = bodyRef.current;
+    if (!main || !body) return undefined;
+    const measure = () => {
+      if (matchMedia("(max-width: 640px)").matches) { setSize(null); return; }
+      const wide = matchMedia("(min-width: 1100px)").matches;
+      const availW = main.clientWidth - (wide ? SIDE_MIN + 12 : 0);
+      const top = body.getBoundingClientRect().top + window.scrollY;
+      const legend = legendRef.current?.offsetHeight || 0;
+      const availH = Math.max(300, window.innerHeight - top - legend - 26);
+      const w = Math.max(280, Math.min(availW, availH * ar));
+      setSize((old) => (old && Math.abs(old.w - w) < 1 ? old : { w, h: w / ar }));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(main);
+    window.addEventListener("resize", measure);
+    return () => { ro.disconnect(); window.removeEventListener("resize", measure); };
+  }, [ar, hall]);
   const all = useMemo(() => halls.flatMap((h) => asArray(h.tables)), [halls]);
   const alerts = useMemo(() => attention(halls, now), [halls, now]);
+  const opened = useMemo(() => openTables(halls, now), [halls, now]);
+  const free = useMemo(() => freeCapacity(halls), [halls]);
+  const waiters = useMemo(() => waiterLoad(halls), [halls]);
   const stats = useMemo(() => {
     const busyT = all.filter((x) => x.order);
     return {
@@ -117,7 +155,7 @@ export default function RestaurantFloorPage({ toast }) {
     if (st === "ready") return [t("rf.readyN", { n: o.kitchenReady }), `${money(o.total)}${who ? ` · ${who}` : ""}`];
     if (st === "late") return [t("rf.lateMin", { n: minutesSince(o.kitchenWaitingSince, now) }), `${money(o.total)}${who ? ` · ${who}` : ""}`];
     if (st === "bill") return [t("rf.billGiven"), `${money(o.total)}${who ? ` · ${who}` : ""}`];
-    if (st === "busy") return [money(o.total), `${t("tbl.minutes", { n: minutesSince(o.openedAt, now) })}${who ? ` · ${who}` : ""}`];
+    if (st === "busy") return [money(o.total), `${since(minutesSince(o.openedAt, now))}${who ? ` · ${who}` : ""}`];
     if (st === "resv") return [t("rf.resvAt", { time: hhmm(tb.reservation.at) }),
       [tb.reservation.name, tb.reservation.guests ? t("rf.people", { n: tb.reservation.guests }) : ""].filter(Boolean).join(" · ")];
     return [t("tbl.free"), tb.seats ? t("rf.seats", { n: tb.seats }) : ""];
@@ -160,33 +198,30 @@ export default function RestaurantFloorPage({ toast }) {
         </div>
       </header>
 
-      <div className="rf-stats">
-        <div><small>{t("rf.busy")}</small><b className="ek-num">{stats.busy} / {stats.total}</b></div>
-        <div><small>{t("rf.guests")}</small><b className="ek-num">{stats.guests}</b></div>
-        <div><small>{t("rf.open")}</small><b className="ek-num">{money(stats.open)}</b></div>
-      </div>
+      <div className="rf-main" ref={mainRef}>
+        <div className="rf-stats">
+          <div><small>{t("rf.busy")}</small><b className="ek-num">{stats.busy} / {stats.total}</b></div>
+          <div><small>{t("rf.guests")}</small><b className="ek-num">{stats.guests}</b></div>
+          <div><small>{t("rf.open")}</small><b className="ek-num">{money(stats.open)}</b></div>
+        </div>
 
-      <div className="rf-main">
-        <main className="rf-body">
+        <main className="rf-body" ref={bodyRef}>
           {busy ? (
             <SkeletonTiles count={12} />
           ) : !hall ? (
             <p className="rf-empty">{manager ? t("tbl.none") : t("rf.noneStaff")}</p>
           ) : (
             <div className="rf-plan" aria-label={t("rf.plan")}
-                 style={{ "--rf-ar": `${view.w} / ${view.h}`,
-                          /* Bo'yi ekranga sig'sin: tor-baland zalda eni qisqaradi. */
-                          "--rf-w": `min(100%, calc((100dvh - 260px) * ${(view.w / view.h).toFixed(3)}))` }}>
+                 style={{ "--rf-ar": `${view.w} / ${view.h}`, ...(size ? { "--rf-w": `${Math.round(size.w)}px` } : null) }}>
               {placedTables.map((tb) => {
                 const st = statusOf(tb, now);
                 const [l1, l2] = line(tb);
-                const s = bodyOf(tb.shape, tb.seats, tb.vertical);
+                const at = placeOf.get(tb.id);
                 const dim = mine && (!tb.order || tb.order.openedBy !== me);
                 return (
                   <button key={tb.id} type="button"
                           className={`rf-table rf-table--${st} rf-shape--${String(tb.shape || "SQUARE").toLowerCase()}${dim ? " is-dim" : ""}`}
-                          style={{ left: `${((tb.x + CHAIR - view.x) / view.w) * 100}%`, top: `${((tb.y + CHAIR - view.y) / view.h) * 100}%`,
-                                   width: `${(s.w / view.w) * 100}%`, height: `${(s.h / view.h) * 100}%` }}
+                          style={at ? { left: `${at.left}%`, top: `${at.top}%`, width: `${at.width}%`, height: `${at.height}%` } : undefined}
                           onClick={() => pick(tb)}
                           aria-label={`${tb.name}: ${t(`rf.st.${st}`)}. ${l1}${l2 ? `, ${l2}` : ""}`}>
                     <span className="rf-table__name"><i className={`fa-solid ${ICON[st]}`} aria-hidden="true" /> {tb.name}</span>
@@ -197,7 +232,7 @@ export default function RestaurantFloorPage({ toast }) {
               })}
             </div>
           )}
-          <div className="rf-legend" aria-hidden="true">
+          <div className="rf-legend" aria-hidden="true" ref={legendRef}>
             {["free", "busy", "ready", "late", "bill", "resv"].map((st) => (
               <span key={st}><span className={`rf-sw rf-table--${st}`} /> {t(`rf.st.${st}`)}</span>
             ))}
@@ -212,7 +247,7 @@ export default function RestaurantFloorPage({ toast }) {
             <button key={`${a.kind}-${a.table.id}`} type="button" className={`rf-alert rf-table--${a.kind}`} onClick={() => pick(a.table)}>
               <span className="rf-alert__top">
                 <b>{a.table.name}{halls.length > 1 ? ` · ${a.hall.name}` : ""}</b>
-                <span className="ek-num">{a.kind === "bill" ? t("tbl.minutes", { n: minutesSince(a.table.order.billAt, now) })
+                <span className="ek-num">{a.kind === "bill" ? since(minutesSince(a.table.order.billAt, now))
                   : a.kind === "late" ? t("tbl.minutes", { n: minutesSince(a.table.order.kitchenWaitingSince, now) })
                   : a.kind === "ready" ? t("rf.now") : hhmm(a.table.reservation.at)}</span>
               </span>
@@ -220,6 +255,42 @@ export default function RestaurantFloorPage({ toast }) {
                 : a.kind === "late" ? t("rf.alertLate") : t("rf.alertResv", { name: a.table.reservation.name || "—" })}</span>
             </button>
           ))}
+        </aside>
+
+        {/* O'ng ustunning qolgan bo'yi (2026-10-13, egasi: «bo'sh qolmasin»):
+            ochiq stollar — eng uzoq ochig'i tepada, keyin ofitsiantlar yuki. */}
+        <aside className="rf-open" aria-label={t("rf.openTables")}>
+          <section className="rf-open__part rf-open__part--grow">
+            <h2>{t("rf.openTables")} <span className="ek-num">{opened.length}</span></h2>
+            {opened.length === 0 ? (
+              <p className="rf-empty">{t("rf.openNone")}</p>
+            ) : (
+              <div className="rf-open__list">
+                {opened.map((o) => (
+                  <button key={o.table.id} type="button" className={`rf-open__row${o.long ? " is-long" : ""}`} onClick={() => pick(o.table)}>
+                    <span className="rf-open__name"><b>{o.table.name}</b>{halls.length > 1 ? ` · ${o.hall.name}` : ""}
+                      {o.long && <span className="rf-open__flag"><i className="fa-solid fa-triangle-exclamation" aria-hidden="true" /> {t("rf.longOpen")}</span>}
+                    </span>
+                    <span className="rf-open__who">{o.who || t("rf.noWaiter")}</span>
+                    <span className="rf-open__time ek-num">{o.min == null ? "—" : since(o.min)}</span>
+                    <span className="rf-open__sum ek-num">{money(o.total)}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            {free.tables > 0 && <p className="rf-open__free">{t("rf.freeCap", { n: free.tables, seats: free.seats })}</p>}
+          </section>
+          {waiters.length > 0 && (
+            <section className="rf-open__part">
+              <h2>{t("rf.waiters")}</h2>
+              {waiters.map((w) => (
+                <div key={w.who || "-"} className="rf-open__wait">
+                  <span>{w.who || t("rf.noWaiter")}</span>
+                  <span className="ek-num">{t("rf.waiterTables", { n: w.tables })} · {money(w.total)}</span>
+                </div>
+              ))}
+            </section>
+          )}
         </aside>
       </div>
 

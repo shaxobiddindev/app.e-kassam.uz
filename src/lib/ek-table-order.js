@@ -88,3 +88,16 @@ export function minutesSince(iso, now = Date.now()) {
   const t = Date.parse(iso);
   return Number.isFinite(t) ? Math.max(0, Math.floor((now - t) / 60000)) : null;
 }
+
+/**
+ * Stol qancha vaqtdan beri ochiq — `t(key, vars)` uchun.
+ * ⚠ Egasining skrinshotida «3564 daq» turardi (stol 2.5 kun yopilmagan):
+ * bunday raqamni o'qib bo'lmaydi. Soatdan keyin — soat va daqiqa,
+ * sutkadan keyin — kun va soat.
+ */
+export function elapsed(min) {
+  const n = Math.max(0, Math.floor(Number(min) || 0));
+  if (n < 60) return { key: "tbl.minutes", vars: { n } };
+  if (n < 24 * 60) return { key: "tbl.hoursMin", vars: { h: Math.floor(n / 60), m: n % 60 } };
+  return { key: "tbl.daysHours", vars: { d: Math.floor(n / 1440), h: Math.floor((n % 1440) / 60) } };
+}

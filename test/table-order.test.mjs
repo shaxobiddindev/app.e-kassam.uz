@@ -2,7 +2,7 @@
    STOL BUYURTMASI ↔ SAVAT (T1)
    Ishga tushirish:  node test/table-order.test.mjs
    ══════════════════════════════════════════════════════════════════════════ */
-const { linesOf, sigOf, itemsFrom, minutesSince } = await import("../src/lib/ek-table-order.js");
+const { linesOf, sigOf, itemsFrom, minutesSince, elapsed } = await import("../src/lib/ek-table-order.js");
 const { lineFor, keyOf } = await import("../src/lib/ek-modifiers.js");
 
 let pass = 0, fail = 0;
@@ -63,6 +63,12 @@ console.log("\n── Mehmon, kurs, izoh, oshxonaga ketgani (D3) ──");
 console.log("\n── Vaqt ──");
 eq(minutesSince("2026-10-08T10:00:00Z", Date.parse("2026-10-08T10:45:30Z")), 45, "45 daqiqa");
 eq(minutesSince("buzuq"), null, "buzuq sana — null");
+
+/* Egasining skrinshotida «3564 daq» turardi — o'qib bo'lmaydi. */
+eq(JSON.stringify(elapsed(45)), JSON.stringify({ key: "tbl.minutes", vars: { n: 45 } }), "soatgacha — daqiqa");
+eq(JSON.stringify(elapsed(135)), JSON.stringify({ key: "tbl.hoursMin", vars: { h: 2, m: 15 } }), "2 soat 15 daq");
+eq(JSON.stringify(elapsed(3564)), JSON.stringify({ key: "tbl.daysHours", vars: { d: 2, h: 11 } }), "3564 daq → 2 kun 11 soat");
+eq(JSON.stringify(elapsed(null)), JSON.stringify({ key: "tbl.minutes", vars: { n: 0 } }), "vaqt yo'q — 0 daq");
 
 console.log(`\n${pass} ✅ · ${fail} ❌`);
 if (fail) process.exit(1);

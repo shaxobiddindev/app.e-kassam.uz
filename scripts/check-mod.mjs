@@ -60,7 +60,7 @@ const ok = (m) => console.log("  ✅ " + m);
 const no = (m, got) => { bad++; console.log(`  ❌ ${m}  →  ${got}`); };
 const pageErrors = [];
 
-async function openKassa({ restaurant, kitchen = false, tables = false, terminal = false, role = "OWNER", path = "/sale", ready, shiftClosed = false, stopIds = [], sent = false, voidTicket = false }) {
+async function openKassa({ restaurant, kitchen = false, tables = false, terminal = false, role = "OWNER", path = "/sale", ready, shiftClosed = false, stopIds = [], sent = false, voidTicket = false, hallsData = null, theme = "light" }) {
   const calls = { modifiers: 0, sales: [], tables: [], sse: [], orders: {},
                   resv11: { at: new Date(Date.now() + 30 * 60000).toISOString(), name: "Aziz", guests: 6 },
                   menuStop: [], stop7: false };
@@ -121,7 +121,9 @@ async function openKassa({ restaurant, kitchen = false, tables = false, terminal
       let body = null;
       try { body = JSON.parse(r.postData() || "null"); } catch { /* bo'sh */ }
       calls.tables.push({ m: r.method(), p: u.pathname.replace(/^.*\/api/, ""), body });
-      if (u.pathname.endsWith("/tables/halls")) {
+      if (u.pathname.endsWith("/tables/halls") && hallsData) {
+        data = hallsData;
+      } else if (u.pathname.endsWith("/tables/halls")) {
         data = [{ id: 1, name: "Zal", sortOrder: 0, tables: [
           { id: 11, name: "Stol 1", seats: 4, sortOrder: 1, order: null, x: 40, y: 40, shape: "ROUND", reservation: calls.resv11 },
           { id: 12, name: "Stol 2", seats: 4, sortOrder: 2, x: 300, y: 200, shape: "LONG", reservation: null,
@@ -282,10 +284,10 @@ async function openKassa({ restaurant, kitchen = false, tables = false, terminal
                        body: JSON.stringify({ success: true, data }) });
   });
   page.on("pageerror", (e) => { pageErrors.push(e.message); });
-  await page.evaluateOnNewDocument((ROLE, TERMINAL) => {
+  await page.evaluateOnNewDocument((ROLE, TERMINAL, THEME) => {
     for (const [k, v] of Object.entries({
       ek_token: "m", ek_type: "user", ek_role: ROLE, ek_username: "m",
-      ek_fullName: "M", ek_shopCode: "m", ek_deviceId: "m", ek_lang: "uz", ek_theme: "light",
+      ek_fullName: "M", ek_shopCode: "m", ek_deviceId: "m", ek_lang: "uz", ek_theme: THEME,
     })) localStorage.setItem(k, v);
     if (TERMINAL) localStorage.setItem("ek_terminal", "1"); else localStorage.removeItem("ek_terminal");
     /* ⚠ Har stsenariy — TOZA QURILMA. Sahifalar bitta brauzer profilida va
@@ -294,7 +296,7 @@ async function openKassa({ restaurant, kitchen = false, tables = false, terminal
        o'tib, uni boshqa holatdan boshlab yuborardi (A1, 2026-10-12). */
     for (const k of ["ek_features", "ek_home_page", "ek_err_queue"]) localStorage.removeItem(k);
     for (const k of Object.keys(localStorage)) if (k.startsWith("ek_cart")) localStorage.removeItem(k);
-  }, role, terminal);
+  }, role, terminal, theme);
   await page.goto(`http://127.0.0.1:${PORT}${path}`, { waitUntil: "networkidle2", timeout: 30_000 });
   /* `ready` — o'zi tanlagan selektor: do'konda restoran manzili boshqa
      sahifaga qaytadi va uning selektori kutilmaydi (§15). */
@@ -593,14 +595,27 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
      geometriya o'zgarganda jimgina eskirardi). */
   const F = await import("../src/lib/ek-floor.js");
   const mockT = [{ x: 40, y: 40, shape: "ROUND", seats: 4 }, { x: 300, y: 200, shape: "LONG", seats: 4 }];
-  const vw = F.fitBox(mockT);
-  const want = mockT.map((x) => [((x.x + F.CHAIR - vw.x) / vw.w) * 100, ((x.y + F.CHAIR - vw.y) / vw.h) * 100]);
+  /* 2026-10-13: joy `floorView` dan (siqish + stullar zonasiga kirib chizish). */
+  const want = F.floorView(mockT.map((x, i) => ({ ...x, id: i }))).items.map((it) => [it.left, it.top]);
   const pos = await page.evaluate(() => [...document.querySelectorAll(".rf-plan .rf-table")].map((b) => [parseFloat(b.style.left), parseFloat(b.style.top)]));
   pos.length === 2 && pos.every((p, i) => Math.abs(p[0] - want[i][0]) < 0.01 && Math.abs(p[1] - want[i][1]) < 0.01)
     ? ok("stollar rejadagi joyida — bo'sh tekislik kesilgan: " + pos.map((p) => p.map((v) => v.toFixed(1)).join("/")).join(" ; "))
     : no("joy", JSON.stringify(pos) + " ≠ " + JSON.stringify(want));
   const ar = await page.evaluate(() => getComputedStyle(document.querySelector(".rf-plan")).aspectRatio);
   !/1000 \/ 640/.test(ar) ? ok(`reja nisbati kesimdan: ${ar}`) : no("reja kesilmadi", ar);
+  /* ⚠ Egasining skrinshoti (2026-10-13): reja o'rtada tor, ikki yoni bo'sh edi.
+     Endi keng ekranda reja chapda, o'ng ustun (stat + diqqat) qolgan kenglikni
+     oladi va reja bo'yi ekranga to'liq sig'adi. */
+  const lay = await page.evaluate(() => {
+    const r = (s) => document.querySelector(s).getBoundingClientRect();
+    const main = r(".rf-main"), plan = r(".rf-plan"), side = r(".rf-side"), stats = r(".rf-stats");
+    return { leftGap: plan.left - main.left, between: side.left - plan.right, rightGap: main.right - side.right,
+             statsBeside: stats.left > plan.right, bottom: plan.bottom, vh: innerHeight, planW: plan.width };
+  });
+  lay.leftGap < 2 && lay.between <= 14 && lay.rightGap < 2 && lay.statsBeside
+    ? ok(`keng ekran: reja chapda, yonida bo'sh joy yo'q (oraliq ${lay.between.toFixed(0)} px), statlar o'ng ustunda`)
+    : no("keng ekran joylashuvi", JSON.stringify(lay));
+  lay.bottom <= lay.vh ? ok(`reja ekranga sig'adi (pasti ${lay.bottom.toFixed(0)} ≤ ${lay.vh})`) : no("reja ekrandan chiqdi", JSON.stringify(lay));
   const txt = await page.evaluate(() => [...document.querySelectorAll(".rf-plan .rf-table")].map((b) => b.textContent).join(" || "));
   /Bron \d\d:\d\d/.test(txt) && /Aziz/.test(txt) && /Hisob berildi/.test(txt) && /Dilnoza Karimova/.test(txt)
     ? ok("holat matni: bron vaqti va ismi, «Hisob berildi», ofitsiant ismi") : no("holat matni", txt);
@@ -638,6 +653,60 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
   await page.evaluate(() => [...document.querySelectorAll(".rt-actions button")].find((b) => /Hisob/.test(b.textContent))?.click());
   (await waitFor(page, () => false, 800).then(() => calls.tables.some((c) => c.m === "POST" && /\/tables\/orders\/502\/bill$/.test(c.p))))
     ? ok("stol ekranida «Hisob berildi» serverga ketdi") : no("hisob POST yo'q", "—");
+  await page.close();
+}
+
+{
+  /* ⚠ EGASINING SKRINSHOTI (2026-10-13): 6 ta stol 3×3 to'rda, keng qorong'i
+     ekran — reja o'rtada tor, ikki yoni bo'sh, stollar orasida keng hoshiya,
+     ikki kun ochiq stolda «3564 daq». Aynan shu holat takrorlanadi. */
+  console.log("\n§10b Zal: keng ekranda bo'sh joy (egasining skrinshoti)");
+  const at = (i, x, y, order) => ({ id: 100 + i, name: `Stol ${i}`, seats: 6, sortOrder: i, x, y, shape: "SQUARE", reservation: null, order });
+  const old = (min, who) => ({ id: 900 + min, total: 0, guests: 0, openedAt: new Date(Date.now() - min * 60000).toISOString(),
+                               lineCount: 0, version: 1, openedBy: who, openedByName: who });
+  const hallsData = [{ id: 1, name: "Zal", sortOrder: 0, tables: [
+    at(1, 100, 80, null), at(3, 238, 80, old(3564, "restoran")), at(6, 376, 80, null),
+    at(2, 100, 218, old(3565, "Girgitton")), at(4, 238, 218, null), at(5, 100, 356, null),
+  ] }];
+  const { page } = await openKassa({ restaurant: true, tables: true, path: "/restaurant", hallsData, theme: "dark" });
+  await page.setViewport({ width: 1633, height: 850 });
+  await waitFor(page, () => document.querySelectorAll(".rf-plan .rf-table").length === 6, 6000);
+  await waitFor(page, () => false, 400);
+  if (process.env.SHOTS) await page.screenshot({ path: path.join(process.env.SHOTS, "floor-wide-dark.png") });
+  const m = await page.evaluate(() => {
+    const r = (el) => el.getBoundingClientRect();
+    const tb = [...document.querySelectorAll(".rf-plan .rf-table")].map(r);
+    const main = r(document.querySelector(".rf-main")), plan = r(document.querySelector(".rf-plan")), side = r(document.querySelector(".rf-side"));
+    const s1 = tb[0], s3 = tb[1];
+    return { tableW: s1.width, gap: s3.left - s1.right, leftGap: plan.left - main.left, between: side.left - plan.right,
+             planH: plan.height, bottom: plan.bottom, vh: innerHeight,
+             text: [...document.querySelectorAll(".rf-plan .rf-table")].map((b) => b.textContent).join(" | ") };
+  });
+  /* Ilgari shu ekranda: stol 115 px, oraliq 74 px, reja 660 px o'rtada. */
+  m.tableW > 140 ? ok(`stol yiriklashdi: ${m.tableW.toFixed(0)} px (ilgari ~115)`) : no("stol kichik", JSON.stringify(m));
+  m.gap / m.tableW < 0.4 && m.gap > 20
+    ? ok(`stollar orasi ${m.gap.toFixed(0)} px — stol enining ${Math.round((m.gap / m.tableW) * 100)}% (ilgari ~64%), yopishmagan`)
+    : no("stollar orasi", JSON.stringify(m));
+  m.leftGap < 2 && m.between <= 14 ? ok("reja chapda, o'ng ustun bilan orasida bo'sh joy yo'q") : no("yon bo'sh joy", JSON.stringify(m));
+  m.bottom <= m.vh ? ok(`reja ekranga sig'adi (bo'yi ${m.planH.toFixed(0)} px)`) : no("reja ekrandan chiqdi", JSON.stringify(m));
+  /2 kun 11 soat/.test(m.text) && !/3564/.test(m.text)
+    ? ok("uzoq ochiq stol: «2 kun 11 soat», «3564 daq» emas") : no("vaqt matni", m.text);
+  /* Egasi (ikkinchi skrinshot): «Diqqat» panelidan pastdagi bo'sh joy ham to'lsin. */
+  const col = await page.evaluate(() => {
+    const r = (s) => document.querySelector(s)?.getBoundingClientRect();
+    const plan = r(".rf-body"), open = r(".rf-open");   // chap ustun: reja + legend
+    const rows = [...document.querySelectorAll(".rf-open__row")].map((b) => b.textContent.replace(/\s+/g, " ").trim());
+    return { planBottom: plan.bottom, openBottom: open?.bottom ?? 0, rows,
+             waiters: [...document.querySelectorAll(".rf-open__wait")].map((b) => b.textContent.trim()),
+             free: document.querySelector(".rf-open__free")?.textContent || "" };
+  });
+  Math.abs(col.openBottom - col.planBottom) < 2
+    ? ok(`o'ng ustun chap ustun bo'yigacha to'ldi (pasti ${col.openBottom.toFixed(0)} = ${col.planBottom.toFixed(0)})`)
+    : no("o'ng ustun bo'yi", JSON.stringify(col));
+  col.rows.length === 2 && /Stol 2/.test(col.rows[0]) && /Uzoq ochiq/.test(col.rows[0])
+    ? ok("ochiq stollar: eng uzog'i tepada, «Uzoq ochiq» belgisi bilan") : no("ochiq stollar", JSON.stringify(col.rows));
+  col.waiters.length === 2 && /Bo'sh: 4 stol · 24 o'rin/.test(col.free)
+    ? ok(`ofitsiantlar (${col.waiters.length}) va bo'sh sig'im: ${col.free}`) : no("ofitsiantlar / sig'im", JSON.stringify(col));
   await page.close();
 }
 

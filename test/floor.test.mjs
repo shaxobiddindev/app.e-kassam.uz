@@ -65,6 +65,58 @@ console.log("\n── Zal ko'rinishi: bo'sh joy kesiladi (V164) ──");
   ok(all.w === F.PLANE.w || all.w <= F.PLANE.w, "butun zal band — butun tekislik");
 }
 
+console.log("\n── Zal ekrani: bo'sh joy tejaladi (2026-10-13) ──");
+{
+  /* Egasining skrinshoti: 6 ta stol 3×3 to'rda, muharrir qoidasi bilan zich. */
+  const grid = [[0, 0], [138, 0], [276, 0], [0, 138], [138, 138], [0, 276]]
+    .map(([x, y], i) => ({ id: i + 1, x: 100 + x, y: 80 + y, shape: "SQUARE", seats: 4 }));
+  const same = F.squeeze(grid);
+  ok(same.every((t, i) => t.x === grid[i].x && t.y === grid[i].y), "zich reja — siqilmaydi (bo'shliq 18 < MAX_GAP)");
+
+  const far = [{ id: 1, x: 0, y: 0, shape: "SQUARE", seats: 4 }, { id: 2, x: 600, y: 0, shape: "SQUARE", seats: 4 },
+               { id: 3, x: 0, y: 400, shape: "ROUND", seats: 4 }, { id: 4, x: 620, y: 420, shape: "LONG", seats: 6 }];
+  const sq = F.squeeze(far);
+  /* Chap guruhning o'ng cheti — eng keng qutidan (dumaloq stol 122, kvadrat 120). */
+  const gapX = sq[1].x - Math.max(sq[0].x + F.boxOf(sq[0]).w, sq[2].x + F.boxOf(sq[2]).w);
+  ok(gapX === F.MAX_GAP, `uzoq stollar yaqinlashdi: x bo'shliq ${gapX} = MAX_GAP`);
+  ok(sq[0].x < sq[1].x && sq[2].y > sq[0].y && sq[3].x > sq[2].x && sq[3].y > sq[1].y, "tartib saqlandi (chapdagi chapda, pastdagi pastda)");
+  const boxes = sq.map(F.boxOf);
+  const clash = boxes.some((a, i) => boxes.some((b, j) => i < j && F.overlaps(a, b, 0)));
+  ok(!clash, "siqilganda ustma-ust tushmaydi");
+  ok(F.squeeze([{ id: 1, x: 300, y: 300 }])[0].x === 300, "bitta stol — joyida");
+
+  const { view, items } = F.floorView(grid);
+  const s1 = items[0], s2 = items[1];
+  const bodyW = (s1.width / 100) * view.w;
+  const between = ((s2.left - s1.left - s1.width) / 100) * view.w;
+  ok(bodyW === 120 - F.INSET * 2, `stol stullar zonasiga kirib chiziladi: ${bodyW} birlik (ilgari 84)`);
+  ok(between >= 20 && between < 40, `stollar orasi ${between} birlik — yaqin, lekin yopishmagan (ilgari 54)`);
+  ok(items.every((it) => it.left >= 0 && it.top >= 0 && it.left + it.width <= 100.0001 && it.top + it.height <= 100.0001), "hamma stol kesim ichida");
+}
+
+console.log("\n── O'ng ustun: ochiq stollar va ofitsiantlar (2026-10-13) ──");
+{
+  const now = Date.parse("2026-10-13T12:00:00Z");
+  const ago = (m) => new Date(now - m * 60000).toISOString();
+  const halls = [{ id: 1, name: "Zal", tables: [
+    { id: 1, name: "Stol 1", seats: 4, order: { openedAt: ago(30), total: 50000, openedByName: "Ali" } },
+    { id: 2, name: "Stol 2", seats: 6, order: { openedAt: ago(3565), total: 0, openedByName: "Vali" } },
+    { id: 3, name: "Stol 3", seats: 4, order: null },
+    { id: 4, name: "Stol 4", seats: 2, order: { openedAt: ago(90), total: 20000, openedByName: "Ali" } },
+    { id: 5, name: "Stol 5", seats: 6, order: { openedAt: null, total: 1000 } },
+  ] }];
+  const o = F.openTables(halls, now);
+  ok(o.map((x) => x.table.id).join() === "2,4,1,5", "⚠ eng uzoq ochig'i tepada (2.5 kunlik unutilgan hisob — birinchi), vaqtsizi oxirida");
+  ok(o[0].long && !o[1].long, `${F.LONG_OPEN_MIN} daqiqadan uzog'i — «uzoq ochiq»`);
+  ok(o[3].min === null && o[3].who === "", "vaqt va ofitsiant yo'q — bo'sh, yiqilmaydi");
+  const cap = F.freeCapacity(halls);
+  ok(cap.tables === 1 && cap.seats === 4, "bo'sh: 1 stol · 4 o'rin");
+  const w = F.waiterLoad(halls);
+  ok(w[0].who === "Ali" && w[0].tables === 2 && w[0].total === 70000, "ofitsiant yuki: Ali — 2 stol, 70 000");
+  ok(w.some((x) => x.who === "" && x.tables === 1), "ismi yo'q buyurtmalar — bitta «belgilanmagan» guruhi");
+  ok(F.openTables(null).length === 0 && F.waiterLoad(undefined).length === 0, "ma'lumot yo'q — bo'sh ro'yxat");
+}
+
 console.log("\n── Holat ──");
 ok(F.statusOf({}) === "free", "bo'sh");
 ok(F.statusOf({ order: { id: 1 } }) === "busy", "band");

@@ -6,10 +6,12 @@ import { tableApi, productApi, modifierApi, kitchenApi } from "../api";
 import { money } from "../lib/ek-format";
 import { asArray } from "../lib/ek-array";
 import { roleSet } from "../lib/ek-roles";
-import { linesOf, sigOf, itemsFrom, seatKey, minutesSince } from "../lib/ek-table-order";
+import { linesOf, sigOf, itemsFrom, seatKey, minutesSince, elapsed } from "../lib/ek-table-order";
 import { groupsFor, lineFor, modsText } from "../lib/ek-modifiers";
 import { stationMap, kitchenTickets } from "../lib/ek-kitchen";
 import { urgencyOf } from "../lib/ek-floor";
+
+const since = (min) => { const e = elapsed(min); return t(e.key, e.vars); };
 import { printKitchen } from "../lib/ek-hardware";
 import { isDesktop } from "../lib/ek-desktop";
 import { isTerminal, lockNow } from "../lib/ek-terminal";
@@ -372,7 +374,7 @@ export default function RestaurantTablePage({ toast }) {
         <div className="rt-title">
           <b>{order?.tableName || "…"}</b>
           <small>
-            {order?.hallName}{order?.openedAt ? ` · ${t("tbl.minutes", { n: minutesSince(order.openedAt, now) })}` : ""}
+            {order?.hallName}{order?.openedAt ? ` · ${since(minutesSince(order.openedAt, now))}` : ""}
             {dirty ? ` · ${t("rt.saving")}` : ""}
           </small>
         </div>

@@ -7427,19 +7427,36 @@ button.stk__c:hover { background: var(--bg-hover); }
 
 /* ══ ZAL REJASI VA HOLATLAR (D2) ═══════════════════════════════════════════
    Holat rangi + belgi + matn (6-qoida). Reja 1000 × 640 tekislik foizda. */
-.rf-main { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; }
-.rf-main .rf-body { flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
-.rf-plan { position: relative; width: var(--rf-w, 100%); margin-inline: auto; aspect-ratio: var(--rf-ar, 1000 / 640); background: var(--bg-surface);
+/* ⚠ Keng ekranda IKKI USTUN (2026-10-13): reja chapda o'z enida (sahifa uni
+   bo'sh joydan o'lchaydi), o'ngda stat + diqqat qolgan kenglikni oladi —
+   ilgari reja o'rtada tor turar, ikki yoni bo'sh qolardi. `minmax(300px…)`
+   — `RestaurantFloorPage.SIDE_MIN` bilan bir xil. */
+.rf-main { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); grid-template-areas: "stats" "plan" "side" "open"; align-items: start; }
+.rf-main .rf-stats { grid-area: stats; }
+.rf-main .rf-body { grid-area: plan; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.rf-main .rf-side { grid-area: side; }
+.rf-main .rf-open { grid-area: open; }
+@media (min-width: 1100px) {
+  /* O'ng ustun reja bo'yigacha: oxirgi qator (`open`) qolganini oladi. */
+  .rf-main { grid-template-columns: auto minmax(300px, 1fr); grid-template-rows: auto auto minmax(0, 1fr); grid-template-areas: "plan stats" "plan side" "plan open"; }
+  .rf-main .rf-open { align-self: stretch; min-height: 0; }
+  .rf-main .rf-stats { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+  .rf-main .rf-plan { margin-inline: 0; }
+}
+.rf-plan { position: relative; width: var(--rf-w, 100%); max-width: 100%; margin-inline: auto; aspect-ratio: var(--rf-ar, 1000 / 640); background: var(--bg-surface);
            border: 1px solid var(--border-subtle); border-radius: 18px; overflow: hidden; container-type: inline-size; }
-.rf-plan .rf-table { position: absolute; min-height: 0; box-sizing: border-box; padding: 4px; gap: 2px; overflow: hidden; }
-.rf-plan .rf-table__name { font-size: clamp(11px, 1.7cqw, 18px); }
-.rf-plan .rf-table__l1 { font-size: clamp(10px, 1.45cqw, 16px); font-weight: 700; }
-.rf-plan .rf-table__meta { font-size: clamp(9px, 1.15cqw, 13px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+/* ⚠ Matn STOLNING O'Z ENIDAN (`cqi`, 2026-10-13): ilgari butun reja enidan
+   (`cqw`) edi — stol 168 px ga kattalashganda ichida 11 px matn qolib,
+   stol bo'sh ko'rinardi. Kichik stolda pastki chegara (10–11 px) ushlaydi. */
+.rf-plan .rf-table { position: absolute; min-height: 0; box-sizing: border-box; padding: 4px; gap: 2px; overflow: hidden; container-type: inline-size; }
+.rf-plan .rf-table__name { font-size: clamp(11px, 11cqi, 20px); }
+.rf-plan .rf-table__l1 { font-size: clamp(10px, 9.5cqi, 18px); font-weight: 700; }
+.rf-plan .rf-table__meta { font-size: clamp(9px, 7cqi, 14px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 /* Telefonda (ofitsiant cho'ntagida) reja o'rniga plitkalar: 390 px ga siqilgan
    rejada stol 40 px bo'lib qolardi — yurib turib bosib bo'lmaydi (3-qoida).
    Tartib — rejadagidek, yuqoridan pastga (`ek-floor.byPlace`). */
 @media (max-width: 640px) {
-  .rf-plan { width: 100%; aspect-ratio: auto; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 10px; }
+  .rf-plan { width: 100% !important; aspect-ratio: auto; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 10px; }
   .rf-plan .rf-table { position: static; width: auto !important; height: auto !important; min-height: 84px; padding: 10px; }
   .rf-plan .rf-shape--round { border-radius: 18px !important; }
   .rf-plan .rf-table__name { font-size: 16px; }
@@ -7456,7 +7473,7 @@ button.stk__c:hover { background: var(--bg-hover); }
 .rf-legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 12px; color: var(--fg-secondary); }
 .rf-legend > span { display: inline-flex; align-items: center; gap: 6px; }
 .rf-sw { width: 14px; height: 14px; border-radius: 4px; box-sizing: border-box; display: inline-block; }
-.rf-side { flex: 1 1 280px; max-width: 100%; box-sizing: border-box; background: var(--bg-surface); border: 1px solid var(--border-subtle);
+.rf-side { max-width: 100%; box-sizing: border-box; background: var(--bg-surface); border: 1px solid var(--border-subtle);
            border-radius: 18px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
 .rf-side h2 { margin: 0; font-size: 16px; }
 .rf-alert { min-height: 56px; display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 12px;
@@ -7611,3 +7628,26 @@ button.stk__c:hover { background: var(--bg-hover); }
 .split-list li { display: flex; align-items: center; gap: 8px; min-height: 44px; }
 .split-list li b { margin-left: auto; }
 .split-list li.is-done { color: var(--fg-success); }
+
+/* ── Zal: o'ng ustundagi ochiq stollar va ofitsiantlar (2026-10-13) ── */
+.rf-open { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.rf-open__part { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 18px; padding: 14px;
+                 display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+.rf-open__part--grow { flex: 1 1 auto; }
+.rf-open__part h2 { margin: 0; font-size: 16px; display: flex; gap: 8px; align-items: baseline; }
+.rf-open__part h2 .ek-num { color: var(--fg-secondary); font-size: 14px; }
+.rf-open__list { display: flex; flex-direction: column; gap: 6px; overflow-y: auto; min-height: 0; flex: 1 1 0; }
+.rf-open__row { min-height: 56px; display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto auto; gap: 4px 12px; align-items: center;
+                padding: 8px 12px; border-radius: 12px; border: 1px solid var(--border-subtle); background: var(--bg-canvas);
+                color: var(--fg-primary); font: inherit; text-align: start; cursor: pointer; }
+.rf-open__row:hover { background: var(--bg-hover); }
+.rf-open__row.is-long { border-color: var(--border-warning); background: var(--bg-warning-subtle); }
+.rf-open__name { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; min-width: 0; }
+.rf-open__flag { font-size: 12px; font-weight: 700; color: var(--fg-warning-strong); }
+.rf-open__who { color: var(--fg-secondary); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rf-open__time { color: var(--fg-secondary); font-size: 13px; white-space: nowrap; }
+.rf-open__sum { font-weight: 700; white-space: nowrap; }
+.rf-open__free { margin: 0; color: var(--fg-secondary); font-size: 13px; }
+.rf-open__wait { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-top: 1px solid var(--border-subtle); font-size: 14px; }
+.rf-open__wait:first-of-type { border-top: 0; }
+.rf-open__wait .ek-num { color: var(--fg-secondary); white-space: nowrap; }

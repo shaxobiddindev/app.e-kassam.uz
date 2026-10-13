@@ -181,6 +181,69 @@ export function fitBox(tables, pad = GAP, min = { w: 480, h: 300 }) {
   return { x: Math.round(x1), y: Math.round(y1), w: Math.round(x2 - x1), h: Math.round(y2 - y1) };
 }
 
+/* ══ ZAL EKRANI: BO'SH JOYNI TEJASH (2026-10-13) ═══════════════════════════
+   Egasi skrinshot bilan: «stollar orasida bo'sh joy ko'p, zalning ikki
+   yonida ham». Ikki sabab topildi:
+   1. Stol tanasi stullarsiz chizilardi, stullar zonasi (`CHAIR` = 18) esa
+      BO'SH qolardi — 84 birlikli stol atrofida har tomondan 18 birlik
+      hoshiya, ya'ni stollar orasida ~54 birlik (stolning uchdan ikkisi).
+   2. Rahbar stollarni bir-biridan uzoq qo'ysa, bu bo'shliq ham ekranga
+      tushardi.
+   Yechim FAQAT KO'RINISHDA (rejaga yozilmaydi, muharrir o'zgarmaydi):
+   - stol stullar zonasiga kirib chiziladi, faqat `INSET` qoladi;
+   - qutilar orasidagi `MAX_GAP` dan katta bo'shliq shu qadar qisqaradi.
+   ⚠ Tartib saqlanadi: o'qda bo'shliqdan o'ngdagi HAMMA stol bir xil
+   suriladi, bo'shliqni kesib o'tadigan quti esa bo'lmaydi (bo'shliq —
+   proyeksiyalar orasidagi bo'sh oraliq). Shuning uchun yangi ustma-ust
+   tushish paydo bo'lmaydi va «chapdagi stol» chapda qoladi. */
+export const INSET = 6;
+export const MAX_GAP = 40;
+const VIEW_PAD = 8;
+const VIEW_MIN = { w: 400, h: 260 };
+
+/** Bitta o'qdagi katta bo'shliqlarni qisqartiradi: `pos(t)` → yangi koordinata. */
+function squeezeAxis(boxes, key, len, maxGap) {
+  const spans = boxes.map((b) => [b[key], b[key] + b[len]]).sort((a, b) => a[0] - b[0]);
+  const cuts = [];                       // [bo'shliq oxiri, ortiqcha]
+  let end = -Infinity;
+  for (const [a, b] of spans) {
+    if (end > -Infinity && a - end > maxGap) cuts.push([a, a - end - maxGap]);
+    end = Math.max(end, b);
+  }
+  return (v) => v - cuts.reduce((s, [at, extra]) => (v >= at ? s + extra : s), 0);
+}
+
+/** Stollarni ko'rinish uchun siqadi (nusxa; `x`/`y` o'zgaradi). */
+export function squeeze(tables, maxGap = MAX_GAP) {
+  const list = (tables || []).filter(placed);
+  if (list.length < 2) return (tables || []).map((t) => ({ ...t }));
+  const boxes = list.map(boxOf);
+  const fx = squeezeAxis(boxes, "x", "w", maxGap);
+  const fy = squeezeAxis(boxes, "y", "h", maxGap);
+  return (tables || []).map((t) => (placed(t) ? { ...t, x: fx(t.x), y: fy(t.y) } : { ...t }));
+}
+
+/**
+ * Zal ekrani uchun tayyor geometriya: kesim (`view`) va har stolning
+ * foizdagi joyi. Sahifa ham, sinov ham SHUNI ishlatadi — kutilgan joy
+ * qo'lda yozilsa, geometriya o'zgarganda jimgina eskirardi.
+ */
+export function floorView(tables) {
+  const sq = squeeze(tables);
+  const view = fitBox(sq, VIEW_PAD, VIEW_MIN);
+  const items = sq.filter(placed).map((t) => {
+    const b = boxOf(t);
+    return {
+      id: t.id,
+      left: ((b.x + INSET - view.x) / view.w) * 100,
+      top: ((b.y + INSET - view.y) / view.h) * 100,
+      width: ((b.w - INSET * 2) / view.w) * 100,
+      height: ((b.h - INSET * 2) / view.h) * 100,
+    };
+  });
+  return { view, items };
+}
+
 /** Keyingi nom: «Stol 7» — mavjud nomlardagi eng katta raqamdan keyingisi. */
 export function nextName(items, prefix) {
   const max = (items || []).reduce((m, t) => {
@@ -270,6 +333,66 @@ export function attention(halls, now = Date.now()) {
   }
   const rank = { ready: 0, late: 1, bill: 2, resv: 3 };
   return out.sort((a, b) => (a.kind === b.kind ? a.at - b.at : rank[a.kind] - rank[b.kind]));
+}
+
+/* ══ ZAL EKRANINING O'NG USTUNI (2026-10-13) ════════════════════════════════
+   Egasi: «bu joy ham bo'sh qolmasligi kerak» — «Diqqat» panelidan pastda
+   ustun bo'sh edi. U yerga mavjud ma'lumotdan (yangi so'rovsiz) ikki
+   foydali ro'yxat qo'yildi. */
+
+/** Shuncha daqiqadan uzoq ochiq stol — «uzoq ochiq» (unutilgan hisob). */
+export const LONG_OPEN_MIN = 240;
+
+/**
+ * Ochiq stollar — ENG UZOQ OCHIQ TURGANI TEPADA.
+ * ⚠ Egasining skrinshotida ikki stol 2.5 kun ochiq turardi va hech qayerda
+ * ajralib ko'rinmasdi: reja faqat «band» deydi. Ro'yxat tartibi aynan shu
+ * unutilgan hisobni birinchi qo'yadi.
+ */
+export function openTables(halls, now = Date.now()) {
+  const out = [];
+  for (const h of halls || []) {
+    for (const t of h.tables || []) {
+      if (!t.order) continue;
+      const opened = Date.parse(t.order.openedAt);
+      const min = Number.isFinite(opened) ? Math.max(0, Math.floor((now - opened) / 60000)) : null;
+      out.push({ table: t, hall: h, min, long: min != null && min >= LONG_OPEN_MIN,
+                 total: Number(t.order.total) || 0, who: t.order.openedByName || t.order.openedBy || "" });
+    }
+  }
+  return out.sort((a, b) => (b.min ?? -1) - (a.min ?? -1));
+}
+
+/** Bo'sh stollar va o'rinlar soni. */
+export function freeCapacity(halls) {
+  let tables = 0, seats = 0;
+  for (const h of halls || []) {
+    for (const t of h.tables || []) {
+      if (t.order) continue;
+      tables++;
+      seats += Number(t.seats) || 0;
+    }
+  }
+  return { tables, seats };
+}
+
+/**
+ * Ofitsiantlar yuki: kimda nechta stol va qancha summa — ko'pidan ozigacha.
+ * Ism yo'q (eski buyurtma) — bitta «belgilanmagan» guruhi (`who: ""`).
+ */
+export function waiterLoad(halls) {
+  const map = new Map();
+  for (const h of halls || []) {
+    for (const t of h.tables || []) {
+      if (!t.order) continue;
+      const who = t.order.openedByName || t.order.openedBy || "";
+      const w = map.get(who) || { who, tables: 0, total: 0 };
+      w.tables++;
+      w.total += Number(t.order.total) || 0;
+      map.set(who, w);
+    }
+  }
+  return [...map.values()].sort((a, b) => b.tables - a.tables || b.total - a.total || a.who.localeCompare(b.who));
 }
 
 /** «20:30» — bron vaqti. */
