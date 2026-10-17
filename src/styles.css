@@ -7666,3 +7666,41 @@ button.stk__c:hover { background: var(--bg-hover); }
 .rf-grip:hover .rf-grip__bar::after, .rf-grip:focus-visible .rf-grip__bar::after, .rf-grip:active .rf-grip__bar::after { background: var(--border-brand); }
 .rf-grip:hover .rf-grip__bar, .rf-grip:focus-visible .rf-grip__bar, .rf-grip:active .rf-grip__bar { background: var(--border-brand); }
 .rf-grip:focus-visible { box-shadow: 0 0 0 2px var(--border-brand); border-radius: 6px; }
+
+/* ── Ombor harakati (V167) ────────────────────────────────────────────
+   Egasi: «qancha tovar keldi ketdi, qayerga ketdi, qayerdan keldi».
+   O'zagi — tenglama: to'rt katak chapdan o'ngga o'qiladi. Tor ekranda
+   amal belgilari («+», «−», «=») yo'qoladi va kataklar ikki ustunga
+   tushadi: 390 px da to'rt katak yonma-yon sig'maydi. */
+.flw__hint { margin: 0 0 10px; font-size: 13px; color: var(--fg-secondary); }
+.flw__eq { display: flex; flex-wrap: wrap; align-items: stretch; gap: 8px; }
+.flw__cell { flex: 1 1 150px; min-width: 0; display: flex; flex-direction: column; gap: 2px;
+             padding: 12px 14px; border-radius: 14px; background: var(--bg-sunken);
+             border: 1px solid var(--border-subtle); }
+.flw__cell small { font-size: 12px; font-weight: 600; color: var(--fg-secondary); }
+.flw__cell b { font-size: 19px; font-weight: 800; }
+.flw__cell--in { background: var(--bg-success-subtle); border-color: var(--border-success); }
+.flw__cell--in b { color: var(--fg-success); }
+.flw__cell--out { background: var(--bg-warning-subtle); border-color: var(--border-warning); }
+.flw__cell--out b { color: var(--fg-warning-strong); }
+.flw__cell--end { background: var(--bg-brand-soft); border-color: var(--border-brand); }
+.flw__cell--end b { color: var(--fg-brand); }
+.flw__op { align-self: center; font-size: 18px; font-weight: 800; color: var(--fg-secondary); }
+@media (max-width: 640px) { .flw__op { display: none; } }
+.flw__base { margin: 10px 0 0; font-size: 12px; color: var(--fg-secondary); }
+
+.flw__row { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto 42px; gap: 4px 10px;
+            align-items: center; padding: 8px 0; border-top: 1px solid var(--border-subtle); }
+.flw__row:first-child { border-top: 0; }
+.flw__icon { color: var(--fg-secondary); }
+.flw__name { display: flex; flex-direction: column; min-width: 0; font-weight: 600; }
+.flw__name small { font-size: 11px; font-weight: 600; color: var(--fg-secondary); }
+.flw__sum { font-weight: 700; white-space: nowrap; }
+.flw__share { text-align: end; font-size: 12px; color: var(--fg-secondary); }
+.flw__bar { grid-column: 2 / -1; height: 4px; border-radius: 4px; background: var(--bg-sunken); overflow: hidden; }
+.flw__bar i { display: block; height: 100%; background: var(--bg-brand); }
+.rpt-h2 { margin: 24px 0 4px; font-size: 17px; font-weight: 800; }
+.prep__more { min-height: 44px; margin: 4px 0 0; padding: 0 4px; border: 0; background: none;
+              font: inherit; font-weight: 700; color: var(--fg-brand); cursor: pointer; }
+.prep__more:hover { text-decoration: underline; }
+.prep__doc { display: block; font-size: 11px; color: var(--fg-secondary); }

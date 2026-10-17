@@ -199,7 +199,8 @@ const PRODUCT = {
   moves: [
     { id: 3, at: iso(20), type: "CORRECTION", delta: -1, reason: "singan", writeOffReason: "BREAKAGE", by: "omborchi", expiryDate: null },
     { id: 2, at: iso(10), type: "SALE", delta: -2, reason: null, writeOffReason: null, by: "Ali", expiryDate: null },
-    { id: 1, at: iso(3), type: "IN", delta: 40, reason: null, writeOffReason: null, by: "omborchi", expiryDate: "2026-11-01" },
+    { id: 1, at: iso(3), type: "IN", delta: 40, reason: null, writeOffReason: null, by: "omborchi", expiryDate: "2026-11-01",
+      docType: "RECEIPT", docId: 12, party: "Ali MChJ" },
   ],
   movesTotal: 3,
   prices: [ { at: iso(2), oldSale: 14000, newSale: 15000, oldCost: 10500, newCost: 11000, reason: "", by: "egasi" } ],
@@ -234,6 +235,33 @@ const DAY = {
   totals: { products: 2, soldProducts: 1, soldMoney: 270000, returnedMoney: 0, cost: 180000, profit: 90000, closingValue: 204000 },
 };
 
+/* TOVAR HARAKATI (V167): ta'minotchidan 10 keldi, 2 sotildi, 1 singan,
+   3 tasi filialga ketdi. ⚠ Tenglama bajariladi: 0 + 60 000 − 36 000 = 24 000. */
+const FLOW = {
+  balance: { opening: 0, in: 60000, out: 36000, closing: 24000, products: 2, moves: 5 },
+  sources: [
+    { kind: "SUPPLIER", name: "Ali MChJ", reason: null, amount: 48000, qty: 8, moves: 1, products: 1 },
+    { kind: "BRANCH", name: "Chilonzor", reason: null, amount: 12000, qty: 2, moves: 1, products: 1 },
+  ],
+  destinations: [
+    { kind: "SALE", name: null, reason: null, amount: 12000, qty: 2, moves: 2, products: 1 },
+    { kind: "BRANCH", name: "Sergeli", reason: null, amount: 18000, qty: 3, moves: 1, products: 1 },
+    { kind: "WRITE_OFF", name: null, reason: "BREAKAGE", amount: 6000, qty: 1, moves: 1, products: 1 },
+  ],
+  docs: [
+    { docType: "RECEIPT", docId: 12, at: "2026-10-16T09:15:00Z", party: "Ali MChJ", by: "omborchi", in: 48000, out: 0, products: 1 },
+    { docType: "TRANSFER", docId: 5, at: "2026-10-16T14:00:00Z", party: "Sergeli", by: "omborchi", in: 0, out: 18000, products: 1 },
+  ],
+  docsTotal: 2,
+  products: [
+    { productId: 1, name: "Pista", unit: "DONA", category: "Yong'oq", opening: 0, in: 10, out: 6, sold: 2, closing: 4,
+      inValue: 60000, outValue: 36000, closingValue: 24000 },
+  ],
+  productsTotal: 1,
+};
+
+let flowCalls = [];
+
 async function openReports(payload = ANALYTICS, url = "/reports") {
   calls = [];
   const page = await browser.newPage();
@@ -247,10 +275,13 @@ async function openReports(payload = ANALYTICS, url = "/reports") {
     if (u.pathname === "/api/reports/analytics") calls.push(u.search);
     if (u.pathname.startsWith("/api/reports/product/")) productCalls.push(u.pathname + u.search);
     if (u.pathname === "/api/reports/day-products") dayCalls.push(u.search);
+    if (u.pathname === "/api/reports/stock-flow") flowCalls.push(u.search);
     const body = u.pathname === "/api/reports/analytics"
       ? { success: true, data: payload }
       : u.pathname.startsWith("/api/reports/product/")
         ? { success: true, data: productPayload }
+      : u.pathname === "/api/reports/stock-flow"
+        ? { success: true, data: FLOW }
       : u.pathname === "/api/reports/day-products"
         ? { success: true, data: { ...DAY, rows: u.searchParams.get("all") ? [...DAY.rows, { ...DAY.rows[1], productId: 3, name: "Tuz", received: 0, writtenOff: 0, opening: 5, closing: 5 }] : DAY.rows } }
       : /^\/api\/sales\/\d+$/.test(u.pathname)
@@ -562,6 +593,22 @@ console.log("\n── I. Mahsulot hisoboti ──");
   is(svg >= 2, "kunlik va soatlik grafik chizildi", String(svg));
   const moves = await p6.evaluate(() => document.body.textContent.includes("Kirim") && document.body.textContent.includes("Sindi"));
   is(moves, "kirim-chiqim va chiqit sababi ko'rindi");
+  /* ⚠ V167: «qayerdan keldi» — ilgari jadval «Kirim +40, omborchi» derdi
+     va kimdan kelgani faqat izoh matnida qolardi. */
+  const party = await p6.evaluate(() => {
+    const tr = [...document.querySelectorAll(".prep table tbody tr")].find((x) => /Kirim/.test(x.textContent));
+    return tr ? tr.textContent.replace(/ /g, " ") : "";
+  });
+  is(/Ali MChJ/.test(party) && /#12/.test(party), "kirim qatorida ta'minotchi va hujjat raqami", party);
+  /* Sakkizta raqam bir vaqtda emas: ikkinchi qator tugma ortida (egasi
+     «juda sodda bo'lsin» dedi), lekin HECH BIRI o'chirilmagan. */
+  const kpiShown = await p6.$$eval(".prep .kpi-grid", (n) => n.map((g) => g.hidden));
+  is(kpiShown.length === 2 && kpiShown[0] === false && kpiShown[1] === true,
+     "birinchi to'rt raqam ko'rinadi, qolgani tugma ortida", JSON.stringify(kpiShown));
+  await p6.evaluate(() => document.querySelector(".prep__more")?.click());
+  await wait(300);
+  const kpiAfter = await p6.$$eval(".prep .kpi-grid", (n) => n.map((g) => g.hidden));
+  is(kpiAfter[1] === false, "tugma bosilsa qolgan raqamlar ochiladi", JSON.stringify(kpiAfter));
   await shot(p6, "prep");
 
   /* Chek ochiladi */
@@ -650,6 +697,32 @@ console.log("\n── L. Kunlik hisobot ──");
   is(/\+25/.test(un) && /−1/.test(un) && /34/.test(un), "Un: +25 keldi, −1 buzildi, kun oxirida 34", un);
   const body = await p9.evaluate(() => document.body.textContent);
   is(/tugab qolgan/i.test(body) && /Pista/.test(body), "«Kun oxirida tugab qolgan tovarlar» — Pista");
+
+  /* ══ OMBOR HARAKATI (V167) ═══════════════════════════════════════════
+     Egasi: «qancha tovar keldi ketdi, qayerga ketdi, qayerdan keldi».
+     ⚠ TENGLAMA va NOMLAR tekshiriladi: ularsiz blok eski jadvaldan
+     farq qilmaydi — eski jadval ham «+25 keldi» derdi, lekin kimdan
+     kelganini aytmasdi va egasi aynan shundan shikoyat qildi. */
+  const eq = await p9.$$eval(".flw__cell", (n) => n.map((x) => x.textContent.replace(/\s+/g, " ").trim()));
+  is(eq.length === 4 && /Boshida bor edi\s*0/.test(eq[0]) && /Kirdi\s*60/.test(eq[1])
+     && /Chiqdi\s*36/.test(eq[2]) && /Oxirida qoldi\s*24/.test(eq[3]),
+     "tenglama: 0 + 60 000 − 36 000 = 24 000", eq.join(" | "));
+  const flowTxt = await p9.$$eval(".flw__row", (n) => n.map((x) => x.textContent.replace(/\s+/g, " ").trim()));
+  is(flowTxt.some((x) => /Ali MChJ/.test(x) && /Ta'minotchi/.test(x) && /48/.test(x)),
+     "qayerdan keldi: ta'minotchi NOMI bilan", flowTxt.join(" | "));
+  is(flowTxt.some((x) => /Sergeli/.test(x) && /Filial/.test(x)),
+     "qayerga ketdi: filial NOMI bilan", flowTxt.join(" | "));
+  is(flowTxt.some((x) => /Sindi/.test(x) && /Chiqit/.test(x)),
+     "chiqit — sababi bilan", flowTxt.join(" | "));
+  is(/Kirim #12/.test(body) && /Ko'chirish #5/.test(body), "hujjatlar raqami bilan ko'rinadi");
+  /* ⚠ Blok pul kartochkalaridan OLDIN: sahifa «Tovar hisoboti» deb
+     ataladi, ilgari esa u o'n beshta pul raqamidan boshlanardi. */
+  const order = await p9.evaluate(() => {
+    const f = document.querySelector(".flw__eq")?.getBoundingClientRect().top ?? 1e9;
+    const k = document.querySelector(".kpi-grid")?.getBoundingClientRect().top ?? -1;
+    return { f, k };
+  });
+  is(order.f < order.k, "ombor harakati pul kartochkalaridan YUQORIDA", JSON.stringify(order));
   is(/Boshida bor edi \+ keldi/.test(body), "jadval ustida hisob qoidasi oddiy so'z bilan");
   await p9.evaluate(() => [...document.querySelectorAll(".rpt-tab")].find((b) => /Hamma tovarlar/.test(b.textContent))?.click());
   await wait(800);

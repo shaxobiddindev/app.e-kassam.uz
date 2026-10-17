@@ -99,6 +99,7 @@ function ProductReport({ id, toast }) {
   const [metric, setMetric] = useState("qty");
   const [allLines, setAllLines] = useState(false);
   const [allMoves, setAllMoves] = useState(false);
+  const [moreKpi, setMoreKpi] = useState(false);
   const [sale, setSale] = useState(null);
 
   const load = useCallback(() => {
@@ -228,7 +229,18 @@ function ProductReport({ id, toast }) {
                    : st.daysLeft == null ? t("prep.notSelling")
                    : t("prep.daysLeft", { n: st.daysLeft })} />
           </div>
-          <div className="kpi-grid">
+          {/* ⚠ IKKINCHI QATOR YASHIRIN (2026-10-17). Egasi: «juda mukammal,
+              lekin juda sodda va tushunarli bo'lsin». Sakkizta raqam bir
+              vaqtda ko'rinsa, qaysi biri muhimligi yo'qoladi; birinchi
+              to'rttasi savolning o'zi («qancha sotildi, qancha qoldi,
+              qancha pul, qancha foyda»), qolgani — tekshirish uchun.
+              Hech biri O'CHIRILMADI: bitta tugma ortida. */}
+          <button type="button" className="prep__more" aria-expanded={moreKpi}
+                  onClick={() => setMoreKpi((v) => !v)}>
+            <i className={`fa-solid fa-chevron-${moreKpi ? "up" : "down"}`} aria-hidden="true" />{" "}
+            {moreKpi ? t("prep.hideNumbers") : t("prep.moreNumbers")}
+          </button>
+          <div className="kpi-grid" hidden={!moreKpi}>
             <Kpi label={t("prep.perDay")} value={qr(k.perDay)} icon="fa-calendar-day"
                  sub={t("prep.rate14", { v: qr(st.rate14) })} hint={t("prep.perDayHint")} />
             <Kpi label={t("prep.avgPrice")} value={money(k.avgPrice)} icon="fa-tag"
@@ -325,7 +337,8 @@ function ProductReport({ id, toast }) {
               <table className="table">
                 <thead><tr>
                   <th>{t("prep.col.time")}</th><th>{t("prep.col.type")}</th>
-                  <th>{t("prep.col.qty")}</th><th>{t("prep.col.who")}</th><th>{t("prep.col.reason")}</th>
+                  <th>{t("prep.col.qty")}</th><th>{t("flow.party")}</th>
+                  <th>{t("prep.col.who")}</th><th>{t("prep.col.reason")}</th>
                 </tr></thead>
                 <tbody>
                   {(data.moves || []).length ? (allMoves ? data.moves : data.moves.slice(0, PAGE)).map((m) => (
@@ -335,13 +348,23 @@ function ProductReport({ id, toast }) {
                       <td className={`mono fw-700 ${num(m.delta) < 0 ? "text-danger" : "text-success"}`}>
                         {num(m.delta) > 0 ? "+" : num(m.delta) < 0 ? "−" : ""}{quantity(Math.abs(num(m.delta)), dec)} {unit}
                       </td>
+                      {/* ⚠ QAYERDAN / QAYERGA (V167): ilgari bu ustun yo'q edi va
+                          jadval «Kirim +40, omborchi» derdi — kimdan kelgani
+                          faqat izoh matnida qolardi. Eski yozuvlarda hali ham
+                          bo'sh: migratsiya izohdan tiklay olmaganlari. */}
+                      <td>
+                        {m.party ? <b>{m.party}</b> : <span className="text-muted">—</span>}
+                        {m.docType && m.docId != null && (
+                          <small className="prep__doc">{t(`flow.d.${m.docType}`)} #{m.docId}</small>
+                        )}
+                      </td>
                       <td>{m.by || "—"}</td>
                       <td className="text-muted">
                         {m.writeOffReason && <span className="badge badge-yellow">{t(`enum.writeOff.${m.writeOffReason}`)}</span>}{" "}
                         {m.reason || (m.writeOffReason ? "" : "—")}
                       </td>
                     </tr>
-                  )) : <tr><td colSpan={5}><Empty icon="fa-right-left" text={t("prep.noMoves")} /></td></tr>}
+                  )) : <tr><td colSpan={6}><Empty icon="fa-right-left" text={t("prep.noMoves")} /></td></tr>}
                 </tbody>
               </table>
             </div>

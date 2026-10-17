@@ -376,6 +376,16 @@ export const reportApi = {
     return request(`/reports/day-products?${q}`);
   },
 
+  /**
+   * TOVAR HARAKATI (V167) — omborga nima kirdi, nima chiqdi, qayerdan, qayerga.
+   * `from`/`to` — Instant (ISO), chunki javob jurnal yozuvlaridan yig'iladi.
+   */
+  stockFlow: (from, to, shopId) => {
+    const q = new URLSearchParams({ from, to });
+    if (shopId) q.set("shopId", shopId);
+    return request(`/reports/stock-flow?${q}`);
+  },
+
   /* Restoranning «Bugun» paneli (E2): mehmon, stol, oshxona, ofitsiant. */
   restaurantToday: (date, shopId) => {
     const q = new URLSearchParams();

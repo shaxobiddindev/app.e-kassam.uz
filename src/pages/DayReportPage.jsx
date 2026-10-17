@@ -15,6 +15,7 @@ import { downloadXlsx } from "../lib/ek-xlsx";
 import { C, PALETTE, num, Kpi, Panel, Lead, ShareList, PeriodBar } from "../components/report/RptUi";
 import { asArray } from "../lib/ek-array";
 import ExcelButton from "../components/ek/ExcelButton";
+import StockFlow from "../components/report/StockFlow";
 import { dayBounds, shiftDay, todayIso, rowFilter, periodDays, daysBetween, topBy, idleRows } from "../lib/ek-day-report";
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -107,6 +108,9 @@ export default function DayReportPage({ toast }) {
   const shown = flt.apply(rows);
 
   const openProduct = (id) => navigate(`/reports/product/${id}?${new URLSearchParams({ period: "custom", from: dFrom, to: dTo })}`);
+
+  /* Ombor harakati o'z so'rovini qiladi — davr chegaralari shu yerdan. */
+  const bounds = useMemo(() => ({ from: dayBounds(dFrom).from, to: dayBounds(dTo).to }), [dFrom, dTo]);
   const allRows = asArray(dp?.rows);
   const topSold = topBy(allRows, (r) => num(r.soldMoney) - num(r.returnedMoney));
   const topProfit = topBy(allRows, (r) => r.profit);
@@ -216,6 +220,15 @@ export default function DayReportPage({ toast }) {
                   num(k.expenses) ? t("day.s.net", { exp: money(k.expenses), net: money(k.netProfit) }) : "",
                 ].filter(Boolean).join(" ")} />
 
+          {/* ══ 1. OMBOR HARAKATI (V167) ══════════════════════════════
+              Egasi: «qancha tovar keldi ketdi, qayerga ketdi, qayerdan
+              keldi». ⚠ ENG TEPADA, pul kartochkalaridan OLDIN: sahifa
+              «Tovar hisoboti» deb ataladi, lekin ilgari u o'n beshta pul
+              raqamidan boshlanardi va tovar jadvali eng pastda qolardi —
+              egasi «juda murakkab» deganining sababi aynan shu edi. */}
+          <StockFlow from={bounds.from} to={bounds.to} branchId={branchId} toast={toast} />
+
+          <h2 className="rpt-h2">{t("day.h.sales")}</h2>
           <div className="kpi-grid">
             <Kpi label={t("day.k.sales")} value={money(k.netSales)} icon="fa-sack-dollar" tone="brand"
                  now={num(k.netSales)} prev={an.prev ? num(pk.netSales) : undefined} />
