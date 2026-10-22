@@ -437,6 +437,38 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
   const items = await cartItems(page);
   !(await page.$(".mod-modal")) && items.length === 1 && items[0].price === 30000
     ? ok("taom oynasiz, oddiy narxda") : no("oddiy do'konda oyna yoki noto'g'ri savat", JSON.stringify(items));
+
+  /* ⚠ QIDIRUV MAYDONI KESILMASIN (2026-10-22). Egasi skrinshot yubordi:
+     maydon ~290 px ga siqilgan va o'zining plaseholderi ham kesilgan
+     («Qidirish: Nom yo…»). Sabab — tanlagich, filtr, ko'rinish, smena,
+     kassa va chop etish tugmalari bitta qatorni bo'lib olgani. Endi
+     qidiruv butun qatorni oladi, qolgani pastga tushadi. */
+  await page.setViewport({ width: 1366, height: 800 });
+  await waitFor(page, () => false, 400);
+  const sb = await page.evaluate(() => {
+    const bar = document.querySelector(".kassa-tools .search-bar");
+    const inp = bar?.querySelector("input");
+    const tools = document.querySelector(".kassa-tools");
+    if (!bar || !inp || !tools) return null;
+    const other = [...tools.children].filter((c) => c !== bar).map((c) => c.getBoundingClientRect().top);
+    const cs = getComputedStyle(inp);
+    const probe = document.createElement("span");
+    probe.style.cssText = `position:absolute;visibility:hidden;white-space:nowrap;font:${cs.font}`;
+    probe.textContent = inp.placeholder;
+    document.body.appendChild(probe);
+    const need = probe.offsetWidth;
+    probe.remove();
+    return { barW: bar.getBoundingClientRect().width, barBottom: bar.getBoundingClientRect().bottom,
+             inpW: inp.clientWidth, need, belowCount: other.filter((t) => t >= bar.getBoundingClientRect().bottom - 2).length,
+             otherCount: other.length };
+  });
+  sb && sb.inpW >= sb.need
+    ? ok(`plaseholder to'liq sig'adi: maydon ${Math.round(sb.inpW)} px, matn ${Math.round(sb.need)} px`)
+    : no("qidiruv plaseholderi kesilyapti", JSON.stringify(sb));
+  if (process.env.SHOTS) await page.screenshot({ path: path.join(process.env.SHOTS, "kassa-tools.png") });
+  sb && sb.otherCount > 0 && sb.belowCount === sb.otherCount
+    ? ok(`qidiruv o'z qatorida (${Math.round(sb.barW)} px), ${sb.otherCount} ta tugma pastda`)
+    : no("tugmalar qidiruv bilan bitta qatorda", JSON.stringify(sb));
   await page.close();
 }
 

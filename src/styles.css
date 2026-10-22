@@ -747,9 +747,14 @@ select.form-input { cursor: pointer; }
                    display: flex; align-items: center; gap: 8px; row-gap: 8px;
                    flex-wrap: wrap; flex-shrink: 0;
                    padding: 11px 14px; border-bottom: 1px solid var(--border-subtle); }
-/* ⚠ 180px — «Кока-кола» kabi so'z ko'rinadigan eng kichik kenglik.
-   Undan pastda maydon o'z vazifasini bajarmaydi. */
-.kassa-tools .search-bar { flex: 1 1 220px; min-width: 180px; }
+/* ⚠ QIDIRUV — O'Z QATORIDA, qolgan tugmalar pastda (2026-10-22).
+   Ilgari hammasi bitta qatorda edi va qidiruv «ortgan joyni» olardi:
+   tanlagich, filtr, ko'rinish, smena, kassa va chop etish tugmalari
+   joyni bo'lib olgach, maydon ~290px ga siqilib, o'zining plaseholderi
+   ham kesilardi («Qidirish: Nom yo…»). Kassirning ASOSIY maydoni esa
+   aynan shu: skaner shu yerga yozadi va nom bo'yicha qidiruv ham shu
+   yerda. Endi u butun qatorni oladi, qolgani keyingi qatorga tushadi. */
+.kassa-tools .search-bar { flex: 1 0 100%; min-width: 180px; }
 
 .kassa-cat       { flex: 0 1 auto; width: clamp(130px, 22%, 200px); min-width: 0; }
 
