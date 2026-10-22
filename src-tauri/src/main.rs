@@ -33,7 +33,7 @@ fn set_fullscreen(window: tauri::Window, on: bool) -> Result<(), String> {
 #[tauri::command]
 fn set_zoom(window: tauri::WebviewWindow, scale: f64) -> Result<(), String> {
     if !(0.5..=3.0).contains(&scale) {
-        return Err("masshtab chegaradan tashqarida".into());
+        return Err("masştab çegaradan taşqarida".into());
     }
     window.set_zoom(scale).map_err(|e| e.to_string())
 }
@@ -104,5 +104,5 @@ fn main() {
             device_store_set,
         ])
         .run(tauri::generate_context!())
-        .expect("e-Kassam ishga tushmadi");
+        .expect("e-Kassam işga tuşmadi");
 }

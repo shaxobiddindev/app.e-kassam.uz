@@ -135,8 +135,8 @@ export default function ShopUsersPage({ toast }) {
     const ok = await confirm({
       title: isActivating ? t("adm.users.unblockTitle") : t("adm.users.blockTitle"),
       message: isActivating 
-        ? `${u.fullName} ni tizimga kirishini tiklamoqchimisiz?`
-        : `Chindan ham ${u.fullName} ni bloklamoqchimisiz? U tizimga kira olmaydi.`,
+        ? `${u.fullName} ni tizimga kirişini tiklamoqçimisiz?`
+        : `Çindan ham ${u.fullName} ni bloklamoqçimisiz? U tizimga kira olmaydi.`,
       type: isActivating ? "info" : "warning"
     });
     if (!ok) return;

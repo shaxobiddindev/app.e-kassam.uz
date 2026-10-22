@@ -139,18 +139,18 @@ const rowCount = () => page.$$eval("tbody tr", (rs) =>
   rs.filter((x) => x.querySelector("td.mono")).length);
 const digits = (s) => (s || "").replace(/[^\d]/g, "");
 
-console.log("\n══ Sotuvlar ro'yxati: sahifalash va jamlama ══");
+console.log("\n══ Sotuvlar röyxati: sahifalaş va jamlama ══");
 
 /* ══ §1 ══════════════════════════════════════════════════════════ */
-console.log("\n§1 ⚠ SO'ROV SAHIFA BILAN KETADI");
+console.log("\n§1 ⚠ SÖROV SAHIFA BILAN KETADI");
 const first = listAsked[0];
 first && first.searchParams.get("page") !== null && first.searchParams.get("size")
   ? ok(`page=${first.searchParams.get("page")} size=${first.searchParams.get("size")} `
        + `from=${(first.searchParams.get("from") || "").slice(0, 10)}`)
-  : no("`/sales` so'rovi `page` va `size` bilan ketishi kerak",
-       first ? first.search || "(bo'sh)" : "so'rov umuman ketmadi");
+  : no("`/sales` sörovi `page` va `size` bilan ketişi kerak",
+       first ? first.search || "(böş)" : "sörov umuman ketmadi");
 
-console.log("\n§2 Birinchi sahifa chizildi");
+console.log("\n§2 Birinçi sahifa çizildi");
 const n0 = await rowCount();
 n0 === SIZE ? ok(`${n0} qator`) : no(`${SIZE} qator kutilgandi`, String(n0));
 
@@ -162,11 +162,11 @@ const chips = await page.$$eval(".cat-tabs .cat-tab", (bs) =>
   bs.map((b) => b.textContent.trim()));
 const allChip = digits(chips[0]);
 allChip === String(TOTAL)
-  ? ok(`«Barchasi (${TOTAL})» — sahifadagi ${n0} qator emas`)
-  : no(`«Barchasi» chipida ${TOTAL} turishi kerak`, chips[0] || "chip yo'q");
+  ? ok(`«Barçasi (${TOTAL})» — sahifadagi ${n0} qator emas`)
+  : no(`«Barçasi» çipida ${TOTAL} turishi kerak`, chips[0] || "çip yöq");
 digits(chips[3]) === String(SUMMARY.counts.cancelled)
-  ? ok(`«Bekor qilingan (${SUMMARY.counts.cancelled})» — ular birinchi sahifada YO'Q`)
-  : no("bekor qilinganlar soni jamlamadan olinishi kerak", chips[3] || "yo'q");
+  ? ok(`«Bekor qilingan (${SUMMARY.counts.cancelled})» — ular birinçi sahifada YÖQ`)
+  : no("bekor qilinganlar soni jamlamadan olinishi kerak", chips[3] || "yöq");
 
 console.log("\n§4 ⚠ KPI PANELI JAMLAMADAN");
 /* Ekrandagi 50 chekning jami 500 000 so'm. Panelda 8 900 000
@@ -175,11 +175,11 @@ console.log("\n§4 ⚠ KPI PANELI JAMLAMADAN");
 const kpi = await page.$$eval(".sales-kpi__item b.ek-num", (bs) =>
   bs.map((b) => b.textContent.trim()));
 digits(kpi[0]) === String(SUMMARY.totals.sales)
-  ? ok(`sotuv ${kpi[0]} — ekrandagi 50 chekning jami emas`)
-  : no("KPI jamlama so'rovidan olinishi kerak", kpi[0] || "panel yo'q");
+  ? ok(`sotuv ${kpi[0]} — ekrandagi 50 çekning jami emas`)
+  : no("KPI jamlama sörovidan olinişi kerak", kpi[0] || "panel yöq");
 digits(kpi[3]) === String(SUMMARY.totals.credit)
   ? ok(`qarz ${kpi[3]}`)
-  : no("qarz jamlamadan olinishi kerak", kpi[3] || "yo'q");
+  : no("qarz jamlamadan olinishi kerak", kpi[3] || "yöq");
 
 /* ══ §5 ══════════════════════════════════════════════════════════ */
 console.log("\n§5 ⚠ QIDIRUV SERVERGA KETADI");
@@ -195,19 +195,19 @@ await new Promise((r) => setTimeout(r, 1400));
 const searched = listAsked.slice(beforeSearch).find((u) => u.searchParams.get("q"));
 searched
   ? ok(`q=${searched.searchParams.get("q")} serverga yuborildi`)
-  : no("qidiruv `/sales?q=` bilan ketishi kerak", "yuborilmadi");
+  : no("qidiruv `/sales?q=` bilan ketişi kerak", "yuborilmadi");
 
 /* ⚠ Server bitta chek qaytardi. Ekranda 50 qator qolsa — front
    javobni e'tiborsiz qoldirib, o'zi qidiryapti. */
 const nSearch = await rowCount();
 nSearch === 1
-  ? ok("ro'yxat SERVER javobidan chizildi (1 qator)")
+  ? ok("röyxat SERVER javobidan çizildi (1 qator)")
   : no("qidiruvdan keyin server bergan 1 qator qolishi kerak", String(nSearch));
 
 const sumSearched = sumAsked.find((u) => u.searchParams.get("q"));
 sumSearched
-  ? ok("jamlama ham qidiruv bilan qayta so'raldi")
-  : no("KPI paneli filtr bilan birga yangilanishi kerak", "so'ralmadi");
+  ? ok("jamlama ham qidiruv bilan qayta söraldi")
+  : no("KPI paneli filtr bilan birga yangilanishi kerak", "söralmadi");
 
 /* ══ §6 ══════════════════════════════════════════════════════════ */
 console.log("\n§6 ⚠ QOLGAN SAHIFA YUKLANADI");
@@ -222,28 +222,28 @@ await new Promise((r) => setTimeout(r, 1400));
 
 const more = await page.$(".inf button");
 if (!more) {
-  no("«yana yukla» tugmasi bo'lishi kerak", "topilmadi");
+  no("«yana yukla» tugmasi bölişi kerak", "topilmadi");
 } else {
   await more.click();
   await new Promise((r) => setTimeout(r, 900));
   const n1 = await rowCount();
   n1 === TOTAL
-    ? ok(`${TOTAL} qator — ikkinchi sahifa qo'shildi`)
+    ? ok(`${TOTAL} qator — ikkinçi sahifa qöşildi`)
     : no(`${TOTAL} qator kutilgandi`, String(n1));
   const done = await page.$eval(".inf", (d) => d.textContent.trim()).catch(() => "");
   /^.*57.*$/.test(done)
     ? ok(`oxirida «${done}»`)
-    : no("ro'yxat tugagani YOZILISHI kerak", done || "bo'sh");
+    : no("röyxat tugagani YOZILIŞI kerak", done || "böş");
 }
 
 /* ══ §7 ══════════════════════════════════════════════════════════ */
 console.log("\n§7 Sahifa xatolari");
-pageErrors.length === 0 ? ok("konsol toza") : no("xato yo'q bo'lishi kerak", pageErrors[0]);
+pageErrors.length === 0 ? ok("konsol toza") : no("xato yöq bölişi kerak", pageErrors[0]);
 
 await browser.close();
 server.close();
 
 console.log(bad === 0
-  ? "\n✅ sotuvlar ro'yxati: hammasi o'tdi\n"
-  : `\n❌ sotuvlar ro'yxati: ${bad} ta muammo\n`);
+  ? "\n✅ sotuvlar röyxati: hammasi ötdi\n"
+  : `\n❌ sotuvlar röyxati: ${bad} ta muammo\n`);
 process.exit(bad === 0 ? 0 : 1);

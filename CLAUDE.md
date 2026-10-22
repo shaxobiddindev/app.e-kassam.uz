@@ -9,6 +9,10 @@ O'zbek do'konlari uchun kassa va CRM tizimi. Bu repo — **frontend**
 Interfeys uch tilda (uz · ru · en), lekin manba til — o'zbekcha:
 yangi kalit avval `src/lib/locales/uz.js` ga qo'shiladi.
 
+⚠ **Interfeysning o'zbekcha matni YANGI ALIFBODA** (2026-10-22 dan):
+ş ç ö ğ — «Çek», «Tölov». Izohlar eski yozuvda qolaveradi.
+`test/alifbo.test.mjs` lokalda eski harfni ushlaydi.
+
 ## Izoh yozish qoidasi
 
 Izoh **nima qilinganini emas, NEGA shunday qilinganini** yozadi.

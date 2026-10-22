@@ -33,12 +33,19 @@ const NUM_ROWS = [
 ];
 
 /* Lotin — o'zbekcha `oʻ gʻ ʼ` bilan. Ular alohida tugma: kassir ularni
-   `o` + tirnoq deb yozsa, qidiruv va nom bazadagidan farq qilardi. */
+   `o` + tirnoq deb yozsa, qidiruv va nom bazadagidan farq qilardi.
+
+   ⚠ YANGI ALIFBO (2026-10-21): `oʻ gʻ` o'rnida `ö ğ`, yana `ş ç` qo'shildi.
+   Har biri BITTA tugma — yangi alifboda ular alohida harf. Bazadagi eski
+   yozuvdagi nom («Shakar», «Yog'») baribir topiladi: qidiruv ikkala
+   alifboni bitta kalitga tushiradi (`ek-search.js`, V168). Tutuq `ʼ`
+   qoldi — u yangi alifboda ham bor («maʼno»). Qatorlar 11 tugmadan,
+   kirillchadagi kabi: tugma kengligi ikkala tilda bir xil qoladi. */
 const LAT_ROWS = [
   ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
-  ["q", "w", "e", "r", "t", "y", "u", "i", "o", "p"],
-  ["a", "s", "d", "f", "g", "h", "j", "k", "l", "oʻ"],
-  ["⇧", "z", "x", "c", "v", "b", "n", "m", "gʻ", "ʼ", "⌫"],
+  ["q", "w", "e", "r", "t", "y", "u", "i", "o", "p", "ö"],
+  ["a", "s", "d", "f", "g", "h", "j", "k", "l", "ş", "ğ"],
+  ["⇧", "z", "x", "c", "v", "b", "n", "m", "ç", "ʼ", "⌫"],
 ];
 
 const CYR_ROWS = [

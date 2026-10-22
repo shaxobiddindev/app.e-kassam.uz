@@ -160,21 +160,21 @@ const typePin = async (page, pin) => {
   }
 };
 
-console.log("\n══ KASSIRNI PIN BILAN ALMASHTIRISH (V99) ══");
+console.log("\n══ KASSIRNI PIN BILAN ALMAŞTIRIŞ (V99) ══");
 
 /* ══ §1 SAVAT BO'SH BO'LMASA — OYNA OCHILMAYDI ═══════════════════════
    To'lanmagan savat boshqa kassirning ismi bilan yopilsa, chekda ham,
    hisobotda ham noto'g'ri odam turardi. */
-console.log("\n§1 Savat bo'sh bo'lmasa almashish yo'q");
+console.log("\n§1 Savat böş bölmasa almaşiş yöq");
 {
   pinSent = null;
   const { page } = await open({ cart: true });
   const clicked = await clickSwitch(page);
-  is(clicked, "almashtirish tugmasi yon panelda bor");
+  is(clicked, "almaştiriş tugmasi yon panelda bor");
   await new Promise((r) => setTimeout(r, 500));
 
   const modal = await page.$(".pin-pad");
-  is(!modal, "⚠ savat bo'sh emas — OYNA OCHILMADI");
+  is(!modal, "⚠ savat böş emas — OYNA OÇILMADI");
 
   const warned = await page.evaluate(() =>
     document.body.innerText.toLowerCase().includes("savatni yoping"));
@@ -183,16 +183,16 @@ console.log("\n§1 Savat bo'sh bo'lmasa almashish yo'q");
 }
 
 /* ══ §2–§3 ALMASHINUV ═════════════════════════════════════════════════ */
-console.log("\n§2 Oyna ochiladi va PIN to'lgach o'zi yuboriladi");
+console.log("\n§2 Oyna oçiladi va PIN tölgaç özi yuboriladi");
 {
   pinSent = null;
   const { page, errors } = await open();
   await clickSwitch(page);
   await page.waitForSelector(".pin-pad", { timeout: 8000 }).catch(() => {});
-  is(!!(await page.$(".pin-pad")), "PIN oynasi ochildi");
+  is(!!(await page.$(".pin-pad")), "PIN oynasi oçildi");
 
   const dots = await page.$$eval(".pin-dot", (n) => n.length);
-  is(dots === 4, "do'kon sozlamasi bo'yicha 4 ta katak", String(dots));
+  is(dots === 4, "dökon sozlamasi böyiça 4 ta katak", String(dots));
 
   /* ⚠ SAHIFA ALMASHDIMI. Belgi oynadan OLDIN qo'yiladi: qayta yuklash
      uni o'chirib yuboradi, ya'ni yo'qolgani = sahifa yangilangani. */
@@ -201,7 +201,7 @@ console.log("\n§2 Oyna ochiladi va PIN to'lgach o'zi yuboriladi");
   await typePin(page, GOOD_PIN);
   await new Promise((r) => setTimeout(r, 900));
 
-  is(pinSent === GOOD_PIN, "PIN to'lgach O'ZI yuborildi — tasdiq tugmasi kerak emas",
+  is(pinSent === GOOD_PIN, "PIN tölgaç ÖZI yuborildi — tasdiq tugmasi kerak emas",
      String(pinSent));
 
   console.log("\n§3 ⚠ SAHIFA QAYTA YUKLANMAYDI — butun ishning ma'nosi shu");
@@ -218,17 +218,17 @@ console.log("\n§2 Oyna ochiladi va PIN to'lgach o'zi yuboriladi");
     u: localStorage.getItem("ek_username"),
     t: localStorage.getItem("ek_token"),
   }));
-  is(stored.u === "kassir2", "sessiya yangi xodimga o'tdi", stored.u);
+  is(stored.u === "kassir2", "sessiya yangi xodimga ötdi", stored.u);
   /* ⚠ SAVAT KALITI ISMDAN TUZILADI. Ism yozilmasa yangi kassir
      eskisining savat maydoniga tushardi. */
   is(stored.t === "yangi-token", "yangi token saqlandi", String(stored.t));
 
-  is(errors.length === 0, "JS xatosi yo'q", errors.join(" | "));
+  is(errors.length === 0, "JS xatosi yöq", errors.join(" | "));
   await page.close();
 }
 
 /* ══ §4 NOTO'G'RI PIN ══════════════════════════════════════════════════ */
-console.log("\n§4 Noto'g'ri PIN");
+console.log("\n§4 Notöğri PIN");
 {
   pinSent = null;
   const { page } = await open();
@@ -242,8 +242,8 @@ console.log("\n§4 Noto'g'ri PIN");
     filled: document.querySelectorAll(".pin-dot--on").length,
     open: !!document.querySelector(".pin-pad"),
   }));
-  is(seen.open, "oyna ochiq qoldi — kassir qayta terishi mumkin");
-  is(seen.err.length > 0, "xato ko'rindi", seen.err);
+  is(seen.open, "oyna oçiq qoldi — kassir qayta terişi mumkin");
+  is(seen.err.length > 0, "xato körindi", seen.err);
   /* ⚠ MAYDON TOZALANADI. Qolgan raqamlar ustiga terish yarim-yorti
      qiymat yasar, kassir esa sababsiz «yana noto'g'ri» olardi — qulf
      esa har urinishda yaqinlashadi. */
@@ -256,19 +256,19 @@ console.log("\n§4 Noto'g'ri PIN");
    ⚠ IKKI MARTA SO'RALADI. Bir marta terilgan PIN da xato ketsa, xodim
    uni faqat KEYINGI SMENADA — kassada, mijoz oldida — bilib qolardi,
    va o'sha payt tuzatishning yo'li yo'q edi. */
-console.log("\n§5 Sozlamalar: o'z PIN ini qo'yish");
+console.log("\n§5 Sozlamalar: öz PIN ini qöyiş");
 {
   pinSet = null;
   const { page } = await open({ path: "/settings", role: "CASHIER" });
 
   const opened = await page.evaluate(() => {
     const b = [...document.querySelectorAll("button")]
-      .find((x) => /PIN qo'yish/i.test(x.textContent));
+      .find((x) => /PIN qöyiş/i.test(x.textContent));
     if (!b) return false;
     b.click();
     return true;
   });
-  is(opened, "«PIN qo'yish» tugmasi Sozlamalarda bor");
+  is(opened, "«PIN qöyiş» tugmasi Sozlamalarda bor");
   await page.waitForSelector(".pin-pad", { timeout: 8000 }).catch(() => {});
 
   /* Birinchi marta — noto'g'ri takror. */
@@ -299,12 +299,12 @@ console.log("\n§5 Sozlamalar: o'z PIN ini qo'yish");
 }
 
 /* ══ §6 UZUNLIK: EGAGA KO'RINADI, KASSIRGA YO'Q ═══════════════════════ */
-console.log("\n§6 PIN uzunligi — do'kon qarori");
+console.log("\n§6 PIN uzunligi — dökon qarori");
 {
   const { page } = await open({ path: "/settings", role: "CASHIER" });
   const seenByCashier = await page.evaluate(() =>
     document.body.innerText.includes("PIN uzunligi"));
-  is(!seenByCashier, "⚠ kassir do'kon qarorini o'zgartira olmaydi — tanlov ko'rinmaydi");
+  is(!seenByCashier, "⚠ kassir dökon qarorini özgartira olmaydi — tanlov körinmaydi");
   await page.close();
 }
 {
@@ -319,7 +319,7 @@ console.log("\n§6 PIN uzunligi — do'kon qarori");
 /* ══ §7 ⚠ UZUNLIK EKRANGA YETIB BORADI ════════════════════════════════
    6 xonali do'konda to'rtta katak chizilsa, PIN hech qachon to'lmasdi
    va kassir «almashtirish ishlamayapti» degan xulosaga kelardi. */
-console.log("\n§7 ⚠ 6 xonali do'konda 6 ta katak");
+console.log("\n§7 ⚠ 6 xonali dökonda 6 ta katak");
 {
   SHOP_PIN_LENGTH = 6;
   const { page } = await open({ path: "/settings", role: "OWNER" });
@@ -330,7 +330,7 @@ console.log("\n§7 ⚠ 6 xonali do'konda 6 ta katak");
   await clickSwitch(page);
   await page.waitForSelector(".pin-pad", { timeout: 8000 }).catch(() => {});
   const dots = await page.$$eval(".pin-dot", (n) => n.length);
-  is(dots === 6, "⚠ do'kon 6 tanlaganda oynada 6 ta katak", String(dots));
+  is(dots === 6, "⚠ dökon 6 tanlaganda oynada 6 ta katak", String(dots));
   await page.close();
   SHOP_PIN_LENGTH = 4;
 }

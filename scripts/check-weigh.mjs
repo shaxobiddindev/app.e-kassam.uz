@@ -69,7 +69,7 @@ async function openKassa({ scale }) {
     };
     if (r.method() === "OPTIONS") return r.respond({ status: 204, headers: CORS });
     const u = new URL(r.url());
-    if (process.env.DEBUG && /scan|products/.test(u.pathname)) console.log("    so'rov:", u.pathname + u.search);
+    if (process.env.DEBUG && /scan|products/.test(u.pathname)) console.log("    sörov:", u.pathname + u.search);
     let data = [];
     if (u.pathname.endsWith("/products/scan")) {
       const code = u.searchParams.get("code");
@@ -131,51 +131,51 @@ const cartQty = (page) => page.$eval(".qty-num--edit", (e) => e.textContent.trim
 
 console.log("\n══ TAROZILI TOVAR KASSADA (2026-10-06) ══\n");
 
-console.log("§1 Og'irliksiz stiker, tarozi ulangan");
+console.log("§1 Oğirliksiz stiker, tarozi ulangan");
 {
   const page = await openKassa({ scale: true });
   await new Promise((r) => setTimeout(r, 1200));   // tarozi ulanib, barqarorlashsin
   await scan(page, "20000017");
   const opened = await waitFor(page, () => !!document.querySelector(".qty-modal"));
-  opened ? ok("miqdor oynasi ochildi (jimgina 1 kg qo'shilmadi)") : no("oyna ochilmadi", await cartQty(page));
+  opened ? ok("miqdor oynasi oçildi (jimgina 1 kg qöşilmadi)") : no("oyna oçilmadi", await cartQty(page));
   const filled = await waitFor(page, () => /488/.test(document.querySelector(".qty-modal__input")?.value || ""));
-  filled ? ok("og'irlik tarozidan O'ZI yozildi: 0.488")
-         : no("og'irlik yozilmadi", await page.$eval(".qty-modal__input", (e) => e.value).catch(() => "—"));
+  filled ? ok("oğirlik tarozidan ÖZI yozildi: 0.488")
+         : no("oğirlik yozilmadi", await page.$eval(".qty-modal__input", (e) => e.value).catch(() => "—"));
   await page.keyboard.press("Enter");
   await waitFor(page, () => !document.querySelector(".qty-modal"));
   const q = await cartQty(page);
-  q === "0,488" ? ok("Enter — savatda 0,488 kg") : no("savatga boshqa son tushdi", q);
+  q === "0,488" ? ok("Enter — savatda 0,488 kg") : no("savatga boşqa son tuşdi", q);
   await page.close();
 }
 
-console.log("\n§2 Og'irlikli stiker (EAN-13)");
+console.log("\n§2 Oğirlikli stiker (EAN-13)");
 {
   const page = await openKassa({ scale: false });
   await scan(page, "2000010003501");
   await waitFor(page, () => /0,350/.test(document.querySelector(".qty-num--edit")?.textContent || ""));
   const modal = await page.$(".qty-modal");
-  !modal ? ok("oynasiz") : no("keraksiz oyna ochildi", "qty-modal");
+  !modal ? ok("oynasiz") : no("keraksiz oyna oçildi", "qty-modal");
   const q = await cartQty(page);
-  q === "0,350" ? ok("savatda 0,350 kg — stikerdagi og'irlik") : no("savatda boshqa son", q);
+  q === "0,350" ? ok("savatda 0,350 kg — stikerdagi oğirlik") : no("savatda boşqa son", q);
   await page.close();
 }
 
-console.log("\n§3 Og'irliksiz stiker, tarozi YO'Q");
+console.log("\n§3 Oğirliksiz stiker, tarozi YÖQ");
 {
   const page = await openKassa({ scale: false });
   await scan(page, "20000017");
   const opened = await waitFor(page, () => !!document.querySelector(".qty-modal"));
-  opened ? ok("oyna ochildi — og'irlik qo'lda kiritiladi") : no("oyna ochilmadi", await cartQty(page));
+  opened ? ok("oyna oçildi — oğirlik qölda kiritiladi") : no("oyna oçilmadi", await cartQty(page));
   const v = await page.$eval(".qty-modal__input", (e) => e.value).catch(() => "—");
-  v === "" ? ok("maydon bo'sh — hech narsa jimgina qo'yilmadi") : no("maydonda qiymat bor", v);
+  v === "" ? ok("maydon böş — heç narsa jimgina qöyilmadi") : no("maydonda qiymat bor", v);
   const asks = await page.$(".qty-modal__ask");
-  !asks ? ok("tarozi yo'q — «taroziga qo'ying» so'ralmaydi") : no("tarozi yo'q bo'lsa ham so'radi", "qty-modal__ask");
+  !asks ? ok("tarozi yöq — «taroziga qöying» söralmaydi") : no("tarozi yöq bölsa ham söradi", "qty-modal__ask");
   await page.close();
 }
 
-pageErrors.length === 0 ? ok("sahifada JS xatosi yo'q") : no("JS xatosi", pageErrors.join(" | "));
+pageErrors.length === 0 ? ok("sahifada JS xatosi yöq") : no("JS xatosi", pageErrors.join(" | "));
 
 await browser.close();
 server.close();
-console.log(bad === 0 ? "\n  ✅ HAMMASI O'TDI" : `\n  ❌ ${bad} ta muammo`);
+console.log(bad === 0 ? "\n  ✅ HAMMASI ÖTDI" : `\n  ❌ ${bad} ta muammo`);
 process.exit(bad === 0 ? 0 : 1);

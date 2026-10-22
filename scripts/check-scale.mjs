@@ -135,20 +135,20 @@ const page = await makePage();
 
 console.log("\n══ TAROZI (V111) ══");
 
-console.log("\n§1 Bo'lim chizildi");
+console.log("\n§1 Bölim çizildi");
 const hasPanel = await page.evaluate(() =>
   /jonli tarozi/i.test(document.body.innerText));
-hasPanel ? ok("«Jonli tarozi» bo'limi bor") : no("bo'lim chizilishi kerak", "yo'q");
+hasPanel ? ok("«Jonli tarozi» bölimi bor") : no("bölim çizilişi kerak", "yöq");
 
-console.log("\n§2 Ulanish");
+console.log("\n§2 Ulaniş");
 const clicked = await page.evaluate(() => {
   const b = [...document.querySelectorAll("button")]
-    .find((x) => /tarozini ulash/i.test(x.textContent));
+    .find((x) => /tarozini ulaş/i.test(x.textContent));
   if (!b) return false;
   b.click();
   return true;
 });
-clicked ? ok("«Tarozini ulash» bosildi") : no("tugma topilmadi", "yo'q");
+clicked ? ok("«Tarozini ulaş» bosildi") : no("tugma topilmadi", "yöq");
 await new Promise((r) => setTimeout(r, 1200));
 
 const view = await page.evaluate(() => {
@@ -162,23 +162,23 @@ const view = await page.evaluate(() => {
   };
 });
 
-console.log("\n§3 ⚠ OG'IRLIK EKRANDA");
+console.log("\n§3 ⚠ OĞIRLIK EKRANDA");
 /* Do'kon aynan shu joyda «—» ko'rgan edi. */
 view.weight === "0,488"
-  ? ok(`og'irlik chizildi: ${view.weight} kg`)
+  ? ok(`oğirlik çizildi: ${view.weight} kg`)
   : no("0.488 kg chizilishi kerak", view.weight ?? "tire");
 
-console.log("\n§4 Tarozining O'Z barqarorlik belgisi");
+console.log("\n§4 Tarozining ÖZ barqarorlik belgisi");
 /* Ramkadagi «S» — barqaror. Uni o'qimasak, kassir to'rt o'lchov
    kutishga majbur bo'lardi. */
 view.steady ? ok("«barqaror» deb belgilandi")
-            : no("«S» bayrog'i o'qilishi kerak", "belgilanmadi");
+            : no("«S» bayroği öqilişi kerak", "belgilanmadi");
 
-console.log("\n§5 HEX ko'rinish");
-view.hex ? ok("xom baytlar HEX bo'lib chiqdi") : no("HEX chizilishi kerak", "yo'q");
+console.log("\n§5 HEX köriniş");
+view.hex ? ok("xom baytlar HEX bölib çiqdi") : no("HEX chizilishi kerak", "yöq");
 
 console.log("\n§6 Sahifa xatolari");
-pageErrors.length === 0 ? ok("JS xatosi yo'q") : no("sahifada xato", pageErrors.join(" | "));
+pageErrors.length === 0 ? ok("JS xatosi yöq") : no("sahifada xato", pageErrors.join(" | "));
 
 await page.close();
 
@@ -187,7 +187,7 @@ await page.close();
 
    Bu bandning butun ma'nosi shunda: sahifa ochiladi va HECH QANDAY
    TUGMA BOSILMAYDI. Og'irlik shundoq ham chiqishi kerak. */
-console.log("\n§7 ⚠ TUGMA BOSILMASDAN O'ZI ULANADI");
+console.log("\n§7 ⚠ TUGMA BOSILMASDAN ÖZI ULANADI");
 const auto = await makePage({
   ek_scale_port: JSON.stringify({
     enabled: true, poll: "ENQ_DC1", baudRate: 9600, id: "1659:8963",
@@ -197,13 +197,13 @@ await new Promise((r) => setTimeout(r, 1200));
 const autoView = await auto.evaluate(() => {
   const txt = document.body.innerText;
   const m = txt.match(/([\d.,]+)\s*kg/i);
-  return { weight: m ? m[1] : null, says: /o'zi ishga tushadi/i.test(txt) };
+  return { weight: m ? m[1] : null, says: /özi işga tuşadi/i.test(txt) };
 });
 autoView.weight === "0,488"
-  ? ok(`ulanish oynasisiz og'irlik chizildi: ${autoView.weight} kg`)
+  ? ok(`ulaniş oynasisiz oğirlik çizildi: ${autoView.weight} kg`)
   : no("tugmasiz ham 0.488 kg chizilishi kerak", autoView.weight ?? "tire");
-autoView.says ? ok("panel «o'zi ishga tushadi» deb aytdi")
-              : no("avtomatik holat yozilishi kerak", "yozilmadi");
+autoView.says ? ok("panel «özi işga tuşadi» deb aytdi")
+              : no("avtomatik holat yozilişi kerak", "yozilmadi");
 await auto.close();
 
 /* ══ §8 ⚠ KASSIR HAM ULAY OLADI ══════════════════════════════════════
@@ -214,16 +214,16 @@ await auto.close();
 
    ⚠ Barkod formati BOSHQA GAP va u egada qoladi: uni server ham
    `/shop/scale` da egaga cheklaydi. */
-console.log("\n§8 ⚠ KASSIRDA: jonli tarozi bor, barkod formati yo'q");
+console.log("\n§8 ⚠ KASSIRDA: jonli tarozi bor, barkod formati yöq");
 const cash = await makePage({ ek_role: "CASHIER" });
 const cashView = await cash.evaluate(() => {
   const txt = document.body.innerText;
   return { live: /jonli tarozi/i.test(txt), fmt: /tarozi barkodi/i.test(txt) };
 });
-cashView.live ? ok("kassirga «Jonli tarozi» ko'rindi")
-              : no("kassirga panel ko'rinishi kerak", "yo'q");
+cashView.live ? ok("kassirga «Jonli tarozi» körindi")
+              : no("kassirga panel körinişi kerak", "yöq");
 cashView.fmt ? no("barkod formati kassirda CHIZILMASIN", "chizildi")
-             : ok("barkod formati kassirda yo'q — server ham uni bermaydi");
+             : ok("barkod formati kassirda yöq — server ham uni bermaydi");
 await cash.close();
 
 await browser.close();

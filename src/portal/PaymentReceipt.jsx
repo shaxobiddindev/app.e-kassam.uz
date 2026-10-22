@@ -53,13 +53,13 @@ const money = (v) => groupDigits(v);
    Bitta so'z qoldirilsa, qaytarish kvitansiyasida «qabul qildi» deb
    yozilib, mijoz pul TOPSHIRGANDEK o'qilardi. */
 const SAV = {
-  TOP_UP:  { head: "JAMG'ARMAGA QO'YILDI",        who: "Qabul qildi", sign: "+" },
-  CHANGE:  { head: "QAYTIM JAMG'ARMAGA",           who: "Kassir",      sign: "+" },
-  OVERPAY: { head: "ORTIQCHA TO'LOV JAMG'ARMAGA",  who: "Qabul qildi", sign: "+" },
-  SPEND:   { head: "JAMG'ARMADAN XARIDGA",         who: "Kassir",      sign: "−" },
-  REFUND:  { head: "JAMG'ARMADAN QAYTARILDI",      who: "Qaytardi",    sign: "−" },
-  RETURN:  { head: "QAYTARISH — JAMG'ARMAGA",       who: "Kassir",      sign: "+" },
-  ADJUST:  { head: "JAMG'ARMA TO'G'IRLANDI",       who: "Xodim",       sign: "" },
+  TOP_UP:  { head: "JAMĞARMAGA QÖYILDI",        who: "Qabul qildi", sign: "+" },
+  CHANGE:  { head: "QAYTIM JAMĞARMAGA",           who: "Kassir",      sign: "+" },
+  OVERPAY: { head: "ORTIQÇA TÖLOV JAMĞARMAGA",  who: "Qabul qildi", sign: "+" },
+  SPEND:   { head: "JAMĞARMADAN XARIDGA",         who: "Kassir",      sign: "−" },
+  REFUND:  { head: "JAMĞARMADAN QAYTARILDI",      who: "Qaytardi",    sign: "−" },
+  RETURN:  { head: "QAYTARIŞ — JAMĞARMAGA",       who: "Kassir",      sign: "+" },
+  ADJUST:  { head: "JAMĞARMA TÖĞIRLANDI",       who: "Xodim",       sign: "" },
 };
 
 const when = (v) =>
@@ -101,15 +101,15 @@ export default function PaymentReceipt({
         if (j.success === false) throw new Error(j.message);
         setData(j.data);
       })
-      .catch((e) => setError(e.message || "Chekni ochib bo'lmadi"));
+      .catch((e) => setError(e.message || "Çekni oçib bölmadi"));
   }, [given, id, token, appToken, customerId, signedId, signature, savings]);
 
   const savePdf = async () => {
     setPdfError("");
     try {
-      await saveReceiptPdf(tapeRef.current, data ? `Chek ${data.receiptNo}` : "Chek");
+      await saveReceiptPdf(tapeRef.current, data ? `Çek ${data.receiptNo}` : "Çek");
     } catch (e) {
-      setPdfError(e.message || "Saqlab bo'lmadi");
+      setPdfError(e.message || "Saqlab bölmadi");
     }
   };
 
@@ -150,7 +150,7 @@ export default function PaymentReceipt({
     <Overlay className="pt-modal" onEscape={onClose}
              role="dialog" aria-modal="true">
       <div className="pt-modal__inner">
-        <button className="pt-close" onClick={onClose} aria-label="Yopish">
+        <button className="pt-close" onClick={onClose} aria-label="Yopiş">
           <i className="fa-solid fa-xmark" aria-hidden="true" />
         </button>
 
@@ -167,7 +167,7 @@ export default function PaymentReceipt({
                   chiqadi va ularni ajratib turadigan yagona narsa shu
                   qator. Usiz mijoz to'lovni xarid deb o'ylardi. */}
               <div className="pt-tape__kind">
-                {sav ? "JAMG'ARMA KVITANSIYASI" : charge ? "QARZ OLINDI" : "QARZ TO'LOVI"}
+                {sav ? "JAMĞARMA KVITANSIYASI" : charge ? "QARZ OLINDI" : "QARZ TÖLOVI"}
               </div>
             </div>
 
@@ -216,7 +216,7 @@ export default function PaymentReceipt({
             <div className="pt-hr" />
 
             <div className="pt-tape__row pt-total">
-              <span>{sav ? sav.head : charge ? "QARZGA OLINDI" : "TO'LANDI"}</span>
+              <span>{sav ? sav.head : charge ? "QARZGA OLINDI" : "TÖLANDI"}</span>
               <span>
                 {sav ? (sav.sign || (Number(data.amount) < 0 ? "−" : "+")) : ""}
                 {money(Math.abs(Number(data.amount) || 0))}
@@ -231,7 +231,7 @@ export default function PaymentReceipt({
 
             {data.balanceBefore != null && (
               <div className="pt-tape__row">
-                <span>{sav ? "Jamg'armada edi" : "Qarz edi"}</span>
+                <span>{sav ? "Jamğarmada edi" : "Qarz edi"}</span>
                 <span>{money(data.balanceBefore)}</span>
               </div>
             )}
@@ -240,7 +240,7 @@ export default function PaymentReceipt({
                  Nol ham yoziladi va yashil chiqadi: «qarzingiz qolmadi»
                  degan xabar qog'ozning butun ma'nosi. */
               <div className={`pt-tape__row pt-total ${cleared || grew ? "pt-earn" : ""}`}>
-                <span>{sav ? "JAMG'ARMADA" : cleared ? "QARZ YOPILDI" : charge ? "JAMI QARZ" : "QOLDI"}</span>
+                <span>{sav ? "JAMĞARMADA" : cleared ? "QARZ YOPILDI" : charge ? "JAMI QARZ" : "QOLDI"}</span>
                 <span>{money(data.balanceAfter)}</span>
               </div>
             )}
@@ -302,7 +302,7 @@ export default function PaymentReceipt({
         {data && (
           <div className="pt-actions">
             <button type="button" className="btn btn-primary" onClick={savePdf}>
-              <i className="fa-solid fa-file-pdf" aria-hidden="true" /> PDF qilib saqlash
+              <i className="fa-solid fa-file-pdf" aria-hidden="true" /> PDF qilib saqlaş
             </button>
             {pdfError && <div className="pt-actions__err">{pdfError}</div>}
           </div>

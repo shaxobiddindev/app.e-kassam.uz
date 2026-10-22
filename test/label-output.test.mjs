@@ -58,7 +58,7 @@ head("Printerning chop kengligi");
   const e = blocking(validateOutput(MEDIA.roll58x40, P.escpos58, null));
   ok("58 mm yorliq 48 mm printerga rad etiladi", e.length === 1, texts(e).join(" | "));
   ok("xabarda IKKALA son ham bor", has(e, "48 mm") && has(e, "58 mm"));
-  ok("xabar HARAKATNI aytadi", has(e, "tushiring") && has(e, "tanlang"));
+  ok("xabar HARAKATNI aytadi", has(e, "tuşiring") && has(e, "tanlang"));
 
   ok("58 mm yorliq 104 mm printerga o'tadi",
      blocking(validateOutput(MEDIA.roll58x40, P.xprinter, null)).length === 0);
@@ -157,7 +157,7 @@ head("Dizayn zichligi ↔ printer zichligi");
   ok("bayt printerida dpi farqi rad etiladi", e.some((x) => x.field === "dpi"));
   ok("ikkala modul kengligi ham aytilgan",
      has(e, "0.25 mm") && has(e, "0.169 mm"), texts(e).join(" | "));
-  ok("harakat aytilgan", has(e, "o'zgartiring") && has(e, "tanlang"));
+  ok("harakat aytilgan", has(e, "özgartiring") && has(e, "tanlang"));
 
   /* ⚠ DRAYVER YO'LIDA — XATO EMAS, va bu ataylab: A4 lazer
      300 dpi, tizim shablonlari esa 203. Qoida keng qo'yilsa
@@ -197,7 +197,7 @@ head("Barkod tinch zonasi bilan");
   const e = blocking(validateOutput(MEDIA.roll30x20_2, P.xprinter, t));
   ok("30 mm qog'ozga EAN-13 tinch zonasi bilan sig'maydi",
      e.some((x) => x.field === "barcode"), texts(e).join(" | "));
-  ok("kerakli eni aytilgan", has(e, "mm, chekkalar bilan"));
+  ok("kerakli eni aytilgan", has(e, "mm, çekkalar bilan"));
 
   ok("58 mm qog'ozda barkod sig'adi",
      !blocking(validateOutput(MEDIA.roll58x40, P.xprinter, TPL()))
@@ -240,7 +240,7 @@ head("Xato matnlari");
      noNum.map((x) => x.text).join(" | "));
 
   ok("«noto'g'ri qiymat» degan xabar yo'q",
-     !all.some((x) => /noto'g'ri qiymat/i.test(x.text)));
+     !all.some((x) => /notöğri qiymat/i.test(x.text)));
 }
 
 /* ══ 10. QOG'OZ TANLANMAGAN BO'LSA ══ */
@@ -260,12 +260,12 @@ head("Server bilan bir xil qoidalar");
     console.log("  ⏭  server fayli yo'q — o'tkazib yuborildi");
   } else {
     const src = fs.readFileSync(java, "utf8");
-    ok("server podloshkani tekshiradi", /podloshka/.test(src));
-    ok("server chop kengligini tekshiradi", /sig'maydi/.test(src));
+    ok("server podloshkani tekshiradi", /podloşka/.test(src));
+    ok("server chop kengligini tekshiradi", /siğmaydi/.test(src));
     ok("server uzluksiz balandligini tekshiradi", /UZLUKSIZ/.test(src));
     ok("server oraliqni tekshiradi", /QORA_BELGI/.test(src));
     ok("serverdagi xabarlarda ham harakat fe'li bor",
-       /tushiring/.test(src) && /tanlang/.test(src) && /yozing/.test(src));
+       /tuşiring/.test(src) && /tanlang/.test(src) && /yozing/.test(src));
 
     const svc = fs.readFileSync(path.resolve(path.dirname(java), "LabelOutputService.java"), "utf8");
     ok("saqlashda chaqiriladi", /outputValidator\.validate/.test(svc));

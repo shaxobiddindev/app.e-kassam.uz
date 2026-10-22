@@ -139,7 +139,7 @@ await wait(500);
 /* ══ A. Chop etish kengligiga sig'adimi ════════════════════════════════
    A4 ning bosiladigan kengligi ≈ 794px (96 dpi). Brauzerni AYNAN shu
    kenglikda `print` uslubiga o'tkazamiz. */
-console.log("── A. A4 kengligiga sig'ish ──");
+console.log("── A. A4 kengligiga siğiş ──");
 const A4 = 794;
 await page.setViewport({ width: A4, height: 1123 });
 await page.emulateMediaType("print");
@@ -165,9 +165,9 @@ const over = await page.evaluate((w) => {
   return { bad, bodyScroll: document.documentElement.scrollWidth };
 }, A4);
 
-is(over.bodyScroll <= A4 + 1, "sahifa A4 kengligidan chiqmaydi",
+is(over.bodyScroll <= A4 + 1, "sahifa A4 kengligidan çiqmaydi",
    `${over.bodyScroll}px / ${A4}px`);
-is(over.bad.length === 0, "hech bir element qog'ozdan chiqmagan",
+is(over.bad.length === 0, "heç bir element qoğozdan çiqmagan",
    over.bad.slice(0, 6).map((b) => `${b.cls}→${b.right}`).join(", "));
 
 /* ══ B. Ikonka shriftisiz ham o'qiladimi ═══════════════════════════════
@@ -180,8 +180,8 @@ const icons = await page.evaluate(() => {
   const shown = list.filter((el) => getComputedStyle(el).display !== "none");
   return { total: list.length, shown: shown.length };
 });
-is(icons.shown === 0, "chop etishda bezak ikonkalar chizilmaydi",
-   `${icons.shown} / ${icons.total} ko'rinmoqda`);
+is(icons.shown === 0, "çop etişda bezak ikonkalar çizilmaydi",
+   `${icons.shown} / ${icons.total} körinmoqda`);
 
 /* Ma'no tashiydigan belgi (izoh «i») FONT AWESOME ga bog'liq
    bo'lmasligi kerak — u shriftsiz ham ko'rinishi shart. */
@@ -190,7 +190,7 @@ const hint = await page.evaluate(() => {
   if (!h) return null;
   return { tag: h.tagName, isFa: h.className.includes("fa-"), text: (h.textContent || "").trim() };
 });
-is(hint && !hint.isFa, "izoh belgisi Font Awesome ga BOG'LIQ EMAS", JSON.stringify(hint));
+is(hint && !hint.isFa, "izoh belgisi Font Awesome ga BOĞLIQ EMAS", JSON.stringify(hint));
 
 /* ══ B2. Qog'ozdagi sarlavha ═══════════════════════════════════════════
    ⚠ Bosilgan varaqda yon panel YO'Q — sarlavhasiz hujjat «qaysi
@@ -202,27 +202,27 @@ const head = await page.evaluate(() => {
   if (!h) return null;
   return { shown: getComputedStyle(h).display !== "none", text: h.textContent.trim() };
 });
-is(head?.shown, "qog'ozda sarlavha bor");
-is(head?.text?.includes("Chilonzor"), "sarlavhada DO'KON nomi bor", head?.text);
+is(head?.shown, "qoğozda sarlavha bor");
+is(head?.text?.includes("Chilonzor"), "sarlavhada DÖKON nomi bor", head?.text);
 is(/\d{4}-\d{2}-\d{2}/.test(head?.text || ""), "sarlavhada DAVR bor", head?.text);
 
 /* Bo'lim tanlagichi (sahifa tablari) qog'ozda kerak emas. */
 const tabs = await page.evaluate(() => {
   const t = document.querySelector(".pg-tabs");
-  return t ? getComputedStyle(t).display : "yo'q";
+  return t ? getComputedStyle(t).display : "yöq";
 });
-is(tabs === "none" || tabs === "yo'q", "sahifa tanlagichi qog'ozda chizilmaydi", tabs);
+is(tabs === "none" || tabs === "yöq", "sahifa tanlagiçi qoğozda çizilmaydi", tabs);
 
 /* ══ C. Haqiqiy PDF ════════════════════════════════════════════════════ */
 console.log("\\n── C. PDF ──");
 await page.emulateMediaType(null);
 const pdf = await page.pdf({ format: "A4", printBackground: true, margin: { top: "10mm", bottom: "10mm", left: "8mm", right: "8mm" } });
-is(pdf.length > 5000, "PDF chiqdi", `${Math.round(pdf.length / 1024)} KB`);
+is(pdf.length > 5000, "PDF çiqdi", `${Math.round(pdf.length / 1024)} KB`);
 if (SHOT) fs.writeFileSync(path.join(SHOT, "rpt-print.pdf"), pdf);
 
-is(pageErrors.length === 0, "sahifada JS xatosi tushmadi", pageErrors.join(" | "));
+is(pageErrors.length === 0, "sahifada JS xatosi tuşmadi", pageErrors.join(" | "));
 
 await browser.close();
 server.close();
-console.log(fail === 0 ? `\\n  ✅ HAMMASI O'TDI (${pass} o'tdi)` : `\\n  ❌ ${fail} yiqildi, ${pass} o'tdi`);
+console.log(fail === 0 ? `\\n  ✅ HAMMASI ÖTDI (${pass} ötdi)` : `\\n  ❌ ${fail} yiqildi, ${pass} ötdi`);
 process.exit(fail === 0 ? 0 : 1);

@@ -170,20 +170,20 @@ async function fill(page, dirLabel, amount, reason) {
 
   await page.evaluate(() => {
     const b = [...document.querySelectorAll(".modal-footer button")]
-      .find((x) => /chiqarish/i.test(x.innerText));
+      .find((x) => /çiqariş/i.test(x.innerText));
     b?.click();
   });
   await new Promise((r) => setTimeout(r, 700));
 }
 
-console.log("\n══ TUZATUVCHI CHEK (V86) ══");
+console.log("\n══ TUZATUVÇI ÇEK (V86) ══");
 
 /* ── §1 FISKALIZATSIYASIZ DO'KON: TUGMA YO'Q ───────────────────────── */
-console.log("\n§1 Fiskalizatsiyasiz do'kon");
+console.log("\n§1 Fiskalizatsiyasiz dökon");
 {
   const page = await makePage(false);
-  if (await corrButton(page)) no("tuzatish tugmasi CHIZILDI — bugungi do'kon uchun o'zgarish", "bor");
-  else ok("tugma chizilmadi — bir piksel ham o'zgarmadi");
+  if (await corrButton(page)) no("tuzatiş tugmasi ÇIZILDI — bugungi dökon uçun özgariş", "bor");
+  else ok("tugma çizilmadi — bir piksel ham özgarmadi");
   await page.close();
 }
 
@@ -191,36 +191,36 @@ console.log("\n§1 Fiskalizatsiyasiz do'kon");
 console.log("\n§2 Kassir");
 {
   const page = await makePage(true, "CASHIER");
-  if (await corrButton(page)) no("KASSIRGA tuzatish tugmasi ko'rindi", "bor");
-  else ok("kassirga ko'rinmadi — summani odam yozadigan yagona amal");
+  if (await corrButton(page)) no("KASSIRGA tuzatiş tugmasi körindi", "bor");
+  else ok("kassirga körinmadi — summani odam yozadigan yagona amal");
   await page.close();
 }
 
 /* ── §3 FISKAL DO'KON: TUGMA BOR ───────────────────────────────────── */
-console.log("\n§3 Fiskal do'kon");
+console.log("\n§3 Fiskal dökon");
 {
   const page = await makePage(true);
   if (await corrButton(page)) ok("tugma chizildi");
-  else no("tugma chizilmadi — fiskal do'kon tuzatish qila olmaydi", "yo'q");
+  else no("tugma çizilmadi — fiskal dökon tuzatiş qila olmaydi", "yöq");
   await page.close();
 }
 
 /* ── §4 ⚠ ISHORA: «KO'P KETGAN» → MANFIY ───────────────────────────── */
-console.log("\n§4 Ishora — ko'p ketgan");
+console.log("\n§4 Işora — köp ketgan");
 {
   const page = await makePage(true);
-  await fill(page, "Ko'p ketgan", "5000", "Summa ikki marta kiritilgan");
+  await fill(page, "Köp ketgan", "5000", "Summa ikki marta kiritilgan");
 
-  if (!sentBody) no("so'rov umuman yuborilmadi", "yo'q");
+  if (!sentBody) no("sörov umuman yuborilmadi", "yöq");
   else if (sentBody.amount === -5000) ok("serverga −5 000 ketdi");
-  else no("ISHORA NOTO'G'RI — soliqqa ko'p yuborilgan summa yana ko'payardi",
+  else no("IŞORA NOTÖĞRI — soliqqa köp yuborilgan summa yana köpayardi",
           JSON.stringify(sentBody.amount));
 
   if (sentBody?.reason === "Summa ikki marta kiritilgan") ok("sabab yuborildi");
   else no("sabab yuborilmadi", JSON.stringify(sentBody?.reason));
 
-  if (sentBody?.parentSaleId === 501) ok("tuzatilayotgan chek biriktirildi (#501)");
-  else no("ota-chek biriktirilmadi", JSON.stringify(sentBody?.parentSaleId));
+  if (sentBody?.parentSaleId === 501) ok("tuzatilayotgan çek biriktirildi (#501)");
+  else no("ota-çek biriktirilmadi", JSON.stringify(sentBody?.parentSaleId));
   await page.close();
 }
 
@@ -228,10 +228,10 @@ console.log("\n§4 Ishora — ko'p ketgan");
 console.log("\n§5 Ishora — kam ketgan");
 {
   const page = await makePage(true);
-  await fill(page, "Kam ketgan", "7000", "Qayd etilmagan tushum");
+  await fill(page, "Kam ketgan", "7000", "Qayd etilmagan tuşum");
 
   if (sentBody?.amount === 7000) ok("serverga +7 000 ketdi");
-  else no("ISHORA NOTO'G'RI", JSON.stringify(sentBody?.amount));
+  else no("IŞORA NOTÖĞRI", JSON.stringify(sentBody?.amount));
   await page.close();
 }
 
@@ -248,11 +248,11 @@ console.log("\n§6 Sababsiz");
      KEYIN emas, OLDIN ko'rishi kerak. */
   const disabled = await page.evaluate(() => {
     const b = [...document.querySelectorAll(".modal-footer button")]
-      .find((x) => /chiqarish/i.test(x.innerText));
+      .find((x) => /çiqariş/i.test(x.innerText));
     return b ? b.disabled : null;
   });
-  if (disabled === true) ok("sabab yozilmaguncha tugma o'chiq");
-  else no("sababsiz ham yuborsa bo'ladi", String(disabled));
+  if (disabled === true) ok("sabab yozilmagunça tugma öçiq");
+  else no("sababsiz ham yuborsa böladi", String(disabled));
   await page.close();
 }
 
@@ -263,5 +263,5 @@ else ok("konsol toza");
 
 await browser.close();
 server.close();
-console.log(bad ? `\n❌ tuzatuvchi chek: ${bad} yiqildi` : "\n✅ tuzatuvchi chek: hammasi o'tdi");
+console.log(bad ? `\n❌ tuzatuvçi çek: ${bad} yiqildi` : "\n✅ tuzatuvçi çek: hammasi ötdi");
 process.exit(bad ? 1 : 0);

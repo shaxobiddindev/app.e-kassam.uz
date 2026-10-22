@@ -141,11 +141,11 @@ const btns = await page.$$eval(".qty-modal__mode-btn",
   (els) => els.map((e) => [e.textContent.trim(), e.getAttribute("aria-pressed")]));
 btns.length === 2 ? ok("ikkita tugma: miqdor va summa") : no("tanlov chizilmadi", btns.length);
 btns[0]?.[1] === "true" && btns[1]?.[1] === "false"
-  ? ok("oyna MIQDOR rejimida ochiladi (tarozi barkodi shu yerga tushadi)")
-  : no("boshlang'ich rejim noto'g'ri", JSON.stringify(btns));
+  ? ok("oyna MIQDOR rejimida oçiladi (tarozi barkodi şu yerga tuşadi)")
+  : no("boşlanğiç rejim notöğri", JSON.stringify(btns));
 
 /* ── §2 Summadan miqdor ekranda ───────────────────────────────────── */
-console.log("\n§2 50 000 so'mlik go'sht");
+console.log("\n§2 50 000 sömlik göşt");
 await (await modeBtn(page, 1)).click();
 await waitFor(page, () => document.querySelectorAll(".qty-modal__mode-btn")[1]
   ?.getAttribute("aria-pressed") === "true");
@@ -155,28 +155,28 @@ let txt = await totalText(page);
    Og'irlik verguldan keyin 3 xona bilan ko'rsatiladi (egasi, 2026-10-06). */
 txt.includes("0,588") && /49\D?980/.test(txt)
   ? ok(`ekranda: ${txt}`)
-  : no("miqdor yoki summa noto'g'ri", txt);
+  : no("miqdor yoki summa notöğri", txt);
 
 /* ── §3 SAVATGA TUSHGAN SON ───────────────────────────────────────── */
-console.log("\n§3 Tasdiqlash");
+console.log("\n§3 Tasdiqlaş");
 await page.click(".pay-modal-footer .btn-green");
 await waitFor(page, () => !document.querySelector(".qty-modal"));
 let q = await cartQty(page);
-q === "0,588" ? ok("savatda 0,588 kg (summa emas, miqdor)") : no("savatga boshqa son tushdi", q);
+q === "0,588" ? ok("savatda 0,588 kg (summa emas, miqdor)") : no("savatga boşqa son tuşdi", q);
 
 /* ── §4 Rejim almashsa qiymat O'GIRILADI ──────────────────────────── */
-console.log("\n§4 Almashtirish");
+console.log("\n§4 Almaştiriş");
 await openModal(page);
 await type(page, "0.5");
 await (await modeBtn(page, 1)).click();
 await waitFor(page, () => /42/.test(document.querySelector(".qty-modal__input")?.value || ""));
 let v = await inputValue(page);
-v.replace(/\D/g, "") === "42500" ? ok(`0.5 kg → ${v} (tozalanmadi, o'girildi)`)
-                                 : no("summaga o'girilmadi", v);
+v.replace(/\D/g, "") === "42500" ? ok(`0.5 kg → ${v} (tozalanmadi, ögirildi)`)
+                                 : no("summaga ögirilmadi", v);
 await (await modeBtn(page, 0)).click();
 await waitFor(page, () => document.querySelector(".qty-modal__input")?.value === "0.5");
 v = await inputValue(page);
-v === "0.5" ? ok("qaytib bosilganda o'sha 0.5 — savat o'zgarmaydi")
+v === "0.5" ? ok("qaytib bosilganda öşa 0.5 — savat özgarmaydi")
             : no("qaytishda miqdor surildi", v);
 
 /* ── §5 Pul bir birlikka yetmasa ──────────────────────────────────── */
@@ -184,10 +184,10 @@ console.log("\n§5 Yetmagan pul");
 await (await modeBtn(page, 1)).click();
 await type(page, "50");
 const off = await page.$eval(".pay-modal-footer .btn-green", (e) => e.disabled);
-off ? ok("50 so'mga 1 gramm ham chiqmaydi — «Tasdiqlash» o'chiq")
-    : no("yetmagan pulda tasdiqlash ochiq qoldi", off);
+off ? ok("50 sömga 1 gramm ham çiqmaydi — «Tasdiqlaş» öçiq")
+    : no("yetmagan pulda tasdiqlaş oçiq qoldi", off);
 txt = await totalText(page);
-/85\D?000/.test(txt) ? ok(`sabab ko'rinib turadi: ${txt}`) : no("birlik narxi ko'rsatilmadi", txt);
+/85\D?000/.test(txt) ? ok(`sabab körinib turadi: ${txt}`) : no("birlik narxi körsatilmadi", txt);
 await page.keyboard.press("Escape");
 await page.close();
 
@@ -202,11 +202,11 @@ txt = await totalText(page);
    yaxlitlanganda 3.333 dona chiqib, server uni 3 ga aylantirar va
    ekranda bir son, chekda boshqa son turardi. */
 /\b3\b/.test(txt) && !txt.includes("3.3") && /90\D?000/.test(txt)
-  ? ok(`ekranda: ${txt}`) : no("dona tovarda kasr chiqdi", txt);
+  ? ok(`ekranda: ${txt}`) : no("dona tovarda kasr çiqdi", txt);
 await page.click(".pay-modal-footer .btn-green");
 await waitFor(page, () => !document.querySelector(".qty-modal"));
 q = await cartQty(page);
-q === "3" ? ok("savatda 3 dona") : no("savatga kasr tushdi", q);
+q === "3" ? ok("savatda 3 dona") : no("savatga kasr tuşdi", q);
 await page.close();
 
 /* ── §7 ⚠ SAVATDA TUGMALAR TAG-MATAG ──────────────────────────────── */
@@ -249,7 +249,7 @@ page = await openKassa([MEAT, PIECE]);
     const uniq = [...new Set(cols.map((c) => c.x.join(",")))];
     uniq.length === 1
       ? ok(`tugmalar bir xil ustunda (${cols.map((c) => c.qty).join(" / ")})`)
-      : no("\u26a0 tugmalar surilgan — barmoq «\u00d7» ga tushadi",
+      : no("\u26a0 tugmalar surilgan — barmoq «\u00d7» ga tuşadi",
            cols.map((c) => `${c.qty}: ${c.x.join("/")}`).join("  |  "));
   }
 }
@@ -257,7 +257,7 @@ await page.close();
 
 /* ── Sahifa xatolari ──────────────────────────────────────────────── */
 console.log("\n§8 Sahifa xatolari");
-pageErrors.length === 0 ? ok("JS xatosi yo'q")
+pageErrors.length === 0 ? ok("JS xatosi yöq")
                         : no("sahifada xato", pageErrors.join(" | "));
 
 await browser.close();

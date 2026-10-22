@@ -21,7 +21,7 @@ import {
  * aks holda foydalanuvchi ro'yxat bo'sh deb o'ylab, filtrni
  * tozalash kerakligini bilmasdi.
  */
-export function Empty({ icon = "fa-inbox", text = "Ma'lumot yo'q", action = null }) {
+export function Empty({ icon = "fa-inbox", text = "Ma'lumot yöq", action = null }) {
   return (
     <div className="empty">
       <i className={`fa-solid ${icon}`} />
@@ -164,7 +164,7 @@ export function SearchBar({ value, onChange, placeholder = "Qidirish...", style,
    ⚠ `onPointerDown` da `preventDefault` — aks holda tugmaga tegilishi
    bilan maydon fokusni yo'qotadi, ekran klaviaturasi esa yopilib ketadi
    va kassir uni qaytadan ochishga majbur bo'lardi. */
-export function ClearButton({ onClear, label = "Tozalash" }) {
+export function ClearButton({ onClear, label = "Tozalaş" }) {
   return (
     <button
       type="button"

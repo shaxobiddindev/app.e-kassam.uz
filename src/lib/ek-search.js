@@ -62,6 +62,11 @@ export function normSearch(s) {
     .toLowerCase()
     .replace(/[ʻʼ‘’`´'']/g, "")          // apostrof — barcha variantda tashlanadi
     .replace(/[\u0400-\u04FF]/g, (ch) => CYR[ch] ?? ch)
+    /* ⚠ YANGI ALIFBO ESKI SHAKLGA tushadi (V168): do'kon ma'lumoti
+       o'girilmadi — bazada «Shakar» ham, «Şakar» ham bo'ladi va kassir
+       ikkalasidan birini yozadi. «ш» ham yuqorida «sh» ga o'tgani uchun
+       uchala yozuv bitta kalitda uchrashadi. SERVER HAM SHUNDAY QILADI. */
+    .replace(/ş/g, "sh").replace(/ç/g, "ch").replace(/ö/g, "o").replace(/ğ/g, "g")
     /* ⚠ «x» va «h» BITTA harf deb qaraladi (V55).
        Kirillcha «х» yuqorida «h» ga o'tdi, bu satr esa LOTINCHA «x» ni
        ham unga qo'shadi.

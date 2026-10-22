@@ -185,7 +185,7 @@ export default function ShopsPage({ toast }) {
               />
             </FormGroup>
             <FormGroup label={t("common.address")}>
-              <Field className="form-input" value={form.address} onChange={setField("address")} placeholder="Toshkent sh., Chilonzor" />
+              <Field className="form-input" value={form.address} onChange={setField("address")} placeholder="Toşkent ş., Çilonzor" />
             </FormGroup>
           </div>
           {modal?.type === "edit" && (

@@ -1644,7 +1644,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
    */
   /** Savatga qo'shadi. `true` — qo'shildi, `false` — rad etildi (sababi toast'da). */
   const addToCart = (product, amount = 1, { clearSearch = false } = {}) => {
-    if (product.expired) { toast.error(`${product.name} — muddati o'tgan, sotib bo'lmaydi!`); return false; }
+    if (product.expired) { toast.error(`${product.name} — muddati ötgan, sotib bölmaydi!`); return false; }
     if (product.salePrice == null) { toast.error(`${product.name} — ${t("kassa.noPriceWarn")}`); return false; }
     // Qoldiq FAQAT ombor yuritiladigan tovarda tekshiriladi: xizmatda
     // `stockQuantity` umuman bo'lmaydi va u har doim sotiladi.
@@ -4077,7 +4077,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
                       </button>
                       <button className="qty-btn" aria-label={t("kassa.increase")} onClick={() => updateQty(keyOf(item), +1)}>+</button>
                     </div>
-                    <button className="btn-icon danger" aria-label={`${item.name} — o'chirish`} onClick={() => removeFromCart(keyOf(item))}>
+                    <button className="btn-icon danger" aria-label={`${item.name} — öçiriş`} onClick={() => removeFromCart(keyOf(item))}>
                       <i className="fa-solid fa-xmark" aria-hidden="true" />
                     </button>
                   </div>
@@ -4262,7 +4262,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
       {/* ════ Bekor qilish (undo) ════ */}
       {undo && (
         <div className="ek-undo ek-toast-in" role="status" aria-live="polite">
-          <span>{undo.item.name} o'chirildi</span>
+          <span>{undo.item.name} öçirildi</span>
           <button onClick={restoreUndo}>{t("kassa.undo")}</button>
         </div>
       )}
@@ -4749,7 +4749,7 @@ export default function KassaPage({ toast, refreshLowStock }) {
 
               <div className="pay-col pay-col--right">
               <div className="pay-modal-section-label">
-                <i className="fa-solid fa-credit-card" aria-hidden="true" /> To'lov turini tanlang
+                <i className="fa-solid fa-credit-card" aria-hidden="true" /> Tölov turini tanlang
               </div>
               {/* ⚠ TUGMA TO'LOV TURINI EMAS, TAHRIRLANADIGAN USULNI
                   tanlaydi. Bosilganda hech narsa o'chmaydi — faqat

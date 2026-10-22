@@ -61,7 +61,7 @@ export function dateText(v) {
  * `xlsx` — Excel'ga boshqacha qiymat kerak bo'lsa (masalan yorliq).
  * Yashirin ustun (`hidden` yoki `xlsx === false`) yozilmaydi.
  */
-export function rowsFromCols(cols, rows, { yes = "ha", no = "yo'q" } = {}) {
+export function rowsFromCols(cols, rows, { yes = "ha", no = "yöq" } = {}) {
   const use = (cols || []).filter((c) => c && !c.hidden && c.xlsx !== false);
   const head = use.map((c) => ({ v: String(c.label ?? ""), bold: true }));
   const body = (rows || []).map((r) => use.map((c) => {

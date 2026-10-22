@@ -125,7 +125,7 @@ const no = (m, got) => { bad++; console.log(`  ❌ ${m}  →  ${got}`); };
 const yes = (c, m, got) => (c ? ok(m) : no(m, got));
 
 /* ══ A. TO'LOV OYNASI — og'ir mijoz, 5 usul, chegirma ══ */
-console.log("── A. To'lov oynasi — scrol yo'q (og'ir mijoz) ──");
+console.log("── A. Tölov oynasi — scrol yöq (oğir mijoz) ──");
 let page = await openKassa({ customer: CUST });
 /* ⚠ MIJOZ OYNADA TANLANADI (V67): to'lov oynasi HAR SAFAR mijozsiz
    ochiladi (eski mijoz qolib, begona odamga keshbek yozilmasin), ya'ni
@@ -159,16 +159,16 @@ const st = () => page.evaluate(() => {
   };
 });
 let s = await st();
-yes(s.open, "to'lov oynasi ochildi (F9)");
-yes(s.btns.length === 4, "to'lov turlari to'ri — 4 ta (jamg'arma to'rda emas)", s.btns.length);
-yes(s.savBtn, "mijoz kartasida jamg'arma KATAGI (tugma) bor");
-yes(s.facts.length === 4, "mijoz kartasi 4 katak: daraja, jamg'arma, qarz, ball", s.facts.length + " — " + s.facts.join(" | "));
+yes(s.open, "tölov oynasi oçildi (F9)");
+yes(s.btns.length === 4, "tölov turlari töri — 4 ta (jamğarma törda emas)", s.btns.length);
+yes(s.savBtn, "mijoz kartasida jamğarma KATAGI (tugma) bor");
+yes(s.facts.length === 4, "mijoz kartasi 4 katak: daraja, jamğarma, qarz, ball", s.facts.length + " — " + s.facts.join(" | "));
 /* ⚠ CHEGIRMA MAYDONI BITTA (V82). Ilgari ikkita edi — «Chegirma» va
    «Chegirma byudjeti» — va kassir uchun ular bir xil ko'rinardi:
    ikkalasiga ham summa yoziladi, farqni faqat izohni o'qigan odam
    bilardi. Mijoz oldida turgan kassir esa izoh o'qimaydi. */
-yes(s.disc, "chegirma maydoni bor (#disc-budget)");
-yes(s.over <= 1, `1366×768 (oddiy): scrol yo'q (ortiq ${s.over}px, daraja ${s.fit}, zoom ${s.zoom || "1"})`, s.over);
+yes(s.disc, "çegirma maydoni bor (#disc-budget)");
+yes(s.over <= 1, `1366×768 (oddiy): scrol yöq (ortiq ${s.over}px, daraja ${s.fit}, zoom ${s.zoom || "1"})`, s.over);
 
 // summalarni yozish
 const type = async (sel, v) => {
@@ -190,18 +190,18 @@ await pick("Click"); await type("#pay-amount", "2000");
 await pick("Payme"); await type("#pay-amount", "1000");
 await page.click(".cust-fact--btn"); await sleep(200);
 s = await st();
-yes(s.savActive, "jamg'arma katagi bosilganda FAOL bo'ldi");
-yes(/jamg/i.test(s.label || ""), "summa maydoni jamg'armaga o'tdi: " + s.label, s.label);
+yes(s.savActive, "jamğarma katagi bosilganda FAOL böldi");
+yes(/jam[gğ]/i.test(s.label || ""), "summa maydoni jamğarmaga ötdi: " + s.label, s.label);
 await type("#pay-amount", "1500");
 await type("#disc-budget", "2000");
 await page.focus("#pay-amount");
 s = await st();
 yes(s.rows.length >= 5, `hisobda 5 usul + qoldiq: ${s.rows.length} qator`, s.rows.join(" | "));
-yes(s.rows.some((r) => /Jamg/i.test(r)), "hisobda jamg'arma qatori bor", s.rows.join(" | "));
+yes(s.rows.some((r) => /Jam[gğ]/i.test(r)), "hisobda jamğarma qatori bor", s.rows.join(" | "));
 for (const [w, h] of [[1366, 768], [1280, 720], [1024, 720], [1024, 768], [1600, 900], [1920, 1080], [980, 700]]) {
   await page.setViewport({ width: w, height: h }); await sleep(450);
   const x = await st();
-  yes(x.over <= 1, `${w}×${h}: scrol yo'q (ortiq ${x.over}px, daraja ${x.fit}, zoom ${x.zoom || "1"}, oyna ${Math.round(x.boxH)}/${x.vh})`, x.over + "px");
+  yes(x.over <= 1, `${w}×${h}: scrol yöq (ortiq ${x.over}px, daraja ${x.fit}, zoom ${x.zoom || "1"}, oyna ${Math.round(x.boxH)}/${x.vh})`, x.over + "px");
   if (w === 1366 || w === 980 || w === 1024 && h === 720) SHOT && await page.screenshot({ path: `${SHOT}/v66-pay-${w}x${h}.png` });
 }
 await page.setViewport({ width: 1366, height: 768 }); await sleep(400);
@@ -217,16 +217,16 @@ const row = await page.evaluate(() => {
                             bg: getComputedStyle(b).backgroundColor, op: getComputedStyle(b).opacity }));
 });
 yes(row.length === 2, "ikkita tugma", row.length);
-yes(/Jamg/i.test(row[0]?.t), "chapdagisi — jamg'arma: " + row[0]?.t, row[0]?.t);
-yes(/To'lov/i.test(row[1]?.t), "o'ngdagisi — to'lov: " + row[1]?.t, row[1]?.t);
+yes(/Jam[gğ]/i.test(row[0]?.t), "çapdagisi — jamğarma: " + row[0]?.t, row[0]?.t);
+yes(/Tölov/i.test(row[1]?.t), "öngdagisi — tölov: " + row[1]?.t, row[1]?.t);
 yes(Math.abs(row[0].r.top - row[1].r.top) < 2 && row[0].r.right <= row[1].r.left, "yonma-yon, bir qatorda");
-yes(!row[0].dis && row[0].op === "1", "jamg'arma tugmasi hira emas, bosiladi", `dis=${row[0].dis} op=${row[0].op}`);
-yes(row[0].bg !== row[1].bg, "rangi to'lov tugmasidan farq qiladi", row[0].bg + " vs " + row[1].bg);
-yes(/Alt\+J/.test(row[0].t), "yorlig'i ko'rinadi (Alt+J)", row[0].t);
+yes(!row[0].dis && row[0].op === "1", "jamğarma tugmasi hira emas, bosiladi", `dis=${row[0].dis} op=${row[0].op}`);
+yes(row[0].bg !== row[1].bg, "rangi tölov tugmasidan farq qiladi", row[0].bg + " vs " + row[1].bg);
+yes(/Alt\+J/.test(row[0].t), "yorliği körinadi (Alt+J)", row[0].t);
 SHOT && await page.screenshot({ path: `${SHOT}/v66-checkout.png`, clip: { x: 1366 - 380, y: 768 - 260, width: 380, height: 260 } });
 
 /* ══ C. Jamg'arma oynasi — mijoz oynada tanlanadi ══ */
-console.log("\n── C. Jamg'arma oynasi (mijozsiz savat) ──");
+console.log("\n── C. Jamğarma oynasi (mijozsiz savat) ──");
 await page.close();
 page = await openKassa({ customer: null });
 await page.keyboard.down("Alt"); await page.keyboard.press("j"); await page.keyboard.up("Alt"); await sleep(500);
@@ -249,18 +249,18 @@ const tu = () => page.evaluate(() => {
   };
 });
 let u = await tu();
-yes(u.open, "Alt+J — jamg'arma oynasi mijozsiz ham ochildi");
+yes(u.open, "Alt+J — jamğarma oynasi mijozsiz ham oçildi");
 yes(u.need, "mijoz tanlagichi «kerak» deb ishora qilyapti");
-yes(!!u.hint, "tanlagich tagida yozuv: " + u.hint, "yo'q");
-yes(u.submitDis === true, "mijozsiz «qo'shish» tugmasi yopiq");
-yes(u.ownKeys === 0, "oyna ICHIDA o'z klaviaturasi YO'Q (umumiysi ochiladi)", u.ownKeys + " ta");
+yes(!!u.hint, "tanlagich tagida yozuv: " + u.hint, "yöq");
+yes(u.submitDis === true, "mijozsiz «qöşiş» tugmasi yopiq");
+yes(u.ownKeys === 0, "oyna IÇIDA öz klaviaturasi YÖQ (umumiysi oçiladi)", u.ownKeys + " ta");
 yes(u.w <= 842, `oyna kengligi ixcham: ${Math.round(u.w)}px`, u.w);
-yes(u.over <= 1, "jamg'arma oynasida scrol yo'q", u.over);
+yes(u.over <= 1, "jamğarma oynasida scrol yöq", u.over);
 await page.click(".pay-modal-box--lite .ek-select__btn"); await sleep(300);
 await page.evaluate(() => [...document.querySelectorAll(".ek-select__opt")].find((o) => /Рустам/.test(o.textContent))?.click());
 await sleep(500);
 u = await tu();
-yes(!u.need, "mijoz tanlangach ishora yo'qoldi");
+yes(!u.need, "mijoz tanlangaç işora yöqoldi");
 yes(/Рустам/.test(u.title), "sarlavhada mijoz nomi: " + u.title, u.title);
 yes((u.total || "").replace(/\D/g, "") === "62020", "qoldiq serverdan: " + u.total, u.total);
 /* ⚠ MASKALANGAN MAYDON: `NumField` har belgidan keyin qiymatni qayta
@@ -283,7 +283,7 @@ await page.evaluate(() => {
 await sleep(300);
 u = await tu();
 yes((u.input || "").replace(/\D/g, "") === "10000", "summa 10 000 yozildi: " + u.input, u.input);
-yes(u.submitDis === false, "endi «qo'shish» ochiq");
+yes(u.submitDis === false, "endi «qöşiş» oçiq");
 SHOT && await page.screenshot({ path: `${SHOT}/v66-topup.png` });
 await page.click(".pay-modal-box--lite .pay-modal-footer .btn-primary"); await sleep(700);
 u = await tu();
@@ -294,19 +294,19 @@ yes(!u.open, "yuborilgach oyna yopildi");
      yuklamada kvitansiya hali chizilmagan bo'lardi — 3 yurishdan 1 tasi yiqildi. */
   await page.waitForFunction(() => /J-77/.test(document.querySelector(".pt-tape")?.textContent || ""), { timeout: 6000 }).catch(() => {});
   const tape = await page.evaluate(() => document.querySelector(".pt-tape")?.textContent || "");
-  yes(/J-77/.test(tape) && /JAMG'ARMA KVITANSIYASI/.test(tape) && /72\s?020/.test(tape),
-      "to'ldirishdan keyin kvitansiya ekranda (J-77, jamg'armada 72 020)", tape.slice(0, 120));
+  yes(/J-77/.test(tape) && /JAMĞARMA KVITANSIYASI/.test(tape) && /72\s?020/.test(tape),
+      "töldirişdan keyin kvitansiya ekranda (J-77, jamğarmada 72 020)", tape.slice(0, 120));
   await page.click(".pt-close"); await sleep(300);
 }
-yes(posted.some((p) => p.includes("/customers/5/savings/top-up")), "so'rov mijoz 5 ning jamg'armasiga ketdi", posted.join(","));
+yes(posted.some((p) => p.includes("/customers/5/savings/top-up")), "sörov mijoz 5 ning jamğarmasiga ketdi", posted.join(","));
 /* ⚠ SAVATGA BIRIKTIRILMAYDI (V67): jamg'armaga pul qo'ygan mijoz
    keyingi chekka O'TIB QOLMASLIGI kerak — aks holda begona odamga
    keshbek yozilardi (do'kon egasi shikoyati). */
 const cartCust = await page.evaluate(() => JSON.parse(localStorage.getItem("ek_cart_v_v")).carts[0].customer?.id ?? null);
-yes(cartCust == null, "savatdagi mijoz O'ZGARMADI (pul qo'ygan mijoz o'tib qolmadi)", cartCust);
+yes(cartCust == null, "savatdagi mijoz ÖZGARMADI (pul qöygan mijoz ötib qolmadi)", cartCust);
 
 /* ══ E. Qaytim → mijoz jamg'armasiga (V66) ══ */
-console.log("\n── E. Qaytim jamg'armaga ──");
+console.log("\n── E. Qaytim jamğarmaga ──");
 await page.close();
 page = await openKassa({ customer: CUST });
 await openPay();
@@ -316,29 +316,29 @@ let cs = await page.evaluate(() => ({
   change: document.querySelector(".pay-sum__row--change")?.textContent.replace(/\s+/g, " ").trim(),
   sums: [...document.querySelectorAll(".pay-type-btn__sum")].length,
 }));
-yes(cs.toggle, "qaytim bor va mijoz tanlangan — «qaytim jamg'armaga» tugmasi ko'rinadi");
+yes(cs.toggle, "qaytim bor va mijoz tanlangan — «qaytim jamğarmaga» tugmasi körinadi");
 yes(/81\s?010/.test(cs.change || ""), "qaytim 81 010: " + cs.change, cs.change);
-yes(cs.sums === 0, "usul tugmalarida summa yo'q");
+yes(cs.sums === 0, "usul tugmalarida summa yöq");
 await page.click(".pay-change-sav"); await sleep(200);
 cs = await page.evaluate(() => ({
   on: document.querySelector(".pay-change-sav")?.getAttribute("aria-pressed"),
   row: document.querySelector(".pay-sum__row--save")?.textContent.replace(/\s+/g, " ").trim(),
 }));
-yes(cs.on === "true" && /81\s?010/.test(cs.row || ""), "belgilangach qator «Jamg'armaga +81 010»: " + cs.row, JSON.stringify(cs));
+yes(cs.on === "true" && /81\s?010/.test(cs.row || ""), "belgilangaç qator «Jamğarmaga +81 010»: " + cs.row, JSON.stringify(cs));
 SHOT && await page.screenshot({ path: `${SHOT}/v66-change.png` });
 await page.keyboard.press("F9"); await sleep(1500);
 const sb = salesPosted[0];
 yes(!!sb, "sotuv serverga ketdi");
 yes(sb?.changeToSavings === 81010 && sb?.cashGiven === 100000,
-    "so'rovda changeToSavings=81 010, cashGiven=100 000", JSON.stringify({ c: sb?.changeToSavings, g: sb?.cashGiven }));
+    "sörovda changeToSavings=81 010, cashGiven=100 000", JSON.stringify({ c: sb?.changeToSavings, g: sb?.cashGiven }));
 yes(Array.isArray(sb?.payments) && sb.payments.length === 1 && sb.payments[0].type === "CASH"
     && Number(sb.payments[0].amount) === 18990, "naqd qismi 18 990 (qaytimsiz)", JSON.stringify(sb?.payments));
 {
   const note = await page.evaluate(() => document.querySelector(".ek-finish__note")?.textContent || "");
-  yes(/81\s?010/.test(note), "yakun oynasida: " + note, note || "yo'q");
+  yes(/81\s?010/.test(note), "yakun oynasida: " + note, note || "yöq");
 }
 await sleep(3300);
-yes(!(await page.$(".ek-finish")), "yakun oynasi 3 soniyada o'zi yopildi");
+yes(!(await page.$(".ek-finish")), "yakun oynasi 3 soniyada özi yopildi");
 
 /* ══ D. Raqam bilan miqdor ══ */
 console.log("\n── D. Savatda raqam bilan miqdor ──");
@@ -354,18 +354,18 @@ await typeTimed(page, "123", 160);
 await sleep(120);
 let q = await qty(0);
 yes(q.text === "123", "1,2,3 ketma-ket → 123", q.text);
-yes(q.typing && q.win, "yozish holati ko'rinadi (fokus + chiziq)", JSON.stringify(q));
+yes(q.typing && q.win, "yoziş holati körinadi (fokus + çiziq)", JSON.stringify(q));
 SHOT && await page.screenshot({ path: `${SHOT}/v66-typing.png`, clip: { x: 1366 - 380, y: 60, width: 380, height: 200 } });
 await sleep(1700);
 q = await qty(0);
-yes(!q.typing, "1,5 s dan keyin ko'rsatkich o'chdi", JSON.stringify(q));
+yes(!q.typing, "1,5 s dan keyin körsatkiç öçdi", JSON.stringify(q));
 yes(q.text === "123", "miqdor 123 qoldi", q.text);
 await typeTimed(page, "32", 160); await sleep(120);
 q = await qty(0);
-yes(q.text === "32", "oyna tugagach 3,2 → 32 (eskisi o'rniga)", q.text);
+yes(q.text === "32", "oyna tugagaç 3,2 → 32 (eskisi örniga)", q.text);
 await press(["4"], 0); await sleep(120);
 q = await qty(0);
-yes(q.text === "324", "oyna ichida 4 → 324 (davom)", q.text);
+yes(q.text === "324", "oyna içida 4 → 324 (davom)", q.text);
 await press(["Backspace"], 0); await sleep(120);
 q = await qty(0);
 yes(q.text === "32", "Backspace → 32", q.text);
@@ -379,13 +379,13 @@ await sleep(200);
 await page.keyboard.press("ArrowDown"); await sleep(100);
 await press(["7"], 0); await sleep(120);
 const q2 = await qty(1);
-yes(q2.text === "7", "↓ bilan ikkinchi qator, 7 → 7", q2.text);
+yes(q2.text === "7", "↓ bilan ikkinçi qator, 7 → 7", q2.text);
 // qidiruvdan ↓ — fokus savatga, raqam miqdorga
 await sleep(1700);
 await page.focus("input[data-scanner]");
 await page.keyboard.press("ArrowUp"); await sleep(100);
 const focused = await page.evaluate(() => document.activeElement?.tagName);
-yes(focused !== "INPUT", "qidiruvdan ↑ bosilganda fokus savatga o'tdi", focused);
+yes(focused !== "INPUT", "qidiruvdan ↑ bosilganda fokus savatga ötdi", focused);
 await press(["8"], 0); await sleep(120);
 q = await qty(0);
 const searchVal = await page.$eval("input[data-scanner]", (el) => el.value);
@@ -393,7 +393,7 @@ yes(q.text === "8" && searchVal === "", "raqam qidiruvga emas, miqdorga yozildi"
 // +/-: yozishni yakunlaydi
 await page.keyboard.press("+"); await sleep(120);
 q = await qty(0);
-yes(q.text === "9" && !q.typing, "«+» → 9, yozish holati tugadi", JSON.stringify(q));
+yes(q.text === "9" && !q.typing, "«+» → 9, yoziş holati tugadi", JSON.stringify(q));
 
 /* ══ ⚠ QIDIRUV QATORI TORAYGANDA YOPILIB QOLMAYDI (V84) ═════════════════
    Do'kon: «savat ekranini kengaytirganimda qidirish oynasi to'liq
@@ -437,15 +437,15 @@ console.log("\n══ QIDIRUV QATORI (V84) ══");
     if (m.bar < 179) bads.push(`${w}px → qidiruv ${m.bar}px`);
     /* Maydonning O'ZI ham yozish uchun yetarli bo'lsin. */
     if (m.input < 80) bads.push(`${w}px → maydon ${m.input}px`);
-    if (m.spill) bads.push(`${w}px → qatordan chiqib ketdi`);
+    if (m.spill) bads.push(`${w}px → qatordan çiqib ketdi`);
   }
   bads.length === 0
-    ? ok(`qidiruv hamma kenglikda ochiq qoldi (${widths.length} o'lcham)`)
+    ? ok(`qidiruv hamma kenglikda oçiq qoldi (${widths.length} ölçam)`)
     : no("⚠ qidiruv yopilib qoldi", bads.join(" | "));
 }
 await page.setViewport({ width: 1366, height: 768 }); await sleep(300);
 
 if (pageErrors.length) { bad += pageErrors.length; console.log("\n  ❌ JS xatolari:"); for (const e of [...new Set(pageErrors)]) console.log("     " + e); }
-else console.log("\n  ✅ Sahifada JS xatosi tushmadi");
-console.log(`\n  ${bad ? "❌ " + bad + " ta yiqildi" : "✅ HAMMASI O'TDI"}`);
+else console.log("\n  ✅ Sahifada JS xatosi tuşmadi");
+console.log(`\n  ${bad ? "❌ " + bad + " ta yiqildi" : "✅ HAMMASI ÖTDI"}`);
 await browser.close(); server.close(); process.exit(bad ? 1 : 0);

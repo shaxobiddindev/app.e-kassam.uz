@@ -191,7 +191,7 @@ const summary = (pg) => pg.evaluate(() => ({
 }));
 
 /* ══ 1. QARZ TO'LASH ══════════════════════════════════════════════════ */
-console.log("\n── 1. Qarz to'lash — aralash ──");
+console.log("\n── 1. Qarz tölaş — aralaş ──");
 {
   const pg = await open("/customers");
   /* ⚠ IKKI QADAM. Qatordagi tugma avval QARZ TARIXI oynasini ochadi;
@@ -200,58 +200,58 @@ console.log("\n── 1. Qarz to'lash — aralash ──");
      «oyna ochilmadi» deb yolg'on ayblov qo'ygan edi.
 
      ⚠ Tugma MATNSIZ (faqat ikonka) — `title` bo'yicha topiladi. */
-  const opened = await clickWhenReady(pg, 'button[title="Qarzni to\'lash"]')
-              && await clickByText(pg, "To'lash");
+  const opened = await clickWhenReady(pg, 'button[title="Qarzni tölaş"]')
+              && await clickByText(pg, "Tölaş");
   const ready = opened && await waitFor(pg, "#debt-amount");
   if (!ready) {
-    no("qarz to'lash oynasi ochilmadi", opened ? "maydon chizilmadi" : "tugma topilmadi");
+    no("qarz tölaş oynasi oçilmadi", opened ? "maydon chizilmadi" : "tugma topilmadi");
   } else {
     const before = await summary(pg);
     before.buttons.length === 4
-      ? ok(`to'rtta usul: ${before.buttons.join(" · ")}`)
-      : no("to'rtta usul bo'lishi kerak", JSON.stringify(before.buttons));
+      ? ok(`törtta usul: ${before.buttons.join(" · ")}`)
+      : no("törtta usul bölişi kerak", JSON.stringify(before.buttons));
 
     await put(pg, "Naqd", "200000", "debt-amount");
     const f1 = await pg.evaluate(() => document.activeElement?.id);
     f1 === "debt-amount" ? ok("usul bosilganda kursor summa maydonida")
-                         : no("kursor summa maydonida bo'lishi kerak", f1);
+                         : no("kursor summa maydonida bölişi kerak", f1);
 
     await put(pg, "Karta", "300000", "debt-amount");
     const s = await summary(pg);
     const methodRows = s.rows.filter((r) => !r.taken);
     methodRows.length === 2 ? ok(`hisobda ikkala usul: ${methodRows.map((r) => r.val).join(" + ")}`)
-                            : no("ikkita qator bo'lishi kerak", JSON.stringify(s.rows));
+                            : no("ikkita qator bölişi kerak", JSON.stringify(s.rows));
     const taken = s.rows.find((r) => r.taken);
     taken?.val === 500000 ? ok("«Mijozdan jami» — 500 000")
-                          : no("jami 500 000 bo'lishi kerak", taken?.val);
+                          : no("jami 500 000 bölişi kerak", taken?.val);
 
     /* ⚠⚠ ENG MUHIMI: qismlar SERVERGA ketdimi. */
     sent.length = 0;
     await pg.evaluate(() => [...document.querySelectorAll(".pay-modal-footer button")]
-      .find((b) => !b.disabled && !/Yopish|Bekor/i.test(b.textContent))?.click());
+      .find((b) => !b.disabled && !/Yopiş|Bekor/i.test(b.textContent))?.click());
     await new Promise((r) => setTimeout(r, 1000));
     const req = sent.find((x) => /debt|pay/i.test(x.url));
-    if (!req) no("to'lov so'rovi yuborilmadi", JSON.stringify(sent.map((x) => x.url)));
+    if (!req) no("tölov sörovi yuborilmadi", JSON.stringify(sent.map((x) => x.url)));
     else {
       const p = req.body?.payments;
       Array.isArray(p) && p.length === 2
         ? ok(`serverga QISMLAR ketdi: ${p.map((x) => `${x.type} ${x.amount}`).join(" + ")}`)
-        : no("`payments` ikkita qism bilan ketishi kerak", JSON.stringify(req.body?.payments));
+        : no("`payments` ikkita qism bilan ketişi kerak", JSON.stringify(req.body?.payments));
       Number(req.body?.amount) === 500000
-        ? ok("`amount` — qismlar yig'indisi (server ikkalasini solishtiradi)")
-        : no("amount 500 000 bo'lishi kerak", req.body?.amount);
+        ? ok("`amount` — qismlar yiğindisi (server ikkalasini soliştiradi)")
+        : no("amount 500 000 bölişi kerak", req.body?.amount);
       /* ⚠ Eski maydon HAM ketadi — server yangilanmagan bo'lsa yoki
          oflayn navbatdagi so'rov eski serverga tushsa. */
       req.body?.method === "MIXED"
         ? ok("eski `method` maydoni ham ketdi (MIXED)")
-        : no("`method` yuborilishi kerak", req.body?.method);
+        : no("`method` yuborilişi kerak", req.body?.method);
     }
   }
   await pg.close();
 }
 
 /* ══ 2. TA'MINOTCHIGA TO'LOV ══════════════════════════════════════════ */
-console.log("\n── 2. Ta'minotchiga to'lov — aralash ──");
+console.log("\n── 2. Ta'minotçiga tölov — aralaş ──");
 {
   const pg = await open("/supply");
   /* ⚠ Yetkazib beruvchilar ALOHIDA ILOVADA (tab): sahifa kirim
@@ -259,35 +259,35 @@ console.log("\n── 2. Ta'minotchiga to'lov — aralash ──");
   /* ⚠ Bu tugma MATNLI («Qarzni to'lash»), mijozlar sahifasidagisi esa
      `title` li ikonka — bir xil vazifa, ikki xil belgi. Shu sababdan
      `title` bo'yicha qidirish bu yerda ishlamasdi. */
-  const opened = await clickByText(pg, "Yetkazib beruvchilar")
-              && await clickByText(pg, "Qarzni to'lash");
+  const opened = await clickByText(pg, "Yetkazib beruvçilar")
+              && await clickByText(pg, "Qarzni tölaş");
   const ready = opened && await waitFor(pg, "#supplier-pay-amount");
   if (!ready) {
-    no("ta'minotchiga to'lov oynasi ochilmadi", opened ? "maydon chizilmadi" : "tugma topilmadi");
+    no("ta'minotçiga tölov oynasi oçilmadi", opened ? "maydon chizilmadi" : "tugma topilmadi");
   } else {
     const s0 = await summary(pg);
     /* ⚠ ILGARI FAQAT IKKITA USUL BOR EDI (naqd, karta) — Click/Payme
        orqali o'tkazish oddiy hol bo'lsa ham ro'yxatda yo'q edi. */
     s0.buttons.length === 4
-      ? ok(`to'rtta usul (ilgari ikkita edi): ${s0.buttons.join(" · ")}`)
-      : no("to'rtta usul bo'lishi kerak", JSON.stringify(s0.buttons));
+      ? ok(`törtta usul (ilgari ikkita edi): ${s0.buttons.join(" · ")}`)
+      : no("törtta usul bölişi kerak", JSON.stringify(s0.buttons));
 
     await put(pg, "Naqd", "300000", "supplier-pay-amount");
     await put(pg, "Click", "200000", "supplier-pay-amount");
     const s = await summary(pg);
     const taken = s.rows.find((r) => r.taken);
-    taken?.val === 500000 ? ok("jami 500 000") : no("jami 500 000 bo'lishi kerak", taken?.val);
+    taken?.val === 500000 ? ok("jami 500 000") : no("jami 500 000 bölişi kerak", taken?.val);
 
     sent.length = 0;
-    await clickByText(pg, "To'lash", 3000, "button.btn-primary");
+    await clickByText(pg, "Tölaş", 3000, "button.btn-primary");
     await new Promise((r) => setTimeout(r, 1000));
     const req = sent.find((x) => /pay/i.test(x.url));
-    if (!req) no("to'lov so'rovi yuborilmadi", JSON.stringify(sent.map((x) => x.url)));
+    if (!req) no("tölov sörovi yuborilmadi", JSON.stringify(sent.map((x) => x.url)));
     else {
       const p = req.body?.payments;
       Array.isArray(p) && p.length === 2
         ? ok(`serverga QISMLAR ketdi: ${p.map((x) => `${x.type} ${x.amount}`).join(" + ")}`)
-        : no("`payments` ikkita qism bilan ketishi kerak", JSON.stringify(p));
+        : no("`payments` ikkita qism bilan ketişi kerak", JSON.stringify(p));
     }
   }
   await pg.close();
@@ -298,11 +298,11 @@ server.close();
 
 if (pageErrors.length) {
   bad += pageErrors.length;
-  console.log("\n  ❌ Sahifada JS xatolari tushdi:");
+  console.log("\n  ❌ Sahifada JS xatolari tuşdi:");
   for (const e of [...new Set(pageErrors)].slice(0, 6)) console.log("       " + e);
 } else {
-  console.log("\n  ✅ Sahifada birorta JS xatosi tushmadi");
+  console.log("\n  ✅ Sahifada birorta JS xatosi tuşmadi");
 }
-console.log(bad ? `\n  ${bad} ta xato — aralash to'lov buzilgan.\n`
-                : "\n  ✅ Aralash to'lov: hammasi o'tdi\n");
+console.log(bad ? `\n  ${bad} ta xato — aralaş tölov buzilgan.\n`
+                : "\n  ✅ Aralaş tölov: hammasi ötdi\n");
 process.exit(bad ? 1 : 0);

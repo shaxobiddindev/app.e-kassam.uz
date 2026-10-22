@@ -123,8 +123,8 @@ const row = (id, name, code, qty, cost, price, minQ, exp) => ({
 });
 const GOOD = [
   row(1, "Suv 1L", "1000", 120, 2000,  3000,  10, null),
-  row(2, "Choy",   "1001",  80, 9000,  14000,  5, null),
-  row(3, "Shakar", "1002",  45, 11000, 15000,  5, null),
+  row(2, "Çoy",   "1001",  80, 9000,  14000,  5, null),
+  row(3, "Şakar", "1002",  45, 11000, 15000,  5, null),
 ];
 /* ⚠ PARTIYASIZ TOVAR — HAQIQIY NUQSON USTIGA QO'SHILDI (2026-09-14).
 
@@ -390,7 +390,7 @@ async function addCondition(page) {
     const empty = document.querySelector(".flt-empty");
     if (empty) return empty.click();
     const add = [...document.querySelectorAll(".modal-body button")]
-      .find((b) => /shart qo'shish/i.test(b.textContent));
+      .find((b) => /şart qöşiş/i.test(b.textContent));
     add?.click();
   });
   await page.waitForSelector(".flt-row", { timeout: 8000 });
@@ -401,15 +401,15 @@ console.log("── A. Muammosiz ombor ──");
 {
   const page = await openInv(GOOD);
   const bar = await page.$(".inv-bar");
-  is(!!bar, "panel MUAMMO YO'Q paytda ham turadi");
+  is(!!bar, "panel MUAMMO YÖQ paytda ham turadi");
   const warn = await page.$eval(".inv-bar", (el) => el.className.includes("inv-bar--warn"));
-  is(!warn, "ogohlantirish toni YOQILMAGAN — tinch kunda panel sariq emas");
+  is(!warn, "ogohlantiriş toni YOQILMAGAN — tinç kunda panel sariq emas");
   const hint = await page.$(".inv-bar__hint");
-  is(!hint, "izoh qatori yo'q — bekorga joy egallamaydi");
+  is(!hint, "izoh qatori yöq — bekorga joy egallamaydi");
   const segs = await page.$$eval(".inv-seg", (b) => b.map((x) => x.textContent.trim()));
   is(segs.length === 1, "faqat «Hammasi» segmenti", segs.join(" | "));
   const btn = await page.$(".inv-bar__tools .filter-btn, .inv-bar__tools .btn");
-  is(!!btn, "ustun filtri tugmasi panel ICHIDA");
+  is(!!btn, "ustun filtri tugmasi panel IÇIDA");
   await shot(page, "inv-calm");
   await page.close();
 }
@@ -419,13 +419,13 @@ console.log("\n── B. Muammoli ombor ──");
 const page = await openInv(BAD);
 {
   const warn = await page.$eval(".inv-bar", (el) => el.className.includes("inv-bar--warn"));
-  is(warn, "ogohlantirish toni YOQILDI");
-  is(!!(await page.$(".inv-bar__hint")), "izoh qatori chiqdi");
+  is(warn, "ogohlantiriş toni YOQILDI");
+  is(!!(await page.$(".inv-bar__hint")), "izoh qatori çiqdi");
 
   const segs = await page.$$eval(".inv-seg", (b) => b.map((x) => ({
     text: x.textContent.trim(), n: Number(x.querySelector(".inv-seg__n")?.textContent || 0),
   })));
-  is(segs.length === 4, "to'rt segment: hammasi + uch holat", segs.map((s) => s.text).join(" | "));
+  is(segs.length === 4, "tört segment: hammasi + uç holat", segs.map((s) => s.text).join(" | "));
 
   const all = await rowCount(page);
   is(all === BAD.length, `«Hammasi» — ${BAD.length} qator`, String(all));
@@ -448,7 +448,7 @@ console.log("\n── C. Ustun filtri ──");
   await page.click(".inv-bar__tools .filter-btn");
   await page.waitForSelector(".flt-row, .modal-box", { timeout: 8000 });
   await addCondition(page);
-  ok("shart qatori qo'shildi");
+  ok("şart qatori qöşildi");
 
   /* Ustun = qoldiq, amal = kichik, qiymat = 20.
      ⚠ `Select` — o'z komponenti, `<select>` emas: tugma bosiladi va
@@ -466,7 +466,7 @@ console.log("\n── C. Ustun filtri ──");
     return clicked;
   };
   is(await pick(0, "Qoldiq"), "ustun tanlandi: Qoldiq");
-  is(await pick(1, "kichik"), "amal tanlandi: kichik");
+  is(await pick(1, "kiçik"), "amal tanlandi: kiçik");
   await page.type(".flt-row .form-input", "20");
   await new Promise((r) => setTimeout(r, 300));
 
@@ -478,19 +478,19 @@ console.log("\n── C. Ustun filtri ──");
   const n = await rowCount(page);
   const expect = BAD.filter((x) => stock(x) < 20).length;
   is(n === expect, `qoldiq < 20 → ${expect} qator`, String(n));
-  is(!!(await page.$(".flt-chip")), "faol shart CHIP bo'lib ko'rinadi");
+  is(!!(await page.$(".flt-chip")), "faol şart ÇIP bölib körinadi");
   await shot(page, "inv-filter");
 
   /* ══ D. Holat + ustun sharti — VA bilan ═════════════════════════════ */
   console.log("\n── D. Holat va ustun sharti BIRGA ──");
   await page.evaluate(() => {
-    const seg = [...document.querySelectorAll(".inv-seg")].find((b) => /muddati o'tgan/i.test(b.textContent));
+    const seg = [...document.querySelectorAll(".inv-seg")].find((b) => /muddati ötgan/i.test(b.textContent));
     seg?.click();
   });
   await new Promise((r) => setTimeout(r, 300));
   const both = await rowCount(page);
   const expectBoth = BAD.filter((x) => stock(x) < 20 && rowExpired(x)).length;
-  is(both === expectBoth, `muddati o'tgan VA qoldiq < 20 → ${expectBoth}`, String(both));
+  is(both === expectBoth, `muddati ötgan VA qoldiq < 20 → ${expectBoth}`, String(both));
 
   await page.evaluate(() => {
     [...document.querySelectorAll(".flt-chips__clear")].pop()?.click();
@@ -501,7 +501,7 @@ console.log("\n── C. Ustun filtri ──");
 }
 
 /* ══ E. Sarlavha bilan saralash ════════════════════════════════════════ */
-console.log("\n── E. Saralash ──");
+console.log("\n── E. Saralaş ──");
 {
   const clickQty = () => page.evaluate(() => {
     const th = [...document.querySelectorAll("th .th-sort")].find((b) => /qoldiq/i.test(b.textContent));
@@ -509,11 +509,11 @@ console.log("\n── E. Saralash ──");
   });
   await clickQty(); await new Promise((r) => setTimeout(r, 250));
   const asc = await page.$$eval("table.table tbody tr td:nth-child(3)", (td) => td.map((x) => parseFloat(x.textContent.replace(/[^\d.]/g, "")) || 0));
-  is(asc.every((v, i) => i === 0 || asc[i - 1] <= v), "o'sish bo'yicha", asc.join(" "));
+  is(asc.every((v, i) => i === 0 || asc[i - 1] <= v), "ösiş böyiça", asc.join(" "));
 
   await clickQty(); await new Promise((r) => setTimeout(r, 250));
   const desc = await page.$$eval("table.table tbody tr td:nth-child(3)", (td) => td.map((x) => parseFloat(x.textContent.replace(/[^\d.]/g, "")) || 0));
-  is(desc.every((v, i) => i === 0 || desc[i - 1] >= v), "kamayish bo'yicha", desc.join(" "));
+  is(desc.every((v, i) => i === 0 || desc[i - 1] >= v), "kamayiş böyiça", desc.join(" "));
 
   /* ⚠ Qatorlar TARTIBI bilan tekshirib bo'lmaydi: soxta ma'lumot
      API dan allaqachon kamayish tartibida keladi va «bekor qilingan»
@@ -525,7 +525,7 @@ console.log("\n── E. Saralash ──");
     const th = [...document.querySelectorAll("th .th-sort")].find((b) => /qoldiq/i.test(b.textContent));
     return th?.className.includes("is-on");
   });
-  is(!stillOn, "uchinchi bosish tartibni BEKOR qildi");
+  is(!stillOn, "uçinçi bosiş tartibni BEKOR qildi");
 }
 
 /* ══ F. Qator bosilishi va tugmalar (V72) ══════════════════════════════
@@ -546,11 +546,11 @@ console.log("\n── F. Qator va tugmalar ──");
     td?.click();
   });
   await wait(400);
-  is(p6.url() === url0, "qatorning bo'sh joyiga bosish HECH QAYERGA olib bormaydi", p6.url());
+  is(p6.url() === url0, "qatorning böş joyiga bosiş HEÇ QAYERGA olib bormaydi", p6.url());
 
   /* Yagona nishon — NOM. */
   const opener = await p6.$("table.table tbody .inv-open");
-  is(!!opener, "nomda alohida ochish tugmasi bor");
+  is(!!opener, "nomda alohida oçiş tugmasi bor");
   const styled = await p6.evaluate(() => {
     const b = document.querySelector("table.table tbody .inv-open");
     if (!b) return null;
@@ -558,11 +558,11 @@ console.log("\n── F. Qator va tugmalar ──");
     return { cursor: cs.cursor, hasArrow: !!b.querySelector("i") };
   });
   is(styled?.cursor === "pointer" && styled?.hasArrow,
-     "u bosiladigan ko'rinishda (kursor va o'q bilan)", JSON.stringify(styled));
+     "u bosiladigan körinişda (kursor va öq bilan)", JSON.stringify(styled));
 
   await p6.evaluate(() => document.querySelector("table.table tbody .inv-open")?.click());
   await wait(500);
-  is(/\/inventory\/\d+/.test(p6.url()), "nomga bosilganda partiyalarga o'tadi", p6.url());
+  is(/\/inventory\/\d+/.test(p6.url()), "nomga bosilganda partiyalarga ötadi", p6.url());
   await p6.goBack({ waitUntil: "networkidle2" });
   await p6.waitForSelector(".inv-bar", { timeout: 10_000 });
 
@@ -579,7 +579,7 @@ console.log("\n── F. Qator va tugmalar ──");
   is(!!gap, "ikkita tugmali qator topildi");
   if (gap) {
     is(gap.sameRow ? gap.dx >= 6 : gap.dy >= 6,
-       "«Kirim» va «To'g'irlash» orasida bo'shliq bor (yopishib qolmagan)",
+       "«Kirim» va «Töğirlaş» orasida böşliq bor (yopişib qolmagan)",
        JSON.stringify(gap));
   }
   await p6.close();
@@ -607,7 +607,7 @@ console.log("\n── G. Filtr oynasi ──");
     const r = b.getBoundingClientRect();
     return { w: Math.round(r.width), h: Math.round(r.height) };
   });
-  is(x && x.w >= 36 && x.h >= 36, "✕ tugmasi teginish o'lchamida", JSON.stringify(x));
+  is(x && x.w >= 36 && x.h >= 36, "✕ tugmasi teginiş ölçamida", JSON.stringify(x));
 
   const wide = await p7.evaluate(() => Math.round(document.querySelector(".flt-box").getBoundingClientRect().width));
   is(wide >= 700, "oyna kengaydi", `${wide}px`);
@@ -627,21 +627,21 @@ console.log("\n── G. Filtr oynasi ──");
   await p7.type(".flt-row .form-input", "sut");
   await wait(300);
   const saved = await p7.evaluate(() => localStorage.getItem("ek_flt_inv"));
-  is(saved && saved.includes("sut"), "shart diskka yozildi", saved);
+  is(saved && saved.includes("sut"), "şart diskka yozildi", saved);
 
   await p7.evaluate(() => {
     [...document.querySelectorAll(".flt-foot button")]
-      .find((b) => /tozalash/i.test(b.textContent))?.click();
+      .find((b) => /tozalaş/i.test(b.textContent))?.click();
   });
   await wait(400);
   const after = await p7.evaluate(() => localStorage.getItem("ek_flt_inv"));
   is(!after || !after.includes("sut"),
-     "tozalangach diskda ham QOLMADI (qayta kirganda paydo bo'lmaydi)", after);
+     "tozalangaç diskda ham QOLMADI (qayta kirganda paydo bölmaydi)", after);
 
   /* Sahifani qayta yuklab, haqiqatan yo'qligini tekshiramiz. */
   await p7.reload({ waitUntil: "networkidle2" });
   await p7.waitForSelector(".inv-bar", { timeout: 10_000 });
-  is(!(await p7.$(".flt-chip")), "qayta yuklashdan keyin ham shart yo'q");
+  is(!(await p7.$(".flt-chip")), "qayta yuklaşdan keyin ham şart yöq");
   await p7.close();
 }
 
@@ -656,17 +656,17 @@ console.log("\n── P. Partiyalar jadvali ──");
 {
   const p = await openBatches();
 
-  is((await p.$("table.table")) !== null, "partiyalar JADVAL bo'lib chizildi");
-  is((await p.$(".batch-list")) === null, "eski kartochka ro'yxati qolmadi");
+  is((await p.$("table.table")) !== null, "partiyalar JADVAL bölib çizildi");
+  is((await p.$(".batch-list")) === null, "eski kartoçka röyxati qolmadi");
 
   /* Faol bo'lim: muddati o'tgani bu yerda EMAS. */
   const n0 = await rowCount(p);
-  is(n0 === 3, "faol bo'limda uchta partiya (muddati o'tgani alohida)", String(n0));
+  is(n0 === 3, "faol bölimda uçta partiya (muddati ötgani alohida)", String(n0));
 
   /* Ustun soni — faol bo'limda «arxivlangan» ustuni YO'Q. */
   const th = await p.$$eval("table.table thead th", (n) => n.map((x) => x.textContent.trim()));
   is(th.length === 8, "sakkizta ustun", th.join(" | "));
-  is(!th.some((x) => /arxivlangan/i.test(x)), "faol bo'limda «arxivlangan» ustuni yo'q");
+  is(!th.some((x) => /arxivlangan/i.test(x)), "faol bölimda «arxivlangan» ustuni yöq");
 
   /* ⚠ QIYMAT USTUNI — jadvalning asosiy yutug'i: «bu partiyada qancha
      pul yotibdi?». 40 × 7500 = 300 000. */
@@ -683,11 +683,11 @@ console.log("\n── P. Partiyalar jadvali ──");
     q: x.querySelector(".batch-stat__q").textContent.replace(/\s/g, ""),
     v: x.querySelector(".batch-stat__v").textContent.replace(/\s/g, ""),
   })));
-  is(stats.length === 4, "yakun bitta blokda: jami + uchta bo'lim", String(stats.length));
+  is(stats.length === 4, "yakun bitta blokda: jami + uçta bölim", String(stats.length));
   is(/jami/i.test(stats[0].l), "birinchisi — JAMI", stats[0].l);
-  is(stats[0].q.includes("58"), "jami hamma bo'limni sanaydi", stats[0].q);
-  is(stats[1].q.includes("52"), "faol bo'lim alohida", stats[1].q);
-  is(stats[2].q.includes("6"),  "muddati o'tgani alohida", stats[2].q);
+  is(stats[0].q.includes("58"), "jami hamma bölimni sanaydi", stats[0].q);
+  is(stats[1].q.includes("52"), "faol bölim alohida", stats[1].q);
+  is(stats[2].q.includes("6"),  "muddati ötgani alohida", stats[2].q);
 
   await shot(p, "batch-table");
 
@@ -700,7 +700,7 @@ console.log("\n── P. Partiyalar jadvali ──");
   await wait(300);
   const asc = await p.$$eval("table.table tbody tr td:nth-child(1)",
     (n) => n.map((x) => parseInt(x.textContent.replace(/\D/g, ""), 10)));
-  is(asc[0] <= asc[asc.length - 1], "ustun sarlavhasi bo'yicha saralandi", asc.join(","));
+  is(asc[0] <= asc[asc.length - 1], "ustun sarlavhasi böyiça saralandi", asc.join(","));
 
   /* ── Filtr ──────────────────────────────────────────────────────
      ⚠ `Select` — O'Z komponenti, `<select>` emas: tugma bosiladi va
@@ -740,7 +740,7 @@ console.log("\n── P. Partiyalar jadvali ──");
 
   const n1 = await rowCount(p);
   is(n1 === 1, "filtr qatorlarni kesdi (qoldiq > 20)", String(n1));
-  is((await p.$(".flt-chip")) !== null, "faol shart CHIP bo'lib ko'rinadi");
+  is((await p.$(".flt-chip")) !== null, "faol şart ÇIP bölib körinadi");
 
   /* ⚠ YIG'INDI FILTRLANGAN qatorlar bo'yicha: butun bo'lim bo'yicha
      hisoblangan bo'lsa, shart qo'yilgandan keyin ostidagi son
@@ -748,10 +748,10 @@ console.log("\n── P. Partiyalar jadvali ──");
      Qolgani bitta: 40 dona × 7 500 = 300 000 (52 va 396 000 emas). */
   const foot2 = await p.$eval(".batch-bar__sum", (n) => n.textContent.replace(/\s/g, ""));
   is(foot2.includes("40dona") && foot2.includes("300000"),
-     "filtrlangan yig'indi filtr qatorida ko'rindi", foot2);
+     "filtrlangan yiğindi filtr qatorida körindi", foot2);
 
   const shown = await p.$eval(".batch-bar__n", (n) => n.textContent.trim());
-  is(/1\s*\/\s*3/.test(shown), "«nechta ko'rinyapti» yozuvi yangilandi", shown);
+  is(/1\s*\/\s*3/.test(shown), "«neçta körinyapti» yozuvi yangilandi", shown);
 
   /* ── Filtr hech narsa topmasa ──────────────────────────────────── */
   await p.evaluate(() => { [...document.querySelectorAll(".filter-btn")][0]?.click(); });
@@ -768,9 +768,9 @@ console.log("\n── P. Partiyalar jadvali ──");
      bo'lganda omborchi partiyalar yo'q deb o'ylab, filtrni tozalash
      kerakligini bilmasdi. */
   const emptyTxt = await p.$eval(".empty p", (n) => n.textContent.trim());
-  is(/mos.*topilmadi/i.test(emptyTxt), "«filtr topmadi» yozuvi chiqdi", emptyTxt);
+  is(/mos.*topilmadi/i.test(emptyTxt), "«filtr topmadi» yozuvi çiqdi", emptyTxt);
   is((await p.$$eval(".empty button", (n) => n.length)) === 1,
-     "tozalash tugmasi ham shu yerda — chiqish yo'li ko'rinadi");
+     "tozalaş tugmasi ham şu yerda — çiqiş yöli körinadi");
 
   await p.evaluate(() => document.querySelector(".empty button")?.click());
   await wait(400);
@@ -779,7 +779,7 @@ console.log("\n── P. Partiyalar jadvali ──");
 }
 
 /* ══ P2. Bo'limlar va arxiv ════════════════════════════════════════════ */
-console.log("\n── P2. Bo'limlar ──");
+console.log("\n── P2. Bölimlar ──");
 {
   const p = await openBatches();
 
@@ -789,13 +789,13 @@ console.log("\n── P2. Bo'limlar ──");
       .find((b) => /muddati/i.test(b.textContent))?.click();
   });
   await wait(400);
-  is((await p.$(".batch-warn")) !== null, "muddati o'tgan bo'limda ogohlantirish turadi");
-  is((await rowCount(p)) === 1, "faqat muddati o'tgan partiya");
+  is((await p.$(".batch-warn")) !== null, "muddati ötgan bölimda ogohlantiriş turadi");
+  is((await rowCount(p)) === 1, "faqat muddati ötgan partiya");
 
   /* ⚠ «Kun qoldi» ustunida manfiy son EMAS, aniq yozuv: «-3» ni
      omborchi «uch kun qoldi» deb o'qib yuborishi mumkin edi. */
   const late = await p.$eval(".batch-late", (n) => n.textContent.trim());
-  is(/3/.test(late) && !late.includes("-"), "kechikish «N kun o'tdi» deb yozildi", late);
+  is(/3/.test(late) && !late.includes("-"), "keçikiş «N kun ötdi» deb yozildi", late);
 
   /* Arxiv: qo'shimcha ustun va boshqa amal tugmasi. */
   await p.evaluate(() => {
@@ -805,9 +805,9 @@ console.log("\n── P2. Bo'limlar ──");
   await wait(400);
   const th2 = await p.$$eval("table.table thead th", (n) => n.map((x) => x.textContent.trim()));
   is(th2.length === 9 && th2.some((x) => /arxivlangan/i.test(x)),
-     "arxivda «arxivlangan» ustuni qo'shildi", th2.join(" | "));
+     "arxivda «arxivlangan» ustuni qöşildi", th2.join(" | "));
   const act = await p.$eval("tbody tr td:last-child button", (n) => n.textContent.trim());
-  is(/qaytarish/i.test(act), "arxivda «qaytarish» tugmasi", act);
+  is(/qaytariş/i.test(act), "arxivda «qaytariş» tugmasi", act);
   is((await p.$(".batch-note")) !== null, "arxiv izohi turadi");
   await shot(p, "batch-archive");
   await p.close();
@@ -819,22 +819,22 @@ console.log("\n── P2. Bo'limlar ──");
    butun tarixi qanday?». Ular uchun uch bo'lim orasida yurish kerak
    bo'lardi va solishtirish ko'z bilan qilinardi.
    ══════════════════════════════════════════════════════════════════════ */
-console.log("\n── P2b. Barchasi ──");
+console.log("\n── P2b. Barçasi ──");
 {
   const p = await openBatches();
   const tabs = await p.$$eval(".batch-tab", (n) => n.map((x) => x.textContent.trim()));
-  is(/barchasi/i.test(tabs[0] || ""), "«Barchasi» birinchi turadi", tabs.join(" | "));
+  is(/barçasi/i.test(tabs[0] || ""), "«Barçasi» birinçi turadi", tabs.join(" | "));
 
   /* ⚠ STANDART EMAS: kunlik savol — «javonda hozir nima bor?». */
   const on = await p.$eval(".batch-tab.is-on", (n) => n.textContent.trim());
-  is(/faol/i.test(on), "standart bo'lim FAOL bo'lib qoladi", on);
+  is(/faol/i.test(on), "standart bölim FAOL bölib qoladi", on);
 
   await p.evaluate(() => {
     [...document.querySelectorAll(".batch-tab")]
-      .find((b) => /barchasi/i.test(b.textContent))?.click();
+      .find((b) => /barçasi/i.test(b.textContent))?.click();
   });
   await wait(400);
-  is((await rowCount(p)) === 5, "barcha partiyalar bitta ro'yxatda (3+1+1)",
+  is((await rowCount(p)) === 5, "barça partiyalar bitta röyxatda (3+1+1)",
      String(await rowCount(p)));
 
   /* Arxivdagi qator faol qatorlar orasida FARQLANISHI kerak. */
@@ -851,25 +851,25 @@ console.log("\n── P2b. Barchasi ──");
      chiqardi — server rad etadigan, ma'nosiz amal. */
   const acts = await p.$$eval("tbody tr td:last-child button",
     (n) => n.map((x) => x.textContent.trim()));
-  is(acts.filter((x) => /qaytarish/i.test(x)).length === 1,
-     "arxivdagi qatorda «Qaytarish» tugmasi", acts.join(" · "));
+  is(acts.filter((x) => /qaytariş/i.test(x)).length === 1,
+     "arxivdagi qatorda «Qaytariş» tugmasi", acts.join(" · "));
   is(!acts.some((x, i) => /arxivga/i.test(x) && i === acts.length - 1),
-     "arxivdagi qatorga «Arxivga» tugmasi chiqmaydi", acts.join(" · "));
+     "arxivdagi qatorga «Arxivga» tugmasi çiqmaydi", acts.join(" · "));
   await shot(p, "batch-all");
   await p.close();
 }
 
 /* ══ P3. Bo'sh bo'lim ══════════════════════════════════════════════════ */
-console.log("\n── P3. Bo'sh bo'lim ──");
+console.log("\n── P3. Böş bölim ──");
 {
   const p = await openBatches({ live: [], arch: [] });
   /* ⚠ Yozuv HAQIQATAN chiqishi kerak. Ilgari `Empty` ga `title` xossasi
      berilardi — unday xossa yo'q va ekranda har doim standart
      «Ma'lumot yo'q» turardi. */
   const txt = await p.$eval(".empty p", (n) => n.textContent.trim());
-  is(/javonda partiya yo'q/i.test(txt), "bo'sh bo'lim O'Z yozuvini ko'rsatadi", txt);
+  is(/javonda partiya yöq/i.test(txt), "böş bölim ÖZ yozuvini körsatadi", txt);
   is((await p.$eval(".empty i", (n) => n.className)).includes("fa-box-open"),
-     "ikonka to'liq nomi bilan chizildi");
+     "ikonka töliq nomi bilan çizildi");
   await p.close();
 }
 
@@ -931,16 +931,16 @@ console.log("\n── Q. Narx tavsiyasi: optom narx (V99) ──");
   });
 
   is(seen.notes.some((n) => /optom narx endi tan narxdan past/i.test(n)),
-     "⚠ OPTOM ZARARI haqida ogohlantirish chiqdi", seen.notes.join(" | "));
+     "⚠ OPTOM ZARARI haqida ogohlantiriş çiqdi", seen.notes.join(" | "));
   is(!seen.notes.some((n) => /sotuv narxi endi tan narxdan past/i.test(n)),
-     "chakana ogohlantirishi chiqmadi — u zarar emas", seen.notes.join(" | "));
+     "çakana ogohlantirişi çiqmadi — u zarar emas", seen.notes.join(" | "));
   is(seen.rows.some((r) => /optom narx/i.test(r) && /9\s*000/.test(r)),
-     "joriy optom narx ko'rsatildi", seen.rows.join(" | "));
+     "joriy optom narx körsatildi", seen.rows.join(" | "));
   is(seen.rows.some((r) => /optom marja/i.test(r) && /-5[.,]6|-5[.,]5/.test(r)),
-     "optom marja MANFIY ko'rsatildi — zarar aynan shunday ko'rinadi",
+     "optom marja MANFIY körsatildi — zarar aynan şunday körinadi",
      seen.rows.join(" | "));
   is(seen.rows.some((r) => /optom narx/i.test(r) && /10\s*688/.test(r)),
-     "optom narx uchun tavsiya berildi", seen.rows.join(" | "));
+     "optom narx uçun tavsiya berildi", seen.rows.join(" | "));
   await shot(p, "advice-wholesale");
   await p.close();
 }
@@ -976,13 +976,13 @@ console.log("\n── Q. Narx tavsiyasi: optom narx (V99) ──");
   ).catch(() => {});
   const rows = await p.$$eval(".modal-box .inv-detail__row",
     (rs) => rs.map((r) => r.textContent.replace(/\s+/g, " ").trim()));
-  is(rows.length > 0, "tavsiya oynasi ochildi", String(rows.length));
+  is(rows.length > 0, "tavsiya oynasi oçildi", String(rows.length));
   is(!rows.some((r) => /optom/i.test(r)),
-     "optom narxsiz do'konda optom qatorlari CHIQMAYDI", rows.join(" | "));
+     "optom narxsiz dökonda optom qatorlari ÇIQMAYDI", rows.join(" | "));
   const notes = await p.$$eval(".modal-box .ek-note", (ns) => ns.map((n) => n.textContent.trim()));
   is(notes.length === 0,
-     "⚠ hammasi joyida bo'lsa qizil belgi yo'q — bekorga qo'rqitilgan "
-     + "do'kon egasi bir haftadan keyin ogohlantirishga qaramay qo'yadi",
+     "⚠ hammasi joyida bölsa qizil belgi yöq — bekorga qörqitilgan "
+     + "dökon egasi bir haftadan keyin ogohlantirişga qaramay qöyadi",
      notes.join(" | "));
   await p.close();
 }
@@ -1001,7 +1001,7 @@ console.log("\n── Q. Narx tavsiyasi: optom narx (V99) ──");
      2. tavsiya yo'q bo'lganda tugma umuman chizilmaydimi — bosilib
         hech narsa qilmaydigan tugma ishonchni yo'qotadi;
      3. bajik SO'RALADIMI — tugma nazoratni chetlab o'tmasligi kerak. */
-console.log("\n── R. Tavsiyani qo'llash (V100) ──");
+console.log("\n── R. Tavsiyani qöllaş (V100) ──");
 
 /** Kirim qo'shib, narx tavsiyasi oynasini ochadi. */
 async function openAdvice(advice) {
@@ -1048,14 +1048,14 @@ const ADV_BOTH = {
   priceSent = null;
   const p = await openAdvice(ADV_BOTH);
   const clicked = await clickApply(p);
-  is(clicked, "«Tavsiya bo'yicha qo'yish» tugmasi chizilgan");
+  is(clicked, "«Tavsiya böyiça qöyiş» tugmasi çizilgan");
   await p.waitForFunction(() => !document.querySelector(".inv-detail__row"),
                           { timeout: 8000 }).catch(() => {});
 
   is(priceSent && typeof priceSent === "object",
-     "narx yangilash so'rovi ketdi", JSON.stringify(priceSent));
+     "narx yangilaş sörovi ketdi", JSON.stringify(priceSent));
   is(priceSent?.salePrice === 11875,
-     "tavsiya qilingan CHAKANA narx yuborildi", JSON.stringify(priceSent));
+     "tavsiya qilingan ÇAKANA narx yuborildi", JSON.stringify(priceSent));
   /* ⚠ ENG MUHIM QATOR. Optom narx tushib qolsa, so'rov baribir
      muvaffaqiyatli qaytadi va ekran «Narxlar yangilandi» deb yozadi —
      lekin optom narx (9 000) tan narxdan (9 500) past qolaveradi. */
@@ -1078,8 +1078,8 @@ const ADV_BOTH = {
     wholesaleMarginPercent: null, belowWholesale: false,
   });
   const clicked = await clickApply(p);
-  is(!clicked, "tavsiya yo'q bo'lganda tugma umuman chizilmaydi");
-  is(priceSent === null, "hech qanday narx so'rovi ketmadi", JSON.stringify(priceSent));
+  is(!clicked, "tavsiya yöq bölganda tugma umuman çizilmaydi");
+  is(priceSent === null, "heç qanday narx sörovi ketmadi", JSON.stringify(priceSent));
   await p.close();
 }
 
@@ -1095,14 +1095,14 @@ const ADV_BOTH = {
     () => [...document.querySelectorAll(".modal-title")].some((n) => /bajik/i.test(n.textContent)),
     { timeout: 8000 },
   ).then(() => true).catch(() => false);
-  is(asked, "428 kelganda BAJIK so'raldi — tugma nazoratni chetlab o'tmaydi");
+  is(asked, "428 kelganda BAJIK söraldi — tugma nazoratni çetlab ötmaydi");
   await p.close();
   put428 = false;
 }
 
-is(pageErrors.length === 0, "sahifada JS xatosi tushmadi", pageErrors.join(" | "));
+is(pageErrors.length === 0, "sahifada JS xatosi tuşmadi", pageErrors.join(" | "));
 
 await browser.close();
 server.close();
-console.log(fail === 0 ? `\n  ✅ HAMMASI O'TDI (${pass} o'tdi)` : `\n  ❌ ${fail} yiqildi, ${pass} o'tdi`);
+console.log(fail === 0 ? `\n  ✅ HAMMASI ÖTDI (${pass} ötdi)` : `\n  ❌ ${fail} yiqildi, ${pass} ötdi`);
 process.exit(fail === 0 ? 0 : 1);

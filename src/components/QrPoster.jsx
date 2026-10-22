@@ -27,7 +27,7 @@ const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) =>
  */
 export function printQrPoster({ url, shopName }) {
   const win = window.open("", "_blank", "width=820,height=1100");
-  if (!win) throw new Error("Chop etish oynasi ochilmadi");
+  if (!win) throw new Error("Çop etiş oynasi oçilmadi");
 
   /* QR KATTA: plakat devorda turadi va uni 1.5–2 metrdan skanerlashadi.
      Kichik QR bunday masofada umuman o'qilmaydi. */

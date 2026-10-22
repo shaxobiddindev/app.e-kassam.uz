@@ -31,8 +31,8 @@ const money = (v) => groupDigits(v || 0);
 const TABS = [
   { key: "card",     icon: "fa-id-card",  label: "Kartam" },
   { key: "news",     icon: "fa-bullhorn", label: "Aksiyalar" },
-  { key: "receipts", icon: "fa-receipt",  label: "Cheklar" },
-  { key: "shops",    icon: "fa-store",    label: "Do'konlar" },
+  { key: "receipts", icon: "fa-receipt",  label: "Çeklar" },
+  { key: "shops",    icon: "fa-store",    label: "Dökonlar" },
   { key: "profile",  icon: "fa-user",     label: "Profil" },
 ];
 
@@ -85,7 +85,7 @@ export default function CustomerApp({ onLoggedOut }) {
           <p><b>{t("cu.loadFailed")}</b></p>
           <p className="cu-muted">{error}</p>
           <button className="cu-btn" onClick={() => { setError(""); load(); }}>
-            Qayta urinish
+            Qayta uriniş
           </button>
           <button className="cu-btn cu-btn--ghost" onClick={logout}>{t("cu.logout")}</button>
         </div>
@@ -157,7 +157,7 @@ function DebtsBanner({ debts, onAnswer, busy }) {
         <div key={d.id} className="cu-debt__row">
           <div>
             <div className="cu-debt__shop">{d.shopName}</div>
-            <div className="cu-debt__sum">{money(d.amount)} so'm</div>
+            <div className="cu-debt__sum">{money(d.amount)} söm</div>
             <div className="cu-muted cu-debt__date">{dateTime(d.createdAt)}</div>
           </div>
           <div className="cu-debt__btns">
@@ -171,8 +171,8 @@ function DebtsBanner({ debts, onAnswer, busy }) {
         </div>
       ))}
       <p className="cu-muted cu-debt__note">
-        «Men olmadim» qarzni o'chirmaydi — javobingiz do'konga boradi va
-        ular siz bilan bog'lanadi.
+        «Men olmadim» qarzni öçirmaydi — javobingiz dökonga boradi va
+        ular siz bilan boğlanadi.
       </p>
     </div>
   );
@@ -202,10 +202,10 @@ function CardScreen({ me, shops }) {
     if (!confirmed) {
       const ok = await confirm({
         title: "Men olmadim",
-        message: `${d.shopName}: ${money(d.amount)} so'm. Do'konga «bu qarzni men olmaganman» deb xabar boradi. Davom etamizmi?`,
+        message: `${d.shopName}: ${money(d.amount)} söm. Dökonga «bu qarzni men olmaganman» deb xabar boradi. Davom etamizmi?`,
         type: "warning",
         confirmText: "Ha, men olmadim",
-        cancelText: "Bekor qilish",
+        cancelText: "Bekor qiliş",
       });
       if (!ok) return;
     }
@@ -335,13 +335,13 @@ function CardScreen({ me, shops }) {
       <div className="cu-hero">
         <span className="cu-hero__label">{t("cu.totalPoints")}</span>
         <b className="cu-hero__value">{money(me.totalBonus)}</b>
-        <span className="cu-hero__sub">{me.shopCount} ta do'konda</span>
+        <span className="cu-hero__sub">{me.shopCount} ta dökonda</span>
       </div>
 
       {/* Do'kon tanlagich — faqat bir nechta do'kon bo'lsa. Bitta do'konli
           mijozga bu qator ortiqcha shovqin bo'lardi. */}
       {items.length > 1 && (
-        <div className="cu-chips" role="tablist" aria-label="Do'kon tanlash">
+        <div className="cu-chips" role="tablist" aria-label="Dökon tanlaş">
           {items.map((s) => (
             <button key={s.id} type="button" role="tab"
                     aria-selected={picked?.id === s.id}
@@ -363,10 +363,10 @@ function CardScreen({ me, shops }) {
               butun ekranda va maksimal yorug'likda ochiladi (`CodeZoom`).
               Kartadagi kichik kodni xira telefondan skaner ololmasdi. */}
           <button type="button" className="ek-code-btn cu-code__qr"
-                  onClick={() => setZoom("qr")} aria-label="QR kodni kattalashtirish"
+                  onClick={() => setZoom("qr")} aria-label="QR kodni kattalaştiriş"
                   dangerouslySetInnerHTML={{ __html: qrHtml }} />
           <button type="button" className="ek-code-btn cu-code__bars"
-                  onClick={() => setZoom("bar")} aria-label="Shtrix kodni kattalashtirish"
+                  onClick={() => setZoom("bar")} aria-label="Ştrix kodni kattalaştiriş"
                   dangerouslySetInnerHTML={{ __html: barHtml }} />
           <div className="cu-code__num">{picked.cardCode}</div>
           {/* ⚠ Orqa hisob KO'RINADI. Kod jimgina yangilansa, mijoz
@@ -374,7 +374,7 @@ function CardScreen({ me, shops }) {
               hisoblagich esa «hozir yangilanadi, kutib turing» deydi. */}
           {otp ? (
             <p className="cu-muted cu-center">
-              Kassada shu kodni ko'rsating · <b>{left} s</b> dan keyin yangilanadi
+              Kassada şu kodni körsating · <b>{left} s</b> dan keyin yangilanadi
             </p>
           ) : (
             <p className="cu-muted cu-center">{t("cu.showCode")}</p>
@@ -388,7 +388,7 @@ function CardScreen({ me, shops }) {
           {Number(picked.bonusExpiringSoon) > 0 && (
             <p className="cu-warn cu-center">
               <i className="fa-solid fa-clock" aria-hidden="true" />{" "}
-              {money(picked.bonusExpiringSoon)} ball 30 kun ichida kuyadi
+              {money(picked.bonusExpiringSoon)} ball 30 kun içida kuyadi
             </p>
           )}
         </div>
@@ -397,7 +397,7 @@ function CardScreen({ me, shops }) {
           <i className="fa-solid fa-qrcode cu-big-icon" aria-hidden="true" />
           <p><b>{t("cu.noShopYet")}</b></p>
           <p className="cu-muted">
-            Do'kondagi QR kodni skanerlang — karta shu yerda paydo bo'ladi.
+            Dökondagi QR kodni skanerlang — karta şu yerda paydo böladi.
           </p>
         </div>
       )}
@@ -437,7 +437,7 @@ function NewsScreen() {
           <i className="fa-solid fa-bullhorn cu-big-icon" aria-hidden="true" />
           <p><b>{t("cu.noPromos")}</b></p>
           <p className="cu-muted">
-            Do'konlaringiz chegirma yoki yangilik e'lon qilsa, u shu yerda paydo bo'ladi.
+            Dökonlaringiz çegirma yoki yangilik e'lon qilsa, u şu yerda paydo böladi.
           </p>
         </div>
       )}
@@ -451,7 +451,7 @@ function NewsScreen() {
             <span className="cu-muted">{dateLabel(a.date)}</span>
             {a.endsAt && (
               <span className="cu-warn">
-                <i className="fa-solid fa-clock" aria-hidden="true" /> {dateLabel(a.endsAt)} gacha
+                <i className="fa-solid fa-clock" aria-hidden="true" /> {dateLabel(a.endsAt)} gaça
               </span>
             )}
           </div>
@@ -486,7 +486,7 @@ const RCP_TABS = [
   { key: "paid", label: "Qarzlarim" },
   /* JAMG'ARMA (V66): har kirim-chiqimning kvitansiyasi. Do'kon egasi:
      «mijoz tarixni batafsil ko'ra olishi kerak». */
-  { key: "sav",  label: "Jamg'arma" },
+  { key: "sav",  label: "Jamğarma" },
 ];
 
 function ReceiptsScreen() {
@@ -517,7 +517,7 @@ function ReceiptsScreen() {
   useEffect(load, [load]);
 
   const tabs = (
-    <div className="cu-seg" role="tablist" aria-label="Chek turi">
+    <div className="cu-seg" role="tablist" aria-label="Çek turi">
       {RCP_TABS.map((x) => (
         <button key={x.key} type="button" role="tab"
                 aria-selected={kind === x.key}
@@ -550,13 +550,13 @@ function ReceiptsScreen() {
         <div className="cu-card cu-center">
           <i className={`fa-solid ${sav ? "fa-sack-dollar" : paid ? "fa-hand-holding-dollar" : "fa-receipt"} cu-big-icon`}
              aria-hidden="true" />
-          <p><b>{sav ? "Hali jamg'arma yo'q" : paid ? "Hali qarz yo'q" : "Hali chek yo'q"}</b></p>
+          <p><b>{sav ? "Hali jamğarma yöq" : paid ? "Hali qarz yöq" : "Hali çek yöq"}</b></p>
           <p className="cu-muted">
             {sav
-              ? "Kassada jamg'armangizga pul qo'ysangiz, kvitansiyasi shu yerda saqlanadi."
+              ? "Kassada jamğarmangizga pul qöysangiz, kvitansiyasi şu yerda saqlanadi."
               : paid
-              ? "Nasiyaga olgan tovaringiz va to'lovingiz cheki shu yerda saqlanadi."
-              : "Kassada kartangizni ko'rsating — xarid cheki shu yerda saqlanadi."}
+              ? "Nasiyaga olgan tovaringiz va tölovingiz çeki şu yerda saqlanadi."
+              : "Kassada kartangizni körsating — xarid çeki şu yerda saqlanadi."}
           </p>
         </div>
       )}
@@ -589,7 +589,7 @@ function ReceiptsScreen() {
                   ? <>
                       <small className="cu-muted">{SAVINGS_LABEL[r.type] || r.type}</small>
                       {r.balanceAfter != null && (
-                        <small className="cu-muted">Jamg'armada: {money(r.balanceAfter)}</small>
+                        <small className="cu-muted">Jamğarmada: {money(r.balanceAfter)}</small>
                       )}
                     </>
                   : paid
@@ -659,7 +659,7 @@ function ShopsScreen({ shops }) {
       {items.length === 0 && (
         <div className="cu-card cu-center">
           <p className="cu-muted">
-            Do'kondagi QR kodni skanerlang — u shu ro'yxatga qo'shiladi.
+            Dökondagi QR kodni skanerlang — u şu röyxatga qöşiladi.
           </p>
         </div>
       )}
@@ -678,7 +678,7 @@ function ShopsScreen({ shops }) {
                 {Number(s.bonusExpiringSoon) > 0 && (
                   <small className="cu-warn">
                     <i className="fa-solid fa-clock" aria-hidden="true" />{" "}
-                    {money(s.bonusExpiringSoon)} ball 30 kun ichida kuyadi
+                    {money(s.bonusExpiringSoon)} ball 30 kun içida kuyadi
                   </small>
                 )}
               </span>
@@ -692,7 +692,7 @@ function ShopsScreen({ shops }) {
                 {Number(savings[s.id]?.balance) > 0 && (
                   <small className="cu-pos">
                     <i className="fa-solid fa-sack-dollar" aria-hidden="true" />{" "}
-                    {money(savings[s.id].balance)} jamg'arma
+                    {money(savings[s.id].balance)} jamğarma
                   </small>
                 )}
               </span>
@@ -724,13 +724,13 @@ function ShopsScreen({ shops }) {
 /* ⚠ Turlar SERVERDAN nom bilan keladi va shu yerda tarjima qilinadi —
    ball yorliqlaridagi bilan bir xil qoida. */
 const SAVINGS_LABEL = {
-  TOP_UP:  "To'ldirildi",
+  TOP_UP:  "Töldirildi",
   CHANGE:  "Qaytim qoldirildi",
-  OVERPAY: "Qarzdan ortiq to'lov",
-  SPEND:   "Xaridga ishlatildi",
+  OVERPAY: "Qarzdan ortiq tölov",
+  SPEND:   "Xaridga işlatildi",
   REFUND:  "Naqd qaytarildi",
-  RETURN:  "Qaytarishdan qaytdi",
-  ADJUST:  "Do'kon to'g'irladi",
+  RETURN:  "Qaytarişdan qaytdi",
+  ADJUST:  "Dökon töğirladi",
 };
 
 /** Mijoz ko'zi bilan: pul kirsa «+», chiqsa «−». */
@@ -741,12 +741,12 @@ const savingsSign = (e) => {
 };
 
 const BONUS_LABEL = {
-  EARN:   { text: "Xariddan yig'ildi",        icon: "fa-plus" },
-  SPEND:  { text: "Xaridda ishlatildi",       icon: "fa-minus" },
-  REVOKE: { text: "Qaytarish tufayli olindi", icon: "fa-rotate-left" },
-  RESTORE:{ text: "Qaytarishda qaytarildi",   icon: "fa-rotate-left" },
-  ADJUST: { text: "Do'kon to'g'irladi",       icon: "fa-pen" },
-  EXPIRE: { text: "Muddati o'tdi",            icon: "fa-clock" },
+  EARN:   { text: "Xariddan yiğildi",        icon: "fa-plus" },
+  SPEND:  { text: "Xaridda işlatildi",       icon: "fa-minus" },
+  REVOKE: { text: "Qaytariş tufayli olindi", icon: "fa-rotate-left" },
+  RESTORE:{ text: "Qaytarişda qaytarildi",   icon: "fa-rotate-left" },
+  ADJUST: { text: "Dökon töğirladi",       icon: "fa-pen" },
+  EXPIRE: { text: "Muddati ötdi",            icon: "fa-clock" },
 };
 
 function BonusSheet({ customerId, shopName, savings, onClose }) {
@@ -792,11 +792,11 @@ function BonusSheet({ customerId, shopName, savings, onClose }) {
         {Number(savings?.balance) > 0 && (
           <div className="cu-card cu-center">
             <span className="cu-muted">
-              <i className="fa-solid fa-sack-dollar" aria-hidden="true" /> Jamg'armangiz
+              <i className="fa-solid fa-sack-dollar" aria-hidden="true" /> Jamğarmangiz
             </span>
             <div className="cu-sheet__sum cu-pos">{money(savings.balance)}</div>
             <p className="cu-muted">
-              Bu sizning pulingiz — kuymaydi va xaridda to'liq ishlatiladi.
+              Bu sizning pulingiz — kuymaydi va xaridda töliq işlatiladi.
             </p>
             {/* ⚠ BALL TARIXI BILAN AYNAN BIR XIL MARKUP (`cu-bonus`):
                 ikkalasi bitta ekranda, ketma-ket turadi va boshqacha
@@ -842,12 +842,12 @@ function BonusSheet({ customerId, shopName, savings, onClose }) {
               <span className="cu-muted">{t("cu.pointsNow")}</span>
               <div className="cu-sheet__sum">{money(data.balance)}</div>
               {data.expiryDays
-                ? <p className="cu-muted">Ball yig'ilganidan {data.expiryDays} kun ichida ishlatilishi kerak</p>
+                ? <p className="cu-muted">Ball yiğilganidan {data.expiryDays} kun içida işlatilişi kerak</p>
                 : <p className="cu-muted">{t("cu.noExpiry")}</p>}
               {Number(data.expiringSoon) > 0 && (
                 <p className="cu-warn">
                   <i className="fa-solid fa-clock" aria-hidden="true" />{" "}
-                  {money(data.expiringSoon)} ball 30 kun ichida kuyadi
+                  {money(data.expiringSoon)} ball 30 kun içida kuyadi
                 </p>
               )}
             </div>
@@ -868,7 +868,7 @@ function BonusSheet({ customerId, shopName, savings, onClose }) {
                     <span className="cu-bonus__mid">
                       <b>{meta.text}</b>
                       <small className="cu-muted">{dateLabel(b.date)}</small>
-                      {b.receiptNo && <small className="cu-muted">Chek {b.receiptNo}</small>}
+                      {b.receiptNo && <small className="cu-muted">Çek {b.receiptNo}</small>}
                       {b.note && <small className="cu-muted">{b.note}</small>}
                     </span>
                     <b className={plus ? "cu-pos" : "cu-neg"}>
@@ -904,25 +904,25 @@ function ProfileScreen({ me, onSaved, onLogout }) {
      Shuning uchun matn uzun: bu yerda qisqalik yolg'onga aylanadi. */
   const askDelete = async () => {
     const ok = await confirm({
-      title: "Hisobni o'chirish",
+      title: "Hisobni öçiriş",
       /* ⚠ MATN V62 DA YANGILANDI. Ilgari «do'kon yozuvi o'chmaydi»
          deb yozilgan edi va u o'sha paytda ROST edi: yozuvni faqat
          do'konning o'zi arxivlay olardi. Endi aksincha — do'konda
          bunday tugma umuman yo'q va arxivlashni shu tugma qiladi.
          Eski matn qolganda, u YOLG'ON bo'lib qolardi. */
-      message: "Ilova hisobingiz butunlay o'chiriladi: telefon, ismingiz, "
-             + "Telegram va pochta bog'lanishi, barcha seanslar va "
+      message: "Ilova hisobingiz butunlay öçiriladi: telefon, ismingiz, "
+             + "Telegram va poçta boğlanişi, barça seanslar va "
              + "bildirishnomalar.\n\n"
-             + "Do'konlardagi yozuvingiz ARXIVGA o'tadi: do'kon sizni "
-             + "ro'yxatida, qidiruvida va kassada ko'rmaydi.\n\n"
-             + "⚠ Xarid tarixingiz eski cheklarda qoladi — u do'konning "
-             + "buxgalteriya yozuvi va qonun bo'yicha saqlanadi.\n\n"
-             + "⚠ QARZINGIZ BO'LSA, o'sha do'kondagi yozuv ARXIVLANMAYDI "
-             + "va qarz o'z kuchida qoladi. Avval qarzni yoping.\n\n"
-             + "Bu amalni qaytarib bo'lmaydi.",
+             + "Dökonlardagi yozuvingiz ARXIVGA ötadi: dökon sizni "
+             + "röyxatida, qidiruvida va kassada körmaydi.\n\n"
+             + "⚠ Xarid tarixingiz eski çeklarda qoladi — u dökonning "
+             + "buxgalteriya yozuvi va qonun böyiça saqlanadi.\n\n"
+             + "⚠ QARZINGIZ BÖLSA, öşa dökondagi yozuv ARXIVLANMAYDI "
+             + "va qarz öz kuçida qoladi. Avval qarzni yoping.\n\n"
+             + "Bu amalni qaytarib bölmaydi.",
       type: "danger",
-      confirmText: "Ha, o'chirilsin",
-      cancelText: "Bekor qilish",
+      confirmText: "Ha, öçirilsin",
+      cancelText: "Bekor qiliş",
     });
     if (!ok) return;
     setDeleting(true);
@@ -937,11 +937,11 @@ function ProfileScreen({ me, onSaved, onLogout }) {
 
   const askLogout = async () => {
     const ok = await confirm({
-      title: "Chiqish",
-      message: "Hisobingizdan chiqasizmi? Qayta kirish uchun Telegram orqali tasdiqlash kerak bo'ladi.",
+      title: "Çiqiş",
+      message: "Hisobingizdan çiqasizmi? Qayta kiriş uçun Telegram orqali tasdiqlaş kerak böladi.",
       type: "warning",
-      confirmText: "Chiqish",
-      cancelText: "Bekor qilish",
+      confirmText: "Çiqiş",
+      cancelText: "Bekor qiliş",
     });
     if (ok) onLogout();
   };
@@ -978,7 +978,7 @@ function ProfileScreen({ me, onSaved, onLogout }) {
         <div className="cu-readonly">+998 {me.phone}</div>
 
         <button className="cu-btn" onClick={save} disabled={busy}>
-          {saved ? "Saqlandi ✓" : busy ? "Saqlanmoqda…" : "Saqlash"}
+          {saved ? "Saqlandi ✓" : busy ? "Saqlanmoqda…" : "Saqlaş"}
         </button>
       </div>
 
@@ -988,12 +988,12 @@ function ProfileScreen({ me, onSaved, onLogout }) {
         <div className="cu-row">
           <span><i className="fa-solid fa-bell" aria-hidden="true" /> {t("cu.notifications")}</span>
           <button className={`cu-switch ${me.pushEnabled ? "on" : ""}`} onClick={togglePush}
-                  aria-pressed={me.pushEnabled} aria-label="Bildirishnomalar">
+                  aria-pressed={me.pushEnabled} aria-label="Bildirişnomalar">
             <span />
           </button>
         </div>
         <p className="cu-muted" style={{ fontSize: 13, marginTop: 6 }}>
-          Ball yig'ilganda va muddati tugayotganda xabar keladi.
+          Ball yiğilganda va muddati tugayotganda xabar keladi.
         </p>
       </div>
 
@@ -1008,7 +1008,7 @@ function ProfileScreen({ me, onSaved, onLogout }) {
           amal va u «Chiqish» bilan yonma-yon bir xil ko'rinishda tursa,
           xato bosilishi mumkin edi. */}
       <button className="cu-btn cu-btn--danger cu-delete" onClick={askDelete} disabled={deleting}>
-        {deleting ? "O'chirilmoqda…" : "Hisobni o'chirish"}
+        {deleting ? "Öçirilmoqda…" : "Hisobni öçiriş"}
       </button>
     </div>
   );
@@ -1033,7 +1033,7 @@ function EmailCard({ me, onSaved }) {
     try {
       await appApi.emailAdd(email.trim());
       setStage("code");
-      setNote("Tasdiqlash kodi pochtangizga yuborildi.");
+      setNote("Tasdiqlaş kodi poçtangizga yuborildi.");
     } catch (e) {
       setError(e.message || "Yuborilmadi");
     } finally { setBusy(false); }
@@ -1045,9 +1045,9 @@ function EmailCard({ me, onSaved }) {
       const r = await appApi.emailConfirm(code.trim());
       onSaved(r);
       setStage("done");
-      setNote("Pochta tasdiqlandi — endi u bilan ham kirsangiz bo'ladi.");
+      setNote("Poçta tasdiqlandi — endi u bilan ham kirsangiz böladi.");
     } catch (e) {
-      setError(e.message || "Kod noto'g'ri");
+      setError(e.message || "Kod notöğri");
     } finally { setBusy(false); }
   };
 
@@ -1058,7 +1058,7 @@ function EmailCard({ me, onSaved }) {
         {me.emailVerified && <span className="cu-pos">{t("cu.verified")}</span>}
       </div>
       <p className="cu-muted" style={{ fontSize: 13, margin: "6px 0 8px" }}>
-        Telegramsiz ham kira olishingiz uchun. Kirish kodi shu manzilga keladi.
+        Telegramsiz ham kira olişingiz uçun. Kiriş kodi şu manzilga keladi.
       </p>
 
       {stage === "done" ? (
@@ -1066,7 +1066,7 @@ function EmailCard({ me, onSaved }) {
           <div className="cu-readonly">{me.email}</div>
           <button className="cu-btn cu-btn--ghost"
                   onClick={() => { setStage("edit"); setNote(""); }}>
-            Boshqa pochta
+            Boşqa poçta
           </button>
         </>
       ) : (
@@ -1091,11 +1091,11 @@ function EmailCard({ me, onSaved }) {
 
           <button className="cu-btn" disabled={busy || (stage === "edit" ? !email.trim() : code.length < 4)}
                   onClick={stage === "edit" ? send : confirm}>
-            {busy ? "Kutilmoqda…" : stage === "edit" ? "Kod yuborish" : "Tasdiqlash"}
+            {busy ? "Kutilmoqda…" : stage === "edit" ? "Kod yuboriş" : "Tasdiqlaş"}
           </button>
           {stage === "code" && (
             <button className="cu-btn cu-btn--ghost" onClick={() => { setStage("edit"); setCode(""); }}>
-              Manzilni o'zgartirish
+              Manzilni özgartiriş
             </button>
           )}
         </>

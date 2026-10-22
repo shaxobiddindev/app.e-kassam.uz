@@ -93,5 +93,27 @@ console.log("═══ Narx ikki baravar shriftda ═══");
   find(r.build(), [GS, 0x21, 0x00]) > -1 ? ok("double o'chirildi") : bad("double o'chirilmadi");
 }
 
+console.log("═══ Yangi alifbo chekda eski yozuvda (2026-10-21) ═══");
+/* ⚠ Termal printer jadvalida ş/ç/ö/ğ yo'q — `?` bo'lib chiqardi. */
+{
+  const text = (r) => String.fromCharCode(...r.build().slice(2)).replace(/\n$/, "");
+  const cases = [["Çek", "Chek"], ["ÇEK", "CHEK"], ["Şakar", "Shakar"], ["Töğri", "To'g'ri"],
+                 ["ÖZBEKİSTON".replace("İ", "I"), "O'ZBEKISTON"], ["Jami: 22 500 söm", "Jami: 22 500 so'm"]];
+  for (const [src, want] of cases) {
+    const got = text(new Receipt(WIDTH_80).line(src));
+    got === want ? ok(`«${src}» → «${want}»`) : bad(`«${src}»`, `olindi «${got}»`);
+  }
+  const bytes = new Receipt(WIDTH_80).line("Şçöğ ŞÇÖĞ").build();
+  bytes.includes(0x3f) ? bad("? qoldi", bytes.join(",")) : ok("savol belgisi yo'q");
+
+  /* ⚠ USTUN KENGLIGI o'girishdan KEYIN o'lchanadi: «Töğri» 5, «To'g'ri» 7
+     belgi. Oldin o'lchansa qator 48 dan oshib, narx keyingi qatorga tushardi. */
+  const row = String.fromCharCode(...new Receipt(WIDTH_80).row("Öçirilgan çeklar şu yerda".repeat(2), "22 500 söm").build().slice(2));
+  const line = row.replace(/\n$/, "");
+  line.length === WIDTH_80 && line.endsWith("22 500 so'm")
+    ? ok(`qator aynan ${WIDTH_80} belgi, narx oxirida`)
+    : bad("ustun buzildi", `uzunlik ${line.length}: «${line}»`);
+}
+
 console.log("\n═══ NATIJA: " + pass + " o'tdi, " + fail + " yiqildi ═══");
 process.exit(fail ? 1 : 0);

@@ -11,17 +11,31 @@
 
    ⚠ SOF MANTIQ, DOM YO'Q — Node'da sinaladi (`test/kitchen.test.mjs`).
    ══════════════════════════════════════════════════════════════════════════ */
-import { Receipt, WIDTH_80, WIDTH_58 } from "./ek-escpos.js";
+import { Receipt, WIDTH_80, WIDTH_58, toLegacy } from "./ek-escpos.js";
 
 /** Taklif qilinadigan nomlar — bo'sh do'konda ham bir bosishda tanlansin. */
-export const DEFAULT_STATIONS = ["Oshxona", "Bar"];
+export const DEFAULT_STATIONS = ["Oşxona", "Bar"];
 
-/** Bo'lim nomlari: taklif + toifalarda allaqachon yozilganlari (takrorsiz). */
+/** Takrorni aniqlash kaliti: katta-kichik harf va alifbo farq qilmaydi. */
+const stationKey = (s) => toLegacy(s).replace(/[‘’ʻʼ′`]/g, "'").toLowerCase();
+
+/**
+ * Bo'lim nomlari: taklif + toifalarda allaqachon yozilganlari (takrorsiz).
+ *
+ * ⚠ ALIFBO FARQI TAKROR HISOBLANADI. Yangi alifbodan oldin taklif «Oshxona»
+ * edi va do'konlarning toifalarida aynan shu nom turibdi — printer ham shu
+ * nomga biriktirilgan (`ek_hw.stations`). Taklif «Oşxona» bo'lgach, ro'yxatda
+ * IKKALASI chiqardi va yangi toifaga «Oşxona» tanlansa, uning cheki printersiz
+ * bo'limga ketardi. Shuning uchun toifadagi yozuv TAKLIFNING O'RNINI oladi.
+ */
 export function stationOptions(categories) {
   const out = [...DEFAULT_STATIONS];
   for (const c of categories || []) {
     const s = String(c?.station || "").trim();
-    if (s && !out.some((x) => x.toLowerCase() === s.toLowerCase())) out.push(s);
+    if (!s) continue;
+    const i = out.findIndex((x) => stationKey(x) === stationKey(s));
+    if (i < 0) out.push(s);
+    else if (i < DEFAULT_STATIONS.length && out[i] === DEFAULT_STATIONS[i]) out[i] = s;
   }
   return out;
 }
@@ -74,7 +88,8 @@ export function kitchenTickets(cart, map) {
 
 /** So'zlar bo'yicha bo'lish — ikki baravar shriftda qator yarim kenglikda. */
 export function wrapTo(text, max) {
-  const words = String(text || "").split(/\s+/).filter(Boolean);
+  // ⚠ eski yozuvga O'LCHASHDAN OLDIN: «ş» → «sh» qatorni uzaytiradi (ek-escpos `toLegacy`)
+  const words = toLegacy(text || "").split(/\s+/).filter(Boolean);
   const lines = [];
   let cur = "";
   for (const w of words) {

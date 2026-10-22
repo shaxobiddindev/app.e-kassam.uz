@@ -107,7 +107,7 @@ const VALUE = {
   total:      (p) => p.total,
   plu:        (p) => p.pluText ?? p.plu,
   /* «15 000 so'm» — narx matn qatorida (yirik narx uslubisiz). */
-  kgPrice:    (p) => (p.salePrice == null ? null : `${groupDigits(Math.round(Number(p.salePrice)))} so'm`),
+  kgPrice:    (p) => (p.salePrice == null ? null : `${groupDigits(Math.round(Number(p.salePrice)))} söm`),
   printedAt:  (p, ctx) => ctx.printedAt,
   /* Qotirilgan yozuv («Jami to'lov:», «so'm») — matni shablonda (`f.text`). */
   text:       (p, ctx, f) => f.text,
@@ -358,7 +358,7 @@ export function renderLabel(template, product, ctx = {}) {
 function drawBarcode(f, value, template, spec, warnings) {
   const cfg = spec.barcode || {};
   if (!value) {
-    warnings.push({ field: f.key, code: "NO_BARCODE", text: "tovarda barkod yo'q" });
+    warnings.push({ field: f.key, code: "NO_BARCODE", text: "tovarda barkod yöq" });
     return "";
   }
   const opts = {
@@ -379,20 +379,20 @@ function drawBarcode(f, value, template, spec, warnings) {
        BOSHQA tovarga aylanadi — bo'sh joy qoldirish undan xavfsizroq,
        lekin ogohlantirishsiz emas. */
     warnings.push({ field: f.key, code: "BAD_BARCODE",
-      text: `«${value}» barkod sifatida chizib bo'lmadi` });
+      text: `«${value}» barkod sifatida çizib bölmadi` });
     return "";
   }
   if (m.widthMm > f.w + 0.001) {
     warnings.push({ field: f.key, code: "BARCODE_WIDE",
       text: `barkod ${m.widthMm.toFixed(1)} mm, joy ${Number(f.w).toFixed(1)} mm — `
-          + `${(m.widthMm - f.w).toFixed(1)} mm toshdi` });
+          + `${(m.widthMm - f.w).toFixed(1)} mm toşdi` });
     return "";
   }
   /* Nomga joy bergan barkod (`lent`) ataylab qisqa — `floor` dan past emas. */
   if (!m.ok && !f.lent) {
     warnings.push({ field: f.key, code: "BARCODE_SHORT",
       text: `barkod balandligi ${Number(f.h).toFixed(1)} mm — `
-          + `${m.minHeightMm} mm dan kam, skaner o'qimasligi mumkin` });
+          + `${m.minHeightMm} mm dan kam, skaner öqimasligi mumkin` });
   }
   /* Do'kon kodida chiziqlar «*123» matni uchun qisqaradi; balandlik tekshiruvi
      esa yuqorida UMUMIY maydon bo'yicha — printer raqamlari bilan bir xil. */
@@ -433,11 +433,11 @@ function drawText(f, value, warnings) {
       useSize = Math.max(4, size * (f.w / wMm));
       if (useSize < 5) {
         warnings.push({ field: f.key, code: "TEXT_TINY",
-          text: `shrift ${useSize.toFixed(1)} pt gacha kichraydi — o'qib bo'lmaydi` });
+          text: `şrift ${useSize.toFixed(1)} pt gaça kiçraydi — öqib bölmaydi` });
       }
     } else {
       warnings.push({ field: f.key, code: "TEXT_OVERFLOW",
-        text: `matn maydondan ${(wMm - f.w).toFixed(1)} mm toshdi` });
+        text: `matn maydondan ${(wMm - f.w).toFixed(1)} mm toşdi` });
     }
   }
 
@@ -567,7 +567,7 @@ function drawPrice(f, value, size, weight, anchor, tx) {
      avvalgi kichik o'lcham, u ham sig'masa tashlanadi (narx muhimroq). */
   const minorW = minor ? textWidthMm(minor, size * 0.45, weight) : 0;
   const fitsSom = (mm) => textWidthMm(sign + major, size, weight) + minorW
-    + textWidthMm(" so'm", mm / PT_TO_MM, 700) <= Number(f.w) + 0.001;
+    + textWidthMm(" söm", mm / PT_TO_MM, 700) <= Number(f.w) + 0.001;
   const somMm = [Math.max(majorMm * 0.55, Math.min(majorMm * 0.75, 2.8)),
     Math.max(majorMm * 0.42, Math.min(majorMm * 0.6, 2.4))].find(fitsSom);
   const som = f.key === "price" && f.currency !== false && somMm != null;
@@ -583,7 +583,7 @@ function drawPrice(f, value, size, weight, anchor, tx) {
     /* Asosiy qatorda (tiyindan keyin pastga qaytib), kichik va yarim qalin:
        ko'z avval raqamni oladi, «so'm» faqat uning nima ekanini aytadi. */
     out += `<tspan font-size="${r(somMm)}" font-weight="700"${minor ? ` dy="${r(majorMm * 0.42)}"` : ""}>`
-        + ` so'm</tspan>`;
+        + ` söm</tspan>`;
   }
   return out + "</text>";
 }

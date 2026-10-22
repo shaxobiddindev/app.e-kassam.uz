@@ -129,7 +129,7 @@ await new Promise((r) => setTimeout(r, 1200));
    aylanadi — aynan shunday bo'lgan ham. */
 const cartW = await page.$eval(".kassa-right", (el) => Math.round(el.getBoundingClientRect().width));
 console.log(`\n══ Savat kengligi: ${cartW}px ══`);
-if (cartW > 380) no(`savat tor emas (${cartW}px) — sinov o'z holatini yarata olmadi`);
+if (cartW > 380) no(`savat tor emas (${cartW}px) — sinov öz holatini yarata olmadi`);
 else ok(`savat eng tor holatda (${cartW}px)`);
 
 console.log("\n══ Savat qatorlari — eng tor holat ══");
@@ -165,9 +165,9 @@ const rows = await page.$$eval(".cart-item", (els) => els.map((row) => {
 }));
 
 if (!rows.length) {
-  no("savat qatorlari topilmadi — sinov o'z ishini bajara olmadi");
+  no("savat qatorlari topilmadi — sinov öz işini bajara olmadi");
 } else {
-  ok(`${rows.length} ta qator o'lchandi`);
+  ok(`${rows.length} ta qator ölçandi`);
   for (const r of rows) {
     if (!r.price) { no("narx elementi topilmadi"); continue; }
     /* ⚠ JORIY NARX — KASSIR AYTADIGAN RAQAM. U qisqarsa ham,
@@ -177,7 +177,7 @@ if (!rows.length) {
     if (!r.now) {
       no("joriy narx elementi topilmadi");
     } else if (r.nowOverBox > 1) {
-      no(`JORIY narx qutisidan ${r.nowOverBox}px chiqdi (qirqiladi): «${r.now.text}»`);
+      no(`JORIY narx qutisidan ${r.nowOverBox}px çiqdi (qirqiladi): «${r.now.text}»`);
     } else if (r.nowOverQty > 0) {
       no(`JORIY narx miqdor tugmalari ostiga ${r.nowOverQty}px kirdi: «${r.now.text}»`);
     } else if (r.now.clips) {
@@ -186,9 +186,9 @@ if (!rows.length) {
          boshqa til bilan matn kesiladi-yu, chekkalar o'lchovi buni
          ko'rmaydi. Shuning uchun qoidaning O'ZI tekshiriladi —
          joriy narx hech qachon qirqiladigan quti bo'lmasin. */
-      no(`JORIY narxga qirqish qo'yilgan (overflow) — u qisqarmasligi kerak: «${r.now.text}»`);
+      no(`JORIY narxga qirqiş qöyilgan (overflow) — u qisqarmasligi kerak: «${r.now.text}»`);
     } else {
-      ok(`joriy narx to'liq: «${r.now.text}»`);
+      ok(`joriy narx töliq: «${r.now.text}»`);
     }
   }
 }
@@ -245,12 +245,12 @@ const loss = await page.$$eval(".cart-item", (els) => els.map((row) => {
 const marked = loss.filter((r) => r.badge);
 marked.length === 1
   ? ok(`belgi FAQAT zararli qatorda: «${marked[0].badge}» — ${marked[0].name}`)
-  : no(`bitta qatorda belgi bo'lishi kerak, topildi: ${marked.length}`);
+  : no(`bitta qatorda belgi bölişi kerak, topildi: ${marked.length}`);
 
 for (const r of loss) {
-  if (r.outside > 0) no(`belgi nom qutisidan ${r.outside}px chiqib ketdi: «${r.name}»`);
+  if (r.outside > 0) no(`belgi nom qutisidan ${r.outside}px çiqib ketdi: «${r.name}»`);
 }
-if (marked.length) ok("belgi qatordan chiqib ketmadi");
+if (marked.length) ok("belgi qatordan çiqib ketmadi");
 
 /* ⚠ ENG MUHIM TASDIQ. Nom qatori V99 da FLEKS bo'ldi va
    `text-overflow: ellipsis` fleks KONTEYNERDA ishlamaydi — qoidalar
@@ -261,10 +261,10 @@ const long = loss.find((r) => r.clipped);
 long
   ? (long.ellipsis === "ellipsis"
       ? ok(`uzun nom uch nuqta bilan qisqardi: «${long.name}»`)
-      : no(`qisqarayotgan nomda uch nuqta yo'q (${long.ellipsis}) — fleks konteynerda yo'qoladi`))
+      : no(`qisqarayotgan nomda uç nuqta yöq (${long.ellipsis}) — fleks konteynerda yöqoladi`))
   : ok("bu kenglikda nom qisqarmadi — qoida baribir bolada turibdi");
 
 await browser.close();
 server.close();
-console.log(bad ? `\n❌ ${bad} ta nosozlik\n` : "\n✅ pul matni hech qayerda qirqilmaydi\n");
+console.log(bad ? `\n❌ ${bad} ta nosozlik\n` : "\n✅ pul matni heç qayerda qirqilmaydi\n");
 process.exit(bad ? 1 : 0);

@@ -95,9 +95,9 @@ export function calibrationDoc({ dpi = 203, page = PAGES.A4, labels = {} } = {})
   const parts = [corners(page, 6)];
   let y = M + 14;
 
-  const title = labels.title || "Kalibrlash varag'i";
+  const title = labels.title || "Kalibrlaş varaği";
   const sub = labels.subtitle
-    || "Chizg'ich bilan o'lchang. Uzunlik mos kelmasa, brauzerda masshtabni 100% qiling.";
+    || "Çizğiç bilan ölçang. Uzunlik mos kelmasa, brauzerda masştabni 100% qiling.";
 
   parts.push(`<text x="${r(M)}" y="${r(M + 4)}" font-size="5" font-weight="700"
     font-family="sans-serif" fill="#000">${esc(title)}</text>`);
@@ -141,12 +141,12 @@ export function calibrationDoc({ dpi = 203, page = PAGES.A4, labels = {} } = {})
   }
 
   const hint = labels.hint
-    || "Brauzerda: Masshtab — 100%, «Sahifaga moslash» O'CHIQ.";
+    || "Brauzerda: Masştab — 100%, «Sahifaga moslaş» ÖÇIQ.";
   parts.push(`<text x="${r(M)}" y="${r(by + 6)}" font-size="3.4" font-weight="700"
     font-family="sans-serif" fill="#000">${esc(hint)}</text>`);
   parts.push(`<text x="${r(M)}" y="${r(by + 11)}" font-size="3.2"
     font-family="sans-serif" fill="#000">${esc(labels.dpi
-      ? labels.dpi.replace("{dpi}", dpi) : `Printer zichligi: ${dpi} dpi`)}</text>`);
+      ? labels.dpi.replace("{dpi}", dpi) : `Printer ziçligi: ${dpi} dpi`)}</text>`);
 
   const html = `<div class="lp-page"><svg xmlns="http://www.w3.org/2000/svg"`
     + ` width="${page.widthMm}mm" height="${page.heightMm}mm"`
@@ -182,7 +182,7 @@ export function rollCalibrationDoc({ widthMm, heightMm, labels = {} } = {}) {
        stroke="#000" stroke-width="0.3"/>`,
     `<text x="${r(W / 2)}" y="${r(fs + 2.5)}" text-anchor="middle" font-size="${r(fs)}"
        font-weight="700" font-family="sans-serif" fill="#000">${esc(labels.title
-         || "Sinov yorlig'i")} · ${r(W)}×${r(H)} mm</text>`,
+         || "Sinov yorliği")} · ${r(W)}×${r(H)} mm</text>`,
     ruler(x0, H / 2, len),
     `<text x="${r(W / 2)}" y="${r(H / 2 + 4 + fs)}" text-anchor="middle" font-size="${r(fs)}"
        font-weight="700" font-family="sans-serif" fill="#000">${len} mm</text>`,

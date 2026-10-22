@@ -158,7 +158,7 @@ await page.evaluateOnNewDocument(() => {
 await page.goto(`http://127.0.0.1:${PORT}/products`, { waitUntil: "networkidle2", timeout: 30_000 });
 await page.waitForSelector("tbody tr", { timeout: 10_000 });
 
-console.log("\n══ TOVARLAR RO'YXATI (V108) ══");
+console.log("\n══ TOVARLAR RÖYXATI (V108) ══");
 
 const rows = await page.$$eval("tbody tr", (trs) => trs.slice(0, 2).map((tr) => {
   const cell = tr.querySelector("td:first-child");
@@ -179,15 +179,15 @@ rows.length === 2 && rows[0].img && !rows[1].img
   ? ok(`rasmli «${rows[0].text}» va rasmsiz «${rows[1].text}»`)
   : no("bitta rasmli, bitta rasmsiz qator kerak", JSON.stringify(rows));
 
-console.log("\n§2 ⚠ NOMLAR BITTA CHIZIQDAN boshlanadi");
+console.log("\n§2 ⚠ NOMLAR BITTA ÇIZIQDAN boşlanadi");
 rows[0].left != null && rows[0].left === rows[1].left
-  ? ok(`ikkalasi ham ${rows[0].left}px dan boshlanadi`)
-  : no("chap chekka bir xil bo'lishi kerak", `${rows[0].left} ≠ ${rows[1].left}`);
+  ? ok(`ikkalasi ham ${rows[0].left}px dan boşlanadi`)
+  : no("çap çekka bir xil bölişi kerak", `${rows[0].left} ≠ ${rows[1].left}`);
 
-console.log("\n§3 Rasm o'rni RASMSIZDA HAM turadi");
+console.log("\n§3 Rasm örni RASMSIZDA HAM turadi");
 rows[1].slot === 30
-  ? ok("bo'sh o'rin 30px kenglikni ushlab turibdi")
-  : no("30px bo'lishi kerak", rows[1].slot);
+  ? ok("böş örin 30px kenglikni uşlab turibdi")
+  : no("30px bölişi kerak", rows[1].slot);
 
 console.log("\n§4 ⚠ QATORLAR BIR XIL BALANDLIKDA");
 /* Ro'yxat notekis bo'lmasligi kerak: rasmli va rasmsiz qatorlar
@@ -196,7 +196,7 @@ console.log("\n§4 ⚠ QATORLAR BIR XIL BALANDLIKDA");
    ikkinchi o'qda. */
 rows[1].h === rows[0].h
   ? ok(`ikkalasi ham ${rows[0].h}px`)
-  : no("balandlik bir xil bo'lishi kerak", `${rows[0].h} ≠ ${rows[1].h}`);
+  : no("balandlik bir xil bölişi kerak", `${rows[0].h} ≠ ${rows[1].h}`);
 
 /* ══════════════════════════════════════════════════════════════════════
    §6–§8 — TOVAR OYNASI OCHILADIMI (V99)
@@ -229,36 +229,36 @@ const boundaryDown = () =>
   page.$$eval("i.fa-triangle-exclamation", (els) =>
     els.some((e) => e.closest("div")?.querySelector("details pre")));
 
-console.log("\n§6 ⚠ «YANGI TOVAR» OYNASI OCHILADI");
+console.log("\n§6 ⚠ «YANGI TOVAR» OYNASI OÇILADI");
 await page.evaluate(() => {
   const b = [...document.querySelectorAll("button")].find((x) => x.querySelector("i.fa-plus"));
   b?.click();
 });
 (await openedForm()) && !(await boundaryDown())
-  ? ok("forma chizildi — oyna ochildi")
-  : no("«Yangi tovar» oynasi ochilmadi", pageErrors.join(" | ") || "forma yo'q");
+  ? ok("forma çizildi — oyna oçildi")
+  : no("«Yangi tovar» oynasi oçilmadi", pageErrors.join(" | ") || "forma yöq");
 
-console.log("\n§7 «Kod yaratish» tugmasi ishlaydi");
+console.log("\n§7 «Kod yaratiş» tugmasi işlaydi");
 /* Barkod maydoni bo'sh — tugma FAQAT shunda ko'rinadi. Yangi tovarda
    `id` yo'q, shuning uchun bu yerda tugma bo'lmasligi to'g'ri. */
 const addHasCode = await page.$$eval("button", (bs) =>
   bs.some((b) => /kod yarat/i.test(b.textContent)));
 !addHasCode
-  ? ok("yangi tovarda tugma yo'q — kod faqat saqlangan tovarga beriladi")
-  : no("yangi tovarda tugma bo'lmasligi kerak", "tugma bor");
+  ? ok("yangi tovarda tugma yöq — kod faqat saqlangan tovarga beriladi")
+  : no("yangi tovarda tugma bölmasligi kerak", "tugma bor");
 
 await page.keyboard.press("Escape");
 await page.waitForSelector(".modal-box", { hidden: true, timeout: 5000 });
 
-console.log("\n§8 ⚠ «TAHRIRLASH» OYNASI OCHILADI va KOD YARALADI");
+console.log("\n§8 ⚠ «TAHRIRLAŞ» OYNASI OÇILADI va KOD YARALADI");
 await page.evaluate(() => {
   const b = [...document.querySelectorAll("tbody tr button")].find((x) => x.querySelector("i.fa-pen"));
   b?.click();
 });
 if (!(await openedForm()) || (await boundaryDown())) {
-  no("«Tahrirlash» oynasi ochilmadi", pageErrors.join(" | ") || "forma yo'q");
+  no("«Tahrirlaş» oynasi oçilmadi", pageErrors.join(" | ") || "forma yöq");
 } else {
-  ok("forma chizildi — oyna ochildi");
+  ok("forma çizildi — oyna oçildi");
   const clicked = await page.evaluate(() => {
     const b = [...document.querySelectorAll(".modal-box button")]
       .find((x) => /kod yarat/i.test(x.textContent));
@@ -267,21 +267,21 @@ if (!(await openedForm()) || (await boundaryDown())) {
     return true;
   });
   if (!clicked) {
-    no("«Kod yaratish» tugmasi topilmadi", "tugma yo'q");
+    no("«Kod yaratiş» tugmasi topilmadi", "tugma yöq");
   } else {
     await page.waitForFunction(
       () => [...document.querySelectorAll(".modal-box input")]
         .some((i) => i.value === "20001421"),
       { timeout: 5000 },
     ).then(() => ok("kod maydonga yozildi: 2 000142 1"))
-     .catch(() => no("kod maydonga tushmadi", pageErrors.join(" | ") || "maydon bo'sh"));
+     .catch(() => no("kod maydonga tuşmadi", pageErrors.join(" | ") || "maydon böş"));
     /* ⚠ TUGMADAN KEYINGI XATO HAM MUHIM: bu yerda `load()` deb
        yozilgan edi (to'g'risi `loadData()`) va kassir yashil
        xabardan so'ng darhol qizil xato ko'rardi. */
     const toastErr = await page.$$eval("*", (els) =>
       els.some((e) => e.children.length === 0 && /is not defined/i.test(e.textContent || "")));
-    !toastErr ? ok("muvaffaqiyatdan keyin xato xabari yo'q")
-              : no("kоddan keyin xato xabari chiqdi", "«is not defined»");
+    !toastErr ? ok("muvaffaqiyatdan keyin xato xabari yöq")
+              : no("kоddan keyin xato xabari çiqdi", "«is not defined»");
   }
 }
 
@@ -310,8 +310,8 @@ lossRow?.badge
   ? ok(`belgi chizildi: «${lossRow.badge}»`)
   : no("zarariga sotilayotgan tovarda belgi bo'lishi kerak", JSON.stringify(marks));
 marks.filter((m) => !/zarariga/i.test(m.name)).every((m) => !m.badge)
-  ? ok("sog'lom tovarlarda belgi yo'q")
-  : no("belgi faqat zararli tovarda bo'lishi kerak", JSON.stringify(marks));
+  ? ok("soğlom tovarlarda belgi yöq")
+  : no("belgi faqat zararli tovarda bölişi kerak", JSON.stringify(marks));
 
 console.log("\n§11 ⚠ IZOH QAYSI NARX ekanini aytadi");
 /* Tan narx optom narxdan oshib, chakanadan oshmasligi mumkin —
@@ -319,9 +319,9 @@ console.log("\n§11 ⚠ IZOH QAYSI NARX ekanini aytadi");
    egasiga qaysi narxni tuzatishni aytmasdi. */
 /optom/i.test(lossRow?.title || "")
   ? ok("izohda OPTOM narx aytilgan")
-  : no("izoh optom narx haqida bo'lishi kerak", lossRow?.title);
+  : no("izoh optom narx haqida bölişi kerak", lossRow?.title);
 
-console.log("\n§12 ⚠ `?below=1` FILTRI VA UNI TOZALASH");
+console.log("\n§12 ⚠ `?below=1` FILTRI VA UNI TOZALAŞ");
 await page.goto(`http://127.0.0.1:${PORT}/products?below=1`,
                 { waitUntil: "networkidle2", timeout: 30_000 });
 await page.waitForSelector("tbody tr", { timeout: 10_000 });
@@ -337,7 +337,7 @@ only.length === 1 && /zarariga/i.test(only[0])
 const note = await page.$eval(".prod-below-note", (n) => n.textContent.trim())
   .catch(() => null);
 note ? ok(`filtr haqida yozuv bor: «${note.slice(0, 48)}…»`)
-     : no("filtr yoqilgani yozilishi kerak", "yozuv yo'q");
+     : no("filtr yoqilgani yozilişi kerak", "yozuv yöq");
 
 /* Tozalash tugmasi — manzilni qo'lda tahrirlash yechim emas.
 
@@ -353,15 +353,15 @@ await page.waitForFunction(
   { timeout: 5000 },
 ).then(async () => {
   const n = await page.$$eval("tbody tr", (r) => r.length);
-  n === 3 ? ok(`«Hammasini ko'rsatish» filtrni tozaladi — ${n} qator qaytdi`)
+  n === 3 ? ok(`«Hammasini körsatiş» filtrni tozaladi — ${n} qator qaytdi`)
           : no("tozalashdan keyin hamma qator qaytishi kerak", n);
 }).catch(() => no("tugma manzildagi filtrni ham tozalashi kerak", page.url()));
 
 console.log("\n§9 Sahifa xatolari");
-pageErrors.length === 0 ? ok("JS xatosi yo'q") : no("sahifada xato", pageErrors.join(" | "));
+pageErrors.length === 0 ? ok("JS xatosi yöq") : no("sahifada xato", pageErrors.join(" | "));
 
 await page.close();
 await browser.close();
 server.close();
-console.log(bad === 0 ? "\n✅ Tovarlar ro'yxati: hammasi joyida\n" : `\n❌ ${bad} ta muammo\n`);
+console.log(bad === 0 ? "\n✅ Tovarlar röyxati: hammasi joyida\n" : `\n❌ ${bad} ta muammo\n`);
 process.exit(bad ? 1 : 0);

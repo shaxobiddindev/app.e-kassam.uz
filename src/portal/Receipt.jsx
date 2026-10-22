@@ -96,15 +96,15 @@ export default function Receipt({ token, appToken, customerId, id, signedId, sig
         if (j.success === false) throw new Error(j.message);
         setData(j.data);
       })
-      .catch((e) => setError(e.message || "Chekni ochib bo'lmadi"));
+      .catch((e) => setError(e.message || "Çekni oçib bölmadi"));
   }, [id, token, appToken, customerId, signedId, signature]);
 
   const savePdf = async () => {
     setPdfError("");
     try {
-      await saveReceiptPdf(tapeRef.current, data ? `Chek ${data.receiptNo}` : "Chek");
+      await saveReceiptPdf(tapeRef.current, data ? `Çek ${data.receiptNo}` : "Çek");
     } catch (e) {
-      setPdfError(e.message || "Saqlab bo'lmadi");
+      setPdfError(e.message || "Saqlab bölmadi");
     }
   };
 
@@ -118,7 +118,7 @@ export default function Receipt({ token, appToken, customerId, id, signedId, sig
     <Overlay className="pt-modal" onEscape={onClose}
              role="dialog" aria-modal="true">
       <div className="pt-modal__inner">
-        <button className="pt-close" onClick={onClose} aria-label="Yopish">
+        <button className="pt-close" onClick={onClose} aria-label="Yopiş">
           <i className="fa-solid fa-xmark" aria-hidden="true" />
         </button>
 
@@ -215,7 +215,7 @@ export default function Receipt({ token, appToken, customerId, id, signedId, sig
                      ilovasi o'qiydi, chek shtrixini esa kassa skaneri —
                      ikkalasi ham kichkina chizilgan. */
                   <button type="button" className="pt-fiscalqr ek-code-btn"
-                          onClick={() => setZoom("qr")} aria-label="Fiskal QR ni kattalashtirish"
+                          onClick={() => setZoom("qr")} aria-label="Fiskal QR ni kattalaştiriş"
                           dangerouslySetInnerHTML={{ __html: qrSvg(data.fiscalQrUrl, { size: 110, margin: 1 }) }} />
                 )}
               </>
@@ -223,7 +223,7 @@ export default function Receipt({ token, appToken, customerId, id, signedId, sig
 
             <div className="pt-hr" />
             <button type="button" className="pt-center pt-barcode ek-code-btn"
-                    onClick={() => setZoom("bar")} aria-label="Shtrix kodni kattalashtirish"
+                    onClick={() => setZoom("bar")} aria-label="Ştrix kodni kattalaştiriş"
                     dangerouslySetInnerHTML={{ __html: code128Svg(`S-${String(data.id).padStart(6, "0")}`) }} />
             <div className="pt-center pt-tape__no">S-{String(data.id).padStart(6, "0")}</div>
             <div className="pt-center pt-thanks">{t("rcp.thanksPurchase")}</div>
@@ -243,7 +243,7 @@ export default function Receipt({ token, appToken, customerId, id, signedId, sig
         {data && (
           <div className="pt-actions">
             <button type="button" className="btn btn-primary" onClick={savePdf}>
-              <i className="fa-solid fa-file-pdf" aria-hidden="true" /> PDF qilib saqlash
+              <i className="fa-solid fa-file-pdf" aria-hidden="true" /> PDF qilib saqlaş
             </button>
             {pdfError && <div className="pt-actions__err">{pdfError}</div>}
           </div>

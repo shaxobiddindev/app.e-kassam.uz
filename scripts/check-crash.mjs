@@ -122,7 +122,7 @@ async function visit(route) {
   }
 }
 
-console.log("\n══ Ro'yxat o'rniga obyekt kelganda sahifa yiqilmaydi ══");
+console.log("\n══ Röyxat örniga obyekt kelganda sahifa yiqilmaydi ══");
 for (const route of ROUTES) await visit(route);
 
 await browser.close();
@@ -130,8 +130,8 @@ server.close();
 
 if (bad) {
   console.log(`\n❌ ${bad} ta sahifa yiqildi.`);
-  console.log("   Server javobidagi kutilmagan shakl butun bo'limni o'chirdi.");
-  console.log("   Ro'yxatni `asArray(...)` bilan oling (`src/lib/ek-array.js`).");
+  console.log("   Server javobidagi kutilmagan şakl butun bölimni öçirdi.");
+  console.log("   Röyxatni `asArray(...)` bilan oling (`src/lib/ek-array.js`).");
   process.exit(1);
 }
 console.log("\n✅ yiqilish: hamma sahifa tirik");

@@ -75,15 +75,15 @@ console.log("\n── Maydonlararo: varaq ──");
 
   /* 8+8 + 3×70 + 2×2 = 230 > 210 → 20 mm toshdi. */
   const wide = errs(v.validateSheet(tpl(), sheet({ cols: 3 })));
-  ok(/20 mm toshdi/.test(wide), "⚠ eniga toshgani — aynan 20 mm");
+  ok(/20 mm toşdi/.test(wide), "⚠ eniga toshgani — aynan 20 mm");
   ok(/ustunni 2 ga/.test(wide), "⚠ va nima qilish kerakligi aytiladi");
 
   /* 10+10 + 9×37 = 353 > 297. */
   const tall = errs(v.validateSheet(tpl(), sheet({ rows: 9 })));
-  ok(/toshdi/.test(tall) && /qatorni/.test(tall), "⚠ bo'yiga toshgani ham aytiladi");
+  ok(/toşdi/.test(tall) && /qatorni/.test(tall), "⚠ bo'yiga toshgani ham aytiladi");
 
   const start = errs(v.validateSheet(tpl(), sheet({ startPosition: 99 })));
-  ok(/1 dan 14 gacha/.test(start), "⚠ boshlanish pozitsiyasi chegarasi aniq");
+  ok(/1 dan 14 gaça/.test(start), "⚠ boshlanish pozitsiyasi chegarasi aniq");
   ok(v.blocking(v.validateSheet(tpl(), sheet({ startPosition: 7 }))).length === 0,
      "7-katakdan boshlash qonuniy");
 
@@ -98,7 +98,7 @@ console.log("\n── Navbat: soni ──");
   /* ⚠ Ko'p yorliq TO'SILMAYDI — tasdiq so'raladi. */
   const many = v.validateJob([{ quantity: 900 }, { quantity: 900 }], sheet());
   ok(v.blocking(many).length === 0, "⚠ ko'p yorliq to'silmaydi");
-  ok(many.some((x) => x.level === "warning" && /varaq chiqadi/.test(x.text)),
+  ok(many.some((x) => x.level === "warning" && /varaq çiqadi/.test(x.text)),
      "⚠ nechta varaq chiqishi aytiladi");
 }
 
@@ -108,7 +108,7 @@ console.log("\n── Termal printerda rang ──");
     fields: [{ key: "name", x: 2, y: 2, w: 60, h: 8, size: 10, visible: true }] } });
   const list = v.validateTemplate(t);
   ok(v.blocking(list).length === 0, "⚠ rang XATO emas — shablon baribir chiqadi");
-  ok(list.some((x) => x.level === "warning" && /rang yo'q/.test(x.text)),
+  ok(list.some((x) => x.level === "warning" && /rang yöq/.test(x.text)),
      "⚠ lekin sababi aytiladi");
 }
 

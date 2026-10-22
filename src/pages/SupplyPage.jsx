@@ -526,8 +526,8 @@ export default function SupplyPage({ toast }) {
               {tab === "receipts"
                 ? <ExcelButton name="kirimlar" cols={RCPT_COLS} rows={shownReceipts} toast={toast} />
                 : tab === "returns"
-                  ? <ExcelButton name="qaytarishlar" cols={RET_COLS} rows={shownReturns} toast={toast} />
-                  : <ExcelButton name="yetkazuvchilar" cols={SUP_COLS} rows={shownSuppliers} toast={toast} />}
+                  ? <ExcelButton name="qaytarişlar" cols={RET_COLS} rows={shownReturns} toast={toast} />
+                  : <ExcelButton name="yetkazuvçilar" cols={SUP_COLS} rows={shownSuppliers} toast={toast} />}
             </div>
           </div>
           <div className="table-wrap">
@@ -898,7 +898,7 @@ export default function SupplyPage({ toast }) {
         <Modal title={`${t("supply.return")} №${retView.docNo ?? retView.id}`}
                onClose={() => setRetView(null)} maxWidth={640}
                footer={<>
-                 <ExcelButton name={`qaytarish-${retView.docNo ?? retView.id}`} cols={LINE_COLS}
+                 <ExcelButton name={`qaytariş-${retView.docNo ?? retView.id}`} cols={LINE_COLS}
                               rows={retView.lines || []} toast={toast} />
                  <button className="btn btn-outline btn-sm" onClick={() => setRetView(null)}>{t("common.close")}</button>
                </>}>
@@ -1097,7 +1097,7 @@ export default function SupplyPage({ toast }) {
           footer={
             <>
               <button className="btn btn-outline btn-sm" onClick={() => setPay(null)}>{t("common.close")}</button>
-              <ExcelButton name={`yetkazuvchi-${pay.supplier.id}`} cols={LEDGER_COLS}
+              <ExcelButton name={`yetkazuvçi-${pay.supplier.id}`} cols={LEDGER_COLS}
                            rows={pay.ledger || []} toast={toast} />
               <button className="btn btn-primary btn-sm" onClick={submitPay}
                       disabled={saving || !(enteredTotal(pay.entered) > 0)}>

@@ -57,7 +57,7 @@ const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css
 const kassaChunk = fs.readdirSync(path.join(DIST, "assets"))
   .find((f) => /^KassaPage-.*\.js$/.test(f));
 if (!kassaChunk) {
-  console.error("\n  ❌ dist/assets ichida KassaPage chunki topilmadi.");
+  console.error("\n  ❌ dist/assets içida KassaPage çunki topilmadi.");
   console.error("  Avval qurib oling:  npm run build\n");
   process.exit(1);
 }
@@ -144,8 +144,8 @@ const until = async (fn, ms = 20_000) => {
 const s = await until((x) => x.search || x.crash);
 
 ok(`chunk ${blocked} marta 404 qilindi (${kassaChunk})`);
-if (htmlServed < 2) no("sahifa O'ZI yangilanishi kerak edi", `index.html ${htmlServed} marta berildi`);
-else ok(`sahifa o'zini yangiladi (index.html ${htmlServed} marta)`);
+if (htmlServed < 2) no("sahifa ÖZI yangilanişi kerak edi", `index.html ${htmlServed} marta berildi`);
+else ok(`sahifa özini yangiladi (index.html ${htmlServed} marta)`);
 
 if (s.crash) no("yangilangandan keyin xato ekrani turibdi", s.text.replace(/\s+/g, " "));
 else if (!s.search) no("kassa ekrani chizilmadi", s.text.replace(/\s+/g, " "));
@@ -158,4 +158,4 @@ if (bad) {
   console.error(`\n  ${bad} ta buzilish. Eskirgan chunk kassirni ishsiz qoldiradi.\n`);
   process.exit(1);
 }
-console.log("\n  Ilova eskirgan chunkdan o'zini tikladi.\n");
+console.log("\n  Ilova eskirgan çunkdan özini tikladi.\n");

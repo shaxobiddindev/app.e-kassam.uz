@@ -54,11 +54,11 @@ export default function CodeZoom({ kind = "qr", value, svg: readySvg, caption, o
     ? qrSvg(value, { size: 1000, margin: 1 })
     : code128Svg(value, { height: 30, unit: 0.5, quiet: 4 }));
 
-  const label = kind === "qr" ? "QR kod" : "Shtrix kod";
+  const label = kind === "qr" ? "QR kod" : "Ştrix kod";
 
   return (
     <div className="ekz" role="dialog" aria-modal="true" aria-label={label} onClick={onClose}>
-      <button type="button" className="ekz__x" onClick={onClose} aria-label="Yopish">
+      <button type="button" className="ekz__x" onClick={onClose} aria-label="Yopiş">
         <i className="fa-solid fa-xmark" aria-hidden="true" />
       </button>
 

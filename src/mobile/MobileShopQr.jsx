@@ -39,7 +39,7 @@ export default function MobileShopQr({ toast, onClose }) {
   useEffect(() => {
     shopQrApi.config()
       .then((r) => setCfg(r.data))
-      .catch((e) => setError(e.message || "QR sozlamasini olib bo'lmadi"));
+      .catch((e) => setError(e.message || "QR sozlamasini olib bölmadi"));
   }, []);
 
   // 2. Har soniyada: orqa hisob, qadam almashganda — yangi QR
@@ -102,7 +102,7 @@ export default function MobileShopQr({ toast, onClose }) {
     try {
       printQrPoster({ url: cfg.posterUrl, shopName: shopName || "e-Kassam" });
     } catch (e) {
-      toast?.(e.message || "Chop etilmadi", "error");
+      toast?.(e.message || "Çop etilmadi", "error");
     }
   };
 

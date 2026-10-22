@@ -33,7 +33,7 @@ export default function BranchSelector({ selectedId, onSelect, style = {} }) {
   if (!isOwnerOrAdmin) return null;
 
   const options = [
-    { value: "", label: "Asosiy do'kon", icon: "fa-store" },
+    { value: "", label: "Asosiy dökon", icon: "fa-store" },
     ...branches.map((b) => ({ value: String(b.id), label: b.name, icon: "fa-code-branch" })),
   ];
 

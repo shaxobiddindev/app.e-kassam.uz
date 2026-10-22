@@ -76,7 +76,7 @@ function JoinScreen({ ref_, code, onDone }) {
     e.preventDefault();
     setError("");
     if (!form.fullName.trim()) return setError("Ismingizni yozing");
-    if (form.phone.replace(/\D/g, "").length < 9) return setError("Telefon raqami to'liq emas");
+    if (form.phone.replace(/\D/g, "").length < 9) return setError("Telefon raqami töliq emas");
     setBusy(true);
     try {
       const data = await api("/join", {
@@ -109,8 +109,8 @@ function JoinScreen({ ref_, code, onDone }) {
         <div className="pt-shop">{shop?.name || "…"}</div>
         <h1 className="pt-title">{t("cu.cardTitle")}</h1>
         <p className="pt-muted">
-          Ro'yxatdan o'ting — har xaridingizdan ball yig'iladi va cheklaringiz
-          shu yerda saqlanadi.
+          Röyxatdan öting — har xaridingizdan ball yiğiladi va çeklaringiz
+          şu yerda saqlanadi.
         </p>
 
         {error && <div className="pt-error" role="alert">{error}</div>}
@@ -139,12 +139,12 @@ function JoinScreen({ ref_, code, onDone }) {
           </div>
 
           <button className="pt-btn" type="submit" disabled={busy}>
-            {busy ? "Yuborilmoqda…" : "Karta olish"}
+            {busy ? "Yuborilmoqda…" : "Karta oliş"}
           </button>
         </form>
 
         <p className="pt-fine">
-          Ma'lumotlaringiz faqat shu do'konning mijozlar bazasida saqlanadi.
+          Ma'lumotlaringiz faqat şu dökonning mijozlar bazasida saqlanadi.
         </p>
       </div>
     </div>
@@ -176,10 +176,10 @@ function DebtScreen({ id, sig }) {
     if (!confirmed) {
       const ok = await confirm({
         title: "Men olmadim",
-        message: "Do'konga «bu qarzni men olmaganman» deb xabar boradi. Qarz o'chmaydi — do'kon buni ko'rib, siz bilan bog'lanadi. Davom etamizmi?",
+        message: "Dökonga «bu qarzni men olmaganman» deb xabar boradi. Qarz öçmaydi — dökon buni körib, siz bilan boğlanadi. Davom etamizmi?",
         type: "warning",
         confirmText: "Ha, men olmadim",
-        cancelText: "Bekor qilish",
+        cancelText: "Bekor qiliş",
       });
       if (!ok) return;
     }
@@ -213,14 +213,14 @@ function DebtScreen({ id, sig }) {
       <div className="pt-card pt-center">
         <div className="pt-shop">{debt.shopName}</div>
         <p className="pt-muted">{t("cu.debtAdded")}</p>
-        <div className="pt-debt-sum">{money(debt.amount)} so'm</div>
+        <div className="pt-debt-sum">{money(debt.amount)} söm</div>
         <p className="pt-muted">{dateTime(debt.createdAt)}</p>
 
         {answered ? (
           <p className={debt.state === "CONFIRMED" ? "pt-ok" : "pt-bad"}>
             {debt.state === "CONFIRMED"
               ? "Tasdiqladingiz. Rahmat!"
-              : "«Men olmadim» deb javob berdingiz — do'kon buni ko'radi."}
+              : "«Men olmadim» deb javob berdingiz — dökon buni köradi."}
           </p>
         ) : (
           <>
@@ -231,7 +231,7 @@ function DebtScreen({ id, sig }) {
               <button className="pt-btn pt-btn--ghost" disabled={busy} onClick={() => answer(false)}>{t("cu.debtNo")}</button>
             </div>
             <p className="pt-muted" style={{ fontSize: 13 }}>
-              «Men olmadim» qarzni o'chirmaydi — javobingiz do'konga boradi.
+              «Men olmadim» qarzni öçirmaydi — javobingiz dökonga boradi.
             </p>
           </>
         )}
@@ -260,11 +260,11 @@ function CabinetScreen({ token, onLogout }) {
      skanerlashi kerak bo'ladi. Tasdiq brauzer oynasi emas, ILOVA modali. */
   const askLogout = async () => {
     const ok = await confirm({
-      title: "Kartani o'chirish",
-      message: "Karta shu qurilmadan o'chiriladi. Qayta ochish uchun do'kondagi QR kodni yana skanerlashingiz kerak bo'ladi.",
+      title: "Kartani öçiriş",
+      message: "Karta şu qurilmadan öçiriladi. Qayta oçiş uçun dökondagi QR kodni yana skanerlaşingiz kerak böladi.",
       type: "danger",
-      confirmText: "O'chirish",
-      cancelText: "Bekor qilish",
+      confirmText: "Öçiriş",
+      cancelText: "Bekor qiliş",
     });
     if (ok) onLogout();
   };
@@ -374,7 +374,7 @@ function CabinetScreen({ token, onLogout }) {
           <p className="pt-muted">{error}</p>
           <button className="pt-btn" onClick={() => window.location.reload()}>{t("common.retry")}</button>
           <button className="pt-btn pt-btn--ghost" onClick={askLogout}>
-            Kartani bu qurilmadan o'chirish
+            Kartani bu qurilmadan öçiriş
           </button>
         </div>
       </div>
@@ -402,10 +402,10 @@ function CabinetScreen({ token, onLogout }) {
             kartadagi kichik kodni xira telefondan skaner ololmasdi. */}
         <div className="pt-codes">
           <button type="button" className="ek-code-btn pt-qr"
-                  onClick={() => setZoom("qr")} aria-label="QR kodni kattalashtirish"
+                  onClick={() => setZoom("qr")} aria-label="QR kodni kattalaştiriş"
                   dangerouslySetInnerHTML={{ __html: qrHtml }} />
           <button type="button" className="ek-code-btn pt-bars"
-                  onClick={() => setZoom("bar")} aria-label="Shtrix kodni kattalashtirish"
+                  onClick={() => setZoom("bar")} aria-label="Ştrix kodni kattalaştiriş"
                   dangerouslySetInnerHTML={{ __html: barHtml }} />
           <div className="pt-cardcode">{me.cardCode}</div>
           {/* ⚠ Orqa hisob KO'RINADI. Kod jimgina yangilansa, mijoz
@@ -439,13 +439,13 @@ function CabinetScreen({ token, onLogout }) {
             <div>
               <b>{t("cu.tgNotify")}</b>
               <p className="pt-muted">
-                Har xariddan keyin yig'ilgan ball va chek havolasi keladi.
+                Har xariddan keyin yiğilgan ball va çek havolasi keladi.
               </p>
             </div>
           </div>
           {tgError && <div className="pt-error" role="alert">{tgError}</div>}
           <button className="pt-btn pt-btn--ghost" onClick={linkTelegram} disabled={tgBusy}>
-            {tgBusy ? "Havola olinmoqda…" : "Telegramga ulash"}
+            {tgBusy ? "Havola olinmoqda…" : "Telegramga ulaş"}
           </button>
         </section>
       )}
@@ -455,7 +455,7 @@ function CabinetScreen({ token, onLogout }) {
         <h2 className="pt-h2">{t("cu.myReceipts")}</h2>
         {receipts.length === 0 && (
           <p className="pt-muted pt-center">
-            Hali chek yo'q. Kassada kartangizni ko'rsating — chek shu yerda paydo bo'ladi.
+            Hali çek yöq. Kassada kartangizni körsating — çek şu yerda paydo böladi.
           </p>
         )}
         <ul className="pt-list">
@@ -481,7 +481,7 @@ function CabinetScreen({ token, onLogout }) {
       {openId && <Receipt token={token} id={openId} onClose={() => setOpenId(null)} />}
 
       <button className="pt-btn pt-btn--ghost pt-logout" onClick={askLogout}>
-        Kartani bu qurilmadan o'chirish
+        Kartani bu qurilmadan öçiriş
       </button>
     </div>
   );
@@ -563,8 +563,8 @@ export default function CustomerPortal() {
         <i className="fa-solid fa-qrcode pt-icon" aria-hidden="true" />
         <h2>{t("cu.cardNotFound")}</h2>
         <p className="pt-muted">
-          Do'konda kassadagi QR kodni telefoningiz kamerasi bilan o'qing —
-          karta shu yerda paydo bo'ladi.
+          Dökonda kassadagi QR kodni telefoningiz kamerasi bilan öqing —
+          karta şu yerda paydo böladi.
         </p>
       </div>
     </div>

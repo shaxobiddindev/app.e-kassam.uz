@@ -134,6 +134,18 @@ eq(normSearch("Шоколад"), "shokolad", "«ш» ichidagi «h» ga tegilmayd
 yes(scoreText("шохрух", "Abdurahmonov Shohruhbek") > 0,
     "kirillcha so'rov to'liq ismni topadi");
 
+console.log("\n═══ 7c. Yangi alifbo — eski yozuv bilan bir kalit (V168) ═══");
+/* ⚠ Interfeys yangi alifboga o'tdi, do'kon ma'lumoti esa O'GIRILMADI
+   (egasining qarori): bazada «Shakar» ham, «Şakar» ham turadi.
+   Kutilgan qiymatlar SERVERNIKI bilan bir xil (`SearchNormSqlParityTest`). */
+for (const [a, b, c] of [["Şakar", "Shakar", "Шакар"], ["ÇOY", "Choy", "Чой"],
+                         ["Öçiriş", "O'chirish", "Ўчириш"], ["Yoğ", "Yog'", "Ёғ"]]) {
+  eq(normSearch(a), normSearch(b), `«${a}» = «${b}»`);
+  eq(normSearch(c), normSearch(b), `«${c}» = «${b}»`);
+}
+yes(scoreText("şakar", "Shakar 1 kg") > RANK.WORD_PREFIX, "yangi so'rov eski nomni boshidan topadi");
+yes(scoreText("shakar", "Şakar 1 kg") > RANK.WORD_PREFIX, "eski so'rov yangi nomni boshidan topadi");
+
 console.log("\n═══ 8. Umumiy matn bahosi ═══");
 yes(scoreText("suv", "Suv 1L") > scoreText("suv", "Ichimlik suvi gazsiz"),
     "aniq nom o'xshashidan yuqori turadi");

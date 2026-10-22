@@ -47,7 +47,7 @@ function checkMm(out, field, value, { min, max }, label) {
   const n = Number(value);
   if (!Number.isFinite(n)) { out.push(err(field, `${label}: son emas`)); return; }
   if (n < min || n > max) {
-    out.push(err(field, `${label}: ${mm1(n)} mm — ${min}…${max} mm oralig'ida bo'lishi kerak`));
+    out.push(err(field, `${label}: ${mm1(n)} mm — ${min}…${max} mm oraliğida bölişi kerak`));
     return;
   }
   if (Math.abs(n * 10 - Math.round(n * 10)) > 1e-9) {
@@ -69,7 +69,7 @@ export function validateTemplate(tpl) {
   checkMm(out, "heightMm", tpl.heightMm, LIMITS.labelMm, "Yorliq balandligi");
 
   if (![203, 300].includes(Number(tpl.dpi))) {
-    out.push(err("dpi", `Printer zichligi: ${tpl.dpi} — 203 yoki 300 bo'lishi kerak`));
+    out.push(err("dpi", `Printer ziçligi: ${tpl.dpi} — 203 yoki 300 bölişi kerak`));
   }
   if (!["SHELF", "STICKER"].includes(tpl.kind)) {
     out.push(err("kind", `Tur noma'lum: ${tpl.kind}`));
@@ -81,30 +81,30 @@ export function validateTemplate(tpl) {
   if (tpl.thermal && spec.background && spec.background !== "#ffffff"
       && spec.background !== "#fff") {
     out.push(warn("background",
-      "Termal printerda rang yo'q — fon oq bo'lib chiqadi"));
+      "Termal printerda rang yöq — fon oq bölib çiqadi"));
   }
 
   const W = Number(tpl.widthMm), H = Number(tpl.heightMm);
   const fields = Array.isArray(spec.fields) ? spec.fields : [];
-  if (!fields.length) out.push(err("fields", "Shablonda birorta maydon yo'q"));
+  if (!fields.length) out.push(err("fields", "Şablonda birorta maydon yöq"));
 
   for (const f of fields) {
     const tag = f.key || "?";
     if (f.visible === false) continue;
 
-    for (const [k, label] of [["x", "chapdan"], ["y", "tepadan"],
+    for (const [k, label] of [["x", "çapdan"], ["y", "tepadan"],
                               ["w", "kengligi"], ["h", "balandligi"]]) {
       const n = Number(f[k]);
       if (!Number.isFinite(n) || n < 0) {
-        out.push(err(tag, `${tag}: ${label} noto'g'ri (${f[k]})`));
+        out.push(err(tag, `${tag}: ${label} notöğri (${f[k]})`));
       }
     }
 
     if (f.size != null) {
       const s = Number(f.size);
       if (!Number.isFinite(s) || s < LIMITS.fontPt.min || s > LIMITS.fontPt.max) {
-        out.push(err(tag, `${tag}: shrift ${f.size} pt — `
-          + `${LIMITS.fontPt.min}…${LIMITS.fontPt.max} pt oralig'ida bo'lishi kerak`));
+        out.push(err(tag, `${tag}: şrift ${f.size} pt — `
+          + `${LIMITS.fontPt.min}…${LIMITS.fontPt.max} pt oraliğida bölişi kerak`));
       }
     }
 
@@ -112,10 +112,10 @@ export function validateTemplate(tpl) {
     const overW = Number(f.x) + Number(f.w) - W;
     const overH = Number(f.y) + Number(f.h) - H;
     if (overW > 0.001) {
-      out.push(err(tag, `${tag}: o'ngdan ${mm1(overW)} mm chiqib ketdi`));
+      out.push(err(tag, `${tag}: öngdan ${mm1(overW)} mm çiqib ketdi`));
     }
     if (overH > 0.001) {
-      out.push(err(tag, `${tag}: pastdan ${mm1(overH)} mm chiqib ketdi`));
+      out.push(err(tag, `${tag}: pastdan ${mm1(overH)} mm çiqib ketdi`));
     }
 
     /* Shrift balandligi × qatorlar ≤ maydon balandligi. */
@@ -138,7 +138,7 @@ export function validateTemplate(tpl) {
      barkodsiz stiker kassirni kodni qo'lda terishga majbur qiladi.
      Javon yorlig'ida esa barkod ataylab o'chiq (G1) — u yerda qoida yo'q. */
   if (!bc && tpl.kind === "STICKER") {
-    out.push(err("barcode", "Stikerda barkod bo'lishi shart — «Barkod» maydonini yoqing: "
+    out.push(err("barcode", "Stikerda barkod bölişi şart — «Barkod» maydonini yoqing: "
       + "barkodsiz stiker kassada skanerlanmaydi"));
   }
   if (bc) {
@@ -150,8 +150,8 @@ export function validateTemplate(tpl) {
     const lenMm = rot ? Number(bc.h) : Number(bc.w);
     const tallMm = rot ? Number(bc.w) : Number(bc.h);
     if (![2, 3].includes(dots)) {
-      out.push(err("barcode", `Modul ${dots} nuqta — 2 yoki 3 bo'lishi kerak: `
-        + "oraliq qiymatda printer chiziqlarni turlicha yaxlitlaydi va skaner o'qimaydi"));
+      out.push(err("barcode", `Modul ${dots} nuqta — 2 yoki 3 bölişi kerak: `
+        + "oraliq qiymatda printer çiziqlarni turliça yaxlitlaydi va skaner öqimaydi"));
     } else {
       /* Namunaviy EAN-13 bilan o'lchaymiz: eng keng holat. */
       const m = barcodeMetrics("5901234123457", {
@@ -162,7 +162,7 @@ export function validateTemplate(tpl) {
         labelKind: tpl.kind, labelHeightMm: Number(tpl.heightMm),
       });
       if (m && m.widthMm > lenMm + 0.001) {
-        out.push(err("barcode", `EAN-13 uchun ${mm1(m.widthMm)} mm kerak, `
+        out.push(err("barcode", `EAN-13 uçun ${mm1(m.widthMm)} mm kerak, `
           + `joy ${mm1(lenMm)} mm — ${mm1(m.widthMm - lenMm)} mm yetmayapti`));
       }
       if (m && !m.ok) {
@@ -191,17 +191,17 @@ export function validateSheet(tpl, sheet) {
 
   checkMm(out, "sheetWidthMm",  s.sheetWidthMm,  LIMITS.sheetMm, "Varaq kengligi");
   checkMm(out, "sheetHeightMm", s.sheetHeightMm, LIMITS.sheetMm, "Varaq balandligi");
-  checkMm(out, "marginLeftMm",  s.marginLeftMm,  LIMITS.marginMm, "Chap chekka");
-  checkMm(out, "marginRightMm", s.marginRightMm, LIMITS.marginMm, "O'ng chekka");
-  checkMm(out, "marginTopMm",   s.marginTopMm,   LIMITS.marginMm, "Tepa chekka");
-  checkMm(out, "marginBottomMm", s.marginBottomMm, LIMITS.marginMm, "Past chekka");
+  checkMm(out, "marginLeftMm",  s.marginLeftMm,  LIMITS.marginMm, "Çap çekka");
+  checkMm(out, "marginRightMm", s.marginRightMm, LIMITS.marginMm, "Öng çekka");
+  checkMm(out, "marginTopMm",   s.marginTopMm,   LIMITS.marginMm, "Tepa çekka");
+  checkMm(out, "marginBottomMm", s.marginBottomMm, LIMITS.marginMm, "Past çekka");
   checkMm(out, "gapXMm", s.gapXMm, LIMITS.gapMm, "Ustunlar orasi");
   checkMm(out, "gapYMm", s.gapYMm, LIMITS.gapMm, "Qatorlar orasi");
 
   const cols = Number(s.cols), rows = Number(s.rows);
   for (const [k, n, label] of [["cols", cols, "Ustunlar"], ["rows", rows, "Qatorlar"]]) {
     if (!Number.isInteger(n) || n < LIMITS.gridMin) {
-      out.push(err(k, `${label}: ${s[k]} — butun son va kamida ${LIMITS.gridMin} bo'lishi kerak`));
+      out.push(err(k, `${label}: ${s[k]} — butun son va kamida ${LIMITS.gridMin} bölişi kerak`));
     }
   }
   if (out.some((x) => x.level === "error")) return out;
@@ -216,8 +216,8 @@ export function validateSheet(tpl, sheet) {
     const fit = Math.max(1, Math.floor(
       (Number(s.sheetWidthMm) - Number(s.marginLeftMm) - Number(s.marginRightMm)
         + Number(s.gapXMm)) / (W + Number(s.gapXMm))));
-    out.push(err("cols", `Eniga ${mm1(over)} mm toshdi — ustunni ${fit} ga tushiring `
-      + `yoki chekkani ${mm1(Math.min(over, Number(s.marginLeftMm)))} mm ga kamaytiring`));
+    out.push(err("cols", `Eniga ${mm1(over)} mm toşdi — ustunni ${fit} ga tuşiring `
+      + `yoki çekkani ${mm1(Math.min(over, Number(s.marginLeftMm)))} mm ga kamaytiring`));
   }
 
   const needH = Number(s.marginTopMm) + Number(s.marginBottomMm)
@@ -227,15 +227,15 @@ export function validateSheet(tpl, sheet) {
     const fit = Math.max(1, Math.floor(
       (Number(s.sheetHeightMm) - Number(s.marginTopMm) - Number(s.marginBottomMm)
         + Number(s.gapYMm)) / (H + Number(s.gapYMm))));
-    out.push(err("rows", `Bo'yiga ${mm1(over)} mm toshdi — qatorni ${fit} ga tushiring `
-      + `yoki chekkani ${mm1(Math.min(over, Number(s.marginTopMm)))} mm ga kamaytiring`));
+    out.push(err("rows", `Böyiga ${mm1(over)} mm toşdi — qatorni ${fit} ga tuşiring `
+      + `yoki çekkani ${mm1(Math.min(over, Number(s.marginTopMm)))} mm ga kamaytiring`));
   }
 
   const perPage = cols * rows;
   const start = Number(s.startPosition ?? 1);
   if (!Number.isInteger(start) || start < 1 || start > perPage) {
     out.push(err("startPosition",
-      `Boshlanish pozitsiyasi: ${s.startPosition} — 1 dan ${perPage} gacha bo'lishi kerak`));
+      `Boşlaniş pozitsiyasi: ${s.startPosition} — 1 dan ${perPage} gaça bölişi kerak`));
   }
 
   return out;
@@ -249,14 +249,14 @@ export function validateJob(items, sheet) {
     const q = Number(it.quantity);
     if (!Number.isInteger(q) || q < LIMITS.quantity.min || q > LIMITS.quantity.max) {
       out.push(err("quantity", `«${it.product?.name ?? it.productId}»: soni ${it.quantity} — `
-        + `${LIMITS.quantity.min}…${LIMITS.quantity.max} oralig'ida butun son bo'lishi kerak`));
+        + `${LIMITS.quantity.min}…${LIMITS.quantity.max} oraliğida butun son bölişi kerak`));
     } else total += q;
   }
   /* ⚠ TASDIQ SO'RALADI, TO'SILMAYDI: 312 varaq chiqarish qonuniy ish,
      lekin tasodifan bosilgan tugma bo'lsa qimmatga tushadi. */
   if (total > LIMITS.confirmOver) {
     const per = Math.max(1, Number(sheet?.cols || 1) * Number(sheet?.rows || 1));
-    out.push(warn("total", `${total} ta yorliq — ${Math.ceil(total / per)} varaq chiqadi`));
+    out.push(warn("total", `${total} ta yorliq — ${Math.ceil(total / per)} varaq çiqadi`));
   }
   return out;
 }
@@ -304,8 +304,8 @@ export function validateOutput(media, printer, tpl) {
   if (liner !== null && rowMm > liner + 0.001) {
     const fit = Math.max(1, Math.floor((liner + gx) / (w + gx)));
     out.push(err("across", `${ac} ta ${mm1(w)} mm yorliq va oraliqlar `
-      + `${mm1(rowMm)} mm joy oladi, podloshka esa ${mm1(liner)} mm — `
-      + `qatorda ${fit} ta yorliqli rulon tanlang yoki yorliqni kichraytiring`));
+      + `${mm1(rowMm)} mm joy oladi, podloşka esa ${mm1(liner)} mm — `
+      + `qatorda ${fit} ta yorliqli rulon tanlang yoki yorliqni kiçraytiring`));
   }
 
   /* ── 2. PRINTERNING CHOP KENGLIGIGA SIG'ADIMI ──
@@ -314,8 +314,8 @@ export function validateOutput(media, printer, tpl) {
     const pw = Number(printer.printWidthMm);
     if (Number.isFinite(pw) && rowMm > pw + 0.001) {
       out.push(err("printer", `${mm1(pw)} mm printerga ${mm1(rowMm)} mm yorliq `
-        + `sig'maydi — yorliqni ${mm1(pw)} mm ga tushiring `
-        + `yoki chop kengligi kattaroq printer tanlang`));
+        + `siğmaydi — yorliqni ${mm1(pw)} mm ga tuşiring `
+        + `yoki çop kengligi kattaroq printer tanlang`));
     }
   }
 
@@ -329,7 +329,7 @@ export function validateOutput(media, printer, tpl) {
        «qancha?» degan savol bilan qoldiradi. Tayyor chek lentasi
        profillarida balandlik 40 mm. */
     out.push(err("labelHeightMm", "Uzluksiz lentada printer yorliq qayerda "
-      + "tugashini bilmaydi — yorliq balandligini mm da yozing, odatda 30–40 mm"));
+      + "tugaşini bilmaydi — yorliq balandligini mm da yozing, odatda 30–40 mm"));
   }
 
   /* ── 4. ORALIQ / QORA BELGI DA — ORALIQ QIYMATI ──
@@ -337,8 +337,8 @@ export function validateOutput(media, printer, tpl) {
      bo'lsa u hech narsa ko'rmaydi va rulon bir tekis oqib ketadi. */
   const sensed = ["ORALIQ", "QORA_BELGI"].includes(String(media.sensor));
   if (sensed && String(media.mediaType) === "RULON" && !(gy > 0)) {
-    out.push(err("gapYMm", `«${sensorName(media.sensor)}» datchigi yorliqlar `
-      + "orasidagi bo'shliqni o'lchaydi — oraliqni yozing, odatda 2–3 mm"));
+    out.push(err("gapYMm", `«${sensorName(media.sensor)}» datçigi yorliqlar `
+      + "orasidagi böşliqni ölçaydi — oraliqni yozing, odatda 2–3 mm"));
   }
 
   if (!tpl) return out;
@@ -368,22 +368,22 @@ export function validateOutput(media, printer, tpl) {
       && Number(tpl.dpi) !== Number(printer.dpi)) {
     const tMm = mm3(2 * 25.4 / Number(tpl.dpi));
     const pMm = mm3(2 * 25.4 / Number(printer.dpi));
-    out.push(err("dpi", `Dizayn ${tpl.dpi} dpi uchun chizilgan, printer esa `
-      + `${printer.dpi} dpi — barkod moduli ${tMm} mm o'rniga ${pMm} mm bo'lib `
-      + `chiqadi; dizayn zichligini ${printer.dpi} ga o'zgartiring `
+    out.push(err("dpi", `Dizayn ${tpl.dpi} dpi uçun çizilgan, printer esa `
+      + `${printer.dpi} dpi — barkod moduli ${tMm} mm örniga ${pMm} mm bölib `
+      + `çiqadi; dizayn ziçligini ${printer.dpi} ga özgartiring `
       + "yoki mos printer tanlang"));
   }
 
   /* ── 6. YORLIQ QOG'OZDAN KATTA BO'LMASIN ── */
   const tw = Number(tpl.widthMm), th = Number(tpl.heightMm);
   if (Number.isFinite(tw) && tw > w + 0.001) {
-    out.push(err("widthMm", `Dizayn eni ${mm1(tw)} mm, qog'oz eni ${mm1(w)} mm — `
-      + `dizaynni ${mm1(w)} mm ga tushiring yoki kengroq qog'oz tanlang`));
+    out.push(err("widthMm", `Dizayn eni ${mm1(tw)} mm, qoğoz eni ${mm1(w)} mm — `
+      + `dizaynni ${mm1(w)} mm ga tuşiring yoki kengroq qoğoz tanlang`));
   }
   /* ⚠ Uzluksiz lentada bo'y solishtirilmaydi: u kerakli joyidan kesiladi. */
   if (h !== null && Number.isFinite(th) && th > h + 0.001) {
-    out.push(err("heightMm", `Dizayn bo'yi ${mm1(th)} mm, qog'oz bo'yi ${mm1(h)} mm — `
-      + `dizaynni ${mm1(h)} mm ga tushiring yoki balandroq qog'oz tanlang`));
+    out.push(err("heightMm", `Dizayn böyi ${mm1(th)} mm, qoğoz böyi ${mm1(h)} mm — `
+      + `dizaynni ${mm1(h)} mm ga tuşiring yoki balandroq qoğoz tanlang`));
   }
 
   /* ── 7. STIKERDA BARKOD + TINCH ZONA QOG'OZGA SIG'SIN ──
@@ -402,9 +402,9 @@ export function validateOutput(media, printer, tpl) {
     });
     const pad = Number(spec.padding) || 0;
     if (m && m.widthMm + 2 * pad > w + 0.001) {
-      out.push(err("barcode", `Barkod tinch zonasi bilan ${mm1(m.widthMm)} mm, `
-        + `chekkalar bilan ${mm1(m.widthMm + 2 * pad)} mm — qog'oz esa ${mm1(w)} mm; `
-        + "modulni 2 nuqtaga tushiring yoki kengroq qog'oz tanlang"));
+      out.push(err("barcode", `Barkod tinç zonasi bilan ${mm1(m.widthMm)} mm, `
+        + `çekkalar bilan ${mm1(m.widthMm + 2 * pad)} mm — qoğoz esa ${mm1(w)} mm; `
+        + "modulni 2 nuqtaga tuşiring yoki kengroq qoğoz tanlang"));
     }
   }
 
@@ -425,5 +425,5 @@ export const blocking = (list) => (list || []).filter((x) => x.level === "error"
 
 function safeParse(text, out) {
   try { return JSON.parse(text); }
-  catch (e) { out.push(err("spec", "Shablon tuzilishi buzuq: " + e.message)); return null; }
+  catch (e) { out.push(err("spec", "Şablon tuzilişi buzuq: " + e.message)); return null; }
 }

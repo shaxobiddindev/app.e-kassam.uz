@@ -341,17 +341,17 @@ const pickPeriod = async (page, re) => {
 };
 
 /* ══ A. Sahifa ochiladi ════════════════════════════════════════════════ */
-console.log("── A. Ochilish ──");
+console.log("── A. Oçiliş ──");
 const page = await openReports();
 {
   const kpis = await page.$$eval(".kpi", (n) => n.length);
   /* ⚠ 2026-10-05: bosh sahifada TO'RTTA asosiy raqam (sakkizta emas) —
      qolganlari o'z bo'limida. */
-  is(kpis >= 4, "bosh sahifada KPI kartalari chizildi", String(kpis));
-  is(!!(await page.$(".rpt-lead__q")), "bo'lim oddiy savol bilan ochiladi");
+  is(kpis >= 4, "boş sahifada KPI kartalari çizildi", String(kpis));
+  is(!!(await page.$(".rpt-lead__q")), "bölim oddiy savol bilan oçiladi");
   const svg = await page.$$eval(".chart svg", (n) => n.length);
   is(svg >= 1, "dinamika grafigi chizildi", `${svg} ta SVG`);
-  is(calls.length === 1, "BITTA so'rov ketdi (o'n beshta emas)", String(calls.length));
+  is(calls.length === 1, "BITTA sörov ketdi (ön beşta emas)", String(calls.length));
 
   /* Davr oralig'i — MAHALLIY sutka boshidan. Eski xato: UTC da
      olinardi va tunda oraliq teskari bo'lib, hisobot bo'm-bo'sh
@@ -359,42 +359,42 @@ const page = await openReports();
   const q = new URLSearchParams(calls[0]);
   const from = new Date(q.get("from"));
   is(from.getHours() === 0 && from.getMinutes() === 0,
-     "oraliq MAHALLIY sutka boshidan boshlanadi", q.get("from"));
-  is(from.getDate() === 1, "«shu oy» — oyning birinchi kunidan", String(from.getDate()));
+     "oraliq MAHALLIY sutka boşidan boşlanadi", q.get("from"));
+  is(from.getDate() === 1, "«şu oy» — oyning birinçi kunidan", String(from.getDate()));
   await shot(page, "rpt-home");
 }
 
 /* ══ B. O'sish belgisi ═════════════════════════════════════════════════ */
-console.log("\n── B. Taqqoslash ──");
+console.log("\n── B. Taqqoslaş ──");
 {
   const deltas = await page.$$eval(".kpi__delta", (n) => n.map((x) => x.className + "|" + x.textContent.trim()));
-  is(deltas.length >= 4, "o'sish belgilari bor", String(deltas.length));
-  is(deltas.some((d) => d.includes("is-up") && d.includes("↑")), "o'sish YUQORIGA va yashil");
+  is(deltas.length >= 4, "ösiş belgilari bor", String(deltas.length));
+  is(deltas.some((d) => d.includes("is-up") && d.includes("↑")), "ösiş YUQORIGA va yaşil");
   /* Qaytarish va xarajat O'SISHI yomon — ular teskari belgilanadi.
      Qaytarish endi «Savdo» bo'limida. */
   await openTab(page, 1);
   const idx = await page.evaluate(() => {
     const cards = [...document.querySelectorAll(".kpi")];
-    const c = cards.find((x) => /qaytarish/i.test(x.querySelector(".kpi__label")?.textContent || ""));
+    const c = cards.find((x) => /qaytariş/i.test(x.querySelector(".kpi__label")?.textContent || ""));
     return c?.querySelector(".kpi__delta")?.className || "";
   });
-  is(idx.includes("is-down"), "qaytarish O'SGANDA belgi QIZIL (o'sishi yomon)", idx);
+  is(idx.includes("is-down"), "qaytariş ÖSGANDA belgi QIZIL (ösişi yomon)", idx);
   await openTab(page, 0);
 }
 
 /* ══ C. Hamma bo'lim ochiladi ══════════════════════════════════════════ */
-console.log("\n── C. Oltita bo'lim ──");
+console.log("\n── C. Oltita bölim ──");
 {
   const names = await page.$$eval(".rpt-tab", (n) => n.map((x) => x.textContent.trim()));
-  is(names.length === 6, "oltita bo'lim", names.join(" · "));
+  is(names.length === 6, "oltita bölim", names.join(" · "));
   const before = pageErrors.length;
   for (let i = 0; i < names.length; i++) {
     await openTab(page, i);
     const painted = await page.evaluate(() => document.querySelectorAll(".rpt .card, .kpi").length > 0);
-    is(painted && pageErrors.length === before, `«${names[i]}» ochildi va xatosiz`,
+    is(painted && pageErrors.length === before, `«${names[i]}» oçildi va xatosiz`,
        pageErrors.slice(before).join(" | "));
   }
-  is(calls.length === 1, "bo'lim almashganda YANGI SO'ROV KETMADI", String(calls.length));
+  is(calls.length === 1, "bölim almaşganda YANGI SÖROV KETMADI", String(calls.length));
   await openTab(page, 2);  await shot(page, "rpt-profit");
   await openTab(page, 1);  await shot(page, "rpt-sales");
   await openTab(page, 3);  await shot(page, "rpt-products");
@@ -405,31 +405,31 @@ console.log("\n── C. Oltita bo'lim ──");
 console.log("\n── D. Davr ──");
 {
   const n0 = calls.length;
-  await pickPeriod(page, /^\s*kecha/);
-  is(calls.length === n0 + 1, "davr o'zgarganda so'rov QAYTA ketdi");
+  await pickPeriod(page, /^\s*keça/);
+  is(calls.length === n0 + 1, "davr özgarganda sörov QAYTA ketdi");
   const q = new URLSearchParams(calls.at(-1));
   const from = new Date(q.get("from"));
   const to = new Date(q.get("to"));
-  is(Math.round((to - from) / 86400000) === 1, "«kecha» — aynan bitta kun",
+  is(Math.round((to - from) / 86400000) === 1, "«keça» — aynan bitta kun",
      `${q.get("from")} → ${q.get("to")}`);
   is(from < to, "oraliq TESKARI emas");
 
   /* O'z oralig'i — sana maydonlari chiqadi. */
-  await pickPeriod(page, /o'z oralig'i/);
-  is(!!(await page.$(".rpt-custom")), "«o'z oralig'i» da sana maydonlari chiqdi");
+  await pickPeriod(page, /öz oraliği/);
+  is(!!(await page.$(".rpt-custom")), "«öz oraliği» da sana maydonlari çiqdi");
 }
 
 /* ══ E. Bo'sh ma'lumot ═════════════════════════════════════════════════ */
-console.log("\n── E. Bo'sh davr ──");
+console.log("\n── E. Böş davr ──");
 await page.close();
 {
   const p2 = await openReports(EMPTY);
   const before = pageErrors.length;
   for (let i = 0; i < 6; i++) await openTab(p2, i);
-  is(pageErrors.length === before, "bo'sh ma'lumotda ham hech bir bo'lim yiqilmadi",
+  is(pageErrors.length === before, "böş ma'lumotda ham heç bir bölim yiqilmadi",
      pageErrors.slice(before).join(" | "));
   const empties = await p2.$$eval(".chart--empty, .empty, .ek-empty", (n) => n.length);
-  is(empties > 0, "bo'sh holat yozuvi chizildi (grafik o'rni bo'm-bo'sh qolmadi)", String(empties));
+  is(empties > 0, "böş holat yozuvi çizildi (grafik örni böm-böş qolmadi)", String(empties));
   await shot(p2, "rpt-empty");
   await p2.close();
 }
@@ -443,9 +443,9 @@ console.log("\n── F. Savat, reja va prognoz ──");
   /* Reja — «shu oy» davrida va faqat reja qo'yilgan bo'lsa. */
   await wait(400);
   const tgt = await p3.$(".tgt");
-  is(!!tgt, "reja bo'limi chizildi");
+  is(!!tgt, "reja bölimi çizildi");
   const pct = await p3.$eval(".tgt__foot b", (e) => e.textContent.trim()).catch(() => "");
-  is(pct === "56%", "bajarilish foizi to'g'ri (112 mln / 200 mln)", pct);
+  is(pct === "56%", "bajariliş foizi töğri (112 mln / 200 mln)", pct);
   /* ⚠ Chiziq 100% dan oshmasligi kerak — cho'zilsa qutidan chiqib ketardi. */
   const w = await p3.$eval(".tgt__bar i", (e) => e.style.width);
   is(parseFloat(w) <= 100, "chiziq 100% dan oshmadi", w);
@@ -463,16 +463,16 @@ console.log("\n── F. Savat, reja va prognoz ──");
   });
   is(!!basket && basket.length === 2, "savat juftliklari chizildi", JSON.stringify(basket));
   is(basket && basket[0][0] === "Coca-Cola" && basket[0][2] === "Chips",
-     "juftlik YO'NALTIRILGAN o'qiladi (A → B)");
+     "juftlik YÖNALTIRILGAN öqiladi (A → B)");
   is(basket && basket[0][4] !== basket[1][4],
-     "ikki yo'nalish BOSHQA ishonch beradi", basket ? `${basket[0][4]} ≠ ${basket[1][4]}` : "");
+     "ikki yönaliş BOŞQA işonç beradi", basket ? `${basket[0][4]} ≠ ${basket[1][4]}` : "");
 
   /* Reja YO'Q bo'lsa bo'lim umuman chizilmaydi. */
   await p3.close();
   TARGET = null;
   const p4 = await openReports();
   await wait(400);
-  is(!(await p4.$(".tgt")), "reja qo'yilmagan bo'lsa bo'lim UMUMAN chizilmaydi");
+  is(!(await p4.$(".tgt")), "reja qöyilmagan bölsa bölim UMUMAN çizilmaydi");
   await p4.close();
 }
 
@@ -527,19 +527,19 @@ console.log("\n── G. Excel eksporti ──");
     is(info.head === "PK\u0003\u0004", "haqiqiy ZIP (xlsx) imzosi", JSON.stringify(info.head));
     is(/^hisobot-\d{4}-\d{2}-\d{2}\.xlsx$/.test(info.name || ""), "fayl nomi davr sanasi bilan", info.name);
     is(info.type.includes("spreadsheetml"), "MIME turi xlsx", info.type);
-    is(info.size > 3000, "fayl bo'sh emas", `${info.size} bayt`);
+    is(info.size > 3000, "fayl böş emas", `${info.size} bayt`);
     /* Har bo'lim o'z varag'ida. ⚠ `<sheet name=` bo'yicha sanaladi
        (`workbook.xml` dagi ro'yxat), fayl nomlari bo'yicha emas: ular
        `[Content_Types].xml` va `.rels` da ham uchraydi va son ikki
        barobar chiqardi. */
     const sheets = (info.text.match(/<sheet name="/g) || []).length;
-    is(sheets >= 9, "har bo'lim O'Z VARAG'IDA", `${sheets} ta varaq`);
+    is(sheets >= 9, "har bölim ÖZ VARAĞIDA", `${sheets} ta varaq`);
     /* ⚠ Eng muhimi: SON son bo'lib tushdimi. «12 000 so'm» degan
        katakni Excel jamlay olmaydi. */
     is(info.text.includes("<v>112000000</v>"), "sof savdo SON sifatida yozildi (matn emas)");
     is(info.text.includes("Coca-Cola") && info.text.includes("Chips"),
        "savat juftliklari ham faylda");
-    is(info.text.includes("Ali") && info.text.includes("Vali"), "kassirlar varag'i to'ldi");
+    is(info.text.includes("Ali") && info.text.includes("Vali"), "kassirlar varaği töldi");
   }
   await p5.close();
 }
@@ -571,50 +571,50 @@ console.log("\n── I. Mahsulot hisoboti ──");
   await p6.evaluate(() => document.querySelector("#rpt-all-products tbody tr.tr-link")?.click());
   await p6.waitForSelector(".prep .kpi", { timeout: 15_000 }).catch(() => {});
   await wait(400);
-  is(/\/reports\/product\/1\?/.test(p6.url()), "jadval qatori bosilsa tovar sahifasi ochildi", p6.url());
-  is(/period=month/.test(p6.url()), "davr o'zi bilan ketdi («Shu oy»)", p6.url());
+  is(/\/reports\/product\/1\?/.test(p6.url()), "jadval qatori bosilsa tovar sahifasi oçildi", p6.url());
+  is(/period=month/.test(p6.url()), "davr özi bilan ketdi («Şu oy»)", p6.url());
   is(productCalls.length === 1 && productCalls[0].startsWith("/api/reports/product/1?"),
-     "BITTA so'rov ketdi", productCalls.join(" | "));
+     "BITTA sörov ketdi", productCalls.join(" | "));
   const lead = await p6.$eval(".rpt-lead", (e) => e.textContent).catch(() => "");
   is(/45 dona sotildi/.test(lead) && /16 kunga yetadi/.test(lead),
-     "bir gapda javob: qancha sotildi va necha kunga yetadi", lead.trim());
+     "bir gapda javob: qança sotildi va neça kunga yetadi", lead.trim());
   const kpis = await p6.$$eval(".prep .kpi", (n) => n.length);
-  is(kpis === 8, "sakkizta raqam (to'rtta katta, to'rtta kichik)", String(kpis));
+  is(kpis === 8, "sakkizta raqam (törtta katta, törtta kiçik)", String(kpis));
   const rows = await p6.$$eval(".prep table tbody tr.tr-link", (n) => n.length);
-  is(rows === 20, "sotuvlar ro'yxati — avval 20 ta", String(rows));
+  is(rows === 20, "sotuvlar röyxati — avval 20 ta", String(rows));
   await p6.evaluate(() => [...document.querySelectorAll(".prep-foot button")][0]?.click());
   await wait(200);
   const rowsAll = await p6.$$eval(".prep table tbody tr.tr-link", (n) => n.length);
-  is(rowsAll === 25, "«Hammasini ko'rsatish» — 25 ta", String(rowsAll));
+  is(rowsAll === 25, "«Hammasini körsatiş» — 25 ta", String(rowsAll));
   const badges = await p6.$$eval(".prep table tbody tr.tr-link .badge", (n) => n.slice(0, 3).map((x) => x.textContent.trim()));
-  is(badges[1] === "Qaytarish" && badges[2] === "Bekor qilingan",
-     "qaytarish va bekor qilingan MATN bilan ajraladi (rang yolg'iz emas)", badges.join(", "));
+  is(badges[1] === "Qaytariş" && badges[2] === "Bekor qilingan",
+     "qaytariş va bekor qilingan MATN bilan ajraladi (rang yolğiz emas)", badges.join(", "));
   const svg = await p6.$$eval(".prep .chart", (n) => n.length);
   is(svg >= 2, "kunlik va soatlik grafik chizildi", String(svg));
   const moves = await p6.evaluate(() => document.body.textContent.includes("Kirim") && document.body.textContent.includes("Sindi"));
-  is(moves, "kirim-chiqim va chiqit sababi ko'rindi");
+  is(moves, "kirim-çiqim va çiqit sababi körindi");
   /* ⚠ V167: «qayerdan keldi» — ilgari jadval «Kirim +40, omborchi» derdi
      va kimdan kelgani faqat izoh matnida qolardi. */
   const party = await p6.evaluate(() => {
     const tr = [...document.querySelectorAll(".prep table tbody tr")].find((x) => /Kirim/.test(x.textContent));
     return tr ? tr.textContent.replace(/ /g, " ") : "";
   });
-  is(/Ali MChJ/.test(party) && /#12/.test(party), "kirim qatorida ta'minotchi va hujjat raqami", party);
+  is(/Ali MChJ/.test(party) && /#12/.test(party), "kirim qatorida ta'minotçi va hujjat raqami", party);
   /* Sakkizta raqam bir vaqtda emas: ikkinchi qator tugma ortida (egasi
      «juda sodda bo'lsin» dedi), lekin HECH BIRI o'chirilmagan. */
   const kpiShown = await p6.$$eval(".prep .kpi-grid", (n) => n.map((g) => g.hidden));
   is(kpiShown.length === 2 && kpiShown[0] === false && kpiShown[1] === true,
-     "birinchi to'rt raqam ko'rinadi, qolgani tugma ortida", JSON.stringify(kpiShown));
+     "birinçi tört raqam körinadi, qolgani tugma ortida", JSON.stringify(kpiShown));
   await p6.evaluate(() => document.querySelector(".prep__more")?.click());
   await wait(300);
   const kpiAfter = await p6.$$eval(".prep .kpi-grid", (n) => n.map((g) => g.hidden));
-  is(kpiAfter[1] === false, "tugma bosilsa qolgan raqamlar ochiladi", JSON.stringify(kpiAfter));
+  is(kpiAfter[1] === false, "tugma bosilsa qolgan raqamlar oçiladi", JSON.stringify(kpiAfter));
   await shot(p6, "prep");
 
   /* Chek ochiladi */
   await p6.evaluate(() => document.querySelector(".prep table tbody tr.tr-link")?.click());
   await p6.waitForSelector(".modal-box", { timeout: 5000 }).catch(() => {});
-  is(!!(await p6.$(".modal-box")), "qator bosilsa chek ochildi");
+  is(!!(await p6.$(".modal-box")), "qator bosilsa çek oçildi");
   await p6.keyboard.press("Escape");
   await wait(200);
 
@@ -639,19 +639,19 @@ console.log("\n── I. Mahsulot hisoboti ──");
              hasQty: text.includes("<v>45</v>"), hasAli: text.includes("Ali") };
   });
   is(!!x && /^tovar-.*\.xlsx$/.test(x.name || ""), "tovar Excel fayli", x?.name);
-  is(!!x && x.sheets >= 6 && x.hasQty && x.hasAli, "varaqlar to'ldi (sotildi 45 — SON, kassirlar)",
+  is(!!x && x.sheets >= 6 && x.hasQty && x.hasAli, "varaqlar töldi (sotildi 45 — SON, kassirlar)",
      x ? `${x.sheets} varaq` : "");
 
   /* Orqaga — «Tovarlar» bo'limi */
   await p6.evaluate(() => document.querySelector(".prep-head__back")?.click());
   await p6.waitForSelector(".rpt-tabs", { timeout: 10_000 }).catch(() => {});
   const on = await p6.$eval(".rpt-tab.is-on", (e) => e.textContent.trim()).catch(() => "");
-  is(/tovarlar/i.test(on), "«Hisobotlar» tugmasi «Tovarlar» bo'limiga qaytardi", on);
+  is(/tovarlar/i.test(on), "«Hisobotlar» tugmasi «Tovarlar» bölimiga qaytardi", on);
   await p6.close();
 }
 
 /* ══ J. Bo'sh tovar ═════════════════════════════════════════════════════ */
-console.log("\n── J. Bo'sh tovar ──");
+console.log("\n── J. Böş tovar ──");
 {
   productPayload = PRODUCT_EMPTY;
   const before = pageErrors.length;
@@ -674,7 +674,7 @@ console.log("\n── K. Qidiruv ──");
   is(found.length === 1 && /Pista/.test(found[0]), "tovar serverdan topildi", found.join(" | "));
   await p8.click(".rpt-find__row").catch(() => {});
   await wait(500);
-  is(/\/reports\/product\/7$/.test(p8.url()), "tanlangach hisobot ochildi", p8.url());
+  is(/\/reports\/product\/7$/.test(p8.url()), "tanlangaç hisobot oçildi", p8.url());
   await p8.close();
 }
 
@@ -685,14 +685,14 @@ console.log("\n── L. Kunlik hisobot ──");
   const p9 = await openReports(ANALYTICS, "/reports/day");
   await p9.waitForSelector(".table tbody tr", { timeout: 8000 }).catch(() => {});
   const lead = await p9.$eval(".rpt-lead", (n) => n.textContent).catch(() => "");
-  is(/nima bo'ldi/.test(lead) && /xarid bo'ldi/.test(lead) && !/so'm so'm/.test(lead), "kun xulosasi oddiy gap bilan", lead.slice(0, 160));
+  is(/nima böldi/.test(lead) && /xarid böldi/.test(lead) && !/söm söm/.test(lead), "kun xulosasi oddiy gap bilan", lead.slice(0, 160));
   /* 2026-10-11: davr — `from`/`to` (bitta kunda ikkalasi bir xil). */
   const m0 = /from=(\d{4}-\d{2}-\d{2})&to=(\d{4}-\d{2}-\d{2})/.exec(dayCalls[0] || "");
   is(dayCalls.length === 1 && m0 && m0[1] === m0[2] && calls.length === 1,
-     "bitta kun so'raldi (tovarlar + xulosa)", dayCalls.join(" ") + " | " + calls.join(" "));
+     "bitta kun söraldi (tovarlar + xulosa)", dayCalls.join(" ") + " | " + calls.join(" "));
   const rowsTxt = await p9.$$eval(".table tbody tr", (n) => n.map((x) => x.textContent));
   const pista = rowsTxt.find((x) => /Pista/.test(x)) || "";
-  is(/−3/.test(pista) && /270/.test(pista), "Pista: −3 sotildi, 270 000 so'm", pista);
+  is(/−3/.test(pista) && /270/.test(pista), "Pista: −3 sotildi, 270 000 söm", pista);
   const un = rowsTxt.find((x) => /^Un/.test(x.trim())) || "";
   is(/\+25/.test(un) && /−1/.test(un) && /34/.test(un), "Un: +25 keldi, −1 buzildi, kun oxirida 34", un);
   const body = await p9.evaluate(() => document.body.textContent);
@@ -704,17 +704,17 @@ console.log("\n── L. Kunlik hisobot ──");
      farq qilmaydi — eski jadval ham «+25 keldi» derdi, lekin kimdan
      kelganini aytmasdi va egasi aynan shundan shikoyat qildi. */
   const eq = await p9.$$eval(".flw__cell", (n) => n.map((x) => x.textContent.replace(/\s+/g, " ").trim()));
-  is(eq.length === 4 && /Boshida bor edi\s*0/.test(eq[0]) && /Kirdi\s*60/.test(eq[1])
-     && /Chiqdi\s*36/.test(eq[2]) && /Oxirida qoldi\s*24/.test(eq[3]),
+  is(eq.length === 4 && /Boşida bor edi\s*0/.test(eq[0]) && /Kirdi\s*60/.test(eq[1])
+     && /Çiqdi\s*36/.test(eq[2]) && /Oxirida qoldi\s*24/.test(eq[3]),
      "tenglama: 0 + 60 000 − 36 000 = 24 000", eq.join(" | "));
   const flowTxt = await p9.$$eval(".flw__row", (n) => n.map((x) => x.textContent.replace(/\s+/g, " ").trim()));
-  is(flowTxt.some((x) => /Ali MChJ/.test(x) && /Ta'minotchi/.test(x) && /48/.test(x)),
-     "qayerdan keldi: ta'minotchi NOMI bilan", flowTxt.join(" | "));
+  is(flowTxt.some((x) => /Ali MChJ/.test(x) && /Ta'minotçi/.test(x) && /48/.test(x)),
+     "qayerdan keldi: ta'minotçi NOMI bilan", flowTxt.join(" | "));
   is(flowTxt.some((x) => /Sergeli/.test(x) && /Filial/.test(x)),
      "qayerga ketdi: filial NOMI bilan", flowTxt.join(" | "));
-  is(flowTxt.some((x) => /Sindi/.test(x) && /Chiqit/.test(x)),
-     "chiqit — sababi bilan", flowTxt.join(" | "));
-  is(/Kirim #12/.test(body) && /Ko'chirish #5/.test(body), "hujjatlar raqami bilan ko'rinadi");
+  is(flowTxt.some((x) => /Sindi/.test(x) && /Çiqit/.test(x)),
+     "çiqit — sababi bilan", flowTxt.join(" | "));
+  is(/Kirim #12/.test(body) && /Köçiriş #5/.test(body), "hujjatlar raqami bilan körinadi");
   /* ⚠ Blok pul kartochkalaridan OLDIN: sahifa «Tovar hisoboti» deb
      ataladi, ilgari esa u o'n beshta pul raqamidan boshlanardi. */
   const order = await p9.evaluate(() => {
@@ -723,28 +723,28 @@ console.log("\n── L. Kunlik hisobot ──");
     return { f, k };
   });
   is(order.f < order.k, "ombor harakati pul kartochkalaridan YUQORIDA", JSON.stringify(order));
-  is(/Boshida bor edi \+ keldi/.test(body), "jadval ustida hisob qoidasi oddiy so'z bilan");
+  is(/Boşida bor edi \+ keldi/.test(body), "jadval ustida hisob qoidasi oddiy söz bilan");
   await p9.evaluate(() => [...document.querySelectorAll(".rpt-tab")].find((b) => /Hamma tovarlar/.test(b.textContent))?.click());
   await wait(800);
-  is(dayCalls.some((c) => /all=true/.test(c)), "«Hamma tovarlar» — harakatsizlari ham so'raldi", dayCalls.join(" "));
+  is(dayCalls.some((c) => /all=true/.test(c)), "«Hamma tovarlar» — harakatsizlari ham söraldi", dayCalls.join(" "));
   const n3 = await p9.$$eval(".table tbody tr", (n) => n.length);
   is(n3 >= 3, "harakatsiz tovar ham jadvalda", String(n3));
   await p9.evaluate(() => document.querySelector("[aria-label='Oldingi kun']")?.click());
   await wait(800);
-  is(dayCalls.length >= 3, "oldingi kunga o'tildi", dayCalls.join(" "));
+  is(dayCalls.length >= 3, "oldingi kunga ötildi", dayCalls.join(" "));
   await shot(p9, "day-report");
 
   /* ══ Davr (2026-10-11): «Shu oy» — oy boshidan bugungacha, grafik va eng ko'p sotilganlar ══ */
   dayCalls = [];
-  await p9.evaluate(() => [...document.querySelectorAll(".rpt-seg")].find((b) => /Shu oy|Oy/.test(b.textContent))?.click());
+  await p9.evaluate(() => [...document.querySelectorAll(".rpt-seg")].find((b) => /Şu oy|Oy/.test(b.textContent))?.click());
   await wait(1200);
   const mm = /from=(\d{4})-(\d{2})-(\d{2})&to=(\d{4}-\d{2}-\d{2})/.exec(dayCalls[dayCalls.length - 1] || "");
-  is(!!mm && mm[3] === "01" && `${mm[1]}-${mm[2]}-01` <= mm[4], "«Shu oy» — oy boshidan bugungacha so'raldi", dayCalls.join(" "));
+  is(!!mm && mm[3] === "01" && `${mm[1]}-${mm[2]}-01` <= mm[4], "«Şu oy» — oy boşidan bugungaça söraldi", dayCalls.join(" "));
   const b2 = await p9.evaluate(() => document.body.textContent);
-  is(/bo'yicha qancha sotildi/.test(b2), "bir necha kunda — kunlar/haftalar bo'yicha grafik");
-  is(/Eng ko'p sotilgan tovarlar/.test(b2) && /Eng ko'p foyda keltirgan/.test(b2), "eng ko'p sotilgan va eng ko'p foyda keltirgan tovarlar");
-  is(/Sotilmay yotgan tovarlar/.test(b2), "sotilmay yotgan tovarlar bo'limi");
-  is(/Kuniga o'rtacha/.test(b2), "jadvalda «Kuniga o'rtacha» ustuni");
+  is(/böyiça qança sotildi/.test(b2), "bir neça kunda — kunlar/haftalar böyiça grafik");
+  is(/Eng köp sotilgan tovarlar/.test(b2) && /Eng köp foyda keltirgan/.test(b2), "eng köp sotilgan va eng köp foyda keltirgan tovarlar");
+  is(/Sotilmay yotgan tovarlar/.test(b2), "sotilmay yotgan tovarlar bölimi");
+  is(/Kuniga örtaça/.test(b2), "jadvalda «Kuniga örtaça» ustuni");
   is(/oldingi|▲|▼|%/.test(await p9.$eval(".kpi", (n) => n.textContent).catch(() => "")), "sotuv raqamida oldingi davr bilan solishtirish");
   await shot(p9, "product-report-month");
   await p9.close();
@@ -783,27 +783,27 @@ const grab = async (page, clickFn) => {
   await p10.waitForSelector("#rpt-all-products", { timeout: 8000 }).catch(() => {});
   const x = await grab(p10, () => [...document.querySelectorAll("#rpt-all-products button")]
     .find((b) => /excel/i.test(b.textContent))?.click());
-  is(!!x, "«Barcha tovarlar» jadvalida Excel fayli yaratildi");
+  is(!!x, "«Barça tovarlar» jadvalida Excel fayli yaratildi");
   if (x) {
     is(x.head === "PK\u0003\u0004", "haqiqiy xlsx (ZIP)", JSON.stringify(x.head));
     is(/^tovarlar-hisoboti-\d{4}-\d{2}-\d{2}\.xlsx$/.test(x.name || ""), "fayl nomi sana bilan", x.name);
-    is(/Tovar 1/.test(x.text), "ichida tovar nomi");
-    is(/<c r="C2"[^>]*><v>/.test(x.text) || /<c r="C2" t="n"/.test(x.text), "⚠ «Sotildi» RAQAM bo'lib yozilgan (matn emas)");
+    is(/Tovar 1/.test(x.text), "içida tovar nomi");
+    is(/<c r="C2"[^>]*><v>/.test(x.text) || /<c r="C2" t="n"/.test(x.text), "⚠ «Sotildi» RAQAM bölib yozilgan (matn emas)");
   }
   await p10.close();
 }
 {
   const p11 = await openReports(ANALYTICS, "/reports/day");
   await p11.waitForSelector(".table tbody tr", { timeout: 8000 }).catch(() => {});
-  const panels = await p11.$$eval(".card", (n) => n.filter((c) => /Kim qancha sotdi/.test(c.textContent)
+  const panels = await p11.$$eval(".card", (n) => n.filter((c) => /Kim qança sotdi/.test(c.textContent)
     && [...c.querySelectorAll("button")].some((b) => /excel/i.test(b.textContent))).length);
-  is(panels >= 1, "kunlik hisobotda «Kim qancha sotdi» jadvalining o'z Excel tugmasi bor", String(panels));
+  is(panels >= 1, "kunlik hisobotda «Kim qança sotdi» jadvalining öz Excel tugmasi bor", String(panels));
   await p11.close();
 }
 
-is(pageErrors.length === 0, "sahifada JS xatosi tushmadi", pageErrors.join(" | "));
+is(pageErrors.length === 0, "sahifada JS xatosi tuşmadi", pageErrors.join(" | "));
 
 await browser.close();
 server.close();
-console.log(fail === 0 ? `\n  ✅ HAMMASI O'TDI (${pass} o'tdi)` : `\n  ❌ ${fail} yiqildi, ${pass} o'tdi`);
+console.log(fail === 0 ? `\n  ✅ HAMMASI ÖTDI (${pass} ötdi)` : `\n  ❌ ${fail} yiqildi, ${pass} ötdi`);
 process.exit(fail === 0 ? 0 : 1);

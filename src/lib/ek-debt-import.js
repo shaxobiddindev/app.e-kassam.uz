@@ -163,7 +163,8 @@ const HEAD = {
   name: word("ism|ismi|f\\.?i\\.?o\\.?|fio|mijoz|xaridor|qarzdor|name|customer|имя|фио|клиент|покупатель|должник"),
   phone: word("tel|telefon|phone|mobile|телефон|тел"),
   amount: word("summa|summasi|qarz|qarzi|miqdor|nasiya|amount|debt|sum|сумма|долг"),
-  date: word("sana|sanasi|kun|qachon|date|when|дата|число"),
+  // ⚠ «qachon|qaçon» — ikkala alifbo: do'kon daftari eski yozuvda ham, yangisida ham keladi
+  date: word("sana|sanasi|kun|qachon|qaçon|date|when|дата|число"),
   note: word("izoh|eslatma|tovar|nima|note|comment|примечание|комментарий|товар"),
 };
 

@@ -278,16 +278,16 @@ async function open({ pulse = PULSE, analytics = ANALYTICS, signals = SIGNALS,
 const shot = async (page, n) => { if (SHOT) await page.screenshot({ path: path.join(SHOT, `${n}.png`), fullPage: true }); };
 
 /* ══ A. To'liq ma'lumot ════════════════════════════════════════════════ */
-console.log("── A. To'liq panel ──");
+console.log("── A. Töliq panel ──");
 let page = await open();
 {
-  is(pageErrors.length === 0, "sahifa xatosiz ochildi", pageErrors[0] || "");
+  is(pageErrors.length === 0, "sahifa xatosiz oçildi", pageErrors[0] || "");
 
   const panels = await page.$$eval(".dpn", (n) => n.length);
   is(panels >= 10, "bloklar chizildi", `${panels} ta panel`);
 
   const kpis = await page.$$eval(".kpi2", (n) => n.length);
-  is(kpis === 5, "beshta KPI kartochkasi", String(kpis));
+  is(kpis === 5, "beşta KPI kartoçkasi", String(kpis));
 
   /* ⚠ ENG QIMMAT TEKSHIRUV — RAQAMLAR NOL BO'LIB QOLMASIN.
      Kartochka bo'sh chiziladi, javob esa keyin keladi. Sanash
@@ -297,15 +297,15 @@ let page = await open();
      katta raqamlar nol. Aynan tez tarmoqda doim takrorlanardi. */
   const nums = await page.$$eval(".kpi2__v", (n) => n.map((x) => x.textContent.trim()));
   const zeros = nums.filter((v) => /^0$/.test(v));
-  is(zeros.length === 0, "KPI raqamlari sanab bo'lindi, nolda qolmadi", nums.join(" · "));
+  is(zeros.length === 0, "KPI raqamlari sanab bölindi, nolda qolmadi", nums.join(" · "));
 
   const svg = await page.$$eval(".pls__chart svg", (n) => n.length);
-  is(svg >= 1, "bugun va taqqoslash grafigi chizildi", `${svg} ta SVG`);
+  is(svg >= 1, "bugun va taqqoslaş grafigi çizildi", `${svg} ta SVG`);
 
   /* ⚠ Ikkita chiziq bo'lishi SHART: bittasi bo'lsa taqqoslash yo'q. */
   const lines = await page.$$eval(".pls__chart svg path", (n) =>
     n.filter((p) => p.getAttribute("fill") === "none" || !p.getAttribute("fill")).length);
-  is(lines >= 2, "grafikda IKKI chiziq — bugun va taqqoslash", String(lines));
+  is(lines >= 2, "grafikda IKKI çiziq — bugun va taqqoslaş", String(lines));
 
   /* ⚠ ENG QIMMAT TEKSHIRUV. Bugungi chiziq joriy soatda TUGAYDI.
      Ilgari yetishmagan soatlar NOLGA aylanardi va chiziq soat 14 dan
@@ -316,31 +316,31 @@ let page = await open();
   const pts = (todayPath.match(/L/g) || []).length + 1;
   is(pts === 15, "bugungi chiziq joriy soatda TUGAYDI", `${pts} nuqta (kutilgan 15)`);
   is((refPath.match(/L/g) || []).length + 1 === 24,
-     "taqqoslash chizig'i esa oxirigacha boradi", `${(refPath.match(/L/g) || []).length + 1} nuqta`);
+     "taqqoslaş çiziği esa oxirigaça boradi", `${(refPath.match(/L/g) || []).length + 1} nuqta`);
 
   const alerts = await page.$$eval(".alr__row", (n) => n.length);
-  is(alerts >= 5, "ogohlantirishlar ro'yxati to'ldi", String(alerts));
+  is(alerts >= 5, "ogohlantirişlar röyxati töldi", String(alerts));
 
   /* Tartib: birinchi satr QIZIL bo'lishi kerak. */
   const firstTone = await page.$eval(".alr__row", (n) => n.dataset.tone);
-  is(firstTone === "critical", "eng muhimi birinchi turadi", firstTone);
+  is(firstTone === "critical", "eng muhimi birinçi turadi", firstTone);
 
   /* «Xavf ostidagi pul» sarlavhada. */
   const risk = await page.$eval(".alr__money", (n) => n.textContent.trim()).catch(() => "");
-  is(/\d/.test(risk), "xavf ostidagi pul sarlavhada ko'rinadi", risk);
+  is(/\d/.test(risk), "xavf ostidagi pul sarlavhada körinadi", risk);
 
   /* ⚠ Tarjimasiz kalit EKRANGA CHIQMASLIGI kerak. Aynan shu xato
      bo'lgan edi: ogohlantirish matnlari `ek-dash.js` da kalit bo'lib
      tug'iladi va sahifadan izlaydigan tekshiruv ularni ko'rmagan. */
   const raw = await page.evaluate(() =>
     (document.querySelector(".dash")?.innerText || "").match(/\b(dash|rpt2|common)\.[a-zA-Z]+/g) || []);
-  is(raw.length === 0, "tarjimasiz kalit ekranda yo'q", raw.join(", ") || "toza");
+  is(raw.length === 0, "tarjimasiz kalit ekranda yöq", raw.join(", ") || "toza");
 
   /* «Eng ko'p foyda» va «zarar keltirgan» ro'yxatlari KESISHMAYDI. */
   const [best, worst] = await page.$$eval(".two > div", (cols) =>
     cols.slice(0, 2).map((c) => [...c.querySelectorAll(".dtop__name")].map((x) => x.textContent.trim())));
   const both = (best || []).filter((x) => (worst || []).includes(x));
-  is(both.length === 0, "bitta tovar ikkala ustunda ham chiqmaydi", both.join(", ") || "kesishmadi");
+  is(both.length === 0, "bitta tovar ikkala ustunda ham çiqmaydi", both.join(", ") || "kesishmadi");
 
   await shot(page, "dash-full");
 }
@@ -350,11 +350,11 @@ console.log("\n── B. Raqamlar ──");
 {
   /* Kun oxiriga bashorat — ishonch bilan birga. */
   const fc = await page.$eval(".pls__fc", (n) => n.textContent).catch(() => "");
-  is(/ishonch/i.test(fc), "bashorat yonida ishonch darajasi bor", fc.slice(0, 60));
+  is(/işonç/i.test(fc), "başorat yonida işonç darajasi bor", fc.slice(0, 60));
 
   /* Reja: sur'at belgisi progress ustida. */
   const pace = await page.$eval(".dtg__pace", (n) => n.style.left).catch(() => "");
-  is(/%$/.test(pace), "reja sur'ati belgisi qo'yildi", pace);
+  is(/%$/.test(pace), "reja sur'ati belgisi qöyildi", pace);
 
   /* Filial: yomoni BIRINCHI va sababi yozilgan. */
   const first = await page.$eval(".brn__row", (n) => ({
@@ -362,20 +362,20 @@ console.log("\n── B. Raqamlar ──");
     tone: n.querySelector(".brn__dot")?.dataset.tone,
     why: [...n.querySelectorAll(".brn__tag")].map((x) => x.textContent).join(","),
   }));
-  is(first.tone === "bad", "salomatligi past filial birinchi", `${first.name}/${first.tone}`);
+  is(first.tone === "bad", "salomatligi past filial birinçi", `${first.name}/${first.tone}`);
   is(first.why.length > 0, "ball emas, SABAB yozilgan", first.why);
 
   /* Zarar keltirgan tovar alohida ustunda va qizil. */
   const loss = await page.$$eval('.dtop__v[data-tone="bad"]', (n) => n.map((x) => x.textContent.trim()));
-  is(loss.length >= 1, "zarariga sotilgan tovar alohida ko'rsatiladi", loss.join(" "));
+  is(loss.length >= 1, "zarariga sotilgan tovar alohida körsatiladi", loss.join(" "));
 
   /* Bekor qilingan chek lentada va ustidan chizilgan. */
   const cancelled = await page.$$eval('.live__row[data-kind="cancel"]', (n) => n.length);
-  is(cancelled === 1, "bekor qilingan chek lentada qoladi", String(cancelled));
+  is(cancelled === 1, "bekor qilingan çek lentada qoladi", String(cancelled));
 
   /* Sutkadan oshgan smena belgilanadi. */
   const stale = await page.$$eval('.reg__row[data-tone="bad"]', (n) => n.length);
-  is(stale === 1, "sutkadan oshiq ochiq smena belgilandi", String(stale));
+  is(stale === 1, "sutkadan oşiq oçiq smena belgilandi", String(stale));
 
   /* Tugash arafasidagi tovar — bir kunlik qizil. */
   const so = await page.$$eval('.stk__so[data-tone="bad"]', (n) => n.length);
@@ -389,11 +389,11 @@ console.log("\n── C. Chuqurlashtirish ──");
   await page.evaluate(() => document.querySelector(".kpi2.is-click .kpi2__hit")?.click());
   await wait(150);
   const after = await page.$$eval(".kpi2__d", (n) => n.length);
-  is(before === 0 && after === 1, "KPI bosilganda tafsilot OCHILADI, sahifa almashmaydi",
+  is(before === 0 && after === 1, "KPI bosilganda tafsilot OÇILADI, sahifa almaşmaydi",
      `${before} → ${after}`);
 
   const rows = await page.$$eval(".kpi2__d .kpi2__row", (n) => n.length);
-  is(rows >= 2, "tafsilotda raqam qayerdan chiqqani yozilgan", String(rows));
+  is(rows >= 2, "tafsilotda raqam qayerdan çiqqani yozilgan", String(rows));
 
   await page.evaluate(() => document.querySelector(".kpi2.is-click .kpi2__hit")?.click());
   await wait(150);
@@ -408,7 +408,7 @@ console.log("\n── D. Buyruq qatori ──");
   is((await page.$(".cmd")) !== null, "Ctrl+K oynani ochdi");
 
   const groups = await page.$$eval(".cmd__gtitle", (n) => n.map((x) => x.textContent.trim()));
-  is(groups.length >= 2, "amallar va bo'limlar guruhlangan", groups.join(" · "));
+  is(groups.length >= 2, "amallar va bölimlar guruhlangan", groups.join(" · "));
 
   /* Klaviatura bilan yurish — kursor pastga tushadi. */
   await page.keyboard.press("ArrowDown"); await wait(80);
@@ -421,7 +421,7 @@ console.log("\n── D. Buyruq qatori ──");
 }
 
 /* ══ E. Bloklarni sozlash ══════════════════════════════════════════════ */
-console.log("\n── E. Bloklarni sozlash ──");
+console.log("\n── E. Bloklarni sozlaş ──");
 {
   const wasPanels = await page.$$eval(".dpn", (n) => n.length);
   await page.evaluate(() => {
@@ -430,7 +430,7 @@ console.log("\n── E. Bloklarni sozlash ──");
   });
   await wait(250);
   const rows = await page.$$eval(".lay__row", (n) => n.length);
-  is(rows === 16, "o'n oltita blok ro'yxatda", String(rows));
+  is(rows === 16, "ön oltita blok röyxatda", String(rows));
 
   /* Jonli lentani o'chiramiz. */
   await page.evaluate(() => {
@@ -442,7 +442,7 @@ console.log("\n── E. Bloklarni sozlash ──");
   await page.keyboard.press("Escape"); await wait(250);
 
   const nowPanels = await page.$$eval(".dpn", (n) => n.length);
-  is(nowPanels === wasPanels - 1, "o'chirilgan blok yo'qoldi", `${wasPanels} → ${nowPanels}`);
+  is(nowPanels === wasPanels - 1, "öçirilgan blok yöqoldi", `${wasPanels} → ${nowPanels}`);
 
   const saved = await page.evaluate(() => localStorage.getItem("ek.dash.layout.v1"));
   is(saved && JSON.parse(saved).hidden.includes("live"), "tanlov SAQLANDI", saved?.slice(0, 60));
@@ -455,31 +455,31 @@ console.log("\n── F. Saqlangan tartib ──");
   page = await open({ storage: { "ek.dash.layout.v1": JSON.stringify({ order: ["alerts"], hidden: ["live", "staff"] }) } });
   const hasLive = await page.$(".live");
   const hasStaff = await page.$(".tbl-sm");
-  is(hasLive === null && hasStaff === null, "yashirilgan ikkita blok chiqmadi");
+  is(hasLive === null && hasStaff === null, "yaşirilgan ikkita blok çiqmadi");
 
   /* ⚠ ENG QIMMAT TEKSHIRUV: saqlangan ro'yxatda YO'Q bloklar ham
      ko'rinishi kerak. Aks holda yangi versiyada qo'shilgan blok eski
      foydalanuvchida hech qachon paydo bo'lmasdi. */
   const panels = await page.$$eval(".dpn", (n) => n.length);
-  is(panels >= 9, "saqlangan ro'yxatda yo'q bloklar ham chizildi", `${panels} ta`);
+  is(panels >= 9, "saqlangan röyxatda yöq bloklar ham çizildi", `${panels} ta`);
   await page.close();
 }
 
 /* ══ G. Bo'sh do'kon ═══════════════════════════════════════════════════ */
-console.log("\n── G. Bo'sh do'kon ──");
+console.log("\n── G. Böş dökon ──");
 {
   page = await open({ pulse: EMPTY_PULSE, analytics: EMPTY_ANALYTICS,
                       signals: null, url: "/" });
-  is(pageErrors.length === 0, "bo'sh javobda ham yiqilmadi", pageErrors[0] || "");
+  is(pageErrors.length === 0, "böş javobda ham yiqilmadi", pageErrors[0] || "");
 
   const panels = await page.$$eval(".dpn", (n) => n.length);
   is(panels >= 8, "bloklar baribir chizildi", String(panels));
 
   /* Reja yo'q — o'rniga TAKLIF chiqadi, bo'sh chiziq emas. */
-  is((await page.$(".dtg__none")) !== null, "reja qo'yilmaganda taklif ko'rinadi");
+  is((await page.$(".dtg__none")) !== null, "reja qöyilmaganda taklif körinadi");
 
   /* Bashorat yo'q — bo'sh blok chizilmaydi, yolg'on raqam ham. */
-  is((await page.$(".pls__fc")) === null, "tarixsiz bashorat KO'RSATILMAYDI");
+  is((await page.$(".pls__fc")) === null, "tarixsiz başorat KÖRSATILMAYDI");
   await shot(page, "dash-empty");
   await page.close();
 }
@@ -490,7 +490,7 @@ console.log("\n── H. Buzuq javob ──");
   /* ⚠ Server javobi o'zgarishi mumkin. Bosh sahifa — birinchi ekran,
      u yiqilsa foydalanuvchi hech qayerga o'tolmaydi. */
   page = await open({ pulse: {}, analytics: {}, signals: {} });
-  is(pageErrors.length === 0, "bo'sh obyektlar sahifani yiqitmadi", pageErrors[0] || "");
+  is(pageErrors.length === 0, "böş obyektlar sahifani yiqitmadi", pageErrors[0] || "");
   is((await page.$(".dash")) !== null, "sahifa baribir turadi");
 
   await page.close();
@@ -500,7 +500,7 @@ console.log("\n── H. Buzuq javob ──");
 }
 
 /* ══ I. Rol ════════════════════════════════════════════════════════════ */
-console.log("\n── I. Omborchi ──");
+console.log("\n── I. Omborçi ──");
 {
   page = await open({ role: "STOREKEEPER" });
   is(pageErrors.length === 0, "omborchida ham xatosiz", pageErrors[0] || "");
@@ -508,11 +508,11 @@ console.log("\n── I. Omborchi ──");
   /* ⚠ ENG MUHIMI: pul so'rovi UMUMAN yuborilmasligi kerak. Serverda
      `/reports/**` unga yopiq va so'rov 403 bilan qaytardi. */
   const money = calls.filter((c) => c.startsWith("/api/reports/"));
-  is(money.length === 0, "pul so'rovi YUBORILMADI", money.join(" ") || "bitta ham yo'q");
+  is(money.length === 0, "pul sörovi YUBORILMADI", money.join(" ") || "bitta ham yöq");
 
-  is((await page.$(".dash__role")) !== null, "nima uchun kamligi tushuntirilgan");
+  is((await page.$(".dash__role")) !== null, "nima uçun kamligi tuşuntirilgan");
   is((await page.$(".kpi2")) === null, "pul kartochkalari chizilmadi");
-  is((await page.$(".alr__row, .attn__empty")) !== null, "ogohlantirishlar unga ham ko'rinadi");
+  is((await page.$(".alr__row, .attn__empty")) !== null, "ogohlantirişlar unga ham körinadi");
   await shot(page, "dash-store");
   await page.close();
 }
@@ -522,7 +522,7 @@ console.log("\n── J. Manzil ──");
 {
   page = await open({ url: "/?p=month&c=week" });
   const on = await page.$$eval(".seg__b.is-on", (n) => n.map((x) => x.textContent.trim()));
-  is(on.length === 2, "manzildan davr ham, taqqoslash ham tiklandi", on.join(" · "));
+  is(on.length === 2, "manzildan davr ham, taqqoslaş ham tiklandi", on.join(" · "));
 
   /* Davr o'zgarsa manzil ham o'zgaradi — havolani yuborsa bo'ladi. */
   await page.evaluate(() => {
@@ -536,7 +536,7 @@ console.log("\n── J. Manzil ──");
 }
 
 /* ══ K. Avto-yangilanish ═══════════════════════════════════════════════ */
-console.log("\n── K. Avto-yangilanish ──");
+console.log("\n── K. Avto-yangilaniş ──");
 {
   page = await open();
   const slowBefore = calls.filter((c) => c.startsWith("/api/reports/analytics")).length;
@@ -559,10 +559,10 @@ console.log("\n── K. Avto-yangilanish ──");
   const slowAfter = calls.filter((c) => c.startsWith("/api/reports/analytics")).length;
   const fastAfter = calls.filter((c) => c.startsWith("/api/reports/pulse")).length;
 
-  is(fastAfter === fastBefore, "varaq qaytganda o'zi yangilanmadi (faqat tugma bilan)", `${fastBefore} → ${fastAfter}`);
+  is(fastAfter === fastBefore, "varaq qaytganda özi yangilanmadi (faqat tugma bilan)", `${fastBefore} → ${fastAfter}`);
   /* ⚠ Og'ir so'rov TAKRORLANMASLIGI kerak: har daqiqada butun davr
      tahlilini qayta hisoblash bitta ochiq oyna bilan serverni bo'g'ardi. */
-  is(slowAfter === slowBefore, "OG'IR so'rov takrorlanmadi", `${slowBefore} → ${slowAfter}`);
+  is(slowAfter === slowBefore, "OĞIR sörov takrorlanmadi", `${slowBefore} → ${slowAfter}`);
   await page.close();
 }
 
@@ -576,7 +576,7 @@ console.log("\n── M. Kalendar va vazifalar ──");
 
   const tks = await page.$$eval(".pln__tk .pln__row", (n) => n.map((x) => x.dataset.tone || "-"));
   is(tks.length === 2, "vazifalar chizildi", String(tks.length));
-  is(tks[0] === "bad", "kechikkan vazifa qizil", tks.join(","));
+  is(tks[0] === "bad", "keçikkan vazifa qizil", tks.join(","));
 
   /* ⚠ Vazifa YOPILGANDA yengil so'rov qayta yuboriladi — ro'yxatni
      mahalliy yangilash serverdagi tartib va sanoqni takrorlashni
@@ -585,18 +585,18 @@ console.log("\n── M. Kalendar va vazifalar ──");
   await page.evaluate(() => document.querySelector(".pln__done")?.click());
   await wait(500);
   const posted = calls.filter((c) => c.includes("/api/planner/tasks/11/status"));
-  is(posted.length === 1, "yopish so'rovi ketdi", posted.join(" ") || "yo'q");
+  is(posted.length === 1, "yopiş sörovi ketdi", posted.join(" ") || "yöq");
   is(posted[0]?.includes("status=DONE"), "holat DONE deb yuborildi", posted[0] || "");
   const after = calls.filter((c) => c.startsWith("/api/reports/pulse")).length;
-  is(after > before, "ro'yxat serverdan qayta olindi", `${before} → ${after}`);
+  is(after > before, "röyxat serverdan qayta olindi", `${before} → ${after}`);
 
   /* Qo'shish maydoni — rahbarda bor. */
-  is((await page.$(".pln__add input")) !== null, "vazifa shu yerdan qo'shiladi");
+  is((await page.$(".pln__add input")) !== null, "vazifa şu yerdan qöşiladi");
   await page.type(".pln__add input", "Sut buyurtma qilish");
   await page.keyboard.press("Enter");
   await wait(500);
   const made = calls.filter((c) => c === "/api/planner/tasks");
-  is(made.length === 1, "yangi vazifa yuborildi", made.join(" ") || "yo'q");
+  is(made.length === 1, "yangi vazifa yuborildi", made.join(" ") || "yöq");
 
   /* ── To'liq boshqaruv oynasi ──────────────────────────────────────
      ⚠ «Hammasini ko'rish» ILGARI mavjud bo'lmagan `/planner`
@@ -607,10 +607,10 @@ console.log("\n── M. Kalendar va vazifalar ──");
     b?.click();
   });
   await wait(400);
-  is((await page.$(".pmd__list")) !== null, "«Hammasini ko'rish» OYNANI ochdi");
+  is((await page.$(".pmd__list")) !== null, "«Hammasini köriş» OYNANI oçdi");
 
   const tabs = await page.$$eval(".pmd__tabs .seg__b", (n) => n.map((x) => x.textContent.trim()));
-  is(tabs.length === 2, "vazifa va kalendar bo'limlari bor", tabs.join(" · "));
+  is(tabs.length === 2, "vazifa va kalendar bölimlari bor", tabs.join(" · "));
 
   /* Kalendar bo'limida voqealarni tahrirlash mumkin. */
   await page.evaluate(() => {
@@ -619,8 +619,8 @@ console.log("\n── M. Kalendar va vazifalar ──");
   });
   await wait(400);
   const evRows = await page.$$eval(".pmd__row", (n) => n.length);
-  is(evRows >= 1, "kalendar bo'limi to'ldi", String(evRows));
-  is((await page.$(".pmd__form select")) !== null, "voqea qo'shish shakli bor");
+  is(evRows >= 1, "kalendar bölimi töldi", String(evRows));
+  is((await page.$(".pmd__form select")) !== null, "voqea qöşiş şakli bor");
 
   await page.keyboard.press("Escape");
   await wait(300);
@@ -642,17 +642,17 @@ console.log("\n── N. Omborchida vazifa ──");
      blok unga doim bo'sh ko'rinardi — holbuki vazifani bajaradigan
      odam aynan u. */
   const asked = calls.filter((c) => c.startsWith("/api/planner/"));
-  is(asked.length === 2, "omborchi kalendar va vazifani ALOHIDA so'radi", asked.join(" "));
+  is(asked.length === 2, "omborçi kalendar va vazifani ALOHIDA söradi", asked.join(" "));
 
   const tks = await page.$$eval(".pln__tk .pln__row", (n) => n.length);
-  is(tks === 1, "vazifa unga ham ko'rinadi", String(tks));
+  is(tks === 1, "vazifa unga ham körinadi", String(tks));
   is((await page.$('.pln__tk .pln__row[data-tone="bad"]')) !== null,
-     "kechikkan vazifa unda ham qizil");
+     "keçikkan vazifa unda ham qizil");
 
   /* Yopish tugmasi BOR — serverda ham shu amal hammaga ochiq. */
   is((await page.$(".pln__done")) !== null, "vazifani yopa oladi");
   is((await page.$(".pln__add")) === null,
-     "lekin qo'shish maydoni YO'Q — serverda ham shunday");
+     "lekin qöşiş maydoni YÖQ — serverda ham şunday");
   await page.close();
 }
 
@@ -682,7 +682,7 @@ console.log("\n── L. Telefon ──");
     const w = document.querySelector(".table-wrap");
     return !w || getComputedStyle(w).overflowX !== "visible";
   });
-  is(wrapOk, "kassirlar jadvali o'z ichida suriladi");
+  is(wrapOk, "kassirlar jadvali öz içida suriladi");
 
   const panels = await page.$$eval(".dpn", (n) => n.length);
   is(panels >= 10, "telefonda ham hamma blok chizildi", String(panels));
@@ -693,6 +693,6 @@ console.log("\n── L. Telefon ──");
 /* ══ Yakun ════════════════════════════════════════════════════════════ */
 await browser.close();
 server.close();
-console.log(`\n${fail ? "❌" : "✅"} bosh sahifa: ${pass} o'tdi, ${fail} yiqildi`);
+console.log(`\n${fail ? "❌" : "✅"} boş sahifa: ${pass} ötdi, ${fail} yiqildi`);
 if (pageErrors.length) console.log("Sahifa xatolari:\n  " + pageErrors.join("\n  "));
 process.exit(fail ? 1 : 0);

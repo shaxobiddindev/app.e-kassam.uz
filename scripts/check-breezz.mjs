@@ -105,7 +105,7 @@ async function open(role, calls, pageErrors) {
   return page;
 }
 
-console.log("\n══ BREEZZ ULANISHI — EGASI OYNASI (V140) ══");
+console.log("\n══ BREEZZ ULANIŞI — EGASI OYNASI (V140) ══");
 
 /* ══ ⏸ BO'LIM VAQTINCHA YASHIRIN (`BREEZZ_UI`, 2026-10-02) ══════════════
    Egasi integratsiyani vaqtincha to'xtatdi va bo'limni yashirishni so'radi.
@@ -115,7 +115,7 @@ console.log("\n══ BREEZZ ULANISHI — EGASI OYNASI (V140) ══");
    Bayroq yoqilganda pastdagi to'liq sinov o'z-o'zidan qaytadi. */
 const cfg = fs.readFileSync(path.join(ROOT, "src", "config.js"), "utf8");
 if (/export const BREEZZ_UI\s*=\s*false/.test(cfg)) {
-  console.log("\n§0 ⏸ `BREEZZ_UI` o'chiq — bo'lim yashirin bo'lishi kerak");
+  console.log("\n§0 ⏸ `BREEZZ_UI` öçiq — bölim yaşirin bölişi kerak");
   const hidCalls = [];
   const hidErrors = [];
   const hid = await open("OWNER", hidCalls, hidErrors);
@@ -124,18 +124,18 @@ if (/export const BREEZZ_UI\s*=\s*false/.test(cfg)) {
     cards: document.querySelectorAll(".breezz-card").length,
     nav: [...document.querySelectorAll("a")].some((a) => a.getAttribute("href") === "/breezz"),
   }));
-  view.cards === 0 ? ok("egasiga ham oyna chizilmadi — manzil ochilmaydi") : no("oyna yashirin bo'lishi kerak", view.cards);
-  !view.nav ? ok("menyuda «Breezz» yo'q") : no("menyuda bo'lmasligi kerak", "bor");
+  view.cards === 0 ? ok("egasiga ham oyna çizilmadi — manzil oçilmaydi") : no("oyna yaşirin bölişi kerak", view.cards);
+  !view.nav ? ok("menyuda «Breezz» yöq") : no("menyuda bölmasligi kerak", "bor");
   await hid.goto(`http://127.0.0.1:${PORT}/products`, { waitUntil: "networkidle2", timeout: 30_000 });
   await new Promise((r) => setTimeout(r, 800));
   hidCalls.length === 0
-    ? ok("serverga Breezz so'rovi ketmadi (son ham, «filial ulanganmi» ham)")
-    : no("so'rov ketmasligi kerak", hidCalls.join(", "));
-  hidErrors.length === 0 ? ok("JS xatosi yo'q") : no("sahifada xato", hidErrors.join(" | "));
+    ? ok("serverga Breezz sörovi ketmadi (son ham, «filial ulanganmi» ham)")
+    : no("sörov ketmasligi kerak", hidCalls.join(", "));
+  hidErrors.length === 0 ? ok("JS xatosi yöq") : no("sahifada xato", hidErrors.join(" | "));
   await hid.close();
   await browser.close();
   server.close();
-  console.log(bad === 0 ? "\n✅ Breezz bo'limi yashirin: hammasi joyida\n" : `\n❌ ${bad} ta muammo\n`);
+  console.log(bad === 0 ? "\n✅ Breezz bölimi yaşirin: hammasi joyida\n" : `\n❌ ${bad} ta muammo\n`);
   process.exit(bad ? 1 : 0);
 }
 
@@ -157,30 +157,30 @@ const cards = await page.$$eval(".breezz-card", (els) => els.map((el) => ({
 })));
 
 console.log("\n§1 Bosh do'kon va filial — har biri o'z ID si bilan");
-cards.length === 2 ? ok("ikkita kartochka") : no("ikkita kartochka bo'lishi kerak", cards.length);
+cards.length === 2 ? ok("ikkita kartoçka") : no("ikkita kartoçka bölişi kerak", cards.length);
 cards[0]?.ref === "bz23456789" && cards[1]?.ref === "bzabcdefgh"
-  ? ok("ID lar chizildi") : no("ID ko'rinishi kerak", `${cards[0]?.ref} / ${cards[1]?.ref}`);
-cards.every((c) => c.refIsNum) ? ok("ID `.ek-num` bilan (2-qoida)") : no("ID `.ek-num` bo'lishi kerak", "yo'q");
+  ? ok("ID lar chizildi") : no("ID körinişi kerak", `${cards[0]?.ref} / ${cards[1]?.ref}`);
+cards.every((c) => c.refIsNum) ? ok("ID `.ek-num` bilan (2-qoida)") : no("ID `.ek-num` bölişi kerak", "yöq");
 
 console.log("\n§2 Holat — rang bilan emas, MATN bilan ham (6-qoida)");
 /Ulangan/.test(cards[0]?.status || "") && /Old Market/.test(cards[0]?.status || "")
-  ? ok("«Ulangan: Old Market» yozildi") : no("ulanish matni bo'lishi kerak", cards[0]?.status);
+  ? ok("«Ulangan: Old Market» yozildi") : no("ulaniş matni bölişi kerak", cards[0]?.status);
 /Ulanmagan/.test(cards[1]?.status || "") && !cards[1]?.linked
-  ? ok("filial: «Ulanmagan»") : no("«Ulanmagan» bo'lishi kerak", cards[1]?.status);
-cards[0]?.times >= 3 ? ok(`vaqtlar \`.ek-num\` bilan (${cards[0].times})`) : no("vaqtlar `.ek-num` bo'lishi kerak", cards[0]?.times);
+  ? ok("filial: «Ulanmagan»") : no("«Ulanmagan» bölişi kerak", cards[1]?.status);
+cards[0]?.times >= 3 ? ok(`vaqtlar \`.ek-num\` bilan (${cards[0].times})`) : no("vaqtlar `.ek-num` bölişi kerak", cards[0]?.times);
 
-console.log("\n§3 ⚠ Tasdiq ESKI ulanishni uzishini oldindan aytadi (4-qoida)");
-cards[0]?.reqs === 1 ? ok("kutayotgan so'rov chizildi") : no("bitta so'rov bo'lishi kerak", cards[0]?.reqs);
-/Old Market/.test(cards[0]?.warn || "") ? ok(`ogohlantirish: «${cards[0].warn}»`) : no("ogohlantirish bo'lishi kerak", cards[0]?.warn);
+console.log("\n§3 ⚠ Tasdiq ESKI ulanişni uzişini oldindan aytadi (4-qoida)");
+cards[0]?.reqs === 1 ? ok("kutayotgan sörov çizildi") : no("bitta sörov bölişi kerak", cards[0]?.reqs);
+/Old Market/.test(cards[0]?.warn || "") ? ok(`ogohlantiriş: «${cards[0].warn}»`) : no("ogohlantiriş bölişi kerak", cards[0]?.warn);
 
-console.log("\n§4 Menyuda son — so'rov jimgina eskirmasin");
+console.log("\n§4 Menyuda son — sörov jimgina eskirmasin");
 const tab = await page.evaluate(() => {
   const el = [...document.querySelectorAll(".pg-tabs a")].find((a) => /Breezz/.test(a.textContent));
   return el ? { text: el.textContent.replace(/\s+/g, " ").trim(), badge: el.querySelector(".tab-badge")?.textContent.trim() } : null;
 });
-tab?.badge === "1" ? ok(`«Breezz» tab'ida son: ${tab.badge}`) : no("tab'da 1 soni bo'lishi kerak", JSON.stringify(tab));
+tab?.badge === "1" ? ok(`«Breezz» tab'ida son: ${tab.badge}`) : no("tab'da 1 soni bölişi kerak", JSON.stringify(tab));
 
-console.log("\n§5 Tasdiq: oyna → so'rov → yangi holat");
+console.log("\n§5 Tasdiq: oyna → sörov → yangi holat");
 await page.evaluate(() => {
   const btn = [...document.querySelectorAll(".breezz-req .btn-primary")][0];
   btn?.click();
@@ -188,14 +188,14 @@ await page.evaluate(() => {
 await page.waitForSelector(".modal-box", { timeout: 5_000 }).catch(() => {});
 const dialog = await page.evaluate(() => document.querySelector(".modal-box")?.textContent.replace(/\s+/g, " ") || "");
 /Qamashi Market/.test(dialog) && /Old Market/.test(dialog)
-  ? ok("tasdiq oynasi yangi va eski do'konni aytadi") : no("oynada ikkala nom bo'lishi kerak", dialog.slice(0, 160));
+  ? ok("tasdiq oynasi yangi va eski dökonni aytadi") : no("oynada ikkala nom bölişi kerak", dialog.slice(0, 160));
 await page.evaluate(() => {
   const btns = [...document.querySelectorAll(".modal-box .btn")];
   btns[btns.length - 1]?.click();
 });
 await page.waitForFunction(() => document.querySelectorAll(".breezz-req").length === 0, { timeout: 5_000 }).catch(() => {});
 calls.some((c) => c === "POST /shop/breezz/requests/11/approve")
-  ? ok("POST …/requests/11/approve yuborildi") : no("tasdiq so'rovi ketishi kerak", calls.join(", "));
+  ? ok("POST …/requests/11/approve yuborildi") : no("tasdiq sörovi ketişi kerak", calls.join(", "));
 const after = await page.$$eval(".breezz-card", (els) => els.map((el) => ({
   status: el.querySelector(".breezz-status")?.textContent.replace(/\s+/g, " ").trim(),
   reqs: el.querySelectorAll(".breezz-req").length,
@@ -203,14 +203,14 @@ const after = await page.$$eval(".breezz-card", (els) => els.map((el) => ({
 after[0]?.reqs === 0 && /Qamashi Market/.test(after[0]?.status || "")
   ? ok("yangi holat chizildi: «Ulangan: Qamashi Market»") : no("yangi holat chizilishi kerak", JSON.stringify(after[0]));
 /tovarlarni olmagan/.test(after[0]?.status || "")
-  ? ok("«Breezz hali tovarlarni olmagan» — sinxron bo'lmagani aytildi") : no("sinxron holati aytilishi kerak", after[0]?.status);
+  ? ok("«Breezz hali tovarlarni olmagan» — sinxron bölmagani aytildi") : no("sinxron holati aytilishi kerak", after[0]?.status);
 
 console.log("\n§6 Sahifa xatolari");
-errors.length === 0 ? ok("JS xatosi yo'q") : no("sahifada xato", errors.join(" | "));
+errors.length === 0 ? ok("JS xatosi yöq") : no("sahifada xato", errors.join(" | "));
 await page.close();
 
 /* ── DO'KON ADMINI ─────────────────────────────────────────────────── */
-console.log("\n§7 ⚠ Do'kon admini — oyna ham, so'rov ham YO'Q (faqat egasi)");
+console.log("\n§7 ⚠ Dökon admini — oyna ham, sörov ham YÖQ (faqat egasi)");
 const adminCalls = [];
 const adminErrors = [];
 const adminPage = await open("SHOP_ADMIN", adminCalls, adminErrors);
@@ -219,9 +219,9 @@ const adminView = await adminPage.evaluate(() => ({
   cards: document.querySelectorAll(".breezz-card").length,
   nav: [...document.querySelectorAll("a")].some((a) => a.getAttribute("href") === "/breezz"),
 }));
-adminView.cards === 0 ? ok("kartochka chizilmadi") : no("admin oynani ko'rmasligi kerak", adminView.cards);
-!adminView.nav ? ok("menyuda «Breezz» yo'q") : no("menyuda bo'lmasligi kerak", "bor");
-adminCalls.length === 0 ? ok("serverga Breezz so'rovi ketmadi (son ham so'ralmadi)") : no("so'rov ketmasligi kerak", adminCalls.join(", "));
+adminView.cards === 0 ? ok("kartoçka çizilmadi") : no("admin oynani körmasligi kerak", adminView.cards);
+!adminView.nav ? ok("menyuda «Breezz» yöq") : no("menyuda bölmasligi kerak", "bor");
+adminCalls.length === 0 ? ok("serverga Breezz sörovi ketmadi (son ham söralmadi)") : no("sörov ketmasligi kerak", adminCalls.join(", "));
 await adminPage.close();
 
 await browser.close();

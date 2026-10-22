@@ -89,7 +89,7 @@ pub fn list_printers() -> Result<Vec<String>, String> {
 #[tauri::command(async)]
 pub fn print_raw(printer: Option<String>, data: Vec<u8>) -> Result<(), String> {
     if data.is_empty() {
-        return Err("Bo'sh ma'lumot".into());
+        return Err("Böş ma'lumot".into());
     }
 
     let name = match printer.filter(|p| !p.trim().is_empty()) {
@@ -101,12 +101,12 @@ pub fn print_raw(printer: Option<String>, data: Vec<u8>) -> Result<(), String> {
         let mut handle = HANDLE::default();
         let wname = wide(&name);
         OpenPrinterW(PCWSTR(wname.as_ptr()), &mut handle, None)
-            .map_err(|e| format!("Printer ochilmadi ({name}): {e}"))?;
+            .map_err(|e| format!("Printer oçilmadi ({name}): {e}"))?;
 
         // Handle ochilgandan keyin har qanday xatoda uni YOPISH shart.
         // Aks holda navbat band qolib, keyingi chek umuman chiqmasdi.
         let result = (|| -> Result<(), String> {
-            let mut wdoc = wide("e-Kassam chek");
+            let mut wdoc = wide("e-Kassam çek");
             let mut wtype = wide("RAW");
             // `pDatatype: "RAW"` — ENG MUHIM maydon. Usiz drayver baytlarni
             // "hujjat" deb talqin qilib, ESC/POS buyruqlarini matn sifatida
@@ -177,17 +177,17 @@ fn default_printer() -> Result<String, String> {
 #[tauri::command(async)]
 pub fn print_tcp(host: String, port: u16, data: Vec<u8>) -> Result<(), String> {
     if data.is_empty() {
-        return Err("Bo'sh ma'lumot".into());
+        return Err("Böş ma'lumot".into());
     }
 
     let addr: SocketAddr = format!("{host}:{port}")
         .to_socket_addrs()
-        .map_err(|e| format!("Manzil noto'g'ri ({host}:{port}): {e}"))?
+        .map_err(|e| format!("Manzil notöğri ({host}:{port}): {e}"))?
         .next()
         .ok_or_else(|| format!("Manzil topilmadi: {host}:{port}"))?;
 
     let mut stream = TcpStream::connect_timeout(&addr, Duration::from_secs(3))
-        .map_err(|e| format!("Printerga ulanib bo'lmadi ({host}:{port}): {e}"))?;
+        .map_err(|e| format!("Printerga ulanib bölmadi ({host}:{port}): {e}"))?;
     stream
         .set_write_timeout(Some(Duration::from_secs(3)))
         .map_err(|e| format!("Taymaut: {e}"))?;

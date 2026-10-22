@@ -137,15 +137,15 @@ const view = (page) => page.evaluate(() => ({
 
 const page = await open();
 
-console.log("\n── 1. Oyna ochiladi va bir donaning summasi ko'rinadi ──");
+console.log("\n── 1. Oyna oçiladi va bir donaning summasi körinadi ──");
 {
   const v = await view(page);
-  v.open ? ok("qaytarish oynasi ochildi") : no("oyna ochilishi kerak", "yo'q");
+  v.open ? ok("qaytariş oynasi oçildi") : no("oyna ochilishi kerak", "yöq");
   /(3\s?333)/.test(v.perUnit || "")
-    ? ok(`bir donasi: ${v.perUnit}`) : no("bir donasi 3 333 ko'rsatilishi kerak", v.perUnit);
+    ? ok(`bir donasi: ${v.perUnit}`) : no("bir donasi 3 333 körsatilişi kerak", v.perUnit);
 }
 
-console.log("\n── 2. Miqdor yozilganda summa DARHOL chiqadi ──");
+console.log("\n── 2. Miqdor yozilganda summa DARHOL çiqadi ──");
 /* ⚠ Kassir mijozga raqamni AYTISHDAN oldin ko'rishi kerak. */
 /* ⚠ MAYDON MASKALANGAN va `max` bilan cheklangan (`Field kind="qty"`).
    «Bosib, Backspace bosish» ishonchsiz: kursor qayerga tushgani
@@ -164,25 +164,25 @@ const qty = async (v) => {
 await qty(1);
 {
   const v = await view(page);
-  num(v.total) === 3333 ? ok(`bittasi uchun ${v.total}`)
-                        : no("bittasi uchun 3 333.33 bo'lishi kerak", v.total);
+  num(v.total) === 3333 ? ok(`bittasi uçun ${v.total}`)
+                        : no("bittasi uçun 3 333.33 bölişi kerak", v.total);
 }
 
-console.log("\n── 3. ⚠ TO'LIQ QAYTARISHDA TO'LANGANNING O'ZI ──");
+console.log("\n── 3. ⚠ TÖLIQ QAYTARIŞDA TÖLANGANNING ÖZI ──");
 /* Eski qoida shu yerda pul yo'qotardi: 3 333.33 × 3 = 9 999.99.
    Qoldiq tiyin endi oxirgi qaytarishga qo'shiladi. */
 await qty(3);
 {
   const v = await view(page);
-  num(v.total) === 10000 ? ok(`uchalasi uchun ${v.total} — to'langanning O'ZI`)
-                         : no("10 000 bo'lishi kerak", v.total);
+  num(v.total) === 10000 ? ok(`uçalasi uçun ${v.total} — tölanganning ÖZI`)
+                         : no("10 000 bölişi kerak", v.total);
 }
 
-console.log("\n── 4. Taklif — faqat KERAK bo'lganda ──");
+console.log("\n── 4. Taklif — faqat KERAK bölganda ──");
 {
   const v = await view(page);
   /* 10 000 allaqachon mukammal: taklif chiqmasligi kerak. */
-  v.tip === null ? ok("mukammal summada taklif yo'q")
+  v.tip === null ? ok("mukammal summada taklif yöq")
                  : no("taklif chiqmasligi kerak", v.tip);
 }
 await qty(1);
@@ -190,26 +190,26 @@ await qty(1);
   const v = await view(page);
   /* 3 333.33 → 3 300 (−33.33), 2% chegarasi ichida. */
   v.tip && /3\s?300/.test(v.tip)
-    ? ok(`taklif chiqdi: ${v.tip}`) : no("taklif 3 300 bo'lishi kerak", v.tip);
+    ? ok(`taklif çiqdi: ${v.tip}`) : no("taklif 3 300 bölişi kerak", v.tip);
 }
 
-console.log("\n── 5. ⚠ TAKLIF O'ZI QO'LLANMAYDI ──");
+console.log("\n── 5. ⚠ TAKLIF ÖZI QÖLLANMAYDI ──");
 {
   const before = await view(page);
   num(before.total) === 3333
-    ? ok("tugma bosilmaguncha summa o'zgarmadi")
-    : no("summa o'zgarmasligi kerak", before.total);
+    ? ok("tugma bosilmagunça summa özgarmadi")
+    : no("summa özgarmasligi kerak", before.total);
 
   await page.evaluate(() => document.querySelector(".ret-sum__tip")?.click());
   await new Promise((r) => setTimeout(r, 300));
   const after = await view(page);
   num(after.total) === 3300
-    ? ok(`bosilgandan keyin: ${after.total}`) : no("3 300 bo'lishi kerak", after.total);
-  after.tipOn ? ok("o'zgartirilgani belgilanadi (bekor qilish mumkin)")
-              : no("belgilanishi kerak", "yo'q");
+    ? ok(`bosilgandan keyin: ${after.total}`) : no("3 300 bölişi kerak", after.total);
+  after.tipOn ? ok("özgartirilgani belgilanadi (bekor qiliş mumkin)")
+              : no("belgilanishi kerak", "yöq");
 }
 
-console.log("\n── 6. Serverga QO'LDAGI summa yuboriladi ──");
+console.log("\n── 6. Serverga QÖLDAGI summa yuboriladi ──");
 {
   await page.evaluate(() => {
     const ta = document.querySelectorAll(".modal-body input, .modal-body textarea");
@@ -222,18 +222,18 @@ console.log("\n── 6. Serverga QO'LDAGI summa yuboriladi ──");
   });
   await new Promise((r) => setTimeout(r, 300));
   await page.evaluate(() => [...document.querySelectorAll("button")]
-    .find((b) => /rasmiylashtir/i.test(b.textContent))?.click());
+    .find((b) => /rasmiylaştir/i.test(b.textContent))?.click());
   await new Promise((r) => setTimeout(r, 900));
 
-  sentBody ? ok("so'rov ketdi") : no("so'rov ketishi kerak", "yo'q");
+  sentBody ? ok("sörov ketdi") : no("sörov ketişi kerak", "yöq");
   const it = sentBody?.items?.[0];
   it?.amount === 3300
-    ? ok("qatorda `amount: 3300` — server aynan shuni jurnalga yozadi")
-    : no("`amount: 3300` yuborilishi kerak", JSON.stringify(sentBody));
-  it?.quantity === 1 ? ok("miqdor 1") : no("miqdor 1 bo'lishi kerak", it?.quantity);
+    ? ok("qatorda `amount: 3300` — server aynan şuni jurnalga yozadi")
+    : no("`amount: 3300` yuborilişi kerak", JSON.stringify(sentBody));
+  it?.quantity === 1 ? ok("miqdor 1") : no("miqdor 1 bölişi kerak", it?.quantity);
 }
 
-console.log("\n── 7. Taklifsiz qaytarishda summa YUBORILMAYDI ──");
+console.log("\n── 7. Taklifsiz qaytarişda summa YUBORILMAYDI ──");
 /* ⚠ Bo'sh qoldirilsa server muzlatilgan taqsimotdan hisoblaydi va
    bu ASOSIY yo'l: qaytariladigan pul mijoz to'lagan puldir. */
 {
@@ -251,15 +251,15 @@ console.log("\n── 7. Taklifsiz qaytarishda summa YUBORILMAYDI ──");
   });
   await new Promise((r) => setTimeout(r, 250));
   await p2.evaluate(() => [...document.querySelectorAll("button")]
-    .find((b) => /rasmiylashtir/i.test(b.textContent))?.click());
+    .find((b) => /rasmiylaştir/i.test(b.textContent))?.click());
   await new Promise((r) => setTimeout(r, 900));
   sentBody?.items?.[0]?.amount === undefined
-    ? ok("`amount` yuborilmadi — server o'zi hisoblaydi")
+    ? ok("`amount` yuborilmadi — server özi hisoblaydi")
     : no("`amount` yuborilmasligi kerak", JSON.stringify(sentBody));
   await p2.close();
 }
 
-console.log("\n── 8. Summa maydoni: BO'SH turadi, ichida muzlatilgani ko'rinadi ──");
+console.log("\n── 8. Summa maydoni: BÖŞ turadi, içida muzlatilgani körinadi ──");
 {
   /* ⚠ Bo'sh maydon «tegilmagan» degani va serverga `amount` umuman
      yuborilmaydi. Muzlatilgan summani QIYMAT qilib qo'ysak, har
@@ -275,11 +275,11 @@ console.log("\n── 8. Summa maydoni: BO'SH turadi, ichida muzlatilgani ko'rin
     amt: document.querySelector(".ret-amt")?.value ?? null,
     hold: document.querySelector(".ret-amt")?.placeholder ?? null,
   }));
-  v.amt === "" ? ok("maydon bo'sh") : no("maydon bo'sh bo'lishi kerak", `«${v.amt}»`);
+  v.amt === "" ? ok("maydon böş") : no("maydon böş bölişi kerak", `«${v.amt}»`);
   /(3\s?333)/.test(v.hold || "")
-    ? ok(`turtkida muzlatilgan summa: ${v.hold}`) : no("turtkida 3 333 bo'lishi kerak", v.hold);
+    ? ok(`turtkida muzlatilgan summa: ${v.hold}`) : no("turtkida 3 333 bölişi kerak", v.hold);
 
-  console.log("\n── 9. Qo'lda yozilgan summa SERVERGA ketadi ──");
+  console.log("\n── 9. Qölda yozilgan summa SERVERGA ketadi ──");
   await p3.evaluate(() => {
     const el = document.querySelector(".ret-amt");
     const set = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
@@ -288,9 +288,9 @@ console.log("\n── 8. Summa maydoni: BO'SH turadi, ichida muzlatilgani ko'rin
   await new Promise((r) => setTimeout(r, 350));
   const tot = await p3.evaluate(() =>
     document.querySelector(".ret-sum__row b")?.textContent.trim() || null);
-  num(tot) === 3000 ? ok(`jami darhol yangilandi: ${tot}`) : no("jami 3 000 bo'lishi kerak", tot);
+  num(tot) === 3000 ? ok(`jami darhol yangilandi: ${tot}`) : no("jami 3 000 bölişi kerak", tot);
   const chip = await p3.evaluate(() => !!document.querySelector(".ret-sum__tip.is-on"));
-  chip ? ok("«qo'lda kamaytirildi» belgisi chiqdi") : no("belgi chiqishi kerak", "yo'q");
+  chip ? ok("«qölda kamaytirildi» belgisi çiqdi") : no("belgi çiqişi kerak", "yöq");
 
   sentBody = null;
   await p3.evaluate(() => {
@@ -301,14 +301,14 @@ console.log("\n── 8. Summa maydoni: BO'SH turadi, ichida muzlatilgani ko'rin
   });
   await new Promise((r) => setTimeout(r, 250));
   await p3.evaluate(() => [...document.querySelectorAll("button")]
-    .find((b) => /rasmiylashtir/i.test(b.textContent))?.click());
+    .find((b) => /rasmiylaştir/i.test(b.textContent))?.click());
   await new Promise((r) => setTimeout(r, 900));
   sentBody?.items?.[0]?.amount === 3000
-    ? ok("`amount: 3000` yuborildi") : no("`amount: 3000` bo'lishi kerak", JSON.stringify(sentBody));
+    ? ok("`amount: 3000` yuborildi") : no("`amount: 3000` bölişi kerak", JSON.stringify(sentBody));
   await p3.close();
 }
 
-console.log("\n── 10. ⚠ TO'LANGANDAN KO'P YOZIB BO'LMAYDI ──");
+console.log("\n── 10. ⚠ TÖLANGANDAN KÖP YOZIB BÖLMAYDI ──");
 {
   /* Oshirish — tovarni qaytarib, to'langandan ko'p pul olish, ya'ni
      kassadan pul chiqarishning eng oson yo'li. Maydonning O'ZI
@@ -330,7 +330,7 @@ console.log("\n── 10. ⚠ TO'LANGANDAN KO'P YOZIB BO'LMAYDI ──");
   const tot = await p4.evaluate(() =>
     document.querySelector(".ret-sum__row b")?.textContent.trim() || null);
   num(tot) <= 3334
-    ? ok(`chegarada qoldi: ${tot}`) : no("to'langandan oshmasligi kerak", tot);
+    ? ok(`chegarada qoldi: ${tot}`) : no("tölangandan oşmasligi kerak", tot);
 
   console.log("\n── 11. Maydon tozalansa — muzlatilganiga QAYTADI ──");
   await p4.evaluate(() => {
@@ -345,10 +345,10 @@ console.log("\n── 10. ⚠ TO'LANGANDAN KO'P YOZIB BO'LMAYDI ──");
     tip: !!document.querySelector(".ret-sum__tip"),
   }));
   num(back.tot) === 3333 ? ok(`muzlatilganiga qaytdi: ${back.tot}`)
-                         : no("3 333 bo'lishi kerak", back.tot);
-  !back.on ? ok("«qo'lda kamaytirildi» belgisi yo'qoldi")
-           : no("belgi yo'qolishi kerak", "turibdi");
-  back.tip ? ok("tavsiya tugmasi qaytdi") : no("tavsiya qaytishi kerak", "yo'q");
+                         : no("3 333 bölişi kerak", back.tot);
+  !back.on ? ok("«qölda kamaytirildi» belgisi yöqoldi")
+           : no("belgi yöqolişi kerak", "turibdi");
+  back.tip ? ok("tavsiya tugmasi qaytdi") : no("tavsiya qaytishi kerak", "yöq");
   await p4.close();
 }
 
@@ -393,11 +393,11 @@ const finish = async (pg) => {
   });
   await new Promise((r) => setTimeout(r, 250));
   await pg.evaluate(() => [...document.querySelectorAll("button")]
-    .find((b) => /rasmiylashtir/i.test(b.textContent))?.click());
+    .find((b) => /rasmiylaştir/i.test(b.textContent))?.click());
   await new Promise((r) => setTimeout(r, 900));
 };
 
-console.log("\n── 12. Standart yo'l: `disposition` YUBORILMAYDI ──");
+console.log("\n── 12. Standart yöl: `disposition` YUBORILMAYDI ──");
 /* ⚠ Eski ilova va oflayn navbatdagi so'rov bu maydonni yubormaydi va
    ularning qaytarishi bugungidek javonga qaytishi kerak. Standart
    yo'lni ham maydon bilan to'ldirib yuborish ikkita xatti-harakat
@@ -411,11 +411,11 @@ console.log("\n── 12. Standart yo'l: `disposition` YUBORILMAYDI ──");
   await finish(p5);
   sentBody?.items?.[0]?.disposition === undefined
     ? ok("`disposition` yuborilmadi — server ilgarigidek javonga qaytaradi")
-    : no("standart yo'lda maydon yuborilmasligi kerak", JSON.stringify(sentBody?.items?.[0]));
+    : no("standart yölda maydon yuborilmasligi kerak", JSON.stringify(sentBody?.items?.[0]));
   await p5.close();
 }
 
-console.log("\n── 13. ⚠ CHIQIT tanlansa — SERVERGA turkumi bilan ketadi ──");
+console.log("\n── 13. ⚠ ÇIQIT tanlansa — SERVERGA turkumi bilan ketadi ──");
 {
   sentBody = null;
   const p6 = await open();
@@ -423,12 +423,12 @@ console.log("\n── 13. ⚠ CHIQIT tanlansa — SERVERGA turkumi bilan ketadi 
   await p6.type(".modal-body tbody tr input", "1", { delay: 15 });
   await new Promise((r) => setTimeout(r, 350));
 
-  const gotDisp = await pickInRow(p6, 0, "chiqit");
-  gotDisp ? ok("«Chiqit» tanlandi") : no("«Chiqit» tanlanishi kerak", "topilmadi");
+  const gotDisp = await pickInRow(p6, 0, "çiqit");
+  gotDisp ? ok("«Çiqit» tanlandi") : no("«Çiqit» tanlanişi kerak", "topilmadi");
 
   /* Chiqit tanlangach IKKINCHI tanlov paydo bo'ladi — sababi. */
   const gotReason = await pickInRow(p6, 1, "sindi");
-  gotReason ? ok("chiqit sababi tanlandi") : no("sabab tanlanishi kerak", "topilmadi");
+  gotReason ? ok("çiqit sababi tanlandi") : no("sabab tanlanişi kerak", "topilmadi");
 
   await finish(p6);
   const it = sentBody?.items?.[0];
@@ -436,12 +436,12 @@ console.log("\n── 13. ⚠ CHIQIT tanlansa — SERVERGA turkumi bilan ketadi 
     ? ok("`disposition: WRITE_OFF` yuborildi")
     : no("`disposition: WRITE_OFF` kutilgandi", JSON.stringify(it));
   it?.writeOffReason === "BREAKAGE"
-    ? ok("`writeOffReason: BREAKAGE` yuborildi — chiqit hisoboti shu bo'yicha yig'iladi")
-    : no("turkum yuborilishi kerak", JSON.stringify(it));
+    ? ok("`writeOffReason: BREAKAGE` yuborildi — çiqit hisoboti şu böyiça yiğiladi")
+    : no("turkum yuborilişi kerak", JSON.stringify(it));
   await p6.close();
 }
 
-console.log("\n── 14. ⚠ SABABSIZ chiqit SERVERGA KETMAYDI ──");
+console.log("\n── 14. ⚠ SABABSIZ çiqit SERVERGA KETMAYDI ──");
 /* Server ham rad etadi, lekin kassir buni tugmani bosgandan KEYIN
    emas, o'sha zahoti bilishi kerak — mijoz kassa oldida turibdi. */
 {
@@ -450,23 +450,23 @@ console.log("\n── 14. ⚠ SABABSIZ chiqit SERVERGA KETMAYDI ──");
   await p7.click(".modal-body tbody tr input");
   await p7.type(".modal-body tbody tr input", "1", { delay: 15 });
   await new Promise((r) => setTimeout(r, 350));
-  await pickInRow(p7, 0, "chiqit");
+  await pickInRow(p7, 0, "çiqit");
   await finish(p7);
   sentBody === null
-    ? ok("so'rov to'xtatildi")
-    : no("sababsiz chiqit yuborilmasligi kerak", JSON.stringify(sentBody));
+    ? ok("sörov töxtatildi")
+    : no("sababsiz çiqit yuborilmasligi kerak", JSON.stringify(sentBody));
   await p7.close();
 }
 
 if (pageErrors.length) {
   bad += pageErrors.length;
-  console.log("\n  ❌ Sahifada JS xatolari tushdi:");
+  console.log("\n  ❌ Sahifada JS xatolari tuşdi:");
   for (const e of [...new Set(pageErrors)].slice(0, 6)) console.log("       " + e);
 } else {
-  console.log("\n  ✅ Sahifada birorta JS xatosi tushmadi");
+  console.log("\n  ✅ Sahifada birorta JS xatosi tuşmadi");
 }
 
 await browser.close();
 server.close();
-console.log(bad ? `\n❌ Qaytarish oynasi: ${bad} ta muammo\n` : "\n✅ Qaytarish oynasi: hammasi o'tdi\n");
+console.log(bad ? `\n❌ Qaytariş oynasi: ${bad} ta muammo\n` : "\n✅ Qaytariş oynasi: hammasi ötdi\n");
 process.exit(bad ? 1 : 0);

@@ -132,7 +132,7 @@ await browser.close();
 server.close();
 
 if (bad) {
-  console.error(`\n  ${bad} ta jiddiy a11y buzilishi. Tuzatmasdan o'tkazib bo'lmaydi.`);
+  console.error(`\n  ${bad} ta jiddiy a11y buzilişi. Tuzatmasdan ötkazib bölmaydi.`);
   process.exit(1);
 }
-console.log("\n  Jiddiy buzilish yo'q.");
+console.log("\n  Jiddiy buziliş yöq.");

@@ -109,31 +109,31 @@ const rows = await page.$$eval("tbody tr", (trs) => trs.map((tr) => ({
 
 console.log("\n§1 Ikkala qiymat ham bor");
 rows[0]?.old === "12 000" ? ok("eski qiymat chizildi: 12 000")
-                          : no("eski qiymat ko'rinishi kerak", rows[0]?.old);
+                          : no("eski qiymat körinişi kerak", rows[0]?.old);
 rows[0]?.neu === "9 000" ? ok("yangi qiymat chizildi: 9 000")
-                         : no("yangi qiymat ko'rinishi kerak", rows[0]?.neu);
-rows[0]?.arrow ? ok("o'q chizildi") : no("o'q bo'lishi kerak", "yo'q");
+                         : no("yangi qiymat körinişi kerak", rows[0]?.neu);
+rows[0]?.arrow ? ok("öq çizildi") : no("öq bölişi kerak", "yöq");
 
-console.log("\n§2 ⚠ FAQAT YANGISI bo'lsa — o'q CHIZILMAYDI");
+console.log("\n§2 ⚠ FAQAT YANGISI bölsa — öq ÇIZILMAYDI");
 /* «→ 9 000» «nimadandir 9 000 ga» degan yolg'on taassurot berardi. */
 rows[1]?.neu ? ok(`yangi qiymat turibdi: ${rows[1].neu}`)
-             : no("yangi qiymat ko'rinishi kerak", rows[1]?.neu);
-!rows[1]?.arrow ? ok("o'q chizilmadi") : no("o'q chizilmasligi kerak", "chizilgan");
-!rows[1]?.old ? ok("eski qiymat yo'q — o'ylab topilmadi") : no("bo'sh bo'lishi kerak", rows[1]?.old);
+             : no("yangi qiymat körinişi kerak", rows[1]?.neu);
+!rows[1]?.arrow ? ok("öq çizilmadi") : no("öq çizilmasligi kerak", "çizilgan");
+!rows[1]?.old ? ok("eski qiymat yöq — öylab topilmadi") : no("böş bölişi kerak", rows[1]?.old);
 
-console.log("\n§3 ⚠ ESKI YOZUVDA qator UMUMAN bo'lmaydi");
+console.log("\n§3 ⚠ ESKI YOZUVDA qator UMUMAN bölmaydi");
 /* V101 dan oldingi qator: uchala maydon ham bo'sh. Bo'sh «→» yoki
    tire chizish «ma'lumot yo'q» ni «nol» ga aylantirardi. */
-!rows[2]?.chg ? ok("bo'sh qatorda hech narsa chizilmadi")
+!rows[2]?.chg ? ok("böş qatorda heç narsa çizilmadi")
               : no("chizilmasligi kerak", rows[2]?.chg);
 
 console.log("\n§4 Kassa (terminal)");
-rows[0]?.term === "KASSA-2" ? ok("kassa nomi ko'rinadi")
-                            : no("terminal ko'rinishi kerak", rows[0]?.term);
-!rows[1]?.term ? ok("terminalsiz yozuvda bo'sh chip chizilmadi")
+rows[0]?.term === "KASSA-2" ? ok("kassa nomi körinadi")
+                            : no("terminal körinişi kerak", rows[0]?.term);
+!rows[1]?.term ? ok("terminalsiz yozuvda böş çip çizilmadi")
                : no("chizilmasligi kerak", rows[1]?.term);
 
-console.log("\n§5 Kassa bo'yicha FILTR bor");
+console.log("\n§5 Kassa böyiça FILTR bor");
 /* «Shu kassada nima bo'ldi?» — tekshiruvning o'zagi; server aynan
    shu ustun uchun indeks yaratgan (V77). */
 const hasCol = await page.evaluate(() => {
@@ -143,10 +143,10 @@ const hasCol = await page.evaluate(() => {
   return new Promise((res) => setTimeout(() => res(
     /kassa/i.test(document.body.innerText)), 400));
 });
-hasCol ? ok("filtrda «Kassa» ustuni bor") : no("filtrda bo'lishi kerak", "topilmadi");
+hasCol ? ok("filtrda «Kassa» ustuni bor") : no("filtrda bölişi kerak", "topilmadi");
 
 console.log("\n§6 Sahifa xatolari");
-pageErrors.length === 0 ? ok("JS xatosi yo'q") : no("sahifada xato", pageErrors.join(" | "));
+pageErrors.length === 0 ? ok("JS xatosi yöq") : no("sahifada xato", pageErrors.join(" | "));
 
 await page.close();
 await browser.close();

@@ -35,8 +35,8 @@ import { isDesktop, isMobileApp } from "./ek-desktop";
  * satrga ~29 belgi, ya'ni haqiqiy chek printerining nisbati.
  */
 const PRINT_CSS = `
-/* Chek qog'ozi — A4 EMAS. @page bo'lmasa brauzer chekni A4 varaqning
-   burchagiga qo'yib, chetiga o'z sarlavha-izohini qo'shadi. */
+/* Çek qoğozi — A4 EMAS. @page bölmasa brauzer çekni A4 varaqning
+   burçagiga qöyib, çetiga öz sarlavha-izohini qöşadi. */
 @page { size: 58mm auto; margin: 0; }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -52,7 +52,7 @@ body {
   -webkit-print-color-adjust: exact; print-color-adjust: exact;
 }
 
-/* Ekrandagi qog'oz effektlari bosmada keraksiz */
+/* Ekrandagi qoğoz effektlari bosmada keraksiz */
 .pt-tape { background: #FFFFFF; color: #111111; padding: 0; border-radius: 0; box-shadow: none; }
 .ek-tear::after { display: none; }
 
@@ -63,13 +63,13 @@ body {
 .pt-tape__row > span:last-child { white-space: nowrap; }
 .pt-line { padding: 3px 0; }
 .pt-line__name { font-weight: 700; }
-/* Qator chegirmasi — qog'oz chekdagi bilan bir xil, ichkariroq va
-   so'nikroq: u qatorning IZOHI, alohida qator emas. */
+/* Qator çegirmasi — qoğoz çekdagi bilan bir xil, içkariroq va
+   sönikroq: u qatorning IZOHI, alohida qator emas. */
 .pt-line__cut { padding-left: 10px; opacity: .75; }
-/* ⚠ CHEK TURI (V61) — «QARZ TO'LOVI». Bu qator EKRANDA bor edi, PDF
-   da esa yo'q: saqlangan nusxada u oddiy mayda matnga aylanib,
-   xarid chekidan ajralib turmay qolardi — holbuki uni ajratib
-   turadigan YAGONA narsa shu (V109 da topildi). */
+/* ⚠ ÇEK TURI (V61) — «QARZ TÖLOVI». Bu qator EKRANDA bor edi, PDF
+   da esa yöq: saqlangan nusxada u oddiy mayda matnga aylanib,
+   xarid çekidan ajralib turmay qolardi — holbuki uni ajratib
+   turadigan YAGONA narsa şu (V109 da topildi). */
 .pt-tape__kind {
   margin-top: 6px; padding-top: 5px; border-top: 1px solid #111111;
   font-size: 11px; font-weight: 800; letter-spacing: .18em;
@@ -80,10 +80,10 @@ body {
   margin: 10px 0; padding: 6px; text-align: center; font-weight: 800; letter-spacing: .2em;
   border: 2px solid #111111; border-radius: 4px;
 }
-/* ⚠ BEKOR QILINGAN TO'LOV (V109) — «pt-returned» bilan bir oilada:
-   ikkalasi ham «bu hujjat endi boshqa narsani anglatadi» deydi va
-   mijoz ularni bir xil tanishi kerak. Farqi — bu yerda uch qator
-   (nima · qachon · nega), chunki «nega?» savoli darhol tug'iladi. */
+/* ⚠ BEKOR QILINGAN TÖLOV (V109) — «pt-returned» bilan bir oilada:
+   ikkalasi ham «bu hujjat endi boşqa narsani anglatadi» deydi va
+   mijoz ularni bir xil tanişi kerak. Farqi — bu yerda uç qator
+   (nima · qaçon · nega), çunki «nega?» savoli darhol tuğiladi. */
 .pt-void {
   margin: 10px 0; padding: 6px; text-align: center;
   border: 2px solid #111111; border-radius: 4px;
@@ -96,8 +96,8 @@ body {
 .pt-thanks { margin-top: 10px; font-weight: 700; }
 .pt-tape__site { font-size: 10px; color: #555555; }
 
-/* Ekranda fiskal QR va shtrix — bosiladigan tugma (kattalashtirish uchun).
-   Qog'ozda ular oddiy rasm: tugma bezaklari olib tashlanadi. */
+/* Ekranda fiskal QR va ştrix — bosiladigan tugma (kattalaştiriş uçun).
+   Qoğozda ular oddiy rasm: tugma bezaklari olib taşlanadi. */
 .pt-tape button { all: unset; display: block; width: 100%; }
 .pt-fiscalqr { margin: 8px 0; }
 .pt-fiscalqr svg, .pt-barcode svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
@@ -185,7 +185,7 @@ export async function printHtml(bodyHtml, title, css, win = "width=420,height=72
 
   const w = window.open("", "_blank", win);
   /* Popup to'silgan — bu YAGONA kutiladigan xato, matni ham aniq bo'lsin */
-  if (!w) throw new Error("Brauzer yangi oynani to'sdi — ruxsat bering va qayta urinib ko'ring");
+  if (!w) throw new Error("Brauzer yangi oynani tösdi — ruxsat bering va qayta urinib köring");
   w.document.write(html);
   w.document.close();
   /* Chop etilgach oyna O'ZI yopiladi — aks holda har hujjatdan keyin
@@ -203,10 +203,10 @@ export async function printHtml(bodyHtml, title, css, win = "width=420,height=72
  *                       etish ishining nomini oladi)
  */
 export async function saveReceiptPdf(tapeEl, title) {
-  if (!tapeEl) throw new Error("Chek hali yuklanmadi");
+  if (!tapeEl) throw new Error("Çek hali yuklanmadi");
   /* ⚠ Uslub BERILMAYDI — chek 58 mm tasmada qoladi (`PRINT_CSS`).
      Platformaga xos yo'l esa `printHtml` da, bitta joyda. */
-  return printHtml(tapeEl.outerHTML, title || "Chek");
+  return printHtml(tapeEl.outerHTML, title || "Çek");
 }
 
 /**
@@ -238,7 +238,7 @@ function printInFrame(html) {
     fr.onload = () => {
       try {
         const win = fr.contentWindow;
-        if (!win) throw new Error("Chop etish oynasi ochilmadi");
+        if (!win) throw new Error("Çop etiş oynasi oçilmadi");
         win.onafterprint = cleanup;
         win.focus();
         win.print();

@@ -209,7 +209,7 @@ export function buildRollDoc(template, items, media, opts = {}) {
 export async function buildRollBytes(template, items, media, printer, opts = {}) {
   const { ctx = {}, raster } = opts;
   const roll = rollFor(template, media);
-  if (!roll) throw new Error("Yorliq o'lchami noma'lum");
+  if (!roll) throw new Error("Yorliq ölçami noma'lum");
   const lang = String(printer?.lang || "").toUpperCase();
   const dpi = Number(printer?.dpi) || 203;
   const enc = new TextEncoder();
@@ -233,8 +233,8 @@ export async function buildRollBytes(template, items, media, printer, opts = {})
       chunks.push(enc.encode(text.replace("^XA\n", "^XA\n^CI28\n")));
       continue;
     }
-    if (lang !== "TSPL") throw new Error(`${lang || "?"} tili uchun bayt yo'li yo'q`);
-    if (typeof raster !== "function") throw new Error("Rasterlovchi berilmadi");
+    if (lang !== "TSPL") throw new Error(`${lang || "?"} tili uçun bayt yöli yöq`);
+    if (typeof raster !== "function") throw new Error("Rasterlovçi berilmadi");
 
     const { svg } = rowSvg(template, row, roll, ctx, { omit: ["barcode"] });
     const bitmap = await raster(svg, mmToDots(roll.rowWidthMm, dpi), mmToDots(roll.rowHeightMm, dpi));

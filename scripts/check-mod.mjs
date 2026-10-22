@@ -338,7 +338,7 @@ const confirmMods = async (page) => {
   await waitFor(page, () => !document.querySelector(".mod-modal"));
 };
 
-console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
+console.log("\n══ TAOM QÖŞIMÇALARI KASSADA (R2) ══\n");
 
 {
   const { page, calls } = await openKassa({ restaurant: true });
@@ -347,7 +347,7 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
   console.log("§1 Tanlov oynasi va majburiy guruh");
   await tile(page, "burger");
   (await waitFor(page, () => !!document.querySelector(".mod-modal")))
-    ? ok("taom bosildi — oyna ochildi") : no("oyna ochilmadi", "—");
+    ? ok("taom bosildi — oyna oçildi") : no("oyna oçilmadi", "—");
   (await addDisabled(page)) ? ok("«Porsiya» tanlanmagan — «Savatga» o'chiq") : no("tugma yoqiq qoldi", "enabled");
   const shortText = await page.evaluate(() => document.querySelector(".mod-group__rule.is-short")?.textContent || "");
   /1/.test(shortText) ? ok(`sababi yozilgan: «${shortText.trim()}»`) : no("yetishmayotgan guruh belgilanmagan", shortText);
@@ -355,13 +355,13 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
   console.log("\n§2 Narx va qatorlar");
   await option(page, "Katta");
   await option(page, "Pishloq");
-  (await addDisabled(page)) === false ? ok("porsiya tanlandi — tugma yoqildi") : no("tugma hamon o'chiq", "disabled");
+  (await addDisabled(page)) === false ? ok("porsiya tanlandi — tugma yoqildi") : no("tugma hamon öçiq", "disabled");
   const btnText = await page.evaluate(() => [...document.querySelectorAll(".mod-modal .pay-modal-footer button")].pop()?.textContent || "");
-  /42[\s\u00a0\u202f]?000/.test(btnText) ? ok("tugmada jami: 42 000") : no("tugmadagi narx noto'g'ri", btnText);
+  /42[\s\u00a0\u202f]?000/.test(btnText) ? ok("tugmada jami: 42 000") : no("tugmadagi narx notöğri", btnText);
   await confirmMods(page);
   let items = await cartItems(page);
   items.length === 1 && items[0].price === 42000 && items[0].mods === "Katta+Pishloq"
-    ? ok("savatda: burger, Katta+Pishloq, 42 000") : no("savat noto'g'ri", JSON.stringify(items));
+    ? ok("savatda: burger, Katta+Pishloq, 42 000") : no("savat notöğri", JSON.stringify(items));
 
   await tile(page, "burger");
   await waitFor(page, () => !!document.querySelector(".mod-modal"));
@@ -369,7 +369,7 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
   await option(page, "Katta");
   await confirmMods(page);
   items = await cartItems(page);
-  items.length === 1 && items[0].qty === 2 ? ok("xuddi shu tanlov (boshqa tartibda) — o'sha qator ×2")
+  items.length === 1 && items[0].qty === 2 ? ok("xuddi şu tanlov (boşqa tartibda) — öşa qator ×2")
     : no("bir xil tanlov birlashmadi", JSON.stringify(items));
 
   await tile(page, "burger");
@@ -378,20 +378,20 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
   await confirmMods(page);
   items = await cartItems(page);
   items.length === 2 && items[1].mods === "Kichik" && items[1].price === 30000
-    ? ok("boshqa tanlov — ALOHIDA qator (30 000)") : no("boshqa tanlov alohida qator bo'lmadi", JSON.stringify(items));
+    ? ok("boşqa tanlov — ALOHIDA qator (30 000)") : no("boşqa tanlov alohida qator bölmadi", JSON.stringify(items));
   const shown = await page.evaluate(() => [...document.querySelectorAll(".cart-item-mods")].map((e) => e.textContent.trim()));
-  shown.includes("+ Katta, Pishloq") ? ok("savat qatorida qo'shimchalar ko'rinadi") : no("qatorda qo'shimcha yozilmagan", JSON.stringify(shown));
+  shown.includes("+ Katta, Pishloq") ? ok("savat qatorida qöşimçalar körinadi") : no("qatorda qöşimça yozilmagan", JSON.stringify(shown));
 
-  console.log("\n§3 Qo'shimchasiz tovar eskicha");
+  console.log("\n§3 Qöşimçasiz tovar eskiça");
   await tile(page, "suv");
   await new Promise((r) => setTimeout(r, 250));
   await tile(page, "suv");
   await new Promise((r) => setTimeout(r, 350));
   items = await cartItems(page);
   const water = items.filter((i) => i.name === "suv");
-  water.length === 1 && water[0].qty === 2 ? ok("suv: ikki bosish → bitta qator ×2, oynasiz")
+  water.length === 1 && water[0].qty === 2 ? ok("suv: ikki bosiş → bitta qator ×2, oynasiz")
     : no("oddiy tovar birlashmadi", JSON.stringify(water));
-  (await page.$(".mod-modal")) ? no("suvga oyna ochildi", "mod-modal") : ok("suvga oyna ochilmadi");
+  (await page.$(".mod-modal")) ? no("suvga oyna oçildi", "mod-modal") : ok("suvga oyna oçilmadi");
 
   console.log("\n§4 Serverga");
   await page.keyboard.press("F9");
@@ -411,32 +411,32 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
   if (process.env.DEBUG) console.log("    after:", await page.evaluate(() =>
     [...document.querySelectorAll(".toast, [role='alert'], [role='status'], .modal-title, .pay-modal-title")].map((e) => e.textContent).join(" | ")));
   const body = calls.sales[0];
-  if (!body) no("sotuv yuborilmadi", "yo'q");
+  if (!body) no("sotuv yuborilmadi", "yöq");
   else {
     const lines = body.items || [];
     const burgers = lines.filter((l) => l.productId === 7).map((l) => (l.modifierIds || []).slice().sort().join("."));
     burgers.sort().join("|") === "11.22|21" ? ok("burger qatorlarida modifierIds: [11,22] va [21]")
-      : no("modifierIds noto'g'ri", JSON.stringify(lines));
+      : no("modifierIds notöğri", JSON.stringify(lines));
     const w = lines.find((l) => l.productId === 3);
-    w && !("modifierIds" in w) ? ok("suv qatorida modifierIds yo'q") : no("suv qatori noto'g'ri", JSON.stringify(w));
+    w && !("modifierIds" in w) ? ok("suv qatorida modifierIds yöq") : no("suv qatori notöğri", JSON.stringify(w));
     /* C4 (V165): sotuv vaqti — birinchi tovardan yuborishgacha, sinovda bir necha soniya. */
     Number.isInteger(body.durationMs) && body.durationMs > 500 && body.durationMs < 120000
       ? ok(`sotuv vaqti yuborildi: ${(body.durationMs / 1000).toFixed(1)} s`) : no("durationMs", String(body.durationMs));
   }
-  calls.modifiers === 1 ? ok("guruhlar bir marta so'raldi") : no("guruhlar so'rovi soni", calls.modifiers);
+  calls.modifiers === 1 ? ok("guruhlar bir marta söraldi") : no("guruhlar sörovi soni", calls.modifiers);
   await page.close();
 }
 
 {
-  console.log("\n§5 Restoran bo'lmagan do'kon");
+  console.log("\n§5 Restoran bölmagan dökon");
   const { page, calls } = await openKassa({ restaurant: false });
   await waitFor(page, () => false, 600);
-  calls.modifiers === 0 ? ok("/modifiers so'ralmadi (modul yopiq)") : no("modul yopiq do'konda so'raldi", calls.modifiers);
+  calls.modifiers === 0 ? ok("/modifiers söralmadi (modul yopiq)") : no("modul yopiq dökonda söraldi", calls.modifiers);
   await tile(page, "burger");
   await new Promise((r) => setTimeout(r, 350));
   const items = await cartItems(page);
   !(await page.$(".mod-modal")) && items.length === 1 && items[0].price === 30000
-    ? ok("taom oynasiz, oddiy narxda") : no("oddiy do'konda oyna yoki noto'g'ri savat", JSON.stringify(items));
+    ? ok("taom oynasiz, oddiy narxda") : no("oddiy dökonda oyna yoki notöğri savat", JSON.stringify(items));
 
   /* ⚠ QIDIRUV MAYDONI KESILMASIN (2026-10-22). Egasi skrinshot yubordi:
      maydon ~290 px ga siqilgan va o'zining plaseholderi ham kesilgan
@@ -463,11 +463,11 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
              otherCount: other.length };
   });
   sb && sb.inpW >= sb.need
-    ? ok(`plaseholder to'liq sig'adi: maydon ${Math.round(sb.inpW)} px, matn ${Math.round(sb.need)} px`)
+    ? ok(`plaseholder töliq siğadi: maydon ${Math.round(sb.inpW)} px, matn ${Math.round(sb.need)} px`)
     : no("qidiruv plaseholderi kesilyapti", JSON.stringify(sb));
   if (process.env.SHOTS) await page.screenshot({ path: path.join(process.env.SHOTS, "kassa-tools.png") });
   sb && sb.otherCount > 0 && sb.belowCount === sb.otherCount
-    ? ok(`qidiruv o'z qatorida (${Math.round(sb.barW)} px), ${sb.otherCount} ta tugma pastda`)
+    ? ok(`qidiruv öz qatorida (${Math.round(sb.barW)} px), ${sb.otherCount} ta tugma pastda`)
     : no("tugmalar qidiruv bilan bitta qatorda", JSON.stringify(sb));
   await page.close();
 }
@@ -479,18 +479,18 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
   await tile(page, "suv");
   await new Promise((r) => setTimeout(r, 400));
   const rowTxt = await page.evaluate(() => document.querySelector(".total-big")?.textContent || "");
-  /3[\s\u00a0\u202f]?300/.test(rowTxt) ? ok("savatda jami 3 300 (3 000 + 10%)") : no("jamiga xizmat haqi qo'shilmadi", rowTxt);
+  /3[\s\u00a0\u202f]?300/.test(rowTxt) ? ok("savatda jami 3 300 (3 000 + 10%)") : no("jamiga xizmat haqi qöşilmadi", rowTxt);
   await page.keyboard.press("F9");
   await waitFor(page, () => !!document.querySelector(".order-type"));
   /* 2026-10-11: restoranda buyurtma turi savat tepasida HAM bor — to'lov oynasidagisi oxirgi guruh. */
   const groups = await page.evaluate(() => document.querySelectorAll(".order-type").length);
-  groups === 2 ? ok("buyurtma turi savat tepasida ham (restoran kassasi)") : no("savat tepasida buyurtma turi yo'q", String(groups));
+  groups === 2 ? ok("buyurtma turi savat tepasida ham (restoran kassasi)") : no("savat tepasida buyurtma turi yöq", String(groups));
   const btns = await page.evaluate(() => [...[...document.querySelectorAll(".order-type")].pop().querySelectorAll(".order-type__b")].map((b) => b.getAttribute("aria-checked")));
-  JSON.stringify(btns) === '["true","false","false"]' ? ok("to'lov oynasida buyurtma turi, standart «Zalda»") : no("buyurtma turi yo'q yoki noto'g'ri", JSON.stringify(btns));
+  JSON.stringify(btns) === '["true","false","false"]' ? ok("tölov oynasida buyurtma turi, standart «Zalda»") : no("buyurtma turi yöq yoki notöğri", JSON.stringify(btns));
   await page.evaluate(() => [...document.querySelectorAll(".order-type")].pop().querySelectorAll(".order-type__b")[1].click());
   await new Promise((r) => setTimeout(r, 200));
   const take = await page.evaluate(() => document.querySelector(".pay-modal-total-value")?.textContent || "");
-  /^3[\s\u00a0\u202f]?000/.test(take.trim()) ? ok("«Olib ketish» — xizmat haqisiz 3 000") : no("olib ketishda xizmat haqi qoldi", take);
+  /^3[\s\u00a0\u202f]?000/.test(take.trim()) ? ok("«Olib ketiş» — xizmat haqisiz 3 000") : no("olib ketishda xizmat haqi qoldi", take);
   await page.evaluate(() => [...document.querySelectorAll(".order-type")].pop().querySelectorAll(".order-type__b")[0].click());
   await new Promise((r) => setTimeout(r, 200));
   await page.keyboard.type("3300", { delay: 20 });
@@ -505,14 +505,14 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
 }
 
 {
-  console.log("\n§7 Stollar (T1): ochish, serverga yozish, to'lov");
+  console.log("\n§7 Stollar (T1): oçiş, serverga yoziş, tölov");
   const { page, calls } = await openKassa({ restaurant: true, tables: true });
   await waitFor(page, () => false, 600);
   await page.evaluate(() => document.querySelector(".cart-head__tables")?.click());
   (await waitFor(page, () => document.querySelectorAll(".tbl-tile").length === 2))
-    ? ok("«Stollar» oynasi: ikki stol") : no("stollar oynasi ochilmadi", "—");
+    ? ok("«Stollar» oynasi: ikki stol") : no("stollar oynasi oçilmadi", "—");
   const busyTxt = await page.evaluate(() => document.querySelector(".tbl-tile.is-busy")?.textContent || "");
-  /70[\s\u00a0\u202f]?000/.test(busyTxt) && /25/.test(busyTxt) ? ok("band stolda summa va vaqt matni (rang yolg'iz emas)") : no("band stol matni", busyTxt);
+  /70[\s\u00a0\u202f]?000/.test(busyTxt) && /25/.test(busyTxt) ? ok("band stolda summa va vaqt matni (rang yolğiz emas)") : no("band stol matni", busyTxt);
   await page.evaluate(() => document.querySelectorAll(".tbl-tile")[0].click());
   await waitFor(page, () => !document.querySelector(".tbl-modal"));
   const tab = await page.evaluate(() => document.querySelector(".cart-tab.is-on .cart-tab__name")?.textContent || "");
@@ -521,10 +521,10 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
   await waitFor(page, () => false, 1300);
   const put = calls.tables.find((c) => c.m === "PUT");
   put && put.body?.version === 0 && put.body?.lines?.[0]?.productId === 3
-    ? ok("o'zgarish serverga yozildi: versiya 0, suv qatori") : no("PUT ketmadi yoki noto'g'ri", JSON.stringify(put));
+    ? ok("özgariş serverga yozildi: versiya 0, suv qatori") : no("PUT ketmadi yoki notöğri", JSON.stringify(put));
   const puts = calls.tables.filter((c) => c.m === "PUT").length;
   await waitFor(page, () => false, 1200);
-  calls.tables.filter((c) => c.m === "PUT").length === puts ? ok("o'zgarishsiz qayta yozilmaydi") : no("bekor PUT", "takror");
+  calls.tables.filter((c) => c.m === "PUT").length === puts ? ok("özgarişsiz qayta yozilmaydi") : no("bekor PUT", "takror");
 
   await page.evaluate(() => document.querySelector(".cart-head__tables")?.click());
   await waitFor(page, () => document.querySelectorAll(".tbl-tile").length === 2);
@@ -541,12 +541,12 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
   await page.click(".pay-modal-submit");
   await waitFor(page, () => false, 1500);
   const b = calls.sales[0];
-  b && b.tableOrderId === 502 ? ok("to'lovda tableOrderId 502 — server stolni yopadi") : no("tableOrderId ketmadi", JSON.stringify(b && b.tableOrderId));
+  b && b.tableOrderId === 502 ? ok("tölovda tableOrderId 502 — server stolni yopadi") : no("tableOrderId ketmadi", JSON.stringify(b && b.tableOrderId));
   await page.close();
 }
 
 {
-  console.log("\n§8 Jonli yangilanish (T2): boshqa qurilma qo'shdi, keyin to'ladi");
+  console.log("\n§8 Jonli yangilaniş (T2): boşqa qurilma qöşdi, keyin töladi");
   const { page, calls } = await openKassa({ restaurant: true, tables: true });
   await waitFor(page, () => false, 600);
   await page.evaluate(() => document.querySelector(".cart-head__tables")?.click());
@@ -560,7 +560,7 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
      haqli ravishda hamma stolni qayta o'qiydi — o'shanda o'zgarish kelardi. */
   calls.sse.push({ kind: "order", tableId: 12, orderId: 502, version: 4, status: "OPEN", by: "m" });
   await waitFor(page, () => false, 1500);
-  (await cartItems(page))[0]?.qty === 2 ? ok("o'z hodisasi o'tkazib yuborildi") : no("o'z hodisasi yorliqni o'zgartirdi", JSON.stringify(await cartItems(page)));
+  (await cartItems(page))[0]?.qty === 2 ? ok("öz hodisasi ötkazib yuborildi") : no("öz hodisasi yorliqni özgartirdi", JSON.stringify(await cartItems(page)));
   calls.orders["502"] = { id: 502, tableId: 12, tableName: "Stol 2", hallName: "Zal", status: "OPEN", version: 4,
                           lines: [{ productId: 7, quantity: 3, modifierIds: [22], discount: 0 }] };
 
@@ -571,22 +571,22 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
     return c.items?.[0]?.qty === 3;
   }, 5000);
   grew ? ok("planshet qo'shgan taom yorliqqa yetdi (×2 → ×3), PUT yuborilmadi") : no("yorliq yangilanmadi", JSON.stringify(await cartItems(page)));
-  !calls.tables.some((c) => c.m === "PUT") ? ok("yangilanish serverga qaytib yozilmadi") : no("bekor PUT", "bor");
+  !calls.tables.some((c) => c.m === "PUT") ? ok("yangilaniş serverga qaytib yozilmadi") : no("bekor PUT", "bor");
 
   calls.orders["502"] = { ...calls.orders["502"], status: "PAID", version: 5 };
   calls.sse.push({ kind: "order", tableId: 12, orderId: 502, version: 5, status: "PAID", by: "kassa-2" });
   const gone = await waitFor(page, () => ![...document.querySelectorAll(".cart-tab__name")].some((n) => /Stol 2/.test(n.textContent)), 5000);
-  gone ? ok("⚠ boshqa kassada to'langan stol yorlig'i yopildi (ikki marta pul olinmaydi)") : no("to'langan stol yorlig'i qoldi", "—");
+  gone ? ok("⚠ boşqa kassada tölangan stol yorliği yopildi (ikki marta pul olinmaydi)") : no("tölangan stol yorliği qoldi", "—");
   await page.close();
 }
 
 {
-  console.log("\n§9 Zal terminali (D1): qulf, PIN, zal, ofitsiant to'lov olmaydi");
+  console.log("\n§9 Zal terminali (D1): qulf, PIN, zal, ofitsiant tölov olmaydi");
   const { page, calls } = await openKassa({ restaurant: true, tables: true, terminal: true, role: "WAITER", path: "/restaurant" });
   (await waitFor(page, () => !!document.querySelector(".term-lock"), 6000))
-    ? ok("terminal qulfli ochildi") : no("qulf ekrani chiqmadi", "—");
+    ? ok("terminal qulfli oçildi") : no("qulf ekrani çiqmadi", "—");
   (await waitFor(page, () => document.querySelectorAll(".term-staff").length === 2))
-    ? ok("smenadagi xodimlar ro'yxati (ism, rol)") : no("xodimlar yo'q", "—");
+    ? ok("smenadagi xodimlar röyxati (ism, rol)") : no("xodimlar yöq", "—");
   /* SHOTS=<papka> — ko'z bilan tekshirish uchun skrinshot (CI da yo'q). */
   const shot = (name) => process.env.SHOTS && page.screenshot({ path: path.join(process.env.SHOTS, name) });
   await page.setViewport({ width: 1280, height: 800 });
@@ -594,10 +594,10 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
   const pressPin = async (pin) => { for (const d of pin) { await page.keyboard.press(d); await new Promise((r) => setTimeout(r, 60)); } };
   await pressPin("1111");
   (await waitFor(page, () => /noto/.test(document.querySelector(".term-lock__err")?.textContent || "")))
-    ? ok("noto'g'ri PIN — xabar, qulf qoladi") : no("xato xabari yo'q", "—");
+    ? ok("notöğri PIN — xabar, qulf qoladi") : no("xato xabari yöq", "—");
   await pressPin("2468");
   (await waitFor(page, () => !document.querySelector(".term-lock") && document.querySelectorAll(".rf-table").length === 2, 6000))
-    ? ok("to'g'ri PIN — ekran ochildi, zal: ikki stol") : no("ochilmadi yoki zal yo'q", "—");
+    ? ok("töğri PIN — ekran oçildi, zal: ikki stol") : no("oçilmadi yoki zal yöq", "—");
   await shot("terminal-hall.png");
   const who = await page.evaluate(() => document.querySelector(".rf-who__txt b")?.textContent || "");
   /Dilnoza/.test(who) ? ok("tepada xodim ismi: " + who) : no("xodim ismi", who);
@@ -605,9 +605,9 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
   /70[\s\u00a0\u202f]?000/.test(busyTxt) ? ok("band stolda summa (matn bilan)") : no("band stol matni", busyTxt);
   await page.evaluate(() => document.querySelectorAll(".rf-table")[1].click());
   (await waitFor(page, () => /Stol 2/.test(document.querySelector(".rt-title b")?.textContent || ""), 6000))
-    ? ok("stol bosildi — restoranning stol ekrani: «Stol 2»") : no("stol ochilmadi", await page.evaluate(() => location.pathname + location.search));
+    ? ok("stol bosildi — restoranning stol ekrani: «Stol 2»") : no("stol oçilmadi", await page.evaluate(() => location.pathname + location.search));
   const pay = await page.evaluate(() => [...document.querySelectorAll(".rt-actions button")].map((b) => `${b.disabled}:${b.textContent.trim()}`).join("|"));
-  /true:.*kassir/.test(pay) && !/To'lov$/.test(pay) ? ok("⚠ ofitsiantda to'lov tugmasi yo'q — «To'lovni kassir oladi»") : no("to'lov tugmasi", pay);
+  /true:.*kassir/.test(pay) && !/Tölov$/.test(pay) ? ok("⚠ ofitsiantda tölov tugmasi yöq — «Tölovni kassir oladi»") : no("tölov tugmasi", pay);
   await page.evaluate(() => document.querySelector('.rt-back')?.click());
   await waitFor(page, () => !!document.querySelector(".rf-lock"), 4000);
   await page.evaluate(() => document.querySelector(".rf-lock")?.click());
@@ -631,7 +631,7 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
   const want = F.floorView(mockT.map((x, i) => ({ ...x, id: i }))).items.map((it) => [it.left, it.top]);
   const pos = await page.evaluate(() => [...document.querySelectorAll(".rf-plan .rf-table")].map((b) => [parseFloat(b.style.left), parseFloat(b.style.top)]));
   pos.length === 2 && pos.every((p, i) => Math.abs(p[0] - want[i][0]) < 0.01 && Math.abs(p[1] - want[i][1]) < 0.01)
-    ? ok("stollar rejadagi joyida — bo'sh tekislik kesilgan: " + pos.map((p) => p.map((v) => v.toFixed(1)).join("/")).join(" ; "))
+    ? ok("stollar rejadagi joyida — böş tekislik kesilgan: " + pos.map((p) => p.map((v) => v.toFixed(1)).join("/")).join(" ; "))
     : no("joy", JSON.stringify(pos) + " ≠ " + JSON.stringify(want));
   const ar = await page.evaluate(() => getComputedStyle(document.querySelector(".rf-plan")).aspectRatio);
   !/1000 \/ 640/.test(ar) ? ok(`reja nisbati kesimdan: ${ar}`) : no("reja kesilmadi", ar);
@@ -652,23 +652,23 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
              statsBeside: stats.left > plan.right, bottom: plan.bottom, vh: innerHeight, planW: plan.width };
   });
   lay.leftGap < 2 && lay.between <= 18 && lay.rightGap < 2 && lay.statsBeside
-    ? ok(`keng ekran: reja chapda, yonida bo'sh joy yo'q (oraliq ${lay.between.toFixed(0)} px), statlar o'ng ustunda`)
+    ? ok(`keng ekran: reja çapda, yonida böş joy yöq (oraliq ${lay.between.toFixed(0)} px), statlar öng ustunda`)
     : no("keng ekran joylashuvi", JSON.stringify(lay));
-  lay.bottom <= lay.vh ? ok(`reja ekranga sig'adi (pasti ${lay.bottom.toFixed(0)} ≤ ${lay.vh})`) : no("reja ekrandan chiqdi", JSON.stringify(lay));
+  lay.bottom <= lay.vh ? ok(`reja ekranga siğadi (pasti ${lay.bottom.toFixed(0)} ≤ ${lay.vh})`) : no("reja ekrandan çiqdi", JSON.stringify(lay));
   const txt = await page.evaluate(() => [...document.querySelectorAll(".rf-plan .rf-table")].map((b) => b.textContent).join(" || "));
   /Bron \d\d:\d\d/.test(txt) && /Aziz/.test(txt) && /Hisob berildi/.test(txt) && /Dilnoza Karimova/.test(txt)
     ? ok("holat matni: bron vaqti va ismi, «Hisob berildi», ofitsiant ismi") : no("holat matni", txt);
   const round = await page.evaluate(() => getComputedStyle(document.querySelector(".rf-shape--round")).borderRadius);
-  /50%/.test(round) ? ok("dumaloq stol — dumaloq") : no("shakl", round);
+  /50%/.test(round) ? ok("dumaloq stol — dumaloq") : no("şakl", round);
   const al = await page.evaluate(() => [...document.querySelectorAll(".rf-alert")].map((b) => b.textContent));
-  al.length === 2 && /Stol 2/.test(al[0]) && /Stol 1/.test(al[1]) ? ok("diqqat: avval hisob, keyin yaqin bron") : no("diqqat ro'yxati", al.join(" | "));
+  al.length === 2 && /Stol 2/.test(al[0]) && /Stol 1/.test(al[1]) ? ok("diqqat: avval hisob, keyin yaqin bron") : no("diqqat röyxati", al.join(" | "));
 
   await page.evaluate(() => document.querySelectorAll(".rf-plan .rf-table")[0].click());
   await waitFor(page, () => !!document.querySelector(".rf-sheet"));
   await page.evaluate(() => [...document.querySelectorAll(".rf-sheet__btn")].find((b) => /bekor/i.test(b.textContent))?.click());
   (await waitFor(page, () => !/Bron/.test(document.querySelectorAll(".rf-plan .rf-table")[0]?.textContent || ""), 4000))
     && calls.tables.some((c) => c.m === "DELETE" && /\/tables\/11\/reserve$/.test(c.p))
-    ? ok("bron bekor qilindi — stol bo'sh") : no("bron bekor qilinmadi", JSON.stringify(calls.tables.filter((c) => /reserve/.test(c.p))));
+    ? ok("bron bekor qilindi — stol böş") : no("bron bekor qilinmadi", JSON.stringify(calls.tables.filter((c) => /reserve/.test(c.p))));
 
   await page.evaluate(() => document.querySelectorAll(".rf-plan .rf-table")[0].click());
   await waitFor(page, () => !!document.querySelector(".rf-sheet"));
@@ -682,16 +682,16 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
     el.dispatchEvent(new Event("input", { bubbles: true }));
   });
   await waitFor(page, () => false, 200);
-  await page.evaluate(() => [...document.querySelectorAll(".modal-box button")].find((b) => /Saqlash/.test(b.textContent))?.click());
+  await page.evaluate(() => [...document.querySelectorAll(".modal-box button")].find((b) => /Saqlaş/.test(b.textContent))?.click());
   const post = await waitFor(page, () => false, 1200).then(() => calls.tables.find((c) => c.m === "POST" && /\/tables\/11\/reserve$/.test(c.p)));
-  post && /T\d\d:30:00/.test(post.body?.at || "") ? ok("bron qo'yildi: vaqt ISO bilan ketdi " + post.body.at) : no("bron POST", JSON.stringify(post));
+  post && /T\d\d:30:00/.test(post.body?.at || "") ? ok("bron qöyildi: vaqt ISO bilan ketdi " + post.body.at) : no("bron POST", JSON.stringify(post));
 
   await page.evaluate(() => document.querySelectorAll(".rf-plan .rf-table")[1].click());
   await waitFor(page, () => /Stol 2/.test(document.querySelector(".rt-title b")?.textContent || ""), 6000);
   await waitFor(page, () => document.querySelectorAll(".rt-line").length > 0, 4000);
   await page.evaluate(() => [...document.querySelectorAll(".rt-actions button")].find((b) => /Hisob/.test(b.textContent))?.click());
   (await waitFor(page, () => false, 800).then(() => calls.tables.some((c) => c.m === "POST" && /\/tables\/orders\/502\/bill$/.test(c.p))))
-    ? ok("stol ekranida «Hisob berildi» serverga ketdi") : no("hisob POST yo'q", "—");
+    ? ok("stol ekranida «Hisob berildi» serverga ketdi") : no("hisob POST yöq", "—");
   await page.close();
 }
 
@@ -699,7 +699,7 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
   /* ⚠ EGASINING SKRINSHOTI (2026-10-13): 6 ta stol 3×3 to'rda, keng qorong'i
      ekran — reja o'rtada tor, ikki yoni bo'sh, stollar orasida keng hoshiya,
      ikki kun ochiq stolda «3564 daq». Aynan shu holat takrorlanadi. */
-  console.log("\n§10b Zal: keng ekranda bo'sh joy (egasining skrinshoti)");
+  console.log("\n§10b Zal: keng ekranda böş joy (egasining skrinşoti)");
   const at = (i, x, y, order) => ({ id: 100 + i, name: `Stol ${i}`, seats: 6, sortOrder: i, x, y, shape: "SQUARE", reservation: null, order });
   const old = (min, who) => ({ id: 900 + min, total: 0, guests: 0, openedAt: new Date(Date.now() - min * 60000).toISOString(),
                                lineCount: 0, version: 1, openedBy: who, openedByName: who });
@@ -722,14 +722,14 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
              text: [...document.querySelectorAll(".rf-plan .rf-table")].map((b) => b.textContent).join(" | ") };
   });
   /* Ilgari shu ekranda: stol 115 px, oraliq 74 px, reja 660 px o'rtada. */
-  m.tableW > 140 ? ok(`stol yiriklashdi: ${m.tableW.toFixed(0)} px (ilgari ~115)`) : no("stol kichik", JSON.stringify(m));
+  m.tableW > 140 ? ok(`stol yiriklashdi: ${m.tableW.toFixed(0)} px (ilgari ~115)`) : no("stol kiçik", JSON.stringify(m));
   m.gap / m.tableW < 0.4 && m.gap > 20
     ? ok(`stollar orasi ${m.gap.toFixed(0)} px — stol enining ${Math.round((m.gap / m.tableW) * 100)}% (ilgari ~64%), yopishmagan`)
     : no("stollar orasi", JSON.stringify(m));
-  m.leftGap < 2 && m.between <= 18 ? ok("reja chapda, o'ng ustun bilan orasida bo'sh joy yo'q") : no("yon bo'sh joy", JSON.stringify(m));
-  m.bottom <= m.vh ? ok(`reja ekranga sig'adi (bo'yi ${m.planH.toFixed(0)} px)`) : no("reja ekrandan chiqdi", JSON.stringify(m));
+  m.leftGap < 2 && m.between <= 18 ? ok("reja çapda, öng ustun bilan orasida böş joy yöq") : no("yon böş joy", JSON.stringify(m));
+  m.bottom <= m.vh ? ok(`reja ekranga siğadi (böyi ${m.planH.toFixed(0)} px)`) : no("reja ekrandan çiqdi", JSON.stringify(m));
   /2 kun 11 soat/.test(m.text) && !/3564/.test(m.text)
-    ? ok("uzoq ochiq stol: «2 kun 11 soat», «3564 daq» emas") : no("vaqt matni", m.text);
+    ? ok("uzoq oçiq stol: «2 kun 11 soat», «3564 daq» emas") : no("vaqt matni", m.text);
   /* Egasi (ikkinchi skrinshot): «Diqqat» panelidan pastdagi bo'sh joy ham to'lsin. */
   const col = await page.evaluate(() => {
     const r = (s) => document.querySelector(s)?.getBoundingClientRect();
@@ -740,12 +740,12 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
              free: document.querySelector(".rf-open__free")?.textContent || "" };
   });
   Math.abs(col.openBottom - col.planBottom) < 2
-    ? ok(`o'ng ustun chap ustun bo'yigacha to'ldi (pasti ${col.openBottom.toFixed(0)} = ${col.planBottom.toFixed(0)})`)
-    : no("o'ng ustun bo'yi", JSON.stringify(col));
-  col.rows.length === 2 && /Stol 2/.test(col.rows[0]) && /Uzoq ochiq/.test(col.rows[0])
-    ? ok("ochiq stollar: eng uzog'i tepada, «Uzoq ochiq» belgisi bilan") : no("ochiq stollar", JSON.stringify(col.rows));
-  col.waiters.length === 2 && /Bo'sh: 4 stol · 24 o'rin/.test(col.free)
-    ? ok(`ofitsiantlar (${col.waiters.length}) va bo'sh sig'im: ${col.free}`) : no("ofitsiantlar / sig'im", JSON.stringify(col));
+    ? ok(`öng ustun çap ustun böyigaça töldi (pasti ${col.openBottom.toFixed(0)} = ${col.planBottom.toFixed(0)})`)
+    : no("öng ustun böyi", JSON.stringify(col));
+  col.rows.length === 2 && /Stol 2/.test(col.rows[0]) && /Uzoq oçiq/.test(col.rows[0])
+    ? ok("oçiq stollar: eng uzoği tepada, «Uzoq oçiq» belgisi bilan") : no("oçiq stollar", JSON.stringify(col.rows));
+  col.waiters.length === 2 && /Böş: 4 stol · 24 örin/.test(col.free)
+    ? ok(`ofitsiantlar (${col.waiters.length}) va böş siğim: ${col.free}`) : no("ofitsiantlar / siğim", JSON.stringify(col));
 
   /* Egasi (uchinchi skrinshot): «shu oynani o'lchamini surish orqali o'zgartirsa bo'lsin». */
   const geo = () => page.evaluate(() => {
@@ -763,13 +763,13 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
   await waitFor(page, () => false, 250);
   const g1 = await geo();
   Math.abs(g0.plan - g1.plan - 240) < 6 && g1.side > g0.side + 230 && g1.ratio
-    ? ok(`ajratgich chapga surildi: reja ${g0.plan.toFixed(0)} → ${g1.plan.toFixed(0)} px, o'ng ustun ${g0.side.toFixed(0)} → ${g1.side.toFixed(0)} px, saqlandi`)
+    ? ok(`ajratgiç çapga surildi: reja ${g0.plan.toFixed(0)} → ${g1.plan.toFixed(0)} px, öng ustun ${g0.side.toFixed(0)} → ${g1.side.toFixed(0)} px, saqlandi`)
     : no("ajratgich sudrash", JSON.stringify({ g0, g1 }));
-  g0.gw >= 44 ? ok(`ajratgichning bosish maydoni ${g0.gw.toFixed(0)} px (≥ 44)`) : no("ajratgich tor", String(g0.gw));
+  g0.gw >= 44 ? ok(`ajratgiçning bosiş maydoni ${g0.gw.toFixed(0)} px (≥ 44)`) : no("ajratgich tor", String(g0.gw));
   await page.mouse.move(g1.gx, g1.gy); await page.mouse.down(); await page.mouse.move(g1.gx + 900, g1.gy, { steps: 8 }); await page.mouse.up();
   await waitFor(page, () => false, 250);
   const g2 = await geo();
-  Math.abs(g2.plan - g0.plan) < 2 ? ok("o'ngga ko'p surilsa ham reja ekran bo'yidan oshmaydi (bo'sh joy qolmaydi)") : no("o'ngga surish", JSON.stringify({ g0, g2 }));
+  Math.abs(g2.plan - g0.plan) < 2 ? ok("öngga köp surilsa ham reja ekran böyidan oşmaydi (böş joy qolmaydi)") : no("öngga suriş", JSON.stringify({ g0, g2 }));
   await page.focus(".rf-grip"); await page.keyboard.press("ArrowLeft"); await page.keyboard.press("ArrowLeft");
   await waitFor(page, () => false, 200);
   const g3 = await geo();
@@ -780,27 +780,27 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
   await page.mouse.click(g3.gx, g3.gy);
   await waitFor(page, () => false, 250);
   const g4 = await geo();
-  Math.abs(g4.plan - g0.plan) < 2 && !g4.ratio ? ok("ikki marta bosish — avtomatik o'lcham, saqlangani o'chdi") : no("qaytarish", JSON.stringify({ g0, g4 }));
+  Math.abs(g4.plan - g0.plan) < 2 && !g4.ratio ? ok("ikki marta bosiş — avtomatik ölçam, saqlangani öçdi") : no("qaytariş", JSON.stringify({ g0, g4 }));
   await page.close();
 }
 
 {
   const F2 = await import("../src/lib/ek-floor.js");
-  console.log("\n§11 Reja muharriri (V164): sudrab qo'shish, o'rinlar, burish, o'chirish — bitta saqlash");
+  console.log("\n§11 Reja muharriri (V164): sudrab qöşiş, örinlar, buriş, öçiriş — bitta saqlaş");
   const { page, calls } = await openKassa({ restaurant: true, tables: true, path: "/tables-setup" });
   await page.setViewport({ width: 1280, height: 860 });
   await waitFor(page, () => [...document.querySelectorAll("button")].some((b) => b.textContent.trim() === "Reja"), 6000);
   await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => b.textContent.trim() === "Reja")?.click());
   (await waitFor(page, () => document.querySelectorAll(".fe-table").length === 2))
-    ? ok("muharrir ochildi: ikki stol") : no("muharrir", "—");
+    ? ok("muharrir oçildi: ikki stol") : no("muharrir", "—");
   const presets = await page.evaluate(() => [...document.querySelectorAll(".fe-bar button")].map((b) => b.textContent.trim()));
-  presets.length === 4 ? ok("palitrada 4 ta shakl: " + presets.join(", ")) : no("palitra", presets.join(" | "));
+  presets.length === 4 ? ok("palitrada 4 ta şakl: " + presets.join(", ")) : no("palitra", presets.join(" | "));
 
   const tbl = (name) => page.evaluateHandle(
     (n) => [...document.querySelectorAll(".fe-table")].find((b) => b.textContent.trim().endsWith(n)), name);
   const tool = (label) => page.evaluate((l) => {
     const b = [...document.querySelectorAll("[role=toolbar] button")].find((x) => (x.getAttribute("aria-label") || "") === l);
-    if (!b) return "yo'q"; if (b.disabled) return "o'chiq"; b.click(); return "bosildi";
+    if (!b) return "yöq"; if (b.disabled) return "öçiq"; b.click(); return "bosildi";
   }, label);
 
   /* Band stol (Stol 2): strelka bilan surish, burish; o'chirish — o'chiq. */
@@ -808,17 +808,17 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
   await t2.focus();
   await page.keyboard.press("ArrowRight");
   await page.keyboard.down("Shift"); await page.keyboard.press("ArrowDown"); await page.keyboard.up("Shift");
-  (await tool("Burish")) === "bosildi" ? ok("uzun stol burildi") : no("burish", "—");
-  (await tool("Stolda ochiq buyurtma bor — olib tashlab bo'lmaydi")) === "o'chiq"
-    ? ok("⚠ band stolni o'chirish tugmasi o'chiq") : no("band stol o'chirildi", "—");
+  (await tool("Buriş")) === "bosildi" ? ok("uzun stol burildi") : no("buriş", "—");
+  (await tool("Stolda oçiq buyurtma bor — olib taşlab bölmaydi")) === "öçiq"
+    ? ok("⚠ band stolni öçiriş tugmasi öçiq") : no("band stol öçirildi", "—");
 
   /* Palitradan qo'shish (bosish) va o'rin qo'shish — raqam yozilmaydi. */
-  await page.evaluate(() => [...document.querySelectorAll(".fe-bar button")].find((b) => /2 kishilik/.test(b.textContent))
+  await page.evaluate(() => [...document.querySelectorAll(".fe-bar button")].find((b) => /2 kişilik/.test(b.textContent))
     ?.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0, clientX: 5, clientY: 5 })));
   await page.evaluate(() => window.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, clientX: 5, clientY: 5 })));
   (await waitFor(page, () => document.querySelectorAll(".fe-table").length === 3))
-    ? ok("«2 kishilik» bosildi — yangi stol rejada") : no("qo'shish", "—");
-  (await tool("O'rin qo'shish")) === "bosildi" ? ok("o'rin qo'shildi (−/+)") : no("o'rin", "—");
+    ? ok("«2 kişilik» bosildi — yangi stol rejada") : no("qöşiş", "—");
+  (await tool("Örin qöşiş")) === "bosildi" ? ok("örin qöşildi (−/+)") : no("örin", "—");
   const chairs = await page.evaluate(() => [...document.querySelectorAll(".fe-table")].pop().querySelectorAll("span[aria-hidden]").length);
   chairs === 3 ? ok("yangi stolda 3 ta stul chizildi") : no("stullar", String(chairs));
   if (process.env.SHOTS) { await waitFor(page, () => false, 400); await page.screenshot({ path: path.join(process.env.SHOTS, "floor-editor.png") }); }
@@ -832,14 +832,14 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
   await page.mouse.move(plane.x + plane.w * 0.8, plane.y + plane.h * 0.75, { steps: 8 });
   await page.mouse.up();
   (await waitFor(page, () => document.querySelectorAll(".fe-table").length === 4))
-    ? ok("dumaloq stol rejaga sudrab qo'shildi") : no("sudrab qo'shish", "—");
+    ? ok("dumaloq stol rejaga sudrab qöşildi") : no("sudrab qöşiş", "—");
 
   /* Bo'sh Stol 1 — o'chiriladi. */
   const t1 = await tbl("Stol 1");
   await t1.click();
-  (await tool("Stolni olib tashlash")) === "bosildi" ? ok("bo'sh stol olib tashlandi") : no("o'chirish", "—");
+  (await tool("Stolni olib taşlaş")) === "bosildi" ? ok("böş stol olib taşlandi") : no("öçiriş", "—");
 
-  await page.evaluate(() => [...document.querySelectorAll(".modal-box button")].find((b) => /Saqlash/.test(b.textContent))?.click());
+  await page.evaluate(() => [...document.querySelectorAll(".modal-box button")].find((b) => /Saqlaş/.test(b.textContent))?.click());
   await waitFor(page, () => false, 800);
   const put = calls.tables.find((c) => c.m === "PUT" && /\/tables\/halls\/1\/plan$/.test(c.p));
   const body = put?.body || {};
@@ -849,18 +849,18 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
     ? ok("saqlandi: Stol 2 → (308, 240), tik") : no("Stol 2", JSON.stringify(it2));
   fresh.length === 2 && fresh.some((x) => x.shape === "SQUARE" && x.seats === 3 && x.name === "Stol 3") && fresh.some((x) => x.shape === "ROUND")
     ? ok("yangi stollar: «Stol 3» (3 o'rin) va dumaloq — id siz") : no("yangi stollar", JSON.stringify(fresh));
-  JSON.stringify(body.removed) === "[11]" ? ok("o'chirilgan: [11] — bitta so'rovda") : no("removed", JSON.stringify(body.removed));
+  JSON.stringify(body.removed) === "[11]" ? ok("öçirilgan: [11] — bitta sörovda") : no("removed", JSON.stringify(body.removed));
   const boxes = (body.items || []).map((x) => ({ ...x, ...F2.sizeOf(x.shape, x.seats, x.vertical) }));
   !boxes.some((a, i) => boxes.some((b, j) => j > i && F2.overlaps(a, b, F2.GAP - 1)))
-    ? ok("⚠ saqlangan rejada stollar ustma-ust emas (orada bo'shliq bor)") : no("ustma-ust", JSON.stringify(boxes));
+    ? ok("⚠ saqlangan rejada stollar ustma-ust emas (orada böşliq bor)") : no("ustma-ust", JSON.stringify(boxes));
   await page.close();
 }
 
 {
-  console.log("\n§12 Stol ekrani (D3): mehmon, kurs, izoh, oshxonaga yuborish");
+  console.log("\n§12 Stol ekrani (D3): mehmon, kurs, izoh, oşxonaga yuboriş");
   const { page, calls } = await openKassa({ restaurant: true, tables: true, path: "/restaurant/table/11" });
   (await waitFor(page, () => /Stol 1/.test(document.querySelector(".rt-title b")?.textContent || "") && document.querySelectorAll(".rt-dish").length === 2, 6000))
-    ? ok("stol ekrani: bo'limlar va taomlar") : no("stol ekrani ochilmadi", await page.evaluate(() => document.body.innerText.slice(0, 200)));
+    ? ok("stol ekrani: bölimlar va taomlar") : no("stol ekrani oçilmadi", await page.evaluate(() => document.body.innerText.slice(0, 200)));
   await page.evaluate(() => [...document.querySelectorAll(".rt-guests button")][1].click());
   await page.evaluate(() => [...document.querySelectorAll(".rt-pill")].find((b) => b.textContent.trim() === "M2")?.click());
   await page.evaluate(() => [...document.querySelectorAll(".rt-pill")].find((b) => b.textContent.trim() === "2")?.click());
@@ -870,15 +870,15 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
     ? ok("yangi qator: suv ×2, M2, 2-kurs") : no("yangi qator", await page.evaluate(() => document.querySelector(".rt-order")?.innerText));
   await page.evaluate(() => document.querySelector(".rt-note")?.click());
   await waitFor(page, () => !!document.querySelector(".rt-quick"));
-  await page.evaluate(() => [...document.querySelectorAll(".rt-quick button")].find((b) => /Achchiqsiz/.test(b.textContent))?.click());
-  await page.evaluate(() => [...document.querySelectorAll(".modal-box button")].find((b) => /Saqlash/.test(b.textContent))?.click());
+  await page.evaluate(() => [...document.querySelectorAll(".rt-quick button")].find((b) => /Aççiqsiz/.test(b.textContent))?.click());
+  await page.evaluate(() => [...document.querySelectorAll(".modal-box button")].find((b) => /Saqlaş/.test(b.textContent))?.click());
   await waitFor(page, () => false, 1300);
   const l = calls.lastPut?.lines?.[0];
-  l && l.productId === 3 && l.quantity === 2 && l.seat === 2 && l.course === 2 && l.note === "Achchiqsiz" && calls.lastPut.guests === 2 && !("sentQty" in l)
+  l && l.productId === 3 && l.quantity === 2 && l.seat === 2 && l.course === 2 && l.note === "Aççiqsiz" && calls.lastPut.guests === 2 && !("sentQty" in l)
     ? ok("serverga: suv ×2, M2, 2-kurs, izoh, 2 mehmon; sentQty yuborilmadi") : no("PUT", JSON.stringify(calls.lastPut));
   await page.evaluate(() => document.querySelector(".rt-send")?.click());
   (await waitFor(page, () => document.querySelectorAll(".rt-line--sent").length === 1 && !document.querySelector(".rt-line--new"), 4000))
-    ? ok("yuborildi: qator «oshxonada» bo'limida, yangi bo'sh") : no("yuborish", await page.evaluate(() => document.querySelector(".rt-order")?.innerText));
+    ? ok("yuborildi: qator «oşxonada» bölimida, yangi böş") : no("yuboriş", await page.evaluate(() => document.querySelector(".rt-order")?.innerText));
   const sendCall = calls.tables.find((c) => c.m === "POST" && /\/tables\/orders\/501\/send$/.test(c.p));
   sendCall && typeof sendCall.body?.version === "number" ? ok("POST /send versiya bilan ketdi") : no("send", JSON.stringify(sendCall));
   const sendDisabled = await page.evaluate(() => document.querySelector(".rt-send")?.disabled);
@@ -887,23 +887,23 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
 }
 
 {
-  console.log("\n§13 Bo'lish, ko'chirish, birlashtirish (D4)");
+  console.log("\n§13 Böliş, köçiriş, birlaştiriş (D4)");
   const { page, calls } = await openKassa({ restaurant: true, tables: true, path: "/restaurant/table/12" });
   await waitFor(page, () => document.querySelectorAll(".rt-line").length > 0, 6000);
-  await page.evaluate(() => [...document.querySelectorAll(".rt-actions button")].find((b) => /Bo'lish/.test(b.textContent))?.click());
+  await page.evaluate(() => [...document.querySelectorAll(".rt-actions button")].find((b) => /Böliş/.test(b.textContent))?.click());
   await waitFor(page, () => !!document.querySelector(".rt-split"));
-  await page.evaluate(() => [...document.querySelectorAll(".rt-pill")].find((b) => /Taom bo'yicha/.test(b.textContent))?.click());
+  await page.evaluate(() => [...document.querySelectorAll(".rt-pill")].find((b) => /Taom böyiça/.test(b.textContent))?.click());
   await waitFor(page, () => !!document.querySelector(".rt-split .rt-step"));
   await page.evaluate(() => [...document.querySelectorAll(".rt-split .rt-step")][1].click());
   const sum = await page.evaluate(() => [...document.querySelectorAll(".modal-box button")].find((b) => /qismni/.test(b.textContent))?.textContent || "");
   /38[\s\u00a0\u202f]?000/.test(sum) ? ok("taom bo'yicha: 1 ta burger (Katta) — 38 000") : no("qism summasi", sum);
   await page.evaluate(() => [...document.querySelectorAll(".modal-box button")].find((b) => /qismni/.test(b.textContent))?.click());
   (await waitFor(page, () => /qism/.test(document.querySelector(".cart-tab.is-on .cart-tab__name")?.textContent || ""), 6000))
-    ? ok("kassada «Stol 2 · qism» yorlig'i") : no("qism yorlig'i", await page.evaluate(() => location.pathname + location.search));
+    ? ok("kassada «Stol 2 · qism» yorlig'i") : no("qism yorliği", await page.evaluate(() => location.pathname + location.search));
   const items = await cartItems(page);
-  items.length === 1 && items[0].qty === 1 ? ok("qism yorlig'ida faqat tanlangan 1 ta") : no("qism savati", JSON.stringify(items));
+  items.length === 1 && items[0].qty === 1 ? ok("qism yorliğida faqat tanlangan 1 ta") : no("qism savati", JSON.stringify(items));
   await waitFor(page, () => false, 1000);
-  !calls.tables.some((c) => c.m === "PUT") ? ok("⚠ qism yorlig'i buyurtmani serverda almashtirmadi (PUT yo'q)") : no("qism PUT qildi", "—");
+  !calls.tables.some((c) => c.m === "PUT") ? ok("⚠ qism yorliği buyurtmani serverda almaştirmadi (PUT yöq)") : no("qism PUT qildi", "—");
   await page.keyboard.press("F9");
   await waitFor(page, () => !!document.querySelector(".pay-modal-submit"));
   await page.keyboard.type("38000", { delay: 20 });
@@ -912,28 +912,28 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
   await waitFor(page, () => false, 1500);
   const sale = calls.sales[0];
   sale && sale.tableOrderId === 502 && sale.tableLines?.length === 1 && sale.tableLines[0].quantity === 1 && sale.tableLines[0].modifierIds?.[0] === 22
-    ? ok("to'lovda tableOrderId + tableLines (1 ta burger) — server faqat shuni ayiradi") : no("qisman to'lov tanasi", JSON.stringify(sale && { t: sale.tableOrderId, l: sale.tableLines }));
+    ? ok("to'lovda tableOrderId + tableLines (1 ta burger) — server faqat shuni ayiradi") : no("qisman tölov tanasi", JSON.stringify(sale && { t: sale.tableOrderId, l: sale.tableLines }));
   await page.close();
 }
 {
   const { page, calls } = await openKassa({ restaurant: true, tables: true, path: "/restaurant/table/12" });
   calls.resv11 = null;
   await waitFor(page, () => document.querySelectorAll(".rt-line").length > 0, 6000);
-  await page.evaluate(() => [...document.querySelectorAll(".rt-actions button")].find((b) => /Ko'chirish/.test(b.textContent))?.click());
+  await page.evaluate(() => [...document.querySelectorAll(".rt-actions button")].find((b) => /Köçiriş/.test(b.textContent))?.click());
   await waitFor(page, () => document.querySelectorAll(".rt-tool__table").length > 0, 4000);
   await page.evaluate(() => [...document.querySelectorAll(".rt-tool__table")].find((b) => /Stol 1/.test(b.textContent))?.click());
   await waitFor(page, () => location.pathname === "/restaurant/table/11", 4000);
   const mv = calls.tables.find((c) => c.m === "POST" && /\/tables\/orders\/502\/move$/.test(c.p));
   mv && mv.body?.tableId === 11 && (await page.evaluate(() => location.pathname)) === "/restaurant/table/11"
-    ? ok("ko'chirildi: Stol 2 → Stol 1 (versiya bilan), ekran yangi stolda") : no("ko'chirish", JSON.stringify(mv));
+    ? ok("ko'chirildi: Stol 2 → Stol 1 (versiya bilan), ekran yangi stolda") : no("köçiriş", JSON.stringify(mv));
   await waitFor(page, () => /Stol 1/.test(document.querySelector(".rt-title b")?.textContent || ""), 4000);
-  await page.evaluate(() => [...document.querySelectorAll(".rt-actions button")].find((b) => /Birlashtirish/.test(b.textContent))?.click());
+  await page.evaluate(() => [...document.querySelectorAll(".rt-actions button")].find((b) => /Birlaştiriş/.test(b.textContent))?.click());
   await waitFor(page, () => document.querySelectorAll(".rt-tool__table").length > 0, 4000);
   await page.evaluate(() => [...document.querySelectorAll(".rt-tool__table")].find((b) => /Stol 2/.test(b.textContent))?.click());
   await waitFor(page, () => document.querySelectorAll(".rt-line--sent").length === 1, 4000);
   const mg = calls.tables.find((c) => c.m === "POST" && /\/tables\/orders\/501\/merge$/.test(c.p));
   mg && mg.body?.fromOrderId === 502 && mg.body?.fromVersion === 3
-    ? ok("birlashtirildi: Stol 2 buyurtmasi Stol 1 ga (ikkala versiya bilan), taom «oshxonada»") : no("birlashtirish", JSON.stringify(mg));
+    ? ok("birlashtirildi: Stol 2 buyurtmasi Stol 1 ga (ikkala versiya bilan), taom «oshxonada»") : no("birlaştiriş", JSON.stringify(mg));
   await page.close();
 }
 
@@ -941,16 +941,16 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
   console.log("\n§14 Oshxona ekrani (D5): buyurtmalar, kechikish, «Tayyor», zal va stol");
   const { page, calls } = await openKassa({ restaurant: true, kitchen: true, tables: true, path: "/kitchen" });
   (await waitFor(page, () => document.querySelectorAll(".kd-card").length === 2, 6000))
-    ? ok("oshxona ekranida ikki buyurtma") : no("oshxona ekrani", await page.evaluate(() => document.body.innerText.slice(0, 200)));
+    ? ok("oşxona ekranida ikki buyurtma") : no("oşxona ekrani", await page.evaluate(() => document.body.innerText.slice(0, 200)));
   const late = await page.evaluate(() => document.querySelector(".kd-card--late")?.textContent || "");
-  /Kechikdi/.test(late) && /Stol 2/.test(late) && /achchiqsiz/.test(late) && /\(M1\)/.test(late) && /2-kurs/.test(late)
-    ? ok("25 daqiqalik — «Kechikdi» (matn bilan), izoh, mehmon, kurs") : no("kechikkan karta", late);
+  /Keçikdi/.test(late) && /Stol 2/.test(late) && /achchiqsiz/.test(late) && /\(M1\)/.test(late) && /2-kurs/.test(late)
+    ? ok("25 daqiqalik — «Keçikdi» (matn bilan), izoh, mehmon, kurs") : no("keçikkan karta", late);
   const tabs = await page.evaluate(() => [...document.querySelectorAll(".kd-tabs .rt-pill")].map((b) => b.textContent.trim()).join("|"));
   /Bar/.test(tabs) && /Oshxona/.test(tabs) ? ok("sex tablari: " + tabs) : no("sex tablari", tabs);
   await page.evaluate(() => document.querySelector(".kd-card--late .kd-ready")?.click());
   (await waitFor(page, () => document.querySelectorAll(".kd-card").length === 1, 3000))
     && calls.kitchen.some((c) => c.m === "POST" && /\/kitchen\/tickets\/71\/ready$/.test(c.p))
-    ? ok("«Tayyor» — serverga ketdi, karta oshpaz ekranidan chiqdi") : no("tayyor", JSON.stringify(calls.kitchen));
+    ? ok("«Tayyor» — serverga ketdi, karta oşpaz ekranidan çiqdi") : no("tayyor", JSON.stringify(calls.kitchen));
   await page.close();
 }
 {
@@ -959,46 +959,46 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
   const st = await page.evaluate(() => document.querySelector(".rf-table--ready")?.textContent || "");
   /1 ta tayyor/.test(st) ? ok("zalda Stol 2 — «1 ta tayyor» (hisobdan ustun)") : no("zal holati", st);
   const al = await page.evaluate(() => document.querySelector(".rf-alert")?.textContent || "");
-  /olib chiqing/.test(al) ? ok("diqqat ro'yxatida birinchi — tayyor taom") : no("diqqat", al);
+  /olib çiqing/.test(al) ? ok("diqqat röyxatida birinçi — tayyor taom") : no("diqqat", al);
   await page.evaluate(() => document.querySelector(".rf-table--ready")?.click());
   (await waitFor(page, () => !!document.querySelector(".rt-kt--ready"), 6000))
-    ? ok("stol ekranida oshxona holati: tayyor") : no("stol ekranida holat yo'q", "—");
+    ? ok("stol ekranida oşxona holati: tayyor") : no("stol ekranida holat yöq", "—");
   await page.evaluate(() => document.querySelector(".rt-kt__btn")?.click());
   (await waitFor(page, () => !document.querySelector(".rt-kt--ready"), 3000))
     && calls.kitchen.some((c) => c.m === "POST" && /\/kitchen\/tickets\/77\/served$/.test(c.p))
-    ? ok("«Olib chiqdim» — serverga ketdi") : no("served", JSON.stringify(calls.kitchen));
+    ? ok("«Olib çiqdim» — serverga ketdi") : no("served", JSON.stringify(calls.kitchen));
   await page.close();
 }
 
 {
-  console.log("\n§15 Do'kon va restoran aralashmaydi (2026-10-08)");
+  console.log("\n§15 Dökon va restoran aralaşmaydi (2026-10-08)");
   for (const path of ["/restaurant", "/kitchen", "/tables-setup", "/modifiers"]) {
     const { page } = await openKassa({ restaurant: false, path, ready: "body" });
     await waitFor(page, () => location.pathname !== "/restaurant" && location.pathname !== "/kitchen"
       && location.pathname !== "/tables-setup" && location.pathname !== "/modifiers", 6000);
     const at = await page.evaluate(() => location.pathname);
-    at !== path ? ok(`do'konda ${path} ochilmaydi → ${at}`) : no(`do'konda ${path} ochildi`, at);
+    at !== path ? ok(`dökonda ${path} oçilmaydi → ${at}`) : no(`dökonda ${path} oçildi`, at);
     await page.close();
   }
   {
     const { page } = await openKassa({ restaurant: false, path: "/products" });
     await waitFor(page, () => !!document.querySelector(".sb-nav, nav"), 6000);
     const nav = await page.evaluate(() => document.querySelector("aside, .sidebar, nav")?.innerText || "");
-    /Katalog/.test(nav) && !/Restoran|Zal\b|Oshxona|Qo'shimchalar/.test(nav) ? ok("do'kon menyusida restoran bandlari yo'q") : no("do'kon menyusida restoran", nav.slice(0, 300));
+    /Katalog/.test(nav) && !/Restoran|Zal\b|Oşxona|Oshxona|Qöşimçalar|Qo'shimchalar/.test(nav) ? ok("dökon menyusida restoran bandlari yöq") : no("dökon menyusida restoran", nav.slice(0, 300));
     await page.close();
   }
   {
     /* E1 (2026-10-10): restoranda yon menyu BUTUNLAY boshqa — do'kon guruhlari yo'q. */
     const { page } = await openKassa({ restaurant: true, kitchen: true, tables: true, path: "/products" });
-    await waitFor(page, () => /Boshqaruv/i.test(document.querySelector(".sidebar")?.innerText || ""), 6000);
+    await waitFor(page, () => /Boşqaruv/i.test(document.querySelector(".sidebar")?.innerText || ""), 6000);
     const nav = await page.evaluate(() => document.querySelector(".sidebar")?.innerText || "");
-    /Xizmat/i.test(nav) && /Boshqaruv/i.test(nav) && /Menyu/.test(nav) && /Masalliqlar/.test(nav) && /Restaurant/.test(nav)
-      ? ok("restoranda o'z menyusi: «Xizmat», «Boshqaruv», Menyu, Masalliqlar") : no("restoran menyusi", nav.slice(0, 300));
-    !/Katalog|Ombor\b|Savdo/.test(nav) ? ok("restoran menyusida do'kon guruhlari (Katalog, Ombor, Savdo) yo'q") : no("do'kon guruhi restoranda", nav.slice(0, 300));
+    /Xizmat/i.test(nav) && /Boşqaruv/i.test(nav) && /Menyu/.test(nav) && /Masalliqlar/.test(nav) && /Restaurant/.test(nav)
+      ? ok("restoranda öz menyusi: «Xizmat», «Boşqaruv», Menyu, Masalliqlar") : no("restoran menyusi", nav.slice(0, 300));
+    !/Katalog|Ombor\b|Savdo/.test(nav) ? ok("restoran menyusida dökon guruhlari (Katalog, Ombor, Savdo) yöq") : no("dökon guruhi restoranda", nav.slice(0, 300));
     const title = await page.evaluate(() => document.querySelector(".topbar-title")?.innerText || "");
     /Menyu/.test(title) ? ok("sarlavha restoranniki: «Menyu»") : no("sarlavha", title);
     const tabs = await page.evaluate(() => [...document.querySelectorAll(".pg-tabs [role=tab]")].map((x) => x.innerText.trim()).join("|"));
-    /Taomlar/.test(tabs) ? ok("ichki tablar: " + tabs) : no("ichki tablar", tabs);
+    /Taomlar/.test(tabs) ? ok("içki tablar: " + tabs) : no("içki tablar", tabs);
     if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/restaurant-shell.png` });
     await page.close();
   }
@@ -1006,7 +1006,7 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
     const { page } = await openKassa({ restaurant: true, kitchen: true, tables: true, path, ready: "body" });
     await waitFor(page, () => location.pathname !== "/pickup" && location.pathname !== "/labels" && location.pathname !== "/loyalty", 6000);
     const at = await page.evaluate(() => location.pathname);
-    at !== path ? ok(`restoranda do'kon sahifasi ${path} ochilmaydi → ${at}`) : no(`restoranda ${path} ochildi`, at);
+    at !== path ? ok(`restoranda dökon sahifasi ${path} oçilmaydi → ${at}`) : no(`restoranda ${path} oçildi`, at);
     await page.close();
   }
   {
@@ -1014,13 +1014,13 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
     const { page, calls } = await openKassa({ restaurant: true, kitchen: true, tables: true, path: "/", ready: "body" });
     await waitFor(page, () => /Bugun restoranda/.test(document.body.innerText), 8000);
     const txt = await page.evaluate(() => document.querySelector("main, .main, body")?.innerText || "");
-    /Bugun restoranda/.test(txt) && /Mehmon boshiga/.test(txt) && /9 \/ 14/.test(txt)
-      ? ok("restoran egasining uyi — «Bugun»: mehmon boshiga, band stollar 9/14") : no("Bugun paneli", txt.slice(0, 300));
-    /▲ 12%/.test(txt) ? ok("o'tgan hafta bilan solishtirish: ▲ 12%") : no("solishtirish", txt.slice(0, 400));
-    /Stol 4 — buyurtma kechikmoqda/.test(txt) && /Mol go'shti tugayapti/.test(txt) && /2,5 kg|2\.5 kg/i.test(txt)
-      ? ok("diqqat: kechikkan buyurtma va tugayotgan masalliq (birligi bilan)") : no("diqqat", txt.slice(0, 600));
-    /Dilnoza Karimova/.test(txt) && /Choy puli/i.test(txt) ? ok("ofitsiantlar jadvali choy puli bilan") : no("ofitsiantlar", txt.slice(-400));
-    !/Kunlik savdo|Dashboard/.test(txt) ? ok("do'kon bosh sahifasi chizilmadi") : no("do'kon paneli restoranda", txt.slice(0, 200));
+    /Bugun restoranda/.test(txt) && /Mehmon boşiga/.test(txt) && /9 \/ 14/.test(txt)
+      ? ok("restoran egasining uyi — «Bugun»: mehmon boşiga, band stollar 9/14") : no("Bugun paneli", txt.slice(0, 300));
+    /▲ 12%/.test(txt) ? ok("ötgan hafta bilan soliştiriş: ▲ 12%") : no("solishtirish", txt.slice(0, 400));
+    /Stol 4 — buyurtma keçikmoqda/.test(txt) && /Mol go'shti tugayapti/.test(txt) && /2,5 kg|2\.5 kg/i.test(txt)
+      ? ok("diqqat: keçikkan buyurtma va tugayotgan masalliq (birligi bilan)") : no("diqqat", txt.slice(0, 600));
+    /Dilnoza Karimova/.test(txt) && /Çoy puli/i.test(txt) ? ok("ofitsiantlar jadvali çoy puli bilan") : no("ofitsiantlar", txt.slice(-400));
+    !/Kunlik savdo|Dashboard/.test(txt) ? ok("dökon boş sahifasi çizilmadi") : no("dökon paneli restoranda", txt.slice(0, 200));
     if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/restaurant-today.png`, fullPage: true });
     /* ⚠ SHARTGA TAYANADI (A1, 2026-10-12): CI da bir marta «kecha → 1»
        bo'lgan va lokalda qayta hosil bo'lmagan. Endi: birinchi yuklash
@@ -1028,21 +1028,21 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
        bosilgani `aria-pressed` dan tasdiqlanadi; yiqilsa — holat yoziladi. */
     await waitFor(page, () => !document.querySelector(".rpt .ek-sk"), 6000);
     const before = calls.today;
-    const yBtn = await page.evaluateHandle(() => [...document.querySelectorAll(".rpt-bar__tools button")].find((b) => /Kecha/.test(b.innerText)));
+    const yBtn = await page.evaluateHandle(() => [...document.querySelectorAll(".rpt-bar__tools button")].find((b) => /Keça/.test(b.innerText)));
     if (yBtn.asElement()) await yBtn.asElement().click();
     const pressed = await waitFor(page, () => [...document.querySelectorAll(".rpt-bar__tools button")]
-      .find((b) => /Kecha/.test(b.innerText))?.getAttribute("aria-pressed") === "true", 6000);
+      .find((b) => /Keça/.test(b.innerText))?.getAttribute("aria-pressed") === "true", 6000);
     const shown = await waitFor(page, () => /kun yakuni/.test(document.body.innerText), 8000);
     const asked = await waitFor(page, () => false, 0).then(async () => {
       for (let i = 0; i < 80 && !(calls.today > before); i++) await new Promise((r) => setTimeout(r, 100));
       return calls.today > before;
     });
     pressed && shown && asked
-      ? ok("«Kecha» — kun yakuni qayta so'raldi")
-      : no("kecha", JSON.stringify({ tugma: !!yBtn.asElement(), bosildi: pressed, sarlavha: shown, so_rov: `${before} → ${calls.today}`,
+      ? ok("«Keça» — kun yakuni qayta söraldi")
+      : no("keça", JSON.stringify({ tugma: !!yBtn.asElement(), bosildi: pressed, sarlavha: shown, so_rov: `${before} → ${calls.today}`,
                                      sahifa: await page.evaluate(() => document.querySelector(".rpt-bar")?.innerText.slice(0, 120)) }));
-    await page.evaluate(() => [...document.querySelectorAll("a")].find((a) => /buyurtma kechikmoqda/.test(a.innerText))?.click());
-    (await waitFor(page, () => location.pathname === "/kitchen", 4000)) ? ok("kechikish qatori → oshxona") : no("kechikish havolasi", await page.evaluate(() => location.pathname));
+    await page.evaluate(() => [...document.querySelectorAll("a")].find((a) => /buyurtma keçikmoqda/.test(a.innerText))?.click());
+    (await waitFor(page, () => location.pathname === "/kitchen", 4000)) ? ok("keçikiş qatori → oşxona") : no("kechikish havolasi", await page.evaluate(() => location.pathname));
     await page.close();
   }
   {
@@ -1060,45 +1060,45 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
     const { page, calls } = await openKassa({ restaurant: true, kitchen: true, tables: true, path: "/menu", ready: "body" });
     await waitFor(page, () => /Texkarta/.test(document.body.innerText) && /Go'sht/.test(document.body.innerText), 8000);
     const txt = await page.evaluate(() => document.querySelector("main, .main, body")?.innerText || "");
-    /burger/.test(txt) && /350 g/.test(txt) && /30% yaxshi/.test(txt) && /Go'sht 4 porsiyaga yetadi/.test(txt) && /Sotuvda/.test(txt)
-      ? ok("menyu: karta, porsiya, tannarx ulushi bahosi, «necha porsiyaga yetadi»") : no("menyu sahifasi", txt.slice(0, 500));
-    /Porsiya/.test(txt) && /Sous/.test(txt) ? ok("texkartada qo'shimchalar") : no("qo'shimchalar", txt.slice(0, 500));
+    /burger/.test(txt) && /350 g/.test(txt) && /30% yaxşi/.test(txt) && /Go'sht 4 porsiyaga yetadi/.test(txt) && /Sotuvda/.test(txt)
+      ? ok("menyu: karta, porsiya, tannarx uluşi bahosi, «neça porsiyaga yetadi»") : no("menyu sahifasi", txt.slice(0, 500));
+    /Porsiya/.test(txt) && /Sous/.test(txt) ? ok("texkartada qöşimçalar") : no("qöşimçalar", txt.slice(0, 500));
     /* Menyu guruhi yopiq bo'lishi mumkin — havola ichki tablardan olinadi. */
     const href = await page.evaluate(() => [...document.querySelectorAll(".pg-tabs a, .pg-tabs [role=tab]")].find((a) => /Taomlar/.test(a.innerText))?.getAttribute("href"));
     href === "/menu" ? ok("«Taomlar» tabi → /menu") : no("Taomlar havolasi", String(href));
     if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/restaurant-menu.png`, fullPage: true });
 
     await page.evaluate(() => [...document.querySelectorAll("section button")].find((b) => /suv/.test(b.innerText))?.click());
-    (await waitFor(page, () => /Texkarta yo'q/.test(document.body.innerText) && /66,7%\s*yuqori/.test(document.body.innerText), 3000))
-      ? ok("texkartasiz ichimlik: «Texkarta yo'q», ulush «yuqori»") : no("suv paneli", (await page.evaluate(() => document.body.innerText)).slice(0, 600));
+    (await waitFor(page, () => /Texkarta yöq/.test(document.body.innerText) && /66,7%\s*yuqori/.test(document.body.innerText), 3000))
+      ? ok("texkartasiz içimlik: «Texkarta yöq», uluş «yuqori»") : no("suv paneli", (await page.evaluate(() => document.body.innerText)).slice(0, 600));
 
     await page.evaluate(() => [...document.querySelectorAll("section button")].find((b) => /burger/.test(b.innerText))?.click());
-    await waitFor(page, () => [...document.querySelectorAll("aside button")].some((b) => /Stop-listga qo'yish/.test(b.innerText)), 3000);
-    await page.evaluate(() => [...document.querySelectorAll("aside button")].find((b) => /Stop-listga qo'yish/.test(b.innerText))?.click());
+    await waitFor(page, () => [...document.querySelectorAll("aside button")].some((b) => /Stop-listga qöyiş/.test(b.innerText)), 3000);
+    await page.evaluate(() => [...document.querySelectorAll("aside button")].find((b) => /Stop-listga qöyiş/.test(b.innerText))?.click());
     (await waitFor(page, () => /Stop-listda — sotilmaydi/.test(document.body.innerText)
-        && [...document.querySelectorAll("aside button")].some((b) => /Sotuvga qaytarish/.test(b.innerText)), 4000))
+        && [...document.querySelectorAll("aside button")].some((b) => /Sotuvga qaytariş/.test(b.innerText)), 4000))
       && calls.menuStop[0]?.id === 7 && calls.menuStop[0]?.stopped === true
-      ? ok("stop-listga qo'yildi: serverga ketdi, karta va tugma almashdi") : no("stop", JSON.stringify(calls.menuStop));
+      ? ok("stop-listga qöyildi: serverga ketdi, karta va tugma almaşdi") : no("stop", JSON.stringify(calls.menuStop));
     const stopBtn = await page.evaluate(() => [...document.querySelectorAll(".rpt-bar button")].map((b) => b.innerText).find((x) => /Stop-list/.test(x)) || "");
     /Stop-list\s*·\s*1/.test(stopBtn) ? ok("sarlavhada stop-list soni") : no("stop soni", JSON.stringify(stopBtn));
 
-    await page.evaluate(() => [...document.querySelectorAll("aside button")].find((b) => /Tahrirlash/.test(b.innerText))?.click());
+    await page.evaluate(() => [...document.querySelectorAll("aside button")].find((b) => /Tahrirlaş/.test(b.innerText))?.click());
     (await waitFor(page, () => location.pathname === "/products" && /edit=7/.test(location.search) && /back=%2Fmenu|back=\/menu/.test(location.search), 3000))
-      ? ok("«Tahrirlash» — taom formasi (/products?edit=7&back=/menu)") : no("tahrirlash", await page.evaluate(() => location.href));
+      ? ok("«Tahrirlash» — taom formasi (/products?edit=7&back=/menu)") : no("tahrirlaş", await page.evaluate(() => location.href));
     await page.close();
   }
   {
     const { page } = await openKassa({ restaurant: false, path: "/menu", ready: "body" });
     await waitFor(page, () => location.pathname !== "/menu", 6000);
     const at = await page.evaluate(() => location.pathname);
-    at === "/products" ? ok("do'konda /menu → /products") : no("do'konda menyu", at);
+    at === "/products" ? ok("do'konda /menu → /products") : no("dökonda menyu", at);
     await page.close();
   }
   {
     const { page } = await openKassa({ restaurant: true, tables: true, path: "/restaurant/table/11", stopIds: [3] });
     await waitFor(page, () => document.querySelectorAll(".rt-dish").length > 0, 6000);
     const names = await page.evaluate(() => [...document.querySelectorAll(".rt-dish")].map((b) => b.textContent).join("|"));
-    /burger/.test(names) && !/suv/.test(names) ? ok("ofitsiant menyusida stop-listdagi taom yo'q") : no("ofitsiant menyusi", names);
+    /burger/.test(names) && !/suv/.test(names) ? ok("ofitsiant menyusida stop-listdagi taom yöq") : no("ofitsiant menyusi", names);
     await page.close();
   }
 }
@@ -1107,16 +1107,16 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
   console.log("\n§15c Restoran masalliqlari (E4, 2026-10-10)");
   {
     const { page } = await openKassa({ restaurant: true, kitchen: true, tables: true, path: "/ingredients", ready: "body" });
-    await waitFor(page, () => /Qancha bor/.test(document.body.innerText) && /Mol go'shti/.test(document.body.innerText), 8000);
+    await waitFor(page, () => /Qança bor/.test(document.body.innerText) && /Mol go'shti/.test(document.body.innerText), 8000);
     const txt = await page.evaluate(() => document.querySelector("main, .main, body")?.innerText || "");
     /bugun tugaydi/.test(txt) && /1,2 kun — buyurtma bering/.test(txt) && /3,7 kun/.test(txt)
-      ? ok("necha kunga yetadi: bugun tugaydi / buyurtma bering / yetarli") : no("kunlar", txt.slice(0, 600));
-    /tushumning 31%i/.test(txt) && /2 xil/.test(txt) && /1 holat/.test(txt)
-      ? ok("raqamlar: sarf tushumga nisbatan, tez tugaydi, kamomad") : no("KPI", txt.slice(0, 500));
+      ? ok("neça kunga yetadi: bugun tugaydi / buyurtma bering / yetarli") : no("kunlar", txt.slice(0, 600));
+    /tuşumning 31%i/.test(txt) && /2 xil/.test(txt) && /1 holat/.test(txt)
+      ? ok("raqamlar: sarf tuşumga nisbatan, tez tugaydi, kamomad") : no("KPI", txt.slice(0, 500));
     /stop-listda/.test(txt) ? ok("stop-listdagi taom masalliq qatorida belgilangan") : no("stop belgisi", "");
-    /Chorvador/.test(txt) && /Yetkazuvchi ko'rsatilmagan/.test(txt) && /Mol go'shti 18,1 kg/.test(txt)
-      ? ok("ertaga uchun buyurtma — yetkazuvchi bo'yicha, yetkazuvchisizlari alohida") : no("buyurtma", txt.slice(-700));
-    /Lag'mon xamiri/.test(txt) && /4 marta/.test(txt) ? ok("kamomad ro'yxati") : no("kamomad", txt.slice(-400));
+    /Chorvador/.test(txt) && /Yetkazuvçi körsatilmagan/.test(txt) && /Mol go'shti 18,1 kg/.test(txt)
+      ? ok("ertaga uçun buyurtma — yetkazuvçi böyiça, yetkazuvçisizlari alohida") : no("buyurtma", txt.slice(-700));
+    /Lag'mon xamiri/.test(txt) && /4 marta/.test(txt) ? ok("kamomad röyxati") : no("kamomad", txt.slice(-400));
     const title = await page.evaluate(() => document.querySelector(".topbar-title")?.innerText || "");
     /Masalliqlar/.test(title) ? ok("sarlavha: «Masalliqlar»") : no("sarlavha", title);
     if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/restaurant-ingredients.png`, fullPage: true });
@@ -1139,7 +1139,7 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
     const { page } = await openKassa({ restaurant: false, path: "/ingredients", ready: "body" });
     await waitFor(page, () => location.pathname !== "/ingredients", 6000);
     const at = await page.evaluate(() => location.pathname);
-    at === "/inventory" ? ok("do'konda /ingredients → /inventory") : no("do'konda masalliq", at);
+    at === "/inventory" ? ok("do'konda /ingredients → /inventory") : no("dökonda masalliq", at);
     await page.close();
   }
 }
@@ -1148,31 +1148,31 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
   console.log("\n§15d Restoran buyurtmalari (E5, 2026-10-10)");
   {
     const { page } = await openKassa({ restaurant: true, kitchen: true, tables: true, path: "/orders", ready: "body" });
-    await waitFor(page, () => /Stol 12/.test(document.body.innerText) && /Vaqt chizig'i/.test(document.body.innerText), 8000);
+    await waitFor(page, () => /Stol 12/.test(document.body.innerText) && /Vaqt çiziği/.test(document.body.innerText), 8000);
     const txt = await page.evaluate(() => document.querySelector("main, .main, body")?.innerText || "");
-    /Hisob berildi/.test(txt) && /Olib ketish/.test(txt) && /Bekor qilingan/.test(txt) && /Chek #901/.test(txt)
-      ? ok("ro'yxat: ochiq, hisob berilgan, olib ketish, bekor — holat nomi bilan") : no("ro'yxat", txt.slice(0, 600));
+    /Hisob berildi/.test(txt) && /Olib ketiş/.test(txt) && /Bekor qilingan/.test(txt) && /Çek #901/.test(txt)
+      ? ok("röyxat: oçiq, hisob berilgan, olib ketiş, bekor — holat nomi bilan") : no("röyxat", txt.slice(0, 600));
     const tabs = await page.evaluate(() => [...document.querySelectorAll("[role=tablist] [role=tab]")].map((b) => b.innerText.replace(/\s+/g, " ").trim()).join("|"));
-    /Ochiq 2/.test(tabs) && /To'langan 1/.test(tabs) && /Bekor 1/.test(tabs) ? ok("filtrlar soni bilan: " + tabs) : no("filtrlar", tabs);
+    /Oçiq 2/.test(tabs) && /Tölangan 1/.test(tabs) && /Bekor 1/.test(tabs) ? ok("filtrlar soni bilan: " + tabs) : no("filtrlar", tabs);
 
     await page.evaluate(() => [...document.querySelectorAll("tbody tr")].find((r) => /Stol 3/.test(r.innerText))?.click());
     (await waitFor(page, () => /1-kurs/i.test(document.querySelector("aside[aria-label='Buyurtma tafsiloti']")?.innerText || "") && /Tug'ilgan kun/.test(document.querySelector("aside[aria-label='Buyurtma tafsiloti']")?.innerText || ""), 4000))
       ? ok("tafsilot: kurslar va izoh") : no("tafsilot", await page.evaluate(() => document.querySelector("aside[aria-label='Buyurtma tafsiloti']")?.innerText.slice(0, 400)));
     const aside = await page.evaluate(() => document.querySelector("aside[aria-label='Buyurtma tafsiloti']")?.innerText || "");
-    /Katta/.test(aside) && /M1/.test(aside) && /oshxonaga ketmagan/.test(aside) ? ok("qo'shimcha, mehmon raqami, oshxonaga ketmagan taom") : no("qator", aside.slice(0, 500));
-    /Oshxonaga: Oshxona \(5 ta\)/.test(aside) && /Tayyor: Oshxona/.test(aside) && /Hisob berildi/.test(aside) && /60 daqiqa/.test(aside)
-      ? ok("vaqt chizig'i: ochildi → oshxona → tayyor → hisob, davomiyligi bilan") : no("vaqt chizig'i", aside.slice(-400));
-    const openHref = await page.evaluate(() => [...document.querySelectorAll("aside[aria-label='Buyurtma tafsiloti'] a")].find((a) => /Stolni ochish/.test(a.innerText))?.getAttribute("href"));
-    openHref === "/restaurant/table/3" ? ok("ochiq hisob — «Stolni ochish» → stol ekrani") : no("stolni ochish", String(openHref));
+    /Katta/.test(aside) && /M1/.test(aside) && /oşxonaga ketmagan/.test(aside) ? ok("qöşimça, mehmon raqami, oşxonaga ketmagan taom") : no("qator", aside.slice(0, 500));
+    /Oşxonaga: Oshxona \(5 ta\)/.test(aside) && /Tayyor: Oshxona/.test(aside) && /Hisob berildi/.test(aside) && /60 daqiqa/.test(aside)
+      ? ok("vaqt çiziği: oçildi → oşxona → tayyor → hisob, davomiyligi bilan") : no("vaqt çiziği", aside.slice(-400));
+    const openHref = await page.evaluate(() => [...document.querySelectorAll("aside[aria-label='Buyurtma tafsiloti'] a")].find((a) => /Stolni oçiş/.test(a.innerText))?.getAttribute("href"));
+    openHref === "/restaurant/table/3" ? ok("oçiq hisob — «Stolni oçiş» → stol ekrani") : no("stolni oçiş", String(openHref));
     if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/restaurant-orders.png`, fullPage: true });
 
     await page.evaluate(() => [...document.querySelectorAll("tbody tr")].find((r) => /Stol 2/.test(r.innerText))?.click());
-    (await waitFor(page, () => /Xizmat haqi/.test(document.querySelector("aside[aria-label='Buyurtma tafsiloti']")?.innerText || "") && /Choy puli/.test(document.querySelector("aside[aria-label='Buyurtma tafsiloti']")?.innerText || ""), 4000))
-      ? ok("to'langan: xizmat haqi, jami, choy puli, to'lov turi") : no("to'langan", await page.evaluate(() => document.querySelector("aside[aria-label='Buyurtma tafsiloti']")?.innerText.slice(0, 400)));
+    (await waitFor(page, () => /Xizmat haqi/.test(document.querySelector("aside[aria-label='Buyurtma tafsiloti']")?.innerText || "") && /Çoy puli/.test(document.querySelector("aside[aria-label='Buyurtma tafsiloti']")?.innerText || ""), 4000))
+      ? ok("tölangan: xizmat haqi, jami, çoy puli, tölov turi") : no("tölangan", await page.evaluate(() => document.querySelector("aside[aria-label='Buyurtma tafsiloti']")?.innerText.slice(0, 400)));
 
-    await page.evaluate(() => [...document.querySelectorAll("[role=tab]")].find((b) => /Olib ketish/.test(b.innerText))?.click());
+    await page.evaluate(() => [...document.querySelectorAll("[role=tab]")].find((b) => /Olib ketiş/.test(b.innerText))?.click());
     (await waitFor(page, () => document.querySelectorAll("tbody tr").length === 1 && /Somsa/.test(document.querySelector("aside[aria-label='Buyurtma tafsiloti']")?.innerText || ""), 4000))
-      ? ok("«Olib ketish» filtri — stolsiz sotuv va uning cheki") : no("olib ketish", await page.evaluate(() => document.body.innerText.slice(0, 300)));
+      ? ok("«Olib ketiş» filtri — stolsiz sotuv va uning çeki") : no("olib ketiş", await page.evaluate(() => document.body.innerText.slice(0, 300)));
     await page.close();
   }
   {
@@ -1188,28 +1188,28 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
   console.log("\n§15e Restoran hisoboti (E6, 2026-10-10)");
   {
     const { page, calls } = await openKassa({ restaurant: true, kitchen: true, tables: true, path: "/restaurant-report", ready: "body" });
-    await waitFor(page, () => /Tushum qayerdan keldi/.test(document.body.innerText) && /Qozon kabob/.test(document.body.innerText), 8000);
+    await waitFor(page, () => /Tuşum qayerdan keldi/.test(document.body.innerText) && /Qozon kabob/.test(document.body.innerText), 8000);
     const txt = await page.evaluate(() => document.querySelector("main, .main, body")?.innerText || "");
-    /▲ 9% oldingi shuncha kunga/.test(txt) && /31,4%/.test(txt) && /2,6 marta/.test(txt)
-      ? ok("raqamlar: o'sish, tannarx ulushi, stol aylanmasi") : no("KPI", txt.slice(0, 600));
-    /Zalda/.test(txt) && /72%/.test(txt) && /Olib ketish/.test(txt) && /Yetkazish/.test(txt)
-      ? ok("tushum manbalari ulush bilan") : no("manba", txt.slice(0, 800));
-    /Xizmat haqi/.test(txt) && /Choy puli/.test(txt) && /Sanash kamomadi/.test(txt) && /Qaytarilgan cheklar — 3 ta/.test(txt) && /4 ta/.test(txt)
-      ? ok("tushumdan tashqari pul va yo'qotishlar") : no("yo'qotishlar", txt.slice(0, 1200));
-    /A: 2 ta taom/.test(txt) && /C: 1 ta taom/.test(txt) && /60%/.test(txt) ? ok("ABC: guruhlar xulosasi, yuqori tannarx ulushi") : no("ABC", txt.slice(-800));
+    /▲ 9% oldingi şunça kunga/.test(txt) && /31,4%/.test(txt) && /2,6 marta/.test(txt)
+      ? ok("raqamlar: ösiş, tannarx uluşi, stol aylanmasi") : no("KPI", txt.slice(0, 600));
+    /Zalda/.test(txt) && /72%/.test(txt) && /Olib ketiş/.test(txt) && /Yetkaziş/.test(txt)
+      ? ok("tuşum manbalari uluş bilan") : no("manba", txt.slice(0, 800));
+    /Xizmat haqi/.test(txt) && /Çoy puli/.test(txt) && /Sanaş kamomadi/.test(txt) && /Qaytarilgan çeklar — 3 ta/.test(txt) && /4 ta/.test(txt)
+      ? ok("tuşumdan taşqari pul va yöqotişlar") : no("yöqotişlar", txt.slice(0, 1200));
+    /A: 2 ta taom/.test(txt) && /C: 1 ta taom/.test(txt) && /60%/.test(txt) ? ok("ABC: guruhlar xulosasi, yuqori tannarx uluşi") : no("ABC", txt.slice(-800));
     /\d{4}-\d{2}-\d{2}/.test(calls.report?.[0] || "") && /from=/.test(calls.report?.[0] || "") && /to=/.test(calls.report?.[0] || "")
       ? ok("davr serverga kun bilan ketdi: " + calls.report[0]) : no("davr", String(calls.report));
     if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/restaurant-report.png`, fullPage: true });
 
     await page.evaluate(() => [...document.querySelectorAll("[role=tab]")].find((b) => /^Ofitsiantlar$/.test(b.innerText.trim()))?.click());
-    (await waitFor(page, () => /kim yaxshi xizmat/.test(document.body.innerText) && /54 daq/.test(document.body.innerText), 3000))
-      ? ok("ofitsiantlar: ish kunlari, mehmon boshiga, stolda o'rtacha vaqt") : no("ofitsiantlar", await page.evaluate(() => document.body.innerText.slice(-600)));
+    (await waitFor(page, () => /kim yaxşi xizmat/.test(document.body.innerText) && /54 daq/.test(document.body.innerText), 3000))
+      ? ok("ofitsiantlar: iş kunlari, mehmon boşiga, stolda örtaça vaqt") : no("ofitsiantlar", await page.evaluate(() => document.body.innerText.slice(-600)));
 
     await page.evaluate(() => [...document.querySelectorAll("[role=tab]")].find((b) => /Zal va vaqt/.test(b.innerText))?.click());
-    (await waitFor(page, () => /Zal qachon to'la/.test(document.body.innerText), 3000)) ? ok("zal bandligi jadvali") : no("zal", "");
+    (await waitFor(page, () => /Zal qaçon töla/.test(document.body.innerText), 3000)) ? ok("zal bandligi jadvali") : no("zal", "");
     const cells = await page.evaluate(() => [...document.querySelectorAll("td[title]")].filter((c) => c.innerText.trim()).map((c) => c.title).join("|"));
-    /Ju 13:00 — 88%/.test(cells) && /Sh 20:00 — 99%/.test(cells) ? ok("katakda raqam ham bor (rang yolg'iz emas)") : no("kataklar", cells.slice(0, 300));
-    /Stol 5/.test(await page.evaluate(() => document.body.innerText)) ? ok("stollar ro'yxati") : no("stollar", "");
+    /Ju 13:00 — 88%/.test(cells) && /Ş 20:00 — 99%/.test(cells) ? ok("katakda raqam ham bor (rang yolğiz emas)") : no("kataklar", cells.slice(0, 300));
+    /Stol 5/.test(await page.evaluate(() => document.body.innerText)) ? ok("stollar röyxati") : no("stollar", "");
     if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/restaurant-report-hall.png`, fullPage: true });
     await page.close();
   }
@@ -1217,7 +1217,7 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
     const { page } = await openKassa({ restaurant: false, path: "/restaurant-report", ready: "body" });
     await waitFor(page, () => location.pathname !== "/restaurant-report", 6000);
     const at = await page.evaluate(() => location.pathname);
-    at === "/reports" ? ok("do'konda /restaurant-report → /reports") : no("do'konda hisobot", at);
+    at === "/reports" ? ok("do'konda /restaurant-report → /reports") : no("dökonda hisobot", at);
     await page.close();
   }
 }
@@ -1228,32 +1228,32 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
     const { page } = await openKassa({ restaurant: true, kitchen: true, tables: true, path: "/staff", ready: "body" });
     await waitFor(page, () => /Hamma xodimlar/.test(document.body.innerText) && /Dilnoza Karimova/.test(document.body.innerText), 8000);
     const txt = await page.evaluate(() => document.querySelector("main, .main, body")?.innerText || "");
-    /Hozir smenada 3 kishi/.test(txt) && /9 stol/.test(txt) && /41 chek/.test(txt) && /oshxona ekranida/.test(txt)
-      ? ok("smenadagilar: ofitsiant — stollar, kassir — cheklar, oshpaz") : no("smenada", txt.slice(0, 600));
-    /yo'q — terminalga kira olmaydi/.test(txt) && /parol bilan kiradi/.test(txt) && /o'chirilgan/.test(txt)
-      ? ok("PIN: oshpazda yo'q (ogohlantirish), rahbar parol bilan, o'chirilgan xodim belgilangan") : no("PIN", txt.slice(0, 1200));
-    /Stol ochish, taom qo'shish/.test(txt) && /Faqat oshxona ekrani/.test(txt) ? ok("har rol nima qila oladi") : no("rol", "");
-    /240\s000/.test(txt) && /95\s000/.test(txt) && /6 chek/.test(txt) ? ok("bugungi choy puli: naqd, karta, ofitsiant bo'yicha") : no("choy puli", txt.slice(-600));
+    /Hozir smenada 3 kişi/.test(txt) && /9 stol/.test(txt) && /41 çek/.test(txt) && /oşxona ekranida/.test(txt)
+      ? ok("smenadagilar: ofitsiant — stollar, kassir — çeklar, oşpaz") : no("smenada", txt.slice(0, 600));
+    /yöq — terminalga kira olmaydi/.test(txt) && /parol bilan kiradi/.test(txt) && /öçirilgan/.test(txt)
+      ? ok("PIN: oşpazda yöq (ogohlantiriş), rahbar parol bilan, öçirilgan xodim belgilangan") : no("PIN", txt.slice(0, 1200));
+    /Stol oçiş, taom qöşiş/.test(txt) && /Faqat oşxona ekrani/.test(txt) ? ok("har rol nima qila oladi") : no("rol", "");
+    /240\s000/.test(txt) && /95\s000/.test(txt) && /6 çek/.test(txt) ? ok("bugungi çoy puli: naqd, karta, ofitsiant böyiça") : no("çoy puli", txt.slice(-600));
     if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/restaurant-staff.png`, fullPage: true });
 
-    await page.evaluate(() => [...document.querySelectorAll("[role=tab]")].find((b) => /Oshpazlar/.test(b.innerText))?.click());
+    await page.evaluate(() => [...document.querySelectorAll("[role=tab]")].find((b) => /Oşpazlar/.test(b.innerText))?.click());
     (await waitFor(page, () => { const t = document.querySelector("table")?.innerText || ""; return /Bekzod/.test(t) && !/Dilnoza/.test(t); }, 3000))
-      ? ok("«Oshpazlar» filtri") : no("filtr", await page.evaluate(() => document.querySelector("table")?.innerText.slice(0, 200)));
+      ? ok("«Oşpazlar» filtri") : no("filtr", await page.evaluate(() => document.querySelector("table")?.innerText.slice(0, 200)));
 
     await page.evaluate(() => { window.__doc = ""; window.open = () => ({ document: { write: (h) => { window.__doc += h; }, close: () => {} } }); });
-    await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => /Taqsimotni chop etish/.test(b.innerText))?.click());
+    await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => /Taqsimotni çop etiş/.test(b.innerText))?.click());
     const doc = await page.evaluate(() => window.__doc || "");
-    /Choy puli taqsimoti/.test(doc) && /Dilnoza Karimova/.test(doc) && /Ali &lt;b&gt;/.test(doc) && !/Ali <b>/.test(doc)
-      ? ok("chop etish: taqsimot hujjati, ism HTML'ga qochirilgan") : no("chop etish", doc.slice(0, 300));
-    const href = await page.evaluate(() => [...document.querySelectorAll("a")].find((a) => /Xodim qo'shish/.test(a.innerText))?.getAttribute("href"));
-    href === "/shop-users" ? ok("«Xodim qo'shish» → mavjud xodimlar oynasi") : no("qo'shish", String(href));
+    /Çoy puli taqsimoti/.test(doc) && /Dilnoza Karimova/.test(doc) && /Ali &lt;b&gt;/.test(doc) && !/Ali <b>/.test(doc)
+      ? ok("çop etiş: taqsimot hujjati, ism HTML'ga qoçirilgan") : no("çop etiş", doc.slice(0, 300));
+    const href = await page.evaluate(() => [...document.querySelectorAll("a")].find((a) => /Xodim qöşiş/.test(a.innerText))?.getAttribute("href"));
+    href === "/shop-users" ? ok("«Xodim qöşiş» → mavjud xodimlar oynasi") : no("qöşiş", String(href));
     await page.close();
   }
   {
     const { page } = await openKassa({ restaurant: false, path: "/staff", ready: "body" });
     await waitFor(page, () => location.pathname !== "/staff", 6000);
     const at = await page.evaluate(() => location.pathname);
-    at === "/shop-users" ? ok("do'konda /staff → /shop-users") : no("do'konda xodimlar", at);
+    at === "/shop-users" ? ok("do'konda /staff → /shop-users") : no("dökonda xodimlar", at);
     await page.close();
   }
 }
@@ -1263,17 +1263,17 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
   {
     const { page, calls } = await openKassa({ restaurant: true, kitchen: true, tables: true, path: "/restaurant/table/12", sent: true });
     await waitFor(page, () => !!document.querySelector(".rt-line--sent"), 6000);
-    const btn = await page.evaluate(() => !!document.querySelector(".rt-line--sent button[aria-label*='bekor qilish']"));
-    btn ? ok("rahbar: oshxonaga ketgan qatorda «Bekor qilish» tugmasi") : no("bekor tugmasi", await page.evaluate(() => document.querySelector(".rt-line--sent")?.outerHTML.slice(0, 300)));
-    await page.evaluate(() => document.querySelector(".rt-line--sent button[aria-label*='bekor qilish']")?.click());
-    await waitFor(page, () => /Bekor qilish: burger/.test(document.body.innerText), 3000);
+    const btn = await page.evaluate(() => !!document.querySelector(".rt-line--sent button[aria-label*='bekor qiliş']"));
+    btn ? ok("rahbar: oşxonaga ketgan qatorda «Bekor qiliş» tugmasi") : no("bekor tugmasi", await page.evaluate(() => document.querySelector(".rt-line--sent")?.outerHTML.slice(0, 300)));
+    await page.evaluate(() => document.querySelector(".rt-line--sent button[aria-label*='bekor qiliş']")?.click());
+    await waitFor(page, () => /Bekor qiliş: burger/.test(document.body.innerText), 3000);
     const modal = await page.evaluate(() => document.body.innerText);
-    /Mehmon voz kechdi/.test(modal) && /hisobotda yo'qotish/.test(modal) ? ok("oyna: sabablar va ogohlantirish") : no("oyna", modal.slice(-500));
+    /Mehmon voz keçdi/.test(modal) && /hisobotda yöqotiş/.test(modal) ? ok("oyna: sabablar va ogohlantiriş") : no("oyna", modal.slice(-500));
     await page.evaluate(() => [...document.querySelectorAll("[role=radio]")].find((b) => /Sifati yomon/.test(b.innerText))?.click());
-    await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => /tasini bekor qilish/.test(b.innerText))?.click());
-    (await waitFor(page, () => !/Bekor qilish: burger/.test(document.body.innerText), 4000)) && calls.voids?.[0]?.reason === "Sifati yomon"
+    await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => /tasini bekor qiliş/.test(b.innerText))?.click());
+    (await waitFor(page, () => !/Bekor qiliş: burger/.test(document.body.innerText), 4000)) && calls.voids?.[0]?.reason === "Sifati yomon"
       && calls.voids[0].quantity === 1 && calls.voids[0].productId === 7 && JSON.stringify(calls.voids[0].modifierIds) === "[22]"
-      ? ok("serverga: taom, qo'shimchalar, soni va sabab") : no("bekor so'rovi", JSON.stringify(calls.voids));
+      ? ok("serverga: taom, qöşimçalar, soni va sabab") : no("bekor sörovi", JSON.stringify(calls.voids));
     if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/restaurant-void.png` });
     await page.close();
   }
@@ -1281,14 +1281,14 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
     const { page } = await openKassa({ restaurant: true, kitchen: true, tables: true, role: "WAITER", path: "/restaurant/table/12", sent: true });
     await waitFor(page, () => !!document.querySelector(".rt-line--sent"), 6000);
     const btn = await page.evaluate(() => !!document.querySelector(".rt-line--sent button"));
-    !btn ? ok("ofitsiantda «Bekor qilish» yo'q (faqat rahbar)") : no("ofitsiantda bekor tugmasi", "");
+    !btn ? ok("ofitsiantda «Bekor qiliş» yöq (faqat rahbar)") : no("ofitsiantda bekor tugmasi", "");
     await page.close();
   }
   {
     const { page } = await openKassa({ restaurant: true, kitchen: true, tables: true, path: "/kitchen", voidTicket: true, ready: "body" });
     await waitFor(page, () => /BEKOR/.test(document.body.innerText), 6000);
     const txt = await page.evaluate(() => document.body.innerText);
-    /BEKOR — Pishirmang/.test(txt) && /Lag'mon/.test(txt) ? ok("oshxona ekranida «BEKOR — Pishirmang» qatori") : no("oshxona BEKOR", txt.slice(0, 500));
+    /BEKOR — Pişirmang/.test(txt) && /Lag'mon/.test(txt) ? ok("oşxona ekranida «BEKOR — Pişirmang» qatori") : no("oşxona BEKOR", txt.slice(0, 500));
     await page.close();
   }
   {
@@ -1304,7 +1304,7 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
     const { page } = await openKassa({ restaurant: true, kitchen: true, tables: true, role: "WAITER", path: "/restaurant", ready: "body" });
     await waitFor(page, () => !!document.querySelector(".app-layout"), 6000);
     const full = await page.evaluate(() => document.querySelector(".app-layout")?.classList.contains("kassa-fullscreen"));
-    full ? ok("faqat ofitsiant: zal to'liq ekranda (panel boshqa joy ochmaydi)") : no("ofitsiant zali", "");
+    full ? ok("faqat ofitsiant: zal töliq ekranda (panel boşqa joy oçmaydi)") : no("ofitsiant zali", "");
     await page.close();
   }
 }
@@ -1315,18 +1315,18 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
     const { page } = await openKassa({ restaurant: true, kitchen: true, tables: true, path: "/sale", stopIds: [3] });
     await waitFor(page, () => document.querySelectorAll(".product-card").length > 0, 6000);
     const tabs = await page.evaluate(() => [...document.querySelectorAll(".kassa-left [role=tablist] [role=tab]")].map((b) => b.innerText.trim()).join("|"));
-    /Hammasi/.test(tabs) && /Tez taomlar/.test(tabs) && /Taomlar/.test(tabs) ? ok("menyu bo'limlari — tablar: " + tabs) : no("bo'lim tablari", tabs);
+    /Hammasi/.test(tabs) && /Tez taomlar/.test(tabs) && /Taomlar/.test(tabs) ? ok("menyu bölimlari — tablar: " + tabs) : no("bölim tablari", tabs);
     const sel = await page.evaluate(() => !!document.querySelector(".kassa-cat"));
-    !sel ? ok("do'konning bo'lim tanlagichi yo'q") : no("restoranda bo'lim tanlagichi", "");
+    !sel ? ok("dökonning bölim tanlagiçi yöq") : no("restoranda bölim tanlagiçi", "");
     const names = await page.evaluate(() => [...document.querySelectorAll(".product-card")].map((c) => c.innerText).join("|"));
-    /burger/.test(names) && !/suv/.test(names) ? ok("stop-listdagi taom kassada ham yo'q") : no("stop-list kassada", names);
+    /burger/.test(names) && !/suv/.test(names) ? ok("stop-listdagi taom kassada ham yöq") : no("stop-list kassada", names);
     const empty = await page.evaluate(() => document.querySelector(".kassa-right")?.innerText || "");
-    /zaldan stolni oching/.test(empty) && /Zalga o'tish/.test(empty) ? ok("bo'sh savat: taom tanlang yoki zaldan stol oching") : no("bo'sh savat", empty.slice(0, 200));
+    /zaldan stolni oçing/.test(empty) && /Zalga ötiş/.test(empty) ? ok("böş savat: taom tanlang yoki zaldan stol oçing") : no("böş savat", empty.slice(0, 200));
     const savings = await page.evaluate(() => !!document.querySelector(".btn-savings"));
-    !savings ? ok("jamg'arma tugmasi restoranda yo'q") : no("jamg'arma tugmasi", "");
-    await page.evaluate(() => [...document.querySelectorAll(".kassa-right .order-type__b")].find((b) => /Olib ketish/.test(b.innerText))?.click());
+    !savings ? ok("jamğarma tugmasi restoranda yöq") : no("jamğarma tugmasi", "");
+    await page.evaluate(() => [...document.querySelectorAll(".kassa-right .order-type__b")].find((b) => /Olib ketiş/.test(b.innerText))?.click());
     const on = await page.evaluate(() => document.querySelector(".kassa-right .order-type__b[aria-checked=true]")?.innerText || "");
-    /Olib ketish/.test(on) ? ok("savat tepasida buyurtma turi: «Olib ketish» tanlandi") : no("buyurtma turi savatda", on);
+    /Olib ketiş/.test(on) ? ok("savat tepasida buyurtma turi: «Olib ketiş» tanlandi") : no("buyurtma turi savatda", on);
     await tile(page, "burger");
     if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/restaurant-kassa.png` });
     await page.close();
@@ -1336,13 +1336,13 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
     await waitFor(page, () => document.querySelectorAll(".product-card").length > 0, 6000);
     const st = await page.evaluate(() => ({ sel: !!document.querySelector(".kassa-cat"), sav: !!document.querySelector(".btn-savings"),
       tabs: document.querySelectorAll(".kassa-left [role=tablist] [role=tab]").length }));
-    st.sel && st.sav && st.tabs === 0 ? ok("do'kon kassasi o'zgarmadi (tanlagich, jamg'arma)") : no("do'kon kassasi", JSON.stringify(st));
+    st.sel && st.sav && st.tabs === 0 ? ok("dökon kassasi özgarmadi (tanlagiç, jamğarma)") : no("dökon kassasi", JSON.stringify(st));
     await page.close();
   }
 }
 
 {
-  console.log("\n§16 Ofitsiant telefonida (390 px): zal, stol, oshxona");
+  console.log("\n§16 Ofitsiant telefonida (390 px): zal, stol, oşxona");
   /* Telefon — ofitsiantning cho'ntagidagi qurilma: gorizontal aylantirish
      bo'lsa tugma ekrandan chiqib ketadi, 44 px dan kichik tugmani
      yurib turib bosib bo'lmaydi (CLAUDE.md #3). */
@@ -1375,33 +1375,33 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
     await page.waitForSelector(ready, { timeout: 8000 }).catch(() => {});
     await waitFor(page, () => false, 300);
     const r = await page.evaluate(probe);
-    !r.scroll && r.wide.length === 0 ? ok(`${where}: gorizontal aylantirish yo'q`) : no(`${where}: ekrandan chiqadi`, r.wide.join(" · "));
-    r.small.length === 0 ? ok(`${where}: tugmalar ≥ 44 px`) : no(`${where}: kichik tugma`, r.small.join(" · "));
+    !r.scroll && r.wide.length === 0 ? ok(`${where}: gorizontal aylantiriş yöq`) : no(`${where}: ekrandan çiqadi`, r.wide.join(" · "));
+    r.small.length === 0 ? ok(`${where}: tugmalar ≥ 44 px`) : no(`${where}: kiçik tugma`, r.small.join(" · "));
     if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/${name}.png`, fullPage: true });
     await page.close();
   }
 }
 
 {
-  console.log("\n§17 Choy puli va teng bo'lish (restoran): bitta chek, ulushlar, choy puli alohida");
+  console.log("\n§17 Çoy puli va teng böliş (restoran): bitta çek, uluşlar, çoy puli alohida");
   const { page, calls } = await openKassa({ restaurant: true, kitchen: true });
   await waitFor(page, () => false, 600);
   await tile(page, "suv");
   await new Promise((r) => setTimeout(r, 400));
   await page.keyboard.press("F9");
   (await waitFor(page, () => !!document.querySelector(".tip-box")))
-    ? ok("restoranda to'lov oynasida choy puli va teng bo'lish") : no("choy puli bloki yo'q", "—");
-  await page.evaluate(() => [...document.querySelectorAll(".tip-box .ek-quick-cash button")].find((b) => /^2 kishi$/.test(b.textContent.trim()))?.click());
+    ? ok("restoranda tölov oynasida çoy puli va teng böliş") : no("çoy puli bloki yöq", "—");
+  await page.evaluate(() => [...document.querySelectorAll(".tip-box .ek-quick-cash button")].find((b) => /^2 kişi$/.test(b.textContent.trim()))?.click());
   await waitFor(page, () => document.querySelectorAll(".split-list li").length === 2);
   const shares = await page.evaluate(() => [...document.querySelectorAll(".split-list li b")].map((b) => b.textContent.replace(/\D/g, "")).join(","));
-  shares === "1650,1650" ? ok("3 300 → 2 × 1 650") : no("ulushlar", shares);
+  shares === "1650,1650" ? ok("3 300 → 2 × 1 650") : no("uluşlar", shares);
   await page.evaluate(() => document.querySelectorAll(".split-list li")[0].querySelectorAll("button")[0].click());
   await new Promise((r) => setTimeout(r, 150));
   await page.evaluate(() => document.querySelectorAll(".split-list li")[1].querySelectorAll("button")[1].click());
   await new Promise((r) => setTimeout(r, 150));
   const done = await page.evaluate(() => document.querySelectorAll(".split-list li.is-done").length);
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/pay-tip-split.png` });
-  done === 2 ? ok("ikkala mehmon to'ladi (naqd + karta)") : no("ulush belgilanmadi", String(done));
+  done === 2 ? ok("ikkala mehmon töladi (naqd + karta)") : no("uluş belgilanmadi", String(done));
   const tipIn = await page.$(".tip-box input");
   await tipIn.click();
   await page.keyboard.type("5000", { delay: 15 });
@@ -1411,9 +1411,9 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
   await waitFor(page, () => false, 1500);
   const b = calls.sales[0] || {};
   const parts = (b.payments || []).map((x) => `${x.type}:${Number(x.amount)}`).sort().join(",");
-  parts === "CARD:1650,CASH:1650" ? ok("bitta chek, to'lov ikki ulushda: " + parts) : no("to'lov qismlari", JSON.stringify(b.payments));
+  parts === "CARD:1650,CASH:1650" ? ok("bitta çek, tölov ikki uluşda: " + parts) : no("tölov qismlari", JSON.stringify(b.payments));
   Number(b.tipAmount) === 5000 && b.tipType === "CARD"
-    ? ok("choy puli 5 000 (karta) — alohida maydon, to'lovga qo'shilmadi") : no("choy puli", JSON.stringify({ t: b.tipAmount, y: b.tipType }));
+    ? ok("çoy puli 5 000 (karta) — alohida maydon, tölovga qöşilmadi") : no("çoy puli", JSON.stringify({ t: b.tipAmount, y: b.tipType }));
   await page.close();
 }
 {
@@ -1422,11 +1422,11 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
   await tile(page, "suv");
   await page.keyboard.press("F9");
   await waitFor(page, () => !!document.querySelector(".pay-modal-submit"));
-  !(await page.$(".tip-box")) ? ok("do'konda choy puli bloki yo'q") : no("do'konda choy puli bor", "—");
+  !(await page.$(".tip-box")) ? ok("dökonda çoy puli bloki yöq") : no("dökonda çoy puli bor", "—");
   await page.close();
 }
 {
-  console.log("\n§18 Smenasiz sotuv yo'q (2026-10-09)");
+  console.log("\n§18 Smenasiz sotuv yöq (2026-10-09)");
   const { page } = await openKassa({ restaurant: false, shiftClosed: true });
   await waitFor(page, () => false, 800);
   await tile(page, "suv");
@@ -1436,13 +1436,13 @@ console.log("\n══ TAOM QO'SHIMCHALARI KASSADA (R2) ══\n");
   await new Promise((r) => setTimeout(r, 300));
   const st = await page.evaluate(() => ({ dis: document.querySelector(".pay-modal-submit")?.disabled,
                                           note: document.querySelector(".pay-modal [role=alert], [role=alert]")?.textContent || "" }));
-  st.dis && /Smena ochilmagan/.test(st.note) ? ok("smena yopiq — «Sotish» o'chiq va sababi yozilgan") : no("smenasiz sotish mumkin", JSON.stringify(st));
+  st.dis && /Smena oçilmagan/.test(st.note) ? ok("smena yopiq — «Sotiş» öçiq va sababi yozilgan") : no("smenasiz sotiş mumkin", JSON.stringify(st));
   await page.close();
 }
 
-pageErrors.length === 0 ? ok("sahifada JS xatosi yo'q") : no("JS xatosi", pageErrors.join(" | "));
+pageErrors.length === 0 ? ok("sahifada JS xatosi yöq") : no("JS xatosi", pageErrors.join(" | "));
 
 await browser.close();
 server.close();
-console.log(bad === 0 ? "\n  ✅ HAMMASI O'TDI" : `\n  ❌ ${bad} ta muammo`);
+console.log(bad === 0 ? "\n  ✅ HAMMASI ÖTDI" : `\n  ❌ ${bad} ta muammo`);
 process.exit(bad === 0 ? 0 : 1);

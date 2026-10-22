@@ -154,8 +154,8 @@ async function open() {
 
 /** Muddat oynasini ochadi. */
 async function openModal(page) {
-  const btn = await page.$('[aria-label*="Muddatni o\'zgartirish"]');
-  if (!btn) throw new Error("«Muddatni o'zgartirish» tugmasi topilmadi");
+  const btn = await page.$('[aria-label*="Muddatni özgartiriş"]');
+  if (!btn) throw new Error("«Muddatni özgartiriş» tugmasi topilmadi");
   await btn.click();
   await page.waitForSelector(".ek-date input", { timeout: 5000 });
   await wait(200);
@@ -205,7 +205,7 @@ const until = async (fn, what, ms = 8000) => {
     if (await fn()) return true;
     await wait(50);
   }
-  throw new Error("kutib bo'lmadi: " + what);
+  throw new Error("kutib bölmadi: " + what);
 };
 
 /** Sababni yozadi va «Saqlash» YOQILGUNCHA kutadi. */
@@ -214,7 +214,7 @@ async function fillReason(page, text) {
   try {
     await until(
       () => page.$eval(".modal-footer .btn-primary", (b) => !b.disabled).catch(() => false),
-      "«Saqlash» yoqilishi",
+      "«Saqlaş» yoqilişi",
     );
   } catch (e) {
     /* ⚠ YIQILGANDA OYNANING HOLATI YOZILADI. Usiz sinov faqat «kutib
@@ -223,7 +223,7 @@ async function fillReason(page, text) {
       inputs: [...document.querySelectorAll(".modal-body input")]
         .map((el) => ({ type: el.getAttribute("type"), cls: el.className, val: el.value })),
       btn: (() => { const b = document.querySelector(".modal-footer .btn-primary");
-                    return b ? { disabled: b.disabled, txt: b.textContent.trim() } : "YO'Q"; })(),
+                    return b ? { disabled: b.disabled, txt: b.textContent.trim() } : "YÖQ"; })(),
     })).catch(() => null);
     console.log("     oyna holati:", JSON.stringify(dump));
     throw e;
@@ -236,39 +236,39 @@ const saveDisabled = (page) =>
   page.$eval(".modal-footer .btn-primary", (el) => el.disabled).catch(() => null);
 
 /* ═══ A. Ikki xonali yil ═══════════════════════════════════════════════ */
-console.log("\n══ A. Ikki xonali yil to'ldiriladi ══");
+console.log("\n══ A. Ikki xonali yil töldiriladi ══");
 {
   const page = await open();
   await openModal(page);
 
   await type(page, "221026", { blur: false });
   is(await shown(page) === "22-10-26", "yozayotganda TEGILMAYDI",
-     `ko'rinish: ${await shown(page)}`);
+     `köriniş: ${await shown(page)}`);
 
   await page.keyboard.press("Tab");
   await wait(200);
   const after = await shown(page);
-  is(after === "22-10-2026", "fokusdan chiqqach 22-10-26 → 22-10-2026", `ko'rinish: ${after}`);
-  is(!(await errText(page)), "xato yozuvi yo'q");
+  is(after === "22-10-2026", "fokusdan chiqqach 22-10-26 → 22-10-2026", `köriniş: ${after}`);
+  is(!(await errText(page)), "xato yozuvi yöq");
   await page.close();
 }
 
 /* ═══ B. Yarim yozilgan sana ═══════════════════════════════════════════ */
-console.log("\n══ B. Tugallanmagan sana to'siladi ══");
+console.log("\n══ B. Tugallanmagan sana tösiladi ══");
 {
   const page = await open();
   await openModal(page);
 
   await type(page, "2210202");
   const err = await errText(page);
-  is(!!err, "yetti raqamdan keyin XATO ko'rinadi", err || "yo'q");
-  is(await saveDisabled(page) === true, "«Saqlash» o'chiq turadi");
+  is(!!err, "yetti raqamdan keyin XATO körinadi", err || "yöq");
+  is(await saveDisabled(page) === true, "«Saqlaş» öçiq turadi");
 
   /* ⚠ Eng muhim tasdiq: tugallanmagan sana bilan serverga HECH NARSA
      ketmasligi kerak. Ilgari u jimgina `null` ga aylanardi. */
   await page.click(".modal-footer .btn-primary").catch(() => {});
   await wait(300);
-  is(sent === null, "tugallanmagan sana bilan so'rov YUBORILMAYDI",
+  is(sent === null, "tugallanmagan sana bilan sörov YUBORILMAYDI",
      sent ? JSON.stringify(sent) : "yuborilmadi");
   await page.close();
 }
@@ -282,16 +282,16 @@ console.log("\n══ C. Serverga ISO sana ketadi ══");
 
   await fillReason(page, "yorliqda 2026 yozilgan");
   await page.click(".modal-footer .btn-primary");
-  await until(() => sent !== null, "so'rov yuborilishi");
+  await until(() => sent !== null, "sörov yuborilişi");
 
   is(sent?.expiryDate === "2026-10-22", "tanada `2026-10-22`",
-     sent ? JSON.stringify(sent) : "so'rov yo'q");
-  is(!!sent?.reason, "sabab ham yuborildi", sent?.reason || "yo'q");
+     sent ? JSON.stringify(sent) : "sörov yöq");
+  is(!!sent?.reason, "sabab ham yuborildi", sent?.reason || "yöq");
   await page.close();
 }
 
 /* ═══ D. Uzaytirish ogohlantirishi ═════════════════════════════════════ */
-console.log("\n══ D. Uzaytirish ogohlantiriladi ══");
+console.log("\n══ D. Uzaytiriş ogohlantiriladi ══");
 {
   const page = await open();
   await openModal(page);
@@ -311,11 +311,11 @@ console.log("\n══ D. Uzaytirish ogohlantiriladi ══");
     ".modal-body .ek-note",
     (el) => getComputedStyle(el).backgroundColor,
   ).catch(() => null);
-  is(!!warn, "muddat uzaytirilganda ogohlantirish chiqadi", warn || "yo'q");
+  is(!!warn, "muddat uzaytirilganda ogohlantiriş çiqadi", warn || "yöq");
   const brand = await page.evaluate(
     () => getComputedStyle(document.documentElement).getPropertyValue("--bg-brand-subtle").trim());
   is(warn !== null && !sameColor(warn, brand),
-     "ogohlantirish KO'K emas — brend fonidan farq qiladi", `${warn} vs ${brand}`);
+     "ogohlantiriş KÖK emas — brend fonidan farq qiladi", `${warn} vs ${brand}`);
   if (SHOT) {
     fs.mkdirSync(SHOT, { recursive: true });
     await page.screenshot({ path: path.join(SHOT, "expiry-extend.png") });
@@ -325,12 +325,12 @@ console.log("\n══ D. Uzaytirish ogohlantiriladi ══");
      ogohlantirish o'qilmay qoladi. */
   await type(page, "01012020");
   await wait(200);
-  is(!(await page.$(".modal-body .ek-note")), "qisqartirishda ogohlantirish CHIQMAYDI");
+  is(!(await page.$(".modal-body .ek-note")), "qisqartirişda ogohlantiriş ÇIQMAYDI");
   await page.close();
 }
 
 /* ═══ E. Bajik qorovuli ulangan ════════════════════════════════════════ */
-console.log("\n══ E. 428 kelganda bajik so'raladi ══");
+console.log("\n══ E. 428 kelganda bajik söraladi ══");
 {
   need428 = true;
   const page = await open();
@@ -345,7 +345,7 @@ console.log("\n══ E. 428 kelganda bajik so'raladi ══");
     body = await page.evaluate(() => document.body.innerText);
     return /[Bb]ajik/.test(body);
   }, "bajik oynasi").catch(() => {});
-  is(/[Bb]ajik/.test(body), "bajik oynasi ochildi — qorovul ulangan");
+  is(/[Bb]ajik/.test(body), "bajik oynasi oçildi — qorovul ulangan");
   await page.close();
   need428 = false;
 }
@@ -355,5 +355,5 @@ is(pageErrors.length === 0, "konsol toza", pageErrors.join(" · "));
 
 await browser.close();
 server.close();
-console.log(`\n  ${pass} o'tdi, ${fail} yiqildi\n`);
+console.log(`\n  ${pass} ötdi, ${fail} yiqildi\n`);
 process.exit(fail ? 1 : 0);

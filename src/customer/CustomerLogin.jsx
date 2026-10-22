@@ -63,12 +63,12 @@ export default function CustomerLogin({ onLoggedIn, onStaffLogin }) {
     setMode("demo");
     try {
       const r = await appApi.demoLogin();
-      if (!r?.token) throw new Error("Namoyish hisobi topilmadi");
+      if (!r?.token) throw new Error("Namoyiş hisobi topilmadi");
       setAppToken(r.token);
       onLoggedIn();
     } catch (e) {
       setMode("idle");
-      setError(e.message || "Namoyish rejimini ochib bo'lmadi");
+      setError(e.message || "Namoyiş rejimini oçib bölmadi");
     }
   };
 
@@ -100,7 +100,7 @@ export default function CustomerLogin({ onLoggedIn, onStaffLogin }) {
         if (Date.now() > stopAt.current) {
           clearInterval(poller.current);
           setMode("idle");
-          setError("Vaqt tugadi — qaytadan urinib ko'ring");
+          setError("Vaqt tugadi — qaytadan urinib köring");
           return;
         }
         try {
@@ -113,7 +113,7 @@ export default function CustomerLogin({ onLoggedIn, onStaffLogin }) {
         } catch (e) {
           clearInterval(poller.current);
           setMode("idle");
-          setError(e.message || "Kirish bekor qilindi");
+          setError(e.message || "Kiriş bekor qilindi");
         }
       }, 2500);
     } catch (e) {
@@ -135,7 +135,7 @@ export default function CustomerLogin({ onLoggedIn, onStaffLogin }) {
       onLoggedIn();
     } catch (e) {
       setMode("idle");
-      setError(e.message || "Telegram orqali kirib bo'lmadi");
+      setError(e.message || "Telegram orqali kirib bölmadi");
     }
   };
 
@@ -149,7 +149,7 @@ export default function CustomerLogin({ onLoggedIn, onStaffLogin }) {
       sessionStorage.setItem(OIDC_STATE_KEY, "1");
       window.location.href = url;
     } catch (e) {
-      setError(e.message || "Telegram sahifasi ochilmadi");
+      setError(e.message || "Telegram sahifasi oçilmadi");
     }
   };
 
@@ -163,8 +163,8 @@ export default function CustomerLogin({ onLoggedIn, onStaffLogin }) {
 
         <h1 className="cu-login__title">{t("cu.loginTitle")}</h1>
         <p className="cu-login__lead">
-          Do'konlardagi ballaringiz, cheklaringiz va kartangiz shu ilovada.
-          Ro'yxatdan o'tish bir daqiqa oladi.
+          Dökonlardagi ballaringiz, çeklaringiz va kartangiz şu ilovada.
+          Röyxatdan ötiş bir daqiqa oladi.
         </p>
 
         <ul className="cu-login__points">
@@ -181,18 +181,18 @@ export default function CustomerLogin({ onLoggedIn, onStaffLogin }) {
           <i className="fa-brands fa-telegram cu-waiting__icon" aria-hidden="true" />
           <p><b>{t("cu.tgOpened")}</b></p>
           <p className="cu-muted">
-            «📱 Telefon raqamimni yuborish» tugmasini bosing — bu yerga o'zi qaytadi.
+            «📱 Telefon raqamimni yuboriş» tugmasini bosing — bu yerga özi qaytadi.
           </p>
           {/* Telegram o'rnatilmagan qurilma uchun — brauzerdagi web-telegram */}
           {webLink && (
             <button className="cu-btn cu-btn--ghost"
                     onClick={() => window.open(webLink, "_blank", "noopener")}>
-              Telegram ochilmadimi? Brauzerda ochish
+              Telegram oçilmadimi? Brauzerda oçiş
             </button>
           )}
           <button className="cu-btn cu-btn--ghost"
                   onClick={() => { clearInterval(poller.current); setMode("idle"); }}>
-            Bekor qilish
+            Bekor qiliş
           </button>
         </div>
       )}
@@ -203,7 +203,7 @@ export default function CustomerLogin({ onLoggedIn, onStaffLogin }) {
           <p><b>{t("cu.tgOpened")}</b></p>
           <p className="cu-muted">{t("cu.tgAllow")}</p>
           <button className="cu-btn cu-btn--ghost" onClick={() => setMode("idle")}>
-            Bekor qilish
+            Bekor qiliş
           </button>
         </div>
       )}
@@ -230,15 +230,15 @@ export default function CustomerLogin({ onLoggedIn, onStaffLogin }) {
           {methods.telegramNative && nativeTelegramAvailable() ? (
             <>
               <button className="cu-btn cu-btn--tg" onClick={startNative}>
-                <i className="fa-brands fa-telegram" aria-hidden="true" /> Telegram bilan kirish
+                <i className="fa-brands fa-telegram" aria-hidden="true" /> Telegram bilan kiriş
               </button>
               <button className="cu-btn cu-btn--ghost" onClick={startBot}>
-                Bot orqali kirish
+                Bot orqali kiriş
               </button>
             </>
           ) : (
             <button className="cu-btn cu-btn--tg" onClick={startBot}>
-              <i className="fa-brands fa-telegram" aria-hidden="true" /> Telegram bilan kirish
+              <i className="fa-brands fa-telegram" aria-hidden="true" /> Telegram bilan kiriş
             </button>
           )}
 
@@ -260,7 +260,7 @@ export default function CustomerLogin({ onLoggedIn, onStaffLogin }) {
 
           {methods.email && (
             <button className="cu-btn cu-btn--ghost" onClick={() => { setError(""); setMode("email"); }}>
-              <i className="fa-solid fa-envelope" aria-hidden="true" /> Pochta orqali
+              <i className="fa-solid fa-envelope" aria-hidden="true" /> Poçta orqali
             </button>
           )}
         </div>
@@ -278,17 +278,17 @@ export default function CustomerLogin({ onLoggedIn, onStaffLogin }) {
         <div className="cu-demo">
           <button className="cu-btn cu-btn--ghost" onClick={startDemo} disabled={mode === "demo"}>
             <i className="fa-solid fa-circle-play" aria-hidden="true" />{" "}
-            {mode === "demo" ? "Ochilmoqda…" : "Demo rejimida ko'rish"}
+            {mode === "demo" ? "Oçilmoqda…" : "Demo rejimida köriş"}
           </button>
           <p className="cu-demo__note">
-            Namoyish hisobi — ma'lumotlar o'ylab topilgan. Telefon raqami talab qilinmaydi.
+            Namoyiş hisobi — ma'lumotlar öylab topilgan. Telefon raqami talab qilinmaydi.
           </p>
         </div>
       )}
 
       {/* Xodimlar uchun — kichik, lekin yashirin emas */}
       <button className="cu-staff" onClick={onStaffLogin}>
-        Do'kon xodimiman
+        Dökon xodimiman
       </button>
     </div>
   );
@@ -330,7 +330,7 @@ function OtpForm({ kind, onBack, onDone }) {
         : await appApi.smsVerify(target.trim(), code.trim());
       onDone(r.token);
     } catch (e) {
-      setError(e.message || "Kod noto'g'ri");
+      setError(e.message || "Kod notöğri");
     } finally {
       setBusy(false);
     }
@@ -339,7 +339,7 @@ function OtpForm({ kind, onBack, onDone }) {
   return (
     <div className="cu-otp">
       <label className="cu-label" htmlFor="cu-otp-target">
-        {isEmail ? "Pochta manzilingiz" : "Telefon raqamingiz"}
+        {isEmail ? "Poçta manzilingiz" : "Telefon raqamingiz"}
       </label>
       {isEmail ? (
         <input id="cu-otp-target" className="cu-input" type="email" inputMode="email"
@@ -371,7 +371,7 @@ function OtpForm({ kind, onBack, onDone }) {
                  value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))} />
           <p className="cu-muted">
             {isEmail
-              ? "Kod pochtangizga yuborildi. Agar bu manzil hech qanday hisobga bog'lanmagan bo'lsa, xat kelmaydi."
+              ? "Kod poçtangizga yuborildi. Agar bu manzil heç qanday hisobga boğlanmagan bölsa, xat kelmaydi."
               : "Kod SMS orqali yuborildi."}
           </p>
         </>
@@ -381,7 +381,7 @@ function OtpForm({ kind, onBack, onDone }) {
 
       <button className="cu-btn" disabled={busy || (!sent ? !target.trim() : code.length < 4)}
               onClick={sent ? verify : send}>
-        {busy ? "Kutilmoqda…" : sent ? "Kirish" : "Kod yuborish"}
+        {busy ? "Kutilmoqda…" : sent ? "Kiriş" : "Kod yuboriş"}
       </button>
       <button className="cu-btn cu-btn--ghost" onClick={onBack}>{t("common.back")}</button>
     </div>

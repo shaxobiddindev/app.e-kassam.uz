@@ -93,15 +93,15 @@ await new Promise((r) => setTimeout(r, 1200));
 
 console.log("\n══ BAJIK (V110) ══");
 
-console.log("\n§1 Bajik chiqariladi");
+console.log("\n§1 Bajik çiqariladi");
 const issued = await page.evaluate(() => {
   const b = [...document.querySelectorAll("button")]
-    .find((x) => /chiqarish|bajik ber/i.test(x.textContent));
+    .find((x) => /çiqariş|bajik ber/i.test(x.textContent));
   if (!b) return false;
   b.click();
   return true;
 });
-issued ? ok("«chiqarish» tugmasi bosildi") : no("tugma topilmadi", "yo'q");
+issued ? ok("«çiqariş» tugmasi bosildi") : no("tugma topilmadi", "yöq");
 await page.waitForSelector(".modal-box", { timeout: 8000 }).catch(() => {});
 await new Promise((r) => setTimeout(r, 600));
 
@@ -123,10 +123,10 @@ const card = await page.evaluate(() => {
     qrLabel: svg?.getAttribute("aria-label") || null,
     qrPath: svg?.querySelector("path")?.getAttribute("d")?.length || 0,
     saveBtn: [...box.querySelectorAll("button")]
-      .filter((b) => /faylga saqlash/i.test(b.textContent))
+      .filter((b) => /faylga saqlaş/i.test(b.textContent))
       .map((b) => ({ text: b.textContent.trim(), off: b.disabled }))[0] || null,
     printBtn: [...box.querySelectorAll("button")]
-      .filter((b) => /chop etish/i.test(b.textContent))
+      .filter((b) => /çop etiş/i.test(b.textContent))
       .map((b) => ({ off: b.disabled }))[0] || null,
   };
 });
@@ -135,34 +135,34 @@ console.log("\n§2 ⚠ QR EKRANDA CHIZILADI");
 /* Ilgari brauzerda QR umuman yo'q edi va sir «Yopish» bilan birga
    yo'qolardi — printersiz do'konda bajik chiqarib bo'lmasdi. */
 card?.qrLabel === "QR" && card.qrPath > 400
-  ? ok(`QR chizildi (yo'l uzunligi ${card.qrPath})`)
+  ? ok(`QR çizildi (yöl uzunligi ${card.qrPath})`)
   : no("QR chizilishi kerak", JSON.stringify({ label: card?.qrLabel, len: card?.qrPath }));
 
 console.log("\n§3 Kartochkada kerakli hamma narsa bor");
-card?.text?.includes("Ali Valiyev") ? ok("ism bor") : no("ism bo'lishi kerak", card?.text);
-card?.text?.includes("kassir1") ? ok("login bor") : no("login bo'lishi kerak", card?.text);
-/^.*3.*$/.test(card?.text || "") ? ok("versiya bor") : no("versiya bo'lishi kerak", card?.text);
-/shaxsiy/i.test(card?.text || "") ? ok("ogohlantirish qog'ozning o'zida")
-                                  : no("ogohlantirish bo'lishi kerak", card?.text);
+card?.text?.includes("Ali Valiyev") ? ok("ism bor") : no("ism bölişi kerak", card?.text);
+card?.text?.includes("kassir1") ? ok("login bor") : no("login bölişi kerak", card?.text);
+/^.*3.*$/.test(card?.text || "") ? ok("versiya bor") : no("versiya bölişi kerak", card?.text);
+/şaxsiy/i.test(card?.text || "") ? ok("ogohlantiriş qoğozning özida")
+                                  : no("ogohlantiriş bölişi kerak", card?.text);
 
-console.log("\n§4 ⚠ USLUBLAR KARTOCHKANING ICHIDA");
+console.log("\n§4 ⚠ USLUBLAR KARTOÇKANING IÇIDA");
 /* Faylga saqlanganda `outerHTML` boshqa hujjatga ko'chadi va u yerda
    ilovaning `styles.css` i YO'Q. Tashqi sinflarga tayangan kartochka
    o'sha yerda bezaksiz matnga aylanardi. */
-card?.inlineStyled ? ok("kartochka o'z uslublarini olib yuradi")
-                   : no("ichki uslub bo'lishi kerak", "yo'q");
+card?.inlineStyled ? ok("kartoçka öz uslublarini olib yuradi")
+                   : no("içki uslub bölişi kerak", "yöq");
 
-console.log("\n§5 ⚠ «Faylga saqlash» PRINTERSIZ HAM OCHIQ");
+console.log("\n§5 ⚠ «Faylga saqlaş» PRINTERSIZ HAM OÇIQ");
 card?.saveBtn && !card.saveBtn.off
-  ? ok(`tugma ochiq: ${card.saveBtn.text}`)
-  : no("tugma ochiq bo'lishi kerak", JSON.stringify(card?.saveBtn));
+  ? ok(`tugma oçiq: ${card.saveBtn.text}`)
+  : no("tugma oçiq bölişi kerak", JSON.stringify(card?.saveBtn));
 /* Chek printeri tugmasi esa brauzerda o'chiq qolishi TO'G'RI — u
    faqat ish stoli ilovasida ishlaydi. */
-card?.printBtn?.off ? ok("chek printeri tugmasi brauzerda o'chiq (to'g'ri)")
-                    : no("brauzerda o'chiq bo'lishi kerak", JSON.stringify(card?.printBtn));
+card?.printBtn?.off ? ok("çek printeri tugmasi brauzerda öçiq (töğri)")
+                    : no("brauzerda öçiq bölişi kerak", JSON.stringify(card?.printBtn));
 
 console.log("\n§6 Sahifa xatolari");
-pageErrors.length === 0 ? ok("JS xatosi yo'q") : no("sahifada xato", pageErrors.join(" | "));
+pageErrors.length === 0 ? ok("JS xatosi yöq") : no("sahifada xato", pageErrors.join(" | "));
 
 await page.close();
 await browser.close();

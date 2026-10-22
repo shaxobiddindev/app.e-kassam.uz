@@ -223,20 +223,20 @@ const pick = async (name) => {
 
 /* ── Oynani ochish ── */
 await page.evaluate(() => [...document.querySelectorAll("button")]
-  .find((b) => /Sotish|To'lov|Tolov/i.test(b.textContent))?.click());
+  .find((b) => /Sotiş|Tölov|Tolov/i.test(b.textContent))?.click());
 await new Promise((r) => setTimeout(r, 700));
 let s = await state();
-if (s.input === null) { console.log("  ❌ to'lov oynasi ochilmadi"); await browser.close(); server.close();
+if (s.input === null) { console.log("  ❌ tölov oynasi oçilmadi"); await browser.close(); server.close();
 
 if (pageErrors.length) {
   bad += pageErrors.length;
-  console.log("\n  ❌ Sahifada JS xatolari tushdi:");
+  console.log("\n  ❌ Sahifada JS xatolari tuşdi:");
   for (const e of [...new Set(pageErrors)].slice(0, 6)) console.log("       " + e);
 } else {
-  console.log("\n  ✅ Sahifada birorta JS xatosi tushmadi");
+  console.log("\n  ✅ Sahifada birorta JS xatosi tuşmadi");
 } process.exit(1); }
 
-console.log("\n── 1. Maydon BO'SH ochiladi — VA TO'LOV YO'Q (V86) ──");
+console.log("\n── 1. Maydon BÖŞ oçiladi — VA TÖLOV YÖQ (V86) ──");
 /* ⚠ BU BO'LIM 2026-09-06 DA TESKARISIGA O'ZGARDI.
 
    Ilgari u «maydon bo'sh ochiladi, LEKIN chek naqd» qoidasini
@@ -251,63 +251,63 @@ console.log("\n── 1. Maydon BO'SH ochiladi — VA TO'LOV YO'Q (V86) ──")
    Yangi qoida: PUL KIRITILMAGUNCHA TO'LOV YO'Q. Maydon baribir bo'sh
    ochiladi (bu talab kuchida) va placeholder chek summasini
    ko'rsatadi — lekin bu TAKLIF, yozilgan qiymat emas. */
-s.input === "" ? ok("maydon bo'sh") : no("maydon bo'sh bo'lishi kerak", `«${s.input}»`);
+s.input === "" ? ok("maydon böş") : no("maydon böş bölişi kerak", `«${s.input}»`);
 (s.hold || "").replace(/\D/g, "") === "100000"
-  ? ok(`placeholder: ${s.hold}`) : no("placeholder 100 000 ko'rsatishi kerak", s.hold);
+  ? ok(`placeholder: ${s.hold}`) : no("placeholder 100 000 körsatişi kerak", s.hold);
 s.rows.length === 0
-  ? ok("hisobda birorta qator yo'q — ekran yolg'on gapirmaydi")
-  : no("hisob bo'sh bo'lishi kerak", JSON.stringify(s.rows));
+  ? ok("hisobda birorta qator yöq — ekran yolğon gapirmaydi")
+  : no("hisob böş bölişi kerak", JSON.stringify(s.rows));
 s.btns.some((b) => b.has)
   ? no("birorta tugma belgilanmasligi kerak", s.btns.filter((b) => b.has).map((b) => b.txt).join(" | "))
-  : ok("birorta tugmada summa yo'q");
-s.rows.some((r) => r.credit) ? no("nasiya bo'lmasligi kerak", "bor") : ok("nasiya yo'q");
-s.custNeed ? no("mijoz so'ralmasligi kerak", "ishora bor") : ok("mijoz so'ralmaydi");
+  : ok("birorta tugmada summa yöq");
+s.rows.some((r) => r.credit) ? no("nasiya bölmasligi kerak", "bor") : ok("nasiya yöq");
+s.custNeed ? no("mijoz söralmasligi kerak", "ishora bor") : ok("mijoz söralmaydi");
 /* ⚠ ASOSIY BAND: tugma YOPIQ. Do'kon egasi: «to'lov miqdorini
    kiritmasdan turib to'lash tugmasi ochilmasligi kerak». */
-s.submit ? no("«Sotish» YOPIQ bo'lishi kerak", "ochiq") : ok("«Sotish» yopiq — summa kiritilmagan");
+s.submit ? no("«Sotiş» YOPIQ bölişi kerak", "oçiq") : ok("«Sotiş» yopiq — summa kiritilmagan");
 /* ⚠ VA NEGA yopiqligi AYTILADI. Jimgina o'chirilgan tugma kassirni
    «nega ishlamayapti» deb qidirishga majbur qilardi — bu do'kon
    egasining oldingi shikoyati edi («nega tolovga ruxsat bermayapti?»). */
 /Summani kiriting/i.test(s.empty || "")
   ? ok(`sabab aytiladi: «${s.empty}»`)
-  : no("«Summani kiriting» yozuvi bo'lishi kerak", s.empty ?? "yo'q");
-s.btns.length === 4 ? ok("to'rt usul: " + s.btns.map((b) => b.txt.split(" ")[0]).join(", "))
-                    : no("to'rtta usul bo'lishi kerak", s.btns.length);
-/Aralash|Nasiya/i.test(s.btns.map((b) => b.txt).join(" "))
-  ? no("«Aralash»/«Nasiya» tugmasi qolmasligi kerak", s.btns.map((b) => b.txt).join(" | "))
-  : ok("«Aralash» ham, «Nasiya» ham tugma emas");
+  : no("«Summani kiriting» yozuvi bölişi kerak", s.empty ?? "yöq");
+s.btns.length === 4 ? ok("tört usul: " + s.btns.map((b) => b.txt.split(" ")[0]).join(", "))
+                    : no("törtta usul bölişi kerak", s.btns.length);
+/Aralaş|Nasiya/i.test(s.btns.map((b) => b.txt).join(" "))
+  ? no("«Aralaş»/«Nasiya» tugmasi qolmasligi kerak", s.btns.map((b) => b.txt).join(" | "))
+  : ok("«Aralaş» ham, «Nasiya» ham tugma emas");
 
 console.log("\n── 2. Naqd 20 000 → qolgan 80 000 NASIYAGA ──");
 {
   const st = await state();
   /* Nasiya OCHIQ do'kon: qoldiq «nasiyaga» deyiladi, «to'lanmagan» emas. */
-  st.warns.some((w) => /nasiya yo'q/i.test(w)) && no("nasiya ochiq bo'lishi kerak", st.warns.join(" "));
+  st.warns.some((w) => /nasiya yöq/i.test(w)) && no("nasiya oçiq bölişi kerak", st.warns.join(" "));
 }
 await type("20000");
 s = await state();
-const credit = () => (state()).then((x) => x.rows.find((r) => r.credit)?.val ?? "yo'q");
+const credit = () => (state()).then((x) => x.rows.find((r) => r.credit)?.val ?? "yöq");
 let c = s.rows.find((r) => r.credit)?.val;
-(c || "").replace(/\D/g, "") === "80000" ? ok(`nasiya ${c}`) : no("nasiya 80 000 bo'lishi kerak", c ?? "yo'q");
-s.rows.some((r) => r.change) ? no("qaytim bo'lmasligi kerak", "bor") : ok("qaytim yo'q");
+(c || "").replace(/\D/g, "") === "80000" ? ok(`nasiya ${c}`) : no("nasiya 80 000 bölişi kerak", c ?? "yöq");
+s.rows.some((r) => r.change) ? no("qaytim bölmasligi kerak", "bor") : ok("qaytim yöq");
 
 console.log("\n── 3. Click 15 000 → nasiya 65 000, naqd saqlanadi ──");
 await pick("Click");
 s = await state();
-s.input === "" ? ok("Click bo'sh maydon bilan ochildi") : no("Click maydoni bo'sh bo'lishi kerak", s.input);
+s.input === "" ? ok("Click böş maydon bilan oçildi") : no("Click maydoni böş bölişi kerak", s.input);
 await type("15000");
 s = await state();
 c = s.rows.find((r) => r.credit)?.val;
-(c || "").replace(/\D/g, "") === "65000" ? ok(`nasiya ${c}`) : no("nasiya 65 000 bo'lishi kerak", c ?? "yo'q");
+(c || "").replace(/\D/g, "") === "65000" ? ok(`nasiya ${c}`) : no("nasiya 65 000 bölişi kerak", c ?? "yöq");
 const naqdRow = s.rows.find((r) => /Naqd/i.test(r.name || ""));
-(naqdRow?.val || "").replace(/\D/g, "") === "20000" ? ok(`naqd qatori ${naqdRow.val}`) : no("naqd 20 000 qolishi kerak", naqdRow?.val ?? "yo'q");
+(naqdRow?.val || "").replace(/\D/g, "") === "20000" ? ok(`naqd qatori ${naqdRow.val}`) : no("naqd 20 000 qolishi kerak", naqdRow?.val ?? "yöq");
 
 console.log("\n── 4. NAQDGA QAYTSA — eski qiymati turadi (asosiy talab) ──");
 await pick("Naqd");
 s = await state();
-s.input.replace(/\D/g, "") === "20000" ? ok(`maydonda ${s.input}`) : no("maydonda 20 000 bo'lishi kerak", s.input);
-s.btns.find((b) => b.txt.includes("Naqd"))?.active ? ok("Naqd tugmasi tanlangan") : no("Naqd tanlangan bo'lishi kerak", "yo'q");
+s.input.replace(/\D/g, "") === "20000" ? ok(`maydonda ${s.input}`) : no("maydonda 20 000 bölişi kerak", s.input);
+s.btns.find((b) => b.txt.includes("Naqd"))?.active ? ok("Naqd tugmasi tanlangan") : no("Naqd tanlangan bölişi kerak", "yöq");
 const marked = s.btns.filter((b) => b.has).map((b) => b.txt.split(" ")[0]);
-marked.length === 2 ? ok("pul yozilgan tugmalar belgilangan: " + marked.join(", ")) : no("ikkita tugma belgilanishi kerak", marked.join(",") || "yo'q");
+marked.length === 2 ? ok("pul yozilgan tugmalar belgilangan: " + marked.join(", ")) : no("ikkita tugma belgilanishi kerak", marked.join(",") || "yöq");
 
 console.log("\n── 4b. Nasiya matni va mijoz talabi ──");
 {
@@ -315,41 +315,41 @@ console.log("\n── 4b. Nasiya matni va mijoz talabi ──");
   const row = st.rows.find((r) => r.credit);
   /Qolgani nasiyaga/i.test(row?.name || "") ? ok(`nasiya qatori: «${row.name}»`)
     : no("«Qolgani nasiyaga» deyilishi kerak", row?.name);
-  st.warns.length ? ok("mijoz talab qilinadi: " + st.warns[0]) : no("mijoz so'ralishi kerak", "yo'q");
-  st.submit ? no("mijozsiz «Sotish» yopiq bo'lishi kerak", "ochiq") : ok("mijozsiz «Sotish» yopiq");
+  st.warns.length ? ok("mijoz talab qilinadi: " + st.warns[0]) : no("mijoz söralişi kerak", "yöq");
+  st.submit ? no("mijozsiz «Sotiş» yopiq bölişi kerak", "oçiq") : ok("mijozsiz «Sotiş» yopiq");
   /* ⚠ Do'kon egasining talabi: «mijoz tanlash majburiy bo'lganda
      mijoz tanlash oynasi ishora qilib tursin». */
-  st.custNeed ? ok("mijoz tanlagichi ishora qilyapti") : no("tanlagich ishora qilishi kerak", "belgi yo'q");
-  st.custHint ? ok(`tanlagich tagida: «${st.custHint}»`) : no("tanlagich tagida yozuv kerak", "yo'q");
-  st.warnBtn ? ok("ogohlantirish bosiladigan — tanlagichni ochadi") : no("ogohlantirish tugma bo'lishi kerak", "oddiy yozuv");
+  st.custNeed ? ok("mijoz tanlagichi ishora qilyapti") : no("tanlagiç işora qilişi kerak", "belgi yöq");
+  st.custHint ? ok(`tanlagich tagida: «${st.custHint}»`) : no("tanlagich tagida yozuv kerak", "yöq");
+  st.warnBtn ? ok("ogohlantiriş bosiladigan — tanlagiçni oçadi") : no("ogohlantiriş tugma bölişi kerak", "oddiy yozuv");
   {
     /* Bosilsa — ro'yxat ochilsin. */
     await page.click(".pay-warn-btn");
     await new Promise((r) => setTimeout(r, 350));
     const open = await page.evaluate(() => !!document.querySelector(".ek-select__menu, .ek-select__pop, [role='listbox']"));
-    open ? ok("bosilganda mijoz ro'yxati ochildi") : no("ro'yxat ochilishi kerak", "ochilmadi");
+    open ? ok("bosilganda mijoz röyxati oçildi") : no("röyxat oçilişi kerak", "oçilmadi");
     /* ⚠ `Escape` ISHLATILMAYDI: ro'yxat o'zi yopilib ulgursa, tugma
        to'lov OYNASIGA borib tegadi va u yopilib ketardi (shu yerda
        tutildi). Tanlagichni o'z tugmasi bilan yopamiz. */
     await page.click(".cart-cust .ek-select__btn");
     await new Promise((r) => setTimeout(r, 300));
     (await page.$("#pay-amount"))
-      ? ok("to'lov oynasi ochiq qoldi") : no("to'lov oynasi ochiq qolishi kerak", "yopildi");
+      ? ok("tölov oynasi oçiq qoldi") : no("tölov oynasi oçiq qolişi kerak", "yopildi");
   }
 }
 
-console.log("\n── 4c. Naqdga 0 — to'liq nasiya ──");
+console.log("\n── 4c. Naqdga 0 — töliq nasiya ──");
 {
   await pick("Click"); await type("");
   await pick("Naqd");  await type("0");
   const st = await state();
   const c = st.rows.find((r) => r.credit)?.val;
   (c || "").replace(/\D/g, "") === "100000"
-    ? ok(`to'liq nasiya ${c}`) : no("to'liq nasiya 100 000 bo'lishi kerak", c ?? "yo'q");
-  st.hold === "0" ? ok("yozilgach placeholder «0» bo'ladi") : no("placeholder «0» bo'lishi kerak", st.hold);
+    ? ok(`töliq nasiya ${c}`) : no("töliq nasiya 100 000 bölişi kerak", c ?? "yöq");
+  st.hold === "0" ? ok("yozilgaç placeholder «0» böladi") : no("placeholder «0» bölişi kerak", st.hold);
 }
 
-console.log("\n── 5. Uchinchi usul ham qo'shiladi (cheksiz) ──");
+console.log("\n── 5. Uçinçi usul ham qöşiladi (çeksiz) ──");
 /* ⚠ HOLAT SHU YERDA QAYTA QURILADI. Ilgari bu bo'lim o'zidan
    oldingi bo'limlar qoldirgan qiymatlarga tayanardi va yuqoriga
    yangi bo'lim qo'shilishi bilan kutilmalar «o'z-o'zidan» noto'g'ri
@@ -359,29 +359,29 @@ await pick("Click"); await type("15000");
 await pick("Karta"); await type("30000");
 s = await state();
 c = s.rows.find((r) => r.credit)?.val;
-(c || "").replace(/\D/g, "") === "35000" ? ok(`nasiya ${c}`) : no("nasiya 35 000 bo'lishi kerak", c ?? "yo'q");
+(c || "").replace(/\D/g, "") === "35000" ? ok(`nasiya ${c}`) : no("nasiya 35 000 bölişi kerak", c ?? "yöq");
 s.rows.filter((r) => !r.credit && !r.change && !r.taken).length === 3
-  ? ok("uchala usul ro'yxatda") : no("uchta qator bo'lishi kerak", JSON.stringify(s.rows.map((r) => r.name)));
+  ? ok("uçala usul röyxatda") : no("uçta qator bölişi kerak", JSON.stringify(s.rows.map((r) => r.name)));
 /* Uchta usul bor — demak «Mijozdan jami» ham turishi kerak (V94). */
 s.rows.some((r) => r.taken) ? ok("«Mijozdan jami» qatori bor")
-                            : no("uchta usulda jami ko'rsatilishi kerak", "yo'q");
+                            : no("uçta usulda jami körsatilişi kerak", "yöq");
 
-console.log("\n── 6. Naqd ortiqcha → QAYTIM, nasiya yo'q ──");
+console.log("\n── 6. Naqd ortiqça → QAYTIM, nasiya yöq ──");
 await pick("Naqd");
 await type("100000");
 s = await state();
 const ch = s.rows.find((r) => r.change)?.val;
-(ch || "").replace(/\D/g, "") === "45000" ? ok(`qaytim ${ch}`) : no("qaytim 45 000 bo'lishi kerak", ch ?? "yo'q");
-s.rows.some((r) => r.credit) ? no("nasiya qolmasligi kerak", "bor") : ok("nasiya yo'q");
-s.submit ? ok("«Sotish» ochiq") : no("«Sotish» ochiq bo'lishi kerak", "yopiq");
+(ch || "").replace(/\D/g, "") === "45000" ? ok(`qaytim ${ch}`) : no("qaytim 45 000 bölişi kerak", ch ?? "yöq");
+s.rows.some((r) => r.credit) ? no("nasiya qolmasligi kerak", "bor") : ok("nasiya yöq");
+s.submit ? ok("«Sotiş» oçiq") : no("«Sotiş» oçiq bölişi kerak", "yopiq");
 
-console.log("\n── 7. Naqdsizda ortiqcha → OGOHLANTIRISH, sotib bo'lmaydi ──");
+console.log("\n── 7. Naqdsizda ortiqça → OGOHLANTIRIŞ, sotib bölmaydi ──");
 await pick("Naqd"); await type("");
 await pick("Click"); await type("500000");
 s = await state();
-s.warns.length ? ok("ogohlantirish: " + s.warns[0].replace(/\s+/g, " ")) : no("ogohlantirish chiqishi kerak", "yo'q");
-s.submit ? no("«Sotish» yopilishi kerak", "ochiq") : ok("«Sotish» yopiq");
-/{|}/.test(s.warns.join(" ")) ? no("yozuvda to'ldirilmagan {…} qolgan", s.warns.join(" ")) : ok("yozuvda {…} qolmagan");
+s.warns.length ? ok("ogohlantiriş: " + s.warns[0].replace(/\s+/g, " ")) : no("ogohlantiriş çiqişi kerak", "yöq");
+s.submit ? no("«Sotiş» yopilişi kerak", "oçiq") : ok("«Sotiş» yopiq");
+/{|}/.test(s.warns.join(" ")) ? no("yozuvda töldirilmagan {…} qolgan", s.warns.join(" ")) : ok("yozuvda {…} qolmagan");
 
 /* ⚠⚠ QATOR OLIB TASHLANDI, RAQAM QOLDI (V95).
 
@@ -394,11 +394,11 @@ s.submit ? no("«Sotish» yopilishi kerak", "ochiq") : ok("«Sotish» yopiq");
    birinchisidan muhimroq: ortiqcha pulning miqdorini ko'rsatmasdan
    sotuvni to'sish — kassirni sababsiz qamab qo'yish bo'lardi. */
 s.rows.some((r) => /ortiq/i.test(r.name || ""))
-  ? no("hisobdagi «ortiq» qatori olib tashlangan bo'lishi kerak", "bor")
-  : ok("hisobda takroriy «ortiq» qatori yo'q");
+  ? no("hisobdagi «ortiq» qatori olib taşlangan bölişi kerak", "bor")
+  : ok("hisobda takroriy «ortiq» qatori yöq");
 /471\s?010|400\s?000|\d/.test(s.warns.join(" ")) && /\d[\d\s]{4,}/.test(s.warns.join(" "))
-  ? ok("ortiqcha summasi ogohlantirishda ko'rinadi: " + s.warns.join(" ").replace(/\s+/g, " "))
-  : no("ogohlantirishda summa bo'lishi kerak", s.warns.join(" "));
+  ? ok("ortiqça summasi ogohlantirişda körinadi: " + s.warns.join(" ").replace(/\s+/g, " "))
+  : no("ogohlantirişda summa bölişi kerak", s.warns.join(" "));
 
 console.log("\n── 8. Klaviatura: F1..F4 usulni tanlaydi ──");
 await pick("Click"); await type("");
@@ -411,7 +411,7 @@ for (const [key, name] of [["F1", "Naqd"], ["F2", "Karta"], ["F3", "Click"], ["F
   /{|}/.test(st.label || "") && no("yorliqda {…} qolgan", st.label);
 }
 s = await state();
-(s.label || "").includes("Payme") && !/{|}/.test(s.label) ? ok(`maydon yorlig'i: «${s.label}»`) : no("yorliq usul nomini ko'rsatishi kerak", s.label);
+(s.label || "").includes("Payme") && !/{|}/.test(s.label) ? ok(`maydon yorliği: «${s.label}»`) : no("yorliq usul nomini körsatişi kerak", s.label);
 
 console.log("\n── 8b. Qatorlar tartibi surilmaydi ──");
 {
@@ -420,8 +420,8 @@ console.log("\n── 8b. Qatorlar tartibi surilmaydi ──");
   await pick("Naqd");  await type("20000");     // eng oxirida qayta yozildi
   const st = await state();
   const names = st.rows.filter((r) => !r.credit && !r.change && !r.taken).map((r) => r.name.trim());
-  /Naqd/.test(names[0] || "") ? ok("Naqd birinchi qatorda: " + names.join(" · "))
-    : no("Naqd birinchi bo'lishi kerak", names.join(" · "));
+  /Naqd/.test(names[0] || "") ? ok("Naqd birinçi qatorda: " + names.join(" · "))
+    : no("Naqd birinçi bölişi kerak", names.join(" · "));
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -436,7 +436,7 @@ console.log("\n── 8b. Qatorlar tartibi surilmaydi ──");
    «Bajarilmoqda…» bo'lib qolardi — kassa butunlay to'xtardi.
    Buni tekshiruv emas, do'kon egasi topdi.
    ══════════════════════════════════════════════════════════════════════ */
-console.log("\n── 8c. Sotuv oxirigacha o'tadi ──");
+console.log("\n── 8c. Sotuv oxirigaça ötadi ──");
 {
   await pick("Karta"); await type("");
   await pick("Click"); await type("");
@@ -454,43 +454,43 @@ console.log("\n── 8c. Sotuv oxirigacha o'tadi ──");
     busy:   !!document.querySelector('.pay-modal-submit[data-loading]'),
     count:  document.querySelector(".ek-finish__count")?.textContent || null,
   }));
-  after.finish ? ok("yakunlash oynasi chiqdi") : no("yakunlash oynasi chiqishi kerak", "yo'q");
-  after.modal ? no("to'lov oynasi yopilishi kerak", "ochiq") : ok("to'lov oynasi yopildi");
+  after.finish ? ok("yakunlaş oynasi çiqdi") : no("yakunlaş oynasi çiqişi kerak", "yöq");
+  after.modal ? no("tölov oynasi yopilişi kerak", "oçiq") : ok("tölov oynasi yopildi");
   after.busy ? no("tugma «Bajarilmoqda» da qolmasligi kerak", "qotib qoldi") : ok("tugma qotib qolmadi");
-  after.count ? ok(`sanoq ko'rinadi: ${after.count}`) : no("qolgan sekundlar ko'rinishi kerak", "yo'q");
+  after.count ? ok(`sanoq körinadi: ${after.count}`) : no("qolgan sekundlar körinişi kerak", "yöq");
 
   /* Esc — yozuvda bor edi, lekin hech qayerda ushlanmagan edi. */
   await page.keyboard.press("Escape");
   await new Promise((r) => setTimeout(r, 400));
   (await page.$(".ek-finish"))
-    ? no("Esc yakunlash oynasini yopishi kerak", "yopilmadi") : ok("Esc oynani yopdi");
+    ? no("Esc yakunlaş oynasini yopişi kerak", "yopilmadi") : ok("Esc oynani yopdi");
 
   /* ⚠ IKKINCHI SOTUV — asosiy tekshiruv. Do'kon egasining so'zi:
      «bir marta sotuv qilgandan keyin shunday bajarilmoqda bo'lib
      qolyapti». Ya'ni birinchi sotuv o'tadi, ikkinchisi to'xtaydi. */
   await page.evaluate(() => [...document.querySelectorAll("button")]
-    .find((b) => /Sotish|To'lov|Tolov/i.test(b.textContent))?.click());
+    .find((b) => /Sotiş|Tölov|Tolov/i.test(b.textContent))?.click());
   await new Promise((r) => setTimeout(r, 800));
   const again = await page.evaluate(() => ({
     modal: !!document.querySelector("#pay-amount"),
     can:   !document.querySelector(".pay-modal-submit")?.disabled,
     busy:  !!document.querySelector('.pay-modal-submit[data-loading]'),
   }));
-  again.modal ? ok("keyingi chek uchun to'lov oynasi yana ochildi")
-              : no("to'lov oynasi ochilishi kerak", "ochilmadi");
-  again.busy ? no("tugma bo'sh bo'lishi kerak", "«Bajarilmoqda»") : ok("tugma bo'sh");
+  again.modal ? ok("keyingi çek uçun tölov oynasi yana oçildi")
+              : no("tölov oynasi oçilişi kerak", "oçilmadi");
+  again.busy ? no("tugma böş bölişi kerak", "«Bajarilmoqda»") : ok("tugma böş");
   /* ⚠ YANGI CHEK — YANGI SUMMA (V86). Oyna bo'sh ochiladi, ya'ni
      tugma HAM yopiq bo'lishi kerak: oldingi chekning summasi
      keyingisiga o'tib ketmaydi. Bu §1 dagi qoidaning ikkinchi
      chekdagi takrori — aynan shu yerda u eng oson buzilardi. */
-  again.can ? no("yangi chekda tugma yopiq bo'lishi kerak", "ochiq")
-            : ok("yangi chek bo'sh boshlanadi — tugma yopiq");
+  again.can ? no("yangi çekda tugma yopiq bölişi kerak", "oçiq")
+            : ok("yangi çek böş boşlanadi — tugma yopiq");
   /* ⚠ ASOSIY BAND SHU: summa yozilgach ikkinchi sotuv HAM o'tadi.
      Do'kon egasining shikoyati aynan ikkinchi sotuvda edi. */
   await type("100000");
   (await page.evaluate(() => !document.querySelector(".pay-modal-submit")?.disabled))
-    ? ok("summa yozilgach ikkinchi sotuv ham qilinadi")
-    : no("ikkinchi sotuv qilinishi kerak", "tugma yopiq");
+    ? ok("summa yozilgaç ikkinçi sotuv ham qilinadi")
+    : no("ikkinçi sotuv qilinişi kerak", "tugma yopiq");
 }
 
 await page.close();
@@ -549,7 +549,7 @@ async function pickCustomer(pg, name) {
    ⚠ MAYDONNING O'ZI cheklanadi: hisob qatlamida ham kesiladi, lekin
    kassirga xatoni QILDIRMASLIK — tuzatishni so'rashdan yaxshiroq.
    ══════════════════════════════════════════════════════════════════════ */
-console.log("\n── 8e. Jamg'arma chegarasi ──");
+console.log("\n── 8e. Jamğarma çegarasi ──");
 {
   /* Mijozda katta jamg'arma; chek 100 000. */
   const CUST = { id: 9, fullName: "Sinov mijoz", phone: "+998900000009", savingsBalance: 500000 };
@@ -562,10 +562,10 @@ console.log("\n── 8e. Jamg'arma chegarasi ──");
   /* ⚠ MIJOZ TANLAGICHI TO'LOV OYNASINING ICHIDA — avval oyna
      ochiladi. Kassa ekranida bunday tugma yo'q. */
   await pg.evaluate(() => [...document.querySelectorAll("button")]
-    .find((b) => /Sotish|To'lov|Tolov/i.test(b.textContent))?.click());
+    .find((b) => /Sotiş|Tölov|Tolov/i.test(b.textContent))?.click());
   await new Promise((r) => setTimeout(r, 800));
   (await pickCustomer(pg, "Sinov mijoz")) ? ok("mijoz tanlandi")
-                                          : no("mijozni tanlab bo'lmadi");
+                                          : no("mijozni tanlab bölmadi");
 
   /* Avval naqd 60 000. */
   await pg.focus("#pay-amount");
@@ -575,17 +575,17 @@ console.log("\n── 8e. Jamg'arma chegarasi ──");
   /* Endi jamg'armaga o'tamiz — qolgani 40 000 bo'lishi kerak. */
   const gotSavings = await pg.evaluate(() => {
     const b = [...document.querySelectorAll(".cust-fact--btn")]
-      .find((x) => /jamg/i.test(x.textContent));
+      .find((x) => /jam[gğ]/i.test(x.textContent));
     if (!b || b.disabled) return false;
     b.click(); return true;
   });
-  if (!gotSavings) { no("jamg'arma tugmasi topilmadi"); }
+  if (!gotSavings) { no("jamğarma tugmasi topilmadi"); }
   else {
     await new Promise((r) => setTimeout(r, 300));
     const hint = await pg.$eval(".pay-modal-body", (n) => n.innerText);
     /40\s*000/.test(hint)
-      ? ok("chegara QOLGAN summa (40 000) deb ko'rsatiladi")
-      : no("chegara qoldiq (500 000) bo'lib qoldi", hint.slice(0, 200).replace(/\n/g, " | "));
+      ? ok("çegara QOLGAN summa (40 000) deb körsatiladi")
+      : no("çegara qoldiq (500 000) bölib qoldi", hint.slice(0, 200).replace(/\n/g, " | "));
 
     /* Chegaradan katta son yozib ko'ramiz — maydon uni O'TKAZMASLIGI kerak. */
     await pg.focus("#pay-amount");
@@ -596,14 +596,14 @@ console.log("\n── 8e. Jamg'arma chegarasi ──");
     await pg.type("#pay-amount", "200000", { delay: 8 });
     await new Promise((r) => setTimeout(r, 300));
     const val = await pg.$eval("#pay-amount", (el) => Number(el.value.replace(/\D/g, "")));
-    val <= 40000 ? ok(`maydon chegaradan o'tkazmadi (${val})`)
-                 : no("jamg'armadan ortiqcha yozib bo'ldi", String(val));
+    val <= 40000 ? ok(`maydon çegaradan ötkazmadi (${val})`)
+                 : no("jamğarmadan ortiqça yozib böldi", String(val));
 
     /* Va QAYTIM chiqmasligi kerak. */
     const txt = await pg.$eval(".pay-modal-body", (n) => n.innerText);
     !/qaytim/i.test(txt)
-      ? ok("QAYTIM qatori yo'q — pul chiqarish yo'li yopiq")
-      : no("jamg'armadan qaytim chiqdi", txt.slice(0, 200).replace(/\n/g, " | "));
+      ? ok("QAYTIM qatori yöq — pul çiqariş yöli yopiq")
+      : no("jamğarmadan qaytim çiqdi", txt.slice(0, 200).replace(/\n/g, " | "));
   }
   await pg.close();
 }
@@ -615,7 +615,7 @@ console.log("\n── 8e. Jamg'arma chegarasi ──");
    bilan «jamg'armasi nol» ni ajrata olmasdi, kataklarning joyi ham
    har safar siljib turardi.
    ══════════════════════════════════════════════════════════════════════ */
-console.log("\n── 8f. Mijoz kartochkasi ──");
+console.log("\n── 8f. Mijoz kartoçkasi ──");
 {
   /* HAMMASI NOL bo'lgan mijoz — eng yomon holat. */
   /* ⚠ HAMMASI NOL bo'lgan mijoz — eng yomon holat: ilgari uning
@@ -628,33 +628,33 @@ console.log("\n── 8f. Mijoz kartochkasi ──");
     carts: [{ id: 1, discount: "", bonusUse: "", customer: null, items: ONE }],
   });
   await pg.evaluate(() => [...document.querySelectorAll("button")]
-    .find((b) => /Sotish|To'lov|Tolov/i.test(b.textContent))?.click());
+    .find((b) => /Sotiş|Tölov|Tolov/i.test(b.textContent))?.click());
   await new Promise((r) => setTimeout(r, 800));
   (await pickCustomer(pg, "Yangi mijoz")) ? ok("mijoz tanlandi")
-                                          : no("mijozni tanlab bo'lmadi");
+                                          : no("mijozni tanlab bölmadi");
 
   const facts = await pg.$$eval(".cust-fact", (n) => n.map((x) => ({
     lab: x.querySelector(".cust-fact__lab")?.textContent.trim() || "",
     val: x.querySelector(".cust-fact__val")?.textContent.trim() || "",
   })));
   facts.length === 4
-    ? ok(`to'rtala katak ham chizildi (${facts.map((f) => f.lab).join(" · ")})`)
-    : no("kataklar soni noto'g'ri", `${facts.length}: ` + facts.map((f) => f.lab).join(" · "));
+    ? ok(`törtala katak ham çizildi (${facts.map((f) => f.lab).join(" · ")})`)
+    : no("kataklar soni notöğri", `${facts.length}: ` + facts.map((f) => f.lab).join(" · "));
 
   /* ⚠ Nol ham KO'RSATILADI: «yo'q» va «nol» kassir uchun bir xil
      ma'no, lekin katakning yo'qolishi qolganlarini surib yuborardi. */
   const zeros = facts.filter((f) => /^0\s/.test(f.val)).length;
-  zeros >= 3 ? ok(`nol qiymatlar ham ko'rinadi (${zeros} ta)`)
+  zeros >= 3 ? ok(`nol qiymatlar ham körinadi (${zeros} ta)`)
              : no("nol qiymatli katak yashirildi", facts.map((f) => `${f.lab}=${f.val}`).join(" | "));
 
   /* Jamg'arma tugmasi nolda O'CHIQ bo'lishi kerak. */
   const off = await pg.evaluate(() => {
     const b = [...document.querySelectorAll(".cust-fact--btn")]
-      .find((x) => /jamg/i.test(x.textContent));
+      .find((x) => /jam[gğ]/i.test(x.textContent));
     return b ? b.disabled : null;
   });
-  off === true ? ok("bo'sh jamg'arma tugmasi bosilmaydi")
-               : no("bo'sh jamg'armani tanlab bo'ldi", String(off));
+  off === true ? ok("böş jamğarma tugmasi bosilmaydi")
+               : no("böş jamğarmani tanlab böldi", String(off));
   await pg.close();
 }
 
@@ -678,7 +678,7 @@ console.log("\n── 8c2. Ekranda buzuq qiymat ──");
     return ["Invalid Date", "NaN", "undefined", "[object Object]"]
       .filter((w) => txt.includes(w));
   });
-  junk.length === 0 ? ok("ekranda «Invalid Date» / «NaN» / «undefined» yo'q")
+  junk.length === 0 ? ok("ekranda «Invalid Date» / «NaN» / «undefined» yöq")
                     : no("ekranda buzuq qiymat bor", junk.join(", "));
   await pg.close();
 }
@@ -696,7 +696,7 @@ console.log("\n── 8d. Naqd tugmalari ──");
   /* `ONE` — 100 000 so'mlik bitta tovar, ya'ni chek AYNAN yumaloq. */
   const pg = await openKassa();
   await pg.evaluate(() => [...document.querySelectorAll("button")]
-    .find((b) => /Sotish|To'lov|Tolov/i.test(b.textContent))?.click());
+    .find((b) => /Sotiş|Tölov|Tolov/i.test(b.textContent))?.click());
   await new Promise((r) => setTimeout(r, 700));
 
   const cash = await pg.$$eval(".ek-quick-cash button",
@@ -705,22 +705,22 @@ console.log("\n── 8d. Naqd tugmalari ──");
   const sug = cash.slice(0, -1);
 
   sug.length > 0 ? ok(`taklif bor: ${sug.join(" · ")}`)
-                 : no("yumaloq chekda naqd tugmalari YO'QOLDI", cash.join(" · "));
+                 : no("yumaloq çekda naqd tugmalari YÖQOLDI", cash.join(" · "));
 
   sug.every((v) => Number(v.replace(/\D/g, "")) > 100000)
-    ? ok("har bir taklif chekdan KATTA — to'lovni yopa oladi")
-    : no("chekni yopa olmaydigan taklif bor", sug.join(" · "));
+    ? ok("har bir taklif çekdan KATTA — tölovni yopa oladi")
+    : no("çekni yopa olmaydigan taklif bor", sug.join(" · "));
 
   !sug.some((v) => v.replace(/\D/g, "") === "100000")
-    ? ok("summaning O'ZI takrorlanmaydi — «Qolganini» tugmasi bor")
-    : no("aniq summa ikki marta chiqdi", sug.join(" · "));
+    ? ok("summaning ÖZI takrorlanmaydi — «Qolganini» tugmasi bor")
+    : no("aniq summa ikki marta çiqdi", sug.join(" · "));
 
   sug.length <= 3 ? ok(`taklif soni uchtadan oshmadi (${sug.length})`)
-                  : no("juda ko'p tugma — qator ikkinchi satrga tushadi", String(sug.length));
+                  : no("juda köp tugma — qator ikkinçi satrga tuşadi", String(sug.length));
   await pg.close();
 }
 
-console.log("\n── 8h. ⚠ KIRITILMAGAN PUL — TO'LOV EMAS (V86) ──");
+console.log("\n── 8h. ⚠ KIRITILMAGAN PUL — TÖLOV EMAS (V86) ──");
 /* ═══ IKKI SURAT, BITTA SABAB ═══════════════════════════════════════
 
    1-surat: «CLICK UCHUN SUMMA» yozuvi turibdi, maydon bo'sh, hisobda
@@ -743,7 +743,7 @@ console.log("\n── 8h. ⚠ KIRITILMAGAN PUL — TO'LOV EMAS (V86) ──");
     items: [{ id: 1, name: "Kurtka", salePrice: 20000, qty: 1, unit: "DONA", stockQuantity: 9 }],
   });
   await pg.evaluate(() => [...document.querySelectorAll("button")]
-    .find((b) => /Sotish|To'lov/i.test(b.textContent))?.click());
+    .find((b) => /Sotiş|Tölov/i.test(b.textContent))?.click());
   await new Promise((r) => setTimeout(r, 700));
 
   const read = () => pg.evaluate(() => ({
@@ -774,10 +774,10 @@ console.log("\n── 8h. ⚠ KIRITILMAGAN PUL — TO'LOV EMAS (V86) ──");
 
   /* ── a. Ochilishda: hech narsa yo'q, tugma yopiq ── */
   let v = await read();
-  v.rows.length === 0 ? ok("ochilishda hisob bo'sh") : no("hisob bo'sh bo'lishi kerak", JSON.stringify(v.rows));
-  v.submit ? no("«Sotish» yopiq bo'lishi kerak", "ochiq") : ok("«Sotish» yopiq");
+  v.rows.length === 0 ? ok("oçilişda hisob böş") : no("hisob böş bölişi kerak", JSON.stringify(v.rows));
+  v.submit ? no("«Sotiş» yopiq bölişi kerak", "oçiq") : ok("«Sotiş» yopiq");
   /Summani kiriting/i.test(v.empty || "")
-    ? ok(`sabab aytiladi: «${v.empty}»`) : no("sabab yozilishi kerak", v.empty ?? "yo'q");
+    ? ok(`sabab aytiladi: «${v.empty}»`) : no("sabab yozilişi kerak", v.empty ?? "yöq");
 
   /* ── b. Click tanlanib summa yozilsa — qator CLICK bo'ladi ── */
   await tap("Click");
@@ -785,25 +785,25 @@ console.log("\n── 8h. ⚠ KIRITILMAGAN PUL — TO'LOV EMAS (V86) ──");
   v = await read();
   v.rows.some((r) => /Click/i.test(r) && /20 ?000/.test(r))
     ? ok("hisobda «Click 20 000» — tanlangan usul")
-    : no("hisobda Click bo'lishi kerak", JSON.stringify(v.rows));
+    : no("hisobda Click bölişi kerak", JSON.stringify(v.rows));
   !v.rows.some((r) => /Naqd/i.test(r))
-    ? ok("«Naqd» qatori YO'Q — ekran yolg'on gapirmaydi")
+    ? ok("«Naqd» qatori YÖQ — ekran yolğon gapirmaydi")
     : no("«Naqd» qolmasligi kerak", JSON.stringify(v.rows));
   v.btn.some((b) => /Click/i.test(b))
-    ? ok("summa Click tugmasida ko'rinadi") : no("Click tugmasida bo'lishi kerak", JSON.stringify(v.btn));
-  v.submit ? ok("summa kiritilgach «Sotish» ochildi") : no("«Sotish» ochilishi kerak", "yopiq");
+    ? ok("summa Click tugmasida körinadi") : no("Click tugmasida bölişi kerak", JSON.stringify(v.btn));
+  v.submit ? ok("summa kiritilgaç «Sotiş» oçildi") : no("«Sotiş» oçilişi kerak", "yopiq");
 
   /* ── c. ✕ HAQIQATAN O'CHIRADI (do'kon egasining shikoyati) ── */
-  v.xs === 1 ? ok("qatorda ✕ bor") : no("bitta ✕ bo'lishi kerak", v.xs);
+  v.xs === 1 ? ok("qatorda ✕ bor") : no("bitta ✕ bölişi kerak", v.xs);
   await pg.evaluate(() => document.querySelector(".pay-sum__x")?.click());
   await new Promise((r) => setTimeout(r, 300));
   v = await read();
   v.rows.length === 0
     ? ok("✕ bosilgach qator KETDI")
-    : no("✕ qatorni o'chirishi kerak", JSON.stringify(v.rows));
-  v.submit ? no("qator o'chgach «Sotish» yana yopilishi kerak", "ochiq") : ok("«Sotish» yana yopildi");
+    : no("✕ qatorni öçirişi kerak", JSON.stringify(v.rows));
+  v.submit ? no("qator öçgaç «Sotiş» yana yopilişi kerak", "oçiq") : ok("«Sotiş» yana yopildi");
   v.btn.length === 0 ? ok("tugmadagi belgi ham ketdi") : no("tugma belgisi qolmasligi kerak", JSON.stringify(v.btn));
-  v.val === "" ? ok("maydon ham bo'shadi") : no("maydon bo'shashi kerak", v.val);
+  v.val === "" ? ok("maydon ham böşadi") : no("maydon böşaşi kerak", v.val);
 
   /* ── d. Naqdga yozilsa — qator NAQD bo'ladi ── */
   await tap("Naqd");
@@ -811,11 +811,11 @@ console.log("\n── 8h. ⚠ KIRITILMAGAN PUL — TO'LOV EMAS (V86) ──");
   v = await read();
   v.rows.some((r) => /Naqd/i.test(r) && /20 ?000/.test(r))
     ? ok("naqdga yozilsa — «Naqd 20 000»")
-    : no("naqd qatori bo'lishi kerak", JSON.stringify(v.rows));
+    : no("naqd qatori bölişi kerak", JSON.stringify(v.rows));
   await pg.close();
 }
 
-console.log("\n── 8g. ⚠ NAQDSIZ ORTIQCHA JAMG'ARMAGA — SOTISH OCHIQ ──");
+console.log("\n── 8g. ⚠ NAQDSIZ ORTIQÇA JAMĞARMAGA — SOTIŞ OÇIQ ──");
 /* ═══ EKRAN O'ZI BILAN ZIDDIYATGA TUSHGAN EDI ═══════════════════════
 
    Do'kon egasining surati: Click 100 000, chek 20 000. Yashil qatorda
@@ -834,7 +834,7 @@ console.log("\n── 8g. ⚠ NAQDSIZ ORTIQCHA JAMG'ARMAGA — SOTISH OCHIQ ─�
     customers: [{ id: 7, fullName: "Vali", phone: "+998901234567", savingsBalance: 0 }],
   });
   await pg.evaluate(() => [...document.querySelectorAll("button")]
-    .find((b) => /Sotish|To'lov/i.test(b.textContent))?.click());
+    .find((b) => /Sotiş|Tölov/i.test(b.textContent))?.click());
   await new Promise((r) => setTimeout(r, 700));
   await pickCustomer(pg, "Vali");
 
@@ -862,29 +862,29 @@ console.log("\n── 8g. ⚠ NAQDSIZ ORTIQCHA JAMG'ARMAGA — SOTISH OCHIQ ─�
   let v = await read();
   /* ⚠ TUGMA O'CHIQ BO'LISHI TO'G'RI — hali jamg'armaga
      yo'naltirilmagan, ya'ni 80 000 ning manzili yo'q. */
-  !v.can ? ok("yo'naltirilmaguncha «Sotish» yopiq — to'g'ri")
-         : no("yo'naltirilmagan ortiqchada yopiq bo'lishi kerak", "ochiq");
-  v.warn.some((w) => /Ortiqcha/i.test(w))
-    ? ok("sabab aytiladi: ortiqcha") : no("ogohlantirish bo'lishi kerak", JSON.stringify(v.warn));
-  v.sav ? ok("«Qaytim jamg'armaga» tugmasi bor") : no("tugma bo'lishi kerak", "yo'q");
+  !v.can ? ok("yönaltirilmagunça «Sotiş» yopiq — töğri")
+         : no("yönaltirilmagan ortiqçada yopiq bölişi kerak", "oçiq");
+  v.warn.some((w) => /Ortiqça/i.test(w))
+    ? ok("sabab aytiladi: ortiqça") : no("ogohlantiriş bölişi kerak", JSON.stringify(v.warn));
+  v.sav ? ok("«Qaytim jamğarmaga» tugmasi bor") : no("tugma bölişi kerak", "yöq");
 
   await pg.evaluate(() => document.querySelector(".pay-change-sav")?.click());
   await new Promise((r) => setTimeout(r, 400));
   v = await read();
 
   /* ⚠ ASOSIY SHART. */
-  v.can ? ok("jamg'armaga yo'naltirilgach «Sotish» OCHILDI")
-        : no("«Sotish» ochilishi kerak", "yopiq");
-  !v.warn.some((w) => /Ortiqcha/i.test(w))
-    ? ok("qizil «ortiqcha» xatosi yo'qoldi — ziddiyat yo'q")
-    : no("xato yo'qolishi kerak edi", JSON.stringify(v.warn));
-  v.rows.some((r) => /Jamg'arma/i.test(r) && /80 ?000/.test(r))
-    ? ok("hisobda «Jamg'armaga +80 000» qatori") : no("qator bo'lishi kerak", JSON.stringify(v.rows));
-  v.savOn ? ok("tugma faol holatda") : no("tugma faol bo'lishi kerak", "yo'q");
+  v.can ? ok("jamğarmaga yönaltirilgaç «Sotiş» OÇILDI")
+        : no("«Sotiş» oçilişi kerak", "yopiq");
+  !v.warn.some((w) => /Ortiqça/i.test(w))
+    ? ok("qizil «ortiqça» xatosi yöqoldi — ziddiyat yöq")
+    : no("xato yöqolişi kerak edi", JSON.stringify(v.warn));
+  v.rows.some((r) => /Jamğarma/i.test(r) && /80 ?000/.test(r))
+    ? ok("hisobda «Jamğarmaga +80 000» qatori") : no("qator bölişi kerak", JSON.stringify(v.rows));
+  v.savOn ? ok("tugma faol holatda") : no("tugma faol bölişi kerak", "yöq");
   await pg.close();
 }
 
-console.log("\n── 8i. ⚠ QARZ MUDDATI TO'LOV PAYTIDA SO'RALADI (V87) ──");
+console.log("\n── 8i. ⚠ QARZ MUDDATI TÖLOV PAYTIDA SÖRALADI (V87) ──");
 /* Do'kon egasi: «qarz berilayotganda qarz muddatini to'lov paytida
    so'raydigan qilish kerak, qo'shimchasiga sozlamadagi muddat deb
    belgilay olsin, lekin to'lov paytida muddat so'rash BIRINCHI».
@@ -901,7 +901,7 @@ console.log("\n── 8i. ⚠ QARZ MUDDATI TO'LOV PAYTIDA SO'RALADI (V87) ──
     items: [{ id: 1, name: "Kurtka", salePrice: 100000, qty: 1, unit: "DONA", stockQuantity: 9 }],
   });
   await pg.evaluate(() => [...document.querySelectorAll("button")]
-    .find((b) => /Sotish|To'lov/i.test(b.textContent))?.click());
+    .find((b) => /Sotiş|Tölov/i.test(b.textContent))?.click());
   await new Promise((r) => setTimeout(r, 700));
 
   const read = () => pg.evaluate(() => ({
@@ -933,22 +933,22 @@ console.log("\n── 8i. ⚠ QARZ MUDDATI TO'LOV PAYTIDA SO'RALADI (V87) ──
   /* ── a. Nasiya YO'Q — muddat ham so'ralmaydi ── */
   await put("100000");
   let v = await read();
-  v.row ? no("to'liq to'langan chekda muddat so'ralmasligi kerak", "qator bor")
-        : ok("to'liq to'lovda muddat qatori yo'q");
+  v.row ? no("töliq tölangan çekda muddat söralmasligi kerak", "qator bor")
+        : ok("töliq tölovda muddat qatori yöq");
 
   /* ── b. Nasiya paydo bo'ldi — muddat SO'RALADI ── */
   await put("40000");
   v = await read();
-  v.row ? ok("nasiya chiqishi bilan muddat qatori paydo bo'ldi")
-        : no("muddat qatori bo'lishi kerak", "yo'q");
+  v.row ? ok("nasiya çiqişi bilan muddat qatori paydo böldi")
+        : no("muddat qatori bölişi kerak", "yöq");
   /* ⚠ SOZLAMADAGI 30 KUN — TAYYOR TAKLIF (`PROFILE.creditDueDays`). */
   v.value === isoDay(30)
-    ? ok(`sozlamadan to'ldirildi: ${v.value} (bugun + 30)`)
-    : no(`sozlamadagi 30 kun qo'yilishi kerak (${isoDay(30)})`, v.value);
-  v.min === isoDay(0) ? ok("o'tmishga qo'yib bo'lmaydi (min = bugun)")
-                      : no(`min bugun bo'lishi kerak (${isoDay(0)})`, v.min);
-  /(30|kun)/i.test(v.left || "") ? ok(`qolgan kun ko'rinadi: ${v.left}`)
-                                 : no("«30 kun» yozuvi bo'lishi kerak", v.left);
+    ? ok(`sozlamadan töldirildi: ${v.value} (bugun + 30)`)
+    : no(`sozlamadagi 30 kun qöyilişi kerak (${isoDay(30)})`, v.value);
+  v.min === isoDay(0) ? ok("ötmişga qöyib bölmaydi (min = bugun)")
+                      : no(`min bugun bölişi kerak (${isoDay(0)})`, v.min);
+  /(30|kun)/i.test(v.left || "") ? ok(`qolgan kun körinadi: ${v.left}`)
+                                 : no("«30 kun» yozuvi bölişi kerak", v.left);
 
   /* ── c. Kassir boshqa kunni tanladi ── */
   await pg.$eval("#pay-due", (el, val) => {
@@ -958,16 +958,16 @@ console.log("\n── 8i. ⚠ QARZ MUDDATI TO'LOV PAYTIDA SO'RALADI (V87) ──
   }, isoDay(3));
   await new Promise((r) => setTimeout(r, 300));
   v = await read();
-  v.value === isoDay(3) ? ok("kassir kelishilgan kunni qo'ydi") : no("sana o'zgarishi kerak", v.value);
+  v.value === isoDay(3) ? ok("kassir kelişilgan kunni qöydi") : no("sana özgarişi kerak", v.value);
   /3/.test(v.left || "") ? ok(`qolgan kun yangilandi: ${v.left}`)
-                         : no("«3 kun» bo'lishi kerak", v.left);
+                         : no("«3 kun» bölişi kerak", v.left);
 
   /* ── d. Muddatsiz ham mumkin ── */
-  v.x ? ok("✕ bor — muddatsiz qilish yo'li ochiq") : no("✕ bo'lishi kerak", "yo'q");
+  v.x ? ok("✕ bor — muddatsiz qiliş yöli oçiq") : no("✕ bölişi kerak", "yöq");
   await pg.evaluate(() => document.querySelector(".pay-due__x")?.click());
   await new Promise((r) => setTimeout(r, 250));
   v = await read();
-  v.value === "" ? ok("✕ muddatni oldi — «kelishilmagan»") : no("maydon bo'shashi kerak", v.value);
+  v.value === "" ? ok("✕ muddatni oldi — «kelishilmagan»") : no("maydon böşaşi kerak", v.value);
 
   /* ── e. SERVERGA AYNAN O'SHA SANA KETADI ── */
   await pg.$eval("#pay-due", (el, val) => {
@@ -987,10 +987,10 @@ console.log("\n── 8i. ⚠ QARZ MUDDATI TO'LOV PAYTIDA SO'RALADI (V87) ──
   await pg.click(".pay-modal-submit");
   await new Promise((r) => setTimeout(r, 1600));
   const body = sentSales[before] || null;
-  body ? ok("chek serverga ketdi") : no("chek yuborilishi kerak", "yo'q");
+  body ? ok("çek serverga ketdi") : no("çek yuborilişi kerak", "yöq");
   body?.creditDueDate === isoDay(10)
     ? ok(`serverga muddat ketdi: ${body.creditDueDate}`)
-    : no(`serverga ${isoDay(10)} ketishi kerak`, JSON.stringify(body?.creditDueDate));
+    : no(`serverga ${isoDay(10)} ketişi kerak`, JSON.stringify(body?.creditDueDate));
   await pg.close();
 }
 
@@ -1009,7 +1009,7 @@ console.log("\n── 8j. ⚠ USUL TUGMASI KURSORNI SUMMAGA QAYTARADI (V94) ─�
 {
   const pg = await openKassa({ items: ONE });
   await pg.evaluate(() => [...document.querySelectorAll("button")]
-    .find((b) => /Sotish|To'lov/i.test(b.textContent))?.click());
+    .find((b) => /Sotiş|Tölov/i.test(b.textContent))?.click());
   await new Promise((r) => setTimeout(r, 700));
 
   const focusOf = () => pg.evaluate(() => document.activeElement?.id || null);
@@ -1021,12 +1021,12 @@ console.log("\n── 8j. ⚠ USUL TUGMASI KURSORNI SUMMAGA QAYTARADI (V94) ─�
       const r = b.getBoundingClientRect();
       return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
     }, name);
-    if (!box) { no(`«${name}» tugmasi topilmadi`, "yo'q"); continue; }
+    if (!box) { no(`«${name}» tugmasi topilmadi`, "yöq"); continue; }
     await pg.mouse.click(box.x, box.y);
     await new Promise((r) => setTimeout(r, 250));
     const f = await focusOf();
     f === "pay-amount" ? ok(`«${name}» → kursor summa maydonida`)
-                       : no(`«${name}» dan keyin fokus summada bo'lishi kerak`, f);
+                       : no(`«${name}» dan keyin fokus summada bölişi kerak`, f);
   }
 
   /* ⚠ KARETKA OXIRIDA — boshida EMAS. Kassir naqdga 20 000 yozib
@@ -1062,7 +1062,7 @@ console.log("\n── 8k. ⚠ MIJOZDAN JAMI (V94) ──");
     items: [{ id: 1, name: "Kurtka", salePrice: 28990, qty: 1, unit: "DONA", stockQuantity: 9 }],
   });
   await pg.evaluate(() => [...document.querySelectorAll("button")]
-    .find((b) => /Sotish|To'lov/i.test(b.textContent))?.click());
+    .find((b) => /Sotiş|Tölov/i.test(b.textContent))?.click());
   await new Promise((r) => setTimeout(r, 700));
 
   const put = async (name, v) => {
@@ -1094,25 +1094,25 @@ console.log("\n── 8k. ⚠ MIJOZDAN JAMI (V94) ──");
      qoidasi). */
   await put("Naqd", "100000");
   let r = await readTaken();
-  r.shown ? no("bitta usulda «jami» ko'rsatilmasin", r.val)
-          : ok("bitta usulda ortiqcha qator chizilmadi");
+  r.shown ? no("bitta usulda «jami» körsatilmasin", r.val)
+          : ok("bitta usulda ortiqça qator çizilmadi");
 
   /* Uchta usul — egasining suratidagi holat. */
   await put("Karta", "1000000");
   await put("Click", "1000000");
   r = await readTaken();
   const sum = r.rows.reduce((a, b) => a + b, 0);
-  r.shown ? ok(`uchta usulda «Mijozdan jami» chiqdi: ${r.val}`)
-          : no("uchta usulda «jami» ko'rsatilishi kerak", "yo'q");
+  r.shown ? ok(`uçta usulda «Mijozdan jami» çiqdi: ${r.val}`)
+          : no("uçta usulda «jami» körsatilişi kerak", "yöq");
   /* ⚠⚠ JAMI KO'RINGAN QATORLARGA TENG BO'LISHI SHART. Agar u boshqa
      hisobdan olinsa, ekranda ikkita bir-biriga zid raqam turardi va
      kassir qaysi biriga ishonishni bilmasdi. */
   r.val === sum
-    ? ok(`jami ko'ringan qatorlar yig'indisiga teng (${sum})`)
-    : no("jami qatorlar yig'indisiga teng bo'lishi kerak", `${r.val} ≠ ${sum}`);
+    ? ok(`jami köringan qatorlar yiğindisiga teng (${sum})`)
+    : no("jami qatorlar yiğindisiga teng bölişi kerak", `${r.val} ≠ ${sum}`);
   sum === 2100000
     ? ok("2 100 000 — naqd 100 000 + karta 1 000 000 + Click 1 000 000")
-    : no("kutilgan yig'indi 2 100 000", sum);
+    : no("kutilgan yiğindi 2 100 000", sum);
   await pg.close();
 }
 
@@ -1120,7 +1120,7 @@ console.log("\n── 8l. ⚠ MAYDONDAGI «×» (V94) ──");
 {
   const pg = await openKassa({ items: ONE });
   await pg.evaluate(() => [...document.querySelectorAll("button")]
-    .find((b) => /Sotish|To'lov/i.test(b.textContent))?.click());
+    .find((b) => /Sotiş|Tölov/i.test(b.textContent))?.click());
   await new Promise((r) => setTimeout(r, 700));
 
   const xOf = () => pg.evaluate(() =>
@@ -1128,7 +1128,7 @@ console.log("\n── 8l. ⚠ MAYDONDAGI «×» (V94) ──");
 
   /* ⚠ BO'SH MAYDONDA TUGMA YO'Q: bosiladigan, lekin hech nima
      qilmaydigan tugma ishonchni yo'qotadi (`ui/index.jsx` qoidasi). */
-  (await xOf()) ? no("bo'sh maydonda «×» chizilmasin", "bor") : ok("bo'sh maydonda «×» yo'q");
+  (await xOf()) ? no("böş maydonda «×» çizilmasin", "bor") : ok("böş maydonda «×» yöq");
 
   await pg.evaluate(() => {
     const el = document.querySelector("#pay-amount");
@@ -1136,7 +1136,7 @@ console.log("\n── 8l. ⚠ MAYDONDAGI «×» (V94) ──");
     set?.call(el, "45000"); el.dispatchEvent(new Event("input", { bubbles: true }));
   });
   await new Promise((r) => setTimeout(r, 300));
-  (await xOf()) ? ok("qiymat yozilgach «×» chiqdi") : no("«×» chiqishi kerak", "yo'q");
+  (await xOf()) ? ok("qiymat yozilgaç «×» çiqdi") : no("«×» çiqişi kerak", "yöq");
 
   /* ⚠ Uzun son «×» tagiga kirib ketmasin. */
   const pad = await pg.evaluate(() => {
@@ -1145,8 +1145,8 @@ console.log("\n── 8l. ⚠ MAYDONDAGI «×» (V94) ──");
              pr: parseInt(getComputedStyle(el).paddingRight, 10) };
   });
   pad.cls && pad.pr >= 30
-    ? ok(`o'ng bo'shliq ochildi (padding-right ${pad.pr}px)`)
-    : no("`has-clear` o'ng bo'shliq berishi kerak", JSON.stringify(pad));
+    ? ok(`öng böşliq oçildi (padding-right ${pad.pr}px)`)
+    : no("`has-clear` öng böşliq berişi kerak", JSON.stringify(pad));
 
   /* ⚠⚠ TUGMA KO'RINADIGAN JOYDA VA BOSILADIGAN O'LCHAMDA BO'LSIN.
      DOM da borligi YETMAYDI: 0×0 o'lchamli yoki maydondan tashqarida
@@ -1167,8 +1167,8 @@ console.log("\n── 8l. ⚠ MAYDONDAGI «×» (V94) ──");
     };
   });
   geo.w >= 18 && geo.h >= 18 && geo.inside && geo.vis
-    ? ok(`«×» maydon ichida va bosiladigan o'lchamda (${geo.w}×${geo.h})`)
-    : no("«×» maydon ichida, ko'rinadigan va ≥18px bo'lishi kerak", JSON.stringify(geo));
+    ? ok(`«×» maydon içida va bosiladigan ölçamda (${geo.w}×${geo.h})`)
+    : no("«×» maydon içida, körinadigan va ≥18px bölişi kerak", JSON.stringify(geo));
 
   await pg.evaluate(() => document.querySelector("#pay-amount")
     .closest(".field").querySelector(".field-clear").click());
@@ -1178,12 +1178,12 @@ console.log("\n── 8l. ⚠ MAYDONDAGI «×» (V94) ──");
     rows: document.querySelectorAll(".pay-sum__row").length,
     x: !!document.querySelector("#pay-amount")?.closest(".field")?.querySelector(".field-clear"),
   }));
-  after.val === "" ? ok("«×» maydonni tozaladi") : no("maydon bo'shashi kerak", after.val);
-  after.x ? no("tozalangach «×» yo'qolishi kerak", "qoldi") : ok("tozalangach «×» yo'qoldi");
+  after.val === "" ? ok("«×» maydonni tozaladi") : no("maydon böşaşi kerak", after.val);
+  after.x ? no("tozalangaç «×» yöqolişi kerak", "qoldi") : ok("tozalangaç «×» yöqoldi");
   await pg.close();
 }
 
-console.log("\n── 9. Scrol bo'lmasin — har ekranda ──");
+console.log("\n── 9. Scrol bölmasin — har ekranda ──");
 
 const MANY = Array.from({ length: 9 }, (_, i) => ({
   id: i + 1, name: "Kiyim nomi uzunroq " + (i + 1),
@@ -1195,7 +1195,7 @@ const SCREENS = [[1920, 1080], [1600, 900], [1366, 768], [1280, 720], [1024, 768
 for (const [w, h] of SCREENS) {
   const pg = await openKassa({ w, h, items: MANY });
   await pg.evaluate(() => [...document.querySelectorAll("button")]
-    .find((b) => /Sotish|To'lov|Tolov/i.test(b.textContent))?.click());
+    .find((b) => /Sotiş|Tölov|Tolov/i.test(b.textContent))?.click());
   await new Promise((r) => setTimeout(r, 700));
   /* Qisman to'lov — nasiya qatori va «mijozni tanlang» ogohlantirishi
      chiqsin: oyna eng BALAND holatida o'lchansin. */
@@ -1221,8 +1221,8 @@ for (const [w, h] of SCREENS) {
     }
     return out;
   });
-  worst.y <= 1 ? ok(`${w}×${h} — scrol yo'q`)
-               : no(`${w}×${h} — scrol paydo bo'ldi`, `${worst.sel} +${worst.y}px`);
+  worst.y <= 1 ? ok(`${w}×${h} — scrol yöq`)
+               : no(`${w}×${h} — scrol paydo böldi`, `${worst.sel} +${worst.y}px`);
   await pg.close();
 }
 
@@ -1230,10 +1230,10 @@ await browser.close(); server.close();
 
 if (pageErrors.length) {
   bad += pageErrors.length;
-  console.log("\n  ❌ Sahifada JS xatolari tushdi:");
+  console.log("\n  ❌ Sahifada JS xatolari tuşdi:");
   for (const e of [...new Set(pageErrors)].slice(0, 6)) console.log("       " + e);
 } else {
-  console.log("\n  ✅ Sahifada birorta JS xatosi tushmadi");
+  console.log("\n  ✅ Sahifada birorta JS xatosi tuşmadi");
 }
-console.log(bad ? `\n  ${bad} ta xato — to'lov oynasi buzilgan.\n` : "\n  ✅ To'lov oynasi: hammasi o'tdi\n");
+console.log(bad ? `\n  ${bad} ta xato — tölov oynasi buzilgan.\n` : "\n  ✅ Tölov oynasi: hammasi ötdi\n");
 process.exit(bad ? 1 : 0);

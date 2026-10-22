@@ -98,7 +98,7 @@ const yes = (c, m, extra = "") => {
 };
 
 let s = await state();
-yes(/F11/.test(s.title), "tugma yorlig'ida F11 ko'rsatilgan", s.title);
+yes(/F11/.test(s.title), "tugma yorliğida F11 körsatilgan", s.title);
 yes(!s.cls.includes("kassa-fullscreen"), "boshlanishda oddiy holat", s.cls);
 
 await page.keyboard.press("F11");
@@ -106,27 +106,27 @@ s = await until((x) => x.full && x.cls.includes("kassa-fullscreen"));
 yes(s.cls.includes("kassa-fullscreen"), "F11 — ilova qatlamlari yashirindi", s.cls);
 /* ⚠ ASOSIY SINOV. Ilgari rejim FAQAT shu sinfni qo'yardi va kassir
    tepada brauzerning manzil qatorini ko'rib turardi. */
-yes(s.full, "F11 — HAQIQIY to'liq ekran yoqildi");
-yes(s.exit, "chiqish tugmasi ko'rindi");
+yes(s.full, "F11 — HAQIQIY töliq ekran yoqildi");
+yes(s.exit, "çiqiş tugmasi körindi");
 
 await page.keyboard.press("F11");
 s = await until((x) => !x.full && !x.cls.includes("kassa-fullscreen"));
-yes(!s.cls.includes("kassa-fullscreen"), "ikkinchi F11 — qatlamlar qaytdi", s.cls);
-yes(!s.full, "ikkinchi F11 — ekran ham qaytdi");
+yes(!s.cls.includes("kassa-fullscreen"), "ikkinçi F11 — qatlamlar qaytdi", s.cls);
+yes(!s.full, "ikkinçi F11 — ekran ham qaytdi");
 
 /* Tugma — kassirning asosiy yo'li; u ham aynan shu ishni qilishi kerak. */
 await page.click(".kassa-fs-topbar-btn");
 s = await until((x) => x.full && x.cls.includes("kassa-fullscreen"));
 yes(s.cls.includes("kassa-fullscreen"), "tugma — qatlamlar yashirindi", s.cls);
-yes(s.full, "tugma — HAQIQIY to'liq ekran yoqildi");
+yes(s.full, "tugma — HAQIQIY töliq ekran yoqildi");
 
 /* Boshqa sahifaga o'tilganda ekran ham qaytadi: rejim faqat kassaniki. */
 await page.evaluate(() => document.querySelector('a[href="/reports"], a[href="/products"]')?.click());
 s = await until((x) => !x.full);
-yes(!s.full, "sahifa almashganda to'liq ekrandan chiqiladi");
+yes(!s.full, "sahifa almaşganda töliq ekrandan çiqiladi");
 
 await browser.close();
 server.close();
 
-console.log(`\n  ${pass} o'tdi, ${fail} yiqildi`);
+console.log(`\n  ${pass} ötdi, ${fail} yiqildi`);
 process.exit(fail ? 1 : 0);

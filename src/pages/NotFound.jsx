@@ -135,13 +135,13 @@ export default function NotFound() {
                     <div className="nf-icon"><i className="fa-solid fa-magnifying-glass" /></div>
                     <h1 className="nf-title">{t("notFound.title")}</h1>
                     <p className="nf-desc">
-                        Siz qidirayotgan sahifa ko'chirilgan, o'chirilgan yoki hech qachon mavjud bo'lmagan.
-                        Iltimos, URLni tekshiring yoki bosh sahifaga qayting.
+                        Siz qidirayotgan sahifa köçirilgan, öçirilgan yoki heç qaçon mavjud bölmagan.
+                        Iltimos, URLni tekşiring yoki boş sahifaga qayting.
                     </p>
 
                     <div className="nf-btns">
                         <button className="nf-btn-home" onClick={() => navigate("/")}>
-                            <i className="fa-solid fa-house" /> Bosh sahifa
+                            <i className="fa-solid fa-house" /> Boş sahifa
                         </button>
                         <button className="nf-btn-back" onClick={() => window.history.back()}>
                             <i className="fa-solid fa-arrow-left" /> Orqaga
@@ -150,7 +150,7 @@ export default function NotFound() {
 
                     <div className="nf-countdown">
                         <i className="fa-solid fa-rotate-right" />
-                        Avtomatik yo'naltirish: <span>{seconds}</span> soniyada
+                        Avtomatik yönaltiriş: <span>{seconds}</span> soniyada
                     </div>
 
                     <div className="nf-quick">
@@ -166,7 +166,7 @@ export default function NotFound() {
                                 <i className="fa-solid fa-envelope" /> Aloqa
                             </a>
                             <a href={LOGIN_URL} className="nf-quick-link">
-                                <i className="fa-solid fa-arrow-right-to-bracket" /> Kirish
+                                <i className="fa-solid fa-arrow-right-to-bracket" /> Kiriş
                             </a>
                         </div>
                     </div>

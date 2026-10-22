@@ -41,7 +41,7 @@ export default function CustomerWeb() {
       })
       .catch((e) => {
         setPhase("error");
-        setError(e.message || "Kirish yakunlanmadi");
+        setError(e.message || "Kiriş yakunlanmadi");
       })
       .finally(() => window.history.replaceState({}, "", "/mening"));
   }, []);
@@ -62,7 +62,7 @@ export default function CustomerWeb() {
           <p><b>{t("cu.loginFailed")}</b></p>
           <p className="cu-muted">{error}</p>
           <button className="cu-btn" onClick={() => { setPhase("idle"); setError(""); }}>
-            Qaytadan urinish
+            Qaytadan uriniş
           </button>
         </div>
       </div>

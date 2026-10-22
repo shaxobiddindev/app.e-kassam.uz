@@ -85,7 +85,7 @@ for(const route of ROUTES){
 if (found.length) {
   console.log("  \u274c " + found.length + " ta muammo:\n    " + found.join("\n    "));
 } else {
-  console.log(`  \u2705 ${ROUTES.length} sahifa \u00d7 ${WIDTHS.length} kenglik \u2014 qidiruv ochiq, gorizontal surilish yo'q`);
+  console.log(`  \u2705 ${ROUTES.length} sahifa \u00d7 ${WIDTHS.length} kenglik \u2014 qidiruv oçiq, gorizontal suriliş yöq`);
 }
 await b.close(); server.close();
 process.exit(found.length ? 1 : 0);

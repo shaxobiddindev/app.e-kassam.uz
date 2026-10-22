@@ -109,7 +109,7 @@ console.log("\n── Ogohlantirishlar: jimgina buzilmasin ──");
   narrow.spec.fields[2].w = 10;
   const tight = renderLabel(narrow, P);
   const w = tight.warnings.find((x) => x.code === "BARCODE_WIDE");
-  ok(!!w && /mm toshdi/.test(w.text), "⚠ sig'magan barkod: necha mm toshgani aytiladi");
+  ok(!!w && /mm toşdi/.test(w.text), "⚠ sig'magan barkod: necha mm toshgani aytiladi");
   ok(!tight.svg.includes("<rect x=\"12"), "sig'magan barkod chizilmaydi");
 
   /* Uzun nom — kichrayadi, lekin o'qib bo'lmas darajada emas: 5 pt da ham
@@ -128,7 +128,7 @@ console.log("\n── Narx: butun yirik, tiyin kichik ──");
   const whole = renderLabel(TPL, { ...P, salePrice: 24500 }).svg;
   ok(!/<tspan[^>]*dy="-/.test(whole), "butun summada tiyin qismi umuman chizilmaydi");
   /* «so'm» (2026-10-05): narx ekani bilinsin — sig'sa narx yonida, sig'masa yo'q. */
-  ok(/<tspan[^>]*> so'm<\/tspan>/.test(whole), "narx yonida «so'm» (joy bor)");
+  ok(/<tspan[^>]*> söm<\/tspan>/.test(whole), "narx yonida «söm» (joy bor)");
   const narrow = { ...TPL, spec: JSON.stringify({ ...JSON.parse(typeof TPL.spec === "string" ? TPL.spec : JSON.stringify(TPL.spec)),
     fields: [{ key: "price", x: 1, y: 1, w: 14, h: 6, size: 14, weight: 900, align: "center", style: "major-minor" }] }) };
   const tight = renderLabel(narrow, { ...P, salePrice: 1250000 }).svg;
@@ -229,8 +229,8 @@ console.log("\n── 30×20 «Nom yirik»: Arial Black, ikkinchi qator, «so'm�
   /* «so'm» narxning 0,55 i, kamida 2,8 mm (40×30, 14 pt narx). */
   const S40 = { ...S30, widthMm: 40, heightMm: 30, spec: { ...S30.spec, fields: [
     { key: "price", x: 1.5, y: 21.8, w: 37, h: 6.6, size: 14, weight: 900, align: "center", style: "major-minor", visible: true }] } };
-  const som = Number(renderLabel(S40, P1).svg.match(/<tspan font-size="([\d.]+)"[^>]*> so'm/)?.[1]);
-  ok(som >= 2.8, `«so'm» yirikroq (≥ 2,8 mm, ilgari 2,4) — ${som}`);
+  const som = Number(renderLabel(S40, P1).svg.match(/<tspan font-size="([\d.]+)"[^>]*> söm/)?.[1]);
+  ok(som >= 2.8, `«söm» yirikroq (≥ 2,8 mm, ilgari 2,4) — ${som}`);
 }
 
 console.log(`\n${fail === 0 ? "✅" : "❌"}  ${pass} o'tdi, ${fail} yiqildi\n`);

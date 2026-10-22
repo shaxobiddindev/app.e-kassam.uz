@@ -34,7 +34,7 @@ async function call(path, { method = "GET", body, auth = true } = {}) {
        Aslida bu deyarli har doim internet uzilishi yoki server javob
        bermayotgani. Xatoni BELGILAB qo'yamiz — ekran shunga qarab
        «qayta urinish» taklif qiladi. */
-    const err = new Error("Internet bilan aloqa yo'q. Ulanishni tekshirib, qayta urinib ko'ring.");
+    const err = new Error("Internet bilan aloqa yöq. Ulanişni tekşirib, qayta urinib köring.");
     err.offline = true;
     throw err;
   }

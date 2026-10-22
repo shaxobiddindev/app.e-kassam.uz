@@ -116,10 +116,10 @@ async function wheelScrolls({ touch, route }) {
   return { tall: true, moved: after - before, mode };
 }
 
-console.log("\n══ Sensorli monoblokda g'ildirak ══");
+console.log("\n══ Sensorli monoblokda ğildirak ══");
 
 /* ══ §0 NAZORAT: taqlid g'ildirakni yutmaydi ════════════════════════ */
-console.log("\n§0 ⚠ NAZORAT — taqlidning o'zi ayblanmasin");
+console.log("\n§0 ⚠ NAZORAT — taqlidning özi ayblanmasin");
 {
   const page = await browser.newPage();
   await page.setViewport({ width: 1366, height: 768, hasTouch: true, isMobile: false });
@@ -130,8 +130,8 @@ console.log("\n§0 ⚠ NAZORAT — taqlidning o'zi ayblanmasin");
   await new Promise((r) => setTimeout(r, 300));
   const moved = await page.evaluate(() => document.scrollingElement.scrollTop);
   moved > 0
-    ? ok(`sof HTML sahifa teginish rejimida ham suriladi (${moved}px)`)
-    : no("taqlid g'ildirakni yutyapti — bu sinov hech narsa isbotlay olmaydi", String(moved));
+    ? ok(`sof HTML sahifa teginiş rejimida ham suriladi (${moved}px)`)
+    : no("taqlid ğildirakni yutyapti — bu sinov heç narsa isbotlay olmaydi", String(moved));
   await page.close();
 }
 
@@ -139,19 +139,19 @@ console.log("\n§0 ⚠ NAZORAT — taqlidning o'zi ayblanmasin");
 console.log("\n§1 Oddiy kompyuter (teginishsiz)");
 {
   const r = await wheelScrolls({ touch: false, route: "/products" });
-  if (!r.tall) no("sahifa suriladigan darajada uzun bo'lishi kerak", "qisqa");
+  if (!r.tall) no("sahifa suriladigan darajada uzun bölişi kerak", "qisqa");
   else r.moved > 0 ? ok(`data-touch=${r.mode} · ${r.moved}px surildi`)
                    : no("sensorsiz mashinada ham surilmadi", String(r.moved));
 }
 
 /* ══ §2 ASOSIY SINOV ═══════════════════════════════════════════════ */
-console.log("\n§2 ⚠ SENSORLI MONOBLOK — G'ILDIRAK ISHLASHI SHART");
+console.log("\n§2 ⚠ SENSORLI MONOBLOK — ĞILDIRAK IŞLAŞI ŞART");
 {
   const r = await wheelScrolls({ touch: true, route: "/products" });
-  if (!r.tall) no("sahifa suriladigan darajada uzun bo'lishi kerak", "qisqa");
+  if (!r.tall) no("sahifa suriladigan darajada uzun bölişi kerak", "qisqa");
   else r.moved > 0
     ? ok(`data-touch=${r.mode} · ${r.moved}px surildi`)
-    : no("⚠ G'ILDIRAK O'LIK: jadval ustidagi `overscroll-behavior: contain` "
+    : no("⚠ ĞILDIRAK ÖLIK: jadval ustidagi `overscroll-behavior: contain` "
        + "zanjirni uzyapti — kassir sahifani sura olmaydi", String(r.moved));
 }
 
@@ -173,6 +173,6 @@ await browser.close();
 server.close();
 
 console.log(bad === 0
-  ? "\n✅ g'ildirak: hammasi o'tdi\n"
-  : `\n❌ g'ildirak: ${bad} ta muammo\n`);
+  ? "\n✅ ğildirak: hammasi ötdi\n"
+  : `\n❌ ğildirak: ${bad} ta muammo\n`);
 process.exit(bad === 0 ? 0 : 1);

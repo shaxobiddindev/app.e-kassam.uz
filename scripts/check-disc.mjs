@@ -93,7 +93,7 @@ async function openKassa(items) {
   await page.goto(`http://127.0.0.1:${PORT}/sale`, { waitUntil: "networkidle2", timeout: 30_000 });
   await new Promise((r) => setTimeout(r, 1200));
   await page.evaluate(() => [...document.querySelectorAll("button")]
-    .find((b) => /Sotish|To'lov|Tolov/i.test(b.textContent))?.click());
+    .find((b) => /Sotiş|Tölov|Tolov/i.test(b.textContent))?.click());
   await new Promise((r) => setTimeout(r, 700));
   return page;
 }
@@ -145,7 +145,7 @@ const cart = (page) => page.evaluate(() => {
 /* ══════════════════════════════════════════════════════════════════════
    1. BIR DONANING NARXI YAXLITLANADI
    ══════════════════════════════════════════════════════════════════════ */
-console.log("\n── 1. Uchta bir xil tovar: bir donasi yaxlit bo'ladi ──");
+console.log("\n── 1. Uçta bir xil tovar: bir donasi yaxlit böladi ──");
 {
   const page = await openKassa([
     { id: 1, name: "Kurtka", salePrice: 14900, qty: 3, unit: "DONA",
@@ -153,8 +153,8 @@ console.log("\n── 1. Uchta bir xil tovar: bir donasi yaxlit bo'ladi ──")
   ]);
   await budget(page, 1500);
   const o = await offers(page);
-  o.btns.length > 0 ? ok(`${o.btns.length} ta taklif chiqdi`)
-                    : no("taklif chiqishi kerak", JSON.stringify(o.hints));
+  o.btns.length > 0 ? ok(`${o.btns.length} ta taklif çiqdi`)
+                    : no("taklif çiqişi kerak", JSON.stringify(o.hints));
   /* ⚠ BITTA MAYDON: yozilgan summa jamini DARHOL kamaytiradi.
      Ilgari «byudjet» maydoni jamiga tegmasdi va kassir uni chegirma
      deb o'ylab, hech narsa o'zgarmaganini ko'rardi. */
@@ -162,33 +162,33 @@ console.log("\n── 1. Uchta bir xil tovar: bir donasi yaxlit bo'ladi ──")
     const live = await page.evaluate(() =>
       document.querySelector(".pay-modal-total-value")
         ?.textContent.replace(/\D/g, "") || null);
-    live === null ? ok("jami maydonini o'qib bo'lmadi (o'tkazildi)")
+    live === null ? ok("jami maydonini öqib bölmadi (ötkazildi)")
       : live === "43200" ? ok("jami darhol kamaydi: 44 700 − 1 500 = 43 200")
-      : no("jami 43 200 bo'lishi kerak", live);
+      : no("jami 43 200 bölişi kerak", live);
   }
 
   if (o.btns.length) {
     /* Birinchi tugma — ENG YAXSHISI. 14 500 × 3 = 43 500, chegirma
        1 200 — byudjetdan (1 500) KAM, lekin qaytarish qulay. */
     o.btns[0].target === "43500"
-      ? ok("eng yaxshi taklif: jami 43 500") : no("jami 43 500 bo'lishi kerak", o.btns[0].target);
+      ? ok("eng yaxşi taklif: jami 43 500") : no("jami 43 500 bölişi kerak", o.btns[0].target);
     o.btns[0].cut === "1200"
-      ? ok("chegirma 1 200 — byudjetdan KAM (byudjet — chegara, majburiyat emas)")
-      : no("chegirma 1 200 bo'lishi kerak", o.btns[0].cut);
-    o.btns[0].ret ? ok("qaytarish belgisi ko'rinadi") : no("qaytarish belgisi bo'lishi kerak", "yo'q");
+      ? ok("çegirma 1 200 — byudjetdan KAM (byudjet — çegara, majburiyat emas)")
+      : no("çegirma 1 200 bölişi kerak", o.btns[0].cut);
+    o.btns[0].ret ? ok("qaytariş belgisi körinadi") : no("qaytariş belgisi bölişi kerak", "yöq");
 
     await page.evaluate(() => document.querySelectorAll(".round-offers__btn")[0].click());
     await new Promise((r) => setTimeout(r, 400));
     const c = await cart(page);
     c.items[0].unit === 14500
-      ? ok("SAVATDA bir donaning narxi 14 500") : no("bir donasi 14 500 bo'lishi kerak", c.items[0].unit);
+      ? ok("SAVATDA bir donaning narxi 14 500") : no("bir donasi 14 500 bölişi kerak", c.items[0].unit);
     c.items[0].disc === 1200
-      ? ok("chegirma QATORGA yozildi (1 200)") : no("qator chegirmasi 1 200 bo'lishi kerak", c.items[0].disc);
+      ? ok("çegirma QATORGA yozildi (1 200)") : no("qator çegirmasi 1 200 bölişi kerak", c.items[0].disc);
     /* ⚠ Chek chegirmasi maydoni BO'SH qolishi shart: aks holda server
        uni qator qiymatiga mutanosib yana tarqatardi va ekranda
        ko'rsatilgan narx chekka tushmasdi. */
-    !c.discount ? ok("chek chegirmasi bo'sh — server qayta tarqatmaydi")
-                : no("chek chegirmasi bo'sh bo'lishi kerak", c.discount);
+    !c.discount ? ok("çek çegirmasi böş — server qayta tarqatmaydi")
+                : no("çek çegirmasi böş bölişi kerak", c.discount);
   }
   await page.close();
 }
@@ -196,7 +196,7 @@ console.log("\n── 1. Uchta bir xil tovar: bir donasi yaxlit bo'ladi ──")
 /* ══════════════════════════════════════════════════════════════════════
    2. ALLAQACHON QULAY SAVATGA TAKLIF BERILMAYDI
    ══════════════════════════════════════════════════════════════════════ */
-console.log("\n── 2. Savat allaqachon qulay — taklif YO'Q ──");
+console.log("\n── 2. Savat allaqaçon qulay — taklif YÖQ ──");
 {
   /* 3 × 15 000 = 45 000: jami ham yaxlit, bir donasi ham. «−1 000 →
      44 000» taklifi jamini chiroyli qoldirardi, lekin bir donani
@@ -208,17 +208,17 @@ console.log("\n── 2. Savat allaqachon qulay — taklif YO'Q ──");
   ]);
   await budget(page, 1000);
   const o = await offers(page);
-  o.btns.length === 0 ? ok("taklif chiqmadi") : no("taklif chiqmasligi kerak", JSON.stringify(o.btns));
-  o.hints.some((h) => /allaqachon qulay|qiyinlashtiradi/i.test(h))
-    ? ok("sabab aytildi: narxlar allaqachon qulay")
-    : no("sabab ko'rsatilishi kerak", JSON.stringify(o.hints));
+  o.btns.length === 0 ? ok("taklif çiqmadi") : no("taklif chiqmasligi kerak", JSON.stringify(o.btns));
+  o.hints.some((h) => /allaqaçon qulay|qiyinlaştiradi/i.test(h))
+    ? ok("sabab aytildi: narxlar allaqaçon qulay")
+    : no("sabab körsatilişi kerak", JSON.stringify(o.hints));
   await page.close();
 }
 
 /* ══════════════════════════════════════════════════════════════════════
    3. ARALASH SAVAT — HAR QATOR O'Z SUMMASINI OLADI
    ══════════════════════════════════════════════════════════════════════ */
-console.log("\n── 3. Aralash savat: har qator alohida yaxlitlanadi ──");
+console.log("\n── 3. Aralaş savat: har qator alohida yaxlitlanadi ──");
 {
   const page = await openKassa([
     { id: 1, name: "Kurtka", salePrice: 14900, qty: 3, unit: "DONA",
@@ -230,32 +230,32 @@ console.log("\n── 3. Aralash savat: har qator alohida yaxlitlanadi ──");
   ]);
   await budget(page, 5000);
   const o = await offers(page);
-  o.btns.length > 0 ? ok(`${o.btns.length} ta taklif`) : no("taklif bo'lishi kerak", JSON.stringify(o.hints));
-  o.btns[0]?.best ? ok("eng yaxshisida «mukammal» belgisi") : ok("belgi darajasi: " + (o.btns[0]?.ret ? "o'sish" : "yo'q"));
+  o.btns.length > 0 ? ok(`${o.btns.length} ta taklif`) : no("taklif bölişi kerak", JSON.stringify(o.hints));
+  o.btns[0]?.best ? ok("eng yaxshisida «mukammal» belgisi") : ok("belgi darajasi: " + (o.btns[0]?.ret ? "ösiş" : "yöq"));
 
   await page.evaluate(() => document.querySelectorAll(".round-offers__btn")[0].click());
   await new Promise((r) => setTimeout(r, 400));
   const c = await cart(page);
   const units = c.items.map((i) => i.unit);
   units.every((u) => u % 1000 === 0)
-    ? ok("uchala qatorning ham bir donasi 1 000 ga bo'linadi: " + units.join(", "))
-    : no("har qator 1 000 ga bo'linishi kerak", units.join(", "));
+    ? ok("uçala qatorning ham bir donasi 1 000 ga bölinadi: " + units.join(", "))
+    : no("har qator 1 000 ga bölinişi kerak", units.join(", "));
   /* Hech bir qator o'z chegarasidan pastga tushmasligi kerak — aks
      holda tugmani bosgan kassir darhol bajik so'raladigan holatga
      tushardi. */
   const MIN = [13000, 6000, 2000];
   units.every((u, i) => u >= MIN[i])
-    ? ok("hech bir qator eng past narxdan pastga tushmadi")
-    : no("chegaradan oshib ketdi", units.join(", "));
+    ? ok("heç bir qator eng past narxdan pastga tuşmadi")
+    : no("çegaradan oşib ketdi", units.join(", "));
   const spent = c.items.reduce((s, i) => s + i.disc, 0);
-  spent <= 5000 ? ok(`byudjetdan oshmadi: ${spent} ≤ 5 000`) : no("byudjetdan oshdi", spent);
+  spent <= 5000 ? ok(`byudjetdan oshmadi: ${spent} ≤ 5 000`) : no("byudjetdan oşdi", spent);
   await page.close();
 }
 
 /* ══════════════════════════════════════════════════════════════════════
    4. CHEGARA YO'Q — TAKLIF HAM YO'Q
    ══════════════════════════════════════════════════════════════════════ */
-console.log("\n── 4. Eng past narxdagi tovar — taklif yo'q, sabab aytiladi ──");
+console.log("\n── 4. Eng past narxdagi tovar — taklif yöq, sabab aytiladi ──");
 {
   const page = await openKassa([
     { id: 1, name: "Kurtka", salePrice: 14900, qty: 3, unit: "DONA",
@@ -263,10 +263,10 @@ console.log("\n── 4. Eng past narxdagi tovar — taklif yo'q, sabab aytiladi
   ]);
   await budget(page, 5000);
   const o = await offers(page);
-  o.btns.length === 0 ? ok("taklif yo'q") : no("taklif bo'lmasligi kerak", JSON.stringify(o.btns));
-  o.hints.some((h) => /narxi eng past|chegirma qilib bo'lmaydi/i.test(h))
-    ? ok("sabab aytildi: narx allaqachon eng past")
-    : no("sabab ko'rsatilishi kerak", JSON.stringify(o.hints));
+  o.btns.length === 0 ? ok("taklif yöq") : no("taklif bölmasligi kerak", JSON.stringify(o.btns));
+  o.hints.some((h) => /narxi eng past|çegirma qilib bölmaydi/i.test(h))
+    ? ok("sabab aytildi: narx allaqaçon eng past")
+    : no("sabab körsatilişi kerak", JSON.stringify(o.hints));
   await page.close();
 }
 
@@ -281,27 +281,27 @@ console.log("\n── 5. Tarozili tovar: kg narxi yaxlitlanadi ──");
   ]);
   await budget(page, 2000);
   const o = await offers(page);
-  o.btns.length > 0 ? ok(`${o.btns.length} ta taklif`) : no("taklif bo'lishi kerak", JSON.stringify(o.hints));
+  o.btns.length > 0 ? ok(`${o.btns.length} ta taklif`) : no("taklif bölişi kerak", JSON.stringify(o.hints));
   await page.evaluate(() => document.querySelectorAll(".round-offers__btn")[0].click());
   await new Promise((r) => setTimeout(r, 400));
   const c = await cart(page);
   c.items[0].unit % 500 === 0
-    ? ok(`kg narxi yaxlit: ${c.items[0].unit}`) : no("kg narxi yaxlit bo'lishi kerak", c.items[0].unit);
+    ? ok(`kg narxi yaxlit: ${c.items[0].unit}`) : no("kg narxi yaxlit bölişi kerak", c.items[0].unit);
   c.items[0].unit >= 11000
-    ? ok("eng past narxdan pastga tushmadi") : no("chegaradan oshdi", c.items[0].unit);
+    ? ok("eng past narxdan pastga tuşmadi") : no("çegaradan oşdi", c.items[0].unit);
   await page.close();
 }
 
 if (pageErrors.length) {
   bad += pageErrors.length;
-  console.log("\n  ❌ Sahifada JS xatolari tushdi:");
+  console.log("\n  ❌ Sahifada JS xatolari tuşdi:");
   for (const e of [...new Set(pageErrors)].slice(0, 6)) console.log("       " + e);
 } else {
-  console.log("\n  ✅ Sahifada birorta JS xatosi tushmadi");
+  console.log("\n  ✅ Sahifada birorta JS xatosi tuşmadi");
 }
 
 await browser.close();
 server.close();
-console.log(bad ? `\n❌ Chegirma optimizatori: ${bad} ta muammo\n`
-                : "\n✅ Chegirma optimizatori: hammasi o'tdi\n");
+console.log(bad ? `\n❌ Çegirma optimizatori: ${bad} ta muammo\n`
+                : "\n✅ Çegirma optimizatori: hammasi ötdi\n");
 process.exit(bad ? 1 : 0);

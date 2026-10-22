@@ -33,7 +33,7 @@ export async function rasterizeSvg(svg, widthDots, heightDots, { invert = false 
   img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(sized);
   await new Promise((resolve, reject) => {
     img.onload = resolve;
-    img.onerror = () => reject(new Error("Yorliq rasmini chizib bo'lmadi"));
+    img.onerror = () => reject(new Error("Yorliq rasmini çizib bölmadi"));
   });
 
   const canvas = document.createElement("canvas");

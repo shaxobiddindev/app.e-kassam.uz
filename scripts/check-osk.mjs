@@ -98,14 +98,14 @@ const probe = () => page.evaluate(() => {
   };
 });
 
-console.log("── A. To'lov oynasi ichidagi maydon ──");
+console.log("── A. Tölov oynasi içidagi maydon ──");
 await page.keyboard.press("F9"); await sleep(700);
-yes(!!(await page.$("#pay-amount")), "to'lov oynasi ochildi");
+yes(!!(await page.$("#pay-amount")), "tölov oynasi oçildi");
 await page.evaluate(() => document.querySelector("#pay-amount")?.focus()); await sleep(500);
 let p = await probe();
-yes(p.open, "ekran klaviaturasi ochildi", JSON.stringify(p));
+yes(p.open, "ekran klaviaturasi oçildi", JSON.stringify(p));
 console.log(`     osk z=${p.zOsk}, modal z=${p.modalZ}, ota=${p.parentTag}`);
-yes(p.inOsk, "klaviatura ustidagi nuqta klaviaturaning O'ZI (tagida qolmagan)", `nuqtada: ${p.hitClass}`);
+yes(p.inOsk, "klaviatura ustidagi nuqta klaviaturaning ÖZI (tagida qolmagan)", `nuqtada: ${p.hitClass}`);
 {
   const o = await overlap();
   yes(o && o.px === 0, `oyna va klaviatura KESISHMAYDI (oyna ${o?.box}, klaviatura ${o?.osk})`,
@@ -138,25 +138,25 @@ console.log("\n── A2. TOR MONOBLOK (1024×768) ──");
              oskH: getComputedStyle(document.documentElement).getPropertyValue("--osk-h") };
   });
   console.log("     debug:", JSON.stringify(dbg));
-  yes(body <= 1, "va oynada scrol ham yo'q", body + "px ortiqcha");
+  yes(body <= 1, "va oynada scrol ham yöq", body + "px ortiqça");
   SHOT && await page.screenshot({ path: `${SHOT}/v67-osk-1024.png` });
   await page.setViewport({ width: 1366, height: 768, hasTouch: true }); await sleep(500);
 }
 
-console.log("\n── B. Oyna ustidagi oyna (jamg'arma) ──");
+console.log("\n── B. Oyna ustidagi oyna (jamğarma) ──");
 await page.keyboard.press("Escape"); await sleep(300);
 await page.keyboard.down("Alt"); await page.keyboard.press("j"); await page.keyboard.up("Alt"); await sleep(600);
 await page.evaluate(() => document.querySelector("#debt-amount")?.focus()); await sleep(500);
 p = await probe();
-yes(p.open, "jamg'arma oynasida ham klaviatura ochildi", JSON.stringify(p));
+yes(p.open, "jamğarma oynasida ham klaviatura oçildi", JSON.stringify(p));
 yes(p.inOsk, "u ham oyna USTIDA", `nuqtada: ${p.hitClass}`);
 {
   const o = await overlap();
-  yes(o && o.px === 0, `jamg'arma oynasi ham kesishmaydi (oyna ${o?.box})`, `${o?.w}×${o?.h}px kesishdi`);
+  yes(o && o.px === 0, `jamğarma oynasi ham kesişmaydi (oyna ${o?.box})`, `${o?.w}×${o?.h}px kesishdi`);
 }
 SHOT && await page.screenshot({ path: `${SHOT}/v67-osk-topup.png` });
 
-console.log("\n── C. `000` tugmasi va ichki klaviaturalar ──");
+console.log("\n── C. `000` tugmasi va içki klaviaturalar ──");
 {
   /* ⚠ Bu bo'lim RAQAMLI rejim ochiq turganda bajariladi (`000` faqat
      o'sha yerda bo'ladi) — shuning uchun u harfli klaviatura sinovidan
@@ -168,8 +168,8 @@ console.log("\n── C. `000` tugmasi va ichki klaviaturalar ──");
     oskKeys: [...document.querySelectorAll(".osk__key")].map((b) => b.textContent.trim()),
   }));
   yes(st.zeros, "klaviaturada «000» tugmasi bor");
-  yes(st.clear.some((x) => /Tozalash/i.test(x)), "«Tozalash» (C) tugmasi bor: " + st.clear.join("|"), st.clear.join("|"));
-  yes(st.inModal === 0, "oyna ICHIDA klaviatura qolmagan", st.inModal + " ta topildi");
+  yes(st.clear.some((x) => /Tozalaş/i.test(x)), "«Tozalaş» (C) tugmasi bor: " + st.clear.join("|"), st.clear.join("|"));
+  yes(st.inModal === 0, "oyna IÇIDA klaviatura qolmagan", st.inModal + " ta topildi");
   // `000` haqiqatan uch nol yozadimi
   await page.evaluate(() => {
     const f = document.querySelector("#debt-amount") || document.querySelector("#pay-amount");
@@ -183,7 +183,7 @@ console.log("\n── C. `000` tugmasi va ichki klaviaturalar ──");
   yes((val || "").replace(/\D/g, "") === "5000", "5 + 000 → 5 000 yozildi: " + val, val);
 }
 
-console.log("\n── B2. HARFLI klaviatura va ochilgan ro'yxat ──");
+console.log("\n── B2. HARFLI klaviatura va oçilgan röyxat ──");
 {
   /* ⚠ Harfli pad BUTUN KENGLIKDA pastda turadi — raqamlidan boshqa
      holat. Do'kon egasi ko'rsatgan rasm aynan shu: mijoz qidiruvi
@@ -201,8 +201,8 @@ console.log("\n── B2. HARFLI klaviatura va ochilgan ro'yxat ──");
     return { text: osk.classList.contains("osk--text"), over: w > 0 && h > 0 ? Math.round(w * h) : 0,
              menu: `${Math.round(m.top)}..${Math.round(m.bottom)}`, oskTop: Math.round(a.top) };
   });
-  yes(st && st.text, "qidiruv maydonida HARFLI klaviatura ochildi", JSON.stringify(st));
-  yes(st && st.over === 0, `mijoz ro'yxati klaviatura ostida QOLMADI (ro'yxat ${st?.menu}, klaviatura ${st?.oskTop} dan)`,
+  yes(st && st.text, "qidiruv maydonida HARFLI klaviatura oçildi", JSON.stringify(st));
+  yes(st && st.over === 0, `mijoz röyxati klaviatura ostida QOLMADI (röyxat ${st?.menu}, klaviatura ${st?.oskTop} dan)`,
       `${st?.over}px kesishdi`);
   SHOT && await page.screenshot({ path: `${SHOT}/v67-osk-select.png` });
   await page.keyboard.press("Escape"); await sleep(300);
@@ -221,7 +221,7 @@ console.log("\n── C2. Fokus ketsa klaviatura YOPILADI (V68) ──");
   await sleep(200);
   await page.evaluate(() => document.querySelector("#pay-amount")?.focus());
   await sleep(400);
-  yes(!!(await page.$(".osk")), "maydonda klaviatura ochiq");
+  yes(!!(await page.$(".osk")), "maydonda klaviatura oçiq");
 
   /* Klaviatura TUGMASI fokusni olmaydi — u yopilmasligi kerak. */
   await page.evaluate(() => [...document.querySelectorAll(".osk__key")].find((b) => b.textContent.trim() === "7")?.click());
@@ -231,7 +231,7 @@ console.log("\n── C2. Fokus ketsa klaviatura YOPILADI (V68) ──");
   /* Maydondan tashqariga — yopiladi. */
   await page.evaluate(() => document.activeElement?.blur?.());
   await sleep(500);
-  yes(!(await page.$(".osk")), "fokus ketgach klaviatura yopildi", "hali ochiq");
+  yes(!(await page.$(".osk")), "fokus ketgach klaviatura yopildi", "hali oçiq");
 
   /* Maydondan maydonga o'tish klaviaturani yonib-o'chirmaydi. */
   await page.evaluate(() => document.querySelector("#pay-amount")?.focus());
@@ -242,10 +242,10 @@ console.log("\n── C2. Fokus ketsa klaviatura YOPILADI (V68) ──");
     a?.blur(); a?.focus();
   });
   await sleep(200);
-  yes(before && !!(await page.$(".osk")), "maydondan maydonga o'tganda ochiq qoladi");
+  yes(before && !!(await page.$(".osk")), "maydondan maydonga ötganda oçiq qoladi");
 }
 
-console.log("\n── D. Mijoz har ochilishda tozalanadi ──");
+console.log("\n── D. Mijoz har oçilişda tozalanadi ──");
 {
   /* Haqiqiy oqim: to'lov oynasida mijoz tanlanadi, oyna yopiladi va
      qaytadan ochiladi — eski mijoz qolmasligi kerak. */
@@ -271,7 +271,7 @@ console.log("\n── D. Mijoz har ochilishda tozalanadi ──");
   await page.waitForSelector(".cart-cust .ek-select__btn", { timeout: 5000 });
   await sleep(250);
   const again = await page.evaluate(() => document.querySelector(".cart-cust .ek-select__btn")?.textContent.trim() || "");
-  yes(!/Рустам/.test(again), "qayta ochilganda mijoz TOZALANGAN: «" + again + "»", again);
+  yes(!/Рустам/.test(again), "qayta oçilganda mijoz TOZALANGAN: «" + again + "»", again);
 
   /* Jamg'arma oynasi ham har safar bo'sh ochiladi. */
   await page.keyboard.press("Escape"); await sleep(400);
@@ -282,8 +282,8 @@ console.log("\n── D. Mijoz har ochilishda tozalanadi ──");
     need: !!document.querySelector(".cart-cust--bare.is-needed"),
     title: document.querySelector(".pay-modal-box--lite .pay-modal-title")?.textContent.trim() || "",
   }));
-  yes(sav.need && !/Рустам/.test(sav.title), "jamg'arma oynasi ham mijozSIZ ochildi: «" + sav.title + "»", JSON.stringify(sav));
+  yes(sav.need && !/Рустам/.test(sav.title), "jamğarma oynasi ham mijozSIZ oçildi: «" + sav.title + "»", JSON.stringify(sav));
 }
 
-console.log(`\n  ${bad ? "❌ " + bad + " yiqildi" : "✅ HAMMASI O'TDI"} (${ok} o'tdi)`);
+console.log(`\n  ${bad ? "❌ " + bad + " yiqildi" : "✅ HAMMASI ÖTDI"} (${ok} ötdi)`);
 await browser.close(); server.close(); process.exit(bad ? 1 : 0);

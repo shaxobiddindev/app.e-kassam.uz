@@ -88,7 +88,7 @@ export function loadLocale(lang) {
 
 /** Qo'llab-quvvatlanadigan tillar. UI shu ro'yxatdan quriladi. */
 export const LANGS = [
-  { value: "uz", label: "O'zbekcha", short: "UZ", icon: "fa-language" },
+  { value: "uz", label: "Özbekça", short: "UZ", icon: "fa-language" },
   { value: "ru", label: "Русский",   short: "RU", icon: "fa-language" },
   { value: "en", label: "English",   short: "EN", icon: "fa-language" },
 ];

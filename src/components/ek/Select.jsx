@@ -37,7 +37,7 @@ export default function Select({
   ariaLabel,
   id,
   className = "",
-  emptyText = "Variant yo'q",
+  emptyText = "Variant yöq",
 
   /**
    * QIDIRUV maydoni ro'yxat tepasida.
@@ -64,10 +64,10 @@ export default function Select({
    * ham topiladi.
    */
   searchable = null,
-  searchPlaceholder = "Qidirish…",
+  searchPlaceholder = "Qidiriş…",
   /** Tanlovni bekor qilish — maydon ichidagi ✕ tugmasi. */
   clearable = false,
-  clearLabel = "Tozalash",
+  clearLabel = "Tozalaş",
 }) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);   // klaviatura bilan yurilgan band

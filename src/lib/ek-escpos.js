@@ -55,8 +55,32 @@ const CMD = {
  * bu ilovada chek matniga tushmaydi (tovar nomlari foydalanuvchi kiritadi
  * va ular ham lotin). To'liq jadval kerak bo'lsa shu funksiya kengaytiriladi.
  */
+/**
+ * Yangi alifbo → chekdagi eski yozuv.
+ *
+ * ⚠ YANGI ALIFBO (2026-10-21) CHEKDA ESKI YOZUVDA chiqadi — egasining
+ * qarori. Termal printerlarning kod jadvallarida (CP437/CP866) ş/ç/ğ YO'Q
+ * va ular `?` bo'lib chiqardi: «Çek» → «?ek». Printerni ularni biladigan
+ * jadvalga o'tkazish modelga bog'liq va sinab ko'rilmagan — eski yozuv esa
+ * har printerda o'qiladi va qonun bo'yicha ham amal qiladi.
+ *
+ * ⚠ KENGLIK O'LCHANISHIDAN OLDIN chaqiriladi (`row`, `wrap`, oshxona
+ * `wrapTo`): «ş» bitta, «sh» ikkita belgi. Faqat `toBytes` da o'girilsa
+ * 48 belgili qator 49 bo'lib chiqar va printer oxirini keyingi qatorga
+ * tushirardi — ustunlar buzilardi.
+ *
+ * Katta harfdan keyin ham katta harf bo'lsa — «ÇEK» → «CHEK», aks holda
+ * «Çek» → «Chek».
+ */
+export function toLegacy(text) {
+  return String(text ?? "")
+    .replace(/Ş(?=[A-ZÇŞÖĞ])/g, "SH").replace(/Ç(?=[A-ZÇŞÖĞ])/g, "CH")
+    .replace(/Ş/g, "Sh").replace(/Ç/g, "Ch").replace(/ş/g, "sh").replace(/ç/g, "ch")
+    .replace(/Ö/g, "O'").replace(/ö/g, "o'").replace(/Ğ/g, "G'").replace(/ğ/g, "g'");
+}
+
 function toBytes(text) {
-  const normalized = String(text ?? "")
+  const normalized = toLegacy(text)
     .replace(/[‘’ʻʼ′]/g, "'")   // o‘/g‘ va turli apostroflar
     .replace(/[“”]/g, '"')
     .replace(/[–—]/g, "-")
@@ -111,7 +135,7 @@ export class Receipt {
    * Sig'masa CHAP tomon qisqartiriladi: narx hech qachon kesilmasligi kerak.
    */
   row(left, right) {
-    const l = String(left ?? ""), r = String(right ?? "");
+    const l = toLegacy(left), r = toLegacy(right);
     const space = this.width - r.length;
     if (space < 1) return this.line(r);                 // o'ng tomon o'zi to'ldirdi
     const cut = l.length > space - 1 ? l.slice(0, space - 1) : l;
@@ -120,7 +144,7 @@ export class Receipt {
 
   /** Uzun matnni kenglik bo'yicha bo'lib yozadi. */
   wrap(text) {
-    const words = String(text ?? "").split(/\s+/).filter(Boolean);
+    const words = toLegacy(text).split(/\s+/).filter(Boolean);
     let cur = "";
     for (const w of words) {
       if (!cur.length) { cur = w; continue; }

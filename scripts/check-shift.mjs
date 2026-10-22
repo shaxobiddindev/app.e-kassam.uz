@@ -79,14 +79,14 @@ await page.evaluateOnNewDocument(() => {
 await page.goto(`http://127.0.0.1:${PORT}/sale`, { waitUntil: "networkidle2", timeout: 30_000 });
 await new Promise((r) => setTimeout(r, 1200));
 
-console.log("\n══ SMENA OGOHLANTIRISHI (V83) ══");
+console.log("\n══ SMENA OGOHLANTIRIŞI (V83) ══");
 
-console.log("\n§1 ⚠ JAMI kartochkasidagi quti YO'Q");
+console.log("\n§1 ⚠ JAMI kartoçkasidagi quti YÖQ");
 const warn = await page.evaluate(() => document.querySelectorAll(".total-warn").length);
-warn === 0 ? ok("`.total-warn` chizilmadi — joy bo'shadi")
+warn === 0 ? ok("`.total-warn` çizilmadi — joy böşadi")
            : no("quti olib tashlanishi kerak", `${warn} ta`);
 
-console.log("\n§2 Smena tugmasi o'zi signal beradi");
+console.log("\n§2 Smena tugmasi özi signal beradi");
 const chip = await page.evaluate(() => {
   const el = document.querySelector(".shift-chip--off");
   if (!el) return null;
@@ -99,13 +99,13 @@ const chip = await page.evaluate(() => {
     icon: !!el.querySelector(".fa-triangle-exclamation"),
   };
 });
-chip ? ok(`tugma turibdi: «${chip.text}»`) : no("yopiq smena tugmasi ko'rinishi kerak", "yo'q");
-chip?.icon ? ok("ogohlantirish ikonkasi bilan — rang yolg'iz signal emas")
-           : no("ikonka bo'lishi kerak", "yo'q");
-chip?.tip?.length > 20 ? ok("to'liq izoh maslahat ichida")
-                       : no("maslahatda to'liq matn bo'lishi kerak", chip?.tip ?? "—");
+chip ? ok(`tugma turibdi: «${chip.text}»`) : no("yopiq smena tugmasi körinişi kerak", "yöq");
+chip?.icon ? ok("ogohlantiriş ikonkasi bilan — rang yolğiz signal emas")
+           : no("ikonka bölişi kerak", "yöq");
+chip?.tip?.length > 20 ? ok("töliq izoh maslahat içida")
+                       : no("maslahatda töliq matn bölişi kerak", chip?.tip ?? "—");
 
-console.log("\n§3 ⚠ HOVER QILGANDA MASLAHAT CHIQADI");
+console.log("\n§3 ⚠ HOVER QILGANDA MASLAHAT ÇIQADI");
 const box = await page.evaluate(() => {
   const el = document.querySelector(".shift-chip--off");
   if (!el) return null;
@@ -114,8 +114,8 @@ const box = await page.evaluate(() => {
 });
 if (!box) no("tugma topilmadi", "—");
 else {
-  box.hidden === "hidden" ? ok("hoversiz — ko'rinmaydi")
-                          : no("boshida yashirin bo'lishi kerak", box.hidden);
+  box.hidden === "hidden" ? ok("hoversiz — körinmaydi")
+                          : no("boşida yaşirin bölişi kerak", box.hidden);
   /* Haqiqiy sichqoncha — sinov sinf qo'shib aldamaydi. */
   await page.mouse.move(box.box.x + box.box.width / 2, box.box.y + box.box.height / 2);
   await new Promise((r) => setTimeout(r, 350));
@@ -124,11 +124,11 @@ else {
     return { vis: getComputedStyle(tip).visibility, op: getComputedStyle(tip).opacity };
   });
   shown.vis === "visible" && shown.op === "1"
-    ? ok("hover qilinganda chiqdi")
-    : no("hoverda ko'rinishi kerak", `${shown.vis}/${shown.op}`);
+    ? ok("hover qilinganda çiqdi")
+    : no("hoverda körinişi kerak", `${shown.vis}/${shown.op}`);
 }
 
-console.log("\n§4 ⚠ MASLAHAT EKRANDA TO'LIQ KO'RINADI (kesilmaydi)");
+console.log("\n§4 ⚠ MASLAHAT EKRANDA TÖLIQ KÖRINADI (kesilmaydi)");
 /* ⚠ ENG MUHIM BAND. `.card` ham, `.kassa-left` ham `overflow: hidden`
    bilan yopiladi — maslahat ularning ichiga SIG'ISHI shart. Buni
    faqat brauzer ayta oladi: koddan qarab bilib bo'lmaydi. */
@@ -159,12 +159,12 @@ const fit = await page.evaluate(() => {
 if (!fit) no("maslahat topilmadi", "—");
 else if (fit.why) no("maslahat chizilmadi", fit.why);
 else if (fit.out.length) no("⚠ maslahat kesilib qoladi", fit.out.join(", "));
-else ok(`maslahat to'liq ko'rinadi (${Math.round(fit.t.width)}×${Math.round(fit.t.height)})`);
+else ok(`maslahat töliq körinadi (${Math.round(fit.t.width)}×${Math.round(fit.t.height)})`);
 
 console.log("\n§5 Sahifa xatolari");
 const errs = [];
 page.on("pageerror", (e) => errs.push(e.message));
-errs.length === 0 ? ok("JS xatosi yo'q") : no("sahifada xato", errs.join(" | "));
+errs.length === 0 ? ok("JS xatosi yöq") : no("sahifada xato", errs.join(" | "));
 
 await page.close();
 await browser.close();

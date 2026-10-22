@@ -81,12 +81,12 @@ await new Promise((r) => setTimeout(r, 1200));
 
 console.log("\n══ Sotuvlar tarixi: davr (V100) ══");
 
-console.log("\n§1 ⚠ SO'ROVDA DAVR BOR");
+console.log("\n§1 ⚠ SÖROVDA DAVR BOR");
 const first = asked[0];
 first && first.searchParams.get("from") && first.searchParams.get("to")
   ? ok(`from=${first.searchParams.get("from")}  to=${first.searchParams.get("to")}`)
-  : no("`/sales` so'rovi `from` va `to` bilan ketishi kerak",
-       first ? first.search || "(bo'sh)" : "so'rov umuman ketmadi");
+  : no("`/sales` sörovi `from` va `to` bilan ketişi kerak",
+       first ? first.search || "(böş)" : "sörov umuman ketmadi");
 
 console.log("\n§2 Standart davr — JORIY OY");
 /* «Bugun» juda tor (kechagi chekni qidirish ko'p uchraydi), «yil» esa
@@ -96,7 +96,7 @@ if (first?.searchParams.get("from")) {
   const now = new Date();
   from.getDate() === 1 && from.getMonth() === now.getMonth()
     ? ok(`oy boshidan: ${from.toISOString().slice(0, 10)}`)
-    : no("standart davr joriy oy bo'lishi kerak", from.toISOString());
+    : no("standart davr joriy oy bölişi kerak", from.toISOString());
 }
 
 console.log("\n§3 ⚠ DAVR TANLAGICHI EKRANDA");
@@ -106,9 +106,9 @@ const tabs = await page.$$eval(".sales-head .rpt-seg",
   (bs) => bs.map((b) => b.textContent.trim()));
 tabs.length >= 5
   ? ok(`${tabs.length} ta davr tugmasi: ${tabs.slice(0, 4).join(" · ")}…`)
-  : no("davr tugmalari ko'rinishi kerak", tabs.join(" | ") || "yo'q");
+  : no("davr tugmalari körinişi kerak", tabs.join(" | ") || "yöq");
 
-console.log("\n§4 ⚠ DAVR ALMASHTIRILSA QAYTA SO'RALADI");
+console.log("\n§4 ⚠ DAVR ALMAŞTIRILSA QAYTA SÖRALADI");
 /* Tanlagich chizilib, so'rovni yangilamasa — do'kon egasi tugmani
    bosar, ro'yxat esa o'zgarmasdi. */
 const before = asked.length;
@@ -125,17 +125,17 @@ await page.evaluate((i) => {
 await page.waitForFunction((n) => window.__x || true, {}, before).catch(() => {});
 await new Promise((r) => setTimeout(r, 900));
 if (asked.length <= before) {
-  no("davr almashganda yangi so'rov ketishi kerak", `${before} → ${asked.length}`);
+  no("davr almaşganda yangi sörov ketişi kerak", `${before} → ${asked.length}`);
 } else {
   const last = asked[asked.length - 1];
   const a = first.searchParams.get("from");
   const b = last.searchParams.get("from");
-  a !== b ? ok(`oyna o'zgardi: ${String(a).slice(0, 10)} → ${String(b).slice(0, 10)}`)
-          : no("yangi so'rovda oyna boshqa bo'lishi kerak", `${a} = ${b}`);
+  a !== b ? ok(`oyna özgardi: ${String(a).slice(0, 10)} → ${String(b).slice(0, 10)}`)
+          : no("yangi sörovda oyna boşqa bölişi kerak", `${a} = ${b}`);
 }
 
 console.log("\n§5 Sahifa xatolari");
-pageErrors.length === 0 ? ok("JS xatosi yo'q") : no("sahifada xato", pageErrors.join(" | "));
+pageErrors.length === 0 ? ok("JS xatosi yöq") : no("sahifada xato", pageErrors.join(" | "));
 
 await browser.close();
 server.close();

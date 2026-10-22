@@ -185,33 +185,33 @@ const typeQ = async (text) => {
    «kefir» ga tegadi. Ya'ni §2 nosozlikni ham ushlaydi. Birinchi
    tovarni tanlasak, filtr yo'qolgani sezilmasdi: bosish baribir
    o'sha tovarni qo'shardi va tekshiruv bekorga yashil chiqardi. */
-console.log("\n── 1. Bosish: qidiruv JOYIDA qoladi ──");
+console.log("\n── 1. Bosiş: qidiruv JOYIDA qoladi ──");
 
 await typeQ("suv");
 let s = await until((x) => x.tiles === 1);
 if (s.tiles !== 1) no("qidiruv bitta tovarni qoldirishi kerak", `${s.tiles} katakcha`);
-else ok("qidiruv ro'yxatni toraytirdi");
+else ok("qidiruv röyxatni toraytirdi");
 
 await page.click(".product-card");
 s = await until((x) => x.items.length === 1);
-if (s.items.join() !== "suv×1") no("savatda bitta suv bo'lishi kerak", s.items.join() || "bo'sh");
-else ok("bosish savatga qo'shdi");
+if (s.items.join() !== "suv×1") no("savatda bitta suv bölişi kerak", s.items.join() || "böş");
+else ok("bosiş savatga qöşdi");
 /* ⚠ ASOSIY SINOV — shikoyatning o'zi. */
 if (s.q !== "suv") no("qidiruv matni JOYIDA qolishi kerak", JSON.stringify(s.q));
 else ok("qidiruv matni tozalanmadi");
-if (s.tiles !== 1) no("ro'yxat filtrlangan holda qolishi kerak", `${s.tiles} katakcha`);
-else ok("ro'yxat to'liq katalogga qaytmadi");
+if (s.tiles !== 1) no("röyxat filtrlangan holda qolişi kerak", `${s.tiles} katakcha`);
+else ok("röyxat töliq katalogga qaytmadi");
 
-console.log("\n── 2. Ikkinchi bosish: qayta yozish kerak emas ──");
+console.log("\n── 2. Ikkinçi bosiş: qayta yoziş kerak emas ──");
 
 await page.click(".product-card");
 s = await until((x) => x.items.join() === "suv×2");
-if (s.items.join() !== "suv×2") no("ikkinchi bosish AYNAN o'sha tovarni oshirishi kerak", s.items.join() || "bo'sh");
-else ok("ikkinchi dona qo'shildi — qidiruv qayta yozilmadi");
-if (s.q !== "suv") no("qidiruv matni hamon joyida bo'lishi kerak", JSON.stringify(s.q));
+if (s.items.join() !== "suv×2") no("ikkinçi bosiş AYNAN öşa tovarni oşirişi kerak", s.items.join() || "böş");
+else ok("ikkinçi dona qöşildi — qidiruv qayta yozilmadi");
+if (s.q !== "suv") no("qidiruv matni hamon joyida bölişi kerak", JSON.stringify(s.q));
 else ok("qidiruv matni hamon joyida");
 
-console.log("\n── 2b. Bosishdan keyin YOZISH — yangi qidiruv (2026-10-01) ──");
+console.log("\n── 2b. Bosişdan keyin YOZIŞ — yangi qidiruv (2026-10-01) ──");
 /* Do'kon shikoyati: «topilgan tovar qo'shilgandan keyin ikkinchi kiritish
    eskisining DAVOMIDAN yozilyapti: 45 → 45 4545». Matn joyida qoladi
    (§1–2), lekin endi u «ishlatilgan»: maydon bosilsa BELGILANADI va
@@ -232,16 +232,16 @@ s = await until((x) => x.q === "kef");
 if (s.q !== "kef") no("yangi matn eskisining DAVOMIGA yozilmasligi kerak", JSON.stringify(s.q));
 else ok("yozilgan matn eski qidiruvni almashtirdi");
 
-console.log("\n── 3. Bir qidiruvdan boshqa tovar ──");
+console.log("\n── 3. Bir qidiruvdan boşqa tovar ──");
 
 await typeQ("kefir");
 s = await until((x) => x.tiles === 1 && x.q === "kefir");
 await page.click(".product-card");
 s = await until((x) => x.items.length === 2);
-if (!s.items.includes("kefir×1")) no("ikkinchi tovar ham qo'shilishi kerak", s.items.join() || "bo'sh");
-else ok("bitta savatga ikkinchi tovar qo'shildi");
+if (!s.items.includes("kefir×1")) no("ikkinçi tovar ham qöşilişi kerak", s.items.join() || "böş");
+else ok("bitta savatga ikkinçi tovar qöşildi");
 
-console.log("\n── 4. Enter yo'li: maydon TOZALANADI ──");
+console.log("\n── 4. Enter yöli: maydon TOZALANADI ──");
 
 /* ⚠ Bu qoida ataylab bosishdan farq qiladi — fayl boshidagi izohga
    qara. Enter matnni qoldirsa, ikkinchi Enter jimgina yana bir dona
@@ -250,17 +250,17 @@ await typeQ("pechene");
 s = await until((x) => x.tiles === 1 && x.q === "pechene");
 await page.keyboard.press("Enter");
 s = await until((x) => x.items.some((i) => i.startsWith("pechene")));
-if (!s.items.includes("pechene×1")) no("Enter eng mos tovarni qo'shishi kerak", s.items.join() || "bo'sh");
-else ok("Enter tovarni qo'shdi");
-if (s.q !== "") no("Enter dan keyin maydon bo'sh bo'lishi kerak", JSON.stringify(s.q));
+if (!s.items.includes("pechene×1")) no("Enter eng mos tovarni qöşişi kerak", s.items.join() || "böş");
+else ok("Enter tovarni qöşdi");
+if (s.q !== "") no("Enter dan keyin maydon böş bölişi kerak", JSON.stringify(s.q));
 else ok("Enter dan keyin maydon tozalandi");
 
 /* Ikkinchi Enter — bo'sh maydonda hech narsa qilmasligi kerak. */
 await page.keyboard.press("Enter");
 s = await until(() => false, 600);
 if (s.items.filter((i) => i.startsWith("pechene")).join() !== "pechene×1")
-  no("bo'sh maydonda Enter yana qo'shmasligi kerak", s.items.join());
-else ok("bo'sh maydonda Enter jim");
+  no("böş maydonda Enter yana qöşmasligi kerak", s.items.join());
+else ok("böş maydonda Enter jim");
 
 /* ══ 4b. SKANER FOKUSDAGI QIDIRUVGA HECH NARSA QOLDIRMAYDI (2026-10-01) ══
 
@@ -273,7 +273,7 @@ else ok("bo'sh maydonda Enter jim");
    ⚠ Skaner tezligi — 5 ms. Oldidan belgisiz Shift: Puppeteer'ning birinchi
    tugmasi sekin keladi (~70 ms) va skaner uni odam deb hisoblab, kodning
    birinchi belgisini maydonga qoldirardi — ayb kodda emas, sinovda. */
-console.log("\n── 4b. Skaner fokusdagi qidiruvga hech narsa qoldirmaydi ──");
+console.log("\n── 4b. Skaner fokusdagi qidiruvga heç narsa qoldirmaydi ──");
 {
   const scan = async (code) => {
     await page.keyboard.press("Shift");
@@ -286,19 +286,19 @@ console.log("\n── 4b. Skaner fokusdagi qidiruvga hech narsa qoldirmaydi ─�
   await until((x) => x.items.includes("suv×3"));
   await scan("1000000000031");
   s = await until((x) => x.items.includes("suv×4"));
-  if (!s.items.includes("suv×4")) no("ikki skaner savatga ikki dona qo'shishi kerak", s.items.join());
+  if (!s.items.includes("suv×4")) no("ikki skaner savatga ikki dona qöşişi kerak", s.items.join());
   else ok("ikki skaner — ikki dona");
-  if (s.q !== "") no("skanerdan keyin bo'sh qidiruvda hech narsa qolmasligi kerak", JSON.stringify(s.q));
-  else ok("qidiruv bo'sh qoldi — barkod boshi to'planmadi");
+  if (s.q !== "") no("skanerdan keyin böş qidiruvda heç narsa qolmasligi kerak", JSON.stringify(s.q));
+  else ok("qidiruv böş qoldi — barkod boşi töplanmadi");
 
   /* Yozilgan so'rov ustiga skaner — so'rov o'zgarmaydi. */
   await typeQ("kef");
   await until((x) => x.q === "kef");
   await scan("1000000000031");
   s = await until((x) => x.items.includes("suv×5"));
-  if (!s.items.includes("suv×5")) no("yozilgan so'rov ustidagi skaner ham qo'shishi kerak", s.items.join());
-  if (s.q !== "kef") no("yozilgan so'rov skanerdan keyin o'zgarmasligi kerak", JSON.stringify(s.q));
-  else ok("yozilgan so'rov joyida qoldi");
+  if (!s.items.includes("suv×5")) no("yozilgan sörov ustidagi skaner ham qöşişi kerak", s.items.join());
+  if (s.q !== "kef") no("yozilgan sörov skanerdan keyin özgarmasligi kerak", JSON.stringify(s.q));
+  else ok("yozilgan sörov joyida qoldi");
 }
 
 /* ══ 5. CHEK YOPILGACH QIDIRUV TOZALANADI ═══════════════════════════════
@@ -313,18 +313,18 @@ console.log("\n── 4b. Skaner fokusdagi qidiruvga hech narsa qoldirmaydi ─�
    `doSearch(search)` oldingi so'rovni QAYTA bajarardi va keyingi
    mijoz uchun katalog «kefir» bo'yicha filtrlangan holda turardi.
    Xato tuzatishning O'ZIDAN chiqdi — shuning uchun qator qo'riqlanadi. */
-console.log("\n── 5. Chek yopilgach qidiruv tozalanadi ──");
+console.log("\n── 5. Çek yopilgaç qidiruv tozalanadi ──");
 {
   const src = fs.readFileSync(path.join(ROOT, "src/pages/KassaPage.jsx"), "utf8");
   const from = src.indexOf('setFinish({ phase: "done"');
   const to = src.indexOf("closeSoldCart()", from);
   const tail = from > 0 && to > from ? src.slice(from, to) : "";
-  if (!tail) no("sotuv yakuni bloki topilmadi — sinovni moslash kerak", `${from} → ${to}`);
+  if (!tail) no("sotuv yakuni bloki topilmadi — sinovni moslaş kerak", `${from} → ${to}`);
   else if (!/\bresetSearch\(\)/.test(tail))
-    no("chek yopilgach `resetSearch()` chaqirilishi kerak", "blokda yo'q");
+    no("çek yopilgaç `resetSearch()` çaqirilişi kerak", "blokda yöq");
   else if (/\bdoSearch\(search\)/.test(tail))
-    no("`doSearch(search)` oldingi so'rovni qayta bajaradi", "`doSearch(\"\")` bo'lishi kerak");
-  else ok("sotuv yakunida qidiruv tozalanadi va katalog to'liq o'qiladi");
+    no("`doSearch(search)` oldingi sörovni qayta bajaradi", "`doSearch(\"\")` bölişi kerak");
+  else ok("sotuv yakunida qidiruv tozalanadi va katalog töliq öqiladi");
 }
 
 /* ══ 6. KOD REJIMI: YOLG'IZ `*` KASSANI OFLAYN QILMAYDI ══════════════════
@@ -338,31 +338,31 @@ console.log("\n── 5. Chek yopilgach qidiruv tozalanadi ──");
    · yolg'iz `*` umuman yuborilmaydi;
    · server so'rovni rad etsa (4xx) — bu OFLAYN EMAS: banner chiqmaydi,
      serverning o'z sababi ko'rsatiladi. */
-console.log("\n── 6. Kod rejimi: yolg'iz `*` kassani oflayn qilmaydi ──");
+console.log("\n── 6. Kod rejimi: yolğiz `*` kassani oflayn qilmaydi ──");
 {
   const offline = () => page.evaluate(() => !!document.querySelector(".kassa-offline-note"));
 
   await typeQ("*");
   await new Promise((r) => setTimeout(r, 800));   // 180 ms kechikishdan ancha ko'p
-  if (searches.includes("*")) no("yolg'iz `*` serverga yuborilmasligi kerak", `so'rovlar: ${searches.slice(-4).join(" | ")}`);
-  else ok("yolg'iz `*` serverga yuborilmadi");
-  if (await offline()) no("`*` terilgach kassa «faqat kesh» holatiga tushmasligi kerak");
-  else ok("kassa oflayn holatga tushmadi");
+  if (searches.includes("*")) no("yolğiz `*` serverga yuborilmasligi kerak", `sörovlar: ${searches.slice(-4).join(" | ")}`);
+  else ok("yolğiz `*` serverga yuborilmadi");
+  if (await offline()) no("`*` terilgaç kassa «faqat keş» holatiga tuşmasligi kerak");
+  else ok("kassa oflayn holatga tuşmadi");
 
   /* Server so'rovni RAD ETADI (`*999`) — tarmoq esa ishlab turibdi. */
   await typeQ("*999");
   const s6 = await until((x) => searches.includes("*999"), 4000);
   await new Promise((r) => setTimeout(r, 500));
-  if (!searches.includes("*999")) no("`*999` so'rovi yuborilishi kerak edi", s6.q);
-  if (await offline()) no("⚠ server rad etgani OFLAYN deb talqin qilindi — banner chiqdi");
+  if (!searches.includes("*999")) no("`*999` sörovi yuborilişi kerak edi", s6.q);
+  if (await offline()) no("⚠ server rad etgani OFLAYN deb talqin qilindi — banner çiqdi");
   else ok("server rad etgani oflayn deb talqin qilinmadi");
   const note = await page.evaluate(() => document.body.innerText.includes("Kod faqat raqamdan"));
-  if (!note) no("serverning sababi kassirga ko'rsatilishi kerak");
-  else ok("serverning o'z sababi ko'rsatildi");
+  if (!note) no("serverning sababi kassirga körsatilişi kerak");
+  else ok("serverning öz sababi körsatildi");
 }
 
 console.log("\n── 7. Sahifa xatolari ──");
-if (pageErrors.length) no("konsol toza bo'lishi kerak", pageErrors.slice(0, 3).join(" | "));
+if (pageErrors.length) no("konsol toza bölişi kerak", pageErrors.slice(0, 3).join(" | "));
 else ok("konsol toza");
 
 await browser.close();
@@ -372,4 +372,4 @@ if (bad) {
   console.error(`\n  ${bad} ta buzilish.\n`);
   process.exit(1);
 }
-console.log("\n  Savat va qidiruv: hammasi o'tdi.");
+console.log("\n  Savat va qidiruv: hammasi ötdi.");

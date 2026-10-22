@@ -120,12 +120,12 @@ async function open(route, seed) {
 }
 
 /* ══ 1. SOZLAMA BO'LIMI ═══════════════════════════════════════════════ */
-console.log("\n── 1. Sozlama bo'limi ──");
+console.log("\n── 1. Sozlama bölimi ──");
 {
   const pg = await open("/settings");
   const v = await pg.evaluate(() => {
     const card = [...document.querySelectorAll(".set-card")]
-      .find((c) => /Ovozli bildirishnoma/i.test(c.textContent));
+      .find((c) => /Ovozli bildirişnoma/i.test(c.textContent));
     return {
       found: !!card,
       switches: card ? card.querySelectorAll('[role="switch"]').length : 0,
@@ -133,32 +133,32 @@ console.log("\n── 1. Sozlama bo'limi ──");
       play: card ? card.querySelectorAll("button .fa-play").length : 0,
     };
   });
-  v.found ? ok("«Ovozli bildirishnoma» bo'limi chizildi") : no("bo'lim bo'lishi kerak", "yo'q");
+  v.found ? ok("«Ovozli bildirişnoma» bölimi çizildi") : no("bölim bölişi kerak", "yöq");
   /* Umumiy kalit + to'qqizta voqea = o'nta kalit. */
-  v.switches === 10 ? ok(`o'nta kalit (umumiy + 9 voqea)`) : no("o'nta kalit kerak", v.switches);
+  v.switches === 10 ? ok(`önta kalit (umumiy + 9 voqea)`) : no("önta kalit kerak", v.switches);
   v.range === 1 ? ok("balandlik slayderi bor") : no("slayder kerak", v.range);
   /* ⚠ «Eshitib ko'rish» MAJBURIY: ovoz jimgina yo'qolishi mumkin va
      usiz egasi nosozlikni umuman aniqlay olmasdi. */
-  v.play === 9 ? ok("har voqeada «eshitib ko'rish» tugmasi") : no("to'qqizta tugma kerak", v.play);
+  v.play === 9 ? ok("har voqeada «eşitib köriş» tugmasi") : no("töqqizta tugma kerak", v.play);
 
   /* Sozlama SAQLANADIMI — qurilma sozlamasi, serverga ketmaydi. */
   await pg.evaluate(() => {
     const card = [...document.querySelectorAll(".set-card")]
-      .find((c) => /Ovozli bildirishnoma/i.test(c.textContent));
+      .find((c) => /Ovozli bildirişnoma/i.test(c.textContent));
     card.querySelectorAll('[role="switch"]')[1]?.click();   // birinchi voqea kaliti
   });
   await new Promise((r) => setTimeout(r, 300));
   const saved = await pg.evaluate(() => JSON.parse(localStorage.getItem("ek_hw") || "{}"));
   saved?.sound && typeof saved.sound.events === "object"
     ? ok(`sozlama saqlandi: ${JSON.stringify(saved.sound.events)}`)
-    : no("`ek_hw.sound.events` yozilishi kerak", JSON.stringify(saved?.sound));
+    : no("`ek_hw.sound.events` yozilişi kerak", JSON.stringify(saved?.sound));
   /* ⚠ «ESHITIB KO'RISH» — YAGONA YO'L, chunki ovoz jimgina yo'qolishi
      mumkin (brauzer rad etdi, karnay o'chiq). U CHEGARALARNI ham
      chetlab o'tishi kerak: o'chirilgan voqeani ham eshittira olsin,
      aks holda «nega jim?» degan savolga javob bo'lmasdi. */
   await pg.evaluate(() => {
     const card = [...document.querySelectorAll(".set-card")]
-      .find((c) => /Ovozli bildirishnoma/i.test(c.textContent));
+      .find((c) => /Ovozli bildirişnoma/i.test(c.textContent));
     card.querySelector("button .fa-play")?.closest("button")?.click();
   });
   await new Promise((r) => setTimeout(r, 400));
@@ -168,7 +168,7 @@ console.log("\n── 1. Sozlama bo'limi ──");
      ikkalasi ham TO'G'RI natija. Faqat ohangni talab qilish sinovni
      poygaga (yuklandimi-yo'qmi) bog'lab qo'yardi. */
   c.osc + c.buf > 0
-    ? ok(`«eshitib ko'rish» ovoz chaldi (${c.osc} nota, ${c.buf} yozuv)`)
+    ? ok(`«eşitib köriş» ovoz çaldi (${c.osc} nota, ${c.buf} yozuv)`)
     : no("tugma ovoz chalishi kerak", `${c.osc}/${c.buf}`);
   await pg.close();
 }
@@ -183,13 +183,13 @@ console.log("\n── 2. Autoplay qulfi ──");
   await new Promise((r) => setTimeout(r, 400));
   const st = await pg.evaluate(() => ({ ctx: window.__sfx.ctx, state: window.__sfx.state?.() }));
   st.ctx > 0 ? ok("imo-ishoradan keyin `AudioContext` yaratildi") : no("yaratilishi kerak", st.ctx);
-  st.state === "running" ? ok("kontekst OCHIQ — birinchi ovoz yo'qolmaydi")
-                         : no("`running` bo'lishi kerak", st.state);
+  st.state === "running" ? ok("kontekst OÇIQ — birinçi ovoz yöqolmaydi")
+                         : no("`running` bölişi kerak", st.state);
   await pg.close();
 }
 
 /* ══ 3. OVOZ SAHIFANI YIQITMAYDI ══════════════════════════════════════ */
-console.log("\n── 3. Har amal — o'z ovozi, va qatlam sahifani yiqitmaydi ──");
+console.log("\n── 3. Har amal — öz ovozi, va qatlam sahifani yiqitmaydi ──");
 {
   /* Eng qizg'in yo'l: `toast` orqali ketma-ket o'nlab voqea. Modul
      shu yerda yiqilsa, kassa butunlay to'xtardi. */
@@ -231,16 +231,16 @@ console.log("\n── 3. Har amal — o'z ovozi, va qatlam sahifani yiqitmaydi �
   await new Promise((r) => setTimeout(r, 600));
   const burst = (await pg.evaluate(() => window.__sfx.osc)) - t0;
   burst === perTone * 5
-    ? ok(`ketma-ket beshta skanerlash — BESHALASI ham eshitildi (${burst} nota)`)
+    ? ok(`ketma-ket beşta skanerlaş — BEŞALASI ham eşitildi (${burst} nota)`)
     : no(`beshalasi eshitilishi kerak (${perTone * 5} nota)`, burst);
 
-  errors.length === before ? ok("skanerlash oqimida birorta JS xatosi tushmadi")
-                           : no("xato tushdi", errors.slice(before).join(" | "));
+  errors.length === before ? ok("skanerlaş oqimida birorta JS xatosi tuşmadi")
+                           : no("xato tuşdi", errors.slice(before).join(" | "));
   await pg.close();
 }
 
 /* ══ 4. OVOZSIZ MUHIT ═════════════════════════════════════════════════ */
-console.log("\n── 4. `AudioContext` umuman yo'q bo'lsa ──");
+console.log("\n── 4. `AudioContext` umuman yöq bölsa ──");
 {
   const pg = await browser.newPage();
   await pg.setRequestInterception(true);
@@ -266,13 +266,13 @@ console.log("\n── 4. `AudioContext` umuman yo'q bo'lsa ──");
   await pg.mouse.click(700, 400);
   await new Promise((r) => setTimeout(r, 700));
   const alive = await pg.evaluate(() => !!document.querySelector("#root")?.children.length);
-  local.length === 0 ? ok("ovozsiz muhitda ham xato tushmadi") : no("xato tushdi", local.join(" | "));
-  alive ? ok("sahifa ishlayveradi — ovoz shunchaki yo'q") : no("sahifa chizilishi kerak", "bo'sh");
+  local.length === 0 ? ok("ovozsiz muhitda ham xato tuşmadi") : no("xato tuşdi", local.join(" | "));
+  alive ? ok("sahifa işlayveradi — ovoz şunçaki yöq") : no("sahifa chizilishi kerak", "böş");
   await pg.close();
 }
 
 /* ══ 5. CHEK OVOZI — YOZUV VA UNING ZAXIRASI ══════════════════════════ */
-console.log("\n── 5. Chek yopilishi: yozilgan ovoz va uning zaxirasi ──");
+console.log("\n── 5. Çek yopilişi: yozilgan ovoz va uning zaxirasi ──");
 {
   /* ⚠ NEGA IKKI QISM. Do'kon egasi aynan o'zi yuborgan ovozni so'radi,
      ya'ni u CHALINISHI shart. Lekin fayl yetib kelmasligi ham mumkin
@@ -293,7 +293,7 @@ console.log("\n── 5. Chek yopilishi: yozilgan ovoz va uning zaxirasi ──"
      ham «200» bo'lib ko'rinardi. */
   head.status === 200 && head.type === "audio/mpeg" && head.n > 4000
     ? ok(`/sfx/done.mp3 berildi (${(head.n / 1024).toFixed(1)} KB, ${head.type})`)
-    : no("chek ovozi `dist/sfx/done.mp3` da bo'lishi kerak", JSON.stringify(head));
+    : no("çek ovozi `dist/sfx/done.mp3` da bölişi kerak", JSON.stringify(head));
 
   /* ── 5b. Yozuv dekodlanadi va CHALINADI ──────────────────────────── */
   const pg = await open("/settings");
@@ -304,19 +304,19 @@ console.log("\n── 5. Chek yopilishi: yozilgan ovoz va uning zaxirasi ──"
   const b0 = await pg.evaluate(() => window.__sfx.buf);
   await pg.evaluate(() => {
     const card = [...document.querySelectorAll(".set-card")]
-      .find((c) => /Ovozli bildirishnoma/i.test(c.textContent));
+      .find((c) => /Ovozli bildirişnoma/i.test(c.textContent));
     // ⚠ BIRINCHI ▶ — `SALE_DONE` (`SoundSettings.jsx: ORDER`).
     card.querySelector("button .fa-play")?.closest("button")?.click();
   });
   await new Promise((r) => setTimeout(r, 500));
   const b1 = await pg.evaluate(() => window.__sfx.buf);
-  b1 > b0 ? ok(`chek ovozi YOZUVDAN chalindi (${b1 - b0} ta bufer)`)
+  b1 > b0 ? ok(`çek ovozi YOZUVDAN çalindi (${b1 - b0} ta bufer)`)
           : no("yozuv chalinishi kerak edi", `buf ${b0} → ${b1}`);
   await pg.close();
 }
 
 /* ══ 6. OFLAYN — SW KESHI ═════════════════════════════════════════════ */
-console.log("\n── 6. Tarmoq yo'q: ovoz service worker keshidan keladi ──");
+console.log("\n── 6. Tarmoq yöq: ovoz service worker keşidan keladi ──");
 {
   /* ⚠ BU BAND TASODIFAN TOPILDI va shuning uchun ham qoldirildi.
      7-bandni yozayotganda tarmoq to'sildi-yu, ovoz baribir YOZUVDAN
@@ -335,19 +335,19 @@ console.log("\n── 6. Tarmoq yo'q: ovoz service worker keshidan keladi ──
   await pg.evaluate(() => { window.__sfx.buf = 0; window.__sfx.osc = 0; });
   await pg.evaluate(() => {
     const card = [...document.querySelectorAll(".set-card")]
-      .find((c) => /Ovozli bildirishnoma/i.test(c.textContent));
+      .find((c) => /Ovozli bildirişnoma/i.test(c.textContent));
     card.querySelector("button .fa-play")?.closest("button")?.click();
   });
   await new Promise((r) => setTimeout(r, 500));
   const c = await pg.evaluate(() => window.__sfx);
   c.osc + c.buf > 0
-    ? ok(`tarmoqsiz ham ovoz chiqdi (${c.buf} yozuv, ${c.osc} nota)`)
-    : no("oflaynda ovoz yo'qolmasligi kerak", `${c.osc}/${c.buf}`);
+    ? ok(`tarmoqsiz ham ovoz çiqdi (${c.buf} yozuv, ${c.osc} nota)`)
+    : no("oflaynda ovoz yöqolmasligi kerak", `${c.osc}/${c.buf}`);
   await pg.close();
 }
 
 /* ══ 7. FAYL UMUMAN YO'Q — OHANG ZAXIRA ═══════════════════════════════ */
-console.log("\n── 7. Ovoz fayli umuman yo'q bo'lsa — kassa jim qolmaydi ──");
+console.log("\n── 7. Ovoz fayli umuman yöq bölsa — kassa jim qolmaydi ──");
 {
   /* ⚠⚠ ENG MUHIM BAND. Fayl qo'shish kassani jim qoldirish xavfini
      tug'diradi va u shu yerda o'lchanadi.
@@ -389,17 +389,17 @@ console.log("\n── 7. Ovoz fayli umuman yo'q bo'lsa — kassa jim qolmaydi �
   await new Promise((r) => setTimeout(r, 1200));
   await pg.evaluate(() => {
     const card = [...document.querySelectorAll(".set-card")]
-      .find((c) => /Ovozli bildirishnoma/i.test(c.textContent));
+      .find((c) => /Ovozli bildirişnoma/i.test(c.textContent));
     card.querySelector("button .fa-play")?.closest("button")?.click();
   });
   await new Promise((r) => setTimeout(r, 500));
   const c = await pg.evaluate(() => window.__sfx);
-  c.osc > 0 ? ok(`fayl yo'q — OHANG chalindi (${c.osc} nota), kassa jim qolmadi`)
+  c.osc > 0 ? ok(`fayl yöq — OHANG çalindi (${c.osc} nota), kassa jim qolmadi`)
             : no("zaxira ohang chalinishi kerak", `${c.osc} nota / ${c.buf} bufer`);
-  c.buf === 0 ? ok("fayl yo'q ekani TO'G'RI aniqlandi (bufer yaratilmadi)")
-              : no("bufer bo'lmasligi kerak edi", c.buf);
+  c.buf === 0 ? ok("fayl yöq ekani TÖĞRI aniqlandi (bufer yaratilmadi)")
+              : no("bufer bölmasligi kerak edi", c.buf);
   local.length === 0 ? ok("yuklanmagan fayl birorta JS xatosi bermadi")
-                     : no("xato tushdi", local.join(" | "));
+                     : no("xato tuşdi", local.join(" | "));
   await pg.close();
   await isolated.close();
 }
@@ -409,10 +409,10 @@ server.close();
 
 if (errors.length) {
   bad += errors.length;
-  console.log("\n  ❌ Sahifada JS xatolari tushdi:");
+  console.log("\n  ❌ Sahifada JS xatolari tuşdi:");
   for (const e of [...new Set(errors)].slice(0, 6)) console.log("       " + e);
 } else {
-  console.log("\n  ✅ Sahifada birorta JS xatosi tushmadi");
+  console.log("\n  ✅ Sahifada birorta JS xatosi tuşmadi");
 }
-console.log(bad ? `\n  ${bad} ta xato — ovoz qatlami buzilgan.\n` : "\n  ✅ Ovoz: hammasi o'tdi\n");
+console.log(bad ? `\n  ${bad} ta xato — ovoz qatlami buzilgan.\n` : "\n  ✅ Ovoz: hammasi ötdi\n");
 process.exit(bad ? 1 : 0);

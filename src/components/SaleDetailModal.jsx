@@ -59,7 +59,7 @@ export default function SaleDetailModal({ sale, onClose, onReprint, printing = f
               {t("kassa.reprint")}
             </button>
           )}
-          <ExcelButton name={`chek-${sale.id}`} cols={LINE_COLS} rows={sale.items || []} />
+          <ExcelButton name={`çek-${sale.id}`} cols={LINE_COLS} rows={sale.items || []} />
           <button className="btn btn-outline btn-sm" onClick={onClose}>{t("common.close")}</button>
         </>
       }

@@ -20,7 +20,12 @@ const CATS = [
 
 console.log("\n── Bo'limlar ──");
 eq(stationOptions(CATS), ["Oshxona", "Bar"], "taklif + toifalardagi (takrorsiz)");
-eq(stationOptions([{ station: "Mangal" }, { station: "oshxona" }]), ["Oshxona", "Bar", "Mangal"], "yangi nom qo'shiladi, katta-kichik harf farqi takror emas");
+eq(stationOptions([{ station: "Mangal" }, { station: "oshxona" }]), ["oshxona", "Bar", "Mangal"], "yangi nom qo'shiladi, katta-kichik harf farqi takror emas");
+eq(stationOptions([]), ["Oşxona", "Bar"], "bo'sh do'konda taklif — yangi alifboda");
+/* ⚠ Yangi alifbodan oldin taklif «Oshxona» edi va printer shu nomga
+   biriktirilgan. Ikkalasi yonma-yon chiqsa, yangi toifaga «Oşxona»
+   tanlanib, cheki printersiz bo'limga ketardi. */
+eq(stationOptions([{ station: "Oshxona" }]), ["Oshxona", "Bar"], "⚠ eski alifbodagi toifa yangi taklifning O'RNINI oladi");
 const map = stationMap(CATS);
 eq([map.get("1"), map.get("2"), map.get("3"), map.get("4")], ["Oshxona", "Bar", "Bar", undefined],
    "⚠ bola toifa bo'sh — ota toifaniki; bo'limsiz toifa — yo'q");

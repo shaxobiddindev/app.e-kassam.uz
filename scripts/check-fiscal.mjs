@@ -110,14 +110,14 @@ const text = (page) => page.evaluate(() => document.body.innerText);
 console.log("\n══ FISKAL REKVIZITLAR (V85) ══");
 
 /* ── §1 ODDIY DO'KON: HECH NARSA O'ZGARMAYDI ───────────────────────── */
-console.log("\n§1 Fiskalizatsiyasiz do'kon");
+console.log("\n§1 Fiskalizatsiyasiz dökon");
 {
   const page = await makePage({ fiscalEnabled: false, tin: null });
   const t = await text(page);
-  if (/Fiskal rekvizitlar/i.test(t)) no("blok CHIZILDI — bugungi do'konlar uchun o'zgarish", "bor");
-  else ok("blok chizilmadi — bir piksel ham o'zgarmadi");
-  if (/Kassalar/i.test(t)) no("kassalar bo'limi chizildi", "bor");
-  else ok("kassalar bo'limi ham yo'q");
+  if (/Fiskal rekvizitlar/i.test(t)) no("blok ÇIZILDI — bugungi dökonlar uçun özgariş", "bor");
+  else ok("blok çizilmadi — bir piksel ham özgarmadi");
+  if (/Kassalar/i.test(t)) no("kassalar bölimi çizildi", "bor");
+  else ok("kassalar bölimi ham yöq");
 
   /* ⚠ So'rov ham YUBORILMASLIGI kerak: panel chizilmasa `list()`
      chaqirilmaydi. Aks holda har bir do'kon har sozlama ochilishida
@@ -125,13 +125,13 @@ console.log("\n§1 Fiskalizatsiyasiz do'kon");
   const asked = posted.length;
   const reqs = await page.evaluate(() => performance.getEntriesByType("resource")
     .filter((e) => e.name.includes("/shop/cash-registers")).length);
-  if (reqs > 0) no("kassalar SO'RALDI — panel chizilmagan bo'lsa ham", reqs);
-  else ok(`kassa so'rovi yuborilmadi (${asked} ta boshqa so'rov)`);
+  if (reqs > 0) no("kassalar SÖRALDI — panel çizilmagan bölsa ham", reqs);
+  else ok(`kassa sörovi yuborilmadi (${asked} ta boşqa sörov)`);
   await page.close();
 }
 
 /* ── §2 REKVIZIT KIRITILGAN: PANEL PAYDO BO'LADI ───────────────────── */
-console.log("\n§2 Rekvizit kiritilgan do'kon");
+console.log("\n§2 Rekvizit kiritilgan dökon");
 {
   const page = await makePage(
     { fiscalEnabled: false, tin: "123456789", tinType: "LEGAL",
@@ -146,39 +146,39 @@ console.log("\n§2 Rekvizit kiritilgan do'kon");
   const t = await text(page);
 
   if (/Fiskal rekvizitlar/i.test(t)) ok("blok chizildi");
-  else no("blok chizilmadi — rekvizit kiritilgan bo'lsa ham", "yo'q");
+  else no("blok çizilmadi — rekvizit kiritilgan bölsa ham", "yöq");
 
   /* ⚠ Rejim hali YOQILMAGAN va buni panel ochiq aytishi kerak:
      rekvizit to'ldirilgani «endi fiskal ishlayapti» degani emas. */
-  if (/Fiskal rejim o'chiq/i.test(t)) ok("rejim holati «o'chiq» deb ko'rsatildi");
-  else no("rejim holati noto'g'ri", t.match(/Fiskal rejim[^\n]*/)?.[0] || "topilmadi");
+  if (/Fiskal rejim öçiq/i.test(t)) ok("rejim holati «öçiq» deb körsatildi");
+  else no("rejim holati notöğri", t.match(/Fiskal rejim[^\n]*/)?.[0] || "topilmadi");
 
   const tin = await page.$$eval("input", (els) =>
     els.map((e) => e.value).filter((v) => v === "123456789").length);
   if (tin === 1) ok("STIR maydonga tushdi (123456789)");
-  else no("STIR maydonda yo'q", tin);
+  else no("STIR maydonda yöq", tin);
 
   if (/1-kassa/.test(t) && /VK-77/.test(t) && /FM-42/.test(t)) ok("kassa jadvalda: nomi, seriya, modul");
-  else no("kassa ma'lumotlari to'liq emas", t.match(/1-kassa[^\n]*/)?.[0] || "topilmadi");
+  else no("kassa ma'lumotlari töliq emas", t.match(/1-kassa[^\n]*/)?.[0] || "topilmadi");
 
   /* ⚠ «Raqamlari to'ldirilmagan» belgisi — eng foydali ogohlantirish:
      kassa yoqilgan, lekin undan chek chiqmaydi. */
-  if (/to'ldirilmagan/i.test(t)) ok("raqamsiz kassa ogohlantirish bilan belgilandi");
-  else no("raqamsiz kassa oddiy ko'rinmoqda", "ogohlantirish yo'q");
+  if (/töldirilmagan/i.test(t)) ok("raqamsiz kassa ogohlantiriş bilan belgilandi");
+  else no("raqamsiz kassa oddiy körinmoqda", "ogohlantiriş yöq");
 
   /* ⚠ Yangi kassa formasida QURILMA oldindan to'ldirilishi kerak:
      `X-Device-Id` uzun tasodifiy satr va uni qo'lda ko'chirish
      sozlashning eng ko'p xato qilinadigan qadami bo'lardi. */
   await page.evaluate(() => {
     const btn = [...document.querySelectorAll("button")]
-      .find((b) => /qo'shish|add/i.test(b.innerText));
+      .find((b) => /qöşiş|add/i.test(b.innerText));
     btn?.click();
   });
   await new Promise((r) => setTimeout(r, 300));
   const prefilled = await page.$$eval("input", (els) =>
     els.some((e) => e.value === "monoblok-1"));
-  if (prefilled) ok("yangi kassaga shu qurilma oldindan qo'yildi");
-  else no("qurilma maydoni bo'sh — qo'lda ko'chirish kerak bo'lardi", "bo'sh");
+  if (prefilled) ok("yangi kassaga şu qurilma oldindan qöyildi");
+  else no("qurilma maydoni böş — qölda köçiriş kerak bölardi", "böş");
 
   await page.close();
 }
@@ -190,13 +190,13 @@ console.log("\n§3 Kassir");
     { fiscalEnabled: true, tin: "123456789", tinType: "LEGAL",
       fiscalAddress: "Chilonzor 19" }, "CASHIER");
   const t = await text(page);
-  if (/Fiskal rekvizitlar/i.test(t)) no("kassirga rekvizit paneli KO'RINDI", "bor");
-  else ok("kassirga ko'rinmadi — server ham uni bu yo'lga qo'ymaydi");
+  if (/Fiskal rekvizitlar/i.test(t)) no("kassirga rekvizit paneli KÖRINDI", "bor");
+  else ok("kassirga körinmadi — server ham uni bu yölga qöymaydi");
   await page.close();
 }
 
 /* ── §4 CHEK OSTIDAGI MATN ─────────────────────────────────────────── */
-console.log("\n§4 Chek osti (V85)");
+console.log("\n§4 Çek osti (V85)");
 {
   const page = await makePage(
     { fiscalEnabled: false, tin: null, receiptFooter: "Qaytarish 3 kun" });
@@ -210,21 +210,21 @@ console.log("\n§4 Chek osti (V85)");
     return /CRM Tizimi/.test(src);
   });
   if (brand) no("Sozlamalar sahifasida «CRM Tizimi» qoldi", "bor");
-  else ok("«CRM Tizimi» yozuvi yo'q");
+  else ok("«CRM Tizimi» yozuvi yöq");
 
-  const hasField = /Chek ostidagi matn/i.test(t);
-  if (hasField) ok("«Chek ostidagi matn» maydoni bor");
-  else no("maydon topilmadi", "yo'q");
+  const hasField = /Çek ostidagi matn/i.test(t);
+  if (hasField) ok("«Çek ostidagi matn» maydoni bor");
+  else no("maydon topilmadi", "yöq");
 
   const filled = await page.$$eval("input", (els) =>
     els.some((e) => e.value === "Qaytarish 3 kun"));
-  if (filled) ok("profildagi matn maydonga tushdi");
-  else no("matn maydonga tushmadi", "bo'sh");
+  if (filled) ok("profildagi matn maydonga tuşdi");
+  else no("matn maydonga tuşmadi", "böş");
   await page.close();
 }
 
 /* ── §5 NAVBAT YOSHI ───────────────────────────────────────────────── */
-console.log("\n§5 Navbat yoshi (V85)");
+console.log("\n§5 Navbat yoşi (V85)");
 {
   /* ⚠ Fiskal PANEL alohida so'rovga (`/fiscal/status`) tayanadi va u
      `moduleEnabled` bo'lmasa umuman chizilmaydi. Shu sababli bu band
@@ -291,21 +291,21 @@ console.log("\n§5 Navbat yoshi (V85)");
      faqat «so'rov ketgan bo'lsa, javob to'g'ri o'qildimi» deydi. */
   const t = await text(page);
   if (seen.length === 0) {
-    no("⚠ fiskal holat UMUMAN so'ralmadi — panel chizilmagan", "so'rov yo'q");
+    no("⚠ fiskal holat UMUMAN söralmadi — panel çizilmagan", "sörov yöq");
   } else if (/41/.test(t)) {
-    ok("navbat yoshi ekranda ko'rindi (41 soat)");
+    ok("navbat yoşi ekranda körindi (41 soat)");
     /* ⚠ Zanjir buzilgani ham ko'rinishi kerak — u navbat yoshidan
        ham jiddiyroq signal. */
-    if (/417/.test(t)) ok("buzuq bo'g'in raqami ko'rindi (417)");
-    else no("zanjir buzilgani chizilmadi", "417 yo'q");
+    if (/417/.test(t)) ok("buzuq böğin raqami körindi (417)");
+    else no("zanjir buzilgani chizilmadi", "417 yöq");
   } else {
-    no("holat so'raldi, lekin yosh chizilmadi", t.slice(0, 120));
+    no("holat söraldi, lekin yoş çizilmadi", t.slice(0, 120));
   }
   await page.close();
 }
 
 /* ── §6 ZANJIR ─────────────────────────────────────────────────────── */
-console.log("\n§6 Cheklar zanjiri (V85)");
+console.log("\n§6 Çeklar zanjiri (V85)");
 {
   const page = await makePage(
     { fiscalEnabled: false, tin: "123456789", tinType: "LEGAL",
@@ -314,20 +314,20 @@ console.log("\n§6 Cheklar zanjiri (V85)");
 
   /* ⚠ BLOKLASH KALITI KO'RINISHI SHART va oqibati bilan: uni
      bosayotgan odam kassa to'xtashini bilishi kerak. */
-  if (/Zanjir buzilsa sotuvni to'xtatish/i.test(t)) ok("bloklash kaliti bor");
-  else no("bloklash kaliti topilmadi", "yo'q");
+  if (/Zanjir buzilsa sotuvni töxtatiş/i.test(t)) ok("bloklaş kaliti bor");
+  else no("bloklaş kaliti topilmadi", "yöq");
 
-  if (/kassa ishlamay qoladi/i.test(t)) ok("oqibati ochiq yozilgan");
-  else no("oqibat yozilmagan — kalit sababsiz bosilardi", "yo'q");
+  if (/kassa işlamay qoladi/i.test(t)) ok("oqibati oçiq yozilgan");
+  else no("oqibat yozilmagan — kalit sababsiz bosilardi", "yöq");
 
   /* ⚠ Kalit profildagi qiymatdan o'qilishi kerak: aks holda ega uni
      yoqib qo'yib, sahifani qayta ochganda «o'chiq» ko'rardi. */
   const on = await page.evaluate(() =>
     [...document.querySelectorAll('[role="switch"]')]
       .some((b) => b.getAttribute("aria-checked") === "true"
-                   && /to'xtatish/i.test(b.closest(".set-row")?.innerText || "")));
+                   && /töxtatiş/i.test(b.closest(".set-row")?.innerText || "")));
   if (on) ok("kalit profildagi qiymat bilan yoqilgan");
-  else no("kalit profildan o'qilmadi", "o'chiq");
+  else no("kalit profildan öqilmadi", "öçiq");
   await page.close();
 }
 
@@ -335,7 +335,7 @@ console.log("\n§7 Sahifa xatolari");
 if (pageErrors.length) no("konsolda xato bor", pageErrors.slice(0, 3).join(" | "));
 else ok("konsol toza");
 
-console.log(`\n${bad ? "❌" : "✅"} fiskal: ${bad ? bad + " yiqildi" : "hammasi o'tdi"}`);
+console.log(`\n${bad ? "❌" : "✅"} fiskal: ${bad ? bad + " yiqildi" : "hammasi ötdi"}`);
 await browser.close();
 server.close();
 process.exit(bad ? 1 : 0);
