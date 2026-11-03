@@ -43,10 +43,17 @@ const ok = (cond, msg) => {
  *              Ikki sahifada u to'g'ri: ro'yxat o'sha yo'lda TO'LIQ
  *              keladi (tovarlarda kod rejimi, mijozlarda qarzdorlar)
  *              va to'liq ro'yxatni brauzerda kesish xato emas.
+ * @param rank  `rankItems(` ga ruxsat — faqat shu ifoda ICHIDA (to'liq
+ *              ro'yxat tarmog'i). ⚠ Ilgari bu yerda hamma sahifada
+ *              mutlaq taqiq turardi va u qarzdorlarni ham qamrab olardi:
+ *              `/customers/debtors` ga `q` ketmaydi, demak qidiruv
+ *              FAQAT brauzerda bo'lishi mumkin. Taqiq ostida u ikki oy
+ *              umuman yo'q edi — do'konchi qarzdorni qidira olmasdi.
  */
 const PAGES = [
   { file: "pages/ProductsPage.jsx",  api: "productApi.getPage",  apply: true },
-  { file: "pages/CustomersPage.jsx", api: "customerApi.getPage", apply: true },
+  { file: "pages/CustomersPage.jsx", api: "customerApi.getPage", apply: true,
+    rank: /view === "debtors"\s*\?\s*rankItems\(/ },
   { file: "pages/SalesPage.jsx",     api: "saleApi.getPage",     apply: false },
   { file: "pages/InventoryPage.jsx", api: "inventoryApi.getPage", apply: false },
 ];
@@ -74,8 +81,14 @@ for (const p of PAGES) {
   /* ⚠ `rankItems` — BRAUZERDAGI qidiruv. Sahifalangan ro'yxatda u
      faqat yuklangan qatorlarni saralaydi va foydalanuvchi buni
      «qidiruv ishlamayapti» deb tushunadi. */
-  ok(!/rankItems\(/.test(code),
-     `${name}: ⚠ brauzerda qayta qidiruv (\`rankItems\`) YO'Q`);
+  const ranks = (code.match(/rankItems\(/g) || []).length;
+  if (p.rank) {
+    ok(ranks === 1 && p.rank.test(code),
+       `${name}: ⚠ \`rankItems\` faqat to'liq ro'yxat tarmog'ida (sahifalanganida YO'Q)`);
+  } else {
+    ok(ranks === 0,
+       `${name}: ⚠ brauzerda qayta qidiruv (\`rankItems\`) YO'Q`);
+  }
 
   if (!p.apply) {
     ok(!/colFlt\.apply\(/.test(code),

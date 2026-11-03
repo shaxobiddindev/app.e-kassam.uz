@@ -164,5 +164,27 @@ if (!/disabled=\{!\(Number\(c\.balance\) > 0\)\}/.test(debtors)) {
   fail("qarzdorlarda «to'lash» tugmasi qoldiqqa qarab O'CHIRILISHI kerak (yashirilmasin)");
 }
 
+/* ═══ 4. ⚠ Serverga `q` ketmaydigan ro'yxatda qidiruv BRAUZERDA ═══
+   21aa4f36 qidiruvni serverga ko'chirdi va `filtered` dagi `rankItems`
+   ni olib tashladi. `/customers/debtors` esa `q` olmaydi — «qarzdorlar»
+   da qidiruv maydoni ikki oy hech narsa qilmadi va buni kodga qarab
+   bilib bo'lmasdi: maydon chiziladi, yozuv qabul qilinadi, xato yo'q.
+
+   Qoida: `fetchPage` dagi qarzdorlar tarmog'i `slowSearch` ni
+   yubormasa, `filtered` ning qarzdorlar tarmog'i `search` bilan
+   `rankItems` ni chaqirishi SHART. */
+const fetchDebtors = /if \(view === "debtors"\) return customerApi\.debtors\(([^)]*)\)/.exec(src);
+if (!fetchDebtors) {
+  fail("fetchPage da qarzdorlar so'rovi topilmadi — qo'riqchini yangilang");
+} else if (!/slowSearch|search/.test(fetchDebtors[1])) {
+  const filteredDecl = /const filtered = view === "debtors"\s*\?\s*([^:]+):/.exec(src);
+  /* ⚠ `[^)]*` EMAS: birinchi argument o'zi qavsli (`colFlt.apply(customers)`)
+     va qo'riqchi to'g'ri kodni ham yiqitardi. */
+  if (!filteredDecl || !/rankItems\([\s\S]*\bsearch\b/.test(filteredDecl[1])) {
+    fail("«qarzdorlar»: serverga qidiruv ketmaydi, brauzerda ham qo'llanmaydi — "
+       + "`filtered` qarzdorlar tarmog'ida `rankItems(…, search, …)` bo'lishi shart");
+  }
+}
+
 if (bad) { console.error(`\n${bad} ta muammo topildi.`); process.exit(1); }
 console.log("✅ Mijozlar sahifasi: har ro'yxatda kerakli tugmalar joyida.");

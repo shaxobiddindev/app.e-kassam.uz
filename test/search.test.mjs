@@ -194,6 +194,21 @@ eq(rankItems(people, "", CUST).length, 3, "bo'sh so'rovda ro'yxat o'zgarmaydi");
 eq(rankItems(null, "ali", CUST).length, 0, "ro'yxat yo'q — yiqilmaydi");
 eq(rankItems(people, "ali", CUST, 1).length, 1, "chegara hurmat qilinadi");
 
+/* ⚠ QARZDORLAR RO'YXATI (`CustomersPage`, `DEBTOR_SEARCH`) — shu qoida
+   brauzerda. U ikki oy umuman qo'llanmagan edi (`check-cust` §4); bu
+   yerda esa do'konchi aynan yozadigan so'rovlar: yangi alifbodagi ism
+   eski yozuvli mijozni, «x» — «h» ni, kirill — lotinni topadi. */
+const debtorsList = [
+  { fullName: "Shohruh Karimov",  phone: "+998901234567" },
+  { fullName: "Gulnora Toshpo'latova", phone: "+998977770011" },
+  { fullName: "Ўлмас Чориев",     phone: "+998935550099" },
+];
+const findDebtor = (q) => rankItems(debtorsList, q, CUST).map((c) => c.fullName);
+eq(findDebtor("Şohrux")[0], "Shohruh Karimov", "qarzdor: yangi alifbo + x/h — eski yozuvli ism");
+eq(findDebtor("toşpölat")[0], "Gulnora Toshpo'latova", "qarzdor: ş/ö — apostrofli eski yozuv");
+eq(findDebtor("ölmas")[0], "Ўлмас Чориев", "qarzdor: lotin so'rov — kirill ism");
+eq(findDebtor("0011").length, 1, "qarzdor: telefon oxiri");
+
 console.log("\n═══ 12. Tovar qidiruvi umumiy qoidaning ustida qurilgan ═══");
 /* ⚠ Refaktordan keyin natija O'ZGARMAGANINI qayd etadi: foydalanuvchi
    talabi aynan shu edi — «natijaga ta'sir qilmasa». */

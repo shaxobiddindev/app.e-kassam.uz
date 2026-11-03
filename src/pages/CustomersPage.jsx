@@ -14,6 +14,7 @@ import SaleDetailModal from "../components/SaleDetailModal";
 import DataFilter, { useDataFilter, SortTh } from "../components/ek/DataFilter";
 import { useInfinite } from "../hooks/useInfinite";
 import { useDebounced } from "../hooks/useDebounced";
+import { rankItems } from "../lib/ek-search";
 import InfiniteList from "../components/ek/InfiniteList";
 import { NoTh, NoTd, NO_COL } from "../components/ek/RowNo";
 import { asArray } from "../lib/ek-array";
@@ -57,6 +58,12 @@ const daysSince = (iso) => {
   if (!iso) return null;
   const ms = Date.now() - new Date(iso).getTime();
   return ms < 0 ? 0 : Math.floor(ms / 86400000);
+};
+
+/** Qarzdorlar ro'yxatidagi qidiruv maydonlari (`rankItems`). */
+const DEBTOR_SEARCH = {
+  texts:  (c) => [c.fullName],
+  digits: (c) => [c.phone],
 };
 
 export default function CustomersPage({ toast }) {
@@ -394,11 +401,6 @@ export default function CustomersPage({ toast }) {
 
   const setField = (key) => (e) => setForm((prev) => ({ ...prev, [key]: e.target.value }));
 
-  /* ⚠ QIDIRUV — kassadagi bilan BIR XIL algoritm (`lib/ek-search.js`).
-     Ilgari bu yerda oddiy `includes` turardi: «Абдулла» deb kiritilgan
-     mijozni «abdulla» deb qidirgan kassir TOPA OLMASDI, xato yozilgan
-     harf esa umuman natija bermasdi. Telefon raqami maxsus ishlanadi —
-     odam oxirgi raqamlarni eslaydi, to'liq raqamni emas. */
   /* Muddat qo'yilgan do'konda kamida bitta qarz kechikkanmi (V43).
      Ustun shu holatda chiziladi: muddatsiz do'konda u har qatorda
      chiziqcha ko'rsatib, jadvalni bekorga kengaytirardi. */
@@ -531,8 +533,25 @@ export default function CustomersPage({ toast }) {
 
   /* ⚠ QARZDORLAR — BRAUZERDA (ro'yxat to'liq, yuqoridagi izoh);
      qolgan hamma holatda server allaqachon filtrlab, saralab va
-     reyting qo'yib bergan. */
-  const filtered = view === "debtors" ? colFlt.apply(customers) : customers;
+     reyting qo'yib bergan.
+
+     ⚠ QIDIRUV HAM SHU YERDA — va u bir marta yo'qolgan. 21aa4f36
+     (2026-09-12) qidiruvni serverga ko'chirib, shu qatordagi
+     `rankItems` ni olib tashladi. Lekin `/customers/debtors` ga `q`
+     yuborilmaydi — ya'ni «qarzdorlar» da qidiruv maydoni ikki oy
+     HECH NARSA QILMADI: yozilgan ism ro'yxatni o'zgartirmasdi va
+     do'konchi «qidiruv ishlamayapti» deb to'g'ri aytdi.
+     Bunga `list-paging` sinovining mutlaq «rankItems yo'q» taqiqi ham
+     yo'l ochgan edi. Endi `check-cust` §4 (kod) va `check-debtsearch`
+     (brauzerda natija) buni ushlaydi.
+
+     Algoritm kassadagi bilan BIR XIL (`lib/ek-search.js`): kirill ↔
+     lotin, yangi ↔ eski alifbo, x ↔ h, xato harf. Telefon — oxirgi
+     raqamlar bo'yicha: odam to'liq raqamni emas, dumini eslaydi.
+     Kechiktirilmagan `search`: ro'yxat qo'lda, so'rov ketmaydi. */
+  const filtered = view === "debtors"
+    ? rankItems(colFlt.apply(customers), search, DEBTOR_SEARCH)
+    : customers;
 
   /* ⚠ EXCEL: hamma sahifalar yig'iladi, ekrandagi 50 tasi emas — va
      AYNAN ekrandagi so'rov bilan (filtr, qidiruv, jamg'arma tartibi).
@@ -934,7 +953,11 @@ export default function CustomersPage({ toast }) {
                           o'qirdi — bo'sh natija va buzuq ekran bir xil
                           ko'rinardi. */}
                       <Empty icon={view === "savings" ? "fa-sack-dollar" : "fa-users"}
-                             text={view === "debtors"
+                             text={search.trim()
+                                 /* Qidiruv bo'sh natija bersa, «qarzdor yo'q»
+                                    YOLG'ON bo'lardi — qarzdorlar bor, mosi yo'q. */
+                                 ? t("cust.notFound")
+                                 : view === "debtors"
                                  ? t("credit.noDebtors")
                                  : view === "savings"
                                    ? t("savings.noneYet")
